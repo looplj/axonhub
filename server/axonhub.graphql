@@ -1,0 +1,3 @@
+type Mutation {
+    createRequest(input: CreateRequestInput!): Request!
+}

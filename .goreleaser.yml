@@ -1,0 +1,35 @@
+dist: ./build/release
+before:
+  hooks:
+    - go mod download
+builds:
+  - id: sky
+    main: ./cmd/sky/main.go
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    tags:
+      - jsoniter
+archives:
+  - name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
+    replacements:
+      darwin: macos
+    format: tar.gz
+    format_overrides:  # archive as zip on Windows
+      - goos: windows
+        format: zip
+    files:
+      - none*
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: desc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'

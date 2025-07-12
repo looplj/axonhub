@@ -1,0 +1,18 @@
+repos:
+  - repo: 'https://github.com/golangci/golangci-lint'
+    rev: v2.1.6
+    hooks:
+      - id: golangci-lint
+        entry: golangci-lint run -vvv
+
+  - repo: https://github.com/looplj/pre-commit-golang
+    rev: v1.1.0
+    hooks:
+      - id: go-test
+
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      #      - id: go-build
+      - id: go-mod-tidy
+

@@ -1,0 +1,37 @@
+# schema tells gqlgen where the GraphQL schema is located.
+schema:
+  - ent.graphql
+  - axonhub.graphql
+
+#exec:
+#  layout: follow-schema
+#  dir: ./graph
+#  package: graph
+
+# resolver reports where the resolver implementations go.
+resolver:
+  layout: follow-schema
+  dir: .
+
+# gqlgen will search for any type names in the schema in these go packages
+# if they match it will use them, otherwise it will generate them.
+
+# autobind tells gqngen to search for any type names in the GraphQL schema in the
+# provided package. If they match it will use them, otherwise it will generate new.
+autobind:
+  - github.com/99designs/gqlgen/graphql/introspection
+  - github.com/looplj/axonhub/ent
+  - github.com/looplj/axonhub/ent/user
+  - github.com/looplj/axonhub/ent/request
+  - github.com/looplj/axonhub/ent/apikey
+  - github.com/looplj/axonhub/ent/requestexecution
+
+# This section declares type mapping between the GraphQL and Go type systems.
+models:
+  # Defines the ID field as Go 'int'.
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.IntID
+  Node:
+    model:
+      - github.com/looplj/axonhub/ent.Noder
