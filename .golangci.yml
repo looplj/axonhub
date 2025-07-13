@@ -307,7 +307,7 @@ issues:
   new: true
 
   # Auto-fix enabled issues. Default is false.
-  fix: false
+  fix: true
 
   exclude-dirs:
     - .*example.*

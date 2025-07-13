@@ -4,12 +4,14 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/gin-gonic/gin"
+	"github.com/looplj/axonhub/server/api"
 )
 
 type Handlers struct {
 	fx.In
 
 	Graphql *GraphqlHandler
+	OpenAI  *api.OpenAIHandlers
 }
 
 func SetupRoutes(server *Server, handlers Handlers) {
@@ -19,4 +21,6 @@ func SetupRoutes(server *Server, handlers Handlers) {
 	server.POST("/graphql", func(ctx *gin.Context) {
 		handlers.Graphql.Graphql.ServeHTTP(ctx.Writer, ctx.Request)
 	})
+
+	server.POST("/v1/chat/completions", handlers.OpenAI.ChatCompletion)
 }

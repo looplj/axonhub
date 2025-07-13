@@ -5,7 +5,6 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
@@ -28,25 +27,21 @@ type GraphqlHandler struct {
 }
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
-	return &GraphqlHandler{
-		Graphql:    NewGraphHandler(NewSchema(deps.Client)),
-		Playground: playground.Handler("AxonHub", "/graphql"),
-	}
-}
+	gqlSrv := handler.New(NewSchema(deps.Client))
 
-func NewGraphHandler(es graphql.ExecutableSchema) *handler.Server {
-	srv := handler.New(es)
+	gqlSrv.AddTransport(transport.Options{})
+	gqlSrv.AddTransport(transport.GET{})
+	gqlSrv.AddTransport(transport.POST{})
+	gqlSrv.AddTransport(transport.MultipartForm{})
 
-	srv.AddTransport(transport.Options{})
-	srv.AddTransport(transport.GET{})
-	srv.AddTransport(transport.POST{})
-	srv.AddTransport(transport.MultipartForm{})
+	gqlSrv.SetQueryCache(lru.New[*ast.QueryDocument](1024))
 
-	srv.SetQueryCache(lru.New[*ast.QueryDocument](1024))
-
-	srv.Use(extension.Introspection{})
-	srv.Use(extension.AutomaticPersistedQuery{
+	gqlSrv.Use(extension.Introspection{})
+	gqlSrv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](1024),
 	})
-	return srv
+	return &GraphqlHandler{
+		Graphql:    gqlSrv,
+		Playground: playground.Handler("AxonHub", "/graphql"),
+	}
 }
