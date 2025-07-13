@@ -17,7 +17,7 @@ type InboundTransformer struct {
 }
 
 // NewInboundTransformer creates a new Doubao InboundTransformer
-func NewInboundTransformer() transformer.InboundTransformer {
+func NewInboundTransformer() transformer.Transformer {
 	return &InboundTransformer{
 		name: "openai-inbound",
 	}

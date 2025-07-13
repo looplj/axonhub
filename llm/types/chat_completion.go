@@ -5,7 +5,8 @@ import (
 	"errors"
 )
 
-// ChatCompletionRequest represents the OpenAI chat completion request
+// ChatCompletionRequest represents the OpenAI chat completion request and is the core request struct for AsonHub.
+// All the transformer and decorator is built on the ChatCompletionRequest.
 type ChatCompletionRequest struct {
 	Model string `json:"model"`
 
@@ -75,7 +76,7 @@ type ChatCompletionRequest struct {
 	// We generally recommend altering this or `temperature` but not both.
 	TopP *float64 `json:"top_p,omitempty"`
 
-	Stream        bool           `json:"stream,omitempty"`
+	Stream        *bool          `json:"stream,omitempty"`
 	StreamOptions *StreamOptions `json:"stream_options,omitempty"`
 
 	// Not supported with latest reasoning models `o3` and `o4-mini`.
@@ -237,8 +238,8 @@ type ContentPart struct {
 
 // ImageURL represents an image URL with optional detail level
 type ImageURL struct {
-	URL    string  `json:"url"`
-	Detail *string `json:"detail,omitempty"`
+	URL    string `json:"url"`
+	Detail string `json:"detail,omitempty"`
 }
 
 // Tool represents a function tool
@@ -275,23 +276,25 @@ type ResponseFormat struct {
 
 // ChatCompletionResponse represents the OpenAI chat completion response
 type ChatCompletionResponse struct {
-	ID                string                 `json:"id"`
-	Object            string                 `json:"object"`
-	Created           int64                  `json:"created"`
-	Model             string                 `json:"model"`
-	Choices           []ChatCompletionChoice `json:"choices"`
-	Usage             *Usage                 `json:"usage,omitempty"`
-	SystemFingerprint *string                `json:"system_fingerprint,omitempty"`
+	ID      string                 `json:"id"`
+	Object  string                 `json:"object"`
+	Created int64                  `json:"created"`
+	Model   string                 `json:"model"`
+	Choices []ChatCompletionChoice `json:"choices"`
 
-	// Gateway specific fields
-	GatewayInfo *GatewayResponseInfo `json:"gateway_info,omitempty"`
+	// An optional field that will only be present when you set stream_options: {"include_usage": true} in your request.
+	// When present, it contains a null value except for the last chunk which contains the token usage statistics
+	// for the entire request.
+	Usage             *Usage `json:"usage,omitempty"`
+	SystemFingerprint string `json:"system_fingerprint,omitempty"`
 }
 
 // ChatCompletionChoice represents a choice in the response
 type ChatCompletionChoice struct {
-	Index        int                    `json:"index"`
-	Message      *ChatCompletionMessage `json:"message,omitempty"`
+	Index int `json:"index"`
+	// Delta present if stream is true
 	Delta        *ChatCompletionMessage `json:"delta,omitempty"`
+	Message      *ChatCompletionMessage `json:"message,omitempty"`
 	FinishReason *string                `json:"finish_reason"`
 	Logprobs     *LogprobsContent       `json:"logprobs,omitempty"`
 }

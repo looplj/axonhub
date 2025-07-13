@@ -23,6 +23,7 @@ require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/samber/lo v1.51.0
+	github.com/sashabaranov/go-openai v1.40.5
 	github.com/vektah/gqlparser/v2 v2.5.30
 	go.uber.org/zap/exp v0.3.0
 )

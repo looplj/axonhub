@@ -22,5 +22,4 @@ type DecoratorChain interface {
 	Execute(ctx context.Context, request *types.ChatCompletionRequest) (*types.ChatCompletionRequest, error)
 	List() []ChatCompletionDecorator
 	Clear()
-	Size() int
 }

@@ -1,34 +1,30 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/looplj/axonhub/llm/client"
+	"github.com/looplj/axonhub/llm/provider"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/types"
 	"github.com/looplj/axonhub/log"
 )
 
 type ChatCompletionProcessor struct {
-	InboundTransformer  transformer.InboundTransformer
-	OutboundTransformer transformer.OutboundTransformer
-	HTTPClient          client.HttpClient
+	InboundTransformer transformer.Transformer
+	ProviderRegistry   provider.ProviderRegistry
 }
 
 // NewChatCompletionProcessor creates a new ChatCompletionProcessor
 func NewChatCompletionProcessor(
-	inboundTransformer transformer.InboundTransformer,
-	outboundTransformer transformer.OutboundTransformer,
-	httpClient client.HttpClient,
+	inboundTransformer transformer.Transformer,
+	providerRegistry provider.ProviderRegistry,
 ) *ChatCompletionProcessor {
 	return &ChatCompletionProcessor{
-		InboundTransformer:  inboundTransformer,
-		OutboundTransformer: outboundTransformer,
-		HTTPClient:          httpClient,
+		InboundTransformer: inboundTransformer,
+		ProviderRegistry:   providerRegistry,
 	}
 }
 
@@ -47,51 +43,35 @@ func (processor *ChatCompletionProcessor) Process(c *gin.Context) error {
 	// Step 2: TODO - Apply decorators (rate limiting, authentication, etc.)
 	// This would be where decorator chain processing happens
 
-	// Step 3: Outbound transformation - Convert to provider-specific format
-	genericReq, err := processor.OutboundTransformer.Transform(ctx, chatReq)
+	// Step 3: Get provider for the model
+	prov, err := processor.ProviderRegistry.GetProviderForModel(chatReq.Model)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to transform request: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("No provider found for model %s: %v", chatReq.Model, err)})
 		return err
 	}
 
-	log.Info(ctx, "Generic request", log.Any("request", genericReq))
+	log.Info(ctx, "Using provider", log.Any("provider", prov.GetConfig().Name), log.Any("model", chatReq.Model))
 
-	// Step 4: Execute HTTP request to provider
-	genericResp, err := processor.executeRequest(ctx, genericReq)
-	if err != nil {
-		log.Error(ctx, "Failed to execute request", log.Cause(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to execute request: %v", err)})
-		return err
-	}
-
-	log.Info(ctx, "Generic resp", log.Any("response", genericResp))
-
-	// Step 5: Handle streaming vs non-streaming responses
-	if chatReq.Stream {
-		return processor.handleStreamingResponse(c, genericResp, chatReq)
+	// Step 4: Handle streaming vs non-streaming responses
+	if chatReq.Stream != nil && *chatReq.Stream {
+		return processor.handleStreamingResponse(c, prov, chatReq)
 	} else {
-		return processor.handleNonStreamingResponse(c, genericResp, chatReq)
+		return processor.handleNonStreamingResponse(c, prov, chatReq)
 	}
 }
 
-func (processor *ChatCompletionProcessor) executeRequest(ctx context.Context, req *types.GenericHttpRequest) (*types.GenericHttpResponse, error) {
-	// Use the dedicated HTTP client for streaming or non-streaming requests
-	if req.Streaming {
-		return processor.HTTPClient.DoStream(ctx, req)
-	} else {
-		return processor.HTTPClient.Do(ctx, req)
-	}
-}
-
-func (processor *ChatCompletionProcessor) handleNonStreamingResponse(c *gin.Context, genericResp *types.GenericHttpResponse, originalReq *types.ChatCompletionRequest) error {
-	// Step 6: Outbound response transformation
-	chatResp, err := processor.OutboundTransformer.TransformResponse(c.Request.Context(), genericResp, originalReq)
+func (processor *ChatCompletionProcessor) handleNonStreamingResponse(c *gin.Context, prov provider.Provider, originalReq *types.ChatCompletionRequest) error {
+	// Step 5: Call provider for chat completion
+	chatResp, err := prov.ChatCompletion(c.Request.Context(), originalReq)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to transform response: %v", err)})
+		log.Error(c.Request.Context(), "Provider chat completion failed", log.Cause(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Provider error: %v", err)})
 		return err
 	}
 
-	// Step 7: Inbound response transformation (final formatting)
+	log.Info(c.Request.Context(), "Chat completion response", log.Any("response", chatResp))
+
+	// Step 6: Inbound response transformation (final formatting)
 	// Create a mock HTTP response for the inbound transformer
 	mockResp := &http.Response{
 		StatusCode: http.StatusOK,
@@ -115,13 +95,15 @@ func (processor *ChatCompletionProcessor) handleNonStreamingResponse(c *gin.Cont
 	return nil
 }
 
-func (processor *ChatCompletionProcessor) handleStreamingResponse(c *gin.Context, genericResp *types.GenericHttpResponse, originalReq *types.ChatCompletionRequest) error {
-	// Step 6: Outbound streaming response transformation
-	streamChan, err := processor.OutboundTransformer.TransformStreamResponse(c.Request.Context(), genericResp, originalReq)
+func (processor *ChatCompletionProcessor) handleStreamingResponse(c *gin.Context, prov provider.Provider, originalReq *types.ChatCompletionRequest) error {
+	stream, err := prov.ChatCompletionStream(c.Request.Context(), originalReq)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to transform streaming response: %v", err)})
+		log.Error(c.Request.Context(), "Provider streaming failed", log.Cause(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Provider streaming error: %v", err)})
 		return err
 	}
+
+	log.Info(c.Request.Context(), "Started streaming response")
 
 	// Set SSE headers
 	c.Header("Content-Type", "text/event-stream")
@@ -129,22 +111,30 @@ func (processor *ChatCompletionProcessor) handleStreamingResponse(c *gin.Context
 	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
 
-	// Stream responses
-	for streamResp := range streamChan {
-		// Step 7: Format as SSE
-		data, err := json.Marshal(streamResp)
+	// TODO Handle error
+	for stream.Next() {
+		cur := stream.Current()
+		data, err := json.Marshal(cur)
 		if err != nil {
+			log.Error(c.Request.Context(), "Failed to marshal stream response", log.Cause(err))
 			continue
 		}
 
+		log.Info(c.Request.Context(), "Stream response", log.Any("current", cur))
+
 		// Write SSE format
-		fmt.Fprintf(c.Writer, "data: %s\n\n", string(data))
+		_, err = fmt.Fprintf(c.Writer, "data: %s\n\n", string(data))
+		if err != nil {
+			return err
+		}
 		c.Writer.Flush()
 	}
 
-	// Send done signal
-	fmt.Fprintf(c.Writer, "data: [DONE]\n\n")
+	_, err = fmt.Fprintf(c.Writer, "data: [DONE]\n\n")
+	if err != nil {
+		log.Error(c.Request.Context(), "Failed to write stream end", log.Cause(err))
+		return err
+	}
 	c.Writer.Flush()
-
 	return nil
 }
