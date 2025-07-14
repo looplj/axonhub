@@ -8,31 +8,25 @@ import (
 
 // CreateRequestInput represents a mutation input for creating requests.
 type CreateRequestInput struct {
-	UserID       string
 	RequestBody  string
 	ResponseBody string
 	Status       request.Status
 	DeletedAt    *int64
-	UserIDs      []int
-	APIKeyIDs    []int
-	ExecutionIDs []int
+	UserID       int64
+	APIKeyID     int64
+	ExecutionIDs []int64
 }
 
 // Mutate applies the CreateRequestInput on the RequestMutation builder.
 func (i *CreateRequestInput) Mutate(m *RequestMutation) {
-	m.SetUserID(i.UserID)
 	m.SetRequestBody(i.RequestBody)
 	m.SetResponseBody(i.ResponseBody)
 	m.SetStatus(i.Status)
 	if v := i.DeletedAt; v != nil {
 		m.SetDeletedAt(*v)
 	}
-	if v := i.UserIDs; len(v) > 0 {
-		m.AddUserIDs(v...)
-	}
-	if v := i.APIKeyIDs; len(v) > 0 {
-		m.AddAPIKeyIDs(v...)
-	}
+	m.SetUserID(i.UserID)
+	m.SetAPIKeyID(i.APIKeyID)
 	if v := i.ExecutionIDs; len(v) > 0 {
 		m.AddExecutionIDs(v...)
 	}
@@ -49,15 +43,9 @@ type UpdateRequestInput struct {
 	ResponseBody       *string
 	Status             *request.Status
 	DeletedAt          *int64
-	ClearUser          bool
-	AddUserIDs         []int
-	RemoveUserIDs      []int
-	ClearAPIKey        bool
-	AddAPIKeyIDs       []int
-	RemoveAPIKeyIDs    []int
 	ClearExecutions    bool
-	AddExecutionIDs    []int
-	RemoveExecutionIDs []int
+	AddExecutionIDs    []int64
+	RemoveExecutionIDs []int64
 }
 
 // Mutate applies the UpdateRequestInput on the RequestMutation builder.
@@ -70,24 +58,6 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if v := i.DeletedAt; v != nil {
 		m.SetDeletedAt(*v)
-	}
-	if i.ClearUser {
-		m.ClearUser()
-	}
-	if v := i.AddUserIDs; len(v) > 0 {
-		m.AddUserIDs(v...)
-	}
-	if v := i.RemoveUserIDs; len(v) > 0 {
-		m.RemoveUserIDs(v...)
-	}
-	if i.ClearAPIKey {
-		m.ClearAPIKey()
-	}
-	if v := i.AddAPIKeyIDs; len(v) > 0 {
-		m.AddAPIKeyIDs(v...)
-	}
-	if v := i.RemoveAPIKeyIDs; len(v) > 0 {
-		m.RemoveAPIKeyIDs(v...)
 	}
 	if i.ClearExecutions {
 		m.ClearExecutions()

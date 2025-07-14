@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 )
 
 // ChatCompletionRequest represents the OpenAI chat completion request and is the core request struct for AsonHub.
@@ -287,6 +288,16 @@ type ChatCompletionResponse struct {
 	// for the entire request.
 	Usage             *Usage `json:"usage,omitempty"`
 	SystemFingerprint string `json:"system_fingerprint,omitempty"`
+
+	header http.Header
+}
+
+func (c *ChatCompletionResponse) Header() http.Header {
+	return c.header
+}
+
+func (c *ChatCompletionResponse) SetHeader(header http.Header) {
+	c.header = header
 }
 
 // ChatCompletionChoice represents a choice in the response
@@ -324,16 +335,6 @@ type Usage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
-}
-
-// ChatCompletionStreamResponse represents a streaming response chunk
-type ChatCompletionStreamResponse struct {
-	ID                string                 `json:"id"`
-	Object            string                 `json:"object"`
-	Created           int64                  `json:"created"`
-	Model             string                 `json:"model"`
-	Choices           []ChatCompletionChoice `json:"choices"`
-	SystemFingerprint *string                `json:"system_fingerprint,omitempty"`
 }
 
 // ErrorResponse represents an error response

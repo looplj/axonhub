@@ -10,11 +10,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/looplj/axonhub/ent/apikey"
 	"github.com/looplj/axonhub/ent/predicate"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
-	"github.com/looplj/axonhub/ent/user"
 )
 
 // RequestUpdate is the builder for updating Request entities.
@@ -79,45 +77,15 @@ func (ru *RequestUpdate) AddDeletedAt(i int64) *RequestUpdate {
 	return ru
 }
 
-// AddUserIDs adds the "user" edge to the User entity by IDs.
-func (ru *RequestUpdate) AddUserIDs(ids ...int) *RequestUpdate {
-	ru.mutation.AddUserIDs(ids...)
-	return ru
-}
-
-// AddUser adds the "user" edges to the User entity.
-func (ru *RequestUpdate) AddUser(u ...*User) *RequestUpdate {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
-	}
-	return ru.AddUserIDs(ids...)
-}
-
-// AddAPIKeyIDs adds the "api_key" edge to the APIKey entity by IDs.
-func (ru *RequestUpdate) AddAPIKeyIDs(ids ...int) *RequestUpdate {
-	ru.mutation.AddAPIKeyIDs(ids...)
-	return ru
-}
-
-// AddAPIKey adds the "api_key" edges to the APIKey entity.
-func (ru *RequestUpdate) AddAPIKey(a ...*APIKey) *RequestUpdate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
-	}
-	return ru.AddAPIKeyIDs(ids...)
-}
-
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
-func (ru *RequestUpdate) AddExecutionIDs(ids ...int) *RequestUpdate {
+func (ru *RequestUpdate) AddExecutionIDs(ids ...int64) *RequestUpdate {
 	ru.mutation.AddExecutionIDs(ids...)
 	return ru
 }
 
 // AddExecutions adds the "executions" edges to the RequestExecution entity.
 func (ru *RequestUpdate) AddExecutions(r ...*RequestExecution) *RequestUpdate {
-	ids := make([]int, len(r))
+	ids := make([]int64, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -129,48 +97,6 @@ func (ru *RequestUpdate) Mutation() *RequestMutation {
 	return ru.mutation
 }
 
-// ClearUser clears all "user" edges to the User entity.
-func (ru *RequestUpdate) ClearUser() *RequestUpdate {
-	ru.mutation.ClearUser()
-	return ru
-}
-
-// RemoveUserIDs removes the "user" edge to User entities by IDs.
-func (ru *RequestUpdate) RemoveUserIDs(ids ...int) *RequestUpdate {
-	ru.mutation.RemoveUserIDs(ids...)
-	return ru
-}
-
-// RemoveUser removes "user" edges to User entities.
-func (ru *RequestUpdate) RemoveUser(u ...*User) *RequestUpdate {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
-	}
-	return ru.RemoveUserIDs(ids...)
-}
-
-// ClearAPIKey clears all "api_key" edges to the APIKey entity.
-func (ru *RequestUpdate) ClearAPIKey() *RequestUpdate {
-	ru.mutation.ClearAPIKey()
-	return ru
-}
-
-// RemoveAPIKeyIDs removes the "api_key" edge to APIKey entities by IDs.
-func (ru *RequestUpdate) RemoveAPIKeyIDs(ids ...int) *RequestUpdate {
-	ru.mutation.RemoveAPIKeyIDs(ids...)
-	return ru
-}
-
-// RemoveAPIKey removes "api_key" edges to APIKey entities.
-func (ru *RequestUpdate) RemoveAPIKey(a ...*APIKey) *RequestUpdate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
-	}
-	return ru.RemoveAPIKeyIDs(ids...)
-}
-
 // ClearExecutions clears all "executions" edges to the RequestExecution entity.
 func (ru *RequestUpdate) ClearExecutions() *RequestUpdate {
 	ru.mutation.ClearExecutions()
@@ -178,14 +104,14 @@ func (ru *RequestUpdate) ClearExecutions() *RequestUpdate {
 }
 
 // RemoveExecutionIDs removes the "executions" edge to RequestExecution entities by IDs.
-func (ru *RequestUpdate) RemoveExecutionIDs(ids ...int) *RequestUpdate {
+func (ru *RequestUpdate) RemoveExecutionIDs(ids ...int64) *RequestUpdate {
 	ru.mutation.RemoveExecutionIDs(ids...)
 	return ru
 }
 
 // RemoveExecutions removes "executions" edges to RequestExecution entities.
 func (ru *RequestUpdate) RemoveExecutions(r ...*RequestExecution) *RequestUpdate {
-	ids := make([]int, len(r))
+	ids := make([]int64, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -226,6 +152,12 @@ func (ru *RequestUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Request.status": %w`, err)}
 		}
 	}
+	if ru.mutation.UserCleared() && len(ru.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Request.user"`)
+	}
+	if ru.mutation.APIKeyCleared() && len(ru.mutation.APIKeyIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Request.api_key"`)
+	}
 	return nil
 }
 
@@ -233,7 +165,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := ru.check(); err != nil {
 		return n, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64))
 	if ps := ru.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -253,96 +185,6 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := ru.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(request.FieldDeletedAt, field.TypeInt64, value)
 	}
-	if ru.mutation.UserCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.UserTable,
-			Columns: request.UserPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ru.mutation.RemovedUserIDs(); len(nodes) > 0 && !ru.mutation.UserCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.UserTable,
-			Columns: request.UserPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ru.mutation.UserIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.UserTable,
-			Columns: request.UserPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if ru.mutation.APIKeyCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.APIKeyTable,
-			Columns: request.APIKeyPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ru.mutation.RemovedAPIKeyIDs(); len(nodes) > 0 && !ru.mutation.APIKeyCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.APIKeyTable,
-			Columns: request.APIKeyPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ru.mutation.APIKeyIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.APIKeyTable,
-			Columns: request.APIKeyPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
 	if ru.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -351,7 +193,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -364,7 +206,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -380,7 +222,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -457,45 +299,15 @@ func (ruo *RequestUpdateOne) AddDeletedAt(i int64) *RequestUpdateOne {
 	return ruo
 }
 
-// AddUserIDs adds the "user" edge to the User entity by IDs.
-func (ruo *RequestUpdateOne) AddUserIDs(ids ...int) *RequestUpdateOne {
-	ruo.mutation.AddUserIDs(ids...)
-	return ruo
-}
-
-// AddUser adds the "user" edges to the User entity.
-func (ruo *RequestUpdateOne) AddUser(u ...*User) *RequestUpdateOne {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
-	}
-	return ruo.AddUserIDs(ids...)
-}
-
-// AddAPIKeyIDs adds the "api_key" edge to the APIKey entity by IDs.
-func (ruo *RequestUpdateOne) AddAPIKeyIDs(ids ...int) *RequestUpdateOne {
-	ruo.mutation.AddAPIKeyIDs(ids...)
-	return ruo
-}
-
-// AddAPIKey adds the "api_key" edges to the APIKey entity.
-func (ruo *RequestUpdateOne) AddAPIKey(a ...*APIKey) *RequestUpdateOne {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
-	}
-	return ruo.AddAPIKeyIDs(ids...)
-}
-
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
-func (ruo *RequestUpdateOne) AddExecutionIDs(ids ...int) *RequestUpdateOne {
+func (ruo *RequestUpdateOne) AddExecutionIDs(ids ...int64) *RequestUpdateOne {
 	ruo.mutation.AddExecutionIDs(ids...)
 	return ruo
 }
 
 // AddExecutions adds the "executions" edges to the RequestExecution entity.
 func (ruo *RequestUpdateOne) AddExecutions(r ...*RequestExecution) *RequestUpdateOne {
-	ids := make([]int, len(r))
+	ids := make([]int64, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -507,48 +319,6 @@ func (ruo *RequestUpdateOne) Mutation() *RequestMutation {
 	return ruo.mutation
 }
 
-// ClearUser clears all "user" edges to the User entity.
-func (ruo *RequestUpdateOne) ClearUser() *RequestUpdateOne {
-	ruo.mutation.ClearUser()
-	return ruo
-}
-
-// RemoveUserIDs removes the "user" edge to User entities by IDs.
-func (ruo *RequestUpdateOne) RemoveUserIDs(ids ...int) *RequestUpdateOne {
-	ruo.mutation.RemoveUserIDs(ids...)
-	return ruo
-}
-
-// RemoveUser removes "user" edges to User entities.
-func (ruo *RequestUpdateOne) RemoveUser(u ...*User) *RequestUpdateOne {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
-	}
-	return ruo.RemoveUserIDs(ids...)
-}
-
-// ClearAPIKey clears all "api_key" edges to the APIKey entity.
-func (ruo *RequestUpdateOne) ClearAPIKey() *RequestUpdateOne {
-	ruo.mutation.ClearAPIKey()
-	return ruo
-}
-
-// RemoveAPIKeyIDs removes the "api_key" edge to APIKey entities by IDs.
-func (ruo *RequestUpdateOne) RemoveAPIKeyIDs(ids ...int) *RequestUpdateOne {
-	ruo.mutation.RemoveAPIKeyIDs(ids...)
-	return ruo
-}
-
-// RemoveAPIKey removes "api_key" edges to APIKey entities.
-func (ruo *RequestUpdateOne) RemoveAPIKey(a ...*APIKey) *RequestUpdateOne {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
-	}
-	return ruo.RemoveAPIKeyIDs(ids...)
-}
-
 // ClearExecutions clears all "executions" edges to the RequestExecution entity.
 func (ruo *RequestUpdateOne) ClearExecutions() *RequestUpdateOne {
 	ruo.mutation.ClearExecutions()
@@ -556,14 +326,14 @@ func (ruo *RequestUpdateOne) ClearExecutions() *RequestUpdateOne {
 }
 
 // RemoveExecutionIDs removes the "executions" edge to RequestExecution entities by IDs.
-func (ruo *RequestUpdateOne) RemoveExecutionIDs(ids ...int) *RequestUpdateOne {
+func (ruo *RequestUpdateOne) RemoveExecutionIDs(ids ...int64) *RequestUpdateOne {
 	ruo.mutation.RemoveExecutionIDs(ids...)
 	return ruo
 }
 
 // RemoveExecutions removes "executions" edges to RequestExecution entities.
 func (ruo *RequestUpdateOne) RemoveExecutions(r ...*RequestExecution) *RequestUpdateOne {
-	ids := make([]int, len(r))
+	ids := make([]int64, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -617,6 +387,12 @@ func (ruo *RequestUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Request.status": %w`, err)}
 		}
 	}
+	if ruo.mutation.UserCleared() && len(ruo.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Request.user"`)
+	}
+	if ruo.mutation.APIKeyCleared() && len(ruo.mutation.APIKeyIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Request.api_key"`)
+	}
 	return nil
 }
 
@@ -624,7 +400,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 	if err := ruo.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64))
 	id, ok := ruo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Request.id" for update`)}
@@ -661,96 +437,6 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 	if value, ok := ruo.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(request.FieldDeletedAt, field.TypeInt64, value)
 	}
-	if ruo.mutation.UserCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.UserTable,
-			Columns: request.UserPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ruo.mutation.RemovedUserIDs(); len(nodes) > 0 && !ruo.mutation.UserCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.UserTable,
-			Columns: request.UserPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ruo.mutation.UserIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.UserTable,
-			Columns: request.UserPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if ruo.mutation.APIKeyCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.APIKeyTable,
-			Columns: request.APIKeyPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ruo.mutation.RemovedAPIKeyIDs(); len(nodes) > 0 && !ruo.mutation.APIKeyCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.APIKeyTable,
-			Columns: request.APIKeyPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := ruo.mutation.APIKeyIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   request.APIKeyTable,
-			Columns: request.APIKeyPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
 	if ruo.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -759,7 +445,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -772,7 +458,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -788,7 +474,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

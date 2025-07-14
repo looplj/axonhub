@@ -12,6 +12,31 @@ import (
 	"github.com/looplj/axonhub/ent"
 )
 
+// ID is the resolver for the id field.
+func (r *aPIKeyResolver) ID(ctx context.Context, obj *ent.APIKey) (int, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// UserID is the resolver for the userID field.
+func (r *aPIKeyResolver) UserID(ctx context.Context, obj *ent.APIKey) (int, error) {
+	panic(fmt.Errorf("not implemented: UserID - userID"))
+}
+
+// ID is the resolver for the id field.
+func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (int, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// Settings is the resolver for the settings field.
+func (r *channelResolver) Settings(ctx context.Context, obj *ent.Channel) (*ChannelSettings, error) {
+	panic(fmt.Errorf("not implemented: Settings - settings"))
+}
+
+// ID is the resolver for the id field.
+func (r *jobResolver) ID(ctx context.Context, obj *ent.Job) (int, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
 // Node is the resolver for the node field.
 func (r *queryResolver) Node(ctx context.Context, id int) (ent.Noder, error) {
 	panic(fmt.Errorf("not implemented: Node - node"))
@@ -23,11 +48,452 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []int) ([]ent.Noder, erro
 }
 
 // RequestID is the resolver for the request_id field.
-func (r *queryResolver) RequestID(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.RequestExecutionWhereInput) (*ent.RequestExecutionConnection, error) {
+func (r *queryResolver) RequestID(ctx context.Context, after *entgql.Cursor[int64], first *int, before *entgql.Cursor[int64], last *int, where *ent.RequestExecutionWhereInput) (*ent.RequestExecutionConnection, error) {
 	panic(fmt.Errorf("not implemented: RequestID - request_id"))
 }
+
+// ID is the resolver for the id field.
+func (r *requestResolver) ID(ctx context.Context, obj *ent.Request) (int, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// UserID is the resolver for the userID field.
+func (r *requestResolver) UserID(ctx context.Context, obj *ent.Request) (int, error) {
+	panic(fmt.Errorf("not implemented: UserID - userID"))
+}
+
+// APIKeyID is the resolver for the apiKeyID field.
+func (r *requestResolver) APIKeyID(ctx context.Context, obj *ent.Request) (int, error) {
+	panic(fmt.Errorf("not implemented: APIKeyID - apiKeyID"))
+}
+
+// ID is the resolver for the id field.
+func (r *requestExecutionResolver) ID(ctx context.Context, obj *ent.RequestExecution) (int, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// RequestID is the resolver for the requestID field.
+func (r *requestExecutionResolver) RequestID(ctx context.Context, obj *ent.RequestExecution) (int, error) {
+	panic(fmt.Errorf("not implemented: RequestID - requestID"))
+}
+
+// ID is the resolver for the id field.
+func (r *userResolver) ID(ctx context.Context, obj *ent.User) (int, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// ID is the resolver for the id field.
+func (r *aPIKeyWhereInputResolver) ID(ctx context.Context, obj *ent.APIKeyWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// IDNeq is the resolver for the idNEQ field.
+func (r *aPIKeyWhereInputResolver) IDNeq(ctx context.Context, obj *ent.APIKeyWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDNeq - idNEQ"))
+}
+
+// IDIn is the resolver for the idIn field.
+func (r *aPIKeyWhereInputResolver) IDIn(ctx context.Context, obj *ent.APIKeyWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDIn - idIn"))
+}
+
+// IDNotIn is the resolver for the idNotIn field.
+func (r *aPIKeyWhereInputResolver) IDNotIn(ctx context.Context, obj *ent.APIKeyWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDNotIn - idNotIn"))
+}
+
+// IDGt is the resolver for the idGT field.
+func (r *aPIKeyWhereInputResolver) IDGt(ctx context.Context, obj *ent.APIKeyWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGt - idGT"))
+}
+
+// IDGte is the resolver for the idGTE field.
+func (r *aPIKeyWhereInputResolver) IDGte(ctx context.Context, obj *ent.APIKeyWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGte - idGTE"))
+}
+
+// IDLt is the resolver for the idLT field.
+func (r *aPIKeyWhereInputResolver) IDLt(ctx context.Context, obj *ent.APIKeyWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLt - idLT"))
+}
+
+// IDLte is the resolver for the idLTE field.
+func (r *aPIKeyWhereInputResolver) IDLte(ctx context.Context, obj *ent.APIKeyWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLte - idLTE"))
+}
+
+// UserID is the resolver for the userID field.
+func (r *aPIKeyWhereInputResolver) UserID(ctx context.Context, obj *ent.APIKeyWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: UserID - userID"))
+}
+
+// UserIdneq is the resolver for the userIDNEQ field.
+func (r *aPIKeyWhereInputResolver) UserIdneq(ctx context.Context, obj *ent.APIKeyWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: UserIdneq - userIDNEQ"))
+}
+
+// UserIDIn is the resolver for the userIDIn field.
+func (r *aPIKeyWhereInputResolver) UserIDIn(ctx context.Context, obj *ent.APIKeyWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: UserIDIn - userIDIn"))
+}
+
+// UserIDNotIn is the resolver for the userIDNotIn field.
+func (r *aPIKeyWhereInputResolver) UserIDNotIn(ctx context.Context, obj *ent.APIKeyWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: UserIDNotIn - userIDNotIn"))
+}
+
+// ID is the resolver for the id field.
+func (r *channelWhereInputResolver) ID(ctx context.Context, obj *ent.ChannelWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// IDNeq is the resolver for the idNEQ field.
+func (r *channelWhereInputResolver) IDNeq(ctx context.Context, obj *ent.ChannelWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDNeq - idNEQ"))
+}
+
+// IDIn is the resolver for the idIn field.
+func (r *channelWhereInputResolver) IDIn(ctx context.Context, obj *ent.ChannelWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDIn - idIn"))
+}
+
+// IDNotIn is the resolver for the idNotIn field.
+func (r *channelWhereInputResolver) IDNotIn(ctx context.Context, obj *ent.ChannelWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDNotIn - idNotIn"))
+}
+
+// IDGt is the resolver for the idGT field.
+func (r *channelWhereInputResolver) IDGt(ctx context.Context, obj *ent.ChannelWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGt - idGT"))
+}
+
+// IDGte is the resolver for the idGTE field.
+func (r *channelWhereInputResolver) IDGte(ctx context.Context, obj *ent.ChannelWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGte - idGTE"))
+}
+
+// IDLt is the resolver for the idLT field.
+func (r *channelWhereInputResolver) IDLt(ctx context.Context, obj *ent.ChannelWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLt - idLT"))
+}
+
+// IDLte is the resolver for the idLTE field.
+func (r *channelWhereInputResolver) IDLte(ctx context.Context, obj *ent.ChannelWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLte - idLTE"))
+}
+
+// UserID is the resolver for the userID field.
+func (r *createRequestInputResolver) UserID(ctx context.Context, obj *ent.CreateRequestInput, data int) error {
+	panic(fmt.Errorf("not implemented: UserID - userID"))
+}
+
+// APIKeyID is the resolver for the apiKeyID field.
+func (r *createRequestInputResolver) APIKeyID(ctx context.Context, obj *ent.CreateRequestInput, data int) error {
+	panic(fmt.Errorf("not implemented: APIKeyID - apiKeyID"))
+}
+
+// ExecutionIDs is the resolver for the executionIDs field.
+func (r *createRequestInputResolver) ExecutionIDs(ctx context.Context, obj *ent.CreateRequestInput, data []int) error {
+	panic(fmt.Errorf("not implemented: ExecutionIDs - executionIDs"))
+}
+
+// ID is the resolver for the id field.
+func (r *jobWhereInputResolver) ID(ctx context.Context, obj *ent.JobWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// IDNeq is the resolver for the idNEQ field.
+func (r *jobWhereInputResolver) IDNeq(ctx context.Context, obj *ent.JobWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDNeq - idNEQ"))
+}
+
+// IDIn is the resolver for the idIn field.
+func (r *jobWhereInputResolver) IDIn(ctx context.Context, obj *ent.JobWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDIn - idIn"))
+}
+
+// IDNotIn is the resolver for the idNotIn field.
+func (r *jobWhereInputResolver) IDNotIn(ctx context.Context, obj *ent.JobWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDNotIn - idNotIn"))
+}
+
+// IDGt is the resolver for the idGT field.
+func (r *jobWhereInputResolver) IDGt(ctx context.Context, obj *ent.JobWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGt - idGT"))
+}
+
+// IDGte is the resolver for the idGTE field.
+func (r *jobWhereInputResolver) IDGte(ctx context.Context, obj *ent.JobWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGte - idGTE"))
+}
+
+// IDLt is the resolver for the idLT field.
+func (r *jobWhereInputResolver) IDLt(ctx context.Context, obj *ent.JobWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLt - idLT"))
+}
+
+// IDLte is the resolver for the idLTE field.
+func (r *jobWhereInputResolver) IDLte(ctx context.Context, obj *ent.JobWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLte - idLTE"))
+}
+
+// ID is the resolver for the id field.
+func (r *requestExecutionWhereInputResolver) ID(ctx context.Context, obj *ent.RequestExecutionWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// IDNeq is the resolver for the idNEQ field.
+func (r *requestExecutionWhereInputResolver) IDNeq(ctx context.Context, obj *ent.RequestExecutionWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDNeq - idNEQ"))
+}
+
+// IDIn is the resolver for the idIn field.
+func (r *requestExecutionWhereInputResolver) IDIn(ctx context.Context, obj *ent.RequestExecutionWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDIn - idIn"))
+}
+
+// IDNotIn is the resolver for the idNotIn field.
+func (r *requestExecutionWhereInputResolver) IDNotIn(ctx context.Context, obj *ent.RequestExecutionWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDNotIn - idNotIn"))
+}
+
+// IDGt is the resolver for the idGT field.
+func (r *requestExecutionWhereInputResolver) IDGt(ctx context.Context, obj *ent.RequestExecutionWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGt - idGT"))
+}
+
+// IDGte is the resolver for the idGTE field.
+func (r *requestExecutionWhereInputResolver) IDGte(ctx context.Context, obj *ent.RequestExecutionWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGte - idGTE"))
+}
+
+// IDLt is the resolver for the idLT field.
+func (r *requestExecutionWhereInputResolver) IDLt(ctx context.Context, obj *ent.RequestExecutionWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLt - idLT"))
+}
+
+// IDLte is the resolver for the idLTE field.
+func (r *requestExecutionWhereInputResolver) IDLte(ctx context.Context, obj *ent.RequestExecutionWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLte - idLTE"))
+}
+
+// RequestID is the resolver for the requestID field.
+func (r *requestExecutionWhereInputResolver) RequestID(ctx context.Context, obj *ent.RequestExecutionWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: RequestID - requestID"))
+}
+
+// RequestIdneq is the resolver for the requestIDNEQ field.
+func (r *requestExecutionWhereInputResolver) RequestIdneq(ctx context.Context, obj *ent.RequestExecutionWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: RequestIdneq - requestIDNEQ"))
+}
+
+// RequestIDIn is the resolver for the requestIDIn field.
+func (r *requestExecutionWhereInputResolver) RequestIDIn(ctx context.Context, obj *ent.RequestExecutionWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: RequestIDIn - requestIDIn"))
+}
+
+// RequestIDNotIn is the resolver for the requestIDNotIn field.
+func (r *requestExecutionWhereInputResolver) RequestIDNotIn(ctx context.Context, obj *ent.RequestExecutionWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: RequestIDNotIn - requestIDNotIn"))
+}
+
+// ID is the resolver for the id field.
+func (r *requestWhereInputResolver) ID(ctx context.Context, obj *ent.RequestWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// IDNeq is the resolver for the idNEQ field.
+func (r *requestWhereInputResolver) IDNeq(ctx context.Context, obj *ent.RequestWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDNeq - idNEQ"))
+}
+
+// IDIn is the resolver for the idIn field.
+func (r *requestWhereInputResolver) IDIn(ctx context.Context, obj *ent.RequestWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDIn - idIn"))
+}
+
+// IDNotIn is the resolver for the idNotIn field.
+func (r *requestWhereInputResolver) IDNotIn(ctx context.Context, obj *ent.RequestWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDNotIn - idNotIn"))
+}
+
+// IDGt is the resolver for the idGT field.
+func (r *requestWhereInputResolver) IDGt(ctx context.Context, obj *ent.RequestWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGt - idGT"))
+}
+
+// IDGte is the resolver for the idGTE field.
+func (r *requestWhereInputResolver) IDGte(ctx context.Context, obj *ent.RequestWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGte - idGTE"))
+}
+
+// IDLt is the resolver for the idLT field.
+func (r *requestWhereInputResolver) IDLt(ctx context.Context, obj *ent.RequestWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLt - idLT"))
+}
+
+// IDLte is the resolver for the idLTE field.
+func (r *requestWhereInputResolver) IDLte(ctx context.Context, obj *ent.RequestWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLte - idLTE"))
+}
+
+// UserID is the resolver for the userID field.
+func (r *requestWhereInputResolver) UserID(ctx context.Context, obj *ent.RequestWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: UserID - userID"))
+}
+
+// UserIdneq is the resolver for the userIDNEQ field.
+func (r *requestWhereInputResolver) UserIdneq(ctx context.Context, obj *ent.RequestWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: UserIdneq - userIDNEQ"))
+}
+
+// UserIDIn is the resolver for the userIDIn field.
+func (r *requestWhereInputResolver) UserIDIn(ctx context.Context, obj *ent.RequestWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: UserIDIn - userIDIn"))
+}
+
+// UserIDNotIn is the resolver for the userIDNotIn field.
+func (r *requestWhereInputResolver) UserIDNotIn(ctx context.Context, obj *ent.RequestWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: UserIDNotIn - userIDNotIn"))
+}
+
+// APIKeyID is the resolver for the apiKeyID field.
+func (r *requestWhereInputResolver) APIKeyID(ctx context.Context, obj *ent.RequestWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: APIKeyID - apiKeyID"))
+}
+
+// APIKeyIdneq is the resolver for the apiKeyIDNEQ field.
+func (r *requestWhereInputResolver) APIKeyIdneq(ctx context.Context, obj *ent.RequestWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: APIKeyIdneq - apiKeyIDNEQ"))
+}
+
+// APIKeyIDIn is the resolver for the apiKeyIDIn field.
+func (r *requestWhereInputResolver) APIKeyIDIn(ctx context.Context, obj *ent.RequestWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: APIKeyIDIn - apiKeyIDIn"))
+}
+
+// APIKeyIDNotIn is the resolver for the apiKeyIDNotIn field.
+func (r *requestWhereInputResolver) APIKeyIDNotIn(ctx context.Context, obj *ent.RequestWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: APIKeyIDNotIn - apiKeyIDNotIn"))
+}
+
+// AddExecutionIDs is the resolver for the addExecutionIDs field.
+func (r *updateRequestInputResolver) AddExecutionIDs(ctx context.Context, obj *ent.UpdateRequestInput, data []int) error {
+	panic(fmt.Errorf("not implemented: AddExecutionIDs - addExecutionIDs"))
+}
+
+// RemoveExecutionIDs is the resolver for the removeExecutionIDs field.
+func (r *updateRequestInputResolver) RemoveExecutionIDs(ctx context.Context, obj *ent.UpdateRequestInput, data []int) error {
+	panic(fmt.Errorf("not implemented: RemoveExecutionIDs - removeExecutionIDs"))
+}
+
+// ID is the resolver for the id field.
+func (r *userWhereInputResolver) ID(ctx context.Context, obj *ent.UserWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// IDNeq is the resolver for the idNEQ field.
+func (r *userWhereInputResolver) IDNeq(ctx context.Context, obj *ent.UserWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDNeq - idNEQ"))
+}
+
+// IDIn is the resolver for the idIn field.
+func (r *userWhereInputResolver) IDIn(ctx context.Context, obj *ent.UserWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDIn - idIn"))
+}
+
+// IDNotIn is the resolver for the idNotIn field.
+func (r *userWhereInputResolver) IDNotIn(ctx context.Context, obj *ent.UserWhereInput, data []int) error {
+	panic(fmt.Errorf("not implemented: IDNotIn - idNotIn"))
+}
+
+// IDGt is the resolver for the idGT field.
+func (r *userWhereInputResolver) IDGt(ctx context.Context, obj *ent.UserWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGt - idGT"))
+}
+
+// IDGte is the resolver for the idGTE field.
+func (r *userWhereInputResolver) IDGte(ctx context.Context, obj *ent.UserWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDGte - idGTE"))
+}
+
+// IDLt is the resolver for the idLT field.
+func (r *userWhereInputResolver) IDLt(ctx context.Context, obj *ent.UserWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLt - idLT"))
+}
+
+// IDLte is the resolver for the idLTE field.
+func (r *userWhereInputResolver) IDLte(ctx context.Context, obj *ent.UserWhereInput, data *int) error {
+	panic(fmt.Errorf("not implemented: IDLte - idLTE"))
+}
+
+// APIKey returns APIKeyResolver implementation.
+func (r *Resolver) APIKey() APIKeyResolver { return &aPIKeyResolver{r} }
+
+// Channel returns ChannelResolver implementation.
+func (r *Resolver) Channel() ChannelResolver { return &channelResolver{r} }
+
+// Job returns JobResolver implementation.
+func (r *Resolver) Job() JobResolver { return &jobResolver{r} }
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+// Request returns RequestResolver implementation.
+func (r *Resolver) Request() RequestResolver { return &requestResolver{r} }
+
+// RequestExecution returns RequestExecutionResolver implementation.
+func (r *Resolver) RequestExecution() RequestExecutionResolver { return &requestExecutionResolver{r} }
+
+// User returns UserResolver implementation.
+func (r *Resolver) User() UserResolver { return &userResolver{r} }
+
+// APIKeyWhereInput returns APIKeyWhereInputResolver implementation.
+func (r *Resolver) APIKeyWhereInput() APIKeyWhereInputResolver { return &aPIKeyWhereInputResolver{r} }
+
+// ChannelWhereInput returns ChannelWhereInputResolver implementation.
+func (r *Resolver) ChannelWhereInput() ChannelWhereInputResolver {
+	return &channelWhereInputResolver{r}
+}
+
+// CreateRequestInput returns CreateRequestInputResolver implementation.
+func (r *Resolver) CreateRequestInput() CreateRequestInputResolver {
+	return &createRequestInputResolver{r}
+}
+
+// JobWhereInput returns JobWhereInputResolver implementation.
+func (r *Resolver) JobWhereInput() JobWhereInputResolver { return &jobWhereInputResolver{r} }
+
+// RequestExecutionWhereInput returns RequestExecutionWhereInputResolver implementation.
+func (r *Resolver) RequestExecutionWhereInput() RequestExecutionWhereInputResolver {
+	return &requestExecutionWhereInputResolver{r}
+}
+
+// RequestWhereInput returns RequestWhereInputResolver implementation.
+func (r *Resolver) RequestWhereInput() RequestWhereInputResolver {
+	return &requestWhereInputResolver{r}
+}
+
+// UpdateRequestInput returns UpdateRequestInputResolver implementation.
+func (r *Resolver) UpdateRequestInput() UpdateRequestInputResolver {
+	return &updateRequestInputResolver{r}
+}
+
+// UserWhereInput returns UserWhereInputResolver implementation.
+func (r *Resolver) UserWhereInput() UserWhereInputResolver { return &userWhereInputResolver{r} }
+
+type aPIKeyResolver struct{ *Resolver }
+type channelResolver struct{ *Resolver }
+type jobResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type requestResolver struct{ *Resolver }
+type requestExecutionResolver struct{ *Resolver }
+type userResolver struct{ *Resolver }
+type aPIKeyWhereInputResolver struct{ *Resolver }
+type channelWhereInputResolver struct{ *Resolver }
+type createRequestInputResolver struct{ *Resolver }
+type jobWhereInputResolver struct{ *Resolver }
+type requestExecutionWhereInputResolver struct{ *Resolver }
+type requestWhereInputResolver struct{ *Resolver }
+type updateRequestInputResolver struct{ *Resolver }
+type userWhereInputResolver struct{ *Resolver }

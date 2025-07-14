@@ -31,11 +31,13 @@ const (
 	UserInverseTable = "users"
 	// UserColumn is the table column denoting the user relation/edge.
 	UserColumn = "user_id"
-	// RequestsTable is the table that holds the requests relation/edge. The primary key declared below.
-	RequestsTable = "api_key_requests"
+	// RequestsTable is the table that holds the requests relation/edge.
+	RequestsTable = "requests"
 	// RequestsInverseTable is the table name for the Request entity.
 	// It exists in this package in order to avoid circular dependency with the "request" package.
 	RequestsInverseTable = "requests"
+	// RequestsColumn is the table column denoting the requests relation/edge.
+	RequestsColumn = "api_key_id"
 )
 
 // Columns holds all SQL columns for apikey fields.
@@ -45,12 +47,6 @@ var Columns = []string{
 	FieldKey,
 	FieldName,
 }
-
-var (
-	// RequestsPrimaryKey and RequestsColumn2 are the table columns denoting the
-	// primary key for the requests relation (M2M).
-	RequestsPrimaryKey = []string{"api_key_id", "request_id"}
-)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -116,6 +112,6 @@ func newRequestsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(RequestsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, false, RequestsTable, RequestsPrimaryKey...),
+		sqlgraph.Edge(sqlgraph.O2M, false, RequestsTable, RequestsColumn),
 	)
 }

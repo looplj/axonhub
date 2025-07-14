@@ -11,7 +11,7 @@ type Handlers struct {
 	fx.In
 
 	Graphql *GraphqlHandler
-	OpenAI  *api.OpenAIHandlers
+	OpenAI  *api.ChatCompletionHandlers
 }
 
 func SetupRoutes(server *Server, handlers Handlers) {

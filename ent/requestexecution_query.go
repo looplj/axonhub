@@ -108,8 +108,8 @@ func (req *RequestExecutionQuery) FirstX(ctx context.Context) *RequestExecution 
 
 // FirstID returns the first RequestExecution ID from the query.
 // Returns a *NotFoundError when no RequestExecution ID was found.
-func (req *RequestExecutionQuery) FirstID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (req *RequestExecutionQuery) FirstID(ctx context.Context) (id int64, err error) {
+	var ids []int64
 	if ids, err = req.Limit(1).IDs(setContextOp(ctx, req.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
@@ -121,7 +121,7 @@ func (req *RequestExecutionQuery) FirstID(ctx context.Context) (id int, err erro
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (req *RequestExecutionQuery) FirstIDX(ctx context.Context) int {
+func (req *RequestExecutionQuery) FirstIDX(ctx context.Context) int64 {
 	id, err := req.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -159,8 +159,8 @@ func (req *RequestExecutionQuery) OnlyX(ctx context.Context) *RequestExecution {
 // OnlyID is like Only, but returns the only RequestExecution ID in the query.
 // Returns a *NotSingularError when more than one RequestExecution ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (req *RequestExecutionQuery) OnlyID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (req *RequestExecutionQuery) OnlyID(ctx context.Context) (id int64, err error) {
+	var ids []int64
 	if ids, err = req.Limit(2).IDs(setContextOp(ctx, req.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
@@ -176,7 +176,7 @@ func (req *RequestExecutionQuery) OnlyID(ctx context.Context) (id int, err error
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (req *RequestExecutionQuery) OnlyIDX(ctx context.Context) int {
+func (req *RequestExecutionQuery) OnlyIDX(ctx context.Context) int64 {
 	id, err := req.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -204,7 +204,7 @@ func (req *RequestExecutionQuery) AllX(ctx context.Context) []*RequestExecution 
 }
 
 // IDs executes the query and returns a list of RequestExecution IDs.
-func (req *RequestExecutionQuery) IDs(ctx context.Context) (ids []int, err error) {
+func (req *RequestExecutionQuery) IDs(ctx context.Context) (ids []int64, err error) {
 	if req.ctx.Unique == nil && req.path != nil {
 		req.Unique(true)
 	}
@@ -216,7 +216,7 @@ func (req *RequestExecutionQuery) IDs(ctx context.Context) (ids []int, err error
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (req *RequestExecutionQuery) IDsX(ctx context.Context) []int {
+func (req *RequestExecutionQuery) IDsX(ctx context.Context) []int64 {
 	ids, err := req.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -300,7 +300,7 @@ func (req *RequestExecutionQuery) WithRequest(opts ...func(*RequestQuery)) *Requ
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		UserID int64 `json:"user_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
@@ -323,7 +323,7 @@ func (req *RequestExecutionQuery) GroupBy(field string, fields ...string) *Reque
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		UserID int64 `json:"user_id,omitempty"`
 //	}
 //
 //	client.RequestExecution.Query().
@@ -412,8 +412,8 @@ func (req *RequestExecutionQuery) sqlAll(ctx context.Context, hooks ...queryHook
 }
 
 func (req *RequestExecutionQuery) loadRequest(ctx context.Context, query *RequestQuery, nodes []*RequestExecution, init func(*RequestExecution), assign func(*RequestExecution, *Request)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*RequestExecution)
+	ids := make([]int64, 0, len(nodes))
+	nodeids := make(map[int64][]*RequestExecution)
 	for i := range nodes {
 		fk := nodes[i].RequestID
 		if _, ok := nodeids[fk]; !ok {
@@ -454,7 +454,7 @@ func (req *RequestExecutionQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (req *RequestExecutionQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(requestexecution.Table, requestexecution.Columns, sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewQuerySpec(requestexecution.Table, requestexecution.Columns, sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64))
 	_spec.From = req.sql
 	if unique := req.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

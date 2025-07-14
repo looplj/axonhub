@@ -5,6 +5,14 @@ import (
 	"sync"
 )
 
+type ModelMapping struct {
+	// From is the model name in the request.
+	From string `json:"from"`
+
+	// To is the model name in the provider.
+	To string `json:"to"`
+}
+
 // Registry implements ProviderRegistry interface
 type Registry struct {
 	mu        sync.RWMutex
@@ -31,7 +39,7 @@ func (r *Registry) RegisterProvider(name string, provider Provider) {
 func (r *Registry) GetProvider(name string) (Provider, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	provider, exists := r.providers[name]
 	if !exists {
 		return nil, fmt.Errorf("provider %s not found", name)
@@ -43,7 +51,7 @@ func (r *Registry) GetProvider(name string) (Provider, error) {
 func (r *Registry) ListProviders() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	names := make([]string, 0, len(r.providers))
 	for name := range r.providers {
 		names = append(names, name)
@@ -56,7 +64,7 @@ func (r *Registry) UnregisterProvider(name string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.providers, name)
-	
+
 	// Remove model mappings for this provider
 	for model, providerName := range r.modelMap {
 		if providerName == name {
@@ -69,21 +77,21 @@ func (r *Registry) UnregisterProvider(name string) {
 func (r *Registry) GetProviderForModel(model string) (Provider, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	// First check if we have a specific mapping
 	if providerName, exists := r.modelMap[model]; exists {
 		if provider, exists := r.providers[providerName]; exists {
 			return provider, nil
 		}
 	}
-	
+
 	// Otherwise, check all providers to see which one supports the model
 	for _, provider := range r.providers {
 		if provider.SupportsModel(model) {
 			return provider, nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("no provider found for model %s", model)
 }
 

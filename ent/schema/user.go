@@ -13,10 +13,15 @@ type User struct {
 	ent.Schema
 }
 
+func (User) Mixins() []ent.Mixin {
+	return []ent.Mixin{
+		TimeMixin{},
+	}
+}
+
 // Fields of the User.
 func (User) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id").Immutable(),
 		field.String("email"),
 		field.String("name"),
 	}

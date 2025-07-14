@@ -23,12 +23,6 @@ type UserCreate struct {
 	conflict []sql.ConflictOption
 }
 
-// SetUserID sets the "user_id" field.
-func (uc *UserCreate) SetUserID(i int) *UserCreate {
-	uc.mutation.SetUserID(i)
-	return uc
-}
-
 // SetEmail sets the "email" field.
 func (uc *UserCreate) SetEmail(s string) *UserCreate {
 	uc.mutation.SetEmail(s)
@@ -42,14 +36,14 @@ func (uc *UserCreate) SetName(s string) *UserCreate {
 }
 
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
-func (uc *UserCreate) AddRequestIDs(ids ...int) *UserCreate {
+func (uc *UserCreate) AddRequestIDs(ids ...int64) *UserCreate {
 	uc.mutation.AddRequestIDs(ids...)
 	return uc
 }
 
 // AddRequests adds the "requests" edges to the Request entity.
 func (uc *UserCreate) AddRequests(r ...*Request) *UserCreate {
-	ids := make([]int, len(r))
+	ids := make([]int64, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -57,14 +51,14 @@ func (uc *UserCreate) AddRequests(r ...*Request) *UserCreate {
 }
 
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
-func (uc *UserCreate) AddAPIKeyIDs(ids ...int) *UserCreate {
+func (uc *UserCreate) AddAPIKeyIDs(ids ...int64) *UserCreate {
 	uc.mutation.AddAPIKeyIDs(ids...)
 	return uc
 }
 
 // AddAPIKeys adds the "api_keys" edges to the APIKey entity.
 func (uc *UserCreate) AddAPIKeys(a ...*APIKey) *UserCreate {
-	ids := make([]int, len(a))
+	ids := make([]int64, len(a))
 	for i := range a {
 		ids[i] = a[i].ID
 	}
@@ -105,9 +99,6 @@ func (uc *UserCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (uc *UserCreate) check() error {
-	if _, ok := uc.mutation.UserID(); !ok {
-		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "User.user_id"`)}
-	}
 	if _, ok := uc.mutation.Email(); !ok {
 		return &ValidationError{Name: "email", err: errors.New(`ent: missing required field "User.email"`)}
 	}
@@ -129,7 +120,7 @@ func (uc *UserCreate) sqlSave(ctx context.Context) (*User, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	_node.ID = int64(id)
 	uc.mutation.id = &_node.ID
 	uc.mutation.done = true
 	return _node, nil
@@ -138,13 +129,9 @@ func (uc *UserCreate) sqlSave(ctx context.Context) (*User, error) {
 func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	var (
 		_node = &User{config: uc.config}
-		_spec = sqlgraph.NewCreateSpec(user.Table, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt))
+		_spec = sqlgraph.NewCreateSpec(user.Table, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64))
 	)
 	_spec.OnConflict = uc.conflict
-	if value, ok := uc.mutation.UserID(); ok {
-		_spec.SetField(user.FieldUserID, field.TypeInt, value)
-		_node.UserID = value
-	}
 	if value, ok := uc.mutation.Email(); ok {
 		_spec.SetField(user.FieldEmail, field.TypeString, value)
 		_node.Email = value
@@ -155,13 +142,13 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	}
 	if nodes := uc.mutation.RequestsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   user.RequestsTable,
-			Columns: user.RequestsPrimaryKey,
+			Columns: []string{user.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -177,7 +164,7 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Columns: []string{user.APIKeysColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -192,7 +179,7 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.User.Create().
-//		SetUserID(v).
+//		SetEmail(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -201,7 +188,7 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.UserUpsert) {
-//			SetUserID(v+v).
+//			SetEmail(v+v).
 //		}).
 //		Exec(ctx)
 func (uc *UserCreate) OnConflict(opts ...sql.ConflictOption) *UserUpsertOne {
@@ -271,11 +258,6 @@ func (u *UserUpsert) UpdateName() *UserUpsert {
 //		Exec(ctx)
 func (u *UserUpsertOne) UpdateNewValues() *UserUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
-	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
-		if _, exists := u.create.mutation.UserID(); exists {
-			s.SetIgnore(user.FieldUserID)
-		}
-	}))
 	return u
 }
 
@@ -350,7 +332,7 @@ func (u *UserUpsertOne) ExecX(ctx context.Context) {
 }
 
 // Exec executes the UPSERT query and returns the inserted/updated ID.
-func (u *UserUpsertOne) ID(ctx context.Context) (id int, err error) {
+func (u *UserUpsertOne) ID(ctx context.Context) (id int64, err error) {
 	node, err := u.create.Save(ctx)
 	if err != nil {
 		return id, err
@@ -359,7 +341,7 @@ func (u *UserUpsertOne) ID(ctx context.Context) (id int, err error) {
 }
 
 // IDX is like ID, but panics if an error occurs.
-func (u *UserUpsertOne) IDX(ctx context.Context) int {
+func (u *UserUpsertOne) IDX(ctx context.Context) int64 {
 	id, err := u.ID(ctx)
 	if err != nil {
 		panic(err)
@@ -415,7 +397,7 @@ func (ucb *UserCreateBulk) Save(ctx context.Context) ([]*User, error) {
 				mutation.id = &nodes[i].ID
 				if specs[i].ID.Value != nil {
 					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
+					nodes[i].ID = int64(id)
 				}
 				mutation.done = true
 				return nodes[i], nil
@@ -468,7 +450,7 @@ func (ucb *UserCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.UserUpsert) {
-//			SetUserID(v+v).
+//			SetEmail(v+v).
 //		}).
 //		Exec(ctx)
 func (ucb *UserCreateBulk) OnConflict(opts ...sql.ConflictOption) *UserUpsertBulk {
@@ -507,13 +489,6 @@ type UserUpsertBulk struct {
 //		Exec(ctx)
 func (u *UserUpsertBulk) UpdateNewValues() *UserUpsertBulk {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
-	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
-		for _, b := range u.create.builders {
-			if _, exists := b.mutation.UserID(); exists {
-				s.SetIgnore(user.FieldUserID)
-			}
-		}
-	}))
 	return u
 }
 

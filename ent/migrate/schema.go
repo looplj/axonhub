@@ -10,10 +10,10 @@ import (
 var (
 	// APIKeysColumns holds the columns for the "api_keys" table.
 	APIKeysColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "key", Type: field.TypeInt},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "key", Type: field.TypeString},
 		{Name: "name", Type: field.TypeString},
-		{Name: "user_id", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt64},
 	}
 	// APIKeysTable holds the schema information for the "api_keys" table.
 	APIKeysTable = &schema.Table{
@@ -41,9 +41,33 @@ var (
 			},
 		},
 	}
+	// ChannelsColumns holds the columns for the "channels" table.
+	ChannelsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "anthropic", "gemini", "deepseek", "doubao", "kimi"}},
+		{Name: "base_url", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString},
+		{Name: "api_key", Type: field.TypeString},
+		{Name: "supported_models", Type: field.TypeJSON},
+		{Name: "default_test_model", Type: field.TypeString},
+		{Name: "settings", Type: field.TypeJSON, Nullable: true},
+	}
+	// ChannelsTable holds the schema information for the "channels" table.
+	ChannelsTable = &schema.Table{
+		Name:       "channels",
+		Columns:    ChannelsColumns,
+		PrimaryKey: []*schema.Column{ChannelsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "channels_by_name",
+				Unique:  true,
+				Columns: []*schema.Column{ChannelsColumns[3]},
+			},
+		},
+	}
 	// JobsColumns holds the columns for the "jobs" table.
 	JobsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "owner_id", Type: field.TypeInt},
 		{Name: "type", Type: field.TypeString},
 		{Name: "context", Type: field.TypeString},
@@ -63,31 +87,53 @@ var (
 	}
 	// RequestsColumns holds the columns for the "requests" table.
 	RequestsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "user_id", Type: field.TypeString},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "request_body", Type: field.TypeString},
 		{Name: "response_body", Type: field.TypeString},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed"}},
 		{Name: "deleted_at", Type: field.TypeInt64, Default: 0},
+		{Name: "api_key_id", Type: field.TypeInt64},
+		{Name: "channel_requests", Type: field.TypeInt64, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt64},
 	}
 	// RequestsTable holds the schema information for the "requests" table.
 	RequestsTable = &schema.Table{
 		Name:       "requests",
 		Columns:    RequestsColumns,
 		PrimaryKey: []*schema.Column{RequestsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "requests_api_keys_requests",
+				Columns:    []*schema.Column{RequestsColumns[5]},
+				RefColumns: []*schema.Column{APIKeysColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "requests_channels_requests",
+				Columns:    []*schema.Column{RequestsColumns[6]},
+				RefColumns: []*schema.Column{ChannelsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "requests_users_requests",
+				Columns:    []*schema.Column{RequestsColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "requests_by_user_id",
-				Unique:  true,
-				Columns: []*schema.Column{RequestsColumns[1]},
+				Unique:  false,
+				Columns: []*schema.Column{RequestsColumns[7]},
 			},
 		},
 	}
 	// RequestExecutionsColumns holds the columns for the "request_executions" table.
 	RequestExecutionsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "user_id", Type: field.TypeInt},
-		{Name: "request_id", Type: field.TypeInt},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "user_id", Type: field.TypeInt64},
+		{Name: "request_id", Type: field.TypeInt64},
 	}
 	// RequestExecutionsTable holds the schema information for the "request_executions" table.
 	RequestExecutionsTable = &schema.Table{
@@ -112,8 +158,7 @@ var (
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "user_id", Type: field.TypeInt},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "email", Type: field.TypeString},
 		{Name: "name", Type: field.TypeString},
 	}
@@ -123,73 +168,21 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
-	// APIKeyRequestsColumns holds the columns for the "api_key_requests" table.
-	APIKeyRequestsColumns = []*schema.Column{
-		{Name: "api_key_id", Type: field.TypeInt},
-		{Name: "request_id", Type: field.TypeInt},
-	}
-	// APIKeyRequestsTable holds the schema information for the "api_key_requests" table.
-	APIKeyRequestsTable = &schema.Table{
-		Name:       "api_key_requests",
-		Columns:    APIKeyRequestsColumns,
-		PrimaryKey: []*schema.Column{APIKeyRequestsColumns[0], APIKeyRequestsColumns[1]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "api_key_requests_api_key_id",
-				Columns:    []*schema.Column{APIKeyRequestsColumns[0]},
-				RefColumns: []*schema.Column{APIKeysColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-			{
-				Symbol:     "api_key_requests_request_id",
-				Columns:    []*schema.Column{APIKeyRequestsColumns[1]},
-				RefColumns: []*schema.Column{RequestsColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-		},
-	}
-	// UserRequestsColumns holds the columns for the "user_requests" table.
-	UserRequestsColumns = []*schema.Column{
-		{Name: "user_id", Type: field.TypeInt},
-		{Name: "request_id", Type: field.TypeInt},
-	}
-	// UserRequestsTable holds the schema information for the "user_requests" table.
-	UserRequestsTable = &schema.Table{
-		Name:       "user_requests",
-		Columns:    UserRequestsColumns,
-		PrimaryKey: []*schema.Column{UserRequestsColumns[0], UserRequestsColumns[1]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "user_requests_user_id",
-				Columns:    []*schema.Column{UserRequestsColumns[0]},
-				RefColumns: []*schema.Column{UsersColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-			{
-				Symbol:     "user_requests_request_id",
-				Columns:    []*schema.Column{UserRequestsColumns[1]},
-				RefColumns: []*schema.Column{RequestsColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-		},
-	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		APIKeysTable,
+		ChannelsTable,
 		JobsTable,
 		RequestsTable,
 		RequestExecutionsTable,
 		UsersTable,
-		APIKeyRequestsTable,
-		UserRequestsTable,
 	}
 )
 
 func init() {
 	APIKeysTable.ForeignKeys[0].RefTable = UsersTable
+	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
+	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
+	RequestsTable.ForeignKeys[2].RefTable = UsersTable
 	RequestExecutionsTable.ForeignKeys[0].RefTable = RequestsTable
-	APIKeyRequestsTable.ForeignKeys[0].RefTable = APIKeysTable
-	APIKeyRequestsTable.ForeignKeys[1].RefTable = RequestsTable
-	UserRequestsTable.ForeignKeys[0].RefTable = UsersTable
-	UserRequestsTable.ForeignKeys[1].RefTable = RequestsTable
 }

@@ -142,12 +142,12 @@ func main() {
     
     for {
         select {
-        case resp, ok := <-stream.ResponseChannel():
+        case resp, ok := <-streams.ResponseChannel():
             if !ok {
                 return // Stream ended
             }
             log.Printf("Stream response: %+v", resp)
-        case err := <-stream.ErrorChannel():
+        case err := <-streams.ErrorChannel():
             if err != nil {
                 log.Printf("Stream error: %v", err)
                 return

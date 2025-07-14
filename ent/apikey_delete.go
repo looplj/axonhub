@@ -40,7 +40,7 @@ func (akd *APIKeyDelete) ExecX(ctx context.Context) int {
 }
 
 func (akd *APIKeyDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(apikey.Table, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewDeleteSpec(apikey.Table, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt64))
 	if ps := akd.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

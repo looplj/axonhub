@@ -16,6 +16,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/looplj/axonhub/ent/apikey"
+	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/job"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
@@ -29,6 +30,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// APIKey is the client for interacting with the APIKey builders.
 	APIKey *APIKeyClient
+	// Channel is the client for interacting with the Channel builders.
+	Channel *ChannelClient
 	// Job is the client for interacting with the Job builders.
 	Job *JobClient
 	// Request is the client for interacting with the Request builders.
@@ -51,6 +54,7 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.APIKey = NewAPIKeyClient(c.config)
+	c.Channel = NewChannelClient(c.config)
 	c.Job = NewJobClient(c.config)
 	c.Request = NewRequestClient(c.config)
 	c.RequestExecution = NewRequestExecutionClient(c.config)
@@ -148,6 +152,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ctx:              ctx,
 		config:           cfg,
 		APIKey:           NewAPIKeyClient(cfg),
+		Channel:          NewChannelClient(cfg),
 		Job:              NewJobClient(cfg),
 		Request:          NewRequestClient(cfg),
 		RequestExecution: NewRequestExecutionClient(cfg),
@@ -172,6 +177,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ctx:              ctx,
 		config:           cfg,
 		APIKey:           NewAPIKeyClient(cfg),
+		Channel:          NewChannelClient(cfg),
 		Job:              NewJobClient(cfg),
 		Request:          NewRequestClient(cfg),
 		RequestExecution: NewRequestExecutionClient(cfg),
@@ -204,21 +210,21 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	c.APIKey.Use(hooks...)
-	c.Job.Use(hooks...)
-	c.Request.Use(hooks...)
-	c.RequestExecution.Use(hooks...)
-	c.User.Use(hooks...)
+	for _, n := range []interface{ Use(...Hook) }{
+		c.APIKey, c.Channel, c.Job, c.Request, c.RequestExecution, c.User,
+	} {
+		n.Use(hooks...)
+	}
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
-	c.APIKey.Intercept(interceptors...)
-	c.Job.Intercept(interceptors...)
-	c.Request.Intercept(interceptors...)
-	c.RequestExecution.Intercept(interceptors...)
-	c.User.Intercept(interceptors...)
+	for _, n := range []interface{ Intercept(...Interceptor) }{
+		c.APIKey, c.Channel, c.Job, c.Request, c.RequestExecution, c.User,
+	} {
+		n.Intercept(interceptors...)
+	}
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -226,6 +232,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *APIKeyMutation:
 		return c.APIKey.mutate(ctx, m)
+	case *ChannelMutation:
+		return c.Channel.mutate(ctx, m)
 	case *JobMutation:
 		return c.Job.mutate(ctx, m)
 	case *RequestMutation:
@@ -300,7 +308,7 @@ func (c *APIKeyClient) UpdateOne(ak *APIKey) *APIKeyUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *APIKeyClient) UpdateOneID(id int) *APIKeyUpdateOne {
+func (c *APIKeyClient) UpdateOneID(id int64) *APIKeyUpdateOne {
 	mutation := newAPIKeyMutation(c.config, OpUpdateOne, withAPIKeyID(id))
 	return &APIKeyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -317,7 +325,7 @@ func (c *APIKeyClient) DeleteOne(ak *APIKey) *APIKeyDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *APIKeyClient) DeleteOneID(id int) *APIKeyDeleteOne {
+func (c *APIKeyClient) DeleteOneID(id int64) *APIKeyDeleteOne {
 	builder := c.Delete().Where(apikey.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -334,12 +342,12 @@ func (c *APIKeyClient) Query() *APIKeyQuery {
 }
 
 // Get returns a APIKey entity by its id.
-func (c *APIKeyClient) Get(ctx context.Context, id int) (*APIKey, error) {
+func (c *APIKeyClient) Get(ctx context.Context, id int64) (*APIKey, error) {
 	return c.Query().Where(apikey.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *APIKeyClient) GetX(ctx context.Context, id int) *APIKey {
+func (c *APIKeyClient) GetX(ctx context.Context, id int64) *APIKey {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -371,7 +379,7 @@ func (c *APIKeyClient) QueryRequests(ak *APIKey) *RequestQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(apikey.Table, apikey.FieldID, id),
 			sqlgraph.To(request.Table, request.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, apikey.RequestsTable, apikey.RequestsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, apikey.RequestsTable, apikey.RequestsColumn),
 		)
 		fromV = sqlgraph.Neighbors(ak.driver.Dialect(), step)
 		return fromV, nil
@@ -401,6 +409,155 @@ func (c *APIKeyClient) mutate(ctx context.Context, m *APIKeyMutation) (Value, er
 		return (&APIKeyDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown APIKey mutation op: %q", m.Op())
+	}
+}
+
+// ChannelClient is a client for the Channel schema.
+type ChannelClient struct {
+	config
+}
+
+// NewChannelClient returns a client for the Channel from the given config.
+func NewChannelClient(c config) *ChannelClient {
+	return &ChannelClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `channel.Hooks(f(g(h())))`.
+func (c *ChannelClient) Use(hooks ...Hook) {
+	c.hooks.Channel = append(c.hooks.Channel, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `channel.Intercept(f(g(h())))`.
+func (c *ChannelClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Channel = append(c.inters.Channel, interceptors...)
+}
+
+// Create returns a builder for creating a Channel entity.
+func (c *ChannelClient) Create() *ChannelCreate {
+	mutation := newChannelMutation(c.config, OpCreate)
+	return &ChannelCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Channel entities.
+func (c *ChannelClient) CreateBulk(builders ...*ChannelCreate) *ChannelCreateBulk {
+	return &ChannelCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ChannelClient) MapCreateBulk(slice any, setFunc func(*ChannelCreate, int)) *ChannelCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ChannelCreateBulk{err: fmt.Errorf("calling to ChannelClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ChannelCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ChannelCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Channel.
+func (c *ChannelClient) Update() *ChannelUpdate {
+	mutation := newChannelMutation(c.config, OpUpdate)
+	return &ChannelUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ChannelClient) UpdateOne(ch *Channel) *ChannelUpdateOne {
+	mutation := newChannelMutation(c.config, OpUpdateOne, withChannel(ch))
+	return &ChannelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ChannelClient) UpdateOneID(id int64) *ChannelUpdateOne {
+	mutation := newChannelMutation(c.config, OpUpdateOne, withChannelID(id))
+	return &ChannelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Channel.
+func (c *ChannelClient) Delete() *ChannelDelete {
+	mutation := newChannelMutation(c.config, OpDelete)
+	return &ChannelDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ChannelClient) DeleteOne(ch *Channel) *ChannelDeleteOne {
+	return c.DeleteOneID(ch.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ChannelClient) DeleteOneID(id int64) *ChannelDeleteOne {
+	builder := c.Delete().Where(channel.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ChannelDeleteOne{builder}
+}
+
+// Query returns a query builder for Channel.
+func (c *ChannelClient) Query() *ChannelQuery {
+	return &ChannelQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeChannel},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Channel entity by its id.
+func (c *ChannelClient) Get(ctx context.Context, id int64) (*Channel, error) {
+	return c.Query().Where(channel.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ChannelClient) GetX(ctx context.Context, id int64) *Channel {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryRequests queries the requests edge of a Channel.
+func (c *ChannelClient) QueryRequests(ch *Channel) *RequestQuery {
+	query := (&RequestClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ch.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, id),
+			sqlgraph.To(request.Table, request.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, channel.RequestsTable, channel.RequestsColumn),
+		)
+		fromV = sqlgraph.Neighbors(ch.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ChannelClient) Hooks() []Hook {
+	return c.hooks.Channel
+}
+
+// Interceptors returns the client interceptors.
+func (c *ChannelClient) Interceptors() []Interceptor {
+	return c.inters.Channel
+}
+
+func (c *ChannelClient) mutate(ctx context.Context, m *ChannelMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ChannelCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ChannelUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ChannelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ChannelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Channel mutation op: %q", m.Op())
 	}
 }
 
@@ -465,7 +622,7 @@ func (c *JobClient) UpdateOne(j *Job) *JobUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *JobClient) UpdateOneID(id int) *JobUpdateOne {
+func (c *JobClient) UpdateOneID(id int64) *JobUpdateOne {
 	mutation := newJobMutation(c.config, OpUpdateOne, withJobID(id))
 	return &JobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -482,7 +639,7 @@ func (c *JobClient) DeleteOne(j *Job) *JobDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *JobClient) DeleteOneID(id int) *JobDeleteOne {
+func (c *JobClient) DeleteOneID(id int64) *JobDeleteOne {
 	builder := c.Delete().Where(job.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -499,12 +656,12 @@ func (c *JobClient) Query() *JobQuery {
 }
 
 // Get returns a Job entity by its id.
-func (c *JobClient) Get(ctx context.Context, id int) (*Job, error) {
+func (c *JobClient) Get(ctx context.Context, id int64) (*Job, error) {
 	return c.Query().Where(job.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *JobClient) GetX(ctx context.Context, id int) *Job {
+func (c *JobClient) GetX(ctx context.Context, id int64) *Job {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -598,7 +755,7 @@ func (c *RequestClient) UpdateOne(r *Request) *RequestUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *RequestClient) UpdateOneID(id int) *RequestUpdateOne {
+func (c *RequestClient) UpdateOneID(id int64) *RequestUpdateOne {
 	mutation := newRequestMutation(c.config, OpUpdateOne, withRequestID(id))
 	return &RequestUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -615,7 +772,7 @@ func (c *RequestClient) DeleteOne(r *Request) *RequestDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *RequestClient) DeleteOneID(id int) *RequestDeleteOne {
+func (c *RequestClient) DeleteOneID(id int64) *RequestDeleteOne {
 	builder := c.Delete().Where(request.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -632,12 +789,12 @@ func (c *RequestClient) Query() *RequestQuery {
 }
 
 // Get returns a Request entity by its id.
-func (c *RequestClient) Get(ctx context.Context, id int) (*Request, error) {
+func (c *RequestClient) Get(ctx context.Context, id int64) (*Request, error) {
 	return c.Query().Where(request.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *RequestClient) GetX(ctx context.Context, id int) *Request {
+func (c *RequestClient) GetX(ctx context.Context, id int64) *Request {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -653,7 +810,7 @@ func (c *RequestClient) QueryUser(r *Request) *UserQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(request.Table, request.FieldID, id),
 			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, request.UserTable, request.UserPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, request.UserTable, request.UserColumn),
 		)
 		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
 		return fromV, nil
@@ -669,7 +826,7 @@ func (c *RequestClient) QueryAPIKey(r *Request) *APIKeyQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(request.Table, request.FieldID, id),
 			sqlgraph.To(apikey.Table, apikey.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, request.APIKeyTable, request.APIKeyPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, request.APIKeyTable, request.APIKeyColumn),
 		)
 		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
 		return fromV, nil
@@ -779,7 +936,7 @@ func (c *RequestExecutionClient) UpdateOne(re *RequestExecution) *RequestExecuti
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *RequestExecutionClient) UpdateOneID(id int) *RequestExecutionUpdateOne {
+func (c *RequestExecutionClient) UpdateOneID(id int64) *RequestExecutionUpdateOne {
 	mutation := newRequestExecutionMutation(c.config, OpUpdateOne, withRequestExecutionID(id))
 	return &RequestExecutionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -796,7 +953,7 @@ func (c *RequestExecutionClient) DeleteOne(re *RequestExecution) *RequestExecuti
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *RequestExecutionClient) DeleteOneID(id int) *RequestExecutionDeleteOne {
+func (c *RequestExecutionClient) DeleteOneID(id int64) *RequestExecutionDeleteOne {
 	builder := c.Delete().Where(requestexecution.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -813,12 +970,12 @@ func (c *RequestExecutionClient) Query() *RequestExecutionQuery {
 }
 
 // Get returns a RequestExecution entity by its id.
-func (c *RequestExecutionClient) Get(ctx context.Context, id int) (*RequestExecution, error) {
+func (c *RequestExecutionClient) Get(ctx context.Context, id int64) (*RequestExecution, error) {
 	return c.Query().Where(requestexecution.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *RequestExecutionClient) GetX(ctx context.Context, id int) *RequestExecution {
+func (c *RequestExecutionClient) GetX(ctx context.Context, id int64) *RequestExecution {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -928,7 +1085,7 @@ func (c *UserClient) UpdateOne(u *User) *UserUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *UserClient) UpdateOneID(id int) *UserUpdateOne {
+func (c *UserClient) UpdateOneID(id int64) *UserUpdateOne {
 	mutation := newUserMutation(c.config, OpUpdateOne, withUserID(id))
 	return &UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -945,7 +1102,7 @@ func (c *UserClient) DeleteOne(u *User) *UserDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *UserClient) DeleteOneID(id int) *UserDeleteOne {
+func (c *UserClient) DeleteOneID(id int64) *UserDeleteOne {
 	builder := c.Delete().Where(user.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -962,12 +1119,12 @@ func (c *UserClient) Query() *UserQuery {
 }
 
 // Get returns a User entity by its id.
-func (c *UserClient) Get(ctx context.Context, id int) (*User, error) {
+func (c *UserClient) Get(ctx context.Context, id int64) (*User, error) {
 	return c.Query().Where(user.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *UserClient) GetX(ctx context.Context, id int) *User {
+func (c *UserClient) GetX(ctx context.Context, id int64) *User {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -983,7 +1140,7 @@ func (c *UserClient) QueryRequests(u *User) *RequestQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(request.Table, request.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, user.RequestsTable, user.RequestsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.RequestsTable, user.RequestsColumn),
 		)
 		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
 		return fromV, nil
@@ -1035,9 +1192,9 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, Job, Request, RequestExecution, User []ent.Hook
+		APIKey, Channel, Job, Request, RequestExecution, User []ent.Hook
 	}
 	inters struct {
-		APIKey, Job, Request, RequestExecution, User []ent.Interceptor
+		APIKey, Channel, Job, Request, RequestExecution, User []ent.Interceptor
 	}
 )

@@ -13,6 +13,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/errcode"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"github.com/looplj/axonhub/ent/apikey"
+	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/job"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
@@ -21,8 +22,8 @@ import (
 
 // Common entgql types.
 type (
-	Cursor         = entgql.Cursor[int]
-	PageInfo       = entgql.PageInfo[int]
+	Cursor         = entgql.Cursor[int64]
+	PageInfo       = entgql.PageInfo[int64]
 	OrderDirection = entgql.OrderDirection
 )
 
@@ -345,6 +346,255 @@ func (ak *APIKey) ToEdge(order *APIKeyOrder) *APIKeyEdge {
 	return &APIKeyEdge{
 		Node:   ak,
 		Cursor: order.Field.toCursor(ak),
+	}
+}
+
+// ChannelEdge is the edge representation of Channel.
+type ChannelEdge struct {
+	Node   *Channel `json:"node"`
+	Cursor Cursor   `json:"cursor"`
+}
+
+// ChannelConnection is the connection containing edges to Channel.
+type ChannelConnection struct {
+	Edges      []*ChannelEdge `json:"edges"`
+	PageInfo   PageInfo       `json:"pageInfo"`
+	TotalCount int            `json:"totalCount"`
+}
+
+func (c *ChannelConnection) build(nodes []*Channel, pager *channelPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *Channel
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *Channel {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *Channel {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ChannelEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ChannelEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ChannelPaginateOption enables pagination customization.
+type ChannelPaginateOption func(*channelPager) error
+
+// WithChannelOrder configures pagination ordering.
+func WithChannelOrder(order *ChannelOrder) ChannelPaginateOption {
+	if order == nil {
+		order = DefaultChannelOrder
+	}
+	o := *order
+	return func(pager *channelPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultChannelOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithChannelFilter configures pagination filter.
+func WithChannelFilter(filter func(*ChannelQuery) (*ChannelQuery, error)) ChannelPaginateOption {
+	return func(pager *channelPager) error {
+		if filter == nil {
+			return errors.New("ChannelQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type channelPager struct {
+	reverse bool
+	order   *ChannelOrder
+	filter  func(*ChannelQuery) (*ChannelQuery, error)
+}
+
+func newChannelPager(opts []ChannelPaginateOption, reverse bool) (*channelPager, error) {
+	pager := &channelPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultChannelOrder
+	}
+	return pager, nil
+}
+
+func (p *channelPager) applyFilter(query *ChannelQuery) (*ChannelQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *channelPager) toCursor(c *Channel) Cursor {
+	return p.order.Field.toCursor(c)
+}
+
+func (p *channelPager) applyCursors(query *ChannelQuery, after, before *Cursor) (*ChannelQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultChannelOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *channelPager) applyOrder(query *ChannelQuery) *ChannelQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultChannelOrder.Field {
+		query = query.Order(DefaultChannelOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *channelPager) orderExpr(query *ChannelQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultChannelOrder.Field {
+			b.Comma().Ident(DefaultChannelOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to Channel.
+func (c *ChannelQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ChannelPaginateOption,
+) (*ChannelConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newChannelPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if c, err = pager.applyFilter(c); err != nil {
+		return nil, err
+	}
+	conn := &ChannelConnection{Edges: []*ChannelEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := c.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if c, err = pager.applyCursors(c, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		c.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := c.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	c = pager.applyOrder(c)
+	nodes, err := c.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+// ChannelOrderField defines the ordering field of Channel.
+type ChannelOrderField struct {
+	// Value extracts the ordering value from the given Channel.
+	Value    func(*Channel) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) channel.OrderOption
+	toCursor func(*Channel) Cursor
+}
+
+// ChannelOrder defines the ordering of Channel.
+type ChannelOrder struct {
+	Direction OrderDirection     `json:"direction"`
+	Field     *ChannelOrderField `json:"field"`
+}
+
+// DefaultChannelOrder is the default ordering of Channel.
+var DefaultChannelOrder = &ChannelOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &ChannelOrderField{
+		Value: func(c *Channel) (ent.Value, error) {
+			return c.ID, nil
+		},
+		column: channel.FieldID,
+		toTerm: channel.ByID,
+		toCursor: func(c *Channel) Cursor {
+			return Cursor{ID: c.ID}
+		},
+	},
+}
+
+// ToEdge converts Channel into ChannelEdge.
+func (c *Channel) ToEdge(order *ChannelOrder) *ChannelEdge {
+	if order == nil {
+		order = DefaultChannelOrder
+	}
+	return &ChannelEdge{
+		Node:   c,
+		Cursor: order.Field.toCursor(c),
 	}
 }
 

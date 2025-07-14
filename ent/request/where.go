@@ -9,53 +9,58 @@ import (
 )
 
 // ID filters vertices based on their ID field.
-func ID(id int) predicate.Request {
+func ID(id int64) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldID, id))
 }
 
 // IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id int) predicate.Request {
+func IDEQ(id int64) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldID, id))
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id int) predicate.Request {
+func IDNEQ(id int64) predicate.Request {
 	return predicate.Request(sql.FieldNEQ(FieldID, id))
 }
 
 // IDIn applies the In predicate on the ID field.
-func IDIn(ids ...int) predicate.Request {
+func IDIn(ids ...int64) predicate.Request {
 	return predicate.Request(sql.FieldIn(FieldID, ids...))
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...int) predicate.Request {
+func IDNotIn(ids ...int64) predicate.Request {
 	return predicate.Request(sql.FieldNotIn(FieldID, ids...))
 }
 
 // IDGT applies the GT predicate on the ID field.
-func IDGT(id int) predicate.Request {
+func IDGT(id int64) predicate.Request {
 	return predicate.Request(sql.FieldGT(FieldID, id))
 }
 
 // IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id int) predicate.Request {
+func IDGTE(id int64) predicate.Request {
 	return predicate.Request(sql.FieldGTE(FieldID, id))
 }
 
 // IDLT applies the LT predicate on the ID field.
-func IDLT(id int) predicate.Request {
+func IDLT(id int64) predicate.Request {
 	return predicate.Request(sql.FieldLT(FieldID, id))
 }
 
 // IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id int) predicate.Request {
+func IDLTE(id int64) predicate.Request {
 	return predicate.Request(sql.FieldLTE(FieldID, id))
 }
 
 // UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
-func UserID(v string) predicate.Request {
+func UserID(v int64) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldUserID, v))
+}
+
+// APIKeyID applies equality check predicate on the "api_key_id" field. It's identical to APIKeyIDEQ.
+func APIKeyID(v int64) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldAPIKeyID, v))
 }
 
 // RequestBody applies equality check predicate on the "request_body" field. It's identical to RequestBodyEQ.
@@ -74,68 +79,43 @@ func DeletedAt(v int64) predicate.Request {
 }
 
 // UserIDEQ applies the EQ predicate on the "user_id" field.
-func UserIDEQ(v string) predicate.Request {
+func UserIDEQ(v int64) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldUserID, v))
 }
 
 // UserIDNEQ applies the NEQ predicate on the "user_id" field.
-func UserIDNEQ(v string) predicate.Request {
+func UserIDNEQ(v int64) predicate.Request {
 	return predicate.Request(sql.FieldNEQ(FieldUserID, v))
 }
 
 // UserIDIn applies the In predicate on the "user_id" field.
-func UserIDIn(vs ...string) predicate.Request {
+func UserIDIn(vs ...int64) predicate.Request {
 	return predicate.Request(sql.FieldIn(FieldUserID, vs...))
 }
 
 // UserIDNotIn applies the NotIn predicate on the "user_id" field.
-func UserIDNotIn(vs ...string) predicate.Request {
+func UserIDNotIn(vs ...int64) predicate.Request {
 	return predicate.Request(sql.FieldNotIn(FieldUserID, vs...))
 }
 
-// UserIDGT applies the GT predicate on the "user_id" field.
-func UserIDGT(v string) predicate.Request {
-	return predicate.Request(sql.FieldGT(FieldUserID, v))
+// APIKeyIDEQ applies the EQ predicate on the "api_key_id" field.
+func APIKeyIDEQ(v int64) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldAPIKeyID, v))
 }
 
-// UserIDGTE applies the GTE predicate on the "user_id" field.
-func UserIDGTE(v string) predicate.Request {
-	return predicate.Request(sql.FieldGTE(FieldUserID, v))
+// APIKeyIDNEQ applies the NEQ predicate on the "api_key_id" field.
+func APIKeyIDNEQ(v int64) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldAPIKeyID, v))
 }
 
-// UserIDLT applies the LT predicate on the "user_id" field.
-func UserIDLT(v string) predicate.Request {
-	return predicate.Request(sql.FieldLT(FieldUserID, v))
+// APIKeyIDIn applies the In predicate on the "api_key_id" field.
+func APIKeyIDIn(vs ...int64) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldAPIKeyID, vs...))
 }
 
-// UserIDLTE applies the LTE predicate on the "user_id" field.
-func UserIDLTE(v string) predicate.Request {
-	return predicate.Request(sql.FieldLTE(FieldUserID, v))
-}
-
-// UserIDContains applies the Contains predicate on the "user_id" field.
-func UserIDContains(v string) predicate.Request {
-	return predicate.Request(sql.FieldContains(FieldUserID, v))
-}
-
-// UserIDHasPrefix applies the HasPrefix predicate on the "user_id" field.
-func UserIDHasPrefix(v string) predicate.Request {
-	return predicate.Request(sql.FieldHasPrefix(FieldUserID, v))
-}
-
-// UserIDHasSuffix applies the HasSuffix predicate on the "user_id" field.
-func UserIDHasSuffix(v string) predicate.Request {
-	return predicate.Request(sql.FieldHasSuffix(FieldUserID, v))
-}
-
-// UserIDEqualFold applies the EqualFold predicate on the "user_id" field.
-func UserIDEqualFold(v string) predicate.Request {
-	return predicate.Request(sql.FieldEqualFold(FieldUserID, v))
-}
-
-// UserIDContainsFold applies the ContainsFold predicate on the "user_id" field.
-func UserIDContainsFold(v string) predicate.Request {
-	return predicate.Request(sql.FieldContainsFold(FieldUserID, v))
+// APIKeyIDNotIn applies the NotIn predicate on the "api_key_id" field.
+func APIKeyIDNotIn(vs ...int64) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldAPIKeyID, vs...))
 }
 
 // RequestBodyEQ applies the EQ predicate on the "request_body" field.
@@ -333,7 +313,7 @@ func HasUser() predicate.Request {
 	return predicate.Request(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, UserTable, UserPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
@@ -356,7 +336,7 @@ func HasAPIKey() predicate.Request {
 	return predicate.Request(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, APIKeyTable, APIKeyPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, APIKeyTable, APIKeyColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})

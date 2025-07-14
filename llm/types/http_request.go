@@ -59,9 +59,9 @@ type RetryPolicy struct {
 // GenericHttpResponse represents a generic HTTP response
 type GenericHttpResponse struct {
 	// HTTP response basics
-	StatusCode int               `json:"status_code"`
-	Headers    map[string]string `json:"headers"`
-	Body       []byte            `json:"body,omitempty"`
+	StatusCode int         `json:"status_code"`
+	Headers    http.Header `json:"headers"`
+	Body       []byte      `json:"body,omitempty"`
 
 	// Response metadata
 	Latency    time.Duration `json:"latency"`

@@ -36,26 +36,38 @@ func (ak *APIKey) Requests(
 	return ak.QueryRequests().Paginate(ctx, after, first, before, last, opts...)
 }
 
-func (r *Request) User(ctx context.Context) (result []*User, err error) {
-	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
-		result, err = r.NamedUser(graphql.GetFieldContext(ctx).Field.Alias)
-	} else {
-		result, err = r.Edges.UserOrErr()
+func (c *Channel) Requests(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, where *RequestWhereInput,
+) (*RequestConnection, error) {
+	opts := []RequestPaginateOption{
+		WithRequestFilter(where.Filter),
 	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := c.Edges.totalCount[0][alias]
+	if nodes, err := c.NamedRequests(alias); err == nil || hasTotalCount {
+		pager, err := newRequestPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &RequestConnection{Edges: []*RequestEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return c.QueryRequests().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (r *Request) User(ctx context.Context) (*User, error) {
+	result, err := r.Edges.UserOrErr()
 	if IsNotLoaded(err) {
-		result, err = r.QueryUser().All(ctx)
+		result, err = r.QueryUser().Only(ctx)
 	}
 	return result, err
 }
 
-func (r *Request) APIKey(ctx context.Context) (result []*APIKey, err error) {
-	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
-		result, err = r.NamedAPIKey(graphql.GetFieldContext(ctx).Field.Alias)
-	} else {
-		result, err = r.Edges.APIKeyOrErr()
-	}
+func (r *Request) APIKey(ctx context.Context) (*APIKey, error) {
+	result, err := r.Edges.APIKeyOrErr()
 	if IsNotLoaded(err) {
-		result, err = r.QueryAPIKey().All(ctx)
+		result, err = r.QueryAPIKey().Only(ctx)
 	}
 	return result, err
 }

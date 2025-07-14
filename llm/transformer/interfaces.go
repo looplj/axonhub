@@ -9,8 +9,9 @@ import (
 
 // Transformer converts HTTP requests to ChatCompletionRequest
 type Transformer interface {
-	Transform(ctx context.Context, httpReq *http.Request) (*types.ChatCompletionRequest, error)
-	TransformResponse(ctx context.Context, chatResp *types.ChatCompletionResponse, httpResp *http.Response) (*types.GenericHttpResponse, error)
+	TransformRequest(ctx context.Context, httpReq *http.Request) (*types.ChatCompletionRequest, error)
+	TransformResponse(ctx context.Context, chatResp *types.ChatCompletionResponse) (*types.GenericHttpResponse, error)
+	TransformStreamResponse(ctx context.Context, chatResp *types.ChatCompletionResponse) (*types.GenericHttpResponse, error)
 	SupportsContentType(contentType string) bool
 	Name() string
 	Priority() int

@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/ent/apikey"
+	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/job"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
@@ -82,20 +83,16 @@ func (akq *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int `sql:"api_key_id"`
-							Count  int `sql:"count"`
+							NodeID int64 `sql:"api_key_id"`
+							Count  int   `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
-							joinT := sql.Table(apikey.RequestsTable)
-							s.Join(joinT).On(s.C(request.FieldID), joinT.C(apikey.RequestsPrimaryKey[1]))
-							s.Where(sql.InValues(joinT.C(apikey.RequestsPrimaryKey[0]), ids...))
-							s.Select(joinT.C(apikey.RequestsPrimaryKey[0]), sql.Count("*"))
-							s.GroupBy(joinT.C(apikey.RequestsPrimaryKey[0]))
+							s.Where(sql.InValues(s.C(apikey.RequestsColumn), ids...))
 						})
-						if err := query.Select().Scan(ctx, &v); err != nil {
+						if err := query.GroupBy(apikey.RequestsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
 						}
-						m := make(map[int]int, len(v))
+						m := make(map[int64]int, len(v))
 						for i := range v {
 							m[v[i].NodeID] = v[i].Count
 						}
@@ -137,7 +134,7 @@ func (akq *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				if oneNode {
 					pager.applyOrder(query.Limit(limit))
 				} else {
-					modify := entgql.LimitPerRow(apikey.RequestsPrimaryKey[0], limit, pager.orderExpr(query))
+					modify := entgql.LimitPerRow(apikey.RequestsColumn, limit, pager.orderExpr(query))
 					query.modifiers = append(query.modifiers, modify)
 				}
 			} else {
@@ -198,6 +195,187 @@ func newAPIKeyPaginateArgs(rv map[string]any) *apikeyPaginateArgs {
 	}
 	if v, ok := rv[whereField].(*APIKeyWhereInput); ok {
 		args.opts = append(args.opts, WithAPIKeyFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (cq *ChannelQuery) CollectFields(ctx context.Context, satisfies ...string) (*ChannelQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return cq, nil
+	}
+	if err := cq.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return cq, nil
+}
+
+func (cq *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(channel.Columns))
+		selectedFields = []string{channel.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "requests":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&RequestClient{config: cq.config}).Query()
+			)
+			args := newRequestPaginateArgs(fieldArgs(ctx, new(RequestWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newRequestPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					cq.loadTotal = append(cq.loadTotal, func(ctx context.Context, nodes []*Channel) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int64 `sql:"channel_requests"`
+							Count  int   `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(channel.RequestsColumn), ids...))
+						})
+						if err := query.GroupBy(channel.RequestsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int64]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[0] == nil {
+								nodes[i].Edges.totalCount[0] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[0][alias] = n
+						}
+						return nil
+					})
+				} else {
+					cq.loadTotal = append(cq.loadTotal, func(_ context.Context, nodes []*Channel) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Requests)
+							if nodes[i].Edges.totalCount[0] == nil {
+								nodes[i].Edges.totalCount[0] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[0][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, requestImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(channel.RequestsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			cq.WithNamedRequests(alias, func(wq *RequestQuery) {
+				*wq = *query
+			})
+		case "type":
+			if _, ok := fieldSeen[channel.FieldType]; !ok {
+				selectedFields = append(selectedFields, channel.FieldType)
+				fieldSeen[channel.FieldType] = struct{}{}
+			}
+		case "baseURL":
+			if _, ok := fieldSeen[channel.FieldBaseURL]; !ok {
+				selectedFields = append(selectedFields, channel.FieldBaseURL)
+				fieldSeen[channel.FieldBaseURL] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[channel.FieldName]; !ok {
+				selectedFields = append(selectedFields, channel.FieldName)
+				fieldSeen[channel.FieldName] = struct{}{}
+			}
+		case "supportedModels":
+			if _, ok := fieldSeen[channel.FieldSupportedModels]; !ok {
+				selectedFields = append(selectedFields, channel.FieldSupportedModels)
+				fieldSeen[channel.FieldSupportedModels] = struct{}{}
+			}
+		case "defaultTestModel":
+			if _, ok := fieldSeen[channel.FieldDefaultTestModel]; !ok {
+				selectedFields = append(selectedFields, channel.FieldDefaultTestModel)
+				fieldSeen[channel.FieldDefaultTestModel] = struct{}{}
+			}
+		case "settings":
+			if _, ok := fieldSeen[channel.FieldSettings]; !ok {
+				selectedFields = append(selectedFields, channel.FieldSettings)
+				fieldSeen[channel.FieldSettings] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		cq.Select(selectedFields...)
+	}
+	return nil
+}
+
+type channelPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []ChannelPaginateOption
+}
+
+func newChannelPaginateArgs(rv map[string]any) *channelPaginateArgs {
+	args := &channelPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*ChannelWhereInput); ok {
+		args.opts = append(args.opts, WithChannelFilter(v.Filter))
 	}
 	return args
 }
@@ -307,12 +485,14 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				path  = append(path, alias)
 				query = (&UserClient{config: rq.config}).Query()
 			)
-			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, userImplementors)...); err != nil {
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, userImplementors)...); err != nil {
 				return err
 			}
-			rq.WithNamedUser(alias, func(wq *UserQuery) {
-				*wq = *query
-			})
+			rq.withUser = query
+			if _, ok := fieldSeen[request.FieldUserID]; !ok {
+				selectedFields = append(selectedFields, request.FieldUserID)
+				fieldSeen[request.FieldUserID] = struct{}{}
+			}
 
 		case "apiKey":
 			var (
@@ -320,12 +500,14 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				path  = append(path, alias)
 				query = (&APIKeyClient{config: rq.config}).Query()
 			)
-			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, apikeyImplementors)...); err != nil {
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, apikeyImplementors)...); err != nil {
 				return err
 			}
-			rq.WithNamedAPIKey(alias, func(wq *APIKeyQuery) {
-				*wq = *query
-			})
+			rq.withAPIKey = query
+			if _, ok := fieldSeen[request.FieldAPIKeyID]; !ok {
+				selectedFields = append(selectedFields, request.FieldAPIKeyID)
+				fieldSeen[request.FieldAPIKeyID] = struct{}{}
+			}
 
 		case "executions":
 			var (
@@ -355,8 +537,8 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int `sql:"request_id"`
-							Count  int `sql:"count"`
+							NodeID int64 `sql:"request_id"`
+							Count  int   `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
 							s.Where(sql.InValues(s.C(request.ExecutionsColumn), ids...))
@@ -364,7 +546,7 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 						if err := query.GroupBy(request.ExecutionsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
 						}
-						m := make(map[int]int, len(v))
+						m := make(map[int64]int, len(v))
 						for i := range v {
 							m[v[i].NodeID] = v[i].Count
 						}
@@ -419,6 +601,11 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			if _, ok := fieldSeen[request.FieldUserID]; !ok {
 				selectedFields = append(selectedFields, request.FieldUserID)
 				fieldSeen[request.FieldUserID] = struct{}{}
+			}
+		case "apiKeyID":
+			if _, ok := fieldSeen[request.FieldAPIKeyID]; !ok {
+				selectedFields = append(selectedFields, request.FieldAPIKeyID)
+				fieldSeen[request.FieldAPIKeyID] = struct{}{}
 			}
 		case "requestBody":
 			if _, ok := fieldSeen[request.FieldRequestBody]; !ok {
@@ -618,20 +805,16 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int `sql:"user_id"`
-							Count  int `sql:"count"`
+							NodeID int64 `sql:"user_id"`
+							Count  int   `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
-							joinT := sql.Table(user.RequestsTable)
-							s.Join(joinT).On(s.C(request.FieldID), joinT.C(user.RequestsPrimaryKey[1]))
-							s.Where(sql.InValues(joinT.C(user.RequestsPrimaryKey[0]), ids...))
-							s.Select(joinT.C(user.RequestsPrimaryKey[0]), sql.Count("*"))
-							s.GroupBy(joinT.C(user.RequestsPrimaryKey[0]))
+							s.Where(sql.InValues(s.C(user.RequestsColumn), ids...))
 						})
-						if err := query.Select().Scan(ctx, &v); err != nil {
+						if err := query.GroupBy(user.RequestsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
 						}
-						m := make(map[int]int, len(v))
+						m := make(map[int64]int, len(v))
 						for i := range v {
 							m[v[i].NodeID] = v[i].Count
 						}
@@ -673,7 +856,7 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 				if oneNode {
 					pager.applyOrder(query.Limit(limit))
 				} else {
-					modify := entgql.LimitPerRow(user.RequestsPrimaryKey[0], limit, pager.orderExpr(query))
+					modify := entgql.LimitPerRow(user.RequestsColumn, limit, pager.orderExpr(query))
 					query.modifiers = append(query.modifiers, modify)
 				}
 			} else {
@@ -711,8 +894,8 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int `sql:"user_id"`
-							Count  int `sql:"count"`
+							NodeID int64 `sql:"user_id"`
+							Count  int   `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
 							s.Where(sql.InValues(s.C(user.APIKeysColumn), ids...))
@@ -720,7 +903,7 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 						if err := query.GroupBy(user.APIKeysColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
 						}
-						m := make(map[int]int, len(v))
+						m := make(map[int64]int, len(v))
 						for i := range v {
 							m[v[i].NodeID] = v[i].Count
 						}
@@ -771,11 +954,6 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 			uq.WithNamedAPIKeys(alias, func(wq *APIKeyQuery) {
 				*wq = *query
 			})
-		case "userID":
-			if _, ok := fieldSeen[user.FieldUserID]; !ok {
-				selectedFields = append(selectedFields, user.FieldUserID)
-				fieldSeen[user.FieldUserID] = struct{}{}
-			}
 		case "email":
 			if _, ok := fieldSeen[user.FieldEmail]; !ok {
 				selectedFields = append(selectedFields, user.FieldEmail)

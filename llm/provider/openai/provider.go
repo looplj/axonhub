@@ -9,6 +9,7 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 	"github.com/looplj/axonhub/llm/provider"
 	"github.com/looplj/axonhub/llm/types"
+	"github.com/looplj/axonhub/pkg/streams"
 )
 
 // Provider implements the provider.Provider interface for OpenAI
@@ -52,7 +53,7 @@ func (p *Provider) ChatCompletion(ctx context.Context, request *types.ChatComple
 }
 
 // ChatCompletionStream sends a streaming chat completion request
-func (p *Provider) ChatCompletionStream(ctx context.Context, request *types.ChatCompletionRequest) (provider.Stream[*types.ChatCompletionResponse], error) {
+func (p *Provider) ChatCompletionStream(ctx context.Context, request *types.ChatCompletionRequest) (streams.Stream[*types.ChatCompletionResponse], error) {
 	// Convert internal request to OpenAI request
 	openaiReq, err := p.convertToOpenAIRequest(request)
 	if err != nil {
@@ -200,7 +201,12 @@ func (p *Provider) convertToOpenAIRequest(req *types.ChatCompletionRequest) (*op
 
 // convertFromOpenAIResponse converts OpenAI response to internal response
 func convertFromOpenAIResponse(oaiResp *openai.ChatCompletionResponse) (*types.ChatCompletionResponse, error) {
-	return convertToResponse(oaiResp)
+	resp, err := convertToResponse(oaiResp)
+	if err != nil {
+		return nil, err
+	}
+	resp.SetHeader(oaiResp.Header())
+	return resp, nil
 }
 
 func convertFromOpenAIStreamResponse(oaiResp *openai.ChatCompletionStreamResponse) (*types.ChatCompletionResponse, error) {

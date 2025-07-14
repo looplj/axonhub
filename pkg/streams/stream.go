@@ -1,4 +1,4 @@
-package provider
+package streams
 
 // Stream represents a generic stream interface
 type Stream[T any] interface {

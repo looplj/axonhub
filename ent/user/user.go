@@ -12,8 +12,6 @@ const (
 	Label = "user"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldUserID holds the string denoting the user_id field in the database.
-	FieldUserID = "user_id"
 	// FieldEmail holds the string denoting the email field in the database.
 	FieldEmail = "email"
 	// FieldName holds the string denoting the name field in the database.
@@ -24,11 +22,13 @@ const (
 	EdgeAPIKeys = "api_keys"
 	// Table holds the table name of the user in the database.
 	Table = "users"
-	// RequestsTable is the table that holds the requests relation/edge. The primary key declared below.
-	RequestsTable = "user_requests"
+	// RequestsTable is the table that holds the requests relation/edge.
+	RequestsTable = "requests"
 	// RequestsInverseTable is the table name for the Request entity.
 	// It exists in this package in order to avoid circular dependency with the "request" package.
 	RequestsInverseTable = "requests"
+	// RequestsColumn is the table column denoting the requests relation/edge.
+	RequestsColumn = "user_id"
 	// APIKeysTable is the table that holds the api_keys relation/edge.
 	APIKeysTable = "api_keys"
 	// APIKeysInverseTable is the table name for the APIKey entity.
@@ -41,16 +41,9 @@ const (
 // Columns holds all SQL columns for user fields.
 var Columns = []string{
 	FieldID,
-	FieldUserID,
 	FieldEmail,
 	FieldName,
 }
-
-var (
-	// RequestsPrimaryKey and RequestsColumn2 are the table columns denoting the
-	// primary key for the requests relation (M2M).
-	RequestsPrimaryKey = []string{"user_id", "request_id"}
-)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -68,11 +61,6 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
-}
-
-// ByUserID orders the results by the user_id field.
-func ByUserID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldUserID, opts...).ToFunc()
 }
 
 // ByEmail orders the results by the email field.
@@ -116,7 +104,7 @@ func newRequestsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(RequestsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, false, RequestsTable, RequestsPrimaryKey...),
+		sqlgraph.Edge(sqlgraph.O2M, false, RequestsTable, RequestsColumn),
 	)
 }
 func newAPIKeysStep() *sqlgraph.Step {

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/looplj/axonhub/llm/types"
+	"github.com/looplj/axonhub/pkg/streams"
 )
 
 // Provider represents a unified interface that combines HTTP client and transformation logic
@@ -15,7 +16,7 @@ type Provider interface {
 	ChatCompletion(ctx context.Context, request *types.ChatCompletionRequest) (*types.ChatCompletionResponse, error)
 
 	// ChatCompletionStream sends a streaming chat completion request
-	ChatCompletionStream(ctx context.Context, request *types.ChatCompletionRequest) (Stream[*types.ChatCompletionResponse], error)
+	ChatCompletionStream(ctx context.Context, request *types.ChatCompletionRequest) (streams.Stream[*types.ChatCompletionResponse], error)
 
 	// SupportsModel checks if the provider supports a specific model
 	SupportsModel(model string) bool

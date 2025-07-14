@@ -9,57 +9,57 @@ import (
 )
 
 // ID filters vertices based on their ID field.
-func ID(id int) predicate.APIKey {
+func ID(id int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldID, id))
 }
 
 // IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id int) predicate.APIKey {
+func IDEQ(id int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldID, id))
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id int) predicate.APIKey {
+func IDNEQ(id int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldNEQ(FieldID, id))
 }
 
 // IDIn applies the In predicate on the ID field.
-func IDIn(ids ...int) predicate.APIKey {
+func IDIn(ids ...int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldIn(FieldID, ids...))
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...int) predicate.APIKey {
+func IDNotIn(ids ...int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotIn(FieldID, ids...))
 }
 
 // IDGT applies the GT predicate on the ID field.
-func IDGT(id int) predicate.APIKey {
+func IDGT(id int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldGT(FieldID, id))
 }
 
 // IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id int) predicate.APIKey {
+func IDGTE(id int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldGTE(FieldID, id))
 }
 
 // IDLT applies the LT predicate on the ID field.
-func IDLT(id int) predicate.APIKey {
+func IDLT(id int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldLT(FieldID, id))
 }
 
 // IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id int) predicate.APIKey {
+func IDLTE(id int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldLTE(FieldID, id))
 }
 
 // UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
-func UserID(v int) predicate.APIKey {
+func UserID(v int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldUserID, v))
 }
 
 // Key applies equality check predicate on the "key" field. It's identical to KeyEQ.
-func Key(v int) predicate.APIKey {
+func Key(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldKey, v))
 }
 
@@ -69,63 +69,88 @@ func Name(v string) predicate.APIKey {
 }
 
 // UserIDEQ applies the EQ predicate on the "user_id" field.
-func UserIDEQ(v int) predicate.APIKey {
+func UserIDEQ(v int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldUserID, v))
 }
 
 // UserIDNEQ applies the NEQ predicate on the "user_id" field.
-func UserIDNEQ(v int) predicate.APIKey {
+func UserIDNEQ(v int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldNEQ(FieldUserID, v))
 }
 
 // UserIDIn applies the In predicate on the "user_id" field.
-func UserIDIn(vs ...int) predicate.APIKey {
+func UserIDIn(vs ...int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldIn(FieldUserID, vs...))
 }
 
 // UserIDNotIn applies the NotIn predicate on the "user_id" field.
-func UserIDNotIn(vs ...int) predicate.APIKey {
+func UserIDNotIn(vs ...int64) predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotIn(FieldUserID, vs...))
 }
 
 // KeyEQ applies the EQ predicate on the "key" field.
-func KeyEQ(v int) predicate.APIKey {
+func KeyEQ(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldKey, v))
 }
 
 // KeyNEQ applies the NEQ predicate on the "key" field.
-func KeyNEQ(v int) predicate.APIKey {
+func KeyNEQ(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldNEQ(FieldKey, v))
 }
 
 // KeyIn applies the In predicate on the "key" field.
-func KeyIn(vs ...int) predicate.APIKey {
+func KeyIn(vs ...string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldIn(FieldKey, vs...))
 }
 
 // KeyNotIn applies the NotIn predicate on the "key" field.
-func KeyNotIn(vs ...int) predicate.APIKey {
+func KeyNotIn(vs ...string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotIn(FieldKey, vs...))
 }
 
 // KeyGT applies the GT predicate on the "key" field.
-func KeyGT(v int) predicate.APIKey {
+func KeyGT(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldGT(FieldKey, v))
 }
 
 // KeyGTE applies the GTE predicate on the "key" field.
-func KeyGTE(v int) predicate.APIKey {
+func KeyGTE(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldGTE(FieldKey, v))
 }
 
 // KeyLT applies the LT predicate on the "key" field.
-func KeyLT(v int) predicate.APIKey {
+func KeyLT(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldLT(FieldKey, v))
 }
 
 // KeyLTE applies the LTE predicate on the "key" field.
-func KeyLTE(v int) predicate.APIKey {
+func KeyLTE(v string) predicate.APIKey {
 	return predicate.APIKey(sql.FieldLTE(FieldKey, v))
+}
+
+// KeyContains applies the Contains predicate on the "key" field.
+func KeyContains(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldContains(FieldKey, v))
+}
+
+// KeyHasPrefix applies the HasPrefix predicate on the "key" field.
+func KeyHasPrefix(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldHasPrefix(FieldKey, v))
+}
+
+// KeyHasSuffix applies the HasSuffix predicate on the "key" field.
+func KeyHasSuffix(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldHasSuffix(FieldKey, v))
+}
+
+// KeyEqualFold applies the EqualFold predicate on the "key" field.
+func KeyEqualFold(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEqualFold(FieldKey, v))
+}
+
+// KeyContainsFold applies the ContainsFold predicate on the "key" field.
+func KeyContainsFold(v string) predicate.APIKey {
+	return predicate.APIKey(sql.FieldContainsFold(FieldKey, v))
 }
 
 // NameEQ applies the EQ predicate on the "name" field.
@@ -221,7 +246,7 @@ func HasRequests() predicate.APIKey {
 	return predicate.APIKey(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, RequestsTable, RequestsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, RequestsTable, RequestsColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})

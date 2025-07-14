@@ -9,6 +9,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/ent/apikey"
+	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/job"
 	"github.com/looplj/axonhub/ent/predicate"
 	"github.com/looplj/axonhub/ent/request"
@@ -97,6 +98,33 @@ func (f TraverseAPIKey) Traverse(ctx context.Context, q ent.Query) error {
 		return f(ctx, q)
 	}
 	return fmt.Errorf("unexpected query type %T. expect *ent.APIKeyQuery", q)
+}
+
+// The ChannelFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ChannelFunc func(context.Context, *ent.ChannelQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ChannelFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ChannelQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ChannelQuery", q)
+}
+
+// The TraverseChannel type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseChannel func(context.Context, *ent.ChannelQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseChannel) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseChannel) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChannelQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ChannelQuery", q)
 }
 
 // The JobFunc type is an adapter to allow the use of ordinary function as a Querier.
@@ -212,6 +240,8 @@ func NewQuery(q ent.Query) (Query, error) {
 	switch q := q.(type) {
 	case *ent.APIKeyQuery:
 		return &query[*ent.APIKeyQuery, predicate.APIKey, apikey.OrderOption]{typ: ent.TypeAPIKey, tq: q}, nil
+	case *ent.ChannelQuery:
+		return &query[*ent.ChannelQuery, predicate.Channel, channel.OrderOption]{typ: ent.TypeChannel, tq: q}, nil
 	case *ent.JobQuery:
 		return &query[*ent.JobQuery, predicate.Job, job.OrderOption]{typ: ent.TypeJob, tq: q}, nil
 	case *ent.RequestQuery:

@@ -8,6 +8,7 @@ import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"
+	"entgo.io/ent/schema/field"
 )
 
 func main() {
@@ -28,7 +29,9 @@ func main() {
 		entc.FeatureNames("intercept", "schema/snapshot", "sql/upsert"),
 		entc.Extensions(ex),
 	}
-	if err := entc.Generate("../ent/schema", &gen.Config{}, opts...); err != nil {
+	if err := entc.Generate("../ent/schema", &gen.Config{
+		IDType: field.Int64("id").Descriptor().Info,
+	}, opts...); err != nil {
 		log.Fatalf("running ent codegen: %v", err)
 	}
 }

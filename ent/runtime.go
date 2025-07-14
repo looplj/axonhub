@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/schema"
 )
@@ -11,18 +12,20 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	channelFields := schema.Channel{}.Fields()
+	_ = channelFields
+	// channelDescAPIKey is the schema descriptor for api_key field.
+	channelDescAPIKey := channelFields[3].Descriptor()
+	// channel.APIKeyValidator is a validator for the "api_key" field. It is called by the builders before save.
+	channel.APIKeyValidator = channelDescAPIKey.Validators[0].(func(string) error)
 	requestFields := schema.Request{}.Fields()
 	_ = requestFields
-	// requestDescUserID is the schema descriptor for user_id field.
-	requestDescUserID := requestFields[0].Descriptor()
-	// request.UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
-	request.UserIDValidator = requestDescUserID.Validators[0].(func(string) error)
 	// requestDescRequestBody is the schema descriptor for request_body field.
-	requestDescRequestBody := requestFields[1].Descriptor()
+	requestDescRequestBody := requestFields[2].Descriptor()
 	// request.RequestBodyValidator is a validator for the "request_body" field. It is called by the builders before save.
 	request.RequestBodyValidator = requestDescRequestBody.Validators[0].(func(string) error)
 	// requestDescDeletedAt is the schema descriptor for deleted_at field.
-	requestDescDeletedAt := requestFields[4].Descriptor()
+	requestDescDeletedAt := requestFields[5].Descriptor()
 	// request.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	request.DefaultDeletedAt = requestDescDeletedAt.Default.(int64)
 }

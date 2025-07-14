@@ -97,7 +97,7 @@ func (jc *JobCreate) sqlSave(ctx context.Context) (*Job, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	_node.ID = int64(id)
 	jc.mutation.id = &_node.ID
 	jc.mutation.done = true
 	return _node, nil
@@ -106,7 +106,7 @@ func (jc *JobCreate) sqlSave(ctx context.Context) (*Job, error) {
 func (jc *JobCreate) createSpec() (*Job, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Job{config: jc.config}
-		_spec = sqlgraph.NewCreateSpec(job.Table, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt))
+		_spec = sqlgraph.NewCreateSpec(job.Table, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt64))
 	)
 	_spec.OnConflict = jc.conflict
 	if value, ok := jc.mutation.OwnerID(); ok {
@@ -263,7 +263,7 @@ func (u *JobUpsertOne) ExecX(ctx context.Context) {
 }
 
 // Exec executes the UPSERT query and returns the inserted/updated ID.
-func (u *JobUpsertOne) ID(ctx context.Context) (id int, err error) {
+func (u *JobUpsertOne) ID(ctx context.Context) (id int64, err error) {
 	node, err := u.create.Save(ctx)
 	if err != nil {
 		return id, err
@@ -272,7 +272,7 @@ func (u *JobUpsertOne) ID(ctx context.Context) (id int, err error) {
 }
 
 // IDX is like ID, but panics if an error occurs.
-func (u *JobUpsertOne) IDX(ctx context.Context) int {
+func (u *JobUpsertOne) IDX(ctx context.Context) int64 {
 	id, err := u.ID(ctx)
 	if err != nil {
 		panic(err)
@@ -328,7 +328,7 @@ func (jcb *JobCreateBulk) Save(ctx context.Context) ([]*Job, error) {
 				mutation.id = &nodes[i].ID
 				if specs[i].ID.Value != nil {
 					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
+					nodes[i].ID = int64(id)
 				}
 				mutation.done = true
 				return nodes[i], nil

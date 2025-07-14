@@ -8,16 +8,20 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/looplj/axonhub/ent/apikey"
 	"github.com/looplj/axonhub/ent/request"
+	"github.com/looplj/axonhub/ent/user"
 )
 
 // Request is the model entity for the Request schema.
 type Request struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
+	ID int64 `json:"id,omitempty"`
 	// UserID holds the value of the "user_id" field.
-	UserID string `json:"user_id,omitempty"`
+	UserID int64 `json:"user_id,omitempty"`
+	// APIKeyID holds the value of the "api_key_id" field.
+	APIKeyID int64 `json:"api_key_id,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
 	RequestBody string `json:"request_body,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
@@ -28,16 +32,17 @@ type Request struct {
 	DeletedAt int64 `json:"deleted_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestQuery when eager-loading is set.
-	Edges        RequestEdges `json:"edges"`
-	selectValues sql.SelectValues
+	Edges            RequestEdges `json:"edges"`
+	channel_requests *int64
+	selectValues     sql.SelectValues
 }
 
 // RequestEdges holds the relations/edges for other nodes in the graph.
 type RequestEdges struct {
 	// User holds the value of the user edge.
-	User []*User `json:"user,omitempty"`
+	User *User `json:"user,omitempty"`
 	// APIKey holds the value of the api_key edge.
-	APIKey []*APIKey `json:"api_key,omitempty"`
+	APIKey *APIKey `json:"api_key,omitempty"`
 	// Executions holds the value of the executions edge.
 	Executions []*RequestExecution `json:"executions,omitempty"`
 	// loadedTypes holds the information for reporting if a
@@ -46,25 +51,27 @@ type RequestEdges struct {
 	// totalCount holds the count of the edges above.
 	totalCount [3]map[string]int
 
-	namedUser       map[string][]*User
-	namedAPIKey     map[string][]*APIKey
 	namedExecutions map[string][]*RequestExecution
 }
 
 // UserOrErr returns the User value or an error if the edge
-// was not loaded in eager-loading.
-func (e RequestEdges) UserOrErr() ([]*User, error) {
-	if e.loadedTypes[0] {
+// was not loaded in eager-loading, or loaded but was not found.
+func (e RequestEdges) UserOrErr() (*User, error) {
+	if e.User != nil {
 		return e.User, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: user.Label}
 	}
 	return nil, &NotLoadedError{edge: "user"}
 }
 
 // APIKeyOrErr returns the APIKey value or an error if the edge
-// was not loaded in eager-loading.
-func (e RequestEdges) APIKeyOrErr() ([]*APIKey, error) {
-	if e.loadedTypes[1] {
+// was not loaded in eager-loading, or loaded but was not found.
+func (e RequestEdges) APIKeyOrErr() (*APIKey, error) {
+	if e.APIKey != nil {
 		return e.APIKey, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: apikey.Label}
 	}
 	return nil, &NotLoadedError{edge: "api_key"}
 }
@@ -83,10 +90,12 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case request.FieldID, request.FieldDeletedAt:
+		case request.FieldID, request.FieldUserID, request.FieldAPIKeyID, request.FieldDeletedAt:
 			values[i] = new(sql.NullInt64)
-		case request.FieldUserID, request.FieldRequestBody, request.FieldResponseBody, request.FieldStatus:
+		case request.FieldRequestBody, request.FieldResponseBody, request.FieldStatus:
 			values[i] = new(sql.NullString)
+		case request.ForeignKeys[0]: // channel_requests
+			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -107,12 +116,18 @@ func (r *Request) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			r.ID = int(value.Int64)
+			r.ID = int64(value.Int64)
 		case request.FieldUserID:
-			if value, ok := values[i].(*sql.NullString); !ok {
+			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
-				r.UserID = value.String
+				r.UserID = value.Int64
+			}
+		case request.FieldAPIKeyID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field api_key_id", values[i])
+			} else if value.Valid {
+				r.APIKeyID = value.Int64
 			}
 		case request.FieldRequestBody:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -137,6 +152,13 @@ func (r *Request) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
 			} else if value.Valid {
 				r.DeletedAt = value.Int64
+			}
+		case request.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field channel_requests", value)
+			} else if value.Valid {
+				r.channel_requests = new(int64)
+				*r.channel_requests = int64(value.Int64)
 			}
 		default:
 			r.selectValues.Set(columns[i], values[i])
@@ -190,7 +212,10 @@ func (r *Request) String() string {
 	builder.WriteString("Request(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", r.ID))
 	builder.WriteString("user_id=")
-	builder.WriteString(r.UserID)
+	builder.WriteString(fmt.Sprintf("%v", r.UserID))
+	builder.WriteString(", ")
+	builder.WriteString("api_key_id=")
+	builder.WriteString(fmt.Sprintf("%v", r.APIKeyID))
 	builder.WriteString(", ")
 	builder.WriteString("request_body=")
 	builder.WriteString(r.RequestBody)
@@ -205,54 +230,6 @@ func (r *Request) String() string {
 	builder.WriteString(fmt.Sprintf("%v", r.DeletedAt))
 	builder.WriteByte(')')
 	return builder.String()
-}
-
-// NamedUser returns the User named value or an error if the edge was not
-// loaded in eager-loading with this name.
-func (r *Request) NamedUser(name string) ([]*User, error) {
-	if r.Edges.namedUser == nil {
-		return nil, &NotLoadedError{edge: name}
-	}
-	nodes, ok := r.Edges.namedUser[name]
-	if !ok {
-		return nil, &NotLoadedError{edge: name}
-	}
-	return nodes, nil
-}
-
-func (r *Request) appendNamedUser(name string, edges ...*User) {
-	if r.Edges.namedUser == nil {
-		r.Edges.namedUser = make(map[string][]*User)
-	}
-	if len(edges) == 0 {
-		r.Edges.namedUser[name] = []*User{}
-	} else {
-		r.Edges.namedUser[name] = append(r.Edges.namedUser[name], edges...)
-	}
-}
-
-// NamedAPIKey returns the APIKey named value or an error if the edge was not
-// loaded in eager-loading with this name.
-func (r *Request) NamedAPIKey(name string) ([]*APIKey, error) {
-	if r.Edges.namedAPIKey == nil {
-		return nil, &NotLoadedError{edge: name}
-	}
-	nodes, ok := r.Edges.namedAPIKey[name]
-	if !ok {
-		return nil, &NotLoadedError{edge: name}
-	}
-	return nodes, nil
-}
-
-func (r *Request) appendNamedAPIKey(name string, edges ...*APIKey) {
-	if r.Edges.namedAPIKey == nil {
-		r.Edges.namedAPIKey = make(map[string][]*APIKey)
-	}
-	if len(edges) == 0 {
-		r.Edges.namedAPIKey[name] = []*APIKey{}
-	} else {
-		r.Edges.namedAPIKey[name] = append(r.Edges.namedAPIKey[name], edges...)
-	}
 }
 
 // NamedExecutions returns the Executions named value or an error if the edge was not

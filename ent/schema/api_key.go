@@ -31,8 +31,8 @@ func (APIKey) Indexes() []ent.Index {
 
 func (APIKey) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id").Immutable(),
-		field.Int("key").Immutable(),
+		field.Int64("user_id").Immutable(),
+		field.String("key").Immutable(),
 		field.String("name"),
 	}
 }

@@ -16,11 +16,11 @@ import (
 type APIKey struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
+	ID int64 `json:"id,omitempty"`
 	// UserID holds the value of the "user_id" field.
-	UserID int `json:"user_id,omitempty"`
+	UserID int64 `json:"user_id,omitempty"`
 	// Key holds the value of the "key" field.
-	Key int `json:"key,omitempty"`
+	Key string `json:"key,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -69,9 +69,9 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case apikey.FieldID, apikey.FieldUserID, apikey.FieldKey:
+		case apikey.FieldID, apikey.FieldUserID:
 			values[i] = new(sql.NullInt64)
-		case apikey.FieldName:
+		case apikey.FieldKey, apikey.FieldName:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -93,18 +93,18 @@ func (ak *APIKey) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			ak.ID = int(value.Int64)
+			ak.ID = int64(value.Int64)
 		case apikey.FieldUserID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
-				ak.UserID = int(value.Int64)
+				ak.UserID = value.Int64
 			}
 		case apikey.FieldKey:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
+			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field key", values[i])
 			} else if value.Valid {
-				ak.Key = int(value.Int64)
+				ak.Key = value.String
 			}
 		case apikey.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -162,7 +162,7 @@ func (ak *APIKey) String() string {
 	builder.WriteString(fmt.Sprintf("%v", ak.UserID))
 	builder.WriteString(", ")
 	builder.WriteString("key=")
-	builder.WriteString(fmt.Sprintf("%v", ak.Key))
+	builder.WriteString(ak.Key)
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(ak.Name)

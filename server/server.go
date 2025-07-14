@@ -60,7 +60,7 @@ func (srv *Server) Shutdown(ctx context.Context) error {
 
 func Run(opts ...fx.Option) {
 	var constructors []any
-	constructors = append(constructors, conf.Load)
+	constructors = append(constructors, conf.Load, log.New)
 	constructors = append(constructors, NewGraphqlHandlers, New)
 
 	app := fx.New(

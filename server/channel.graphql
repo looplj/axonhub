@@ -1,0 +1,7 @@
+type ModelMapping {
+  from: String!
+  to: String!
+}
+type ChannelSettings {
+ modelMappings: [ModelMapping!]!
+}

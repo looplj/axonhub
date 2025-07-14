@@ -21,16 +21,15 @@ func (Request) Mixins() []ent.Mixin {
 
 func (Request) Indexes() []ent.Index {
 	return []ent.Index{
-		// unique index.
 		index.Fields("user_id").
-			StorageKey("requests_by_user_id").
-			Unique(),
+			StorageKey("requests_by_user_id"),
 	}
 }
 
 func (Request) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("user_id").NotEmpty().Immutable(),
+		field.Int64("user_id").Immutable(),
+		field.Int64("api_key_id").Immutable(),
 		field.String("request_body").NotEmpty().Immutable(),
 		field.String("response_body"),
 		field.Enum("status").Values("pending", "processing", "completed", "failed"),
@@ -40,8 +39,8 @@ func (Request) Fields() []ent.Field {
 
 func (Request) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("user", User.Type).Ref("requests"),
-		edge.From("api_key", APIKey.Type).Ref("requests"),
+		edge.From("user", User.Type).Ref("requests").Field("user_id").Required().Immutable().Unique(),
+		edge.From("api_key", APIKey.Type).Ref("requests").Field("api_key_id").Required().Immutable().Unique(),
 		edge.To("executions", RequestExecution.Type).
 			Annotations(
 				entgql.RelayConnection(),

@@ -9,6 +9,9 @@ import (
 // APIKey is the predicate function for apikey builders.
 type APIKey func(*sql.Selector)
 
+// Channel is the predicate function for channel builders.
+type Channel func(*sql.Selector)
+
 // Job is the predicate function for job builders.
 type Job func(*sql.Selector)
 

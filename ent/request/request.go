@@ -18,6 +18,8 @@ const (
 	FieldID = "id"
 	// FieldUserID holds the string denoting the user_id field in the database.
 	FieldUserID = "user_id"
+	// FieldAPIKeyID holds the string denoting the api_key_id field in the database.
+	FieldAPIKeyID = "api_key_id"
 	// FieldRequestBody holds the string denoting the request_body field in the database.
 	FieldRequestBody = "request_body"
 	// FieldResponseBody holds the string denoting the response_body field in the database.
@@ -34,16 +36,20 @@ const (
 	EdgeExecutions = "executions"
 	// Table holds the table name of the request in the database.
 	Table = "requests"
-	// UserTable is the table that holds the user relation/edge. The primary key declared below.
-	UserTable = "user_requests"
+	// UserTable is the table that holds the user relation/edge.
+	UserTable = "requests"
 	// UserInverseTable is the table name for the User entity.
 	// It exists in this package in order to avoid circular dependency with the "user" package.
 	UserInverseTable = "users"
-	// APIKeyTable is the table that holds the api_key relation/edge. The primary key declared below.
-	APIKeyTable = "api_key_requests"
+	// UserColumn is the table column denoting the user relation/edge.
+	UserColumn = "user_id"
+	// APIKeyTable is the table that holds the api_key relation/edge.
+	APIKeyTable = "requests"
 	// APIKeyInverseTable is the table name for the APIKey entity.
 	// It exists in this package in order to avoid circular dependency with the "apikey" package.
 	APIKeyInverseTable = "api_keys"
+	// APIKeyColumn is the table column denoting the api_key relation/edge.
+	APIKeyColumn = "api_key_id"
 	// ExecutionsTable is the table that holds the executions relation/edge.
 	ExecutionsTable = "request_executions"
 	// ExecutionsInverseTable is the table name for the RequestExecution entity.
@@ -57,20 +63,18 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldUserID,
+	FieldAPIKeyID,
 	FieldRequestBody,
 	FieldResponseBody,
 	FieldStatus,
 	FieldDeletedAt,
 }
 
-var (
-	// UserPrimaryKey and UserColumn2 are the table columns denoting the
-	// primary key for the user relation (M2M).
-	UserPrimaryKey = []string{"user_id", "request_id"}
-	// APIKeyPrimaryKey and APIKeyColumn2 are the table columns denoting the
-	// primary key for the api_key relation (M2M).
-	APIKeyPrimaryKey = []string{"api_key_id", "request_id"}
-)
+// ForeignKeys holds the SQL foreign-keys that are owned by the "requests"
+// table and are not defined as standalone fields in the schema.
+var ForeignKeys = []string{
+	"channel_requests",
+}
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -79,12 +83,15 @@ func ValidColumn(column string) bool {
 			return true
 		}
 	}
+	for i := range ForeignKeys {
+		if column == ForeignKeys[i] {
+			return true
+		}
+	}
 	return false
 }
 
 var (
-	// UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
-	UserIDValidator func(string) error
 	// RequestBodyValidator is a validator for the "request_body" field. It is called by the builders before save.
 	RequestBodyValidator func(string) error
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
@@ -129,6 +136,11 @@ func ByUserID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUserID, opts...).ToFunc()
 }
 
+// ByAPIKeyID orders the results by the api_key_id field.
+func ByAPIKeyID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAPIKeyID, opts...).ToFunc()
+}
+
 // ByRequestBody orders the results by the request_body field.
 func ByRequestBody(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRequestBody, opts...).ToFunc()
@@ -149,31 +161,17 @@ func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
 }
 
-// ByUserCount orders the results by user count.
-func ByUserCount(opts ...sql.OrderTermOption) OrderOption {
+// ByUserField orders the results by user field.
+func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newUserStep(), opts...)
+		sqlgraph.OrderByNeighborTerms(s, newUserStep(), sql.OrderByField(field, opts...))
 	}
 }
 
-// ByUser orders the results by user terms.
-func ByUser(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// ByAPIKeyField orders the results by api_key field.
+func ByAPIKeyField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newUserStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
-
-// ByAPIKeyCount orders the results by api_key count.
-func ByAPIKeyCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newAPIKeyStep(), opts...)
-	}
-}
-
-// ByAPIKey orders the results by api_key terms.
-func ByAPIKey(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newAPIKeyStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newAPIKeyStep(), sql.OrderByField(field, opts...))
 	}
 }
 
@@ -194,14 +192,14 @@ func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UserInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, true, UserTable, UserPrimaryKey...),
+		sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
 	)
 }
 func newAPIKeyStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(APIKeyInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, true, APIKeyTable, APIKeyPrimaryKey...),
+		sqlgraph.Edge(sqlgraph.M2O, true, APIKeyTable, APIKeyColumn),
 	)
 }
 func newExecutionsStep() *sqlgraph.Step {

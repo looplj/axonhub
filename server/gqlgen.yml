@@ -1,6 +1,7 @@
 # schema tells gqlgen where the GraphQL schema is located.
 schema:
   - ent.graphql
+  - channel.graphql
   - axonhub.graphql
 
 #exec:

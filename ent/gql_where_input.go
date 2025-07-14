@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/looplj/axonhub/ent/apikey"
+	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/job"
 	"github.com/looplj/axonhub/ent/predicate"
 	"github.com/looplj/axonhub/ent/request"
@@ -22,30 +23,35 @@ type APIKeyWhereInput struct {
 	And        []*APIKeyWhereInput `json:"and,omitempty"`
 
 	// "id" field predicates.
-	ID      *int  `json:"id,omitempty"`
-	IDNEQ   *int  `json:"idNEQ,omitempty"`
-	IDIn    []int `json:"idIn,omitempty"`
-	IDNotIn []int `json:"idNotIn,omitempty"`
-	IDGT    *int  `json:"idGT,omitempty"`
-	IDGTE   *int  `json:"idGTE,omitempty"`
-	IDLT    *int  `json:"idLT,omitempty"`
-	IDLTE   *int  `json:"idLTE,omitempty"`
+	ID      *int64  `json:"id,omitempty"`
+	IDNEQ   *int64  `json:"idNEQ,omitempty"`
+	IDIn    []int64 `json:"idIn,omitempty"`
+	IDNotIn []int64 `json:"idNotIn,omitempty"`
+	IDGT    *int64  `json:"idGT,omitempty"`
+	IDGTE   *int64  `json:"idGTE,omitempty"`
+	IDLT    *int64  `json:"idLT,omitempty"`
+	IDLTE   *int64  `json:"idLTE,omitempty"`
 
 	// "user_id" field predicates.
-	UserID      *int  `json:"userID,omitempty"`
-	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
-	UserIDIn    []int `json:"userIDIn,omitempty"`
-	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
+	UserID      *int64  `json:"userID,omitempty"`
+	UserIDNEQ   *int64  `json:"userIDNEQ,omitempty"`
+	UserIDIn    []int64 `json:"userIDIn,omitempty"`
+	UserIDNotIn []int64 `json:"userIDNotIn,omitempty"`
 
 	// "key" field predicates.
-	Key      *int  `json:"key,omitempty"`
-	KeyNEQ   *int  `json:"keyNEQ,omitempty"`
-	KeyIn    []int `json:"keyIn,omitempty"`
-	KeyNotIn []int `json:"keyNotIn,omitempty"`
-	KeyGT    *int  `json:"keyGT,omitempty"`
-	KeyGTE   *int  `json:"keyGTE,omitempty"`
-	KeyLT    *int  `json:"keyLT,omitempty"`
-	KeyLTE   *int  `json:"keyLTE,omitempty"`
+	Key             *string  `json:"key,omitempty"`
+	KeyNEQ          *string  `json:"keyNEQ,omitempty"`
+	KeyIn           []string `json:"keyIn,omitempty"`
+	KeyNotIn        []string `json:"keyNotIn,omitempty"`
+	KeyGT           *string  `json:"keyGT,omitempty"`
+	KeyGTE          *string  `json:"keyGTE,omitempty"`
+	KeyLT           *string  `json:"keyLT,omitempty"`
+	KeyLTE          *string  `json:"keyLTE,omitempty"`
+	KeyContains     *string  `json:"keyContains,omitempty"`
+	KeyHasPrefix    *string  `json:"keyHasPrefix,omitempty"`
+	KeyHasSuffix    *string  `json:"keyHasSuffix,omitempty"`
+	KeyEqualFold    *string  `json:"keyEqualFold,omitempty"`
+	KeyContainsFold *string  `json:"keyContainsFold,omitempty"`
 
 	// "name" field predicates.
 	Name             *string  `json:"name,omitempty"`
@@ -202,6 +208,21 @@ func (i *APIKeyWhereInput) P() (predicate.APIKey, error) {
 	if i.KeyLTE != nil {
 		predicates = append(predicates, apikey.KeyLTE(*i.KeyLTE))
 	}
+	if i.KeyContains != nil {
+		predicates = append(predicates, apikey.KeyContains(*i.KeyContains))
+	}
+	if i.KeyHasPrefix != nil {
+		predicates = append(predicates, apikey.KeyHasPrefix(*i.KeyHasPrefix))
+	}
+	if i.KeyHasSuffix != nil {
+		predicates = append(predicates, apikey.KeyHasSuffix(*i.KeyHasSuffix))
+	}
+	if i.KeyEqualFold != nil {
+		predicates = append(predicates, apikey.KeyEqualFold(*i.KeyEqualFold))
+	}
+	if i.KeyContainsFold != nil {
+		predicates = append(predicates, apikey.KeyContainsFold(*i.KeyContainsFold))
+	}
 	if i.Name != nil {
 		predicates = append(predicates, apikey.NameEQ(*i.Name))
 	}
@@ -288,6 +309,386 @@ func (i *APIKeyWhereInput) P() (predicate.APIKey, error) {
 	}
 }
 
+// ChannelWhereInput represents a where input for filtering Channel queries.
+type ChannelWhereInput struct {
+	Predicates []predicate.Channel  `json:"-"`
+	Not        *ChannelWhereInput   `json:"not,omitempty"`
+	Or         []*ChannelWhereInput `json:"or,omitempty"`
+	And        []*ChannelWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int64  `json:"id,omitempty"`
+	IDNEQ   *int64  `json:"idNEQ,omitempty"`
+	IDIn    []int64 `json:"idIn,omitempty"`
+	IDNotIn []int64 `json:"idNotIn,omitempty"`
+	IDGT    *int64  `json:"idGT,omitempty"`
+	IDGTE   *int64  `json:"idGTE,omitempty"`
+	IDLT    *int64  `json:"idLT,omitempty"`
+	IDLTE   *int64  `json:"idLTE,omitempty"`
+
+	// "type" field predicates.
+	Type      *channel.Type  `json:"type,omitempty"`
+	TypeNEQ   *channel.Type  `json:"typeNEQ,omitempty"`
+	TypeIn    []channel.Type `json:"typeIn,omitempty"`
+	TypeNotIn []channel.Type `json:"typeNotIn,omitempty"`
+
+	// "base_url" field predicates.
+	BaseURL             *string  `json:"baseURL,omitempty"`
+	BaseURLNEQ          *string  `json:"baseURLNEQ,omitempty"`
+	BaseURLIn           []string `json:"baseURLIn,omitempty"`
+	BaseURLNotIn        []string `json:"baseURLNotIn,omitempty"`
+	BaseURLGT           *string  `json:"baseURLGT,omitempty"`
+	BaseURLGTE          *string  `json:"baseURLGTE,omitempty"`
+	BaseURLLT           *string  `json:"baseURLLT,omitempty"`
+	BaseURLLTE          *string  `json:"baseURLLTE,omitempty"`
+	BaseURLContains     *string  `json:"baseURLContains,omitempty"`
+	BaseURLHasPrefix    *string  `json:"baseURLHasPrefix,omitempty"`
+	BaseURLHasSuffix    *string  `json:"baseURLHasSuffix,omitempty"`
+	BaseURLEqualFold    *string  `json:"baseURLEqualFold,omitempty"`
+	BaseURLContainsFold *string  `json:"baseURLContainsFold,omitempty"`
+
+	// "name" field predicates.
+	Name             *string  `json:"name,omitempty"`
+	NameNEQ          *string  `json:"nameNEQ,omitempty"`
+	NameIn           []string `json:"nameIn,omitempty"`
+	NameNotIn        []string `json:"nameNotIn,omitempty"`
+	NameGT           *string  `json:"nameGT,omitempty"`
+	NameGTE          *string  `json:"nameGTE,omitempty"`
+	NameLT           *string  `json:"nameLT,omitempty"`
+	NameLTE          *string  `json:"nameLTE,omitempty"`
+	NameContains     *string  `json:"nameContains,omitempty"`
+	NameHasPrefix    *string  `json:"nameHasPrefix,omitempty"`
+	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
+	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
+	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+
+	// "api_key" field predicates.
+	APIKey             *string  `json:"apiKey,omitempty"`
+	APIKeyNEQ          *string  `json:"apiKeyNEQ,omitempty"`
+	APIKeyIn           []string `json:"apiKeyIn,omitempty"`
+	APIKeyNotIn        []string `json:"apiKeyNotIn,omitempty"`
+	APIKeyGT           *string  `json:"apiKeyGT,omitempty"`
+	APIKeyGTE          *string  `json:"apiKeyGTE,omitempty"`
+	APIKeyLT           *string  `json:"apiKeyLT,omitempty"`
+	APIKeyLTE          *string  `json:"apiKeyLTE,omitempty"`
+	APIKeyContains     *string  `json:"apiKeyContains,omitempty"`
+	APIKeyHasPrefix    *string  `json:"apiKeyHasPrefix,omitempty"`
+	APIKeyHasSuffix    *string  `json:"apiKeyHasSuffix,omitempty"`
+	APIKeyEqualFold    *string  `json:"apiKeyEqualFold,omitempty"`
+	APIKeyContainsFold *string  `json:"apiKeyContainsFold,omitempty"`
+
+	// "default_test_model" field predicates.
+	DefaultTestModel             *string  `json:"defaultTestModel,omitempty"`
+	DefaultTestModelNEQ          *string  `json:"defaultTestModelNEQ,omitempty"`
+	DefaultTestModelIn           []string `json:"defaultTestModelIn,omitempty"`
+	DefaultTestModelNotIn        []string `json:"defaultTestModelNotIn,omitempty"`
+	DefaultTestModelGT           *string  `json:"defaultTestModelGT,omitempty"`
+	DefaultTestModelGTE          *string  `json:"defaultTestModelGTE,omitempty"`
+	DefaultTestModelLT           *string  `json:"defaultTestModelLT,omitempty"`
+	DefaultTestModelLTE          *string  `json:"defaultTestModelLTE,omitempty"`
+	DefaultTestModelContains     *string  `json:"defaultTestModelContains,omitempty"`
+	DefaultTestModelHasPrefix    *string  `json:"defaultTestModelHasPrefix,omitempty"`
+	DefaultTestModelHasSuffix    *string  `json:"defaultTestModelHasSuffix,omitempty"`
+	DefaultTestModelEqualFold    *string  `json:"defaultTestModelEqualFold,omitempty"`
+	DefaultTestModelContainsFold *string  `json:"defaultTestModelContainsFold,omitempty"`
+
+	// "requests" edge predicates.
+	HasRequests     *bool                `json:"hasRequests,omitempty"`
+	HasRequestsWith []*RequestWhereInput `json:"hasRequestsWith,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *ChannelWhereInput) AddPredicates(predicates ...predicate.Channel) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the ChannelWhereInput filter on the ChannelQuery builder.
+func (i *ChannelWhereInput) Filter(q *ChannelQuery) (*ChannelQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyChannelWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyChannelWhereInput is returned in case the ChannelWhereInput is empty.
+var ErrEmptyChannelWhereInput = errors.New("ent: empty predicate ChannelWhereInput")
+
+// P returns a predicate for filtering channels.
+// An error is returned if the input is empty or invalid.
+func (i *ChannelWhereInput) P() (predicate.Channel, error) {
+	var predicates []predicate.Channel
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, channel.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.Channel, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, channel.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.Channel, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, channel.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, channel.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, channel.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, channel.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, channel.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, channel.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, channel.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, channel.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, channel.IDLTE(*i.IDLTE))
+	}
+	if i.Type != nil {
+		predicates = append(predicates, channel.TypeEQ(*i.Type))
+	}
+	if i.TypeNEQ != nil {
+		predicates = append(predicates, channel.TypeNEQ(*i.TypeNEQ))
+	}
+	if len(i.TypeIn) > 0 {
+		predicates = append(predicates, channel.TypeIn(i.TypeIn...))
+	}
+	if len(i.TypeNotIn) > 0 {
+		predicates = append(predicates, channel.TypeNotIn(i.TypeNotIn...))
+	}
+	if i.BaseURL != nil {
+		predicates = append(predicates, channel.BaseURLEQ(*i.BaseURL))
+	}
+	if i.BaseURLNEQ != nil {
+		predicates = append(predicates, channel.BaseURLNEQ(*i.BaseURLNEQ))
+	}
+	if len(i.BaseURLIn) > 0 {
+		predicates = append(predicates, channel.BaseURLIn(i.BaseURLIn...))
+	}
+	if len(i.BaseURLNotIn) > 0 {
+		predicates = append(predicates, channel.BaseURLNotIn(i.BaseURLNotIn...))
+	}
+	if i.BaseURLGT != nil {
+		predicates = append(predicates, channel.BaseURLGT(*i.BaseURLGT))
+	}
+	if i.BaseURLGTE != nil {
+		predicates = append(predicates, channel.BaseURLGTE(*i.BaseURLGTE))
+	}
+	if i.BaseURLLT != nil {
+		predicates = append(predicates, channel.BaseURLLT(*i.BaseURLLT))
+	}
+	if i.BaseURLLTE != nil {
+		predicates = append(predicates, channel.BaseURLLTE(*i.BaseURLLTE))
+	}
+	if i.BaseURLContains != nil {
+		predicates = append(predicates, channel.BaseURLContains(*i.BaseURLContains))
+	}
+	if i.BaseURLHasPrefix != nil {
+		predicates = append(predicates, channel.BaseURLHasPrefix(*i.BaseURLHasPrefix))
+	}
+	if i.BaseURLHasSuffix != nil {
+		predicates = append(predicates, channel.BaseURLHasSuffix(*i.BaseURLHasSuffix))
+	}
+	if i.BaseURLEqualFold != nil {
+		predicates = append(predicates, channel.BaseURLEqualFold(*i.BaseURLEqualFold))
+	}
+	if i.BaseURLContainsFold != nil {
+		predicates = append(predicates, channel.BaseURLContainsFold(*i.BaseURLContainsFold))
+	}
+	if i.Name != nil {
+		predicates = append(predicates, channel.NameEQ(*i.Name))
+	}
+	if i.NameNEQ != nil {
+		predicates = append(predicates, channel.NameNEQ(*i.NameNEQ))
+	}
+	if len(i.NameIn) > 0 {
+		predicates = append(predicates, channel.NameIn(i.NameIn...))
+	}
+	if len(i.NameNotIn) > 0 {
+		predicates = append(predicates, channel.NameNotIn(i.NameNotIn...))
+	}
+	if i.NameGT != nil {
+		predicates = append(predicates, channel.NameGT(*i.NameGT))
+	}
+	if i.NameGTE != nil {
+		predicates = append(predicates, channel.NameGTE(*i.NameGTE))
+	}
+	if i.NameLT != nil {
+		predicates = append(predicates, channel.NameLT(*i.NameLT))
+	}
+	if i.NameLTE != nil {
+		predicates = append(predicates, channel.NameLTE(*i.NameLTE))
+	}
+	if i.NameContains != nil {
+		predicates = append(predicates, channel.NameContains(*i.NameContains))
+	}
+	if i.NameHasPrefix != nil {
+		predicates = append(predicates, channel.NameHasPrefix(*i.NameHasPrefix))
+	}
+	if i.NameHasSuffix != nil {
+		predicates = append(predicates, channel.NameHasSuffix(*i.NameHasSuffix))
+	}
+	if i.NameEqualFold != nil {
+		predicates = append(predicates, channel.NameEqualFold(*i.NameEqualFold))
+	}
+	if i.NameContainsFold != nil {
+		predicates = append(predicates, channel.NameContainsFold(*i.NameContainsFold))
+	}
+	if i.APIKey != nil {
+		predicates = append(predicates, channel.APIKeyEQ(*i.APIKey))
+	}
+	if i.APIKeyNEQ != nil {
+		predicates = append(predicates, channel.APIKeyNEQ(*i.APIKeyNEQ))
+	}
+	if len(i.APIKeyIn) > 0 {
+		predicates = append(predicates, channel.APIKeyIn(i.APIKeyIn...))
+	}
+	if len(i.APIKeyNotIn) > 0 {
+		predicates = append(predicates, channel.APIKeyNotIn(i.APIKeyNotIn...))
+	}
+	if i.APIKeyGT != nil {
+		predicates = append(predicates, channel.APIKeyGT(*i.APIKeyGT))
+	}
+	if i.APIKeyGTE != nil {
+		predicates = append(predicates, channel.APIKeyGTE(*i.APIKeyGTE))
+	}
+	if i.APIKeyLT != nil {
+		predicates = append(predicates, channel.APIKeyLT(*i.APIKeyLT))
+	}
+	if i.APIKeyLTE != nil {
+		predicates = append(predicates, channel.APIKeyLTE(*i.APIKeyLTE))
+	}
+	if i.APIKeyContains != nil {
+		predicates = append(predicates, channel.APIKeyContains(*i.APIKeyContains))
+	}
+	if i.APIKeyHasPrefix != nil {
+		predicates = append(predicates, channel.APIKeyHasPrefix(*i.APIKeyHasPrefix))
+	}
+	if i.APIKeyHasSuffix != nil {
+		predicates = append(predicates, channel.APIKeyHasSuffix(*i.APIKeyHasSuffix))
+	}
+	if i.APIKeyEqualFold != nil {
+		predicates = append(predicates, channel.APIKeyEqualFold(*i.APIKeyEqualFold))
+	}
+	if i.APIKeyContainsFold != nil {
+		predicates = append(predicates, channel.APIKeyContainsFold(*i.APIKeyContainsFold))
+	}
+	if i.DefaultTestModel != nil {
+		predicates = append(predicates, channel.DefaultTestModelEQ(*i.DefaultTestModel))
+	}
+	if i.DefaultTestModelNEQ != nil {
+		predicates = append(predicates, channel.DefaultTestModelNEQ(*i.DefaultTestModelNEQ))
+	}
+	if len(i.DefaultTestModelIn) > 0 {
+		predicates = append(predicates, channel.DefaultTestModelIn(i.DefaultTestModelIn...))
+	}
+	if len(i.DefaultTestModelNotIn) > 0 {
+		predicates = append(predicates, channel.DefaultTestModelNotIn(i.DefaultTestModelNotIn...))
+	}
+	if i.DefaultTestModelGT != nil {
+		predicates = append(predicates, channel.DefaultTestModelGT(*i.DefaultTestModelGT))
+	}
+	if i.DefaultTestModelGTE != nil {
+		predicates = append(predicates, channel.DefaultTestModelGTE(*i.DefaultTestModelGTE))
+	}
+	if i.DefaultTestModelLT != nil {
+		predicates = append(predicates, channel.DefaultTestModelLT(*i.DefaultTestModelLT))
+	}
+	if i.DefaultTestModelLTE != nil {
+		predicates = append(predicates, channel.DefaultTestModelLTE(*i.DefaultTestModelLTE))
+	}
+	if i.DefaultTestModelContains != nil {
+		predicates = append(predicates, channel.DefaultTestModelContains(*i.DefaultTestModelContains))
+	}
+	if i.DefaultTestModelHasPrefix != nil {
+		predicates = append(predicates, channel.DefaultTestModelHasPrefix(*i.DefaultTestModelHasPrefix))
+	}
+	if i.DefaultTestModelHasSuffix != nil {
+		predicates = append(predicates, channel.DefaultTestModelHasSuffix(*i.DefaultTestModelHasSuffix))
+	}
+	if i.DefaultTestModelEqualFold != nil {
+		predicates = append(predicates, channel.DefaultTestModelEqualFold(*i.DefaultTestModelEqualFold))
+	}
+	if i.DefaultTestModelContainsFold != nil {
+		predicates = append(predicates, channel.DefaultTestModelContainsFold(*i.DefaultTestModelContainsFold))
+	}
+
+	if i.HasRequests != nil {
+		p := channel.HasRequests()
+		if !*i.HasRequests {
+			p = channel.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasRequestsWith) > 0 {
+		with := make([]predicate.Request, 0, len(i.HasRequestsWith))
+		for _, w := range i.HasRequestsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasRequestsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, channel.HasRequestsWith(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyChannelWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return channel.And(predicates...), nil
+	}
+}
+
 // JobWhereInput represents a where input for filtering Job queries.
 type JobWhereInput struct {
 	Predicates []predicate.Job  `json:"-"`
@@ -296,14 +697,14 @@ type JobWhereInput struct {
 	And        []*JobWhereInput `json:"and,omitempty"`
 
 	// "id" field predicates.
-	ID      *int  `json:"id,omitempty"`
-	IDNEQ   *int  `json:"idNEQ,omitempty"`
-	IDIn    []int `json:"idIn,omitempty"`
-	IDNotIn []int `json:"idNotIn,omitempty"`
-	IDGT    *int  `json:"idGT,omitempty"`
-	IDGTE   *int  `json:"idGTE,omitempty"`
-	IDLT    *int  `json:"idLT,omitempty"`
-	IDLTE   *int  `json:"idLTE,omitempty"`
+	ID      *int64  `json:"id,omitempty"`
+	IDNEQ   *int64  `json:"idNEQ,omitempty"`
+	IDIn    []int64 `json:"idIn,omitempty"`
+	IDNotIn []int64 `json:"idNotIn,omitempty"`
+	IDGT    *int64  `json:"idGT,omitempty"`
+	IDGTE   *int64  `json:"idGTE,omitempty"`
+	IDLT    *int64  `json:"idLT,omitempty"`
+	IDLTE   *int64  `json:"idLTE,omitempty"`
 
 	// "owner_id" field predicates.
 	OwnerID      *int  `json:"ownerID,omitempty"`
@@ -562,29 +963,26 @@ type RequestWhereInput struct {
 	And        []*RequestWhereInput `json:"and,omitempty"`
 
 	// "id" field predicates.
-	ID      *int  `json:"id,omitempty"`
-	IDNEQ   *int  `json:"idNEQ,omitempty"`
-	IDIn    []int `json:"idIn,omitempty"`
-	IDNotIn []int `json:"idNotIn,omitempty"`
-	IDGT    *int  `json:"idGT,omitempty"`
-	IDGTE   *int  `json:"idGTE,omitempty"`
-	IDLT    *int  `json:"idLT,omitempty"`
-	IDLTE   *int  `json:"idLTE,omitempty"`
+	ID      *int64  `json:"id,omitempty"`
+	IDNEQ   *int64  `json:"idNEQ,omitempty"`
+	IDIn    []int64 `json:"idIn,omitempty"`
+	IDNotIn []int64 `json:"idNotIn,omitempty"`
+	IDGT    *int64  `json:"idGT,omitempty"`
+	IDGTE   *int64  `json:"idGTE,omitempty"`
+	IDLT    *int64  `json:"idLT,omitempty"`
+	IDLTE   *int64  `json:"idLTE,omitempty"`
 
 	// "user_id" field predicates.
-	UserID             *string  `json:"userID,omitempty"`
-	UserIDNEQ          *string  `json:"userIDNEQ,omitempty"`
-	UserIDIn           []string `json:"userIDIn,omitempty"`
-	UserIDNotIn        []string `json:"userIDNotIn,omitempty"`
-	UserIDGT           *string  `json:"userIDGT,omitempty"`
-	UserIDGTE          *string  `json:"userIDGTE,omitempty"`
-	UserIDLT           *string  `json:"userIDLT,omitempty"`
-	UserIDLTE          *string  `json:"userIDLTE,omitempty"`
-	UserIDContains     *string  `json:"userIDContains,omitempty"`
-	UserIDHasPrefix    *string  `json:"userIDHasPrefix,omitempty"`
-	UserIDHasSuffix    *string  `json:"userIDHasSuffix,omitempty"`
-	UserIDEqualFold    *string  `json:"userIDEqualFold,omitempty"`
-	UserIDContainsFold *string  `json:"userIDContainsFold,omitempty"`
+	UserID      *int64  `json:"userID,omitempty"`
+	UserIDNEQ   *int64  `json:"userIDNEQ,omitempty"`
+	UserIDIn    []int64 `json:"userIDIn,omitempty"`
+	UserIDNotIn []int64 `json:"userIDNotIn,omitempty"`
+
+	// "api_key_id" field predicates.
+	APIKeyID      *int64  `json:"apiKeyID,omitempty"`
+	APIKeyIDNEQ   *int64  `json:"apiKeyIDNEQ,omitempty"`
+	APIKeyIDIn    []int64 `json:"apiKeyIDIn,omitempty"`
+	APIKeyIDNotIn []int64 `json:"apiKeyIDNotIn,omitempty"`
 
 	// "request_body" field predicates.
 	RequestBody             *string  `json:"requestBody,omitempty"`
@@ -752,32 +1150,17 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	if len(i.UserIDNotIn) > 0 {
 		predicates = append(predicates, request.UserIDNotIn(i.UserIDNotIn...))
 	}
-	if i.UserIDGT != nil {
-		predicates = append(predicates, request.UserIDGT(*i.UserIDGT))
+	if i.APIKeyID != nil {
+		predicates = append(predicates, request.APIKeyIDEQ(*i.APIKeyID))
 	}
-	if i.UserIDGTE != nil {
-		predicates = append(predicates, request.UserIDGTE(*i.UserIDGTE))
+	if i.APIKeyIDNEQ != nil {
+		predicates = append(predicates, request.APIKeyIDNEQ(*i.APIKeyIDNEQ))
 	}
-	if i.UserIDLT != nil {
-		predicates = append(predicates, request.UserIDLT(*i.UserIDLT))
+	if len(i.APIKeyIDIn) > 0 {
+		predicates = append(predicates, request.APIKeyIDIn(i.APIKeyIDIn...))
 	}
-	if i.UserIDLTE != nil {
-		predicates = append(predicates, request.UserIDLTE(*i.UserIDLTE))
-	}
-	if i.UserIDContains != nil {
-		predicates = append(predicates, request.UserIDContains(*i.UserIDContains))
-	}
-	if i.UserIDHasPrefix != nil {
-		predicates = append(predicates, request.UserIDHasPrefix(*i.UserIDHasPrefix))
-	}
-	if i.UserIDHasSuffix != nil {
-		predicates = append(predicates, request.UserIDHasSuffix(*i.UserIDHasSuffix))
-	}
-	if i.UserIDEqualFold != nil {
-		predicates = append(predicates, request.UserIDEqualFold(*i.UserIDEqualFold))
-	}
-	if i.UserIDContainsFold != nil {
-		predicates = append(predicates, request.UserIDContainsFold(*i.UserIDContainsFold))
+	if len(i.APIKeyIDNotIn) > 0 {
+		predicates = append(predicates, request.APIKeyIDNotIn(i.APIKeyIDNotIn...))
 	}
 	if i.RequestBody != nil {
 		predicates = append(predicates, request.RequestBodyEQ(*i.RequestBody))
@@ -966,30 +1349,30 @@ type RequestExecutionWhereInput struct {
 	And        []*RequestExecutionWhereInput `json:"and,omitempty"`
 
 	// "id" field predicates.
-	ID      *int  `json:"id,omitempty"`
-	IDNEQ   *int  `json:"idNEQ,omitempty"`
-	IDIn    []int `json:"idIn,omitempty"`
-	IDNotIn []int `json:"idNotIn,omitempty"`
-	IDGT    *int  `json:"idGT,omitempty"`
-	IDGTE   *int  `json:"idGTE,omitempty"`
-	IDLT    *int  `json:"idLT,omitempty"`
-	IDLTE   *int  `json:"idLTE,omitempty"`
+	ID      *int64  `json:"id,omitempty"`
+	IDNEQ   *int64  `json:"idNEQ,omitempty"`
+	IDIn    []int64 `json:"idIn,omitempty"`
+	IDNotIn []int64 `json:"idNotIn,omitempty"`
+	IDGT    *int64  `json:"idGT,omitempty"`
+	IDGTE   *int64  `json:"idGTE,omitempty"`
+	IDLT    *int64  `json:"idLT,omitempty"`
+	IDLTE   *int64  `json:"idLTE,omitempty"`
 
 	// "user_id" field predicates.
-	UserID      *int  `json:"userID,omitempty"`
-	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
-	UserIDIn    []int `json:"userIDIn,omitempty"`
-	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
-	UserIDGT    *int  `json:"userIDGT,omitempty"`
-	UserIDGTE   *int  `json:"userIDGTE,omitempty"`
-	UserIDLT    *int  `json:"userIDLT,omitempty"`
-	UserIDLTE   *int  `json:"userIDLTE,omitempty"`
+	UserID      *int64  `json:"userID,omitempty"`
+	UserIDNEQ   *int64  `json:"userIDNEQ,omitempty"`
+	UserIDIn    []int64 `json:"userIDIn,omitempty"`
+	UserIDNotIn []int64 `json:"userIDNotIn,omitempty"`
+	UserIDGT    *int64  `json:"userIDGT,omitempty"`
+	UserIDGTE   *int64  `json:"userIDGTE,omitempty"`
+	UserIDLT    *int64  `json:"userIDLT,omitempty"`
+	UserIDLTE   *int64  `json:"userIDLTE,omitempty"`
 
 	// "request_id" field predicates.
-	RequestID      *int  `json:"requestID,omitempty"`
-	RequestIDNEQ   *int  `json:"requestIDNEQ,omitempty"`
-	RequestIDIn    []int `json:"requestIDIn,omitempty"`
-	RequestIDNotIn []int `json:"requestIDNotIn,omitempty"`
+	RequestID      *int64  `json:"requestID,omitempty"`
+	RequestIDNEQ   *int64  `json:"requestIDNEQ,omitempty"`
+	RequestIDIn    []int64 `json:"requestIDIn,omitempty"`
+	RequestIDNotIn []int64 `json:"requestIDNotIn,omitempty"`
 
 	// "request" edge predicates.
 	HasRequest     *bool                `json:"hasRequest,omitempty"`
@@ -1164,24 +1547,14 @@ type UserWhereInput struct {
 	And        []*UserWhereInput `json:"and,omitempty"`
 
 	// "id" field predicates.
-	ID      *int  `json:"id,omitempty"`
-	IDNEQ   *int  `json:"idNEQ,omitempty"`
-	IDIn    []int `json:"idIn,omitempty"`
-	IDNotIn []int `json:"idNotIn,omitempty"`
-	IDGT    *int  `json:"idGT,omitempty"`
-	IDGTE   *int  `json:"idGTE,omitempty"`
-	IDLT    *int  `json:"idLT,omitempty"`
-	IDLTE   *int  `json:"idLTE,omitempty"`
-
-	// "user_id" field predicates.
-	UserID      *int  `json:"userID,omitempty"`
-	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
-	UserIDIn    []int `json:"userIDIn,omitempty"`
-	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
-	UserIDGT    *int  `json:"userIDGT,omitempty"`
-	UserIDGTE   *int  `json:"userIDGTE,omitempty"`
-	UserIDLT    *int  `json:"userIDLT,omitempty"`
-	UserIDLTE   *int  `json:"userIDLTE,omitempty"`
+	ID      *int64  `json:"id,omitempty"`
+	IDNEQ   *int64  `json:"idNEQ,omitempty"`
+	IDIn    []int64 `json:"idIn,omitempty"`
+	IDNotIn []int64 `json:"idNotIn,omitempty"`
+	IDGT    *int64  `json:"idGT,omitempty"`
+	IDGTE   *int64  `json:"idGTE,omitempty"`
+	IDLT    *int64  `json:"idLT,omitempty"`
+	IDLTE   *int64  `json:"idLTE,omitempty"`
 
 	// "email" field predicates.
 	Email             *string  `json:"email,omitempty"`
@@ -1316,30 +1689,6 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 	}
 	if i.IDLTE != nil {
 		predicates = append(predicates, user.IDLTE(*i.IDLTE))
-	}
-	if i.UserID != nil {
-		predicates = append(predicates, user.UserIDEQ(*i.UserID))
-	}
-	if i.UserIDNEQ != nil {
-		predicates = append(predicates, user.UserIDNEQ(*i.UserIDNEQ))
-	}
-	if len(i.UserIDIn) > 0 {
-		predicates = append(predicates, user.UserIDIn(i.UserIDIn...))
-	}
-	if len(i.UserIDNotIn) > 0 {
-		predicates = append(predicates, user.UserIDNotIn(i.UserIDNotIn...))
-	}
-	if i.UserIDGT != nil {
-		predicates = append(predicates, user.UserIDGT(*i.UserIDGT))
-	}
-	if i.UserIDGTE != nil {
-		predicates = append(predicates, user.UserIDGTE(*i.UserIDGTE))
-	}
-	if i.UserIDLT != nil {
-		predicates = append(predicates, user.UserIDLT(*i.UserIDLT))
-	}
-	if i.UserIDLTE != nil {
-		predicates = append(predicates, user.UserIDLTE(*i.UserIDLTE))
 	}
 	if i.Email != nil {
 		predicates = append(predicates, user.EmailEQ(*i.Email))

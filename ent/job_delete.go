@@ -40,7 +40,7 @@ func (jd *JobDelete) ExecX(ctx context.Context) int {
 }
 
 func (jd *JobDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(job.Table, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewDeleteSpec(job.Table, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt64))
 	if ps := jd.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

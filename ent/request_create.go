@@ -25,8 +25,14 @@ type RequestCreate struct {
 }
 
 // SetUserID sets the "user_id" field.
-func (rc *RequestCreate) SetUserID(s string) *RequestCreate {
-	rc.mutation.SetUserID(s)
+func (rc *RequestCreate) SetUserID(i int64) *RequestCreate {
+	rc.mutation.SetUserID(i)
+	return rc
+}
+
+// SetAPIKeyID sets the "api_key_id" field.
+func (rc *RequestCreate) SetAPIKeyID(i int64) *RequestCreate {
+	rc.mutation.SetAPIKeyID(i)
 	return rc
 }
 
@@ -62,45 +68,25 @@ func (rc *RequestCreate) SetNillableDeletedAt(i *int64) *RequestCreate {
 	return rc
 }
 
-// AddUserIDs adds the "user" edge to the User entity by IDs.
-func (rc *RequestCreate) AddUserIDs(ids ...int) *RequestCreate {
-	rc.mutation.AddUserIDs(ids...)
-	return rc
+// SetUser sets the "user" edge to the User entity.
+func (rc *RequestCreate) SetUser(u *User) *RequestCreate {
+	return rc.SetUserID(u.ID)
 }
 
-// AddUser adds the "user" edges to the User entity.
-func (rc *RequestCreate) AddUser(u ...*User) *RequestCreate {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
-	}
-	return rc.AddUserIDs(ids...)
-}
-
-// AddAPIKeyIDs adds the "api_key" edge to the APIKey entity by IDs.
-func (rc *RequestCreate) AddAPIKeyIDs(ids ...int) *RequestCreate {
-	rc.mutation.AddAPIKeyIDs(ids...)
-	return rc
-}
-
-// AddAPIKey adds the "api_key" edges to the APIKey entity.
-func (rc *RequestCreate) AddAPIKey(a ...*APIKey) *RequestCreate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
-	}
-	return rc.AddAPIKeyIDs(ids...)
+// SetAPIKey sets the "api_key" edge to the APIKey entity.
+func (rc *RequestCreate) SetAPIKey(a *APIKey) *RequestCreate {
+	return rc.SetAPIKeyID(a.ID)
 }
 
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
-func (rc *RequestCreate) AddExecutionIDs(ids ...int) *RequestCreate {
+func (rc *RequestCreate) AddExecutionIDs(ids ...int64) *RequestCreate {
 	rc.mutation.AddExecutionIDs(ids...)
 	return rc
 }
 
 // AddExecutions adds the "executions" edges to the RequestExecution entity.
 func (rc *RequestCreate) AddExecutions(r ...*RequestExecution) *RequestCreate {
-	ids := make([]int, len(r))
+	ids := make([]int64, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -153,10 +139,8 @@ func (rc *RequestCreate) check() error {
 	if _, ok := rc.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "Request.user_id"`)}
 	}
-	if v, ok := rc.mutation.UserID(); ok {
-		if err := request.UserIDValidator(v); err != nil {
-			return &ValidationError{Name: "user_id", err: fmt.Errorf(`ent: validator failed for field "Request.user_id": %w`, err)}
-		}
+	if _, ok := rc.mutation.APIKeyID(); !ok {
+		return &ValidationError{Name: "api_key_id", err: errors.New(`ent: missing required field "Request.api_key_id"`)}
 	}
 	if _, ok := rc.mutation.RequestBody(); !ok {
 		return &ValidationError{Name: "request_body", err: errors.New(`ent: missing required field "Request.request_body"`)}
@@ -180,6 +164,12 @@ func (rc *RequestCreate) check() error {
 	if _, ok := rc.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Request.deleted_at"`)}
 	}
+	if len(rc.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Request.user"`)}
+	}
+	if len(rc.mutation.APIKeyIDs()) == 0 {
+		return &ValidationError{Name: "api_key", err: errors.New(`ent: missing required edge "Request.api_key"`)}
+	}
 	return nil
 }
 
@@ -195,7 +185,7 @@ func (rc *RequestCreate) sqlSave(ctx context.Context) (*Request, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	_node.ID = int64(id)
 	rc.mutation.id = &_node.ID
 	rc.mutation.done = true
 	return _node, nil
@@ -204,13 +194,9 @@ func (rc *RequestCreate) sqlSave(ctx context.Context) (*Request, error) {
 func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Request{config: rc.config}
-		_spec = sqlgraph.NewCreateSpec(request.Table, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt))
+		_spec = sqlgraph.NewCreateSpec(request.Table, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64))
 	)
 	_spec.OnConflict = rc.conflict
-	if value, ok := rc.mutation.UserID(); ok {
-		_spec.SetField(request.FieldUserID, field.TypeString, value)
-		_node.UserID = value
-	}
 	if value, ok := rc.mutation.RequestBody(); ok {
 		_spec.SetField(request.FieldRequestBody, field.TypeString, value)
 		_node.RequestBody = value
@@ -229,34 +215,36 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	}
 	if nodes := rc.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
 			Table:   request.UserTable,
-			Columns: request.UserPrimaryKey,
+			Columns: []string{request.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_node.UserID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := rc.mutation.APIKeyIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
 			Table:   request.APIKeyTable,
-			Columns: request.APIKeyPrimaryKey,
+			Columns: []string{request.APIKeyColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_node.APIKeyID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := rc.mutation.ExecutionsIDs(); len(nodes) > 0 {
@@ -267,7 +255,7 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -383,6 +371,9 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 		if _, exists := u.create.mutation.UserID(); exists {
 			s.SetIgnore(request.FieldUserID)
 		}
+		if _, exists := u.create.mutation.APIKeyID(); exists {
+			s.SetIgnore(request.FieldAPIKeyID)
+		}
 		if _, exists := u.create.mutation.RequestBody(); exists {
 			s.SetIgnore(request.FieldRequestBody)
 		}
@@ -482,7 +473,7 @@ func (u *RequestUpsertOne) ExecX(ctx context.Context) {
 }
 
 // Exec executes the UPSERT query and returns the inserted/updated ID.
-func (u *RequestUpsertOne) ID(ctx context.Context) (id int, err error) {
+func (u *RequestUpsertOne) ID(ctx context.Context) (id int64, err error) {
 	node, err := u.create.Save(ctx)
 	if err != nil {
 		return id, err
@@ -491,7 +482,7 @@ func (u *RequestUpsertOne) ID(ctx context.Context) (id int, err error) {
 }
 
 // IDX is like ID, but panics if an error occurs.
-func (u *RequestUpsertOne) IDX(ctx context.Context) int {
+func (u *RequestUpsertOne) IDX(ctx context.Context) int64 {
 	id, err := u.ID(ctx)
 	if err != nil {
 		panic(err)
@@ -548,7 +539,7 @@ func (rcb *RequestCreateBulk) Save(ctx context.Context) ([]*Request, error) {
 				mutation.id = &nodes[i].ID
 				if specs[i].ID.Value != nil {
 					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
+					nodes[i].ID = int64(id)
 				}
 				mutation.done = true
 				return nodes[i], nil
@@ -644,6 +635,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 		for _, b := range u.create.builders {
 			if _, exists := b.mutation.UserID(); exists {
 				s.SetIgnore(request.FieldUserID)
+			}
+			if _, exists := b.mutation.APIKeyID(); exists {
+				s.SetIgnore(request.FieldAPIKeyID)
 			}
 			if _, exists := b.mutation.RequestBody(); exists {
 				s.SetIgnore(request.FieldRequestBody)
