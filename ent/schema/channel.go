@@ -44,7 +44,7 @@ func (Channel) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("requests", Request.Type).
 			Annotations(
-				entgql.Skip(entgql.SkipMutationCreateInput),
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
 			),
 	}

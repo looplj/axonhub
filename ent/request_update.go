@@ -56,27 +56,6 @@ func (ru *RequestUpdate) SetNillableStatus(r *request.Status) *RequestUpdate {
 	return ru
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (ru *RequestUpdate) SetDeletedAt(i int) *RequestUpdate {
-	ru.mutation.ResetDeletedAt()
-	ru.mutation.SetDeletedAt(i)
-	return ru
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (ru *RequestUpdate) SetNillableDeletedAt(i *int) *RequestUpdate {
-	if i != nil {
-		ru.SetDeletedAt(*i)
-	}
-	return ru
-}
-
-// AddDeletedAt adds i to the "deleted_at" field.
-func (ru *RequestUpdate) AddDeletedAt(i int) *RequestUpdate {
-	ru.mutation.AddDeletedAt(i)
-	return ru
-}
-
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
 func (ru *RequestUpdate) AddExecutionIDs(ids ...int) *RequestUpdate {
 	ru.mutation.AddExecutionIDs(ids...)
@@ -179,12 +158,6 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := ru.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 	}
-	if value, ok := ru.mutation.DeletedAt(); ok {
-		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := ru.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(request.FieldDeletedAt, field.TypeInt, value)
-	}
 	if ru.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -275,27 +248,6 @@ func (ruo *RequestUpdateOne) SetNillableStatus(r *request.Status) *RequestUpdate
 	if r != nil {
 		ruo.SetStatus(*r)
 	}
-	return ruo
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (ruo *RequestUpdateOne) SetDeletedAt(i int) *RequestUpdateOne {
-	ruo.mutation.ResetDeletedAt()
-	ruo.mutation.SetDeletedAt(i)
-	return ruo
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (ruo *RequestUpdateOne) SetNillableDeletedAt(i *int) *RequestUpdateOne {
-	if i != nil {
-		ruo.SetDeletedAt(*i)
-	}
-	return ruo
-}
-
-// AddDeletedAt adds i to the "deleted_at" field.
-func (ruo *RequestUpdateOne) AddDeletedAt(i int) *RequestUpdateOne {
-	ruo.mutation.AddDeletedAt(i)
 	return ruo
 }
 
@@ -430,12 +382,6 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 	}
 	if value, ok := ruo.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
-	}
-	if value, ok := ruo.mutation.DeletedAt(); ok {
-		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := ruo.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(request.FieldDeletedAt, field.TypeInt, value)
 	}
 	if ruo.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{

@@ -1851,8 +1851,6 @@ type RequestMutation struct {
 	request_body      *string
 	response_body     *string
 	status            *request.Status
-	deleted_at        *int
-	adddeleted_at     *int
 	clearedFields     map[string]struct{}
 	user              *int
 	cleareduser       bool
@@ -2144,62 +2142,6 @@ func (m *RequestMutation) ResetStatus() {
 	m.status = nil
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (m *RequestMutation) SetDeletedAt(i int) {
-	m.deleted_at = &i
-	m.adddeleted_at = nil
-}
-
-// DeletedAt returns the value of the "deleted_at" field in the mutation.
-func (m *RequestMutation) DeletedAt() (r int, exists bool) {
-	v := m.deleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldDeletedAt returns the old "deleted_at" field's value of the Request entity.
-// If the Request object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
-	}
-	return oldValue.DeletedAt, nil
-}
-
-// AddDeletedAt adds i to the "deleted_at" field.
-func (m *RequestMutation) AddDeletedAt(i int) {
-	if m.adddeleted_at != nil {
-		*m.adddeleted_at += i
-	} else {
-		m.adddeleted_at = &i
-	}
-}
-
-// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
-func (m *RequestMutation) AddedDeletedAt() (r int, exists bool) {
-	v := m.adddeleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetDeletedAt resets all changes to the "deleted_at" field.
-func (m *RequestMutation) ResetDeletedAt() {
-	m.deleted_at = nil
-	m.adddeleted_at = nil
-}
-
 // ClearUser clears the "user" edge to the User entity.
 func (m *RequestMutation) ClearUser() {
 	m.cleareduser = true
@@ -2342,7 +2284,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 5)
 	if m.user != nil {
 		fields = append(fields, request.FieldUserID)
 	}
@@ -2357,9 +2299,6 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, request.FieldStatus)
-	}
-	if m.deleted_at != nil {
-		fields = append(fields, request.FieldDeletedAt)
 	}
 	return fields
 }
@@ -2379,8 +2318,6 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.ResponseBody()
 	case request.FieldStatus:
 		return m.Status()
-	case request.FieldDeletedAt:
-		return m.DeletedAt()
 	}
 	return nil, false
 }
@@ -2400,8 +2337,6 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldResponseBody(ctx)
 	case request.FieldStatus:
 		return m.OldStatus(ctx)
-	case request.FieldDeletedAt:
-		return m.OldDeletedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Request field %s", name)
 }
@@ -2446,13 +2381,6 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetStatus(v)
 		return nil
-	case request.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetDeletedAt(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Request field %s", name)
 }
@@ -2461,9 +2389,6 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *RequestMutation) AddedFields() []string {
 	var fields []string
-	if m.adddeleted_at != nil {
-		fields = append(fields, request.FieldDeletedAt)
-	}
 	return fields
 }
 
@@ -2472,8 +2397,6 @@ func (m *RequestMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *RequestMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case request.FieldDeletedAt:
-		return m.AddedDeletedAt()
 	}
 	return nil, false
 }
@@ -2483,13 +2406,6 @@ func (m *RequestMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *RequestMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case request.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddDeletedAt(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Request numeric field %s", name)
 }
@@ -2531,9 +2447,6 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldStatus:
 		m.ResetStatus()
-		return nil
-	case request.FieldDeletedAt:
-		m.ResetDeletedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Request field %s", name)
@@ -2667,6 +2580,13 @@ type RequestExecutionMutation struct {
 	id             *int
 	user_id        *int
 	adduser_id     *int
+	channel_id     *int
+	addchannel_id  *int
+	model_id       *int
+	addmodel_id    *int
+	request_body   *string
+	response_body  *string
+	status         *requestexecution.Status
 	clearedFields  map[string]struct{}
 	request        *int
 	clearedrequest bool
@@ -2865,6 +2785,226 @@ func (m *RequestExecutionMutation) ResetRequestID() {
 	m.request = nil
 }
 
+// SetChannelID sets the "channel_id" field.
+func (m *RequestExecutionMutation) SetChannelID(i int) {
+	m.channel_id = &i
+	m.addchannel_id = nil
+}
+
+// ChannelID returns the value of the "channel_id" field in the mutation.
+func (m *RequestExecutionMutation) ChannelID() (r int, exists bool) {
+	v := m.channel_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelID returns the old "channel_id" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldChannelID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelID: %w", err)
+	}
+	return oldValue.ChannelID, nil
+}
+
+// AddChannelID adds i to the "channel_id" field.
+func (m *RequestExecutionMutation) AddChannelID(i int) {
+	if m.addchannel_id != nil {
+		*m.addchannel_id += i
+	} else {
+		m.addchannel_id = &i
+	}
+}
+
+// AddedChannelID returns the value that was added to the "channel_id" field in this mutation.
+func (m *RequestExecutionMutation) AddedChannelID() (r int, exists bool) {
+	v := m.addchannel_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetChannelID resets all changes to the "channel_id" field.
+func (m *RequestExecutionMutation) ResetChannelID() {
+	m.channel_id = nil
+	m.addchannel_id = nil
+}
+
+// SetModelID sets the "model_id" field.
+func (m *RequestExecutionMutation) SetModelID(i int) {
+	m.model_id = &i
+	m.addmodel_id = nil
+}
+
+// ModelID returns the value of the "model_id" field in the mutation.
+func (m *RequestExecutionMutation) ModelID() (r int, exists bool) {
+	v := m.model_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelID returns the old "model_id" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldModelID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelID: %w", err)
+	}
+	return oldValue.ModelID, nil
+}
+
+// AddModelID adds i to the "model_id" field.
+func (m *RequestExecutionMutation) AddModelID(i int) {
+	if m.addmodel_id != nil {
+		*m.addmodel_id += i
+	} else {
+		m.addmodel_id = &i
+	}
+}
+
+// AddedModelID returns the value that was added to the "model_id" field in this mutation.
+func (m *RequestExecutionMutation) AddedModelID() (r int, exists bool) {
+	v := m.addmodel_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetModelID resets all changes to the "model_id" field.
+func (m *RequestExecutionMutation) ResetModelID() {
+	m.model_id = nil
+	m.addmodel_id = nil
+}
+
+// SetRequestBody sets the "request_body" field.
+func (m *RequestExecutionMutation) SetRequestBody(s string) {
+	m.request_body = &s
+}
+
+// RequestBody returns the value of the "request_body" field in the mutation.
+func (m *RequestExecutionMutation) RequestBody() (r string, exists bool) {
+	v := m.request_body
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestBody returns the old "request_body" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldRequestBody(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestBody is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestBody requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestBody: %w", err)
+	}
+	return oldValue.RequestBody, nil
+}
+
+// ResetRequestBody resets all changes to the "request_body" field.
+func (m *RequestExecutionMutation) ResetRequestBody() {
+	m.request_body = nil
+}
+
+// SetResponseBody sets the "response_body" field.
+func (m *RequestExecutionMutation) SetResponseBody(s string) {
+	m.response_body = &s
+}
+
+// ResponseBody returns the value of the "response_body" field in the mutation.
+func (m *RequestExecutionMutation) ResponseBody() (r string, exists bool) {
+	v := m.response_body
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldResponseBody returns the old "response_body" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldResponseBody(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldResponseBody is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldResponseBody requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldResponseBody: %w", err)
+	}
+	return oldValue.ResponseBody, nil
+}
+
+// ResetResponseBody resets all changes to the "response_body" field.
+func (m *RequestExecutionMutation) ResetResponseBody() {
+	m.response_body = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *RequestExecutionMutation) SetStatus(r requestexecution.Status) {
+	m.status = &r
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *RequestExecutionMutation) Status() (r requestexecution.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldStatus(ctx context.Context) (v requestexecution.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *RequestExecutionMutation) ResetStatus() {
+	m.status = nil
+}
+
 // ClearRequest clears the "request" edge to the Request entity.
 func (m *RequestExecutionMutation) ClearRequest() {
 	m.clearedrequest = true
@@ -2926,12 +3066,27 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 7)
 	if m.user_id != nil {
 		fields = append(fields, requestexecution.FieldUserID)
 	}
 	if m.request != nil {
 		fields = append(fields, requestexecution.FieldRequestID)
+	}
+	if m.channel_id != nil {
+		fields = append(fields, requestexecution.FieldChannelID)
+	}
+	if m.model_id != nil {
+		fields = append(fields, requestexecution.FieldModelID)
+	}
+	if m.request_body != nil {
+		fields = append(fields, requestexecution.FieldRequestBody)
+	}
+	if m.response_body != nil {
+		fields = append(fields, requestexecution.FieldResponseBody)
+	}
+	if m.status != nil {
+		fields = append(fields, requestexecution.FieldStatus)
 	}
 	return fields
 }
@@ -2945,6 +3100,16 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.UserID()
 	case requestexecution.FieldRequestID:
 		return m.RequestID()
+	case requestexecution.FieldChannelID:
+		return m.ChannelID()
+	case requestexecution.FieldModelID:
+		return m.ModelID()
+	case requestexecution.FieldRequestBody:
+		return m.RequestBody()
+	case requestexecution.FieldResponseBody:
+		return m.ResponseBody()
+	case requestexecution.FieldStatus:
+		return m.Status()
 	}
 	return nil, false
 }
@@ -2958,6 +3123,16 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldUserID(ctx)
 	case requestexecution.FieldRequestID:
 		return m.OldRequestID(ctx)
+	case requestexecution.FieldChannelID:
+		return m.OldChannelID(ctx)
+	case requestexecution.FieldModelID:
+		return m.OldModelID(ctx)
+	case requestexecution.FieldRequestBody:
+		return m.OldRequestBody(ctx)
+	case requestexecution.FieldResponseBody:
+		return m.OldResponseBody(ctx)
+	case requestexecution.FieldStatus:
+		return m.OldStatus(ctx)
 	}
 	return nil, fmt.Errorf("unknown RequestExecution field %s", name)
 }
@@ -2981,6 +3156,41 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetRequestID(v)
 		return nil
+	case requestexecution.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelID(v)
+		return nil
+	case requestexecution.FieldModelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelID(v)
+		return nil
+	case requestexecution.FieldRequestBody:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestBody(v)
+		return nil
+	case requestexecution.FieldResponseBody:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetResponseBody(v)
+		return nil
+	case requestexecution.FieldStatus:
+		v, ok := value.(requestexecution.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution field %s", name)
 }
@@ -2992,6 +3202,12 @@ func (m *RequestExecutionMutation) AddedFields() []string {
 	if m.adduser_id != nil {
 		fields = append(fields, requestexecution.FieldUserID)
 	}
+	if m.addchannel_id != nil {
+		fields = append(fields, requestexecution.FieldChannelID)
+	}
+	if m.addmodel_id != nil {
+		fields = append(fields, requestexecution.FieldModelID)
+	}
 	return fields
 }
 
@@ -3002,6 +3218,10 @@ func (m *RequestExecutionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case requestexecution.FieldUserID:
 		return m.AddedUserID()
+	case requestexecution.FieldChannelID:
+		return m.AddedChannelID()
+	case requestexecution.FieldModelID:
+		return m.AddedModelID()
 	}
 	return nil, false
 }
@@ -3017,6 +3237,20 @@ func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddUserID(v)
+		return nil
+	case requestexecution.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddChannelID(v)
+		return nil
+	case requestexecution.FieldModelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddModelID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution numeric field %s", name)
@@ -3050,6 +3284,21 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldRequestID:
 		m.ResetRequestID()
+		return nil
+	case requestexecution.FieldChannelID:
+		m.ResetChannelID()
+		return nil
+	case requestexecution.FieldModelID:
+		m.ResetModelID()
+		return nil
+	case requestexecution.FieldRequestBody:
+		m.ResetRequestBody()
+		return nil
+	case requestexecution.FieldResponseBody:
+		m.ResetResponseBody()
+		return nil
+	case requestexecution.FieldStatus:
+		m.ResetStatus()
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution field %s", name)

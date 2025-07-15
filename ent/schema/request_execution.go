@@ -31,6 +31,11 @@ func (RequestExecution) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("user_id").Immutable(),
 		field.Int("request_id").Immutable(),
+		field.Int("channel_id").Immutable(),
+		field.Int("model_id").Immutable(),
+		field.String("request_body").NotEmpty().Immutable(),
+		field.String("response_body"),
+		field.Enum("status").Values("pending", "processing", "completed", "failed"),
 	}
 }
 
@@ -47,7 +52,6 @@ func (RequestExecution) Edges() []ent.Edge {
 
 func (RequestExecution) Annotations() []schema.Annotation {
 	return []schema.Annotation{
-		entgql.QueryField(),
 		entgql.RelayConnection(),
 	}
 }

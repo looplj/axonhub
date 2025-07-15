@@ -18,4 +18,6 @@ input ChannelSettingsInput {
 
 type Mutation {
     createChannel(input: CreateChannelInput!): Channel!
+    createAPIKey(input: CreateAPIKeyInput!): APIKey!
+    createUser(input: CreateUserInput!): User!
 }

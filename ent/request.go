@@ -28,8 +28,6 @@ type Request struct {
 	ResponseBody string `json:"response_body,omitempty"`
 	// Status holds the value of the "status" field.
 	Status request.Status `json:"status,omitempty"`
-	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt int `json:"deleted_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestQuery when eager-loading is set.
 	Edges            RequestEdges `json:"edges"`
@@ -90,7 +88,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case request.FieldID, request.FieldUserID, request.FieldAPIKeyID, request.FieldDeletedAt:
+		case request.FieldID, request.FieldUserID, request.FieldAPIKeyID:
 			values[i] = new(sql.NullInt64)
 		case request.FieldRequestBody, request.FieldResponseBody, request.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -146,12 +144,6 @@ func (r *Request) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				r.Status = request.Status(value.String)
-			}
-		case request.FieldDeletedAt:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
-			} else if value.Valid {
-				r.DeletedAt = int(value.Int64)
 			}
 		case request.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -225,9 +217,6 @@ func (r *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", r.Status))
-	builder.WriteString(", ")
-	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", r.DeletedAt))
 	builder.WriteByte(')')
 	return builder.String()
 }

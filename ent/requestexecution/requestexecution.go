@@ -3,6 +3,10 @@
 package requestexecution
 
 import (
+	"fmt"
+	"io"
+	"strconv"
+
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 )
@@ -16,6 +20,16 @@ const (
 	FieldUserID = "user_id"
 	// FieldRequestID holds the string denoting the request_id field in the database.
 	FieldRequestID = "request_id"
+	// FieldChannelID holds the string denoting the channel_id field in the database.
+	FieldChannelID = "channel_id"
+	// FieldModelID holds the string denoting the model_id field in the database.
+	FieldModelID = "model_id"
+	// FieldRequestBody holds the string denoting the request_body field in the database.
+	FieldRequestBody = "request_body"
+	// FieldResponseBody holds the string denoting the response_body field in the database.
+	FieldResponseBody = "response_body"
+	// FieldStatus holds the string denoting the status field in the database.
+	FieldStatus = "status"
 	// EdgeRequest holds the string denoting the request edge name in mutations.
 	EdgeRequest = "request"
 	// Table holds the table name of the requestexecution in the database.
@@ -34,6 +48,11 @@ var Columns = []string{
 	FieldID,
 	FieldUserID,
 	FieldRequestID,
+	FieldChannelID,
+	FieldModelID,
+	FieldRequestBody,
+	FieldResponseBody,
+	FieldStatus,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -44,6 +63,36 @@ func ValidColumn(column string) bool {
 		}
 	}
 	return false
+}
+
+var (
+	// RequestBodyValidator is a validator for the "request_body" field. It is called by the builders before save.
+	RequestBodyValidator func(string) error
+)
+
+// Status defines the type for the "status" enum field.
+type Status string
+
+// Status values.
+const (
+	StatusPending    Status = "pending"
+	StatusProcessing Status = "processing"
+	StatusCompleted  Status = "completed"
+	StatusFailed     Status = "failed"
+)
+
+func (s Status) String() string {
+	return string(s)
+}
+
+// StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
+func StatusValidator(s Status) error {
+	switch s {
+	case StatusPending, StatusProcessing, StatusCompleted, StatusFailed:
+		return nil
+	default:
+		return fmt.Errorf("requestexecution: invalid enum value for status field: %q", s)
+	}
 }
 
 // OrderOption defines the ordering options for the RequestExecution queries.
@@ -64,6 +113,31 @@ func ByRequestID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRequestID, opts...).ToFunc()
 }
 
+// ByChannelID orders the results by the channel_id field.
+func ByChannelID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldChannelID, opts...).ToFunc()
+}
+
+// ByModelID orders the results by the model_id field.
+func ByModelID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldModelID, opts...).ToFunc()
+}
+
+// ByRequestBody orders the results by the request_body field.
+func ByRequestBody(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRequestBody, opts...).ToFunc()
+}
+
+// ByResponseBody orders the results by the response_body field.
+func ByResponseBody(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldResponseBody, opts...).ToFunc()
+}
+
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
 // ByRequestField orders the results by request field.
 func ByRequestField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -76,4 +150,22 @@ func newRequestStep() *sqlgraph.Step {
 		sqlgraph.To(RequestInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, RequestTable, RequestColumn),
 	)
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (e Status) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(e.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (e *Status) UnmarshalGQL(val interface{}) error {
+	str, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("enum %T must be a string", val)
+	}
+	*e = Status(str)
+	if err := StatusValidator(*e); err != nil {
+		return fmt.Errorf("%s is not a valid Status", str)
+	}
+	return nil
 }

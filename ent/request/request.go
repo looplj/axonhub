@@ -26,8 +26,6 @@ const (
 	FieldResponseBody = "response_body"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
-	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
-	FieldDeletedAt = "deleted_at"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// EdgeAPIKey holds the string denoting the api_key edge name in mutations.
@@ -67,7 +65,6 @@ var Columns = []string{
 	FieldRequestBody,
 	FieldResponseBody,
 	FieldStatus,
-	FieldDeletedAt,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "requests"
@@ -94,8 +91,6 @@ func ValidColumn(column string) bool {
 var (
 	// RequestBodyValidator is a validator for the "request_body" field. It is called by the builders before save.
 	RequestBodyValidator func(string) error
-	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
-	DefaultDeletedAt int
 )
 
 // Status defines the type for the "status" enum field.
@@ -154,11 +149,6 @@ func ByResponseBody(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
-}
-
-// ByDeletedAt orders the results by the deleted_at field.
-func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
 }
 
 // ByUserField orders the results by user field.

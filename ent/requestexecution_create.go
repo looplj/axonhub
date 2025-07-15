@@ -34,6 +34,36 @@ func (rec *RequestExecutionCreate) SetRequestID(i int) *RequestExecutionCreate {
 	return rec
 }
 
+// SetChannelID sets the "channel_id" field.
+func (rec *RequestExecutionCreate) SetChannelID(i int) *RequestExecutionCreate {
+	rec.mutation.SetChannelID(i)
+	return rec
+}
+
+// SetModelID sets the "model_id" field.
+func (rec *RequestExecutionCreate) SetModelID(i int) *RequestExecutionCreate {
+	rec.mutation.SetModelID(i)
+	return rec
+}
+
+// SetRequestBody sets the "request_body" field.
+func (rec *RequestExecutionCreate) SetRequestBody(s string) *RequestExecutionCreate {
+	rec.mutation.SetRequestBody(s)
+	return rec
+}
+
+// SetResponseBody sets the "response_body" field.
+func (rec *RequestExecutionCreate) SetResponseBody(s string) *RequestExecutionCreate {
+	rec.mutation.SetResponseBody(s)
+	return rec
+}
+
+// SetStatus sets the "status" field.
+func (rec *RequestExecutionCreate) SetStatus(r requestexecution.Status) *RequestExecutionCreate {
+	rec.mutation.SetStatus(r)
+	return rec
+}
+
 // SetRequest sets the "request" edge to the Request entity.
 func (rec *RequestExecutionCreate) SetRequest(r *Request) *RequestExecutionCreate {
 	return rec.SetRequestID(r.ID)
@@ -79,6 +109,31 @@ func (rec *RequestExecutionCreate) check() error {
 	if _, ok := rec.mutation.RequestID(); !ok {
 		return &ValidationError{Name: "request_id", err: errors.New(`ent: missing required field "RequestExecution.request_id"`)}
 	}
+	if _, ok := rec.mutation.ChannelID(); !ok {
+		return &ValidationError{Name: "channel_id", err: errors.New(`ent: missing required field "RequestExecution.channel_id"`)}
+	}
+	if _, ok := rec.mutation.ModelID(); !ok {
+		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "RequestExecution.model_id"`)}
+	}
+	if _, ok := rec.mutation.RequestBody(); !ok {
+		return &ValidationError{Name: "request_body", err: errors.New(`ent: missing required field "RequestExecution.request_body"`)}
+	}
+	if v, ok := rec.mutation.RequestBody(); ok {
+		if err := requestexecution.RequestBodyValidator(v); err != nil {
+			return &ValidationError{Name: "request_body", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.request_body": %w`, err)}
+		}
+	}
+	if _, ok := rec.mutation.ResponseBody(); !ok {
+		return &ValidationError{Name: "response_body", err: errors.New(`ent: missing required field "RequestExecution.response_body"`)}
+	}
+	if _, ok := rec.mutation.Status(); !ok {
+		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "RequestExecution.status"`)}
+	}
+	if v, ok := rec.mutation.Status(); ok {
+		if err := requestexecution.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.status": %w`, err)}
+		}
+	}
 	if len(rec.mutation.RequestIDs()) == 0 {
 		return &ValidationError{Name: "request", err: errors.New(`ent: missing required edge "RequestExecution.request"`)}
 	}
@@ -112,6 +167,26 @@ func (rec *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cr
 	if value, ok := rec.mutation.UserID(); ok {
 		_spec.SetField(requestexecution.FieldUserID, field.TypeInt, value)
 		_node.UserID = value
+	}
+	if value, ok := rec.mutation.ChannelID(); ok {
+		_spec.SetField(requestexecution.FieldChannelID, field.TypeInt, value)
+		_node.ChannelID = value
+	}
+	if value, ok := rec.mutation.ModelID(); ok {
+		_spec.SetField(requestexecution.FieldModelID, field.TypeInt, value)
+		_node.ModelID = value
+	}
+	if value, ok := rec.mutation.RequestBody(); ok {
+		_spec.SetField(requestexecution.FieldRequestBody, field.TypeString, value)
+		_node.RequestBody = value
+	}
+	if value, ok := rec.mutation.ResponseBody(); ok {
+		_spec.SetField(requestexecution.FieldResponseBody, field.TypeString, value)
+		_node.ResponseBody = value
+	}
+	if value, ok := rec.mutation.Status(); ok {
+		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
+		_node.Status = value
 	}
 	if nodes := rec.mutation.RequestIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -182,6 +257,30 @@ type (
 	}
 )
 
+// SetResponseBody sets the "response_body" field.
+func (u *RequestExecutionUpsert) SetResponseBody(v string) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldResponseBody, v)
+	return u
+}
+
+// UpdateResponseBody sets the "response_body" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateResponseBody() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldResponseBody)
+	return u
+}
+
+// SetStatus sets the "status" field.
+func (u *RequestExecutionUpsert) SetStatus(v requestexecution.Status) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateStatus() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldStatus)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -198,6 +297,15 @@ func (u *RequestExecutionUpsertOne) UpdateNewValues() *RequestExecutionUpsertOne
 		}
 		if _, exists := u.create.mutation.RequestID(); exists {
 			s.SetIgnore(requestexecution.FieldRequestID)
+		}
+		if _, exists := u.create.mutation.ChannelID(); exists {
+			s.SetIgnore(requestexecution.FieldChannelID)
+		}
+		if _, exists := u.create.mutation.ModelID(); exists {
+			s.SetIgnore(requestexecution.FieldModelID)
+		}
+		if _, exists := u.create.mutation.RequestBody(); exists {
+			s.SetIgnore(requestexecution.FieldRequestBody)
 		}
 	}))
 	return u
@@ -228,6 +336,34 @@ func (u *RequestExecutionUpsertOne) Update(set func(*RequestExecutionUpsert)) *R
 		set(&RequestExecutionUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetResponseBody sets the "response_body" field.
+func (u *RequestExecutionUpsertOne) SetResponseBody(v string) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetResponseBody(v)
+	})
+}
+
+// UpdateResponseBody sets the "response_body" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateResponseBody() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateResponseBody()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *RequestExecutionUpsertOne) SetStatus(v requestexecution.Status) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateStatus() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateStatus()
+	})
 }
 
 // Exec executes the query.
@@ -411,6 +547,15 @@ func (u *RequestExecutionUpsertBulk) UpdateNewValues() *RequestExecutionUpsertBu
 			if _, exists := b.mutation.RequestID(); exists {
 				s.SetIgnore(requestexecution.FieldRequestID)
 			}
+			if _, exists := b.mutation.ChannelID(); exists {
+				s.SetIgnore(requestexecution.FieldChannelID)
+			}
+			if _, exists := b.mutation.ModelID(); exists {
+				s.SetIgnore(requestexecution.FieldModelID)
+			}
+			if _, exists := b.mutation.RequestBody(); exists {
+				s.SetIgnore(requestexecution.FieldRequestBody)
+			}
 		}
 	}))
 	return u
@@ -441,6 +586,34 @@ func (u *RequestExecutionUpsertBulk) Update(set func(*RequestExecutionUpsert)) *
 		set(&RequestExecutionUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetResponseBody sets the "response_body" field.
+func (u *RequestExecutionUpsertBulk) SetResponseBody(v string) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetResponseBody(v)
+	})
+}
+
+// UpdateResponseBody sets the "response_body" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateResponseBody() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateResponseBody()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *RequestExecutionUpsertBulk) SetStatus(v requestexecution.Status) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateStatus() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateStatus()
+	})
 }
 
 // Exec executes the query.

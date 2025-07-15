@@ -23,6 +23,8 @@ func (Request) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("user_id").
 			StorageKey("requests_by_user_id"),
+		index.Fields("api_key_id").
+			StorageKey("requests_by_api_key_id"),
 	}
 }
 
@@ -33,7 +35,6 @@ func (Request) Fields() []ent.Field {
 		field.String("request_body").NotEmpty().Immutable(),
 		field.String("response_body"),
 		field.Enum("status").Values("pending", "processing", "completed", "failed"),
-		field.Int("deleted_at").Default(0),
 	}
 }
 
@@ -43,6 +44,7 @@ func (Request) Edges() []ent.Edge {
 		edge.From("api_key", APIKey.Type).Ref("requests").Field("api_key_id").Required().Immutable().Unique(),
 		edge.To("executions", RequestExecution.Type).
 			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
 			),
 	}
@@ -50,6 +52,7 @@ func (Request) Edges() []ent.Edge {
 
 func (Request) Annotations() []schema.Annotation {
 	return []schema.Annotation{
+		entgql.QueryField(),
 		entgql.RelayConnection(),
 		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
 	}

@@ -28,6 +28,16 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateCh
 	return channel, nil
 }
 
+// CreateAPIKey is the resolver for the createAPIKey field.
+func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error) {
+	panic(fmt.Errorf("not implemented: CreateAPIKey - createAPIKey"))
+}
+
+// CreateUser is the resolver for the createUser field.
+func (r *mutationResolver) CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error) {
+	panic(fmt.Errorf("not implemented: CreateUser - createUser"))
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 

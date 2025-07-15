@@ -622,11 +622,6 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldStatus)
 				fieldSeen[request.FieldStatus] = struct{}{}
 			}
-		case "deletedAt":
-			if _, ok := fieldSeen[request.FieldDeletedAt]; !ok {
-				selectedFields = append(selectedFields, request.FieldDeletedAt)
-				fieldSeen[request.FieldDeletedAt] = struct{}{}
-			}
 		case "id":
 		case "__typename":
 		default:
@@ -713,6 +708,31 @@ func (req *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool
 			if _, ok := fieldSeen[requestexecution.FieldRequestID]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldRequestID)
 				fieldSeen[requestexecution.FieldRequestID] = struct{}{}
+			}
+		case "channelID":
+			if _, ok := fieldSeen[requestexecution.FieldChannelID]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldChannelID)
+				fieldSeen[requestexecution.FieldChannelID] = struct{}{}
+			}
+		case "modelID":
+			if _, ok := fieldSeen[requestexecution.FieldModelID]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldModelID)
+				fieldSeen[requestexecution.FieldModelID] = struct{}{}
+			}
+		case "requestBody":
+			if _, ok := fieldSeen[requestexecution.FieldRequestBody]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldRequestBody)
+				fieldSeen[requestexecution.FieldRequestBody] = struct{}{}
+			}
+		case "responseBody":
+			if _, ok := fieldSeen[requestexecution.FieldResponseBody]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldResponseBody)
+				fieldSeen[requestexecution.FieldResponseBody] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[requestexecution.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldStatus)
+				fieldSeen[requestexecution.FieldStatus] = struct{}{}
 			}
 		case "id":
 		case "__typename":

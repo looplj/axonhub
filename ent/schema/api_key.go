@@ -46,6 +46,7 @@ func (APIKey) Edges() []ent.Edge {
 			Ref("api_keys").Field("user_id"),
 		edge.To("requests", Request.Type).
 			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
 			),
 	}

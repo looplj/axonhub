@@ -91,7 +91,6 @@ var (
 		{Name: "request_body", Type: field.TypeString},
 		{Name: "response_body", Type: field.TypeString},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed"}},
-		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "api_key_id", Type: field.TypeInt},
 		{Name: "channel_requests", Type: field.TypeInt, Nullable: true},
 		{Name: "user_id", Type: field.TypeInt},
@@ -104,19 +103,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "requests_api_keys_requests",
-				Columns:    []*schema.Column{RequestsColumns[5]},
+				Columns:    []*schema.Column{RequestsColumns[4]},
 				RefColumns: []*schema.Column{APIKeysColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "requests_channels_requests",
-				Columns:    []*schema.Column{RequestsColumns[6]},
+				Columns:    []*schema.Column{RequestsColumns[5]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_users_requests",
-				Columns:    []*schema.Column{RequestsColumns[7]},
+				Columns:    []*schema.Column{RequestsColumns[6]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -125,7 +124,12 @@ var (
 			{
 				Name:    "requests_by_user_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[7]},
+				Columns: []*schema.Column{RequestsColumns[6]},
+			},
+			{
+				Name:    "requests_by_api_key_id",
+				Unique:  false,
+				Columns: []*schema.Column{RequestsColumns[4]},
 			},
 		},
 	}
@@ -133,6 +137,11 @@ var (
 	RequestExecutionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "user_id", Type: field.TypeInt},
+		{Name: "channel_id", Type: field.TypeInt},
+		{Name: "model_id", Type: field.TypeInt},
+		{Name: "request_body", Type: field.TypeString},
+		{Name: "response_body", Type: field.TypeString},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed"}},
 		{Name: "request_id", Type: field.TypeInt},
 	}
 	// RequestExecutionsTable holds the schema information for the "request_executions" table.
@@ -143,7 +152,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "request_executions_requests_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[2]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[7]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -152,14 +161,14 @@ var (
 			{
 				Name:    "request_executions_by_request_id",
 				Unique:  true,
-				Columns: []*schema.Column{RequestExecutionsColumns[2]},
+				Columns: []*schema.Column{RequestExecutionsColumns[7]},
 			},
 		},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "email", Type: field.TypeString},
+		{Name: "email", Type: field.TypeString, Unique: true},
 		{Name: "name", Type: field.TypeString},
 	}
 	// UsersTable holds the schema information for the "users" table.

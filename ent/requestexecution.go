@@ -21,6 +21,16 @@ type RequestExecution struct {
 	UserID int `json:"user_id,omitempty"`
 	// RequestID holds the value of the "request_id" field.
 	RequestID int `json:"request_id,omitempty"`
+	// ChannelID holds the value of the "channel_id" field.
+	ChannelID int `json:"channel_id,omitempty"`
+	// ModelID holds the value of the "model_id" field.
+	ModelID int `json:"model_id,omitempty"`
+	// RequestBody holds the value of the "request_body" field.
+	RequestBody string `json:"request_body,omitempty"`
+	// ResponseBody holds the value of the "response_body" field.
+	ResponseBody string `json:"response_body,omitempty"`
+	// Status holds the value of the "status" field.
+	Status requestexecution.Status `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestExecutionQuery when eager-loading is set.
 	Edges        RequestExecutionEdges `json:"edges"`
@@ -54,8 +64,10 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case requestexecution.FieldID, requestexecution.FieldUserID, requestexecution.FieldRequestID:
+		case requestexecution.FieldID, requestexecution.FieldUserID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldModelID:
 			values[i] = new(sql.NullInt64)
+		case requestexecution.FieldRequestBody, requestexecution.FieldResponseBody, requestexecution.FieldStatus:
+			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -88,6 +100,36 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field request_id", values[i])
 			} else if value.Valid {
 				re.RequestID = int(value.Int64)
+			}
+		case requestexecution.FieldChannelID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field channel_id", values[i])
+			} else if value.Valid {
+				re.ChannelID = int(value.Int64)
+			}
+		case requestexecution.FieldModelID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field model_id", values[i])
+			} else if value.Valid {
+				re.ModelID = int(value.Int64)
+			}
+		case requestexecution.FieldRequestBody:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field request_body", values[i])
+			} else if value.Valid {
+				re.RequestBody = value.String
+			}
+		case requestexecution.FieldResponseBody:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field response_body", values[i])
+			} else if value.Valid {
+				re.ResponseBody = value.String
+			}
+		case requestexecution.FieldStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field status", values[i])
+			} else if value.Valid {
+				re.Status = requestexecution.Status(value.String)
 			}
 		default:
 			re.selectValues.Set(columns[i], values[i])
@@ -135,6 +177,21 @@ func (re *RequestExecution) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("request_id=")
 	builder.WriteString(fmt.Sprintf("%v", re.RequestID))
+	builder.WriteString(", ")
+	builder.WriteString("channel_id=")
+	builder.WriteString(fmt.Sprintf("%v", re.ChannelID))
+	builder.WriteString(", ")
+	builder.WriteString("model_id=")
+	builder.WriteString(fmt.Sprintf("%v", re.ModelID))
+	builder.WriteString(", ")
+	builder.WriteString("request_body=")
+	builder.WriteString(re.RequestBody)
+	builder.WriteString(", ")
+	builder.WriteString("response_body=")
+	builder.WriteString(re.ResponseBody)
+	builder.WriteString(", ")
+	builder.WriteString("status=")
+	builder.WriteString(fmt.Sprintf("%v", re.Status))
 	builder.WriteByte(')')
 	return builder.String()
 }

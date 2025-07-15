@@ -27,6 +27,34 @@ func (reu *RequestExecutionUpdate) Where(ps ...predicate.RequestExecution) *Requ
 	return reu
 }
 
+// SetResponseBody sets the "response_body" field.
+func (reu *RequestExecutionUpdate) SetResponseBody(s string) *RequestExecutionUpdate {
+	reu.mutation.SetResponseBody(s)
+	return reu
+}
+
+// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
+func (reu *RequestExecutionUpdate) SetNillableResponseBody(s *string) *RequestExecutionUpdate {
+	if s != nil {
+		reu.SetResponseBody(*s)
+	}
+	return reu
+}
+
+// SetStatus sets the "status" field.
+func (reu *RequestExecutionUpdate) SetStatus(r requestexecution.Status) *RequestExecutionUpdate {
+	reu.mutation.SetStatus(r)
+	return reu
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (reu *RequestExecutionUpdate) SetNillableStatus(r *requestexecution.Status) *RequestExecutionUpdate {
+	if r != nil {
+		reu.SetStatus(*r)
+	}
+	return reu
+}
+
 // Mutation returns the RequestExecutionMutation object of the builder.
 func (reu *RequestExecutionUpdate) Mutation() *RequestExecutionMutation {
 	return reu.mutation
@@ -61,6 +89,11 @@ func (reu *RequestExecutionUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (reu *RequestExecutionUpdate) check() error {
+	if v, ok := reu.mutation.Status(); ok {
+		if err := requestexecution.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.status": %w`, err)}
+		}
+	}
 	if reu.mutation.RequestCleared() && len(reu.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "RequestExecution.request"`)
 	}
@@ -78,6 +111,12 @@ func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err erro
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := reu.mutation.ResponseBody(); ok {
+		_spec.SetField(requestexecution.FieldResponseBody, field.TypeString, value)
+	}
+	if value, ok := reu.mutation.Status(); ok {
+		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, reu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -97,6 +136,34 @@ type RequestExecutionUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *RequestExecutionMutation
+}
+
+// SetResponseBody sets the "response_body" field.
+func (reuo *RequestExecutionUpdateOne) SetResponseBody(s string) *RequestExecutionUpdateOne {
+	reuo.mutation.SetResponseBody(s)
+	return reuo
+}
+
+// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
+func (reuo *RequestExecutionUpdateOne) SetNillableResponseBody(s *string) *RequestExecutionUpdateOne {
+	if s != nil {
+		reuo.SetResponseBody(*s)
+	}
+	return reuo
+}
+
+// SetStatus sets the "status" field.
+func (reuo *RequestExecutionUpdateOne) SetStatus(r requestexecution.Status) *RequestExecutionUpdateOne {
+	reuo.mutation.SetStatus(r)
+	return reuo
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (reuo *RequestExecutionUpdateOne) SetNillableStatus(r *requestexecution.Status) *RequestExecutionUpdateOne {
+	if r != nil {
+		reuo.SetStatus(*r)
+	}
+	return reuo
 }
 
 // Mutation returns the RequestExecutionMutation object of the builder.
@@ -146,6 +213,11 @@ func (reuo *RequestExecutionUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (reuo *RequestExecutionUpdateOne) check() error {
+	if v, ok := reuo.mutation.Status(); ok {
+		if err := requestexecution.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.status": %w`, err)}
+		}
+	}
 	if reuo.mutation.RequestCleared() && len(reuo.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "RequestExecution.request"`)
 	}
@@ -180,6 +252,12 @@ func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Requ
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := reuo.mutation.ResponseBody(); ok {
+		_spec.SetField(requestexecution.FieldResponseBody, field.TypeString, value)
+	}
+	if value, ok := reuo.mutation.Status(); ok {
+		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 	}
 	_node = &RequestExecution{config: reuo.config}
 	_spec.Assign = _node.assignValues

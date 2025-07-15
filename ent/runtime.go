@@ -5,6 +5,7 @@ package ent
 import (
 	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/request"
+	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/ent/schema"
 )
 
@@ -24,8 +25,10 @@ func init() {
 	requestDescRequestBody := requestFields[2].Descriptor()
 	// request.RequestBodyValidator is a validator for the "request_body" field. It is called by the builders before save.
 	request.RequestBodyValidator = requestDescRequestBody.Validators[0].(func(string) error)
-	// requestDescDeletedAt is the schema descriptor for deleted_at field.
-	requestDescDeletedAt := requestFields[5].Descriptor()
-	// request.DefaultDeletedAt holds the default value on creation for the deleted_at field.
-	request.DefaultDeletedAt = requestDescDeletedAt.Default.(int)
+	requestexecutionFields := schema.RequestExecution{}.Fields()
+	_ = requestexecutionFields
+	// requestexecutionDescRequestBody is the schema descriptor for request_body field.
+	requestexecutionDescRequestBody := requestexecutionFields[4].Descriptor()
+	// requestexecution.RequestBodyValidator is a validator for the "request_body" field. It is called by the builders before save.
+	requestexecution.RequestBodyValidator = requestexecutionDescRequestBody.Validators[0].(func(string) error)
 }

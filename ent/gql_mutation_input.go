@@ -10,10 +10,9 @@ import (
 
 // CreateAPIKeyInput represents a mutation input for creating apikeys.
 type CreateAPIKeyInput struct {
-	Key        string
-	Name       string
-	UserID     int
-	RequestIDs []int
+	Key    string
+	Name   string
+	UserID int
 }
 
 // Mutate applies the CreateAPIKeyInput on the APIKeyMutation builder.
@@ -21,9 +20,6 @@ func (i *CreateAPIKeyInput) Mutate(m *APIKeyMutation) {
 	m.SetKey(i.Key)
 	m.SetName(i.Name)
 	m.SetUserID(i.UserID)
-	if v := i.RequestIDs; len(v) > 0 {
-		m.AddRequestIDs(v...)
-	}
 }
 
 // SetInput applies the change-set in the CreateAPIKeyInput on the APIKeyCreate builder.
@@ -34,25 +30,13 @@ func (c *APIKeyCreate) SetInput(i CreateAPIKeyInput) *APIKeyCreate {
 
 // UpdateAPIKeyInput represents a mutation input for updating apikeys.
 type UpdateAPIKeyInput struct {
-	Name             *string
-	ClearRequests    bool
-	AddRequestIDs    []int
-	RemoveRequestIDs []int
+	Name *string
 }
 
 // Mutate applies the UpdateAPIKeyInput on the APIKeyMutation builder.
 func (i *UpdateAPIKeyInput) Mutate(m *APIKeyMutation) {
 	if v := i.Name; v != nil {
 		m.SetName(*v)
-	}
-	if i.ClearRequests {
-		m.ClearRequests()
-	}
-	if v := i.AddRequestIDs; len(v) > 0 {
-		m.AddRequestIDs(v...)
-	}
-	if v := i.RemoveRequestIDs; len(v) > 0 {
-		m.RemoveRequestIDs(v...)
 	}
 }
 
@@ -109,9 +93,6 @@ type UpdateChannelInput struct {
 	AppendSupportedModels []string
 	DefaultTestModel      *string
 	Settings              *objects.ChannelSettings
-	ClearRequests         bool
-	AddRequestIDs         []int
-	RemoveRequestIDs      []int
 }
 
 // Mutate applies the UpdateChannelInput on the ChannelMutation builder.
@@ -137,15 +118,6 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	if v := i.Settings; v != nil {
 		m.SetSettings(v)
 	}
-	if i.ClearRequests {
-		m.ClearRequests()
-	}
-	if v := i.AddRequestIDs; len(v) > 0 {
-		m.AddRequestIDs(v...)
-	}
-	if v := i.RemoveRequestIDs; len(v) > 0 {
-		m.RemoveRequestIDs(v...)
-	}
 }
 
 // SetInput applies the change-set in the UpdateChannelInput on the ChannelUpdate builder.
@@ -165,10 +137,8 @@ type CreateRequestInput struct {
 	RequestBody  string
 	ResponseBody string
 	Status       request.Status
-	DeletedAt    *int
 	UserID       int
 	APIKeyID     int
-	ExecutionIDs []int
 }
 
 // Mutate applies the CreateRequestInput on the RequestMutation builder.
@@ -176,14 +146,8 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	m.SetRequestBody(i.RequestBody)
 	m.SetResponseBody(i.ResponseBody)
 	m.SetStatus(i.Status)
-	if v := i.DeletedAt; v != nil {
-		m.SetDeletedAt(*v)
-	}
 	m.SetUserID(i.UserID)
 	m.SetAPIKeyID(i.APIKeyID)
-	if v := i.ExecutionIDs; len(v) > 0 {
-		m.AddExecutionIDs(v...)
-	}
 }
 
 // SetInput applies the change-set in the CreateRequestInput on the RequestCreate builder.
@@ -194,12 +158,8 @@ func (c *RequestCreate) SetInput(i CreateRequestInput) *RequestCreate {
 
 // UpdateRequestInput represents a mutation input for updating requests.
 type UpdateRequestInput struct {
-	ResponseBody       *string
-	Status             *request.Status
-	DeletedAt          *int
-	ClearExecutions    bool
-	AddExecutionIDs    []int
-	RemoveExecutionIDs []int
+	ResponseBody *string
+	Status       *request.Status
 }
 
 // Mutate applies the UpdateRequestInput on the RequestMutation builder.
@@ -209,18 +169,6 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
-	}
-	if v := i.DeletedAt; v != nil {
-		m.SetDeletedAt(*v)
-	}
-	if i.ClearExecutions {
-		m.ClearExecutions()
-	}
-	if v := i.AddExecutionIDs; len(v) > 0 {
-		m.AddExecutionIDs(v...)
-	}
-	if v := i.RemoveExecutionIDs; len(v) > 0 {
-		m.RemoveExecutionIDs(v...)
 	}
 }
 
@@ -232,6 +180,84 @@ func (c *RequestUpdate) SetInput(i UpdateRequestInput) *RequestUpdate {
 
 // SetInput applies the change-set in the UpdateRequestInput on the RequestUpdateOne builder.
 func (c *RequestUpdateOne) SetInput(i UpdateRequestInput) *RequestUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateUserInput represents a mutation input for creating users.
+type CreateUserInput struct {
+	Email      string
+	Name       string
+	RequestIDs []int
+	APIKeyIDs  []int
+}
+
+// Mutate applies the CreateUserInput on the UserMutation builder.
+func (i *CreateUserInput) Mutate(m *UserMutation) {
+	m.SetEmail(i.Email)
+	m.SetName(i.Name)
+	if v := i.RequestIDs; len(v) > 0 {
+		m.AddRequestIDs(v...)
+	}
+	if v := i.APIKeyIDs; len(v) > 0 {
+		m.AddAPIKeyIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the CreateUserInput on the UserCreate builder.
+func (c *UserCreate) SetInput(i CreateUserInput) *UserCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateUserInput represents a mutation input for updating users.
+type UpdateUserInput struct {
+	Email            *string
+	Name             *string
+	ClearRequests    bool
+	AddRequestIDs    []int
+	RemoveRequestIDs []int
+	ClearAPIKeys     bool
+	AddAPIKeyIDs     []int
+	RemoveAPIKeyIDs  []int
+}
+
+// Mutate applies the UpdateUserInput on the UserMutation builder.
+func (i *UpdateUserInput) Mutate(m *UserMutation) {
+	if v := i.Email; v != nil {
+		m.SetEmail(*v)
+	}
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if i.ClearRequests {
+		m.ClearRequests()
+	}
+	if v := i.AddRequestIDs; len(v) > 0 {
+		m.AddRequestIDs(v...)
+	}
+	if v := i.RemoveRequestIDs; len(v) > 0 {
+		m.RemoveRequestIDs(v...)
+	}
+	if i.ClearAPIKeys {
+		m.ClearAPIKeys()
+	}
+	if v := i.AddAPIKeyIDs; len(v) > 0 {
+		m.AddAPIKeyIDs(v...)
+	}
+	if v := i.RemoveAPIKeyIDs; len(v) > 0 {
+		m.RemoveAPIKeyIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the UpdateUserInput on the UserUpdate builder.
+func (c *UserUpdate) SetInput(i UpdateUserInput) *UserUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateUserInput on the UserUpdateOne builder.
+func (c *UserUpdateOne) SetInput(i UpdateUserInput) *UserUpdateOne {
 	i.Mutate(c.Mutation())
 	return c
 }

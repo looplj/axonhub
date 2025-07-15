@@ -63,6 +63,26 @@ func RequestID(v int) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldRequestID, v))
 }
 
+// ChannelID applies equality check predicate on the "channel_id" field. It's identical to ChannelIDEQ.
+func ChannelID(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldChannelID, v))
+}
+
+// ModelID applies equality check predicate on the "model_id" field. It's identical to ModelIDEQ.
+func ModelID(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldModelID, v))
+}
+
+// RequestBody applies equality check predicate on the "request_body" field. It's identical to RequestBodyEQ.
+func RequestBody(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldRequestBody, v))
+}
+
+// ResponseBody applies equality check predicate on the "response_body" field. It's identical to ResponseBodyEQ.
+func ResponseBody(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldResponseBody, v))
+}
+
 // UserIDEQ applies the EQ predicate on the "user_id" field.
 func UserIDEQ(v int) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldUserID, v))
@@ -121,6 +141,236 @@ func RequestIDIn(vs ...int) predicate.RequestExecution {
 // RequestIDNotIn applies the NotIn predicate on the "request_id" field.
 func RequestIDNotIn(vs ...int) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldNotIn(FieldRequestID, vs...))
+}
+
+// ChannelIDEQ applies the EQ predicate on the "channel_id" field.
+func ChannelIDEQ(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldChannelID, v))
+}
+
+// ChannelIDNEQ applies the NEQ predicate on the "channel_id" field.
+func ChannelIDNEQ(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldChannelID, v))
+}
+
+// ChannelIDIn applies the In predicate on the "channel_id" field.
+func ChannelIDIn(vs ...int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldChannelID, vs...))
+}
+
+// ChannelIDNotIn applies the NotIn predicate on the "channel_id" field.
+func ChannelIDNotIn(vs ...int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldChannelID, vs...))
+}
+
+// ChannelIDGT applies the GT predicate on the "channel_id" field.
+func ChannelIDGT(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldChannelID, v))
+}
+
+// ChannelIDGTE applies the GTE predicate on the "channel_id" field.
+func ChannelIDGTE(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldChannelID, v))
+}
+
+// ChannelIDLT applies the LT predicate on the "channel_id" field.
+func ChannelIDLT(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldChannelID, v))
+}
+
+// ChannelIDLTE applies the LTE predicate on the "channel_id" field.
+func ChannelIDLTE(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldChannelID, v))
+}
+
+// ModelIDEQ applies the EQ predicate on the "model_id" field.
+func ModelIDEQ(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldModelID, v))
+}
+
+// ModelIDNEQ applies the NEQ predicate on the "model_id" field.
+func ModelIDNEQ(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldModelID, v))
+}
+
+// ModelIDIn applies the In predicate on the "model_id" field.
+func ModelIDIn(vs ...int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldModelID, vs...))
+}
+
+// ModelIDNotIn applies the NotIn predicate on the "model_id" field.
+func ModelIDNotIn(vs ...int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldModelID, vs...))
+}
+
+// ModelIDGT applies the GT predicate on the "model_id" field.
+func ModelIDGT(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldModelID, v))
+}
+
+// ModelIDGTE applies the GTE predicate on the "model_id" field.
+func ModelIDGTE(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldModelID, v))
+}
+
+// ModelIDLT applies the LT predicate on the "model_id" field.
+func ModelIDLT(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldModelID, v))
+}
+
+// ModelIDLTE applies the LTE predicate on the "model_id" field.
+func ModelIDLTE(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldModelID, v))
+}
+
+// RequestBodyEQ applies the EQ predicate on the "request_body" field.
+func RequestBodyEQ(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldRequestBody, v))
+}
+
+// RequestBodyNEQ applies the NEQ predicate on the "request_body" field.
+func RequestBodyNEQ(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldRequestBody, v))
+}
+
+// RequestBodyIn applies the In predicate on the "request_body" field.
+func RequestBodyIn(vs ...string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldRequestBody, vs...))
+}
+
+// RequestBodyNotIn applies the NotIn predicate on the "request_body" field.
+func RequestBodyNotIn(vs ...string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldRequestBody, vs...))
+}
+
+// RequestBodyGT applies the GT predicate on the "request_body" field.
+func RequestBodyGT(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldRequestBody, v))
+}
+
+// RequestBodyGTE applies the GTE predicate on the "request_body" field.
+func RequestBodyGTE(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldRequestBody, v))
+}
+
+// RequestBodyLT applies the LT predicate on the "request_body" field.
+func RequestBodyLT(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldRequestBody, v))
+}
+
+// RequestBodyLTE applies the LTE predicate on the "request_body" field.
+func RequestBodyLTE(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldRequestBody, v))
+}
+
+// RequestBodyContains applies the Contains predicate on the "request_body" field.
+func RequestBodyContains(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldContains(FieldRequestBody, v))
+}
+
+// RequestBodyHasPrefix applies the HasPrefix predicate on the "request_body" field.
+func RequestBodyHasPrefix(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldHasPrefix(FieldRequestBody, v))
+}
+
+// RequestBodyHasSuffix applies the HasSuffix predicate on the "request_body" field.
+func RequestBodyHasSuffix(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldHasSuffix(FieldRequestBody, v))
+}
+
+// RequestBodyEqualFold applies the EqualFold predicate on the "request_body" field.
+func RequestBodyEqualFold(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEqualFold(FieldRequestBody, v))
+}
+
+// RequestBodyContainsFold applies the ContainsFold predicate on the "request_body" field.
+func RequestBodyContainsFold(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldContainsFold(FieldRequestBody, v))
+}
+
+// ResponseBodyEQ applies the EQ predicate on the "response_body" field.
+func ResponseBodyEQ(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldResponseBody, v))
+}
+
+// ResponseBodyNEQ applies the NEQ predicate on the "response_body" field.
+func ResponseBodyNEQ(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldResponseBody, v))
+}
+
+// ResponseBodyIn applies the In predicate on the "response_body" field.
+func ResponseBodyIn(vs ...string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldResponseBody, vs...))
+}
+
+// ResponseBodyNotIn applies the NotIn predicate on the "response_body" field.
+func ResponseBodyNotIn(vs ...string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldResponseBody, vs...))
+}
+
+// ResponseBodyGT applies the GT predicate on the "response_body" field.
+func ResponseBodyGT(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldResponseBody, v))
+}
+
+// ResponseBodyGTE applies the GTE predicate on the "response_body" field.
+func ResponseBodyGTE(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldResponseBody, v))
+}
+
+// ResponseBodyLT applies the LT predicate on the "response_body" field.
+func ResponseBodyLT(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldResponseBody, v))
+}
+
+// ResponseBodyLTE applies the LTE predicate on the "response_body" field.
+func ResponseBodyLTE(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldResponseBody, v))
+}
+
+// ResponseBodyContains applies the Contains predicate on the "response_body" field.
+func ResponseBodyContains(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldContains(FieldResponseBody, v))
+}
+
+// ResponseBodyHasPrefix applies the HasPrefix predicate on the "response_body" field.
+func ResponseBodyHasPrefix(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldHasPrefix(FieldResponseBody, v))
+}
+
+// ResponseBodyHasSuffix applies the HasSuffix predicate on the "response_body" field.
+func ResponseBodyHasSuffix(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldHasSuffix(FieldResponseBody, v))
+}
+
+// ResponseBodyEqualFold applies the EqualFold predicate on the "response_body" field.
+func ResponseBodyEqualFold(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEqualFold(FieldResponseBody, v))
+}
+
+// ResponseBodyContainsFold applies the ContainsFold predicate on the "response_body" field.
+func ResponseBodyContainsFold(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldContainsFold(FieldResponseBody, v))
+}
+
+// StatusEQ applies the EQ predicate on the "status" field.
+func StatusEQ(v Status) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldStatus, v))
+}
+
+// StatusNEQ applies the NEQ predicate on the "status" field.
+func StatusNEQ(v Status) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldStatus, v))
+}
+
+// StatusIn applies the In predicate on the "status" field.
+func StatusIn(vs ...Status) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldStatus, vs...))
+}
+
+// StatusNotIn applies the NotIn predicate on the "status" field.
+func StatusNotIn(vs ...Status) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldStatus, vs...))
 }
 
 // HasRequest applies the HasEdge predicate on the "request" edge.

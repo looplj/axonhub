@@ -54,20 +54,6 @@ func (rc *RequestCreate) SetStatus(r request.Status) *RequestCreate {
 	return rc
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (rc *RequestCreate) SetDeletedAt(i int) *RequestCreate {
-	rc.mutation.SetDeletedAt(i)
-	return rc
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableDeletedAt(i *int) *RequestCreate {
-	if i != nil {
-		rc.SetDeletedAt(*i)
-	}
-	return rc
-}
-
 // SetUser sets the "user" edge to the User entity.
 func (rc *RequestCreate) SetUser(u *User) *RequestCreate {
 	return rc.SetUserID(u.ID)
@@ -100,7 +86,6 @@ func (rc *RequestCreate) Mutation() *RequestMutation {
 
 // Save creates the Request in the database.
 func (rc *RequestCreate) Save(ctx context.Context) (*Request, error) {
-	rc.defaults()
 	return withHooks(ctx, rc.sqlSave, rc.mutation, rc.hooks)
 }
 
@@ -123,14 +108,6 @@ func (rc *RequestCreate) Exec(ctx context.Context) error {
 func (rc *RequestCreate) ExecX(ctx context.Context) {
 	if err := rc.Exec(ctx); err != nil {
 		panic(err)
-	}
-}
-
-// defaults sets the default values of the builder before save.
-func (rc *RequestCreate) defaults() {
-	if _, ok := rc.mutation.DeletedAt(); !ok {
-		v := request.DefaultDeletedAt
-		rc.mutation.SetDeletedAt(v)
 	}
 }
 
@@ -160,9 +137,6 @@ func (rc *RequestCreate) check() error {
 		if err := request.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Request.status": %w`, err)}
 		}
-	}
-	if _, ok := rc.mutation.DeletedAt(); !ok {
-		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Request.deleted_at"`)}
 	}
 	if len(rc.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Request.user"`)}
@@ -208,10 +182,6 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := rc.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
-	}
-	if value, ok := rc.mutation.DeletedAt(); ok {
-		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
-		_node.DeletedAt = value
 	}
 	if nodes := rc.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -339,24 +309,6 @@ func (u *RequestUpsert) UpdateStatus() *RequestUpsert {
 	return u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (u *RequestUpsert) SetDeletedAt(v int) *RequestUpsert {
-	u.Set(request.FieldDeletedAt, v)
-	return u
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *RequestUpsert) UpdateDeletedAt() *RequestUpsert {
-	u.SetExcluded(request.FieldDeletedAt)
-	return u
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *RequestUpsert) AddDeletedAt(v int) *RequestUpsert {
-	u.Add(request.FieldDeletedAt, v)
-	return u
-}
-
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -436,27 +388,6 @@ func (u *RequestUpsertOne) UpdateStatus() *RequestUpsertOne {
 	})
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (u *RequestUpsertOne) SetDeletedAt(v int) *RequestUpsertOne {
-	return u.Update(func(s *RequestUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *RequestUpsertOne) AddDeletedAt(v int) *RequestUpsertOne {
-	return u.Update(func(s *RequestUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *RequestUpsertOne) UpdateDeletedAt() *RequestUpsertOne {
-	return u.Update(func(s *RequestUpsert) {
-		s.UpdateDeletedAt()
-	})
-}
-
 // Exec executes the query.
 func (u *RequestUpsertOne) Exec(ctx context.Context) error {
 	if len(u.create.conflict) == 0 {
@@ -509,7 +440,6 @@ func (rcb *RequestCreateBulk) Save(ctx context.Context) ([]*Request, error) {
 	for i := range rcb.builders {
 		func(i int, root context.Context) {
 			builder := rcb.builders[i]
-			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*RequestMutation)
 				if !ok {
@@ -699,27 +629,6 @@ func (u *RequestUpsertBulk) SetStatus(v request.Status) *RequestUpsertBulk {
 func (u *RequestUpsertBulk) UpdateStatus() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.UpdateStatus()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *RequestUpsertBulk) SetDeletedAt(v int) *RequestUpsertBulk {
-	return u.Update(func(s *RequestUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *RequestUpsertBulk) AddDeletedAt(v int) *RequestUpsertBulk {
-	return u.Update(func(s *RequestUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *RequestUpsertBulk) UpdateDeletedAt() *RequestUpsertBulk {
-	return u.Update(func(s *RequestUpsert) {
-		s.UpdateDeletedAt()
 	})
 }
 

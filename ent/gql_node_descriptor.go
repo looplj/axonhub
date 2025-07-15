@@ -209,7 +209,7 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     r.ID,
 		Type:   "Request",
-		Fields: make([]*Field, 6),
+		Fields: make([]*Field, 5),
 		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
@@ -253,14 +253,6 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "status",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(r.DeletedAt); err != nil {
-		return nil, err
-	}
-	node.Fields[5] = &Field{
-		Type:  "int",
-		Name:  "deleted_at",
-		Value: string(buf),
-	}
 	node.Edges[0] = &Edge{
 		Type: "User",
 		Name: "user",
@@ -299,7 +291,7 @@ func (re *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     re.ID,
 		Type:   "RequestExecution",
-		Fields: make([]*Field, 2),
+		Fields: make([]*Field, 7),
 		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
@@ -317,6 +309,46 @@ func (re *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 	node.Fields[1] = &Field{
 		Type:  "int",
 		Name:  "request_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(re.ChannelID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "channel_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(re.ModelID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "model_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(re.RequestBody); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "string",
+		Name:  "request_body",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(re.ResponseBody); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "string",
+		Name:  "response_body",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(re.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "requestexecution.Status",
+		Name:  "status",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{
