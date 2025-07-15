@@ -6,4 +6,6 @@ import (
 
 var Module = fx.Module("biz",
 	fx.Provide(NewChannelService),
+	fx.Provide(NewRequestService),
+	fx.Provide(NewChatCompletionProcessor),
 )

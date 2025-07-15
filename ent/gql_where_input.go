@@ -1011,6 +1011,8 @@ type RequestWhereInput struct {
 	ResponseBodyContains     *string  `json:"responseBodyContains,omitempty"`
 	ResponseBodyHasPrefix    *string  `json:"responseBodyHasPrefix,omitempty"`
 	ResponseBodyHasSuffix    *string  `json:"responseBodyHasSuffix,omitempty"`
+	ResponseBodyIsNil        bool     `json:"responseBodyIsNil,omitempty"`
+	ResponseBodyNotNil       bool     `json:"responseBodyNotNil,omitempty"`
 	ResponseBodyEqualFold    *string  `json:"responseBodyEqualFold,omitempty"`
 	ResponseBodyContainsFold *string  `json:"responseBodyContainsFold,omitempty"`
 
@@ -1224,6 +1226,12 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	if i.ResponseBodyHasSuffix != nil {
 		predicates = append(predicates, request.ResponseBodyHasSuffix(*i.ResponseBodyHasSuffix))
 	}
+	if i.ResponseBodyIsNil {
+		predicates = append(predicates, request.ResponseBodyIsNil())
+	}
+	if i.ResponseBodyNotNil {
+		predicates = append(predicates, request.ResponseBodyNotNil())
+	}
 	if i.ResponseBodyEqualFold != nil {
 		predicates = append(predicates, request.ResponseBodyEqualFold(*i.ResponseBodyEqualFold))
 	}
@@ -1387,6 +1395,8 @@ type RequestExecutionWhereInput struct {
 	ResponseBodyContains     *string  `json:"responseBodyContains,omitempty"`
 	ResponseBodyHasPrefix    *string  `json:"responseBodyHasPrefix,omitempty"`
 	ResponseBodyHasSuffix    *string  `json:"responseBodyHasSuffix,omitempty"`
+	ResponseBodyIsNil        bool     `json:"responseBodyIsNil,omitempty"`
+	ResponseBodyNotNil       bool     `json:"responseBodyNotNil,omitempty"`
 	ResponseBodyEqualFold    *string  `json:"responseBodyEqualFold,omitempty"`
 	ResponseBodyContainsFold *string  `json:"responseBodyContainsFold,omitempty"`
 
@@ -1651,6 +1661,12 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.ResponseBodyHasSuffix != nil {
 		predicates = append(predicates, requestexecution.ResponseBodyHasSuffix(*i.ResponseBodyHasSuffix))
+	}
+	if i.ResponseBodyIsNil {
+		predicates = append(predicates, requestexecution.ResponseBodyIsNil())
+	}
+	if i.ResponseBodyNotNil {
+		predicates = append(predicates, requestexecution.ResponseBodyNotNil())
 	}
 	if i.ResponseBodyEqualFold != nil {
 		predicates = append(predicates, requestexecution.ResponseBodyEqualFold(*i.ResponseBodyEqualFold))

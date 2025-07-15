@@ -233,6 +233,16 @@ func ResponseBodyHasSuffix(v string) predicate.Request {
 	return predicate.Request(sql.FieldHasSuffix(FieldResponseBody, v))
 }
 
+// ResponseBodyIsNil applies the IsNil predicate on the "response_body" field.
+func ResponseBodyIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldResponseBody))
+}
+
+// ResponseBodyNotNil applies the NotNil predicate on the "response_body" field.
+func ResponseBodyNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldResponseBody))
+}
+
 // ResponseBodyEqualFold applies the EqualFold predicate on the "response_body" field.
 func ResponseBodyEqualFold(v string) predicate.Request {
 	return predicate.Request(sql.FieldEqualFold(FieldResponseBody, v))

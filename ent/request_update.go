@@ -42,6 +42,12 @@ func (ru *RequestUpdate) SetNillableResponseBody(s *string) *RequestUpdate {
 	return ru
 }
 
+// ClearResponseBody clears the value of the "response_body" field.
+func (ru *RequestUpdate) ClearResponseBody() *RequestUpdate {
+	ru.mutation.ClearResponseBody()
+	return ru
+}
+
 // SetStatus sets the "status" field.
 func (ru *RequestUpdate) SetStatus(r request.Status) *RequestUpdate {
 	ru.mutation.SetStatus(r)
@@ -155,6 +161,9 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := ru.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeString, value)
 	}
+	if ru.mutation.ResponseBodyCleared() {
+		_spec.ClearField(request.FieldResponseBody, field.TypeString)
+	}
 	if value, ok := ru.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 	}
@@ -234,6 +243,12 @@ func (ruo *RequestUpdateOne) SetNillableResponseBody(s *string) *RequestUpdateOn
 	if s != nil {
 		ruo.SetResponseBody(*s)
 	}
+	return ruo
+}
+
+// ClearResponseBody clears the value of the "response_body" field.
+func (ruo *RequestUpdateOne) ClearResponseBody() *RequestUpdateOne {
+	ruo.mutation.ClearResponseBody()
 	return ruo
 }
 
@@ -379,6 +394,9 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 	}
 	if value, ok := ruo.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeString, value)
+	}
+	if ruo.mutation.ResponseBodyCleared() {
+		_spec.ClearField(request.FieldResponseBody, field.TypeString)
 	}
 	if value, ok := ruo.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)

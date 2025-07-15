@@ -4,16 +4,13 @@ import (
 	"io"
 
 	"github.com/gin-gonic/gin"
-	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/log"
 	"github.com/looplj/axonhub/server/biz"
 )
 
-func NewChatCompletionHandlers(transformer transformer.Transformer, channelService *biz.ChannelService) *ChatCompletionHandlers {
+func NewChatCompletionHandlers(processor *biz.ChatCompletionProcessor) *ChatCompletionHandlers {
 	return &ChatCompletionHandlers{
-		ChatCompletionProcessor: biz.NewChatCompletionProcessor(
-			channelService,
-			transformer),
+		ChatCompletionProcessor: processor,
 	}
 }
 

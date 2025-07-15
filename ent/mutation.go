@@ -2101,9 +2101,22 @@ func (m *RequestMutation) OldResponseBody(ctx context.Context) (v string, err er
 	return oldValue.ResponseBody, nil
 }
 
+// ClearResponseBody clears the value of the "response_body" field.
+func (m *RequestMutation) ClearResponseBody() {
+	m.response_body = nil
+	m.clearedFields[request.FieldResponseBody] = struct{}{}
+}
+
+// ResponseBodyCleared returns if the "response_body" field was cleared in this mutation.
+func (m *RequestMutation) ResponseBodyCleared() bool {
+	_, ok := m.clearedFields[request.FieldResponseBody]
+	return ok
+}
+
 // ResetResponseBody resets all changes to the "response_body" field.
 func (m *RequestMutation) ResetResponseBody() {
 	m.response_body = nil
+	delete(m.clearedFields, request.FieldResponseBody)
 }
 
 // SetStatus sets the "status" field.
@@ -2413,7 +2426,11 @@ func (m *RequestMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *RequestMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(request.FieldResponseBody) {
+		fields = append(fields, request.FieldResponseBody)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -2426,6 +2443,11 @@ func (m *RequestMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *RequestMutation) ClearField(name string) error {
+	switch name {
+	case request.FieldResponseBody:
+		m.ClearResponseBody()
+		return nil
+	}
 	return fmt.Errorf("unknown Request nullable field %s", name)
 }
 
@@ -2964,9 +2986,22 @@ func (m *RequestExecutionMutation) OldResponseBody(ctx context.Context) (v strin
 	return oldValue.ResponseBody, nil
 }
 
+// ClearResponseBody clears the value of the "response_body" field.
+func (m *RequestExecutionMutation) ClearResponseBody() {
+	m.response_body = nil
+	m.clearedFields[requestexecution.FieldResponseBody] = struct{}{}
+}
+
+// ResponseBodyCleared returns if the "response_body" field was cleared in this mutation.
+func (m *RequestExecutionMutation) ResponseBodyCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldResponseBody]
+	return ok
+}
+
 // ResetResponseBody resets all changes to the "response_body" field.
 func (m *RequestExecutionMutation) ResetResponseBody() {
 	m.response_body = nil
+	delete(m.clearedFields, requestexecution.FieldResponseBody)
 }
 
 // SetStatus sets the "status" field.
@@ -3259,7 +3294,11 @@ func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error 
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *RequestExecutionMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(requestexecution.FieldResponseBody) {
+		fields = append(fields, requestexecution.FieldResponseBody)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -3272,6 +3311,11 @@ func (m *RequestExecutionMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *RequestExecutionMutation) ClearField(name string) error {
+	switch name {
+	case requestexecution.FieldResponseBody:
+		m.ClearResponseBody()
+		return nil
+	}
 	return fmt.Errorf("unknown RequestExecution nullable field %s", name)
 }
 

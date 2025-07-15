@@ -4927,14 +4927,11 @@ func (ec *executionContext) _Request_responseBody(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Request_responseBody(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5706,14 +5703,11 @@ func (ec *executionContext) _RequestExecution_responseBody(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_RequestExecution_responseBody(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -9445,7 +9439,7 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 			it.RequestBody = data
 		case "responseBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBody"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -9901,7 +9895,7 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDGT", "userIDGTE", "userIDLT", "userIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDGT", "channelIDGTE", "channelIDLT", "channelIDLTE", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "requestBody", "requestBodyNEQ", "requestBodyIn", "requestBodyNotIn", "requestBodyGT", "requestBodyGTE", "requestBodyLT", "requestBodyLTE", "requestBodyContains", "requestBodyHasPrefix", "requestBodyHasSuffix", "requestBodyEqualFold", "requestBodyContainsFold", "responseBody", "responseBodyNEQ", "responseBodyIn", "responseBodyNotIn", "responseBodyGT", "responseBodyGTE", "responseBodyLT", "responseBodyLTE", "responseBodyContains", "responseBodyHasPrefix", "responseBodyHasSuffix", "responseBodyEqualFold", "responseBodyContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasRequest", "hasRequestWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDGT", "userIDGTE", "userIDLT", "userIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDGT", "channelIDGTE", "channelIDLT", "channelIDLTE", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "requestBody", "requestBodyNEQ", "requestBodyIn", "requestBodyNotIn", "requestBodyGT", "requestBodyGTE", "requestBodyLT", "requestBodyLTE", "requestBodyContains", "requestBodyHasPrefix", "requestBodyHasSuffix", "requestBodyEqualFold", "requestBodyContainsFold", "responseBody", "responseBodyNEQ", "responseBodyIn", "responseBodyNotIn", "responseBodyGT", "responseBodyGTE", "responseBodyLT", "responseBodyLTE", "responseBodyContains", "responseBodyHasPrefix", "responseBodyHasSuffix", "responseBodyIsNil", "responseBodyNotNil", "responseBodyEqualFold", "responseBodyContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasRequest", "hasRequestWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10349,6 +10343,20 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 				return it, err
 			}
 			it.ResponseBodyHasSuffix = data
+		case "responseBodyIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResponseBodyIsNil = data
+		case "responseBodyNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResponseBodyNotNil = data
 		case "responseBodyEqualFold":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyEqualFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -10418,7 +10426,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "requestBody", "requestBodyNEQ", "requestBodyIn", "requestBodyNotIn", "requestBodyGT", "requestBodyGTE", "requestBodyLT", "requestBodyLTE", "requestBodyContains", "requestBodyHasPrefix", "requestBodyHasSuffix", "requestBodyEqualFold", "requestBodyContainsFold", "responseBody", "responseBodyNEQ", "responseBodyIn", "responseBodyNotIn", "responseBodyGT", "responseBodyGTE", "responseBodyLT", "responseBodyLTE", "responseBodyContains", "responseBodyHasPrefix", "responseBodyHasSuffix", "responseBodyEqualFold", "responseBodyContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasAPIKey", "hasAPIKeyWith", "hasExecutions", "hasExecutionsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "requestBody", "requestBodyNEQ", "requestBodyIn", "requestBodyNotIn", "requestBodyGT", "requestBodyGTE", "requestBodyLT", "requestBodyLTE", "requestBodyContains", "requestBodyHasPrefix", "requestBodyHasSuffix", "requestBodyEqualFold", "requestBodyContainsFold", "responseBody", "responseBodyNEQ", "responseBodyIn", "responseBodyNotIn", "responseBodyGT", "responseBodyGTE", "responseBodyLT", "responseBodyLTE", "responseBodyContains", "responseBodyHasPrefix", "responseBodyHasSuffix", "responseBodyIsNil", "responseBodyNotNil", "responseBodyEqualFold", "responseBodyContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasAPIKey", "hasAPIKeyWith", "hasExecutions", "hasExecutionsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10726,6 +10734,20 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.ResponseBodyHasSuffix = data
+		case "responseBodyIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResponseBodyIsNil = data
+		case "responseBodyNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResponseBodyNotNil = data
 		case "responseBodyEqualFold":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyEqualFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -10919,7 +10941,7 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"responseBody", "status"}
+	fieldsInOrder := [...]string{"responseBody", "clearResponseBody", "status"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10933,6 +10955,13 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.ResponseBody = data
+		case "clearResponseBody":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearResponseBody"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearResponseBody = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalORequestStatus2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋentᚋrequestᚐStatus(ctx, v)
@@ -12241,9 +12270,6 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "responseBody":
 			out.Values[i] = ec._Request_responseBody(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "status":
 			out.Values[i] = ec._Request_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -12510,9 +12536,6 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 			}
 		case "responseBody":
 			out.Values[i] = ec._RequestExecution_responseBody(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "status":
 			out.Values[i] = ec._RequestExecution_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -14672,6 +14695,18 @@ func (ec *executionContext) unmarshalORequestWhereInput2ᚖgithubᚗcomᚋzhenzo
 	}
 	res, err := ec.unmarshalInputRequestWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOString2string(ctx context.Context, v any) (string, error) {
+	res, err := graphql.UnmarshalString(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {

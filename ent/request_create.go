@@ -48,6 +48,14 @@ func (rc *RequestCreate) SetResponseBody(s string) *RequestCreate {
 	return rc
 }
 
+// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
+func (rc *RequestCreate) SetNillableResponseBody(s *string) *RequestCreate {
+	if s != nil {
+		rc.SetResponseBody(*s)
+	}
+	return rc
+}
+
 // SetStatus sets the "status" field.
 func (rc *RequestCreate) SetStatus(r request.Status) *RequestCreate {
 	rc.mutation.SetStatus(r)
@@ -126,9 +134,6 @@ func (rc *RequestCreate) check() error {
 		if err := request.RequestBodyValidator(v); err != nil {
 			return &ValidationError{Name: "request_body", err: fmt.Errorf(`ent: validator failed for field "Request.request_body": %w`, err)}
 		}
-	}
-	if _, ok := rc.mutation.ResponseBody(); !ok {
-		return &ValidationError{Name: "response_body", err: errors.New(`ent: missing required field "Request.response_body"`)}
 	}
 	if _, ok := rc.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Request.status"`)}
@@ -297,6 +302,12 @@ func (u *RequestUpsert) UpdateResponseBody() *RequestUpsert {
 	return u
 }
 
+// ClearResponseBody clears the value of the "response_body" field.
+func (u *RequestUpsert) ClearResponseBody() *RequestUpsert {
+	u.SetNull(request.FieldResponseBody)
+	return u
+}
+
 // SetStatus sets the "status" field.
 func (u *RequestUpsert) SetStatus(v request.Status) *RequestUpsert {
 	u.Set(request.FieldStatus, v)
@@ -371,6 +382,13 @@ func (u *RequestUpsertOne) SetResponseBody(v string) *RequestUpsertOne {
 func (u *RequestUpsertOne) UpdateResponseBody() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.UpdateResponseBody()
+	})
+}
+
+// ClearResponseBody clears the value of the "response_body" field.
+func (u *RequestUpsertOne) ClearResponseBody() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearResponseBody()
 	})
 }
 
@@ -615,6 +633,13 @@ func (u *RequestUpsertBulk) SetResponseBody(v string) *RequestUpsertBulk {
 func (u *RequestUpsertBulk) UpdateResponseBody() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.UpdateResponseBody()
+	})
+}
+
+// ClearResponseBody clears the value of the "response_body" field.
+func (u *RequestUpsertBulk) ClearResponseBody() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearResponseBody()
 	})
 }
 

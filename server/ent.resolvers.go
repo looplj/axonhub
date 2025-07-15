@@ -6,7 +6,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 
 	"entgo.io/contrib/entgql"
 	"github.com/looplj/axonhub/ent"
@@ -38,29 +37,19 @@ func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int],
 
 // Requests is the resolver for the requests field.
 func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.RequestWhereInput) (*ent.RequestConnection, error) {
-	panic(fmt.Errorf("not implemented: Requests - requests"))
+	return r.client.Request.Query().Paginate(ctx, after, first, before, last, ent.WithRequestFilter(func(q *ent.RequestQuery) (*ent.RequestQuery, error) {
+		return where.Filter(q)
+	}))
 }
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.UserWhereInput) (*ent.UserConnection, error) {
-	panic(fmt.Errorf("not implemented: Users - users"))
+	return r.client.User.Query().Paginate(ctx, after, first, before, last, ent.WithUserFilter(func(q *ent.UserQuery) (*ent.UserQuery, error) {
+		return where.Filter(q)
+	}))
 }
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *queryResolver) RequestExecutions(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.RequestExecutionWhereInput) (*ent.RequestExecutionConnection, error) {
-	return r.client.RequestExecution.Query().Paginate(ctx, after, first, before, last, ent.WithRequestExecutionFilter(func(q *ent.RequestExecutionQuery) (*ent.RequestExecutionQuery, error) {
-		return where.Filter(q)
-	}))
-}
-*/

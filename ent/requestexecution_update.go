@@ -41,6 +41,12 @@ func (reu *RequestExecutionUpdate) SetNillableResponseBody(s *string) *RequestEx
 	return reu
 }
 
+// ClearResponseBody clears the value of the "response_body" field.
+func (reu *RequestExecutionUpdate) ClearResponseBody() *RequestExecutionUpdate {
+	reu.mutation.ClearResponseBody()
+	return reu
+}
+
 // SetStatus sets the "status" field.
 func (reu *RequestExecutionUpdate) SetStatus(r requestexecution.Status) *RequestExecutionUpdate {
 	reu.mutation.SetStatus(r)
@@ -115,6 +121,9 @@ func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err erro
 	if value, ok := reu.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeString, value)
 	}
+	if reu.mutation.ResponseBodyCleared() {
+		_spec.ClearField(requestexecution.FieldResponseBody, field.TypeString)
+	}
 	if value, ok := reu.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 	}
@@ -149,6 +158,12 @@ func (reuo *RequestExecutionUpdateOne) SetNillableResponseBody(s *string) *Reque
 	if s != nil {
 		reuo.SetResponseBody(*s)
 	}
+	return reuo
+}
+
+// ClearResponseBody clears the value of the "response_body" field.
+func (reuo *RequestExecutionUpdateOne) ClearResponseBody() *RequestExecutionUpdateOne {
+	reuo.mutation.ClearResponseBody()
 	return reuo
 }
 
@@ -255,6 +270,9 @@ func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Requ
 	}
 	if value, ok := reuo.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeString, value)
+	}
+	if reuo.mutation.ResponseBodyCleared() {
+		_spec.ClearField(requestexecution.FieldResponseBody, field.TypeString)
 	}
 	if value, ok := reuo.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
