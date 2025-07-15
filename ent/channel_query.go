@@ -110,8 +110,8 @@ func (cq *ChannelQuery) FirstX(ctx context.Context) *Channel {
 
 // FirstID returns the first Channel ID from the query.
 // Returns a *NotFoundError when no Channel ID was found.
-func (cq *ChannelQuery) FirstID(ctx context.Context) (id int64, err error) {
-	var ids []int64
+func (cq *ChannelQuery) FirstID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = cq.Limit(1).IDs(setContextOp(ctx, cq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
@@ -123,7 +123,7 @@ func (cq *ChannelQuery) FirstID(ctx context.Context) (id int64, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (cq *ChannelQuery) FirstIDX(ctx context.Context) int64 {
+func (cq *ChannelQuery) FirstIDX(ctx context.Context) int {
 	id, err := cq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -161,8 +161,8 @@ func (cq *ChannelQuery) OnlyX(ctx context.Context) *Channel {
 // OnlyID is like Only, but returns the only Channel ID in the query.
 // Returns a *NotSingularError when more than one Channel ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (cq *ChannelQuery) OnlyID(ctx context.Context) (id int64, err error) {
-	var ids []int64
+func (cq *ChannelQuery) OnlyID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = cq.Limit(2).IDs(setContextOp(ctx, cq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
@@ -178,7 +178,7 @@ func (cq *ChannelQuery) OnlyID(ctx context.Context) (id int64, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (cq *ChannelQuery) OnlyIDX(ctx context.Context) int64 {
+func (cq *ChannelQuery) OnlyIDX(ctx context.Context) int {
 	id, err := cq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -206,7 +206,7 @@ func (cq *ChannelQuery) AllX(ctx context.Context) []*Channel {
 }
 
 // IDs executes the query and returns a list of Channel IDs.
-func (cq *ChannelQuery) IDs(ctx context.Context) (ids []int64, err error) {
+func (cq *ChannelQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if cq.ctx.Unique == nil && cq.path != nil {
 		cq.Unique(true)
 	}
@@ -218,7 +218,7 @@ func (cq *ChannelQuery) IDs(ctx context.Context) (ids []int64, err error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (cq *ChannelQuery) IDsX(ctx context.Context) []int64 {
+func (cq *ChannelQuery) IDsX(ctx context.Context) []int {
 	ids, err := cq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -423,7 +423,7 @@ func (cq *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 
 func (cq *ChannelQuery) loadRequests(ctx context.Context, query *RequestQuery, nodes []*Channel, init func(*Channel), assign func(*Channel, *Request)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int64]*Channel)
+	nodeids := make(map[int]*Channel)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -466,7 +466,7 @@ func (cq *ChannelQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (cq *ChannelQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(channel.Table, channel.Columns, sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewQuerySpec(channel.Table, channel.Columns, sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt))
 	_spec.From = cq.sql
 	if unique := cq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

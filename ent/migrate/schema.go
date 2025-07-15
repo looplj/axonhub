@@ -10,10 +10,10 @@ import (
 var (
 	// APIKeysColumns holds the columns for the "api_keys" table.
 	APIKeysColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "key", Type: field.TypeString},
 		{Name: "name", Type: field.TypeString},
-		{Name: "user_id", Type: field.TypeInt64},
+		{Name: "user_id", Type: field.TypeInt},
 	}
 	// APIKeysTable holds the schema information for the "api_keys" table.
 	APIKeysTable = &schema.Table{
@@ -43,14 +43,14 @@ var (
 	}
 	// ChannelsColumns holds the columns for the "channels" table.
 	ChannelsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "anthropic", "gemini", "deepseek", "doubao", "kimi"}},
 		{Name: "base_url", Type: field.TypeString},
 		{Name: "name", Type: field.TypeString},
 		{Name: "api_key", Type: field.TypeString},
 		{Name: "supported_models", Type: field.TypeJSON},
 		{Name: "default_test_model", Type: field.TypeString},
-		{Name: "settings", Type: field.TypeJSON, Nullable: true},
+		{Name: "settings", Type: field.TypeJSON},
 	}
 	// ChannelsTable holds the schema information for the "channels" table.
 	ChannelsTable = &schema.Table{
@@ -67,7 +67,7 @@ var (
 	}
 	// JobsColumns holds the columns for the "jobs" table.
 	JobsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "owner_id", Type: field.TypeInt},
 		{Name: "type", Type: field.TypeString},
 		{Name: "context", Type: field.TypeString},
@@ -87,14 +87,14 @@ var (
 	}
 	// RequestsColumns holds the columns for the "requests" table.
 	RequestsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "request_body", Type: field.TypeString},
 		{Name: "response_body", Type: field.TypeString},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed"}},
-		{Name: "deleted_at", Type: field.TypeInt64, Default: 0},
-		{Name: "api_key_id", Type: field.TypeInt64},
-		{Name: "channel_requests", Type: field.TypeInt64, Nullable: true},
-		{Name: "user_id", Type: field.TypeInt64},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "api_key_id", Type: field.TypeInt},
+		{Name: "channel_requests", Type: field.TypeInt, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt},
 	}
 	// RequestsTable holds the schema information for the "requests" table.
 	RequestsTable = &schema.Table{
@@ -131,9 +131,9 @@ var (
 	}
 	// RequestExecutionsColumns holds the columns for the "request_executions" table.
 	RequestExecutionsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt64, Increment: true},
-		{Name: "user_id", Type: field.TypeInt64},
-		{Name: "request_id", Type: field.TypeInt64},
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "user_id", Type: field.TypeInt},
+		{Name: "request_id", Type: field.TypeInt},
 	}
 	// RequestExecutionsTable holds the schema information for the "request_executions" table.
 	RequestExecutionsTable = &schema.Table{
@@ -158,7 +158,7 @@ var (
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "email", Type: field.TypeString},
 		{Name: "name", Type: field.TypeString},
 	}

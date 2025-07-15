@@ -60,28 +60,20 @@ func (cc *ChannelCreate) SetDefaultTestModel(s string) *ChannelCreate {
 }
 
 // SetSettings sets the "settings" field.
-func (cc *ChannelCreate) SetSettings(os objects.ChannelSettings) *ChannelCreate {
+func (cc *ChannelCreate) SetSettings(os *objects.ChannelSettings) *ChannelCreate {
 	cc.mutation.SetSettings(os)
 	return cc
 }
 
-// SetNillableSettings sets the "settings" field if the given value is not nil.
-func (cc *ChannelCreate) SetNillableSettings(os *objects.ChannelSettings) *ChannelCreate {
-	if os != nil {
-		cc.SetSettings(*os)
-	}
-	return cc
-}
-
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
-func (cc *ChannelCreate) AddRequestIDs(ids ...int64) *ChannelCreate {
+func (cc *ChannelCreate) AddRequestIDs(ids ...int) *ChannelCreate {
 	cc.mutation.AddRequestIDs(ids...)
 	return cc
 }
 
 // AddRequests adds the "requests" edges to the Request entity.
 func (cc *ChannelCreate) AddRequests(r ...*Request) *ChannelCreate {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -150,6 +142,9 @@ func (cc *ChannelCreate) check() error {
 	if _, ok := cc.mutation.DefaultTestModel(); !ok {
 		return &ValidationError{Name: "default_test_model", err: errors.New(`ent: missing required field "Channel.default_test_model"`)}
 	}
+	if _, ok := cc.mutation.Settings(); !ok {
+		return &ValidationError{Name: "settings", err: errors.New(`ent: missing required field "Channel.settings"`)}
+	}
 	return nil
 }
 
@@ -165,7 +160,7 @@ func (cc *ChannelCreate) sqlSave(ctx context.Context) (*Channel, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int64(id)
+	_node.ID = int(id)
 	cc.mutation.id = &_node.ID
 	cc.mutation.done = true
 	return _node, nil
@@ -174,7 +169,7 @@ func (cc *ChannelCreate) sqlSave(ctx context.Context) (*Channel, error) {
 func (cc *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Channel{config: cc.config}
-		_spec = sqlgraph.NewCreateSpec(channel.Table, sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt64))
+		_spec = sqlgraph.NewCreateSpec(channel.Table, sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt))
 	)
 	_spec.OnConflict = cc.conflict
 	if value, ok := cc.mutation.GetType(); ok {
@@ -213,7 +208,7 @@ func (cc *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 			Columns: []string{channel.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -334,7 +329,7 @@ func (u *ChannelUpsert) UpdateDefaultTestModel() *ChannelUpsert {
 }
 
 // SetSettings sets the "settings" field.
-func (u *ChannelUpsert) SetSettings(v objects.ChannelSettings) *ChannelUpsert {
+func (u *ChannelUpsert) SetSettings(v *objects.ChannelSettings) *ChannelUpsert {
 	u.Set(channel.FieldSettings, v)
 	return u
 }
@@ -342,12 +337,6 @@ func (u *ChannelUpsert) SetSettings(v objects.ChannelSettings) *ChannelUpsert {
 // UpdateSettings sets the "settings" field to the value that was provided on create.
 func (u *ChannelUpsert) UpdateSettings() *ChannelUpsert {
 	u.SetExcluded(channel.FieldSettings)
-	return u
-}
-
-// ClearSettings clears the value of the "settings" field.
-func (u *ChannelUpsert) ClearSettings() *ChannelUpsert {
-	u.SetNull(channel.FieldSettings)
 	return u
 }
 
@@ -467,7 +456,7 @@ func (u *ChannelUpsertOne) UpdateDefaultTestModel() *ChannelUpsertOne {
 }
 
 // SetSettings sets the "settings" field.
-func (u *ChannelUpsertOne) SetSettings(v objects.ChannelSettings) *ChannelUpsertOne {
+func (u *ChannelUpsertOne) SetSettings(v *objects.ChannelSettings) *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.SetSettings(v)
 	})
@@ -477,13 +466,6 @@ func (u *ChannelUpsertOne) SetSettings(v objects.ChannelSettings) *ChannelUpsert
 func (u *ChannelUpsertOne) UpdateSettings() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateSettings()
-	})
-}
-
-// ClearSettings clears the value of the "settings" field.
-func (u *ChannelUpsertOne) ClearSettings() *ChannelUpsertOne {
-	return u.Update(func(s *ChannelUpsert) {
-		s.ClearSettings()
 	})
 }
 
@@ -503,7 +485,7 @@ func (u *ChannelUpsertOne) ExecX(ctx context.Context) {
 }
 
 // Exec executes the UPSERT query and returns the inserted/updated ID.
-func (u *ChannelUpsertOne) ID(ctx context.Context) (id int64, err error) {
+func (u *ChannelUpsertOne) ID(ctx context.Context) (id int, err error) {
 	node, err := u.create.Save(ctx)
 	if err != nil {
 		return id, err
@@ -512,7 +494,7 @@ func (u *ChannelUpsertOne) ID(ctx context.Context) (id int64, err error) {
 }
 
 // IDX is like ID, but panics if an error occurs.
-func (u *ChannelUpsertOne) IDX(ctx context.Context) int64 {
+func (u *ChannelUpsertOne) IDX(ctx context.Context) int {
 	id, err := u.ID(ctx)
 	if err != nil {
 		panic(err)
@@ -568,7 +550,7 @@ func (ccb *ChannelCreateBulk) Save(ctx context.Context) ([]*Channel, error) {
 				mutation.id = &nodes[i].ID
 				if specs[i].ID.Value != nil {
 					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int64(id)
+					nodes[i].ID = int(id)
 				}
 				mutation.done = true
 				return nodes[i], nil
@@ -768,7 +750,7 @@ func (u *ChannelUpsertBulk) UpdateDefaultTestModel() *ChannelUpsertBulk {
 }
 
 // SetSettings sets the "settings" field.
-func (u *ChannelUpsertBulk) SetSettings(v objects.ChannelSettings) *ChannelUpsertBulk {
+func (u *ChannelUpsertBulk) SetSettings(v *objects.ChannelSettings) *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.SetSettings(v)
 	})
@@ -778,13 +760,6 @@ func (u *ChannelUpsertBulk) SetSettings(v objects.ChannelSettings) *ChannelUpser
 func (u *ChannelUpsertBulk) UpdateSettings() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateSettings()
-	})
-}
-
-// ClearSettings clears the value of the "settings" field.
-func (u *ChannelUpsertBulk) ClearSettings() *ChannelUpsertBulk {
-	return u.Update(func(s *ChannelUpsert) {
-		s.ClearSettings()
 	})
 }
 

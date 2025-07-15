@@ -11,14 +11,14 @@ type Handlers struct {
 	fx.In
 
 	Graphql *GraphqlHandler
-	OpenAI  *api.ChatCompletionHandlers
+	OpenAI  *api.OpenAIHandlers
 }
 
 func SetupRoutes(server *Server, handlers Handlers) {
-	server.GET("/playground", func(c *gin.Context) {
+	server.GET("/admin/playground", func(c *gin.Context) {
 		handlers.Graphql.Playground.ServeHTTP(c.Writer, c.Request)
 	})
-	server.POST("/graphql", func(ctx *gin.Context) {
+	server.POST("/admin/graphql", func(ctx *gin.Context) {
 		handlers.Graphql.Graphql.ServeHTTP(ctx.Writer, ctx.Request)
 	})
 

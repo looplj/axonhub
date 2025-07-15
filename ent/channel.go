@@ -17,7 +17,7 @@ import (
 type Channel struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int64 `json:"id,omitempty"`
+	ID int `json:"id,omitempty"`
 	// Type holds the value of the "type" field.
 	Type channel.Type `json:"type,omitempty"`
 	// BaseURL holds the value of the "base_url" field.
@@ -31,7 +31,7 @@ type Channel struct {
 	// DefaultTestModel holds the value of the "default_test_model" field.
 	DefaultTestModel string `json:"default_test_model,omitempty"`
 	// Settings holds the value of the "settings" field.
-	Settings objects.ChannelSettings `json:"settings,omitempty"`
+	Settings *objects.ChannelSettings `json:"settings,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChannelQuery when eager-loading is set.
 	Edges        ChannelEdges `json:"edges"`
@@ -91,7 +91,7 @@ func (c *Channel) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			c.ID = int64(value.Int64)
+			c.ID = int(value.Int64)
 		case channel.FieldType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field type", values[i])

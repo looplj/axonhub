@@ -4,4 +4,6 @@ import (
 	"go.uber.org/fx"
 )
 
-var Module = fx.Module("biz")
+var Module = fx.Module("biz",
+	fx.Provide(NewChannelService),
+)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/samber/lo"
 	openai "github.com/sashabaranov/go-openai"
 	"github.com/looplj/axonhub/llm/provider"
 	"github.com/looplj/axonhub/llm/types"
@@ -14,21 +15,25 @@ import (
 
 // Provider implements the provider.Provider interface for OpenAI
 type Provider struct {
-	name   string
-	client *openai.Client
-	config *types.ProviderConfig
+	name          string
+	client        *openai.Client
+	config        *provider.ProviderConfig
+	modelMappings map[string]provider.ModelMapping
 }
 
 // NewProvider creates a new OpenAI provider
-func NewProvider(config *types.ProviderConfig) provider.Provider {
+func NewProvider(config *provider.ProviderConfig) provider.Provider {
 	clientConfig := openai.DefaultConfig(config.APIKey)
 	clientConfig.BaseURL = config.BaseURL
 
+	modelMappings := lo.SliceToMap(config.ModelMappings, func(item provider.ModelMapping) (string, provider.ModelMapping) {
+		return item.From, item
+	})
 	client := openai.NewClientWithConfig(clientConfig)
 	return &Provider{
-		name:   config.Name,
-		client: client,
-		config: config,
+		name:          config.Name,
+		client:        client,
+		modelMappings: modelMappings,
 	}
 }
 
@@ -90,12 +95,12 @@ func (p *Provider) SupportsModel(model string) bool {
 }
 
 // GetConfig returns the provider configuration
-func (p *Provider) GetConfig() *types.ProviderConfig {
+func (p *Provider) GetConfig() *provider.ProviderConfig {
 	return p.config
 }
 
 // SetConfig updates the provider configuration
-func (p *Provider) SetConfig(config *types.ProviderConfig) {
+func (p *Provider) SetConfig(config *provider.ProviderConfig) {
 	p.config = config
 
 	// Recreate client with new config

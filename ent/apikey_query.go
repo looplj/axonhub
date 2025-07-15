@@ -134,8 +134,8 @@ func (akq *APIKeyQuery) FirstX(ctx context.Context) *APIKey {
 
 // FirstID returns the first APIKey ID from the query.
 // Returns a *NotFoundError when no APIKey ID was found.
-func (akq *APIKeyQuery) FirstID(ctx context.Context) (id int64, err error) {
-	var ids []int64
+func (akq *APIKeyQuery) FirstID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = akq.Limit(1).IDs(setContextOp(ctx, akq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
@@ -147,7 +147,7 @@ func (akq *APIKeyQuery) FirstID(ctx context.Context) (id int64, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (akq *APIKeyQuery) FirstIDX(ctx context.Context) int64 {
+func (akq *APIKeyQuery) FirstIDX(ctx context.Context) int {
 	id, err := akq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -185,8 +185,8 @@ func (akq *APIKeyQuery) OnlyX(ctx context.Context) *APIKey {
 // OnlyID is like Only, but returns the only APIKey ID in the query.
 // Returns a *NotSingularError when more than one APIKey ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (akq *APIKeyQuery) OnlyID(ctx context.Context) (id int64, err error) {
-	var ids []int64
+func (akq *APIKeyQuery) OnlyID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = akq.Limit(2).IDs(setContextOp(ctx, akq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
@@ -202,7 +202,7 @@ func (akq *APIKeyQuery) OnlyID(ctx context.Context) (id int64, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (akq *APIKeyQuery) OnlyIDX(ctx context.Context) int64 {
+func (akq *APIKeyQuery) OnlyIDX(ctx context.Context) int {
 	id, err := akq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -230,7 +230,7 @@ func (akq *APIKeyQuery) AllX(ctx context.Context) []*APIKey {
 }
 
 // IDs executes the query and returns a list of APIKey IDs.
-func (akq *APIKeyQuery) IDs(ctx context.Context) (ids []int64, err error) {
+func (akq *APIKeyQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if akq.ctx.Unique == nil && akq.path != nil {
 		akq.Unique(true)
 	}
@@ -242,7 +242,7 @@ func (akq *APIKeyQuery) IDs(ctx context.Context) (ids []int64, err error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (akq *APIKeyQuery) IDsX(ctx context.Context) []int64 {
+func (akq *APIKeyQuery) IDsX(ctx context.Context) []int {
 	ids, err := akq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -338,7 +338,7 @@ func (akq *APIKeyQuery) WithRequests(opts ...func(*RequestQuery)) *APIKeyQuery {
 // Example:
 //
 //	var v []struct {
-//		UserID int64 `json:"user_id,omitempty"`
+//		UserID int `json:"user_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
@@ -361,7 +361,7 @@ func (akq *APIKeyQuery) GroupBy(field string, fields ...string) *APIKeyGroupBy {
 // Example:
 //
 //	var v []struct {
-//		UserID int64 `json:"user_id,omitempty"`
+//		UserID int `json:"user_id,omitempty"`
 //	}
 //
 //	client.APIKey.Query().
@@ -465,8 +465,8 @@ func (akq *APIKeyQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*APIK
 }
 
 func (akq *APIKeyQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*APIKey, init func(*APIKey), assign func(*APIKey, *User)) error {
-	ids := make([]int64, 0, len(nodes))
-	nodeids := make(map[int64][]*APIKey)
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*APIKey)
 	for i := range nodes {
 		fk := nodes[i].UserID
 		if _, ok := nodeids[fk]; !ok {
@@ -495,7 +495,7 @@ func (akq *APIKeyQuery) loadUser(ctx context.Context, query *UserQuery, nodes []
 }
 func (akq *APIKeyQuery) loadRequests(ctx context.Context, query *RequestQuery, nodes []*APIKey, init func(*APIKey), assign func(*APIKey, *Request)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int64]*APIKey)
+	nodeids := make(map[int]*APIKey)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -538,7 +538,7 @@ func (akq *APIKeyQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (akq *APIKeyQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(apikey.Table, apikey.Columns, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewQuerySpec(apikey.Table, apikey.Columns, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt))
 	_spec.From = akq.sql
 	if unique := akq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

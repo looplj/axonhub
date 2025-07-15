@@ -36,14 +36,14 @@ func (uc *UserCreate) SetName(s string) *UserCreate {
 }
 
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
-func (uc *UserCreate) AddRequestIDs(ids ...int64) *UserCreate {
+func (uc *UserCreate) AddRequestIDs(ids ...int) *UserCreate {
 	uc.mutation.AddRequestIDs(ids...)
 	return uc
 }
 
 // AddRequests adds the "requests" edges to the Request entity.
 func (uc *UserCreate) AddRequests(r ...*Request) *UserCreate {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -51,14 +51,14 @@ func (uc *UserCreate) AddRequests(r ...*Request) *UserCreate {
 }
 
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
-func (uc *UserCreate) AddAPIKeyIDs(ids ...int64) *UserCreate {
+func (uc *UserCreate) AddAPIKeyIDs(ids ...int) *UserCreate {
 	uc.mutation.AddAPIKeyIDs(ids...)
 	return uc
 }
 
 // AddAPIKeys adds the "api_keys" edges to the APIKey entity.
 func (uc *UserCreate) AddAPIKeys(a ...*APIKey) *UserCreate {
-	ids := make([]int64, len(a))
+	ids := make([]int, len(a))
 	for i := range a {
 		ids[i] = a[i].ID
 	}
@@ -120,7 +120,7 @@ func (uc *UserCreate) sqlSave(ctx context.Context) (*User, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int64(id)
+	_node.ID = int(id)
 	uc.mutation.id = &_node.ID
 	uc.mutation.done = true
 	return _node, nil
@@ -129,7 +129,7 @@ func (uc *UserCreate) sqlSave(ctx context.Context) (*User, error) {
 func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	var (
 		_node = &User{config: uc.config}
-		_spec = sqlgraph.NewCreateSpec(user.Table, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64))
+		_spec = sqlgraph.NewCreateSpec(user.Table, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt))
 	)
 	_spec.OnConflict = uc.conflict
 	if value, ok := uc.mutation.Email(); ok {
@@ -148,7 +148,7 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Columns: []string{user.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -164,7 +164,7 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Columns: []string{user.APIKeysColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -332,7 +332,7 @@ func (u *UserUpsertOne) ExecX(ctx context.Context) {
 }
 
 // Exec executes the UPSERT query and returns the inserted/updated ID.
-func (u *UserUpsertOne) ID(ctx context.Context) (id int64, err error) {
+func (u *UserUpsertOne) ID(ctx context.Context) (id int, err error) {
 	node, err := u.create.Save(ctx)
 	if err != nil {
 		return id, err
@@ -341,7 +341,7 @@ func (u *UserUpsertOne) ID(ctx context.Context) (id int64, err error) {
 }
 
 // IDX is like ID, but panics if an error occurs.
-func (u *UserUpsertOne) IDX(ctx context.Context) int64 {
+func (u *UserUpsertOne) IDX(ctx context.Context) int {
 	id, err := u.ID(ctx)
 	if err != nil {
 		panic(err)
@@ -397,7 +397,7 @@ func (ucb *UserCreateBulk) Save(ctx context.Context) ([]*User, error) {
 				mutation.id = &nodes[i].ID
 				if specs[i].ID.Value != nil {
 					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int64(id)
+					nodes[i].ID = int(id)
 				}
 				mutation.done = true
 				return nodes[i], nil

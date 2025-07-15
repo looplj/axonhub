@@ -9,47 +9,47 @@ import (
 )
 
 // ID filters vertices based on their ID field.
-func ID(id int64) predicate.Channel {
+func ID(id int) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldID, id))
 }
 
 // IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id int64) predicate.Channel {
+func IDEQ(id int) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldID, id))
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id int64) predicate.Channel {
+func IDNEQ(id int) predicate.Channel {
 	return predicate.Channel(sql.FieldNEQ(FieldID, id))
 }
 
 // IDIn applies the In predicate on the ID field.
-func IDIn(ids ...int64) predicate.Channel {
+func IDIn(ids ...int) predicate.Channel {
 	return predicate.Channel(sql.FieldIn(FieldID, ids...))
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...int64) predicate.Channel {
+func IDNotIn(ids ...int) predicate.Channel {
 	return predicate.Channel(sql.FieldNotIn(FieldID, ids...))
 }
 
 // IDGT applies the GT predicate on the ID field.
-func IDGT(id int64) predicate.Channel {
+func IDGT(id int) predicate.Channel {
 	return predicate.Channel(sql.FieldGT(FieldID, id))
 }
 
 // IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id int64) predicate.Channel {
+func IDGTE(id int) predicate.Channel {
 	return predicate.Channel(sql.FieldGTE(FieldID, id))
 }
 
 // IDLT applies the LT predicate on the ID field.
-func IDLT(id int64) predicate.Channel {
+func IDLT(id int) predicate.Channel {
 	return predicate.Channel(sql.FieldLT(FieldID, id))
 }
 
 // IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id int64) predicate.Channel {
+func IDLTE(id int) predicate.Channel {
 	return predicate.Channel(sql.FieldLTE(FieldID, id))
 }
 
@@ -351,16 +351,6 @@ func DefaultTestModelEqualFold(v string) predicate.Channel {
 // DefaultTestModelContainsFold applies the ContainsFold predicate on the "default_test_model" field.
 func DefaultTestModelContainsFold(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldContainsFold(FieldDefaultTestModel, v))
-}
-
-// SettingsIsNil applies the IsNil predicate on the "settings" field.
-func SettingsIsNil() predicate.Channel {
-	return predicate.Channel(sql.FieldIsNull(FieldSettings))
-}
-
-// SettingsNotNil applies the NotNil predicate on the "settings" field.
-func SettingsNotNil() predicate.Channel {
-	return predicate.Channel(sql.FieldNotNull(FieldSettings))
 }
 
 // HasRequests applies the HasEdge predicate on the "requests" edge.

@@ -31,7 +31,7 @@ func (APIKey) Indexes() []ent.Index {
 
 func (APIKey) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int64("user_id").Immutable(),
+		field.Int("user_id").Immutable(),
 		field.String("key").Immutable(),
 		field.String("name"),
 	}
@@ -53,6 +53,8 @@ func (APIKey) Edges() []ent.Edge {
 
 func (APIKey) Annotations() []schema.Annotation {
 	return []schema.Annotation{
+		entgql.QueryField(),
 		entgql.RelayConnection(),
+		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
 	}
 }

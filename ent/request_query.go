@@ -159,8 +159,8 @@ func (rq *RequestQuery) FirstX(ctx context.Context) *Request {
 
 // FirstID returns the first Request ID from the query.
 // Returns a *NotFoundError when no Request ID was found.
-func (rq *RequestQuery) FirstID(ctx context.Context) (id int64, err error) {
-	var ids []int64
+func (rq *RequestQuery) FirstID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = rq.Limit(1).IDs(setContextOp(ctx, rq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
@@ -172,7 +172,7 @@ func (rq *RequestQuery) FirstID(ctx context.Context) (id int64, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (rq *RequestQuery) FirstIDX(ctx context.Context) int64 {
+func (rq *RequestQuery) FirstIDX(ctx context.Context) int {
 	id, err := rq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -210,8 +210,8 @@ func (rq *RequestQuery) OnlyX(ctx context.Context) *Request {
 // OnlyID is like Only, but returns the only Request ID in the query.
 // Returns a *NotSingularError when more than one Request ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (rq *RequestQuery) OnlyID(ctx context.Context) (id int64, err error) {
-	var ids []int64
+func (rq *RequestQuery) OnlyID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = rq.Limit(2).IDs(setContextOp(ctx, rq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
@@ -227,7 +227,7 @@ func (rq *RequestQuery) OnlyID(ctx context.Context) (id int64, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (rq *RequestQuery) OnlyIDX(ctx context.Context) int64 {
+func (rq *RequestQuery) OnlyIDX(ctx context.Context) int {
 	id, err := rq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -255,7 +255,7 @@ func (rq *RequestQuery) AllX(ctx context.Context) []*Request {
 }
 
 // IDs executes the query and returns a list of Request IDs.
-func (rq *RequestQuery) IDs(ctx context.Context) (ids []int64, err error) {
+func (rq *RequestQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if rq.ctx.Unique == nil && rq.path != nil {
 		rq.Unique(true)
 	}
@@ -267,7 +267,7 @@ func (rq *RequestQuery) IDs(ctx context.Context) (ids []int64, err error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (rq *RequestQuery) IDsX(ctx context.Context) []int64 {
+func (rq *RequestQuery) IDsX(ctx context.Context) []int {
 	ids, err := rq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -375,7 +375,7 @@ func (rq *RequestQuery) WithExecutions(opts ...func(*RequestExecutionQuery)) *Re
 // Example:
 //
 //	var v []struct {
-//		UserID int64 `json:"user_id,omitempty"`
+//		UserID int `json:"user_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
@@ -398,7 +398,7 @@ func (rq *RequestQuery) GroupBy(field string, fields ...string) *RequestGroupBy 
 // Example:
 //
 //	var v []struct {
-//		UserID int64 `json:"user_id,omitempty"`
+//		UserID int `json:"user_id,omitempty"`
 //	}
 //
 //	client.Request.Query().
@@ -513,8 +513,8 @@ func (rq *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Requ
 }
 
 func (rq *RequestQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*Request, init func(*Request), assign func(*Request, *User)) error {
-	ids := make([]int64, 0, len(nodes))
-	nodeids := make(map[int64][]*Request)
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*Request)
 	for i := range nodes {
 		fk := nodes[i].UserID
 		if _, ok := nodeids[fk]; !ok {
@@ -542,8 +542,8 @@ func (rq *RequestQuery) loadUser(ctx context.Context, query *UserQuery, nodes []
 	return nil
 }
 func (rq *RequestQuery) loadAPIKey(ctx context.Context, query *APIKeyQuery, nodes []*Request, init func(*Request), assign func(*Request, *APIKey)) error {
-	ids := make([]int64, 0, len(nodes))
-	nodeids := make(map[int64][]*Request)
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*Request)
 	for i := range nodes {
 		fk := nodes[i].APIKeyID
 		if _, ok := nodeids[fk]; !ok {
@@ -572,7 +572,7 @@ func (rq *RequestQuery) loadAPIKey(ctx context.Context, query *APIKeyQuery, node
 }
 func (rq *RequestQuery) loadExecutions(ctx context.Context, query *RequestExecutionQuery, nodes []*Request, init func(*Request), assign func(*Request, *RequestExecution)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int64]*Request)
+	nodeids := make(map[int]*Request)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -614,7 +614,7 @@ func (rq *RequestQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (rq *RequestQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewQuerySpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt))
 	_spec.From = rq.sql
 	if unique := rq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

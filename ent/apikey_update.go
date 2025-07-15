@@ -43,14 +43,14 @@ func (aku *APIKeyUpdate) SetNillableName(s *string) *APIKeyUpdate {
 }
 
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
-func (aku *APIKeyUpdate) AddRequestIDs(ids ...int64) *APIKeyUpdate {
+func (aku *APIKeyUpdate) AddRequestIDs(ids ...int) *APIKeyUpdate {
 	aku.mutation.AddRequestIDs(ids...)
 	return aku
 }
 
 // AddRequests adds the "requests" edges to the Request entity.
 func (aku *APIKeyUpdate) AddRequests(r ...*Request) *APIKeyUpdate {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -69,14 +69,14 @@ func (aku *APIKeyUpdate) ClearRequests() *APIKeyUpdate {
 }
 
 // RemoveRequestIDs removes the "requests" edge to Request entities by IDs.
-func (aku *APIKeyUpdate) RemoveRequestIDs(ids ...int64) *APIKeyUpdate {
+func (aku *APIKeyUpdate) RemoveRequestIDs(ids ...int) *APIKeyUpdate {
 	aku.mutation.RemoveRequestIDs(ids...)
 	return aku
 }
 
 // RemoveRequests removes "requests" edges to Request entities.
 func (aku *APIKeyUpdate) RemoveRequests(r ...*Request) *APIKeyUpdate {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -122,7 +122,7 @@ func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := aku.check(); err != nil {
 		return n, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(apikey.Table, apikey.Columns, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(apikey.Table, apikey.Columns, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt))
 	if ps := aku.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -141,7 +141,7 @@ func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{apikey.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -154,7 +154,7 @@ func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{apikey.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -170,7 +170,7 @@ func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{apikey.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -213,14 +213,14 @@ func (akuo *APIKeyUpdateOne) SetNillableName(s *string) *APIKeyUpdateOne {
 }
 
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
-func (akuo *APIKeyUpdateOne) AddRequestIDs(ids ...int64) *APIKeyUpdateOne {
+func (akuo *APIKeyUpdateOne) AddRequestIDs(ids ...int) *APIKeyUpdateOne {
 	akuo.mutation.AddRequestIDs(ids...)
 	return akuo
 }
 
 // AddRequests adds the "requests" edges to the Request entity.
 func (akuo *APIKeyUpdateOne) AddRequests(r ...*Request) *APIKeyUpdateOne {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -239,14 +239,14 @@ func (akuo *APIKeyUpdateOne) ClearRequests() *APIKeyUpdateOne {
 }
 
 // RemoveRequestIDs removes the "requests" edge to Request entities by IDs.
-func (akuo *APIKeyUpdateOne) RemoveRequestIDs(ids ...int64) *APIKeyUpdateOne {
+func (akuo *APIKeyUpdateOne) RemoveRequestIDs(ids ...int) *APIKeyUpdateOne {
 	akuo.mutation.RemoveRequestIDs(ids...)
 	return akuo
 }
 
 // RemoveRequests removes "requests" edges to Request entities.
 func (akuo *APIKeyUpdateOne) RemoveRequests(r ...*Request) *APIKeyUpdateOne {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -305,7 +305,7 @@ func (akuo *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err er
 	if err := akuo.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(apikey.Table, apikey.Columns, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(apikey.Table, apikey.Columns, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt))
 	id, ok := akuo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "APIKey.id" for update`)}
@@ -341,7 +341,7 @@ func (akuo *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err er
 			Columns: []string{apikey.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -354,7 +354,7 @@ func (akuo *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err er
 			Columns: []string{apikey.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -370,7 +370,7 @@ func (akuo *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err er
 			Columns: []string{apikey.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

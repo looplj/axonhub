@@ -36,7 +36,7 @@ func (Channel) Fields() []ent.Field {
 		field.String("api_key").Sensitive().NotEmpty(),
 		field.Strings("supported_models"),
 		field.String("default_test_model"),
-		field.JSON("settings", objects.ChannelSettings{}).Optional(),
+		field.JSON("settings", &objects.ChannelSettings{}),
 	}
 }
 
@@ -44,6 +44,7 @@ func (Channel) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("requests", Request.Type).
 			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput),
 				entgql.RelayConnection(),
 			),
 	}
@@ -51,6 +52,8 @@ func (Channel) Edges() []ent.Edge {
 
 func (Channel) Annotations() []schema.Annotation {
 	return []schema.Annotation{
+		entgql.QueryField(),
 		entgql.RelayConnection(),
+		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
 	}
 }

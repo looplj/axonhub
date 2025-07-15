@@ -95,7 +95,7 @@ var (
 	// RequestBodyValidator is a validator for the "request_body" field. It is called by the builders before save.
 	RequestBodyValidator func(string) error
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
-	DefaultDeletedAt int64
+	DefaultDeletedAt int
 )
 
 // Status defines the type for the "status" enum field.

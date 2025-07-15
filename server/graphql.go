@@ -42,6 +42,6 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	})
 	return &GraphqlHandler{
 		Graphql:    gqlSrv,
-		Playground: playground.Handler("AxonHub", "/graphql"),
+		Playground: playground.Handler("AxonHub", "/admin/graphql"),
 	}
 }

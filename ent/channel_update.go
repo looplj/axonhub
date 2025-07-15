@@ -99,34 +99,20 @@ func (cu *ChannelUpdate) SetNillableDefaultTestModel(s *string) *ChannelUpdate {
 }
 
 // SetSettings sets the "settings" field.
-func (cu *ChannelUpdate) SetSettings(os objects.ChannelSettings) *ChannelUpdate {
+func (cu *ChannelUpdate) SetSettings(os *objects.ChannelSettings) *ChannelUpdate {
 	cu.mutation.SetSettings(os)
 	return cu
 }
 
-// SetNillableSettings sets the "settings" field if the given value is not nil.
-func (cu *ChannelUpdate) SetNillableSettings(os *objects.ChannelSettings) *ChannelUpdate {
-	if os != nil {
-		cu.SetSettings(*os)
-	}
-	return cu
-}
-
-// ClearSettings clears the value of the "settings" field.
-func (cu *ChannelUpdate) ClearSettings() *ChannelUpdate {
-	cu.mutation.ClearSettings()
-	return cu
-}
-
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
-func (cu *ChannelUpdate) AddRequestIDs(ids ...int64) *ChannelUpdate {
+func (cu *ChannelUpdate) AddRequestIDs(ids ...int) *ChannelUpdate {
 	cu.mutation.AddRequestIDs(ids...)
 	return cu
 }
 
 // AddRequests adds the "requests" edges to the Request entity.
 func (cu *ChannelUpdate) AddRequests(r ...*Request) *ChannelUpdate {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -145,14 +131,14 @@ func (cu *ChannelUpdate) ClearRequests() *ChannelUpdate {
 }
 
 // RemoveRequestIDs removes the "requests" edge to Request entities by IDs.
-func (cu *ChannelUpdate) RemoveRequestIDs(ids ...int64) *ChannelUpdate {
+func (cu *ChannelUpdate) RemoveRequestIDs(ids ...int) *ChannelUpdate {
 	cu.mutation.RemoveRequestIDs(ids...)
 	return cu
 }
 
 // RemoveRequests removes "requests" edges to Request entities.
 func (cu *ChannelUpdate) RemoveRequests(r ...*Request) *ChannelUpdate {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -200,7 +186,7 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := cu.check(); err != nil {
 		return n, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(channel.Table, channel.Columns, sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(channel.Table, channel.Columns, sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt))
 	if ps := cu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -231,9 +217,6 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := cu.mutation.Settings(); ok {
 		_spec.SetField(channel.FieldSettings, field.TypeJSON, value)
 	}
-	if cu.mutation.SettingsCleared() {
-		_spec.ClearField(channel.FieldSettings, field.TypeJSON)
-	}
 	if cu.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -242,7 +225,7 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{channel.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -255,7 +238,7 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{channel.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -271,7 +254,7 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{channel.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -368,34 +351,20 @@ func (cuo *ChannelUpdateOne) SetNillableDefaultTestModel(s *string) *ChannelUpda
 }
 
 // SetSettings sets the "settings" field.
-func (cuo *ChannelUpdateOne) SetSettings(os objects.ChannelSettings) *ChannelUpdateOne {
+func (cuo *ChannelUpdateOne) SetSettings(os *objects.ChannelSettings) *ChannelUpdateOne {
 	cuo.mutation.SetSettings(os)
 	return cuo
 }
 
-// SetNillableSettings sets the "settings" field if the given value is not nil.
-func (cuo *ChannelUpdateOne) SetNillableSettings(os *objects.ChannelSettings) *ChannelUpdateOne {
-	if os != nil {
-		cuo.SetSettings(*os)
-	}
-	return cuo
-}
-
-// ClearSettings clears the value of the "settings" field.
-func (cuo *ChannelUpdateOne) ClearSettings() *ChannelUpdateOne {
-	cuo.mutation.ClearSettings()
-	return cuo
-}
-
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
-func (cuo *ChannelUpdateOne) AddRequestIDs(ids ...int64) *ChannelUpdateOne {
+func (cuo *ChannelUpdateOne) AddRequestIDs(ids ...int) *ChannelUpdateOne {
 	cuo.mutation.AddRequestIDs(ids...)
 	return cuo
 }
 
 // AddRequests adds the "requests" edges to the Request entity.
 func (cuo *ChannelUpdateOne) AddRequests(r ...*Request) *ChannelUpdateOne {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -414,14 +383,14 @@ func (cuo *ChannelUpdateOne) ClearRequests() *ChannelUpdateOne {
 }
 
 // RemoveRequestIDs removes the "requests" edge to Request entities by IDs.
-func (cuo *ChannelUpdateOne) RemoveRequestIDs(ids ...int64) *ChannelUpdateOne {
+func (cuo *ChannelUpdateOne) RemoveRequestIDs(ids ...int) *ChannelUpdateOne {
 	cuo.mutation.RemoveRequestIDs(ids...)
 	return cuo
 }
 
 // RemoveRequests removes "requests" edges to Request entities.
 func (cuo *ChannelUpdateOne) RemoveRequests(r ...*Request) *ChannelUpdateOne {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -482,7 +451,7 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 	if err := cuo.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(channel.Table, channel.Columns, sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(channel.Table, channel.Columns, sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt))
 	id, ok := cuo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Channel.id" for update`)}
@@ -530,9 +499,6 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 	if value, ok := cuo.mutation.Settings(); ok {
 		_spec.SetField(channel.FieldSettings, field.TypeJSON, value)
 	}
-	if cuo.mutation.SettingsCleared() {
-		_spec.ClearField(channel.FieldSettings, field.TypeJSON)
-	}
 	if cuo.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -541,7 +507,7 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 			Columns: []string{channel.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -554,7 +520,7 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 			Columns: []string{channel.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -570,7 +536,7 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 			Columns: []string{channel.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

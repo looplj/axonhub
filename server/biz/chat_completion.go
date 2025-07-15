@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/looplj/axonhub/llm/provider"
@@ -11,20 +12,20 @@ import (
 	"github.com/looplj/axonhub/pkg/streams"
 )
 
-type ChatCompletionProcessor struct {
-	Transformer      transformer.Transformer
-	ProviderRegistry provider.ProviderRegistry
-}
-
 // NewChatCompletionProcessor creates a new ChatCompletionProcessor
 func NewChatCompletionProcessor(
-	inboundTransformer transformer.Transformer,
-	providerRegistry provider.ProviderRegistry,
+	channelService *ChannelService,
+	transformer transformer.Transformer,
 ) *ChatCompletionProcessor {
 	return &ChatCompletionProcessor{
-		Transformer:      inboundTransformer,
-		ProviderRegistry: providerRegistry,
+		ChannelService: channelService,
+		Transformer:    transformer,
 	}
+}
+
+type ChatCompletionProcessor struct {
+	ChannelService *ChannelService
+	Transformer    transformer.Transformer
 }
 
 type ChatCompletionResult struct {
@@ -33,7 +34,6 @@ type ChatCompletionResult struct {
 }
 
 func (processor *ChatCompletionProcessor) Process(ctx context.Context, rawRequest *http.Request) (ChatCompletionResult, error) {
-	// Step 1: Inbound transformation - Convert HTTP request to ChatCompletionRequest
 	chatReq, err := processor.Transformer.TransformRequest(ctx, rawRequest)
 	if err != nil {
 		return ChatCompletionResult{}, err
@@ -41,37 +41,45 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, rawReques
 
 	log.Debug(ctx, "receive chat request", log.Any("request", chatReq))
 
-	// Step 2: TODO - Apply decorators (rate limiting, authentication, etc.)
-	// This would be where decorator chain processing happens
+	// TODO - Apply decorators (rate limiting, authentication, etc.)
 
-	// Step 3: Get provider for the model
-	prov, err := processor.ProviderRegistry.GetProviderForModel(chatReq.Model)
+	channels, err := processor.ChannelService.ChooseChannels(ctx, chatReq)
 	if err != nil {
 		return ChatCompletionResult{}, err
 	}
 
-	log.Info(ctx, "Using provider", log.Any("provider", prov.GetConfig().Name), log.Any("model", chatReq.Model))
+	for _, channel := range channels {
+		log.Info(ctx, "Using channel", log.Any("channel", channel.Name), log.Any("model", chatReq.Model))
 
-	// Step 4: Handle streaming vs non-streaming responses
-	if chatReq.Stream != nil && *chatReq.Stream {
-		stream, err := processor.handleStreamingResponse(ctx, prov, chatReq)
+		prov, err := processor.ChannelService.GetProvider(ctx, channel.Name)
 		if err != nil {
 			return ChatCompletionResult{}, err
 		}
+
+		// Step 4: Handle streaming vs non-streaming responses
+		if chatReq.Stream != nil && *chatReq.Stream {
+			stream, err := processor.handleStreamingResponse(ctx, prov, chatReq)
+			if err != nil {
+				log.Warn(ctx, "Provider streaming failed", log.Cause(err))
+				continue
+			}
+			return ChatCompletionResult{
+				ChatCompletion:       nil,
+				ChatCompletionStream: stream,
+			}, nil
+		}
+
+		resp, err := processor.handleNonStreamingResponse(ctx, prov, chatReq)
+		if err != nil {
+			log.Warn(ctx, "Provider non-streaming failed", log.Cause(err))
+			continue
+		}
 		return ChatCompletionResult{
-			ChatCompletion:       nil,
-			ChatCompletionStream: stream,
+			ChatCompletion:       resp,
+			ChatCompletionStream: nil,
 		}, nil
 	}
-
-	resp, err := processor.handleNonStreamingResponse(ctx, prov, chatReq)
-	if err != nil {
-		return ChatCompletionResult{}, err
-	}
-	return ChatCompletionResult{
-		ChatCompletion:       resp,
-		ChatCompletionStream: nil,
-	}, nil
+	return ChatCompletionResult{}, errors.New("no provider available")
 }
 
 func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context.Context, prov provider.Provider, chatReq *types.ChatCompletionRequest) (*types.GenericHttpResponse, error) {

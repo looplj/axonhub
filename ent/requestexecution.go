@@ -16,11 +16,11 @@ import (
 type RequestExecution struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int64 `json:"id,omitempty"`
+	ID int `json:"id,omitempty"`
 	// UserID holds the value of the "user_id" field.
-	UserID int64 `json:"user_id,omitempty"`
+	UserID int `json:"user_id,omitempty"`
 	// RequestID holds the value of the "request_id" field.
-	RequestID int64 `json:"request_id,omitempty"`
+	RequestID int `json:"request_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestExecutionQuery when eager-loading is set.
 	Edges        RequestExecutionEdges `json:"edges"`
@@ -76,18 +76,18 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			re.ID = int64(value.Int64)
+			re.ID = int(value.Int64)
 		case requestexecution.FieldUserID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
-				re.UserID = value.Int64
+				re.UserID = int(value.Int64)
 			}
 		case requestexecution.FieldRequestID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field request_id", values[i])
 			} else if value.Valid {
-				re.RequestID = value.Int64
+				re.RequestID = int(value.Int64)
 			}
 		default:
 			re.selectValues.Set(columns[i], values[i])

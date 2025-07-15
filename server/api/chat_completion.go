@@ -4,35 +4,16 @@ import (
 	"io"
 
 	"github.com/gin-gonic/gin"
-	"github.com/looplj/axonhub/llm/provider"
-	"github.com/looplj/axonhub/llm/provider/openai"
-	openaiTransformer "github.com/looplj/axonhub/llm/transformer/openai"
-	"github.com/looplj/axonhub/llm/types"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/log"
 	"github.com/looplj/axonhub/server/biz"
 )
 
-func NewOpenAIHandlers() *ChatCompletionHandlers {
-	// Create provider registry
-	registry := provider.NewRegistry()
-
-	// Create and register OpenAI provider
-	openaiProvider := openai.NewProvider(&types.ProviderConfig{
-		Name:     "openai",
-		Settings: map[string]interface{}{},
-	})
-	registry.RegisterProvider("openai", openaiProvider)
-	registry.RegisterModelMapping("gpt-3.5-turbo", "openai")
-	registry.RegisterModelMapping("gpt-4", "openai")
-	registry.RegisterModelMapping("gpt-4-turbo", "openai")
-	registry.RegisterModelMapping("gpt-4o-mini", "openai")
-
-	transformer := openaiTransformer.NewTransformer()
+func NewChatCompletionHandlers(transformer transformer.Transformer, channelService *biz.ChannelService) *ChatCompletionHandlers {
 	return &ChatCompletionHandlers{
 		ChatCompletionProcessor: biz.NewChatCompletionProcessor(
-			transformer,
-			registry,
-		),
+			channelService,
+			transformer),
 	}
 }
 
@@ -50,8 +31,8 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 	}
 
 	if result.ChatCompletion != nil {
-		finalResp := result.ChatCompletion
-		c.Data(finalResp.StatusCode, finalResp.Headers["Content-Type"][0], finalResp.Body)
+		resp := result.ChatCompletion
+		c.Data(resp.StatusCode, resp.Headers["Content-Type"][0], resp.Body)
 		return
 	}
 

@@ -23,20 +23,20 @@ type APIKeyWhereInput struct {
 	And        []*APIKeyWhereInput `json:"and,omitempty"`
 
 	// "id" field predicates.
-	ID      *int64  `json:"id,omitempty"`
-	IDNEQ   *int64  `json:"idNEQ,omitempty"`
-	IDIn    []int64 `json:"idIn,omitempty"`
-	IDNotIn []int64 `json:"idNotIn,omitempty"`
-	IDGT    *int64  `json:"idGT,omitempty"`
-	IDGTE   *int64  `json:"idGTE,omitempty"`
-	IDLT    *int64  `json:"idLT,omitempty"`
-	IDLTE   *int64  `json:"idLTE,omitempty"`
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
 
 	// "user_id" field predicates.
-	UserID      *int64  `json:"userID,omitempty"`
-	UserIDNEQ   *int64  `json:"userIDNEQ,omitempty"`
-	UserIDIn    []int64 `json:"userIDIn,omitempty"`
-	UserIDNotIn []int64 `json:"userIDNotIn,omitempty"`
+	UserID      *int  `json:"userID,omitempty"`
+	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
+	UserIDIn    []int `json:"userIDIn,omitempty"`
+	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
 
 	// "key" field predicates.
 	Key             *string  `json:"key,omitempty"`
@@ -317,14 +317,14 @@ type ChannelWhereInput struct {
 	And        []*ChannelWhereInput `json:"and,omitempty"`
 
 	// "id" field predicates.
-	ID      *int64  `json:"id,omitempty"`
-	IDNEQ   *int64  `json:"idNEQ,omitempty"`
-	IDIn    []int64 `json:"idIn,omitempty"`
-	IDNotIn []int64 `json:"idNotIn,omitempty"`
-	IDGT    *int64  `json:"idGT,omitempty"`
-	IDGTE   *int64  `json:"idGTE,omitempty"`
-	IDLT    *int64  `json:"idLT,omitempty"`
-	IDLTE   *int64  `json:"idLTE,omitempty"`
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
 
 	// "type" field predicates.
 	Type      *channel.Type  `json:"type,omitempty"`
@@ -697,14 +697,14 @@ type JobWhereInput struct {
 	And        []*JobWhereInput `json:"and,omitempty"`
 
 	// "id" field predicates.
-	ID      *int64  `json:"id,omitempty"`
-	IDNEQ   *int64  `json:"idNEQ,omitempty"`
-	IDIn    []int64 `json:"idIn,omitempty"`
-	IDNotIn []int64 `json:"idNotIn,omitempty"`
-	IDGT    *int64  `json:"idGT,omitempty"`
-	IDGTE   *int64  `json:"idGTE,omitempty"`
-	IDLT    *int64  `json:"idLT,omitempty"`
-	IDLTE   *int64  `json:"idLTE,omitempty"`
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
 
 	// "owner_id" field predicates.
 	OwnerID      *int  `json:"ownerID,omitempty"`
@@ -963,26 +963,26 @@ type RequestWhereInput struct {
 	And        []*RequestWhereInput `json:"and,omitempty"`
 
 	// "id" field predicates.
-	ID      *int64  `json:"id,omitempty"`
-	IDNEQ   *int64  `json:"idNEQ,omitempty"`
-	IDIn    []int64 `json:"idIn,omitempty"`
-	IDNotIn []int64 `json:"idNotIn,omitempty"`
-	IDGT    *int64  `json:"idGT,omitempty"`
-	IDGTE   *int64  `json:"idGTE,omitempty"`
-	IDLT    *int64  `json:"idLT,omitempty"`
-	IDLTE   *int64  `json:"idLTE,omitempty"`
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
 
 	// "user_id" field predicates.
-	UserID      *int64  `json:"userID,omitempty"`
-	UserIDNEQ   *int64  `json:"userIDNEQ,omitempty"`
-	UserIDIn    []int64 `json:"userIDIn,omitempty"`
-	UserIDNotIn []int64 `json:"userIDNotIn,omitempty"`
+	UserID      *int  `json:"userID,omitempty"`
+	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
+	UserIDIn    []int `json:"userIDIn,omitempty"`
+	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
 
 	// "api_key_id" field predicates.
-	APIKeyID      *int64  `json:"apiKeyID,omitempty"`
-	APIKeyIDNEQ   *int64  `json:"apiKeyIDNEQ,omitempty"`
-	APIKeyIDIn    []int64 `json:"apiKeyIDIn,omitempty"`
-	APIKeyIDNotIn []int64 `json:"apiKeyIDNotIn,omitempty"`
+	APIKeyID      *int  `json:"apiKeyID,omitempty"`
+	APIKeyIDNEQ   *int  `json:"apiKeyIDNEQ,omitempty"`
+	APIKeyIDIn    []int `json:"apiKeyIDIn,omitempty"`
+	APIKeyIDNotIn []int `json:"apiKeyIDNotIn,omitempty"`
 
 	// "request_body" field predicates.
 	RequestBody             *string  `json:"requestBody,omitempty"`
@@ -1021,14 +1021,14 @@ type RequestWhereInput struct {
 	StatusNotIn []request.Status `json:"statusNotIn,omitempty"`
 
 	// "deleted_at" field predicates.
-	DeletedAt      *int64  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int64  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int64 `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int64 `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int64  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int64  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int64  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int64  `json:"deletedAtLTE,omitempty"`
+	DeletedAt      *int  `json:"deletedAt,omitempty"`
+	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
+	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
+	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
+	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
+	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
+	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
+	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
 
 	// "user" edge predicates.
 	HasUser     *bool             `json:"hasUser,omitempty"`
@@ -1349,30 +1349,30 @@ type RequestExecutionWhereInput struct {
 	And        []*RequestExecutionWhereInput `json:"and,omitempty"`
 
 	// "id" field predicates.
-	ID      *int64  `json:"id,omitempty"`
-	IDNEQ   *int64  `json:"idNEQ,omitempty"`
-	IDIn    []int64 `json:"idIn,omitempty"`
-	IDNotIn []int64 `json:"idNotIn,omitempty"`
-	IDGT    *int64  `json:"idGT,omitempty"`
-	IDGTE   *int64  `json:"idGTE,omitempty"`
-	IDLT    *int64  `json:"idLT,omitempty"`
-	IDLTE   *int64  `json:"idLTE,omitempty"`
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
 
 	// "user_id" field predicates.
-	UserID      *int64  `json:"userID,omitempty"`
-	UserIDNEQ   *int64  `json:"userIDNEQ,omitempty"`
-	UserIDIn    []int64 `json:"userIDIn,omitempty"`
-	UserIDNotIn []int64 `json:"userIDNotIn,omitempty"`
-	UserIDGT    *int64  `json:"userIDGT,omitempty"`
-	UserIDGTE   *int64  `json:"userIDGTE,omitempty"`
-	UserIDLT    *int64  `json:"userIDLT,omitempty"`
-	UserIDLTE   *int64  `json:"userIDLTE,omitempty"`
+	UserID      *int  `json:"userID,omitempty"`
+	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
+	UserIDIn    []int `json:"userIDIn,omitempty"`
+	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
+	UserIDGT    *int  `json:"userIDGT,omitempty"`
+	UserIDGTE   *int  `json:"userIDGTE,omitempty"`
+	UserIDLT    *int  `json:"userIDLT,omitempty"`
+	UserIDLTE   *int  `json:"userIDLTE,omitempty"`
 
 	// "request_id" field predicates.
-	RequestID      *int64  `json:"requestID,omitempty"`
-	RequestIDNEQ   *int64  `json:"requestIDNEQ,omitempty"`
-	RequestIDIn    []int64 `json:"requestIDIn,omitempty"`
-	RequestIDNotIn []int64 `json:"requestIDNotIn,omitempty"`
+	RequestID      *int  `json:"requestID,omitempty"`
+	RequestIDNEQ   *int  `json:"requestIDNEQ,omitempty"`
+	RequestIDIn    []int `json:"requestIDIn,omitempty"`
+	RequestIDNotIn []int `json:"requestIDNotIn,omitempty"`
 
 	// "request" edge predicates.
 	HasRequest     *bool                `json:"hasRequest,omitempty"`
@@ -1547,14 +1547,14 @@ type UserWhereInput struct {
 	And        []*UserWhereInput `json:"and,omitempty"`
 
 	// "id" field predicates.
-	ID      *int64  `json:"id,omitempty"`
-	IDNEQ   *int64  `json:"idNEQ,omitempty"`
-	IDIn    []int64 `json:"idIn,omitempty"`
-	IDNotIn []int64 `json:"idNotIn,omitempty"`
-	IDGT    *int64  `json:"idGT,omitempty"`
-	IDGTE   *int64  `json:"idGTE,omitempty"`
-	IDLT    *int64  `json:"idLT,omitempty"`
-	IDLTE   *int64  `json:"idLTE,omitempty"`
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
 
 	// "email" field predicates.
 	Email             *string  `json:"email,omitempty"`

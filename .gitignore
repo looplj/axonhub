@@ -70,7 +70,7 @@ tmp/
 .fuse_hidden*
 *.csv
 *.sqlite
-.shopify
+*.db
 
 *.code-workspace
 
@@ -98,3 +98,4 @@ node_modules/
 # Task files
 # tasks.json
 # tasks/ 
+

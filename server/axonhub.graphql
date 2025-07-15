@@ -1,3 +1,21 @@
+type ModelMapping {
+  from: String!
+  to: String!
+}
+
+type ChannelSettings {
+  modelMappings: [ModelMapping!]!
+}
+
+input ModelMappingInput {
+  from: String!
+  to: String!
+}
+
+input ChannelSettingsInput {
+  modelMappings: [ModelMappingInput!]!
+}
+
 type Mutation {
-    createRequest(input: CreateRequestInput!): Request!
+    createChannel(input: CreateChannelInput!): Channel!
 }

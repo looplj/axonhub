@@ -28,12 +28,12 @@ func (Request) Indexes() []ent.Index {
 
 func (Request) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int64("user_id").Immutable(),
-		field.Int64("api_key_id").Immutable(),
+		field.Int("user_id").Immutable(),
+		field.Int("api_key_id").Immutable(),
 		field.String("request_body").NotEmpty().Immutable(),
 		field.String("response_body"),
 		field.Enum("status").Values("pending", "processing", "completed", "failed"),
-		field.Int64("deleted_at").Default(0),
+		field.Int("deleted_at").Default(0),
 	}
 }
 

@@ -25,6 +25,7 @@ import (
 
 // Noder wraps the basic Node method.
 type Noder interface {
+	Node(context.Context) (*Node, error)
 	IsNode()
 }
 
@@ -66,7 +67,7 @@ type NodeOption func(*nodeOptions)
 // WithNodeType sets the node Type resolver function (i.e. the table to query).
 // If was not provided, the table will be derived from the universal-id
 // configuration as described in: https://entgo.io/docs/migrate/#universal-ids.
-func WithNodeType(f func(context.Context, int64) (string, error)) NodeOption {
+func WithNodeType(f func(context.Context, int) (string, error)) NodeOption {
 	return func(o *nodeOptions) {
 		o.nodeType = f
 	}
@@ -74,13 +75,13 @@ func WithNodeType(f func(context.Context, int64) (string, error)) NodeOption {
 
 // WithFixedNodeType sets the Type of the node to a fixed value.
 func WithFixedNodeType(t string) NodeOption {
-	return WithNodeType(func(context.Context, int64) (string, error) {
+	return WithNodeType(func(context.Context, int) (string, error) {
 		return t, nil
 	})
 }
 
 type nodeOptions struct {
-	nodeType func(context.Context, int64) (string, error)
+	nodeType func(context.Context, int) (string, error)
 }
 
 func (c *Client) newNodeOpts(opts []NodeOption) *nodeOptions {
@@ -89,7 +90,7 @@ func (c *Client) newNodeOpts(opts []NodeOption) *nodeOptions {
 		opt(nopts)
 	}
 	if nopts.nodeType == nil {
-		nopts.nodeType = func(ctx context.Context, id int64) (string, error) {
+		nopts.nodeType = func(ctx context.Context, id int) (string, error) {
 			return c.tables.nodeType(ctx, c.driver, id)
 		}
 	}
@@ -101,7 +102,7 @@ func (c *Client) newNodeOpts(opts []NodeOption) *nodeOptions {
 //
 //	c.Noder(ctx, id)
 //	c.Noder(ctx, id, ent.WithNodeType(typeResolver))
-func (c *Client) Noder(ctx context.Context, id int64, opts ...NodeOption) (_ Noder, err error) {
+func (c *Client) Noder(ctx context.Context, id int, opts ...NodeOption) (_ Noder, err error) {
 	defer func() {
 		if IsNotFound(err) {
 			err = multierror.Append(err, entgql.ErrNodeNotFound(id))
@@ -114,7 +115,7 @@ func (c *Client) Noder(ctx context.Context, id int64, opts ...NodeOption) (_ Nod
 	return c.noder(ctx, table, id)
 }
 
-func (c *Client) noder(ctx context.Context, table string, id int64) (Noder, error) {
+func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error) {
 	switch table {
 	case apikey.Table:
 		query := c.APIKey.Query().
@@ -175,7 +176,7 @@ func (c *Client) noder(ctx context.Context, table string, id int64) (Noder, erro
 	}
 }
 
-func (c *Client) Noders(ctx context.Context, ids []int64, opts ...NodeOption) ([]Noder, error) {
+func (c *Client) Noders(ctx context.Context, ids []int, opts ...NodeOption) ([]Noder, error) {
 	switch len(ids) {
 	case 1:
 		noder, err := c.Noder(ctx, ids[0], opts...)
@@ -189,8 +190,8 @@ func (c *Client) Noders(ctx context.Context, ids []int64, opts ...NodeOption) ([
 
 	noders := make([]Noder, len(ids))
 	errors := make([]error, len(ids))
-	tables := make(map[string][]int64)
-	id2idx := make(map[int64][]int, len(ids))
+	tables := make(map[string][]int)
+	id2idx := make(map[int][]int, len(ids))
 	nopts := c.newNodeOpts(opts)
 	for i, id := range ids {
 		table, err := nopts.nodeType(ctx, id)
@@ -236,9 +237,9 @@ func (c *Client) Noders(ctx context.Context, ids []int64, opts ...NodeOption) ([
 	return noders, nil
 }
 
-func (c *Client) noders(ctx context.Context, table string, ids []int64) ([]Noder, error) {
+func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, error) {
 	noders := make([]Noder, len(ids))
-	idmap := make(map[int64][]*Noder, len(ids))
+	idmap := make(map[int][]*Noder, len(ids))
 	for i, id := range ids {
 		idmap[id] = append(idmap[id], &noders[i])
 	}
@@ -351,7 +352,7 @@ type tables struct {
 	value atomic.Value
 }
 
-func (t *tables) nodeType(ctx context.Context, drv dialect.Driver, id int64) (string, error) {
+func (t *tables) nodeType(ctx context.Context, drv dialect.Driver, id int) (string, error) {
 	tables, err := t.Load(ctx, drv)
 	if err != nil {
 		return "", err

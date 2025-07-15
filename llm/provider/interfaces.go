@@ -7,6 +7,14 @@ import (
 	"github.com/looplj/axonhub/pkg/streams"
 )
 
+// ProviderConfig contains provider-specific configuration
+type ProviderConfig struct {
+	Name          string         `json:"name"`
+	BaseURL       string         `json:"base_url"`
+	APIKey        string         `json:"api_key"`
+	ModelMappings []ModelMapping `json:"model_mappings"`
+}
+
 // Provider represents a unified interface that combines HTTP client and transformation logic
 type Provider interface {
 	// Name returns the provider name
@@ -22,10 +30,10 @@ type Provider interface {
 	SupportsModel(model string) bool
 
 	// GetConfig returns the provider configuration
-	GetConfig() *types.ProviderConfig
+	GetConfig() *ProviderConfig
 
 	// SetConfig updates the provider configuration
-	SetConfig(config *types.ProviderConfig)
+	SetConfig(config *ProviderConfig)
 }
 
 // ProviderRegistry manages multiple providers

@@ -71,7 +71,7 @@ func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err erro
 	if err := reu.check(); err != nil {
 		return n, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(requestexecution.Table, requestexecution.Columns, sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(requestexecution.Table, requestexecution.Columns, sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt))
 	if ps := reu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -156,7 +156,7 @@ func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Requ
 	if err := reuo.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(requestexecution.Table, requestexecution.Columns, sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(requestexecution.Table, requestexecution.Columns, sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt))
 	id, ok := reuo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "RequestExecution.id" for update`)}

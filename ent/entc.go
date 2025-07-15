@@ -8,7 +8,6 @@ import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"
-	"entgo.io/ent/schema/field"
 )
 
 func main() {
@@ -21,6 +20,8 @@ func main() {
 		// entgql.WithSchemaPath("./graph/ent.graphql"),
 		entgql.WithSchemaPath("ent.graphql"),
 		entgql.WithWhereInputs(true),
+		entgql.WithNodeDescriptor(true),
+		entgql.WithRelaySpec(true),
 	)
 	if err != nil {
 		log.Fatalf("creating entgql extension: %v", err)
@@ -30,7 +31,7 @@ func main() {
 		entc.Extensions(ex),
 	}
 	if err := entc.Generate("../ent/schema", &gen.Config{
-		IDType: field.Int64("id").Descriptor().Info,
+		// IDType: field.Int("id").Descriptor().Info,
 	}, opts...); err != nil {
 		log.Fatalf("running ent codegen: %v", err)
 	}

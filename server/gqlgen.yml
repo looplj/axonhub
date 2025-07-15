@@ -1,7 +1,6 @@
 # schema tells gqlgen where the GraphQL schema is located.
 schema:
   - ent.graphql
-  - channel.graphql
   - axonhub.graphql
 
 #exec:
@@ -26,6 +25,7 @@ autobind:
   - github.com/looplj/axonhub/ent/request
   - github.com/looplj/axonhub/ent/apikey
   - github.com/looplj/axonhub/ent/requestexecution
+  - github.com/looplj/axonhub/ent/channel
 
 # This section declares type mapping between the GraphQL and Go type systems.
 models:
@@ -36,3 +36,15 @@ models:
   Node:
     model:
       - github.com/looplj/axonhub/ent.Noder
+  ModelMapping:
+    model:
+      - github.com/looplj/axonhub/llm/provider.ModelMapping
+  ModelMappingInput:
+    model:
+      - github.com/looplj/axonhub/llm/provider.ModelMapping
+  ChannelSettings:
+    model:
+      - github.com/looplj/axonhub/objects.ChannelSettings
+  ChannelSettingsInput:
+    model:
+      - github.com/looplj/axonhub/objects.ChannelSettings

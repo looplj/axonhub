@@ -27,7 +27,7 @@ type SoftDeleteMixin struct {
 // For deleted rows, the deleted_at will be a timestamp.
 func (SoftDeleteMixin) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int64("deleted_at").Default(0),
+		field.Int("deleted_at").Default(0),
 	}
 }
 

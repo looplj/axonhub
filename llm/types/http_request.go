@@ -88,14 +88,6 @@ type ResponseError struct {
 	Details string `json:"details,omitempty"`
 }
 
-// ProviderConfig contains provider-specific configuration
-type ProviderConfig struct {
-	Name     string                 `json:"name"`
-	BaseURL  string                 `json:"base_url"`
-	APIKey   string                 `json:"api_key"`
-	Settings map[string]interface{} `json:"settings,omitempty"`
-}
-
 // RequestBuilder helps build GenericHttpRequest
 type RequestBuilder struct {
 	request *GenericHttpRequest

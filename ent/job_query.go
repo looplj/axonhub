@@ -84,8 +84,8 @@ func (jq *JobQuery) FirstX(ctx context.Context) *Job {
 
 // FirstID returns the first Job ID from the query.
 // Returns a *NotFoundError when no Job ID was found.
-func (jq *JobQuery) FirstID(ctx context.Context) (id int64, err error) {
-	var ids []int64
+func (jq *JobQuery) FirstID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = jq.Limit(1).IDs(setContextOp(ctx, jq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
@@ -97,7 +97,7 @@ func (jq *JobQuery) FirstID(ctx context.Context) (id int64, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (jq *JobQuery) FirstIDX(ctx context.Context) int64 {
+func (jq *JobQuery) FirstIDX(ctx context.Context) int {
 	id, err := jq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -135,8 +135,8 @@ func (jq *JobQuery) OnlyX(ctx context.Context) *Job {
 // OnlyID is like Only, but returns the only Job ID in the query.
 // Returns a *NotSingularError when more than one Job ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (jq *JobQuery) OnlyID(ctx context.Context) (id int64, err error) {
-	var ids []int64
+func (jq *JobQuery) OnlyID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = jq.Limit(2).IDs(setContextOp(ctx, jq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
@@ -152,7 +152,7 @@ func (jq *JobQuery) OnlyID(ctx context.Context) (id int64, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (jq *JobQuery) OnlyIDX(ctx context.Context) int64 {
+func (jq *JobQuery) OnlyIDX(ctx context.Context) int {
 	id, err := jq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -180,7 +180,7 @@ func (jq *JobQuery) AllX(ctx context.Context) []*Job {
 }
 
 // IDs executes the query and returns a list of Job IDs.
-func (jq *JobQuery) IDs(ctx context.Context) (ids []int64, err error) {
+func (jq *JobQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if jq.ctx.Unique == nil && jq.path != nil {
 		jq.Unique(true)
 	}
@@ -192,7 +192,7 @@ func (jq *JobQuery) IDs(ctx context.Context) (ids []int64, err error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (jq *JobQuery) IDsX(ctx context.Context) []int64 {
+func (jq *JobQuery) IDsX(ctx context.Context) []int {
 	ids, err := jq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -378,7 +378,7 @@ func (jq *JobQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (jq *JobQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(job.Table, job.Columns, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewQuerySpec(job.Table, job.Columns, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt))
 	_spec.From = jq.sql
 	if unique := jq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

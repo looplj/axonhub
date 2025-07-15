@@ -74,7 +74,7 @@ func (ju *JobUpdate) ExecX(ctx context.Context) {
 }
 
 func (ju *JobUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := sqlgraph.NewUpdateSpec(job.Table, job.Columns, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(job.Table, job.Columns, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt))
 	if ps := ju.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -165,7 +165,7 @@ func (juo *JobUpdateOne) ExecX(ctx context.Context) {
 }
 
 func (juo *JobUpdateOne) sqlSave(ctx context.Context) (_node *Job, err error) {
-	_spec := sqlgraph.NewUpdateSpec(job.Table, job.Columns, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(job.Table, job.Columns, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt))
 	id, ok := juo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Job.id" for update`)}

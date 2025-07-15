@@ -42,14 +42,14 @@ type APIKeyMutation struct {
 	config
 	op              Op
 	typ             string
-	id              *int64
+	id              *int
 	key             *string
 	name            *string
 	clearedFields   map[string]struct{}
-	user            *int64
+	user            *int
 	cleareduser     bool
-	requests        map[int64]struct{}
-	removedrequests map[int64]struct{}
+	requests        map[int]struct{}
+	removedrequests map[int]struct{}
 	clearedrequests bool
 	done            bool
 	oldValue        func(context.Context) (*APIKey, error)
@@ -76,7 +76,7 @@ func newAPIKeyMutation(c config, op Op, opts ...apikeyOption) *APIKeyMutation {
 }
 
 // withAPIKeyID sets the ID field of the mutation.
-func withAPIKeyID(id int64) apikeyOption {
+func withAPIKeyID(id int) apikeyOption {
 	return func(m *APIKeyMutation) {
 		var (
 			err   error
@@ -128,7 +128,7 @@ func (m APIKeyMutation) Tx() (*Tx, error) {
 
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *APIKeyMutation) ID() (id int64, exists bool) {
+func (m *APIKeyMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -139,12 +139,12 @@ func (m *APIKeyMutation) ID() (id int64, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *APIKeyMutation) IDs(ctx context.Context) ([]int64, error) {
+func (m *APIKeyMutation) IDs(ctx context.Context) ([]int, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int64{id}, nil
+			return []int{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -155,12 +155,12 @@ func (m *APIKeyMutation) IDs(ctx context.Context) ([]int64, error) {
 }
 
 // SetUserID sets the "user_id" field.
-func (m *APIKeyMutation) SetUserID(i int64) {
+func (m *APIKeyMutation) SetUserID(i int) {
 	m.user = &i
 }
 
 // UserID returns the value of the "user_id" field in the mutation.
-func (m *APIKeyMutation) UserID() (r int64, exists bool) {
+func (m *APIKeyMutation) UserID() (r int, exists bool) {
 	v := m.user
 	if v == nil {
 		return
@@ -171,7 +171,7 @@ func (m *APIKeyMutation) UserID() (r int64, exists bool) {
 // OldUserID returns the old "user_id" field's value of the APIKey entity.
 // If the APIKey object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *APIKeyMutation) OldUserID(ctx context.Context) (v int64, err error) {
+func (m *APIKeyMutation) OldUserID(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
 	}
@@ -276,7 +276,7 @@ func (m *APIKeyMutation) UserCleared() bool {
 // UserIDs returns the "user" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
 // UserID instead. It exists only for internal usage by the builders.
-func (m *APIKeyMutation) UserIDs() (ids []int64) {
+func (m *APIKeyMutation) UserIDs() (ids []int) {
 	if id := m.user; id != nil {
 		ids = append(ids, *id)
 	}
@@ -290,9 +290,9 @@ func (m *APIKeyMutation) ResetUser() {
 }
 
 // AddRequestIDs adds the "requests" edge to the Request entity by ids.
-func (m *APIKeyMutation) AddRequestIDs(ids ...int64) {
+func (m *APIKeyMutation) AddRequestIDs(ids ...int) {
 	if m.requests == nil {
-		m.requests = make(map[int64]struct{})
+		m.requests = make(map[int]struct{})
 	}
 	for i := range ids {
 		m.requests[ids[i]] = struct{}{}
@@ -310,9 +310,9 @@ func (m *APIKeyMutation) RequestsCleared() bool {
 }
 
 // RemoveRequestIDs removes the "requests" edge to the Request entity by IDs.
-func (m *APIKeyMutation) RemoveRequestIDs(ids ...int64) {
+func (m *APIKeyMutation) RemoveRequestIDs(ids ...int) {
 	if m.removedrequests == nil {
-		m.removedrequests = make(map[int64]struct{})
+		m.removedrequests = make(map[int]struct{})
 	}
 	for i := range ids {
 		delete(m.requests, ids[i])
@@ -321,7 +321,7 @@ func (m *APIKeyMutation) RemoveRequestIDs(ids ...int64) {
 }
 
 // RemovedRequests returns the removed IDs of the "requests" edge to the Request entity.
-func (m *APIKeyMutation) RemovedRequestsIDs() (ids []int64) {
+func (m *APIKeyMutation) RemovedRequestsIDs() (ids []int) {
 	for id := range m.removedrequests {
 		ids = append(ids, id)
 	}
@@ -329,7 +329,7 @@ func (m *APIKeyMutation) RemovedRequestsIDs() (ids []int64) {
 }
 
 // RequestsIDs returns the "requests" edge IDs in the mutation.
-func (m *APIKeyMutation) RequestsIDs() (ids []int64) {
+func (m *APIKeyMutation) RequestsIDs() (ids []int) {
 	for id := range m.requests {
 		ids = append(ids, id)
 	}
@@ -426,7 +426,7 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 	switch name {
 	case apikey.FieldUserID:
-		v, ok := value.(int64)
+		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -618,7 +618,7 @@ type ChannelMutation struct {
 	config
 	op                     Op
 	typ                    string
-	id                     *int64
+	id                     *int
 	_type                  *channel.Type
 	base_url               *string
 	name                   *string
@@ -626,10 +626,10 @@ type ChannelMutation struct {
 	supported_models       *[]string
 	appendsupported_models []string
 	default_test_model     *string
-	settings               *objects.ChannelSettings
+	settings               **objects.ChannelSettings
 	clearedFields          map[string]struct{}
-	requests               map[int64]struct{}
-	removedrequests        map[int64]struct{}
+	requests               map[int]struct{}
+	removedrequests        map[int]struct{}
 	clearedrequests        bool
 	done                   bool
 	oldValue               func(context.Context) (*Channel, error)
@@ -656,7 +656,7 @@ func newChannelMutation(c config, op Op, opts ...channelOption) *ChannelMutation
 }
 
 // withChannelID sets the ID field of the mutation.
-func withChannelID(id int64) channelOption {
+func withChannelID(id int) channelOption {
 	return func(m *ChannelMutation) {
 		var (
 			err   error
@@ -708,7 +708,7 @@ func (m ChannelMutation) Tx() (*Tx, error) {
 
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *ChannelMutation) ID() (id int64, exists bool) {
+func (m *ChannelMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -719,12 +719,12 @@ func (m *ChannelMutation) ID() (id int64, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *ChannelMutation) IDs(ctx context.Context) ([]int64, error) {
+func (m *ChannelMutation) IDs(ctx context.Context) ([]int, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int64{id}, nil
+			return []int{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -966,12 +966,12 @@ func (m *ChannelMutation) ResetDefaultTestModel() {
 }
 
 // SetSettings sets the "settings" field.
-func (m *ChannelMutation) SetSettings(os objects.ChannelSettings) {
+func (m *ChannelMutation) SetSettings(os *objects.ChannelSettings) {
 	m.settings = &os
 }
 
 // Settings returns the value of the "settings" field in the mutation.
-func (m *ChannelMutation) Settings() (r objects.ChannelSettings, exists bool) {
+func (m *ChannelMutation) Settings() (r *objects.ChannelSettings, exists bool) {
 	v := m.settings
 	if v == nil {
 		return
@@ -982,7 +982,7 @@ func (m *ChannelMutation) Settings() (r objects.ChannelSettings, exists bool) {
 // OldSettings returns the old "settings" field's value of the Channel entity.
 // If the Channel object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChannelMutation) OldSettings(ctx context.Context) (v objects.ChannelSettings, err error) {
+func (m *ChannelMutation) OldSettings(ctx context.Context) (v *objects.ChannelSettings, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldSettings is only allowed on UpdateOne operations")
 	}
@@ -996,28 +996,15 @@ func (m *ChannelMutation) OldSettings(ctx context.Context) (v objects.ChannelSet
 	return oldValue.Settings, nil
 }
 
-// ClearSettings clears the value of the "settings" field.
-func (m *ChannelMutation) ClearSettings() {
-	m.settings = nil
-	m.clearedFields[channel.FieldSettings] = struct{}{}
-}
-
-// SettingsCleared returns if the "settings" field was cleared in this mutation.
-func (m *ChannelMutation) SettingsCleared() bool {
-	_, ok := m.clearedFields[channel.FieldSettings]
-	return ok
-}
-
 // ResetSettings resets all changes to the "settings" field.
 func (m *ChannelMutation) ResetSettings() {
 	m.settings = nil
-	delete(m.clearedFields, channel.FieldSettings)
 }
 
 // AddRequestIDs adds the "requests" edge to the Request entity by ids.
-func (m *ChannelMutation) AddRequestIDs(ids ...int64) {
+func (m *ChannelMutation) AddRequestIDs(ids ...int) {
 	if m.requests == nil {
-		m.requests = make(map[int64]struct{})
+		m.requests = make(map[int]struct{})
 	}
 	for i := range ids {
 		m.requests[ids[i]] = struct{}{}
@@ -1035,9 +1022,9 @@ func (m *ChannelMutation) RequestsCleared() bool {
 }
 
 // RemoveRequestIDs removes the "requests" edge to the Request entity by IDs.
-func (m *ChannelMutation) RemoveRequestIDs(ids ...int64) {
+func (m *ChannelMutation) RemoveRequestIDs(ids ...int) {
 	if m.removedrequests == nil {
-		m.removedrequests = make(map[int64]struct{})
+		m.removedrequests = make(map[int]struct{})
 	}
 	for i := range ids {
 		delete(m.requests, ids[i])
@@ -1046,7 +1033,7 @@ func (m *ChannelMutation) RemoveRequestIDs(ids ...int64) {
 }
 
 // RemovedRequests returns the removed IDs of the "requests" edge to the Request entity.
-func (m *ChannelMutation) RemovedRequestsIDs() (ids []int64) {
+func (m *ChannelMutation) RemovedRequestsIDs() (ids []int) {
 	for id := range m.removedrequests {
 		ids = append(ids, id)
 	}
@@ -1054,7 +1041,7 @@ func (m *ChannelMutation) RemovedRequestsIDs() (ids []int64) {
 }
 
 // RequestsIDs returns the "requests" edge IDs in the mutation.
-func (m *ChannelMutation) RequestsIDs() (ids []int64) {
+func (m *ChannelMutation) RequestsIDs() (ids []int) {
 	for id := range m.requests {
 		ids = append(ids, id)
 	}
@@ -1221,7 +1208,7 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 		m.SetDefaultTestModel(v)
 		return nil
 	case channel.FieldSettings:
-		v, ok := value.(objects.ChannelSettings)
+		v, ok := value.(*objects.ChannelSettings)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -1256,11 +1243,7 @@ func (m *ChannelMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ChannelMutation) ClearedFields() []string {
-	var fields []string
-	if m.FieldCleared(channel.FieldSettings) {
-		fields = append(fields, channel.FieldSettings)
-	}
-	return fields
+	return nil
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -1273,11 +1256,6 @@ func (m *ChannelMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ChannelMutation) ClearField(name string) error {
-	switch name {
-	case channel.FieldSettings:
-		m.ClearSettings()
-		return nil
-	}
 	return fmt.Errorf("unknown Channel nullable field %s", name)
 }
 
@@ -1399,7 +1377,7 @@ type JobMutation struct {
 	config
 	op            Op
 	typ           string
-	id            *int64
+	id            *int
 	owner_id      *int
 	addowner_id   *int
 	_type         *string
@@ -1430,7 +1408,7 @@ func newJobMutation(c config, op Op, opts ...jobOption) *JobMutation {
 }
 
 // withJobID sets the ID field of the mutation.
-func withJobID(id int64) jobOption {
+func withJobID(id int) jobOption {
 	return func(m *JobMutation) {
 		var (
 			err   error
@@ -1482,7 +1460,7 @@ func (m JobMutation) Tx() (*Tx, error) {
 
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *JobMutation) ID() (id int64, exists bool) {
+func (m *JobMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -1493,12 +1471,12 @@ func (m *JobMutation) ID() (id int64, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *JobMutation) IDs(ctx context.Context) ([]int64, error) {
+func (m *JobMutation) IDs(ctx context.Context) ([]int, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int64{id}, nil
+			return []int{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -1869,19 +1847,19 @@ type RequestMutation struct {
 	config
 	op                Op
 	typ               string
-	id                *int64
+	id                *int
 	request_body      *string
 	response_body     *string
 	status            *request.Status
-	deleted_at        *int64
-	adddeleted_at     *int64
+	deleted_at        *int
+	adddeleted_at     *int
 	clearedFields     map[string]struct{}
-	user              *int64
+	user              *int
 	cleareduser       bool
-	api_key           *int64
+	api_key           *int
 	clearedapi_key    bool
-	executions        map[int64]struct{}
-	removedexecutions map[int64]struct{}
+	executions        map[int]struct{}
+	removedexecutions map[int]struct{}
 	clearedexecutions bool
 	done              bool
 	oldValue          func(context.Context) (*Request, error)
@@ -1908,7 +1886,7 @@ func newRequestMutation(c config, op Op, opts ...requestOption) *RequestMutation
 }
 
 // withRequestID sets the ID field of the mutation.
-func withRequestID(id int64) requestOption {
+func withRequestID(id int) requestOption {
 	return func(m *RequestMutation) {
 		var (
 			err   error
@@ -1960,7 +1938,7 @@ func (m RequestMutation) Tx() (*Tx, error) {
 
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *RequestMutation) ID() (id int64, exists bool) {
+func (m *RequestMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -1971,12 +1949,12 @@ func (m *RequestMutation) ID() (id int64, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *RequestMutation) IDs(ctx context.Context) ([]int64, error) {
+func (m *RequestMutation) IDs(ctx context.Context) ([]int, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int64{id}, nil
+			return []int{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -1987,12 +1965,12 @@ func (m *RequestMutation) IDs(ctx context.Context) ([]int64, error) {
 }
 
 // SetUserID sets the "user_id" field.
-func (m *RequestMutation) SetUserID(i int64) {
+func (m *RequestMutation) SetUserID(i int) {
 	m.user = &i
 }
 
 // UserID returns the value of the "user_id" field in the mutation.
-func (m *RequestMutation) UserID() (r int64, exists bool) {
+func (m *RequestMutation) UserID() (r int, exists bool) {
 	v := m.user
 	if v == nil {
 		return
@@ -2003,7 +1981,7 @@ func (m *RequestMutation) UserID() (r int64, exists bool) {
 // OldUserID returns the old "user_id" field's value of the Request entity.
 // If the Request object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldUserID(ctx context.Context) (v int64, err error) {
+func (m *RequestMutation) OldUserID(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
 	}
@@ -2023,12 +2001,12 @@ func (m *RequestMutation) ResetUserID() {
 }
 
 // SetAPIKeyID sets the "api_key_id" field.
-func (m *RequestMutation) SetAPIKeyID(i int64) {
+func (m *RequestMutation) SetAPIKeyID(i int) {
 	m.api_key = &i
 }
 
 // APIKeyID returns the value of the "api_key_id" field in the mutation.
-func (m *RequestMutation) APIKeyID() (r int64, exists bool) {
+func (m *RequestMutation) APIKeyID() (r int, exists bool) {
 	v := m.api_key
 	if v == nil {
 		return
@@ -2039,7 +2017,7 @@ func (m *RequestMutation) APIKeyID() (r int64, exists bool) {
 // OldAPIKeyID returns the old "api_key_id" field's value of the Request entity.
 // If the Request object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldAPIKeyID(ctx context.Context) (v int64, err error) {
+func (m *RequestMutation) OldAPIKeyID(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldAPIKeyID is only allowed on UpdateOne operations")
 	}
@@ -2167,13 +2145,13 @@ func (m *RequestMutation) ResetStatus() {
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (m *RequestMutation) SetDeletedAt(i int64) {
+func (m *RequestMutation) SetDeletedAt(i int) {
 	m.deleted_at = &i
 	m.adddeleted_at = nil
 }
 
 // DeletedAt returns the value of the "deleted_at" field in the mutation.
-func (m *RequestMutation) DeletedAt() (r int64, exists bool) {
+func (m *RequestMutation) DeletedAt() (r int, exists bool) {
 	v := m.deleted_at
 	if v == nil {
 		return
@@ -2184,7 +2162,7 @@ func (m *RequestMutation) DeletedAt() (r int64, exists bool) {
 // OldDeletedAt returns the old "deleted_at" field's value of the Request entity.
 // If the Request object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldDeletedAt(ctx context.Context) (v int64, err error) {
+func (m *RequestMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
 	}
@@ -2199,7 +2177,7 @@ func (m *RequestMutation) OldDeletedAt(ctx context.Context) (v int64, err error)
 }
 
 // AddDeletedAt adds i to the "deleted_at" field.
-func (m *RequestMutation) AddDeletedAt(i int64) {
+func (m *RequestMutation) AddDeletedAt(i int) {
 	if m.adddeleted_at != nil {
 		*m.adddeleted_at += i
 	} else {
@@ -2208,7 +2186,7 @@ func (m *RequestMutation) AddDeletedAt(i int64) {
 }
 
 // AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
-func (m *RequestMutation) AddedDeletedAt() (r int64, exists bool) {
+func (m *RequestMutation) AddedDeletedAt() (r int, exists bool) {
 	v := m.adddeleted_at
 	if v == nil {
 		return
@@ -2236,7 +2214,7 @@ func (m *RequestMutation) UserCleared() bool {
 // UserIDs returns the "user" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
 // UserID instead. It exists only for internal usage by the builders.
-func (m *RequestMutation) UserIDs() (ids []int64) {
+func (m *RequestMutation) UserIDs() (ids []int) {
 	if id := m.user; id != nil {
 		ids = append(ids, *id)
 	}
@@ -2263,7 +2241,7 @@ func (m *RequestMutation) APIKeyCleared() bool {
 // APIKeyIDs returns the "api_key" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
 // APIKeyID instead. It exists only for internal usage by the builders.
-func (m *RequestMutation) APIKeyIDs() (ids []int64) {
+func (m *RequestMutation) APIKeyIDs() (ids []int) {
 	if id := m.api_key; id != nil {
 		ids = append(ids, *id)
 	}
@@ -2277,9 +2255,9 @@ func (m *RequestMutation) ResetAPIKey() {
 }
 
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by ids.
-func (m *RequestMutation) AddExecutionIDs(ids ...int64) {
+func (m *RequestMutation) AddExecutionIDs(ids ...int) {
 	if m.executions == nil {
-		m.executions = make(map[int64]struct{})
+		m.executions = make(map[int]struct{})
 	}
 	for i := range ids {
 		m.executions[ids[i]] = struct{}{}
@@ -2297,9 +2275,9 @@ func (m *RequestMutation) ExecutionsCleared() bool {
 }
 
 // RemoveExecutionIDs removes the "executions" edge to the RequestExecution entity by IDs.
-func (m *RequestMutation) RemoveExecutionIDs(ids ...int64) {
+func (m *RequestMutation) RemoveExecutionIDs(ids ...int) {
 	if m.removedexecutions == nil {
-		m.removedexecutions = make(map[int64]struct{})
+		m.removedexecutions = make(map[int]struct{})
 	}
 	for i := range ids {
 		delete(m.executions, ids[i])
@@ -2308,7 +2286,7 @@ func (m *RequestMutation) RemoveExecutionIDs(ids ...int64) {
 }
 
 // RemovedExecutions returns the removed IDs of the "executions" edge to the RequestExecution entity.
-func (m *RequestMutation) RemovedExecutionsIDs() (ids []int64) {
+func (m *RequestMutation) RemovedExecutionsIDs() (ids []int) {
 	for id := range m.removedexecutions {
 		ids = append(ids, id)
 	}
@@ -2316,7 +2294,7 @@ func (m *RequestMutation) RemovedExecutionsIDs() (ids []int64) {
 }
 
 // ExecutionsIDs returns the "executions" edge IDs in the mutation.
-func (m *RequestMutation) ExecutionsIDs() (ids []int64) {
+func (m *RequestMutation) ExecutionsIDs() (ids []int) {
 	for id := range m.executions {
 		ids = append(ids, id)
 	}
@@ -2434,14 +2412,14 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 func (m *RequestMutation) SetField(name string, value ent.Value) error {
 	switch name {
 	case request.FieldUserID:
-		v, ok := value.(int64)
+		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUserID(v)
 		return nil
 	case request.FieldAPIKeyID:
-		v, ok := value.(int64)
+		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -2469,7 +2447,7 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 		m.SetStatus(v)
 		return nil
 	case request.FieldDeletedAt:
-		v, ok := value.(int64)
+		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -2506,7 +2484,7 @@ func (m *RequestMutation) AddedField(name string) (ent.Value, bool) {
 func (m *RequestMutation) AddField(name string, value ent.Value) error {
 	switch name {
 	case request.FieldDeletedAt:
-		v, ok := value.(int64)
+		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -2686,11 +2664,11 @@ type RequestExecutionMutation struct {
 	config
 	op             Op
 	typ            string
-	id             *int64
-	user_id        *int64
-	adduser_id     *int64
+	id             *int
+	user_id        *int
+	adduser_id     *int
 	clearedFields  map[string]struct{}
-	request        *int64
+	request        *int
 	clearedrequest bool
 	done           bool
 	oldValue       func(context.Context) (*RequestExecution, error)
@@ -2717,7 +2695,7 @@ func newRequestExecutionMutation(c config, op Op, opts ...requestexecutionOption
 }
 
 // withRequestExecutionID sets the ID field of the mutation.
-func withRequestExecutionID(id int64) requestexecutionOption {
+func withRequestExecutionID(id int) requestexecutionOption {
 	return func(m *RequestExecutionMutation) {
 		var (
 			err   error
@@ -2769,7 +2747,7 @@ func (m RequestExecutionMutation) Tx() (*Tx, error) {
 
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *RequestExecutionMutation) ID() (id int64, exists bool) {
+func (m *RequestExecutionMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -2780,12 +2758,12 @@ func (m *RequestExecutionMutation) ID() (id int64, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *RequestExecutionMutation) IDs(ctx context.Context) ([]int64, error) {
+func (m *RequestExecutionMutation) IDs(ctx context.Context) ([]int, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int64{id}, nil
+			return []int{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -2796,13 +2774,13 @@ func (m *RequestExecutionMutation) IDs(ctx context.Context) ([]int64, error) {
 }
 
 // SetUserID sets the "user_id" field.
-func (m *RequestExecutionMutation) SetUserID(i int64) {
+func (m *RequestExecutionMutation) SetUserID(i int) {
 	m.user_id = &i
 	m.adduser_id = nil
 }
 
 // UserID returns the value of the "user_id" field in the mutation.
-func (m *RequestExecutionMutation) UserID() (r int64, exists bool) {
+func (m *RequestExecutionMutation) UserID() (r int, exists bool) {
 	v := m.user_id
 	if v == nil {
 		return
@@ -2813,7 +2791,7 @@ func (m *RequestExecutionMutation) UserID() (r int64, exists bool) {
 // OldUserID returns the old "user_id" field's value of the RequestExecution entity.
 // If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestExecutionMutation) OldUserID(ctx context.Context) (v int64, err error) {
+func (m *RequestExecutionMutation) OldUserID(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
 	}
@@ -2828,7 +2806,7 @@ func (m *RequestExecutionMutation) OldUserID(ctx context.Context) (v int64, err 
 }
 
 // AddUserID adds i to the "user_id" field.
-func (m *RequestExecutionMutation) AddUserID(i int64) {
+func (m *RequestExecutionMutation) AddUserID(i int) {
 	if m.adduser_id != nil {
 		*m.adduser_id += i
 	} else {
@@ -2837,7 +2815,7 @@ func (m *RequestExecutionMutation) AddUserID(i int64) {
 }
 
 // AddedUserID returns the value that was added to the "user_id" field in this mutation.
-func (m *RequestExecutionMutation) AddedUserID() (r int64, exists bool) {
+func (m *RequestExecutionMutation) AddedUserID() (r int, exists bool) {
 	v := m.adduser_id
 	if v == nil {
 		return
@@ -2852,12 +2830,12 @@ func (m *RequestExecutionMutation) ResetUserID() {
 }
 
 // SetRequestID sets the "request_id" field.
-func (m *RequestExecutionMutation) SetRequestID(i int64) {
+func (m *RequestExecutionMutation) SetRequestID(i int) {
 	m.request = &i
 }
 
 // RequestID returns the value of the "request_id" field in the mutation.
-func (m *RequestExecutionMutation) RequestID() (r int64, exists bool) {
+func (m *RequestExecutionMutation) RequestID() (r int, exists bool) {
 	v := m.request
 	if v == nil {
 		return
@@ -2868,7 +2846,7 @@ func (m *RequestExecutionMutation) RequestID() (r int64, exists bool) {
 // OldRequestID returns the old "request_id" field's value of the RequestExecution entity.
 // If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestExecutionMutation) OldRequestID(ctx context.Context) (v int64, err error) {
+func (m *RequestExecutionMutation) OldRequestID(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldRequestID is only allowed on UpdateOne operations")
 	}
@@ -2901,7 +2879,7 @@ func (m *RequestExecutionMutation) RequestCleared() bool {
 // RequestIDs returns the "request" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
 // RequestID instead. It exists only for internal usage by the builders.
-func (m *RequestExecutionMutation) RequestIDs() (ids []int64) {
+func (m *RequestExecutionMutation) RequestIDs() (ids []int) {
 	if id := m.request; id != nil {
 		ids = append(ids, *id)
 	}
@@ -2990,14 +2968,14 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error {
 	switch name {
 	case requestexecution.FieldUserID:
-		v, ok := value.(int64)
+		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUserID(v)
 		return nil
 	case requestexecution.FieldRequestID:
-		v, ok := value.(int64)
+		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -3034,7 +3012,7 @@ func (m *RequestExecutionMutation) AddedField(name string) (ent.Value, bool) {
 func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error {
 	switch name {
 	case requestexecution.FieldUserID:
-		v, ok := value.(int64)
+		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -3156,15 +3134,15 @@ type UserMutation struct {
 	config
 	op              Op
 	typ             string
-	id              *int64
+	id              *int
 	email           *string
 	name            *string
 	clearedFields   map[string]struct{}
-	requests        map[int64]struct{}
-	removedrequests map[int64]struct{}
+	requests        map[int]struct{}
+	removedrequests map[int]struct{}
 	clearedrequests bool
-	api_keys        map[int64]struct{}
-	removedapi_keys map[int64]struct{}
+	api_keys        map[int]struct{}
+	removedapi_keys map[int]struct{}
 	clearedapi_keys bool
 	done            bool
 	oldValue        func(context.Context) (*User, error)
@@ -3191,7 +3169,7 @@ func newUserMutation(c config, op Op, opts ...userOption) *UserMutation {
 }
 
 // withUserID sets the ID field of the mutation.
-func withUserID(id int64) userOption {
+func withUserID(id int) userOption {
 	return func(m *UserMutation) {
 		var (
 			err   error
@@ -3243,7 +3221,7 @@ func (m UserMutation) Tx() (*Tx, error) {
 
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *UserMutation) ID() (id int64, exists bool) {
+func (m *UserMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -3254,12 +3232,12 @@ func (m *UserMutation) ID() (id int64, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *UserMutation) IDs(ctx context.Context) ([]int64, error) {
+func (m *UserMutation) IDs(ctx context.Context) ([]int, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int64{id}, nil
+			return []int{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -3342,9 +3320,9 @@ func (m *UserMutation) ResetName() {
 }
 
 // AddRequestIDs adds the "requests" edge to the Request entity by ids.
-func (m *UserMutation) AddRequestIDs(ids ...int64) {
+func (m *UserMutation) AddRequestIDs(ids ...int) {
 	if m.requests == nil {
-		m.requests = make(map[int64]struct{})
+		m.requests = make(map[int]struct{})
 	}
 	for i := range ids {
 		m.requests[ids[i]] = struct{}{}
@@ -3362,9 +3340,9 @@ func (m *UserMutation) RequestsCleared() bool {
 }
 
 // RemoveRequestIDs removes the "requests" edge to the Request entity by IDs.
-func (m *UserMutation) RemoveRequestIDs(ids ...int64) {
+func (m *UserMutation) RemoveRequestIDs(ids ...int) {
 	if m.removedrequests == nil {
-		m.removedrequests = make(map[int64]struct{})
+		m.removedrequests = make(map[int]struct{})
 	}
 	for i := range ids {
 		delete(m.requests, ids[i])
@@ -3373,7 +3351,7 @@ func (m *UserMutation) RemoveRequestIDs(ids ...int64) {
 }
 
 // RemovedRequests returns the removed IDs of the "requests" edge to the Request entity.
-func (m *UserMutation) RemovedRequestsIDs() (ids []int64) {
+func (m *UserMutation) RemovedRequestsIDs() (ids []int) {
 	for id := range m.removedrequests {
 		ids = append(ids, id)
 	}
@@ -3381,7 +3359,7 @@ func (m *UserMutation) RemovedRequestsIDs() (ids []int64) {
 }
 
 // RequestsIDs returns the "requests" edge IDs in the mutation.
-func (m *UserMutation) RequestsIDs() (ids []int64) {
+func (m *UserMutation) RequestsIDs() (ids []int) {
 	for id := range m.requests {
 		ids = append(ids, id)
 	}
@@ -3396,9 +3374,9 @@ func (m *UserMutation) ResetRequests() {
 }
 
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by ids.
-func (m *UserMutation) AddAPIKeyIDs(ids ...int64) {
+func (m *UserMutation) AddAPIKeyIDs(ids ...int) {
 	if m.api_keys == nil {
-		m.api_keys = make(map[int64]struct{})
+		m.api_keys = make(map[int]struct{})
 	}
 	for i := range ids {
 		m.api_keys[ids[i]] = struct{}{}
@@ -3416,9 +3394,9 @@ func (m *UserMutation) APIKeysCleared() bool {
 }
 
 // RemoveAPIKeyIDs removes the "api_keys" edge to the APIKey entity by IDs.
-func (m *UserMutation) RemoveAPIKeyIDs(ids ...int64) {
+func (m *UserMutation) RemoveAPIKeyIDs(ids ...int) {
 	if m.removedapi_keys == nil {
-		m.removedapi_keys = make(map[int64]struct{})
+		m.removedapi_keys = make(map[int]struct{})
 	}
 	for i := range ids {
 		delete(m.api_keys, ids[i])
@@ -3427,7 +3405,7 @@ func (m *UserMutation) RemoveAPIKeyIDs(ids ...int64) {
 }
 
 // RemovedAPIKeys returns the removed IDs of the "api_keys" edge to the APIKey entity.
-func (m *UserMutation) RemovedAPIKeysIDs() (ids []int64) {
+func (m *UserMutation) RemovedAPIKeysIDs() (ids []int) {
 	for id := range m.removedapi_keys {
 		ids = append(ids, id)
 	}
@@ -3435,7 +3413,7 @@ func (m *UserMutation) RemovedAPIKeysIDs() (ids []int64) {
 }
 
 // APIKeysIDs returns the "api_keys" edge IDs in the mutation.
-func (m *UserMutation) APIKeysIDs() (ids []int64) {
+func (m *UserMutation) APIKeysIDs() (ids []int) {
 	for id := range m.api_keys {
 		ids = append(ids, id)
 	}

@@ -83,8 +83,8 @@ func (akq *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int64 `sql:"api_key_id"`
-							Count  int   `sql:"count"`
+							NodeID int `sql:"api_key_id"`
+							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
 							s.Where(sql.InValues(s.C(apikey.RequestsColumn), ids...))
@@ -92,7 +92,7 @@ func (akq *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 						if err := query.GroupBy(apikey.RequestsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
 						}
-						m := make(map[int64]int, len(v))
+						m := make(map[int]int, len(v))
 						for i := range v {
 							m[v[i].NodeID] = v[i].Count
 						}
@@ -249,8 +249,8 @@ func (cq *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int64 `sql:"channel_requests"`
-							Count  int   `sql:"count"`
+							NodeID int `sql:"channel_requests"`
+							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
 							s.Where(sql.InValues(s.C(channel.RequestsColumn), ids...))
@@ -258,7 +258,7 @@ func (cq *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 						if err := query.GroupBy(channel.RequestsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
 						}
-						m := make(map[int64]int, len(v))
+						m := make(map[int]int, len(v))
 						for i := range v {
 							m[v[i].NodeID] = v[i].Count
 						}
@@ -537,8 +537,8 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int64 `sql:"request_id"`
-							Count  int   `sql:"count"`
+							NodeID int `sql:"request_id"`
+							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
 							s.Where(sql.InValues(s.C(request.ExecutionsColumn), ids...))
@@ -546,7 +546,7 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 						if err := query.GroupBy(request.ExecutionsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
 						}
-						m := make(map[int64]int, len(v))
+						m := make(map[int]int, len(v))
 						for i := range v {
 							m[v[i].NodeID] = v[i].Count
 						}
@@ -805,8 +805,8 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int64 `sql:"user_id"`
-							Count  int   `sql:"count"`
+							NodeID int `sql:"user_id"`
+							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
 							s.Where(sql.InValues(s.C(user.RequestsColumn), ids...))
@@ -814,7 +814,7 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 						if err := query.GroupBy(user.RequestsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
 						}
-						m := make(map[int64]int, len(v))
+						m := make(map[int]int, len(v))
 						for i := range v {
 							m[v[i].NodeID] = v[i].Count
 						}
@@ -894,8 +894,8 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int64 `sql:"user_id"`
-							Count  int   `sql:"count"`
+							NodeID int `sql:"user_id"`
+							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
 							s.Where(sql.InValues(s.C(user.APIKeysColumn), ids...))
@@ -903,7 +903,7 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 						if err := query.GroupBy(user.APIKeysColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
 						}
-						m := make(map[int64]int, len(v))
+						m := make(map[int]int, len(v))
 						for i := range v {
 							m[v[i].NodeID] = v[i].Count
 						}

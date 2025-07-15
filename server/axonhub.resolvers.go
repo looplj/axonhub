@@ -11,9 +11,21 @@ import (
 	"github.com/looplj/axonhub/ent"
 )
 
-// CreateRequest is the resolver for the createRequest field.
-func (r *mutationResolver) CreateRequest(ctx context.Context, input ent.CreateRequestInput) (*ent.Request, error) {
-	panic(fmt.Errorf("not implemented: CreateRequest - createRequest"))
+// CreateChannel is the resolver for the createChannel field.
+func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
+	channel, err := r.client.Channel.Create().
+		SetType(input.Type).
+		SetBaseURL(input.BaseURL).
+		SetName(input.Name).
+		SetAPIKey(input.APIKey).
+		SetSupportedModels(input.SupportedModels).
+		SetDefaultTestModel(input.DefaultTestModel).
+		SetSettings(input.Settings).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create channel: %w", err)
+	}
+	return channel, nil
 }
 
 // Mutation returns MutationResolver implementation.

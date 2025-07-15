@@ -3,18 +3,172 @@
 package ent
 
 import (
+	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/request"
+	"github.com/looplj/axonhub/objects"
 )
+
+// CreateAPIKeyInput represents a mutation input for creating apikeys.
+type CreateAPIKeyInput struct {
+	Key        string
+	Name       string
+	UserID     int
+	RequestIDs []int
+}
+
+// Mutate applies the CreateAPIKeyInput on the APIKeyMutation builder.
+func (i *CreateAPIKeyInput) Mutate(m *APIKeyMutation) {
+	m.SetKey(i.Key)
+	m.SetName(i.Name)
+	m.SetUserID(i.UserID)
+	if v := i.RequestIDs; len(v) > 0 {
+		m.AddRequestIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the CreateAPIKeyInput on the APIKeyCreate builder.
+func (c *APIKeyCreate) SetInput(i CreateAPIKeyInput) *APIKeyCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateAPIKeyInput represents a mutation input for updating apikeys.
+type UpdateAPIKeyInput struct {
+	Name             *string
+	ClearRequests    bool
+	AddRequestIDs    []int
+	RemoveRequestIDs []int
+}
+
+// Mutate applies the UpdateAPIKeyInput on the APIKeyMutation builder.
+func (i *UpdateAPIKeyInput) Mutate(m *APIKeyMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if i.ClearRequests {
+		m.ClearRequests()
+	}
+	if v := i.AddRequestIDs; len(v) > 0 {
+		m.AddRequestIDs(v...)
+	}
+	if v := i.RemoveRequestIDs; len(v) > 0 {
+		m.RemoveRequestIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the UpdateAPIKeyInput on the APIKeyUpdate builder.
+func (c *APIKeyUpdate) SetInput(i UpdateAPIKeyInput) *APIKeyUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateAPIKeyInput on the APIKeyUpdateOne builder.
+func (c *APIKeyUpdateOne) SetInput(i UpdateAPIKeyInput) *APIKeyUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateChannelInput represents a mutation input for creating channels.
+type CreateChannelInput struct {
+	Type             channel.Type
+	BaseURL          string
+	Name             string
+	APIKey           string
+	SupportedModels  []string
+	DefaultTestModel string
+	Settings         *objects.ChannelSettings
+}
+
+// Mutate applies the CreateChannelInput on the ChannelMutation builder.
+func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
+	m.SetType(i.Type)
+	m.SetBaseURL(i.BaseURL)
+	m.SetName(i.Name)
+	m.SetAPIKey(i.APIKey)
+	if v := i.SupportedModels; v != nil {
+		m.SetSupportedModels(v)
+	}
+	m.SetDefaultTestModel(i.DefaultTestModel)
+	if v := i.Settings; v != nil {
+		m.SetSettings(v)
+	}
+}
+
+// SetInput applies the change-set in the CreateChannelInput on the ChannelCreate builder.
+func (c *ChannelCreate) SetInput(i CreateChannelInput) *ChannelCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateChannelInput represents a mutation input for updating channels.
+type UpdateChannelInput struct {
+	BaseURL               *string
+	Name                  *string
+	APIKey                *string
+	SupportedModels       []string
+	AppendSupportedModels []string
+	DefaultTestModel      *string
+	Settings              *objects.ChannelSettings
+	ClearRequests         bool
+	AddRequestIDs         []int
+	RemoveRequestIDs      []int
+}
+
+// Mutate applies the UpdateChannelInput on the ChannelMutation builder.
+func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
+	if v := i.BaseURL; v != nil {
+		m.SetBaseURL(*v)
+	}
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.APIKey; v != nil {
+		m.SetAPIKey(*v)
+	}
+	if v := i.SupportedModels; v != nil {
+		m.SetSupportedModels(v)
+	}
+	if i.AppendSupportedModels != nil {
+		m.AppendSupportedModels(i.SupportedModels)
+	}
+	if v := i.DefaultTestModel; v != nil {
+		m.SetDefaultTestModel(*v)
+	}
+	if v := i.Settings; v != nil {
+		m.SetSettings(v)
+	}
+	if i.ClearRequests {
+		m.ClearRequests()
+	}
+	if v := i.AddRequestIDs; len(v) > 0 {
+		m.AddRequestIDs(v...)
+	}
+	if v := i.RemoveRequestIDs; len(v) > 0 {
+		m.RemoveRequestIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the UpdateChannelInput on the ChannelUpdate builder.
+func (c *ChannelUpdate) SetInput(i UpdateChannelInput) *ChannelUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateChannelInput on the ChannelUpdateOne builder.
+func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
 
 // CreateRequestInput represents a mutation input for creating requests.
 type CreateRequestInput struct {
 	RequestBody  string
 	ResponseBody string
 	Status       request.Status
-	DeletedAt    *int64
-	UserID       int64
-	APIKeyID     int64
-	ExecutionIDs []int64
+	DeletedAt    *int
+	UserID       int
+	APIKeyID     int
+	ExecutionIDs []int
 }
 
 // Mutate applies the CreateRequestInput on the RequestMutation builder.
@@ -42,10 +196,10 @@ func (c *RequestCreate) SetInput(i CreateRequestInput) *RequestCreate {
 type UpdateRequestInput struct {
 	ResponseBody       *string
 	Status             *request.Status
-	DeletedAt          *int64
+	DeletedAt          *int
 	ClearExecutions    bool
-	AddExecutionIDs    []int64
-	RemoveExecutionIDs []int64
+	AddExecutionIDs    []int
+	RemoveExecutionIDs []int
 }
 
 // Mutate applies the UpdateRequestInput on the RequestMutation builder.

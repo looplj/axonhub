@@ -57,14 +57,14 @@ func (ru *RequestUpdate) SetNillableStatus(r *request.Status) *RequestUpdate {
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (ru *RequestUpdate) SetDeletedAt(i int64) *RequestUpdate {
+func (ru *RequestUpdate) SetDeletedAt(i int) *RequestUpdate {
 	ru.mutation.ResetDeletedAt()
 	ru.mutation.SetDeletedAt(i)
 	return ru
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (ru *RequestUpdate) SetNillableDeletedAt(i *int64) *RequestUpdate {
+func (ru *RequestUpdate) SetNillableDeletedAt(i *int) *RequestUpdate {
 	if i != nil {
 		ru.SetDeletedAt(*i)
 	}
@@ -72,20 +72,20 @@ func (ru *RequestUpdate) SetNillableDeletedAt(i *int64) *RequestUpdate {
 }
 
 // AddDeletedAt adds i to the "deleted_at" field.
-func (ru *RequestUpdate) AddDeletedAt(i int64) *RequestUpdate {
+func (ru *RequestUpdate) AddDeletedAt(i int) *RequestUpdate {
 	ru.mutation.AddDeletedAt(i)
 	return ru
 }
 
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
-func (ru *RequestUpdate) AddExecutionIDs(ids ...int64) *RequestUpdate {
+func (ru *RequestUpdate) AddExecutionIDs(ids ...int) *RequestUpdate {
 	ru.mutation.AddExecutionIDs(ids...)
 	return ru
 }
 
 // AddExecutions adds the "executions" edges to the RequestExecution entity.
 func (ru *RequestUpdate) AddExecutions(r ...*RequestExecution) *RequestUpdate {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -104,14 +104,14 @@ func (ru *RequestUpdate) ClearExecutions() *RequestUpdate {
 }
 
 // RemoveExecutionIDs removes the "executions" edge to RequestExecution entities by IDs.
-func (ru *RequestUpdate) RemoveExecutionIDs(ids ...int64) *RequestUpdate {
+func (ru *RequestUpdate) RemoveExecutionIDs(ids ...int) *RequestUpdate {
 	ru.mutation.RemoveExecutionIDs(ids...)
 	return ru
 }
 
 // RemoveExecutions removes "executions" edges to RequestExecution entities.
 func (ru *RequestUpdate) RemoveExecutions(r ...*RequestExecution) *RequestUpdate {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -165,7 +165,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := ru.check(); err != nil {
 		return n, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt))
 	if ps := ru.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -180,10 +180,10 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := ru.mutation.DeletedAt(); ok {
-		_spec.SetField(request.FieldDeletedAt, field.TypeInt64, value)
+		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := ru.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(request.FieldDeletedAt, field.TypeInt64, value)
+		_spec.AddField(request.FieldDeletedAt, field.TypeInt, value)
 	}
 	if ru.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -193,7 +193,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -206,7 +206,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -222,7 +222,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -279,14 +279,14 @@ func (ruo *RequestUpdateOne) SetNillableStatus(r *request.Status) *RequestUpdate
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (ruo *RequestUpdateOne) SetDeletedAt(i int64) *RequestUpdateOne {
+func (ruo *RequestUpdateOne) SetDeletedAt(i int) *RequestUpdateOne {
 	ruo.mutation.ResetDeletedAt()
 	ruo.mutation.SetDeletedAt(i)
 	return ruo
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (ruo *RequestUpdateOne) SetNillableDeletedAt(i *int64) *RequestUpdateOne {
+func (ruo *RequestUpdateOne) SetNillableDeletedAt(i *int) *RequestUpdateOne {
 	if i != nil {
 		ruo.SetDeletedAt(*i)
 	}
@@ -294,20 +294,20 @@ func (ruo *RequestUpdateOne) SetNillableDeletedAt(i *int64) *RequestUpdateOne {
 }
 
 // AddDeletedAt adds i to the "deleted_at" field.
-func (ruo *RequestUpdateOne) AddDeletedAt(i int64) *RequestUpdateOne {
+func (ruo *RequestUpdateOne) AddDeletedAt(i int) *RequestUpdateOne {
 	ruo.mutation.AddDeletedAt(i)
 	return ruo
 }
 
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
-func (ruo *RequestUpdateOne) AddExecutionIDs(ids ...int64) *RequestUpdateOne {
+func (ruo *RequestUpdateOne) AddExecutionIDs(ids ...int) *RequestUpdateOne {
 	ruo.mutation.AddExecutionIDs(ids...)
 	return ruo
 }
 
 // AddExecutions adds the "executions" edges to the RequestExecution entity.
 func (ruo *RequestUpdateOne) AddExecutions(r ...*RequestExecution) *RequestUpdateOne {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -326,14 +326,14 @@ func (ruo *RequestUpdateOne) ClearExecutions() *RequestUpdateOne {
 }
 
 // RemoveExecutionIDs removes the "executions" edge to RequestExecution entities by IDs.
-func (ruo *RequestUpdateOne) RemoveExecutionIDs(ids ...int64) *RequestUpdateOne {
+func (ruo *RequestUpdateOne) RemoveExecutionIDs(ids ...int) *RequestUpdateOne {
 	ruo.mutation.RemoveExecutionIDs(ids...)
 	return ruo
 }
 
 // RemoveExecutions removes "executions" edges to RequestExecution entities.
 func (ruo *RequestUpdateOne) RemoveExecutions(r ...*RequestExecution) *RequestUpdateOne {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -400,7 +400,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 	if err := ruo.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64))
+	_spec := sqlgraph.NewUpdateSpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt))
 	id, ok := ruo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Request.id" for update`)}
@@ -432,10 +432,10 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := ruo.mutation.DeletedAt(); ok {
-		_spec.SetField(request.FieldDeletedAt, field.TypeInt64, value)
+		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := ruo.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(request.FieldDeletedAt, field.TypeInt64, value)
+		_spec.AddField(request.FieldDeletedAt, field.TypeInt, value)
 	}
 	if ruo.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -445,7 +445,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -458,7 +458,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -474,7 +474,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -24,7 +24,7 @@ type APIKeyCreate struct {
 }
 
 // SetUserID sets the "user_id" field.
-func (akc *APIKeyCreate) SetUserID(i int64) *APIKeyCreate {
+func (akc *APIKeyCreate) SetUserID(i int) *APIKeyCreate {
 	akc.mutation.SetUserID(i)
 	return akc
 }
@@ -47,14 +47,14 @@ func (akc *APIKeyCreate) SetUser(u *User) *APIKeyCreate {
 }
 
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
-func (akc *APIKeyCreate) AddRequestIDs(ids ...int64) *APIKeyCreate {
+func (akc *APIKeyCreate) AddRequestIDs(ids ...int) *APIKeyCreate {
 	akc.mutation.AddRequestIDs(ids...)
 	return akc
 }
 
 // AddRequests adds the "requests" edges to the Request entity.
 func (akc *APIKeyCreate) AddRequests(r ...*Request) *APIKeyCreate {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -122,7 +122,7 @@ func (akc *APIKeyCreate) sqlSave(ctx context.Context) (*APIKey, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int64(id)
+	_node.ID = int(id)
 	akc.mutation.id = &_node.ID
 	akc.mutation.done = true
 	return _node, nil
@@ -131,7 +131,7 @@ func (akc *APIKeyCreate) sqlSave(ctx context.Context) (*APIKey, error) {
 func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	var (
 		_node = &APIKey{config: akc.config}
-		_spec = sqlgraph.NewCreateSpec(apikey.Table, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt64))
+		_spec = sqlgraph.NewCreateSpec(apikey.Table, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt))
 	)
 	_spec.OnConflict = akc.conflict
 	if value, ok := akc.mutation.Key(); ok {
@@ -150,7 +150,7 @@ func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 			Columns: []string{apikey.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -167,7 +167,7 @@ func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 			Columns: []string{apikey.RequestsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -317,7 +317,7 @@ func (u *APIKeyUpsertOne) ExecX(ctx context.Context) {
 }
 
 // Exec executes the UPSERT query and returns the inserted/updated ID.
-func (u *APIKeyUpsertOne) ID(ctx context.Context) (id int64, err error) {
+func (u *APIKeyUpsertOne) ID(ctx context.Context) (id int, err error) {
 	node, err := u.create.Save(ctx)
 	if err != nil {
 		return id, err
@@ -326,7 +326,7 @@ func (u *APIKeyUpsertOne) ID(ctx context.Context) (id int64, err error) {
 }
 
 // IDX is like ID, but panics if an error occurs.
-func (u *APIKeyUpsertOne) IDX(ctx context.Context) int64 {
+func (u *APIKeyUpsertOne) IDX(ctx context.Context) int {
 	id, err := u.ID(ctx)
 	if err != nil {
 		panic(err)
@@ -382,7 +382,7 @@ func (akcb *APIKeyCreateBulk) Save(ctx context.Context) ([]*APIKey, error) {
 				mutation.id = &nodes[i].ID
 				if specs[i].ID.Value != nil {
 					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int64(id)
+					nodes[i].ID = int(id)
 				}
 				mutation.done = true
 				return nodes[i], nil

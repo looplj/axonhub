@@ -25,13 +25,13 @@ type RequestCreate struct {
 }
 
 // SetUserID sets the "user_id" field.
-func (rc *RequestCreate) SetUserID(i int64) *RequestCreate {
+func (rc *RequestCreate) SetUserID(i int) *RequestCreate {
 	rc.mutation.SetUserID(i)
 	return rc
 }
 
 // SetAPIKeyID sets the "api_key_id" field.
-func (rc *RequestCreate) SetAPIKeyID(i int64) *RequestCreate {
+func (rc *RequestCreate) SetAPIKeyID(i int) *RequestCreate {
 	rc.mutation.SetAPIKeyID(i)
 	return rc
 }
@@ -55,13 +55,13 @@ func (rc *RequestCreate) SetStatus(r request.Status) *RequestCreate {
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (rc *RequestCreate) SetDeletedAt(i int64) *RequestCreate {
+func (rc *RequestCreate) SetDeletedAt(i int) *RequestCreate {
 	rc.mutation.SetDeletedAt(i)
 	return rc
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableDeletedAt(i *int64) *RequestCreate {
+func (rc *RequestCreate) SetNillableDeletedAt(i *int) *RequestCreate {
 	if i != nil {
 		rc.SetDeletedAt(*i)
 	}
@@ -79,14 +79,14 @@ func (rc *RequestCreate) SetAPIKey(a *APIKey) *RequestCreate {
 }
 
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
-func (rc *RequestCreate) AddExecutionIDs(ids ...int64) *RequestCreate {
+func (rc *RequestCreate) AddExecutionIDs(ids ...int) *RequestCreate {
 	rc.mutation.AddExecutionIDs(ids...)
 	return rc
 }
 
 // AddExecutions adds the "executions" edges to the RequestExecution entity.
 func (rc *RequestCreate) AddExecutions(r ...*RequestExecution) *RequestCreate {
-	ids := make([]int64, len(r))
+	ids := make([]int, len(r))
 	for i := range r {
 		ids[i] = r[i].ID
 	}
@@ -185,7 +185,7 @@ func (rc *RequestCreate) sqlSave(ctx context.Context) (*Request, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int64(id)
+	_node.ID = int(id)
 	rc.mutation.id = &_node.ID
 	rc.mutation.done = true
 	return _node, nil
@@ -194,7 +194,7 @@ func (rc *RequestCreate) sqlSave(ctx context.Context) (*Request, error) {
 func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Request{config: rc.config}
-		_spec = sqlgraph.NewCreateSpec(request.Table, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt64))
+		_spec = sqlgraph.NewCreateSpec(request.Table, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt))
 	)
 	_spec.OnConflict = rc.conflict
 	if value, ok := rc.mutation.RequestBody(); ok {
@@ -210,7 +210,7 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_node.Status = value
 	}
 	if value, ok := rc.mutation.DeletedAt(); ok {
-		_spec.SetField(request.FieldDeletedAt, field.TypeInt64, value)
+		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
 		_node.DeletedAt = value
 	}
 	if nodes := rc.mutation.UserIDs(); len(nodes) > 0 {
@@ -221,7 +221,7 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 			Columns: []string{request.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -238,7 +238,7 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 			Columns: []string{request.APIKeyColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -255,7 +255,7 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 			Columns: []string{request.ExecutionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -340,7 +340,7 @@ func (u *RequestUpsert) UpdateStatus() *RequestUpsert {
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (u *RequestUpsert) SetDeletedAt(v int64) *RequestUpsert {
+func (u *RequestUpsert) SetDeletedAt(v int) *RequestUpsert {
 	u.Set(request.FieldDeletedAt, v)
 	return u
 }
@@ -352,7 +352,7 @@ func (u *RequestUpsert) UpdateDeletedAt() *RequestUpsert {
 }
 
 // AddDeletedAt adds v to the "deleted_at" field.
-func (u *RequestUpsert) AddDeletedAt(v int64) *RequestUpsert {
+func (u *RequestUpsert) AddDeletedAt(v int) *RequestUpsert {
 	u.Add(request.FieldDeletedAt, v)
 	return u
 }
@@ -437,14 +437,14 @@ func (u *RequestUpsertOne) UpdateStatus() *RequestUpsertOne {
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (u *RequestUpsertOne) SetDeletedAt(v int64) *RequestUpsertOne {
+func (u *RequestUpsertOne) SetDeletedAt(v int) *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.SetDeletedAt(v)
 	})
 }
 
 // AddDeletedAt adds v to the "deleted_at" field.
-func (u *RequestUpsertOne) AddDeletedAt(v int64) *RequestUpsertOne {
+func (u *RequestUpsertOne) AddDeletedAt(v int) *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.AddDeletedAt(v)
 	})
@@ -473,7 +473,7 @@ func (u *RequestUpsertOne) ExecX(ctx context.Context) {
 }
 
 // Exec executes the UPSERT query and returns the inserted/updated ID.
-func (u *RequestUpsertOne) ID(ctx context.Context) (id int64, err error) {
+func (u *RequestUpsertOne) ID(ctx context.Context) (id int, err error) {
 	node, err := u.create.Save(ctx)
 	if err != nil {
 		return id, err
@@ -482,7 +482,7 @@ func (u *RequestUpsertOne) ID(ctx context.Context) (id int64, err error) {
 }
 
 // IDX is like ID, but panics if an error occurs.
-func (u *RequestUpsertOne) IDX(ctx context.Context) int64 {
+func (u *RequestUpsertOne) IDX(ctx context.Context) int {
 	id, err := u.ID(ctx)
 	if err != nil {
 		panic(err)
@@ -539,7 +539,7 @@ func (rcb *RequestCreateBulk) Save(ctx context.Context) ([]*Request, error) {
 				mutation.id = &nodes[i].ID
 				if specs[i].ID.Value != nil {
 					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int64(id)
+					nodes[i].ID = int(id)
 				}
 				mutation.done = true
 				return nodes[i], nil
@@ -703,14 +703,14 @@ func (u *RequestUpsertBulk) UpdateStatus() *RequestUpsertBulk {
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (u *RequestUpsertBulk) SetDeletedAt(v int64) *RequestUpsertBulk {
+func (u *RequestUpsertBulk) SetDeletedAt(v int) *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.SetDeletedAt(v)
 	})
 }
 
 // AddDeletedAt adds v to the "deleted_at" field.
-func (u *RequestUpsertBulk) AddDeletedAt(v int64) *RequestUpsertBulk {
+func (u *RequestUpsertBulk) AddDeletedAt(v int) *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.AddDeletedAt(v)
 	})

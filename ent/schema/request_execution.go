@@ -29,8 +29,8 @@ func (RequestExecution) Indexes() []ent.Index {
 
 func (RequestExecution) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int64("user_id").Immutable(),
-		field.Int64("request_id").Immutable(),
+		field.Int("user_id").Immutable(),
+		field.Int("request_id").Immutable(),
 	}
 }
 
@@ -47,7 +47,7 @@ func (RequestExecution) Edges() []ent.Edge {
 
 func (RequestExecution) Annotations() []schema.Annotation {
 	return []schema.Annotation{
+		entgql.QueryField(),
 		entgql.RelayConnection(),
-		entgql.QueryField("request_id"),
 	}
 }

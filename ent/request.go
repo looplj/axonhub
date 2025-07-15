@@ -17,11 +17,11 @@ import (
 type Request struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int64 `json:"id,omitempty"`
+	ID int `json:"id,omitempty"`
 	// UserID holds the value of the "user_id" field.
-	UserID int64 `json:"user_id,omitempty"`
+	UserID int `json:"user_id,omitempty"`
 	// APIKeyID holds the value of the "api_key_id" field.
-	APIKeyID int64 `json:"api_key_id,omitempty"`
+	APIKeyID int `json:"api_key_id,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
 	RequestBody string `json:"request_body,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
@@ -29,11 +29,11 @@ type Request struct {
 	// Status holds the value of the "status" field.
 	Status request.Status `json:"status,omitempty"`
 	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt int64 `json:"deleted_at,omitempty"`
+	DeletedAt int `json:"deleted_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestQuery when eager-loading is set.
 	Edges            RequestEdges `json:"edges"`
-	channel_requests *int64
+	channel_requests *int
 	selectValues     sql.SelectValues
 }
 
@@ -116,18 +116,18 @@ func (r *Request) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			r.ID = int64(value.Int64)
+			r.ID = int(value.Int64)
 		case request.FieldUserID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
-				r.UserID = value.Int64
+				r.UserID = int(value.Int64)
 			}
 		case request.FieldAPIKeyID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field api_key_id", values[i])
 			} else if value.Valid {
-				r.APIKeyID = value.Int64
+				r.APIKeyID = int(value.Int64)
 			}
 		case request.FieldRequestBody:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -151,14 +151,14 @@ func (r *Request) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
 			} else if value.Valid {
-				r.DeletedAt = value.Int64
+				r.DeletedAt = int(value.Int64)
 			}
 		case request.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field channel_requests", value)
 			} else if value.Valid {
-				r.channel_requests = new(int64)
-				*r.channel_requests = int64(value.Int64)
+				r.channel_requests = new(int)
+				*r.channel_requests = int(value.Int64)
 			}
 		default:
 			r.selectValues.Set(columns[i], values[i])

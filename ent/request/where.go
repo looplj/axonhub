@@ -9,57 +9,57 @@ import (
 )
 
 // ID filters vertices based on their ID field.
-func ID(id int64) predicate.Request {
+func ID(id int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldID, id))
 }
 
 // IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id int64) predicate.Request {
+func IDEQ(id int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldID, id))
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id int64) predicate.Request {
+func IDNEQ(id int) predicate.Request {
 	return predicate.Request(sql.FieldNEQ(FieldID, id))
 }
 
 // IDIn applies the In predicate on the ID field.
-func IDIn(ids ...int64) predicate.Request {
+func IDIn(ids ...int) predicate.Request {
 	return predicate.Request(sql.FieldIn(FieldID, ids...))
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...int64) predicate.Request {
+func IDNotIn(ids ...int) predicate.Request {
 	return predicate.Request(sql.FieldNotIn(FieldID, ids...))
 }
 
 // IDGT applies the GT predicate on the ID field.
-func IDGT(id int64) predicate.Request {
+func IDGT(id int) predicate.Request {
 	return predicate.Request(sql.FieldGT(FieldID, id))
 }
 
 // IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id int64) predicate.Request {
+func IDGTE(id int) predicate.Request {
 	return predicate.Request(sql.FieldGTE(FieldID, id))
 }
 
 // IDLT applies the LT predicate on the ID field.
-func IDLT(id int64) predicate.Request {
+func IDLT(id int) predicate.Request {
 	return predicate.Request(sql.FieldLT(FieldID, id))
 }
 
 // IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id int64) predicate.Request {
+func IDLTE(id int) predicate.Request {
 	return predicate.Request(sql.FieldLTE(FieldID, id))
 }
 
 // UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
-func UserID(v int64) predicate.Request {
+func UserID(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldUserID, v))
 }
 
 // APIKeyID applies equality check predicate on the "api_key_id" field. It's identical to APIKeyIDEQ.
-func APIKeyID(v int64) predicate.Request {
+func APIKeyID(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldAPIKeyID, v))
 }
 
@@ -74,47 +74,47 @@ func ResponseBody(v string) predicate.Request {
 }
 
 // DeletedAt applies equality check predicate on the "deleted_at" field. It's identical to DeletedAtEQ.
-func DeletedAt(v int64) predicate.Request {
+func DeletedAt(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldDeletedAt, v))
 }
 
 // UserIDEQ applies the EQ predicate on the "user_id" field.
-func UserIDEQ(v int64) predicate.Request {
+func UserIDEQ(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldUserID, v))
 }
 
 // UserIDNEQ applies the NEQ predicate on the "user_id" field.
-func UserIDNEQ(v int64) predicate.Request {
+func UserIDNEQ(v int) predicate.Request {
 	return predicate.Request(sql.FieldNEQ(FieldUserID, v))
 }
 
 // UserIDIn applies the In predicate on the "user_id" field.
-func UserIDIn(vs ...int64) predicate.Request {
+func UserIDIn(vs ...int) predicate.Request {
 	return predicate.Request(sql.FieldIn(FieldUserID, vs...))
 }
 
 // UserIDNotIn applies the NotIn predicate on the "user_id" field.
-func UserIDNotIn(vs ...int64) predicate.Request {
+func UserIDNotIn(vs ...int) predicate.Request {
 	return predicate.Request(sql.FieldNotIn(FieldUserID, vs...))
 }
 
 // APIKeyIDEQ applies the EQ predicate on the "api_key_id" field.
-func APIKeyIDEQ(v int64) predicate.Request {
+func APIKeyIDEQ(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldAPIKeyID, v))
 }
 
 // APIKeyIDNEQ applies the NEQ predicate on the "api_key_id" field.
-func APIKeyIDNEQ(v int64) predicate.Request {
+func APIKeyIDNEQ(v int) predicate.Request {
 	return predicate.Request(sql.FieldNEQ(FieldAPIKeyID, v))
 }
 
 // APIKeyIDIn applies the In predicate on the "api_key_id" field.
-func APIKeyIDIn(vs ...int64) predicate.Request {
+func APIKeyIDIn(vs ...int) predicate.Request {
 	return predicate.Request(sql.FieldIn(FieldAPIKeyID, vs...))
 }
 
 // APIKeyIDNotIn applies the NotIn predicate on the "api_key_id" field.
-func APIKeyIDNotIn(vs ...int64) predicate.Request {
+func APIKeyIDNotIn(vs ...int) predicate.Request {
 	return predicate.Request(sql.FieldNotIn(FieldAPIKeyID, vs...))
 }
 
@@ -269,42 +269,42 @@ func StatusNotIn(vs ...Status) predicate.Request {
 }
 
 // DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
-func DeletedAtEQ(v int64) predicate.Request {
+func DeletedAtEQ(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldDeletedAt, v))
 }
 
 // DeletedAtNEQ applies the NEQ predicate on the "deleted_at" field.
-func DeletedAtNEQ(v int64) predicate.Request {
+func DeletedAtNEQ(v int) predicate.Request {
 	return predicate.Request(sql.FieldNEQ(FieldDeletedAt, v))
 }
 
 // DeletedAtIn applies the In predicate on the "deleted_at" field.
-func DeletedAtIn(vs ...int64) predicate.Request {
+func DeletedAtIn(vs ...int) predicate.Request {
 	return predicate.Request(sql.FieldIn(FieldDeletedAt, vs...))
 }
 
 // DeletedAtNotIn applies the NotIn predicate on the "deleted_at" field.
-func DeletedAtNotIn(vs ...int64) predicate.Request {
+func DeletedAtNotIn(vs ...int) predicate.Request {
 	return predicate.Request(sql.FieldNotIn(FieldDeletedAt, vs...))
 }
 
 // DeletedAtGT applies the GT predicate on the "deleted_at" field.
-func DeletedAtGT(v int64) predicate.Request {
+func DeletedAtGT(v int) predicate.Request {
 	return predicate.Request(sql.FieldGT(FieldDeletedAt, v))
 }
 
 // DeletedAtGTE applies the GTE predicate on the "deleted_at" field.
-func DeletedAtGTE(v int64) predicate.Request {
+func DeletedAtGTE(v int) predicate.Request {
 	return predicate.Request(sql.FieldGTE(FieldDeletedAt, v))
 }
 
 // DeletedAtLT applies the LT predicate on the "deleted_at" field.
-func DeletedAtLT(v int64) predicate.Request {
+func DeletedAtLT(v int) predicate.Request {
 	return predicate.Request(sql.FieldLT(FieldDeletedAt, v))
 }
 
 // DeletedAtLTE applies the LTE predicate on the "deleted_at" field.
-func DeletedAtLTE(v int64) predicate.Request {
+func DeletedAtLTE(v int) predicate.Request {
 	return predicate.Request(sql.FieldLTE(FieldDeletedAt, v))
 }
 

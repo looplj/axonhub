@@ -27,5 +27,5 @@ func init() {
 	// requestDescDeletedAt is the schema descriptor for deleted_at field.
 	requestDescDeletedAt := requestFields[5].Descriptor()
 	// request.DefaultDeletedAt holds the default value on creation for the deleted_at field.
-	request.DefaultDeletedAt = requestDescDeletedAt.Default.(int64)
+	request.DefaultDeletedAt = requestDescDeletedAt.Default.(int)
 }
