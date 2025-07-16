@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
+	"github.com/looplj/axonhub/objects"
 )
 
 // RequestExecutionCreate is the builder for creating a RequestExecution entity.
@@ -41,27 +42,33 @@ func (rec *RequestExecutionCreate) SetChannelID(i int) *RequestExecutionCreate {
 }
 
 // SetModelID sets the "model_id" field.
-func (rec *RequestExecutionCreate) SetModelID(i int) *RequestExecutionCreate {
-	rec.mutation.SetModelID(i)
+func (rec *RequestExecutionCreate) SetModelID(s string) *RequestExecutionCreate {
+	rec.mutation.SetModelID(s)
 	return rec
 }
 
 // SetRequestBody sets the "request_body" field.
-func (rec *RequestExecutionCreate) SetRequestBody(s string) *RequestExecutionCreate {
-	rec.mutation.SetRequestBody(s)
+func (rec *RequestExecutionCreate) SetRequestBody(orm objects.JSONRawMessage) *RequestExecutionCreate {
+	rec.mutation.SetRequestBody(orm)
 	return rec
 }
 
 // SetResponseBody sets the "response_body" field.
-func (rec *RequestExecutionCreate) SetResponseBody(s string) *RequestExecutionCreate {
-	rec.mutation.SetResponseBody(s)
+func (rec *RequestExecutionCreate) SetResponseBody(orm objects.JSONRawMessage) *RequestExecutionCreate {
+	rec.mutation.SetResponseBody(orm)
 	return rec
 }
 
-// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
-func (rec *RequestExecutionCreate) SetNillableResponseBody(s *string) *RequestExecutionCreate {
+// SetErrorMessage sets the "error_message" field.
+func (rec *RequestExecutionCreate) SetErrorMessage(s string) *RequestExecutionCreate {
+	rec.mutation.SetErrorMessage(s)
+	return rec
+}
+
+// SetNillableErrorMessage sets the "error_message" field if the given value is not nil.
+func (rec *RequestExecutionCreate) SetNillableErrorMessage(s *string) *RequestExecutionCreate {
 	if s != nil {
-		rec.SetResponseBody(*s)
+		rec.SetErrorMessage(*s)
 	}
 	return rec
 }
@@ -126,11 +133,6 @@ func (rec *RequestExecutionCreate) check() error {
 	if _, ok := rec.mutation.RequestBody(); !ok {
 		return &ValidationError{Name: "request_body", err: errors.New(`ent: missing required field "RequestExecution.request_body"`)}
 	}
-	if v, ok := rec.mutation.RequestBody(); ok {
-		if err := requestexecution.RequestBodyValidator(v); err != nil {
-			return &ValidationError{Name: "request_body", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.request_body": %w`, err)}
-		}
-	}
 	if _, ok := rec.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "RequestExecution.status"`)}
 	}
@@ -178,16 +180,20 @@ func (rec *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cr
 		_node.ChannelID = value
 	}
 	if value, ok := rec.mutation.ModelID(); ok {
-		_spec.SetField(requestexecution.FieldModelID, field.TypeInt, value)
+		_spec.SetField(requestexecution.FieldModelID, field.TypeString, value)
 		_node.ModelID = value
 	}
 	if value, ok := rec.mutation.RequestBody(); ok {
-		_spec.SetField(requestexecution.FieldRequestBody, field.TypeString, value)
+		_spec.SetField(requestexecution.FieldRequestBody, field.TypeJSON, value)
 		_node.RequestBody = value
 	}
 	if value, ok := rec.mutation.ResponseBody(); ok {
-		_spec.SetField(requestexecution.FieldResponseBody, field.TypeString, value)
+		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)
 		_node.ResponseBody = value
+	}
+	if value, ok := rec.mutation.ErrorMessage(); ok {
+		_spec.SetField(requestexecution.FieldErrorMessage, field.TypeString, value)
+		_node.ErrorMessage = value
 	}
 	if value, ok := rec.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
@@ -263,7 +269,7 @@ type (
 )
 
 // SetResponseBody sets the "response_body" field.
-func (u *RequestExecutionUpsert) SetResponseBody(v string) *RequestExecutionUpsert {
+func (u *RequestExecutionUpsert) SetResponseBody(v objects.JSONRawMessage) *RequestExecutionUpsert {
 	u.Set(requestexecution.FieldResponseBody, v)
 	return u
 }
@@ -277,6 +283,24 @@ func (u *RequestExecutionUpsert) UpdateResponseBody() *RequestExecutionUpsert {
 // ClearResponseBody clears the value of the "response_body" field.
 func (u *RequestExecutionUpsert) ClearResponseBody() *RequestExecutionUpsert {
 	u.SetNull(requestexecution.FieldResponseBody)
+	return u
+}
+
+// SetErrorMessage sets the "error_message" field.
+func (u *RequestExecutionUpsert) SetErrorMessage(v string) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldErrorMessage, v)
+	return u
+}
+
+// UpdateErrorMessage sets the "error_message" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateErrorMessage() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldErrorMessage)
+	return u
+}
+
+// ClearErrorMessage clears the value of the "error_message" field.
+func (u *RequestExecutionUpsert) ClearErrorMessage() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldErrorMessage)
 	return u
 }
 
@@ -350,7 +374,7 @@ func (u *RequestExecutionUpsertOne) Update(set func(*RequestExecutionUpsert)) *R
 }
 
 // SetResponseBody sets the "response_body" field.
-func (u *RequestExecutionUpsertOne) SetResponseBody(v string) *RequestExecutionUpsertOne {
+func (u *RequestExecutionUpsertOne) SetResponseBody(v objects.JSONRawMessage) *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.SetResponseBody(v)
 	})
@@ -367,6 +391,27 @@ func (u *RequestExecutionUpsertOne) UpdateResponseBody() *RequestExecutionUpsert
 func (u *RequestExecutionUpsertOne) ClearResponseBody() *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearResponseBody()
+	})
+}
+
+// SetErrorMessage sets the "error_message" field.
+func (u *RequestExecutionUpsertOne) SetErrorMessage(v string) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetErrorMessage(v)
+	})
+}
+
+// UpdateErrorMessage sets the "error_message" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateErrorMessage() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateErrorMessage()
+	})
+}
+
+// ClearErrorMessage clears the value of the "error_message" field.
+func (u *RequestExecutionUpsertOne) ClearErrorMessage() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearErrorMessage()
 	})
 }
 
@@ -607,7 +652,7 @@ func (u *RequestExecutionUpsertBulk) Update(set func(*RequestExecutionUpsert)) *
 }
 
 // SetResponseBody sets the "response_body" field.
-func (u *RequestExecutionUpsertBulk) SetResponseBody(v string) *RequestExecutionUpsertBulk {
+func (u *RequestExecutionUpsertBulk) SetResponseBody(v objects.JSONRawMessage) *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.SetResponseBody(v)
 	})
@@ -624,6 +669,27 @@ func (u *RequestExecutionUpsertBulk) UpdateResponseBody() *RequestExecutionUpser
 func (u *RequestExecutionUpsertBulk) ClearResponseBody() *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearResponseBody()
+	})
+}
+
+// SetErrorMessage sets the "error_message" field.
+func (u *RequestExecutionUpsertBulk) SetErrorMessage(v string) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetErrorMessage(v)
+	})
+}
+
+// UpdateErrorMessage sets the "error_message" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateErrorMessage() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateErrorMessage()
+	})
+}
+
+// ClearErrorMessage clears the value of the "error_message" field.
+func (u *RequestExecutionUpsertBulk) ClearErrorMessage() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearErrorMessage()
 	})
 }
 

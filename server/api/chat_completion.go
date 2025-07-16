@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/gin-gonic/gin"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/log"
 	"github.com/looplj/axonhub/server/biz"
 )
@@ -21,7 +22,15 @@ type ChatCompletionHandlers struct {
 
 func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 	ctx := c.Request.Context()
-	result, err := handlers.ChatCompletionProcessor.Process(ctx, c.Request)
+
+	// Use ReadHTTPRequest to parse the request
+	genericReq, err := llm.ReadHTTPRequest(c.Request)
+	if err != nil {
+		handlers.ErrorHandler(c, err)
+		return
+	}
+
+	result, err := handlers.ChatCompletionProcessor.Process(ctx, genericReq)
 	if err != nil {
 		handlers.ErrorHandler(c, err)
 		return
@@ -29,7 +38,11 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 
 	if result.ChatCompletion != nil {
 		resp := result.ChatCompletion
-		c.Data(resp.StatusCode, resp.Headers["Content-Type"][0], resp.Body)
+		contentType := "application/json"
+		if ct := resp.Headers.Get("Content-Type"); ct != "" {
+			contentType = ct
+		}
+		c.Data(resp.StatusCode, contentType, resp.Body)
 		return
 	}
 

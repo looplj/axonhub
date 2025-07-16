@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+	"github.com/looplj/axonhub/objects"
 )
 
 type Request struct {
@@ -32,8 +33,8 @@ func (Request) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("user_id").Immutable(),
 		field.Int("api_key_id").Immutable(),
-		field.String("request_body").NotEmpty().Immutable(),
-		field.String("response_body").Optional(),
+		field.JSON("request_body", objects.JSONRawMessage{}).Immutable(),
+		field.JSON("response_body", objects.JSONRawMessage{}).Optional(),
 		field.Enum("status").Values("pending", "processing", "completed", "failed"),
 	}
 }

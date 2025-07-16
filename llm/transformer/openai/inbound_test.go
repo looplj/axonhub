@@ -24,8 +24,8 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: mustMarshal(llm.ChatCompletionRequest{
 					Model: "gpt-4",
@@ -56,8 +56,8 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: []byte{},
 			},
@@ -69,8 +69,8 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
-				Headers: map[string]string{
-					"Content-Type": "text/plain",
+				Headers: http.Header{
+					"Content-Type": []string{"text/plain"},
 				},
 				Body: []byte("some text"),
 			},
@@ -82,8 +82,8 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: []byte("{invalid json}"),
 			},
@@ -95,8 +95,8 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: mustMarshal(llm.ChatCompletionRequest{
 					Messages: []llm.ChatCompletionMessage{
@@ -117,8 +117,8 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: mustMarshal(llm.ChatCompletionRequest{
 					Model: "gpt-4",
@@ -132,8 +132,8 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: mustMarshal(llm.ChatCompletionRequest{
 					Model:    "gpt-4",

@@ -7,13 +7,32 @@ import (
 	"net/http"
 )
 
+func ReadHTTPRequest(rawReq *http.Request) (*GenericHttpRequest, error) {
+	req := &GenericHttpRequest{
+		Method:     rawReq.Method,
+		URL:        rawReq.URL.String(),
+		Headers:    rawReq.Header,
+		Body:       []byte{},
+		Auth:       &AuthConfig{},
+		Streaming:  false,
+		RequestID:  "",
+		RawRequest: rawReq,
+	}
+	body, err := io.ReadAll(rawReq.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read request body: %w", err)
+	}
+	req.Body = body
+	return req, nil
+}
+
 // GenericHttpRequest represents a generic HTTP request that can be adapted to different providers
 type GenericHttpRequest struct {
 	// HTTP basics
-	Method  string            `json:"method"`
-	URL     string            `json:"url"`
-	Headers map[string]string `json:"headers"`
-	Body    []byte            `json:"body,omitempty"`
+	Method  string      `json:"method"`
+	URL     string      `json:"url"`
+	Headers http.Header `json:"headers"`
+	Body    []byte      `json:"body,omitempty"`
 
 	// Authentication
 	Auth *AuthConfig `json:"auth,omitempty"`
@@ -98,7 +117,7 @@ func NewRequestBuilder() *RequestBuilder {
 	return &RequestBuilder{
 		request: &GenericHttpRequest{
 			Method:  "POST",
-			Headers: make(map[string]string),
+			Headers: make(http.Header),
 		},
 	}
 }
@@ -117,14 +136,14 @@ func (rb *RequestBuilder) WithURL(url string) *RequestBuilder {
 
 // WithHeader adds a header
 func (rb *RequestBuilder) WithHeader(key, value string) *RequestBuilder {
-	rb.request.Headers[key] = value
+	rb.request.Headers.Set(key, value)
 	return rb
 }
 
 // WithHeaders sets multiple headers
 func (rb *RequestBuilder) WithHeaders(headers map[string]string) *RequestBuilder {
 	for k, v := range headers {
-		rb.request.Headers[k] = v
+		rb.request.Headers.Set(k, v)
 	}
 	return rb
 }

@@ -27,8 +27,8 @@ func TestHttpClientImpl_Do(t *testing.T) {
 			name: "successful request",
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: []byte(`{"test": "data"}`),
 			},
@@ -48,8 +48,8 @@ func TestHttpClientImpl_Do(t *testing.T) {
 			name: "request with authentication",
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: []byte(`{"test": "data"}`),
 				Auth: &llm.AuthConfig{
@@ -77,8 +77,8 @@ func TestHttpClientImpl_Do(t *testing.T) {
 			name: "HTTP error response",
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: []byte(`{"test": "data"}`),
 			},
@@ -104,7 +104,7 @@ func TestHttpClientImpl_Do(t *testing.T) {
 			tt.request.URL = server.URL
 
 			// Create client
-			client := NewHttpClient(5 * time.Second)
+			client := NewHttpClient()
 
 			// Execute request
 			result, err := client.Do(context.Background(), tt.request)
@@ -150,8 +150,8 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 			name: "successful streaming request",
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: []byte(`{"stream": true}`),
 			},
@@ -195,8 +195,8 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 			name: "HTTP error in streaming request",
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: []byte(`{"stream": true}`),
 			},
@@ -221,7 +221,7 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 			tt.request.URL = server.URL
 
 			// Create client
-			client := NewHttpClient(5 * time.Second)
+			client := NewHttpClient()
 
 			// Execute streaming request
 			result, err := client.DoStream(context.Background(), tt.request)
@@ -276,8 +276,8 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 			request: &llm.GenericHttpRequest{
 				Method: http.MethodPost,
 				URL:    "https://api.example.com/test",
-				Headers: map[string]string{
-					"Content-Type": "application/json",
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
 				},
 				Body: []byte(`{"test": "data"}`),
 			},
@@ -478,31 +478,6 @@ func TestHttpClientImpl_extractHeaders(t *testing.T) {
 	if _, exists := result["Empty-Header"]; exists {
 		t.Errorf("extractHeaders() should not include headers with empty values")
 	}
-}
-
-func TestNewHttpClient(t *testing.T) {
-	timeout := 10 * time.Second
-	client := NewHttpClient(timeout)
-
-	if client == nil {
-		t.Errorf("NewHttpClient() returned nil")
-		return
-	}
-
-	impl, ok := client.(*HttpClientImpl)
-	if !ok {
-		t.Errorf("NewHttpClient() returned wrong type")
-		return
-	}
-
-	if impl.client.Timeout != timeout {
-		t.Errorf("NewHttpClient() timeout = %v, want %v", impl.client.Timeout, timeout)
-	}
-}
-
-// Helper function for string pointer
-func stringPtr(s string) *string {
-	return &s
 }
 
 // Test SSE Stream implementation

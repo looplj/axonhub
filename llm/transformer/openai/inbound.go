@@ -34,9 +34,9 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.
 	}
 
 	// Check content type
-	contentType := httpReq.Headers["Content-Type"]
+	contentType := httpReq.Headers.Get("Content-Type")
 	if contentType == "" {
-		contentType = httpReq.Headers["content-type"]
+		contentType = httpReq.Headers.Get("content-type")
 	}
 
 	if !strings.Contains(strings.ToLower(contentType), "application/json") {
@@ -70,10 +70,6 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chat completion response: %w", err)
 	}
-
-	headers := make(map[string]string)
-	headers["Content-Type"] = "application/json"
-	headers["Cache-Control"] = "no-cache"
 
 	// Create generic response
 	return &llm.GenericHttpResponse{

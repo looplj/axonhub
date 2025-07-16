@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/zhenzou/executors"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/provider"
 	"github.com/looplj/axonhub/llm/provider/openai"
+	"github.com/looplj/axonhub/llm/transformer"
+	openaiTransformer "github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 func NewChannelService(ent *ent.Client) *ChannelService {
@@ -64,4 +67,13 @@ func (s *ChannelService) ChooseChannels(ctx context.Context, _ *llm.ChatCompleti
 
 func (s *ChannelService) GetProvider(_ context.Context, name string) (provider.Provider, error) {
 	return s.Registry.GetProvider(name)
+}
+
+func (s *ChannelService) GetOutboundTransformer(ctx context.Context, channel *ent.Channel) (transformer.Outbound, error) {
+	switch channel.Type {
+	case "openai":
+		return openaiTransformer.NewOutboundTransformer(channel.BaseURL, channel.APIKey), nil
+	default:
+		return nil, fmt.Errorf("unsupported channel type: %s", channel.Type)
+	}
 }

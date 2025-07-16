@@ -9,10 +9,12 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/ent/predicate"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
+	"github.com/looplj/axonhub/objects"
 )
 
 // RequestUpdate is the builder for updating Request entities.
@@ -29,16 +31,14 @@ func (ru *RequestUpdate) Where(ps ...predicate.Request) *RequestUpdate {
 }
 
 // SetResponseBody sets the "response_body" field.
-func (ru *RequestUpdate) SetResponseBody(s string) *RequestUpdate {
-	ru.mutation.SetResponseBody(s)
+func (ru *RequestUpdate) SetResponseBody(orm objects.JSONRawMessage) *RequestUpdate {
+	ru.mutation.SetResponseBody(orm)
 	return ru
 }
 
-// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
-func (ru *RequestUpdate) SetNillableResponseBody(s *string) *RequestUpdate {
-	if s != nil {
-		ru.SetResponseBody(*s)
-	}
+// AppendResponseBody appends orm to the "response_body" field.
+func (ru *RequestUpdate) AppendResponseBody(orm objects.JSONRawMessage) *RequestUpdate {
+	ru.mutation.AppendResponseBody(orm)
 	return ru
 }
 
@@ -159,10 +159,15 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 	}
 	if value, ok := ru.mutation.ResponseBody(); ok {
-		_spec.SetField(request.FieldResponseBody, field.TypeString, value)
+		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
+	}
+	if value, ok := ru.mutation.AppendedResponseBody(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, request.FieldResponseBody, value)
+		})
 	}
 	if ru.mutation.ResponseBodyCleared() {
-		_spec.ClearField(request.FieldResponseBody, field.TypeString)
+		_spec.ClearField(request.FieldResponseBody, field.TypeJSON)
 	}
 	if value, ok := ru.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
@@ -233,16 +238,14 @@ type RequestUpdateOne struct {
 }
 
 // SetResponseBody sets the "response_body" field.
-func (ruo *RequestUpdateOne) SetResponseBody(s string) *RequestUpdateOne {
-	ruo.mutation.SetResponseBody(s)
+func (ruo *RequestUpdateOne) SetResponseBody(orm objects.JSONRawMessage) *RequestUpdateOne {
+	ruo.mutation.SetResponseBody(orm)
 	return ruo
 }
 
-// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
-func (ruo *RequestUpdateOne) SetNillableResponseBody(s *string) *RequestUpdateOne {
-	if s != nil {
-		ruo.SetResponseBody(*s)
-	}
+// AppendResponseBody appends orm to the "response_body" field.
+func (ruo *RequestUpdateOne) AppendResponseBody(orm objects.JSONRawMessage) *RequestUpdateOne {
+	ruo.mutation.AppendResponseBody(orm)
 	return ruo
 }
 
@@ -393,10 +396,15 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		}
 	}
 	if value, ok := ruo.mutation.ResponseBody(); ok {
-		_spec.SetField(request.FieldResponseBody, field.TypeString, value)
+		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
+	}
+	if value, ok := ruo.mutation.AppendedResponseBody(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, request.FieldResponseBody, value)
+		})
 	}
 	if ruo.mutation.ResponseBodyCleared() {
-		_spec.ClearField(request.FieldResponseBody, field.TypeString)
+		_spec.ClearField(request.FieldResponseBody, field.TypeJSON)
 	}
 	if value, ok := ruo.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)

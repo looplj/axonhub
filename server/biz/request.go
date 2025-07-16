@@ -8,6 +8,7 @@ import (
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/log"
+	"github.com/looplj/axonhub/objects"
 )
 
 // RequestService handles request and request execution operations
@@ -23,9 +24,8 @@ func NewRequestService(entClient *ent.Client) *RequestService {
 }
 
 // CreateRequest creates a new request record
-func (s *RequestService) CreateRequest(ctx context.Context, apiKey *ent.APIKey, requestBody interface{}) (*ent.Request, error) {
-	// Serialize request body
-	requestBodyBytes, err := json.Marshal(requestBody)
+func (s *RequestService) CreateRequest(ctx context.Context, apiKey *ent.APIKey, requestBody any) (*ent.Request, error) {
+	requestBodyBytes, err := Marshal(requestBody)
 	if err != nil {
 		log.Error(ctx, "Failed to serialize request body", log.Cause(err))
 		return nil, err
@@ -36,7 +36,7 @@ func (s *RequestService) CreateRequest(ctx context.Context, apiKey *ent.APIKey, 
 		SetAPIKey(apiKey).
 		SetUserID(apiKey.UserID).
 		SetStatus(request.StatusProcessing).
-		SetRequestBody(string(requestBodyBytes)).
+		SetRequestBody(requestBodyBytes).
 		Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to create request", log.Cause(err))
@@ -47,13 +47,18 @@ func (s *RequestService) CreateRequest(ctx context.Context, apiKey *ent.APIKey, 
 }
 
 // CreateRequestExecution creates a new request execution record
-func (s *RequestService) CreateRequestExecution(ctx context.Context, requestID int, userID int, channelID int, modelID int, requestBody string) (*ent.RequestExecution, error) {
+func (s *RequestService) CreateRequestExecution(ctx context.Context, req *ent.Request, channel *ent.Channel, requestBody any) (*ent.RequestExecution, error) {
+	requestBodyBytes, err := Marshal(requestBody)
+	if err != nil {
+		log.Error(ctx, "Failed to marshal request body", log.Cause(err))
+		return nil, err
+	}
 	reqExec, err := s.EntClient.RequestExecution.Create().
-		SetRequestID(requestID).
-		SetUserID(userID).
-		SetChannelID(channelID).
-		SetModelID(modelID).
-		SetRequestBody(requestBody).
+		SetRequestID(req.ID).
+		SetUserID(req.UserID).
+		SetChannelID(channel.ID).
+		SetModelID("TODO").
+		SetRequestBody(requestBodyBytes).
 		SetStatus(requestexecution.StatusProcessing).
 		Save(ctx)
 	if err != nil {
@@ -65,9 +70,8 @@ func (s *RequestService) CreateRequestExecution(ctx context.Context, requestID i
 }
 
 // UpdateRequestCompleted updates request status to completed with response body
-func (s *RequestService) UpdateRequestCompleted(ctx context.Context, requestID int, responseBody interface{}) error {
-	// Serialize response body
-	responseBodyBytes, err := json.Marshal(responseBody)
+func (s *RequestService) UpdateRequestCompleted(ctx context.Context, requestID int, responseBody any) error {
+	responseBodyBytes, err := Marshal(responseBody)
 	if err != nil {
 		log.Error(ctx, "Failed to serialize response body", log.Cause(err))
 		return err
@@ -75,7 +79,7 @@ func (s *RequestService) UpdateRequestCompleted(ctx context.Context, requestID i
 
 	_, err = s.EntClient.Request.UpdateOneID(requestID).
 		SetStatus(request.StatusCompleted).
-		SetResponseBody(string(responseBodyBytes)).
+		SetResponseBody(responseBodyBytes).
 		Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request status to completed", log.Cause(err))
@@ -99,17 +103,15 @@ func (s *RequestService) UpdateRequestFailed(ctx context.Context, requestID int)
 }
 
 // UpdateRequestExecutionCompleted updates request execution status to completed with response body
-func (s *RequestService) UpdateRequestExecutionCompleted(ctx context.Context, executionID int, responseBody interface{}) error {
-	// Serialize response body
-	responseBodyBytes, err := json.Marshal(responseBody)
+func (s *RequestService) UpdateRequestExecutionCompleted(ctx context.Context, executionID int, responseBody any) error {
+	responseBodyBytes, err := Marshal(responseBody)
 	if err != nil {
-		log.Error(ctx, "Failed to serialize response body", log.Cause(err))
 		return err
 	}
 
 	_, err = s.EntClient.RequestExecution.UpdateOneID(executionID).
 		SetStatus(requestexecution.StatusCompleted).
-		SetResponseBody(string(responseBodyBytes)).
+		SetResponseBody(responseBodyBytes).
 		Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request execution status to completed", log.Cause(err))
@@ -123,7 +125,7 @@ func (s *RequestService) UpdateRequestExecutionCompleted(ctx context.Context, ex
 func (s *RequestService) UpdateRequestExecutionFailed(ctx context.Context, executionID int, errorMsg string) error {
 	_, err := s.EntClient.RequestExecution.UpdateOneID(executionID).
 		SetStatus(requestexecution.StatusFailed).
-		SetResponseBody(errorMsg).
+		SetErrorMessage(errorMsg).
 		Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request execution status to failed", log.Cause(err))
@@ -131,4 +133,19 @@ func (s *RequestService) UpdateRequestExecutionFailed(ctx context.Context, execu
 	}
 
 	return nil
+}
+
+func Marshal(v any) (objects.JSONRawMessage, error) {
+	switch v := v.(type) {
+	case string:
+		return objects.JSONRawMessage(v), nil
+	case []byte:
+		return objects.JSONRawMessage(v), nil
+	default:
+		b, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		return objects.JSONRawMessage(b), nil
+	}
 }

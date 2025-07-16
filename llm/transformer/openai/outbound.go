@@ -53,12 +53,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 	}
 
 	// Prepare headers
-	headers := make(map[string]string)
-	headers["Content-Type"] = "application/json"
-	headers["Accept"] = "application/json"
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+	headers.Set("Accept", "application/json")
 	
 	// Add User-Agent
-	headers["User-Agent"] = "axonhub/1.0"
+	headers.Set("User-Agent", "axonhub/1.0")
 
 	// Prepare authentication
 	var auth *llm.AuthConfig

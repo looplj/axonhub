@@ -984,38 +984,6 @@ type RequestWhereInput struct {
 	APIKeyIDIn    []int `json:"apiKeyIDIn,omitempty"`
 	APIKeyIDNotIn []int `json:"apiKeyIDNotIn,omitempty"`
 
-	// "request_body" field predicates.
-	RequestBody             *string  `json:"requestBody,omitempty"`
-	RequestBodyNEQ          *string  `json:"requestBodyNEQ,omitempty"`
-	RequestBodyIn           []string `json:"requestBodyIn,omitempty"`
-	RequestBodyNotIn        []string `json:"requestBodyNotIn,omitempty"`
-	RequestBodyGT           *string  `json:"requestBodyGT,omitempty"`
-	RequestBodyGTE          *string  `json:"requestBodyGTE,omitempty"`
-	RequestBodyLT           *string  `json:"requestBodyLT,omitempty"`
-	RequestBodyLTE          *string  `json:"requestBodyLTE,omitempty"`
-	RequestBodyContains     *string  `json:"requestBodyContains,omitempty"`
-	RequestBodyHasPrefix    *string  `json:"requestBodyHasPrefix,omitempty"`
-	RequestBodyHasSuffix    *string  `json:"requestBodyHasSuffix,omitempty"`
-	RequestBodyEqualFold    *string  `json:"requestBodyEqualFold,omitempty"`
-	RequestBodyContainsFold *string  `json:"requestBodyContainsFold,omitempty"`
-
-	// "response_body" field predicates.
-	ResponseBody             *string  `json:"responseBody,omitempty"`
-	ResponseBodyNEQ          *string  `json:"responseBodyNEQ,omitempty"`
-	ResponseBodyIn           []string `json:"responseBodyIn,omitempty"`
-	ResponseBodyNotIn        []string `json:"responseBodyNotIn,omitempty"`
-	ResponseBodyGT           *string  `json:"responseBodyGT,omitempty"`
-	ResponseBodyGTE          *string  `json:"responseBodyGTE,omitempty"`
-	ResponseBodyLT           *string  `json:"responseBodyLT,omitempty"`
-	ResponseBodyLTE          *string  `json:"responseBodyLTE,omitempty"`
-	ResponseBodyContains     *string  `json:"responseBodyContains,omitempty"`
-	ResponseBodyHasPrefix    *string  `json:"responseBodyHasPrefix,omitempty"`
-	ResponseBodyHasSuffix    *string  `json:"responseBodyHasSuffix,omitempty"`
-	ResponseBodyIsNil        bool     `json:"responseBodyIsNil,omitempty"`
-	ResponseBodyNotNil       bool     `json:"responseBodyNotNil,omitempty"`
-	ResponseBodyEqualFold    *string  `json:"responseBodyEqualFold,omitempty"`
-	ResponseBodyContainsFold *string  `json:"responseBodyContainsFold,omitempty"`
-
 	// "status" field predicates.
 	Status      *request.Status  `json:"status,omitempty"`
 	StatusNEQ   *request.Status  `json:"statusNEQ,omitempty"`
@@ -1154,90 +1122,6 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	if len(i.APIKeyIDNotIn) > 0 {
 		predicates = append(predicates, request.APIKeyIDNotIn(i.APIKeyIDNotIn...))
 	}
-	if i.RequestBody != nil {
-		predicates = append(predicates, request.RequestBodyEQ(*i.RequestBody))
-	}
-	if i.RequestBodyNEQ != nil {
-		predicates = append(predicates, request.RequestBodyNEQ(*i.RequestBodyNEQ))
-	}
-	if len(i.RequestBodyIn) > 0 {
-		predicates = append(predicates, request.RequestBodyIn(i.RequestBodyIn...))
-	}
-	if len(i.RequestBodyNotIn) > 0 {
-		predicates = append(predicates, request.RequestBodyNotIn(i.RequestBodyNotIn...))
-	}
-	if i.RequestBodyGT != nil {
-		predicates = append(predicates, request.RequestBodyGT(*i.RequestBodyGT))
-	}
-	if i.RequestBodyGTE != nil {
-		predicates = append(predicates, request.RequestBodyGTE(*i.RequestBodyGTE))
-	}
-	if i.RequestBodyLT != nil {
-		predicates = append(predicates, request.RequestBodyLT(*i.RequestBodyLT))
-	}
-	if i.RequestBodyLTE != nil {
-		predicates = append(predicates, request.RequestBodyLTE(*i.RequestBodyLTE))
-	}
-	if i.RequestBodyContains != nil {
-		predicates = append(predicates, request.RequestBodyContains(*i.RequestBodyContains))
-	}
-	if i.RequestBodyHasPrefix != nil {
-		predicates = append(predicates, request.RequestBodyHasPrefix(*i.RequestBodyHasPrefix))
-	}
-	if i.RequestBodyHasSuffix != nil {
-		predicates = append(predicates, request.RequestBodyHasSuffix(*i.RequestBodyHasSuffix))
-	}
-	if i.RequestBodyEqualFold != nil {
-		predicates = append(predicates, request.RequestBodyEqualFold(*i.RequestBodyEqualFold))
-	}
-	if i.RequestBodyContainsFold != nil {
-		predicates = append(predicates, request.RequestBodyContainsFold(*i.RequestBodyContainsFold))
-	}
-	if i.ResponseBody != nil {
-		predicates = append(predicates, request.ResponseBodyEQ(*i.ResponseBody))
-	}
-	if i.ResponseBodyNEQ != nil {
-		predicates = append(predicates, request.ResponseBodyNEQ(*i.ResponseBodyNEQ))
-	}
-	if len(i.ResponseBodyIn) > 0 {
-		predicates = append(predicates, request.ResponseBodyIn(i.ResponseBodyIn...))
-	}
-	if len(i.ResponseBodyNotIn) > 0 {
-		predicates = append(predicates, request.ResponseBodyNotIn(i.ResponseBodyNotIn...))
-	}
-	if i.ResponseBodyGT != nil {
-		predicates = append(predicates, request.ResponseBodyGT(*i.ResponseBodyGT))
-	}
-	if i.ResponseBodyGTE != nil {
-		predicates = append(predicates, request.ResponseBodyGTE(*i.ResponseBodyGTE))
-	}
-	if i.ResponseBodyLT != nil {
-		predicates = append(predicates, request.ResponseBodyLT(*i.ResponseBodyLT))
-	}
-	if i.ResponseBodyLTE != nil {
-		predicates = append(predicates, request.ResponseBodyLTE(*i.ResponseBodyLTE))
-	}
-	if i.ResponseBodyContains != nil {
-		predicates = append(predicates, request.ResponseBodyContains(*i.ResponseBodyContains))
-	}
-	if i.ResponseBodyHasPrefix != nil {
-		predicates = append(predicates, request.ResponseBodyHasPrefix(*i.ResponseBodyHasPrefix))
-	}
-	if i.ResponseBodyHasSuffix != nil {
-		predicates = append(predicates, request.ResponseBodyHasSuffix(*i.ResponseBodyHasSuffix))
-	}
-	if i.ResponseBodyIsNil {
-		predicates = append(predicates, request.ResponseBodyIsNil())
-	}
-	if i.ResponseBodyNotNil {
-		predicates = append(predicates, request.ResponseBodyNotNil())
-	}
-	if i.ResponseBodyEqualFold != nil {
-		predicates = append(predicates, request.ResponseBodyEqualFold(*i.ResponseBodyEqualFold))
-	}
-	if i.ResponseBodyContainsFold != nil {
-		predicates = append(predicates, request.ResponseBodyContainsFold(*i.ResponseBodyContainsFold))
-	}
 	if i.Status != nil {
 		predicates = append(predicates, request.StatusEQ(*i.Status))
 	}
@@ -1359,46 +1243,36 @@ type RequestExecutionWhereInput struct {
 	ChannelIDLTE   *int  `json:"channelIDLTE,omitempty"`
 
 	// "model_id" field predicates.
-	ModelID      *int  `json:"modelID,omitempty"`
-	ModelIDNEQ   *int  `json:"modelIDNEQ,omitempty"`
-	ModelIDIn    []int `json:"modelIDIn,omitempty"`
-	ModelIDNotIn []int `json:"modelIDNotIn,omitempty"`
-	ModelIDGT    *int  `json:"modelIDGT,omitempty"`
-	ModelIDGTE   *int  `json:"modelIDGTE,omitempty"`
-	ModelIDLT    *int  `json:"modelIDLT,omitempty"`
-	ModelIDLTE   *int  `json:"modelIDLTE,omitempty"`
+	ModelID             *string  `json:"modelID,omitempty"`
+	ModelIDNEQ          *string  `json:"modelIDNEQ,omitempty"`
+	ModelIDIn           []string `json:"modelIDIn,omitempty"`
+	ModelIDNotIn        []string `json:"modelIDNotIn,omitempty"`
+	ModelIDGT           *string  `json:"modelIDGT,omitempty"`
+	ModelIDGTE          *string  `json:"modelIDGTE,omitempty"`
+	ModelIDLT           *string  `json:"modelIDLT,omitempty"`
+	ModelIDLTE          *string  `json:"modelIDLTE,omitempty"`
+	ModelIDContains     *string  `json:"modelIDContains,omitempty"`
+	ModelIDHasPrefix    *string  `json:"modelIDHasPrefix,omitempty"`
+	ModelIDHasSuffix    *string  `json:"modelIDHasSuffix,omitempty"`
+	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
+	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
 
-	// "request_body" field predicates.
-	RequestBody             *string  `json:"requestBody,omitempty"`
-	RequestBodyNEQ          *string  `json:"requestBodyNEQ,omitempty"`
-	RequestBodyIn           []string `json:"requestBodyIn,omitempty"`
-	RequestBodyNotIn        []string `json:"requestBodyNotIn,omitempty"`
-	RequestBodyGT           *string  `json:"requestBodyGT,omitempty"`
-	RequestBodyGTE          *string  `json:"requestBodyGTE,omitempty"`
-	RequestBodyLT           *string  `json:"requestBodyLT,omitempty"`
-	RequestBodyLTE          *string  `json:"requestBodyLTE,omitempty"`
-	RequestBodyContains     *string  `json:"requestBodyContains,omitempty"`
-	RequestBodyHasPrefix    *string  `json:"requestBodyHasPrefix,omitempty"`
-	RequestBodyHasSuffix    *string  `json:"requestBodyHasSuffix,omitempty"`
-	RequestBodyEqualFold    *string  `json:"requestBodyEqualFold,omitempty"`
-	RequestBodyContainsFold *string  `json:"requestBodyContainsFold,omitempty"`
-
-	// "response_body" field predicates.
-	ResponseBody             *string  `json:"responseBody,omitempty"`
-	ResponseBodyNEQ          *string  `json:"responseBodyNEQ,omitempty"`
-	ResponseBodyIn           []string `json:"responseBodyIn,omitempty"`
-	ResponseBodyNotIn        []string `json:"responseBodyNotIn,omitempty"`
-	ResponseBodyGT           *string  `json:"responseBodyGT,omitempty"`
-	ResponseBodyGTE          *string  `json:"responseBodyGTE,omitempty"`
-	ResponseBodyLT           *string  `json:"responseBodyLT,omitempty"`
-	ResponseBodyLTE          *string  `json:"responseBodyLTE,omitempty"`
-	ResponseBodyContains     *string  `json:"responseBodyContains,omitempty"`
-	ResponseBodyHasPrefix    *string  `json:"responseBodyHasPrefix,omitempty"`
-	ResponseBodyHasSuffix    *string  `json:"responseBodyHasSuffix,omitempty"`
-	ResponseBodyIsNil        bool     `json:"responseBodyIsNil,omitempty"`
-	ResponseBodyNotNil       bool     `json:"responseBodyNotNil,omitempty"`
-	ResponseBodyEqualFold    *string  `json:"responseBodyEqualFold,omitempty"`
-	ResponseBodyContainsFold *string  `json:"responseBodyContainsFold,omitempty"`
+	// "error_message" field predicates.
+	ErrorMessage             *string  `json:"errorMessage,omitempty"`
+	ErrorMessageNEQ          *string  `json:"errorMessageNEQ,omitempty"`
+	ErrorMessageIn           []string `json:"errorMessageIn,omitempty"`
+	ErrorMessageNotIn        []string `json:"errorMessageNotIn,omitempty"`
+	ErrorMessageGT           *string  `json:"errorMessageGT,omitempty"`
+	ErrorMessageGTE          *string  `json:"errorMessageGTE,omitempty"`
+	ErrorMessageLT           *string  `json:"errorMessageLT,omitempty"`
+	ErrorMessageLTE          *string  `json:"errorMessageLTE,omitempty"`
+	ErrorMessageContains     *string  `json:"errorMessageContains,omitempty"`
+	ErrorMessageHasPrefix    *string  `json:"errorMessageHasPrefix,omitempty"`
+	ErrorMessageHasSuffix    *string  `json:"errorMessageHasSuffix,omitempty"`
+	ErrorMessageIsNil        bool     `json:"errorMessageIsNil,omitempty"`
+	ErrorMessageNotNil       bool     `json:"errorMessageNotNil,omitempty"`
+	ErrorMessageEqualFold    *string  `json:"errorMessageEqualFold,omitempty"`
+	ErrorMessageContainsFold *string  `json:"errorMessageContainsFold,omitempty"`
 
 	// "status" field predicates.
 	Status      *requestexecution.Status  `json:"status,omitempty"`
@@ -1590,89 +1464,65 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	if i.ModelIDLTE != nil {
 		predicates = append(predicates, requestexecution.ModelIDLTE(*i.ModelIDLTE))
 	}
-	if i.RequestBody != nil {
-		predicates = append(predicates, requestexecution.RequestBodyEQ(*i.RequestBody))
+	if i.ModelIDContains != nil {
+		predicates = append(predicates, requestexecution.ModelIDContains(*i.ModelIDContains))
 	}
-	if i.RequestBodyNEQ != nil {
-		predicates = append(predicates, requestexecution.RequestBodyNEQ(*i.RequestBodyNEQ))
+	if i.ModelIDHasPrefix != nil {
+		predicates = append(predicates, requestexecution.ModelIDHasPrefix(*i.ModelIDHasPrefix))
 	}
-	if len(i.RequestBodyIn) > 0 {
-		predicates = append(predicates, requestexecution.RequestBodyIn(i.RequestBodyIn...))
+	if i.ModelIDHasSuffix != nil {
+		predicates = append(predicates, requestexecution.ModelIDHasSuffix(*i.ModelIDHasSuffix))
 	}
-	if len(i.RequestBodyNotIn) > 0 {
-		predicates = append(predicates, requestexecution.RequestBodyNotIn(i.RequestBodyNotIn...))
+	if i.ModelIDEqualFold != nil {
+		predicates = append(predicates, requestexecution.ModelIDEqualFold(*i.ModelIDEqualFold))
 	}
-	if i.RequestBodyGT != nil {
-		predicates = append(predicates, requestexecution.RequestBodyGT(*i.RequestBodyGT))
+	if i.ModelIDContainsFold != nil {
+		predicates = append(predicates, requestexecution.ModelIDContainsFold(*i.ModelIDContainsFold))
 	}
-	if i.RequestBodyGTE != nil {
-		predicates = append(predicates, requestexecution.RequestBodyGTE(*i.RequestBodyGTE))
+	if i.ErrorMessage != nil {
+		predicates = append(predicates, requestexecution.ErrorMessageEQ(*i.ErrorMessage))
 	}
-	if i.RequestBodyLT != nil {
-		predicates = append(predicates, requestexecution.RequestBodyLT(*i.RequestBodyLT))
+	if i.ErrorMessageNEQ != nil {
+		predicates = append(predicates, requestexecution.ErrorMessageNEQ(*i.ErrorMessageNEQ))
 	}
-	if i.RequestBodyLTE != nil {
-		predicates = append(predicates, requestexecution.RequestBodyLTE(*i.RequestBodyLTE))
+	if len(i.ErrorMessageIn) > 0 {
+		predicates = append(predicates, requestexecution.ErrorMessageIn(i.ErrorMessageIn...))
 	}
-	if i.RequestBodyContains != nil {
-		predicates = append(predicates, requestexecution.RequestBodyContains(*i.RequestBodyContains))
+	if len(i.ErrorMessageNotIn) > 0 {
+		predicates = append(predicates, requestexecution.ErrorMessageNotIn(i.ErrorMessageNotIn...))
 	}
-	if i.RequestBodyHasPrefix != nil {
-		predicates = append(predicates, requestexecution.RequestBodyHasPrefix(*i.RequestBodyHasPrefix))
+	if i.ErrorMessageGT != nil {
+		predicates = append(predicates, requestexecution.ErrorMessageGT(*i.ErrorMessageGT))
 	}
-	if i.RequestBodyHasSuffix != nil {
-		predicates = append(predicates, requestexecution.RequestBodyHasSuffix(*i.RequestBodyHasSuffix))
+	if i.ErrorMessageGTE != nil {
+		predicates = append(predicates, requestexecution.ErrorMessageGTE(*i.ErrorMessageGTE))
 	}
-	if i.RequestBodyEqualFold != nil {
-		predicates = append(predicates, requestexecution.RequestBodyEqualFold(*i.RequestBodyEqualFold))
+	if i.ErrorMessageLT != nil {
+		predicates = append(predicates, requestexecution.ErrorMessageLT(*i.ErrorMessageLT))
 	}
-	if i.RequestBodyContainsFold != nil {
-		predicates = append(predicates, requestexecution.RequestBodyContainsFold(*i.RequestBodyContainsFold))
+	if i.ErrorMessageLTE != nil {
+		predicates = append(predicates, requestexecution.ErrorMessageLTE(*i.ErrorMessageLTE))
 	}
-	if i.ResponseBody != nil {
-		predicates = append(predicates, requestexecution.ResponseBodyEQ(*i.ResponseBody))
+	if i.ErrorMessageContains != nil {
+		predicates = append(predicates, requestexecution.ErrorMessageContains(*i.ErrorMessageContains))
 	}
-	if i.ResponseBodyNEQ != nil {
-		predicates = append(predicates, requestexecution.ResponseBodyNEQ(*i.ResponseBodyNEQ))
+	if i.ErrorMessageHasPrefix != nil {
+		predicates = append(predicates, requestexecution.ErrorMessageHasPrefix(*i.ErrorMessageHasPrefix))
 	}
-	if len(i.ResponseBodyIn) > 0 {
-		predicates = append(predicates, requestexecution.ResponseBodyIn(i.ResponseBodyIn...))
+	if i.ErrorMessageHasSuffix != nil {
+		predicates = append(predicates, requestexecution.ErrorMessageHasSuffix(*i.ErrorMessageHasSuffix))
 	}
-	if len(i.ResponseBodyNotIn) > 0 {
-		predicates = append(predicates, requestexecution.ResponseBodyNotIn(i.ResponseBodyNotIn...))
+	if i.ErrorMessageIsNil {
+		predicates = append(predicates, requestexecution.ErrorMessageIsNil())
 	}
-	if i.ResponseBodyGT != nil {
-		predicates = append(predicates, requestexecution.ResponseBodyGT(*i.ResponseBodyGT))
+	if i.ErrorMessageNotNil {
+		predicates = append(predicates, requestexecution.ErrorMessageNotNil())
 	}
-	if i.ResponseBodyGTE != nil {
-		predicates = append(predicates, requestexecution.ResponseBodyGTE(*i.ResponseBodyGTE))
+	if i.ErrorMessageEqualFold != nil {
+		predicates = append(predicates, requestexecution.ErrorMessageEqualFold(*i.ErrorMessageEqualFold))
 	}
-	if i.ResponseBodyLT != nil {
-		predicates = append(predicates, requestexecution.ResponseBodyLT(*i.ResponseBodyLT))
-	}
-	if i.ResponseBodyLTE != nil {
-		predicates = append(predicates, requestexecution.ResponseBodyLTE(*i.ResponseBodyLTE))
-	}
-	if i.ResponseBodyContains != nil {
-		predicates = append(predicates, requestexecution.ResponseBodyContains(*i.ResponseBodyContains))
-	}
-	if i.ResponseBodyHasPrefix != nil {
-		predicates = append(predicates, requestexecution.ResponseBodyHasPrefix(*i.ResponseBodyHasPrefix))
-	}
-	if i.ResponseBodyHasSuffix != nil {
-		predicates = append(predicates, requestexecution.ResponseBodyHasSuffix(*i.ResponseBodyHasSuffix))
-	}
-	if i.ResponseBodyIsNil {
-		predicates = append(predicates, requestexecution.ResponseBodyIsNil())
-	}
-	if i.ResponseBodyNotNil {
-		predicates = append(predicates, requestexecution.ResponseBodyNotNil())
-	}
-	if i.ResponseBodyEqualFold != nil {
-		predicates = append(predicates, requestexecution.ResponseBodyEqualFold(*i.ResponseBodyEqualFold))
-	}
-	if i.ResponseBodyContainsFold != nil {
-		predicates = append(predicates, requestexecution.ResponseBodyContainsFold(*i.ResponseBodyContainsFold))
+	if i.ErrorMessageContainsFold != nil {
+		predicates = append(predicates, requestexecution.ErrorMessageContainsFold(*i.ErrorMessageContainsFold))
 	}
 	if i.Status != nil {
 		predicates = append(predicates, requestexecution.StatusEQ(*i.Status))

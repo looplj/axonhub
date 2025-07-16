@@ -134,8 +134,8 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 
 // CreateRequestInput represents a mutation input for creating requests.
 type CreateRequestInput struct {
-	RequestBody  string
-	ResponseBody *string
+	RequestBody  objects.JSONRawMessage
+	ResponseBody objects.JSONRawMessage
 	Status       request.Status
 	UserID       int
 	APIKeyID     int
@@ -143,9 +143,11 @@ type CreateRequestInput struct {
 
 // Mutate applies the CreateRequestInput on the RequestMutation builder.
 func (i *CreateRequestInput) Mutate(m *RequestMutation) {
-	m.SetRequestBody(i.RequestBody)
+	if v := i.RequestBody; v != nil {
+		m.SetRequestBody(v)
+	}
 	if v := i.ResponseBody; v != nil {
-		m.SetResponseBody(*v)
+		m.SetResponseBody(v)
 	}
 	m.SetStatus(i.Status)
 	m.SetUserID(i.UserID)
@@ -160,9 +162,10 @@ func (c *RequestCreate) SetInput(i CreateRequestInput) *RequestCreate {
 
 // UpdateRequestInput represents a mutation input for updating requests.
 type UpdateRequestInput struct {
-	ClearResponseBody bool
-	ResponseBody      *string
-	Status            *request.Status
+	ClearResponseBody  bool
+	ResponseBody       objects.JSONRawMessage
+	AppendResponseBody objects.JSONRawMessage
+	Status             *request.Status
 }
 
 // Mutate applies the UpdateRequestInput on the RequestMutation builder.
@@ -171,7 +174,10 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 		m.ClearResponseBody()
 	}
 	if v := i.ResponseBody; v != nil {
-		m.SetResponseBody(*v)
+		m.SetResponseBody(v)
+	}
+	if i.AppendResponseBody != nil {
+		m.AppendResponseBody(i.ResponseBody)
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)

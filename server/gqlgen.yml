@@ -48,3 +48,9 @@ models:
   ChannelSettingsInput:
     model:
       - github.com/looplj/axonhub/objects.ChannelSettings
+  JSONRawMessage:
+    model:
+      - github.com/looplj/axonhub/objects.JSONRawMessage
+  JSONRawMessageInput:
+    model:
+      - github.com/looplj/axonhub/objects.JSONRawMessage

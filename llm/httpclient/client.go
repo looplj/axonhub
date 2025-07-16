@@ -29,10 +29,10 @@ type HttpClientImpl struct {
 }
 
 // NewHttpClient creates a new HTTP client
-func NewHttpClient(timeout time.Duration) HttpClient {
+func NewHttpClient() HttpClient {
 	return &HttpClientImpl{
 		client: &http.Client{
-			Timeout: timeout,
+			Timeout: 5 * time.Minute,
 		},
 	}
 }
@@ -243,8 +243,10 @@ func (hc *HttpClientImpl) buildHttpRequest(ctx context.Context, request *llm.Gen
 	}
 
 	// Set headers
-	for key, value := range request.Headers {
-		httpReq.Header.Set(key, value)
+	for key, values := range request.Headers {
+		for _, value := range values {
+			httpReq.Header.Add(key, value)
+		}
 	}
 
 	// Apply authentication

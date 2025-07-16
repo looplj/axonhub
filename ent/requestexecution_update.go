@@ -9,9 +9,11 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/ent/predicate"
 	"github.com/looplj/axonhub/ent/requestexecution"
+	"github.com/looplj/axonhub/objects"
 )
 
 // RequestExecutionUpdate is the builder for updating RequestExecution entities.
@@ -28,22 +30,40 @@ func (reu *RequestExecutionUpdate) Where(ps ...predicate.RequestExecution) *Requ
 }
 
 // SetResponseBody sets the "response_body" field.
-func (reu *RequestExecutionUpdate) SetResponseBody(s string) *RequestExecutionUpdate {
-	reu.mutation.SetResponseBody(s)
+func (reu *RequestExecutionUpdate) SetResponseBody(orm objects.JSONRawMessage) *RequestExecutionUpdate {
+	reu.mutation.SetResponseBody(orm)
 	return reu
 }
 
-// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
-func (reu *RequestExecutionUpdate) SetNillableResponseBody(s *string) *RequestExecutionUpdate {
-	if s != nil {
-		reu.SetResponseBody(*s)
-	}
+// AppendResponseBody appends orm to the "response_body" field.
+func (reu *RequestExecutionUpdate) AppendResponseBody(orm objects.JSONRawMessage) *RequestExecutionUpdate {
+	reu.mutation.AppendResponseBody(orm)
 	return reu
 }
 
 // ClearResponseBody clears the value of the "response_body" field.
 func (reu *RequestExecutionUpdate) ClearResponseBody() *RequestExecutionUpdate {
 	reu.mutation.ClearResponseBody()
+	return reu
+}
+
+// SetErrorMessage sets the "error_message" field.
+func (reu *RequestExecutionUpdate) SetErrorMessage(s string) *RequestExecutionUpdate {
+	reu.mutation.SetErrorMessage(s)
+	return reu
+}
+
+// SetNillableErrorMessage sets the "error_message" field if the given value is not nil.
+func (reu *RequestExecutionUpdate) SetNillableErrorMessage(s *string) *RequestExecutionUpdate {
+	if s != nil {
+		reu.SetErrorMessage(*s)
+	}
+	return reu
+}
+
+// ClearErrorMessage clears the value of the "error_message" field.
+func (reu *RequestExecutionUpdate) ClearErrorMessage() *RequestExecutionUpdate {
+	reu.mutation.ClearErrorMessage()
 	return reu
 }
 
@@ -119,10 +139,21 @@ func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err erro
 		}
 	}
 	if value, ok := reu.mutation.ResponseBody(); ok {
-		_spec.SetField(requestexecution.FieldResponseBody, field.TypeString, value)
+		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)
+	}
+	if value, ok := reu.mutation.AppendedResponseBody(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, requestexecution.FieldResponseBody, value)
+		})
 	}
 	if reu.mutation.ResponseBodyCleared() {
-		_spec.ClearField(requestexecution.FieldResponseBody, field.TypeString)
+		_spec.ClearField(requestexecution.FieldResponseBody, field.TypeJSON)
+	}
+	if value, ok := reu.mutation.ErrorMessage(); ok {
+		_spec.SetField(requestexecution.FieldErrorMessage, field.TypeString, value)
+	}
+	if reu.mutation.ErrorMessageCleared() {
+		_spec.ClearField(requestexecution.FieldErrorMessage, field.TypeString)
 	}
 	if value, ok := reu.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
@@ -148,22 +179,40 @@ type RequestExecutionUpdateOne struct {
 }
 
 // SetResponseBody sets the "response_body" field.
-func (reuo *RequestExecutionUpdateOne) SetResponseBody(s string) *RequestExecutionUpdateOne {
-	reuo.mutation.SetResponseBody(s)
+func (reuo *RequestExecutionUpdateOne) SetResponseBody(orm objects.JSONRawMessage) *RequestExecutionUpdateOne {
+	reuo.mutation.SetResponseBody(orm)
 	return reuo
 }
 
-// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
-func (reuo *RequestExecutionUpdateOne) SetNillableResponseBody(s *string) *RequestExecutionUpdateOne {
-	if s != nil {
-		reuo.SetResponseBody(*s)
-	}
+// AppendResponseBody appends orm to the "response_body" field.
+func (reuo *RequestExecutionUpdateOne) AppendResponseBody(orm objects.JSONRawMessage) *RequestExecutionUpdateOne {
+	reuo.mutation.AppendResponseBody(orm)
 	return reuo
 }
 
 // ClearResponseBody clears the value of the "response_body" field.
 func (reuo *RequestExecutionUpdateOne) ClearResponseBody() *RequestExecutionUpdateOne {
 	reuo.mutation.ClearResponseBody()
+	return reuo
+}
+
+// SetErrorMessage sets the "error_message" field.
+func (reuo *RequestExecutionUpdateOne) SetErrorMessage(s string) *RequestExecutionUpdateOne {
+	reuo.mutation.SetErrorMessage(s)
+	return reuo
+}
+
+// SetNillableErrorMessage sets the "error_message" field if the given value is not nil.
+func (reuo *RequestExecutionUpdateOne) SetNillableErrorMessage(s *string) *RequestExecutionUpdateOne {
+	if s != nil {
+		reuo.SetErrorMessage(*s)
+	}
+	return reuo
+}
+
+// ClearErrorMessage clears the value of the "error_message" field.
+func (reuo *RequestExecutionUpdateOne) ClearErrorMessage() *RequestExecutionUpdateOne {
+	reuo.mutation.ClearErrorMessage()
 	return reuo
 }
 
@@ -269,10 +318,21 @@ func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Requ
 		}
 	}
 	if value, ok := reuo.mutation.ResponseBody(); ok {
-		_spec.SetField(requestexecution.FieldResponseBody, field.TypeString, value)
+		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)
+	}
+	if value, ok := reuo.mutation.AppendedResponseBody(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, requestexecution.FieldResponseBody, value)
+		})
 	}
 	if reuo.mutation.ResponseBodyCleared() {
-		_spec.ClearField(requestexecution.FieldResponseBody, field.TypeString)
+		_spec.ClearField(requestexecution.FieldResponseBody, field.TypeJSON)
+	}
+	if value, ok := reuo.mutation.ErrorMessage(); ok {
+		_spec.SetField(requestexecution.FieldErrorMessage, field.TypeString, value)
+	}
+	if reuo.mutation.ErrorMessageCleared() {
+		_spec.ClearField(requestexecution.FieldErrorMessage, field.TypeString)
 	}
 	if value, ok := reuo.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)

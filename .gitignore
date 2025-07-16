@@ -99,3 +99,4 @@ node_modules/
 # tasks.json
 # tasks/ 
 
+.kiro

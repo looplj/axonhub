@@ -233,7 +233,7 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[2] = &Field{
-		Type:  "string",
+		Type:  "objects.JSONRawMessage",
 		Name:  "request_body",
 		Value: string(buf),
 	}
@@ -241,7 +241,7 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[3] = &Field{
-		Type:  "string",
+		Type:  "objects.JSONRawMessage",
 		Name:  "response_body",
 		Value: string(buf),
 	}
@@ -291,7 +291,7 @@ func (re *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     re.ID,
 		Type:   "RequestExecution",
-		Fields: make([]*Field, 7),
+		Fields: make([]*Field, 8),
 		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
@@ -323,7 +323,7 @@ func (re *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[3] = &Field{
-		Type:  "int",
+		Type:  "string",
 		Name:  "model_id",
 		Value: string(buf),
 	}
@@ -331,7 +331,7 @@ func (re *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[4] = &Field{
-		Type:  "string",
+		Type:  "objects.JSONRawMessage",
 		Name:  "request_body",
 		Value: string(buf),
 	}
@@ -339,14 +339,22 @@ func (re *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[5] = &Field{
-		Type:  "string",
+		Type:  "objects.JSONRawMessage",
 		Name:  "response_body",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(re.ErrorMessage); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "string",
+		Name:  "error_message",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(re.Status); err != nil {
 		return nil, err
 	}
-	node.Fields[6] = &Field{
+	node.Fields[7] = &Field{
 		Type:  "requestexecution.Status",
 		Name:  "status",
 		Value: string(buf),

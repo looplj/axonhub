@@ -28,6 +28,8 @@ const (
 	FieldRequestBody = "request_body"
 	// FieldResponseBody holds the string denoting the response_body field in the database.
 	FieldResponseBody = "response_body"
+	// FieldErrorMessage holds the string denoting the error_message field in the database.
+	FieldErrorMessage = "error_message"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// EdgeRequest holds the string denoting the request edge name in mutations.
@@ -52,6 +54,7 @@ var Columns = []string{
 	FieldModelID,
 	FieldRequestBody,
 	FieldResponseBody,
+	FieldErrorMessage,
 	FieldStatus,
 }
 
@@ -64,11 +67,6 @@ func ValidColumn(column string) bool {
 	}
 	return false
 }
-
-var (
-	// RequestBodyValidator is a validator for the "request_body" field. It is called by the builders before save.
-	RequestBodyValidator func(string) error
-)
 
 // Status defines the type for the "status" enum field.
 type Status string
@@ -123,14 +121,9 @@ func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModelID, opts...).ToFunc()
 }
 
-// ByRequestBody orders the results by the request_body field.
-func ByRequestBody(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldRequestBody, opts...).ToFunc()
-}
-
-// ByResponseBody orders the results by the response_body field.
-func ByResponseBody(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldResponseBody, opts...).ToFunc()
+// ByErrorMessage orders the results by the error_message field.
+func ByErrorMessage(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldErrorMessage, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

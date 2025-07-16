@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/ent/user"
+	"github.com/looplj/axonhub/objects"
 )
 
 // RequestCreate is the builder for creating a Request entity.
@@ -37,22 +38,14 @@ func (rc *RequestCreate) SetAPIKeyID(i int) *RequestCreate {
 }
 
 // SetRequestBody sets the "request_body" field.
-func (rc *RequestCreate) SetRequestBody(s string) *RequestCreate {
-	rc.mutation.SetRequestBody(s)
+func (rc *RequestCreate) SetRequestBody(orm objects.JSONRawMessage) *RequestCreate {
+	rc.mutation.SetRequestBody(orm)
 	return rc
 }
 
 // SetResponseBody sets the "response_body" field.
-func (rc *RequestCreate) SetResponseBody(s string) *RequestCreate {
-	rc.mutation.SetResponseBody(s)
-	return rc
-}
-
-// SetNillableResponseBody sets the "response_body" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableResponseBody(s *string) *RequestCreate {
-	if s != nil {
-		rc.SetResponseBody(*s)
-	}
+func (rc *RequestCreate) SetResponseBody(orm objects.JSONRawMessage) *RequestCreate {
+	rc.mutation.SetResponseBody(orm)
 	return rc
 }
 
@@ -130,11 +123,6 @@ func (rc *RequestCreate) check() error {
 	if _, ok := rc.mutation.RequestBody(); !ok {
 		return &ValidationError{Name: "request_body", err: errors.New(`ent: missing required field "Request.request_body"`)}
 	}
-	if v, ok := rc.mutation.RequestBody(); ok {
-		if err := request.RequestBodyValidator(v); err != nil {
-			return &ValidationError{Name: "request_body", err: fmt.Errorf(`ent: validator failed for field "Request.request_body": %w`, err)}
-		}
-	}
 	if _, ok := rc.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Request.status"`)}
 	}
@@ -177,11 +165,11 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	)
 	_spec.OnConflict = rc.conflict
 	if value, ok := rc.mutation.RequestBody(); ok {
-		_spec.SetField(request.FieldRequestBody, field.TypeString, value)
+		_spec.SetField(request.FieldRequestBody, field.TypeJSON, value)
 		_node.RequestBody = value
 	}
 	if value, ok := rc.mutation.ResponseBody(); ok {
-		_spec.SetField(request.FieldResponseBody, field.TypeString, value)
+		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
 		_node.ResponseBody = value
 	}
 	if value, ok := rc.mutation.Status(); ok {
@@ -291,7 +279,7 @@ type (
 )
 
 // SetResponseBody sets the "response_body" field.
-func (u *RequestUpsert) SetResponseBody(v string) *RequestUpsert {
+func (u *RequestUpsert) SetResponseBody(v objects.JSONRawMessage) *RequestUpsert {
 	u.Set(request.FieldResponseBody, v)
 	return u
 }
@@ -372,7 +360,7 @@ func (u *RequestUpsertOne) Update(set func(*RequestUpsert)) *RequestUpsertOne {
 }
 
 // SetResponseBody sets the "response_body" field.
-func (u *RequestUpsertOne) SetResponseBody(v string) *RequestUpsertOne {
+func (u *RequestUpsertOne) SetResponseBody(v objects.JSONRawMessage) *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.SetResponseBody(v)
 	})
@@ -623,7 +611,7 @@ func (u *RequestUpsertBulk) Update(set func(*RequestUpsert)) *RequestUpsertBulk 
 }
 
 // SetResponseBody sets the "response_body" field.
-func (u *RequestUpsertBulk) SetResponseBody(v string) *RequestUpsertBulk {
+func (u *RequestUpsertBulk) SetResponseBody(v objects.JSONRawMessage) *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.SetResponseBody(v)
 	})

@@ -63,16 +63,6 @@ func APIKeyID(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldAPIKeyID, v))
 }
 
-// RequestBody applies equality check predicate on the "request_body" field. It's identical to RequestBodyEQ.
-func RequestBody(v string) predicate.Request {
-	return predicate.Request(sql.FieldEQ(FieldRequestBody, v))
-}
-
-// ResponseBody applies equality check predicate on the "response_body" field. It's identical to ResponseBodyEQ.
-func ResponseBody(v string) predicate.Request {
-	return predicate.Request(sql.FieldEQ(FieldResponseBody, v))
-}
-
 // UserIDEQ applies the EQ predicate on the "user_id" field.
 func UserIDEQ(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldUserID, v))
@@ -113,126 +103,6 @@ func APIKeyIDNotIn(vs ...int) predicate.Request {
 	return predicate.Request(sql.FieldNotIn(FieldAPIKeyID, vs...))
 }
 
-// RequestBodyEQ applies the EQ predicate on the "request_body" field.
-func RequestBodyEQ(v string) predicate.Request {
-	return predicate.Request(sql.FieldEQ(FieldRequestBody, v))
-}
-
-// RequestBodyNEQ applies the NEQ predicate on the "request_body" field.
-func RequestBodyNEQ(v string) predicate.Request {
-	return predicate.Request(sql.FieldNEQ(FieldRequestBody, v))
-}
-
-// RequestBodyIn applies the In predicate on the "request_body" field.
-func RequestBodyIn(vs ...string) predicate.Request {
-	return predicate.Request(sql.FieldIn(FieldRequestBody, vs...))
-}
-
-// RequestBodyNotIn applies the NotIn predicate on the "request_body" field.
-func RequestBodyNotIn(vs ...string) predicate.Request {
-	return predicate.Request(sql.FieldNotIn(FieldRequestBody, vs...))
-}
-
-// RequestBodyGT applies the GT predicate on the "request_body" field.
-func RequestBodyGT(v string) predicate.Request {
-	return predicate.Request(sql.FieldGT(FieldRequestBody, v))
-}
-
-// RequestBodyGTE applies the GTE predicate on the "request_body" field.
-func RequestBodyGTE(v string) predicate.Request {
-	return predicate.Request(sql.FieldGTE(FieldRequestBody, v))
-}
-
-// RequestBodyLT applies the LT predicate on the "request_body" field.
-func RequestBodyLT(v string) predicate.Request {
-	return predicate.Request(sql.FieldLT(FieldRequestBody, v))
-}
-
-// RequestBodyLTE applies the LTE predicate on the "request_body" field.
-func RequestBodyLTE(v string) predicate.Request {
-	return predicate.Request(sql.FieldLTE(FieldRequestBody, v))
-}
-
-// RequestBodyContains applies the Contains predicate on the "request_body" field.
-func RequestBodyContains(v string) predicate.Request {
-	return predicate.Request(sql.FieldContains(FieldRequestBody, v))
-}
-
-// RequestBodyHasPrefix applies the HasPrefix predicate on the "request_body" field.
-func RequestBodyHasPrefix(v string) predicate.Request {
-	return predicate.Request(sql.FieldHasPrefix(FieldRequestBody, v))
-}
-
-// RequestBodyHasSuffix applies the HasSuffix predicate on the "request_body" field.
-func RequestBodyHasSuffix(v string) predicate.Request {
-	return predicate.Request(sql.FieldHasSuffix(FieldRequestBody, v))
-}
-
-// RequestBodyEqualFold applies the EqualFold predicate on the "request_body" field.
-func RequestBodyEqualFold(v string) predicate.Request {
-	return predicate.Request(sql.FieldEqualFold(FieldRequestBody, v))
-}
-
-// RequestBodyContainsFold applies the ContainsFold predicate on the "request_body" field.
-func RequestBodyContainsFold(v string) predicate.Request {
-	return predicate.Request(sql.FieldContainsFold(FieldRequestBody, v))
-}
-
-// ResponseBodyEQ applies the EQ predicate on the "response_body" field.
-func ResponseBodyEQ(v string) predicate.Request {
-	return predicate.Request(sql.FieldEQ(FieldResponseBody, v))
-}
-
-// ResponseBodyNEQ applies the NEQ predicate on the "response_body" field.
-func ResponseBodyNEQ(v string) predicate.Request {
-	return predicate.Request(sql.FieldNEQ(FieldResponseBody, v))
-}
-
-// ResponseBodyIn applies the In predicate on the "response_body" field.
-func ResponseBodyIn(vs ...string) predicate.Request {
-	return predicate.Request(sql.FieldIn(FieldResponseBody, vs...))
-}
-
-// ResponseBodyNotIn applies the NotIn predicate on the "response_body" field.
-func ResponseBodyNotIn(vs ...string) predicate.Request {
-	return predicate.Request(sql.FieldNotIn(FieldResponseBody, vs...))
-}
-
-// ResponseBodyGT applies the GT predicate on the "response_body" field.
-func ResponseBodyGT(v string) predicate.Request {
-	return predicate.Request(sql.FieldGT(FieldResponseBody, v))
-}
-
-// ResponseBodyGTE applies the GTE predicate on the "response_body" field.
-func ResponseBodyGTE(v string) predicate.Request {
-	return predicate.Request(sql.FieldGTE(FieldResponseBody, v))
-}
-
-// ResponseBodyLT applies the LT predicate on the "response_body" field.
-func ResponseBodyLT(v string) predicate.Request {
-	return predicate.Request(sql.FieldLT(FieldResponseBody, v))
-}
-
-// ResponseBodyLTE applies the LTE predicate on the "response_body" field.
-func ResponseBodyLTE(v string) predicate.Request {
-	return predicate.Request(sql.FieldLTE(FieldResponseBody, v))
-}
-
-// ResponseBodyContains applies the Contains predicate on the "response_body" field.
-func ResponseBodyContains(v string) predicate.Request {
-	return predicate.Request(sql.FieldContains(FieldResponseBody, v))
-}
-
-// ResponseBodyHasPrefix applies the HasPrefix predicate on the "response_body" field.
-func ResponseBodyHasPrefix(v string) predicate.Request {
-	return predicate.Request(sql.FieldHasPrefix(FieldResponseBody, v))
-}
-
-// ResponseBodyHasSuffix applies the HasSuffix predicate on the "response_body" field.
-func ResponseBodyHasSuffix(v string) predicate.Request {
-	return predicate.Request(sql.FieldHasSuffix(FieldResponseBody, v))
-}
-
 // ResponseBodyIsNil applies the IsNil predicate on the "response_body" field.
 func ResponseBodyIsNil() predicate.Request {
 	return predicate.Request(sql.FieldIsNull(FieldResponseBody))
@@ -241,16 +111,6 @@ func ResponseBodyIsNil() predicate.Request {
 // ResponseBodyNotNil applies the NotNil predicate on the "response_body" field.
 func ResponseBodyNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldResponseBody))
-}
-
-// ResponseBodyEqualFold applies the EqualFold predicate on the "response_body" field.
-func ResponseBodyEqualFold(v string) predicate.Request {
-	return predicate.Request(sql.FieldEqualFold(FieldResponseBody, v))
-}
-
-// ResponseBodyContainsFold applies the ContainsFold predicate on the "response_body" field.
-func ResponseBodyContainsFold(v string) predicate.Request {
-	return predicate.Request(sql.FieldContainsFold(FieldResponseBody, v))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.

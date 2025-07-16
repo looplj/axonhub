@@ -158,6 +158,7 @@ type ComplexityRoot struct {
 
 	RequestExecution struct {
 		ChannelID    func(childComplexity int) int
+		ErrorMessage func(childComplexity int) int
 		ID           func(childComplexity int) int
 		ModelID      func(childComplexity int) int
 		Request      func(childComplexity int) int
@@ -704,6 +705,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestExecution.ChannelID(childComplexity), true
+
+	case "RequestExecution.errorMessage":
+		if e.complexity.RequestExecution.ErrorMessage == nil {
+			break
+		}
+
+		return e.complexity.RequestExecution.ErrorMessage(childComplexity), true
 
 	case "RequestExecution.id":
 		if e.complexity.RequestExecution.ID == nil {
@@ -4888,9 +4896,9 @@ func (ec *executionContext) _Request_requestBody(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(objects.JSONRawMessage)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNJSONRawMessage2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Request_requestBody(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4900,7 +4908,7 @@ func (ec *executionContext) fieldContext_Request_requestBody(_ context.Context, 
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
 		},
 	}
 	return fc, nil
@@ -4929,9 +4937,9 @@ func (ec *executionContext) _Request_responseBody(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(objects.JSONRawMessage)
 	fc.Result = res
-	return ec.marshalOString2string(ctx, field.Selections, res)
+	return ec.marshalOJSONRawMessage2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Request_responseBody(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4941,7 +4949,7 @@ func (ec *executionContext) fieldContext_Request_responseBody(_ context.Context,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
 		},
 	}
 	return fc, nil
@@ -5620,9 +5628,9 @@ func (ec *executionContext) _RequestExecution_modelID(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_RequestExecution_modelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5632,7 +5640,7 @@ func (ec *executionContext) fieldContext_RequestExecution_modelID(_ context.Cont
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -5664,9 +5672,9 @@ func (ec *executionContext) _RequestExecution_requestBody(ctx context.Context, f
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(objects.JSONRawMessage)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNJSONRawMessage2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_RequestExecution_requestBody(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5676,7 +5684,7 @@ func (ec *executionContext) fieldContext_RequestExecution_requestBody(_ context.
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
 		},
 	}
 	return fc, nil
@@ -5705,12 +5713,53 @@ func (ec *executionContext) _RequestExecution_responseBody(ctx context.Context, 
 	if resTmp == nil {
 		return graphql.Null
 	}
+	res := resTmp.(objects.JSONRawMessage)
+	fc.Result = res
+	return ec.marshalOJSONRawMessage2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestExecution_responseBody(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestExecution_errorMessage(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestExecution_errorMessage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ErrorMessage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RequestExecution_responseBody(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RequestExecution_errorMessage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RequestExecution",
 		Field:      field,
@@ -6026,6 +6075,8 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_node(_ context.Con
 				return ec.fieldContext_RequestExecution_requestBody(ctx, field)
 			case "responseBody":
 				return ec.fieldContext_RequestExecution_responseBody(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_RequestExecution_errorMessage(ctx, field)
 			case "status":
 				return ec.fieldContext_RequestExecution_status(ctx, field)
 			case "request":
@@ -9432,14 +9483,14 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 		switch k {
 		case "requestBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBody"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNJSONRawMessageInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.RequestBody = data
 		case "responseBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBody"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -9895,7 +9946,7 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDGT", "userIDGTE", "userIDLT", "userIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDGT", "channelIDGTE", "channelIDLT", "channelIDLTE", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "requestBody", "requestBodyNEQ", "requestBodyIn", "requestBodyNotIn", "requestBodyGT", "requestBodyGTE", "requestBodyLT", "requestBodyLTE", "requestBodyContains", "requestBodyHasPrefix", "requestBodyHasSuffix", "requestBodyEqualFold", "requestBodyContainsFold", "responseBody", "responseBodyNEQ", "responseBodyIn", "responseBodyNotIn", "responseBodyGT", "responseBodyGTE", "responseBodyLT", "responseBodyLTE", "responseBodyContains", "responseBodyHasPrefix", "responseBodyHasSuffix", "responseBodyIsNil", "responseBodyNotNil", "responseBodyEqualFold", "responseBodyContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasRequest", "hasRequestWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDGT", "userIDGTE", "userIDLT", "userIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDGT", "channelIDGTE", "channelIDLT", "channelIDLTE", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasRequest", "hasRequestWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10121,256 +10172,200 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 			it.ChannelIDLTE = data
 		case "modelID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelID"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ModelID = data
 		case "modelIDNEQ":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ModelIDNEQ = data
 		case "modelIDIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ModelIDIn = data
 		case "modelIDNotIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ModelIDNotIn = data
 		case "modelIDGT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ModelIDGT = data
 		case "modelIDGTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ModelIDGTE = data
 		case "modelIDLT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ModelIDLT = data
 		case "modelIDLTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ModelIDLTE = data
-		case "requestBody":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBody"))
+		case "modelIDContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDContains"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RequestBody = data
-		case "requestBodyNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyNEQ"))
+			it.ModelIDContains = data
+		case "modelIDHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDHasPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RequestBodyNEQ = data
-		case "requestBodyIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyIn"))
+			it.ModelIDHasPrefix = data
+		case "modelIDHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDHasSuffix = data
+		case "modelIDEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDEqualFold = data
+		case "modelIDContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelIDContainsFold = data
+		case "errorMessage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessage"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessage = data
+		case "errorMessageNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageNEQ = data
+		case "errorMessageIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RequestBodyIn = data
-		case "requestBodyNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyNotIn"))
+			it.ErrorMessageIn = data
+		case "errorMessageNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageNotIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RequestBodyNotIn = data
-		case "requestBodyGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyGT"))
+			it.ErrorMessageNotIn = data
+		case "errorMessageGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageGT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RequestBodyGT = data
-		case "requestBodyGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyGTE"))
+			it.ErrorMessageGT = data
+		case "errorMessageGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageGTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RequestBodyGTE = data
-		case "requestBodyLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyLT"))
+			it.ErrorMessageGTE = data
+		case "errorMessageLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageLT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RequestBodyLT = data
-		case "requestBodyLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyLTE"))
+			it.ErrorMessageLT = data
+		case "errorMessageLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageLTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RequestBodyLTE = data
-		case "requestBodyContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyContains"))
+			it.ErrorMessageLTE = data
+		case "errorMessageContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageContains"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RequestBodyContains = data
-		case "requestBodyHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyHasPrefix"))
+			it.ErrorMessageContains = data
+		case "errorMessageHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageHasPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RequestBodyHasPrefix = data
-		case "requestBodyHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyHasSuffix"))
+			it.ErrorMessageHasPrefix = data
+		case "errorMessageHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageHasSuffix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RequestBodyHasSuffix = data
-		case "requestBodyEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyEqualFold = data
-		case "requestBodyContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyContainsFold = data
-		case "responseBody":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBody"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBody = data
-		case "responseBodyNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyNEQ = data
-		case "responseBodyIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyIn = data
-		case "responseBodyNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyNotIn = data
-		case "responseBodyGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyGT = data
-		case "responseBodyGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyGTE = data
-		case "responseBodyLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyLT = data
-		case "responseBodyLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyLTE = data
-		case "responseBodyContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyContains = data
-		case "responseBodyHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyHasPrefix = data
-		case "responseBodyHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyHasSuffix = data
-		case "responseBodyIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyIsNil"))
+			it.ErrorMessageHasSuffix = data
+		case "errorMessageIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageIsNil"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ResponseBodyIsNil = data
-		case "responseBodyNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyNotNil"))
+			it.ErrorMessageIsNil = data
+		case "errorMessageNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageNotNil"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ResponseBodyNotNil = data
-		case "responseBodyEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyEqualFold"))
+			it.ErrorMessageNotNil = data
+		case "errorMessageEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageEqualFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ResponseBodyEqualFold = data
-		case "responseBodyContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyContainsFold"))
+			it.ErrorMessageEqualFold = data
+		case "errorMessageContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageContainsFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ResponseBodyContainsFold = data
+			it.ErrorMessageContainsFold = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalORequestExecutionStatus2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋentᚋrequestexecutionᚐStatus(ctx, v)
@@ -10426,7 +10421,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "requestBody", "requestBodyNEQ", "requestBodyIn", "requestBodyNotIn", "requestBodyGT", "requestBodyGTE", "requestBodyLT", "requestBodyLTE", "requestBodyContains", "requestBodyHasPrefix", "requestBodyHasSuffix", "requestBodyEqualFold", "requestBodyContainsFold", "responseBody", "responseBodyNEQ", "responseBodyIn", "responseBodyNotIn", "responseBodyGT", "responseBodyGTE", "responseBodyLT", "responseBodyLTE", "responseBodyContains", "responseBodyHasPrefix", "responseBodyHasSuffix", "responseBodyIsNil", "responseBodyNotNil", "responseBodyEqualFold", "responseBodyContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasAPIKey", "hasAPIKeyWith", "hasExecutions", "hasExecutionsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasAPIKey", "hasAPIKeyWith", "hasExecutions", "hasExecutionsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10566,202 +10561,6 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.APIKeyIDNotIn = data
-		case "requestBody":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBody"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBody = data
-		case "requestBodyNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyNEQ = data
-		case "requestBodyIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyIn = data
-		case "requestBodyNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyNotIn = data
-		case "requestBodyGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyGT = data
-		case "requestBodyGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyGTE = data
-		case "requestBodyLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyLT = data
-		case "requestBodyLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyLTE = data
-		case "requestBodyContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyContains = data
-		case "requestBodyHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyHasPrefix = data
-		case "requestBodyHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyHasSuffix = data
-		case "requestBodyEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyEqualFold = data
-		case "requestBodyContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodyContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RequestBodyContainsFold = data
-		case "responseBody":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBody"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBody = data
-		case "responseBodyNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyNEQ = data
-		case "responseBodyIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyIn = data
-		case "responseBodyNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyNotIn = data
-		case "responseBodyGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyGT = data
-		case "responseBodyGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyGTE = data
-		case "responseBodyLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyLT = data
-		case "responseBodyLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyLTE = data
-		case "responseBodyContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyContains = data
-		case "responseBodyHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyHasPrefix = data
-		case "responseBodyHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyHasSuffix = data
-		case "responseBodyIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyIsNil"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyIsNil = data
-		case "responseBodyNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyNotNil"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyNotNil = data
-		case "responseBodyEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyEqualFold = data
-		case "responseBodyContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodyContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ResponseBodyContainsFold = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalORequestStatus2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋentᚋrequestᚐStatus(ctx, v)
@@ -10941,7 +10740,7 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"responseBody", "clearResponseBody", "status"}
+	fieldsInOrder := [...]string{"responseBody", "appendResponseBody", "clearResponseBody", "status"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10950,11 +10749,18 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 		switch k {
 		case "responseBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBody"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ResponseBody = data
+		case "appendResponseBody":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendResponseBody"))
+			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AppendResponseBody = data
 		case "clearResponseBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearResponseBody"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -12536,6 +12342,8 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 			}
 		case "responseBody":
 			out.Values[i] = ec._RequestExecution_responseBody(ctx, field, obj)
+		case "errorMessage":
+			out.Values[i] = ec._RequestExecution_errorMessage(ctx, field, obj)
 		case "status":
 			out.Values[i] = ec._RequestExecution_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -13422,6 +13230,38 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNJSONRawMessage2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx context.Context, v any) (objects.JSONRawMessage, error) {
+	var res objects.JSONRawMessage
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNJSONRawMessage2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx context.Context, sel ast.SelectionSet, v objects.JSONRawMessage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalNJSONRawMessageInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx context.Context, v any) (objects.JSONRawMessage, error) {
+	var res objects.JSONRawMessage
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNJSONRawMessageInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx context.Context, sel ast.SelectionSet, v objects.JSONRawMessage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalNJobWhereInput2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋentᚐJobWhereInput(ctx context.Context, v any) (*ent.JobWhereInput, error) {
@@ -14338,6 +14178,38 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	_ = ctx
 	res := graphql.MarshalInt(*v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOJSONRawMessage2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx context.Context, v any) (objects.JSONRawMessage, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res objects.JSONRawMessage
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOJSONRawMessage2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx context.Context, sel ast.SelectionSet, v objects.JSONRawMessage) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOJSONRawMessageInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx context.Context, v any) (objects.JSONRawMessage, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res objects.JSONRawMessage
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOJSONRawMessageInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐJSONRawMessage(ctx context.Context, sel ast.SelectionSet, v objects.JSONRawMessage) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOJobWhereInput2ᚕᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋentᚐJobWhereInputᚄ(ctx context.Context, v any) ([]*ent.JobWhereInput, error) {

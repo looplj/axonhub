@@ -16,6 +16,9 @@ input ChannelSettingsInput {
   modelMappings: [ModelMappingInput!]!
 }
 
+scalar JSONRawMessage
+scalar JSONRawMessageInput
+
 type Mutation {
     createChannel(input: CreateChannelInput!): Channel!
     createAPIKey(input: CreateAPIKeyInput!): APIKey!

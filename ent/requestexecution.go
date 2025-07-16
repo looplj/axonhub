@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
+	"github.com/looplj/axonhub/objects"
 )
 
 // RequestExecution is the model entity for the RequestExecution schema.
@@ -24,11 +26,13 @@ type RequestExecution struct {
 	// ChannelID holds the value of the "channel_id" field.
 	ChannelID int `json:"channel_id,omitempty"`
 	// ModelID holds the value of the "model_id" field.
-	ModelID int `json:"model_id,omitempty"`
+	ModelID string `json:"model_id,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
-	RequestBody string `json:"request_body,omitempty"`
+	RequestBody objects.JSONRawMessage `json:"request_body,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
-	ResponseBody string `json:"response_body,omitempty"`
+	ResponseBody objects.JSONRawMessage `json:"response_body,omitempty"`
+	// ErrorMessage holds the value of the "error_message" field.
+	ErrorMessage string `json:"error_message,omitempty"`
 	// Status holds the value of the "status" field.
 	Status requestexecution.Status `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -64,9 +68,11 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case requestexecution.FieldID, requestexecution.FieldUserID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldModelID:
+		case requestexecution.FieldRequestBody, requestexecution.FieldResponseBody:
+			values[i] = new([]byte)
+		case requestexecution.FieldID, requestexecution.FieldUserID, requestexecution.FieldRequestID, requestexecution.FieldChannelID:
 			values[i] = new(sql.NullInt64)
-		case requestexecution.FieldRequestBody, requestexecution.FieldResponseBody, requestexecution.FieldStatus:
+		case requestexecution.FieldModelID, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -108,22 +114,32 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 				re.ChannelID = int(value.Int64)
 			}
 		case requestexecution.FieldModelID:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
+			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field model_id", values[i])
 			} else if value.Valid {
-				re.ModelID = int(value.Int64)
+				re.ModelID = value.String
 			}
 		case requestexecution.FieldRequestBody:
-			if value, ok := values[i].(*sql.NullString); !ok {
+			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field request_body", values[i])
-			} else if value.Valid {
-				re.RequestBody = value.String
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &re.RequestBody); err != nil {
+					return fmt.Errorf("unmarshal field request_body: %w", err)
+				}
 			}
 		case requestexecution.FieldResponseBody:
-			if value, ok := values[i].(*sql.NullString); !ok {
+			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field response_body", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &re.ResponseBody); err != nil {
+					return fmt.Errorf("unmarshal field response_body: %w", err)
+				}
+			}
+		case requestexecution.FieldErrorMessage:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field error_message", values[i])
 			} else if value.Valid {
-				re.ResponseBody = value.String
+				re.ErrorMessage = value.String
 			}
 		case requestexecution.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -182,13 +198,16 @@ func (re *RequestExecution) String() string {
 	builder.WriteString(fmt.Sprintf("%v", re.ChannelID))
 	builder.WriteString(", ")
 	builder.WriteString("model_id=")
-	builder.WriteString(fmt.Sprintf("%v", re.ModelID))
+	builder.WriteString(re.ModelID)
 	builder.WriteString(", ")
 	builder.WriteString("request_body=")
-	builder.WriteString(re.RequestBody)
+	builder.WriteString(fmt.Sprintf("%v", re.RequestBody))
 	builder.WriteString(", ")
 	builder.WriteString("response_body=")
-	builder.WriteString(re.ResponseBody)
+	builder.WriteString(fmt.Sprintf("%v", re.ResponseBody))
+	builder.WriteString(", ")
+	builder.WriteString("error_message=")
+	builder.WriteString(re.ErrorMessage)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", re.Status))

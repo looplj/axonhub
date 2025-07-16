@@ -23,7 +23,7 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 	outbound := NewOutboundTransformer("", "test-api-key")
 
 	// Create HTTP client
-	httpClient := httpclient.NewHttpClient(5 * time.Second)
+	httpClient := httpclient.NewHttpClient()
 
 	// Mock OpenAI server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -81,8 +81,8 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 	originalRequest := &llm.GenericHttpRequest{
 		Method: http.MethodPost,
 		URL:    "/v1/chat/completions",
-		Headers: map[string]string{
-			"Content-Type": "application/json",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
 		},
 		Body: mustMarshal(llm.ChatCompletionRequest{
 			Model: "gpt-4",
@@ -187,7 +187,7 @@ func boolPtr(b bool) *bool {
 // TestIntegration_StreamingFlow tests the streaming functionality
 func TestIntegration_StreamingFlow(t *testing.T) {
 	// Create HTTP client
-	httpClient := httpclient.NewHttpClient(5 * time.Second)
+	httpClient := httpclient.NewHttpClient()
 
 	// Mock streaming server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -229,8 +229,8 @@ func TestIntegration_StreamingFlow(t *testing.T) {
 	streamReq := &llm.GenericHttpRequest{
 		Method: http.MethodPost,
 		URL:    server.URL,
-		Headers: map[string]string{
-			"Content-Type": "application/json",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
 		},
 		Body: mustMarshal(llm.ChatCompletionRequest{
 			Model:  "gpt-4",
@@ -291,7 +291,7 @@ func TestIntegration_StreamingFlow(t *testing.T) {
 func TestIntegration_ErrorHandling(t *testing.T) {
 	inbound := NewInboundTransformer()
 	outbound := NewOutboundTransformer("", "invalid-key")
-	httpClient := httpclient.NewHttpClient(5 * time.Second)
+	httpClient := httpclient.NewHttpClient()
 
 	// Mock server that returns errors
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -307,8 +307,8 @@ func TestIntegration_ErrorHandling(t *testing.T) {
 	originalRequest := &llm.GenericHttpRequest{
 		Method: http.MethodPost,
 		URL:    "/v1/chat/completions",
-		Headers: map[string]string{
-			"Content-Type": "application/json",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
 		},
 		Body: mustMarshal(llm.ChatCompletionRequest{
 			Model: "gpt-4",

@@ -1845,23 +1845,25 @@ func (m *JobMutation) ResetEdge(name string) error {
 // RequestMutation represents an operation that mutates the Request nodes in the graph.
 type RequestMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *int
-	request_body      *string
-	response_body     *string
-	status            *request.Status
-	clearedFields     map[string]struct{}
-	user              *int
-	cleareduser       bool
-	api_key           *int
-	clearedapi_key    bool
-	executions        map[int]struct{}
-	removedexecutions map[int]struct{}
-	clearedexecutions bool
-	done              bool
-	oldValue          func(context.Context) (*Request, error)
-	predicates        []predicate.Request
+	op                  Op
+	typ                 string
+	id                  *int
+	request_body        *objects.JSONRawMessage
+	appendrequest_body  objects.JSONRawMessage
+	response_body       *objects.JSONRawMessage
+	appendresponse_body objects.JSONRawMessage
+	status              *request.Status
+	clearedFields       map[string]struct{}
+	user                *int
+	cleareduser         bool
+	api_key             *int
+	clearedapi_key      bool
+	executions          map[int]struct{}
+	removedexecutions   map[int]struct{}
+	clearedexecutions   bool
+	done                bool
+	oldValue            func(context.Context) (*Request, error)
+	predicates          []predicate.Request
 }
 
 var _ ent.Mutation = (*RequestMutation)(nil)
@@ -2035,12 +2037,13 @@ func (m *RequestMutation) ResetAPIKeyID() {
 }
 
 // SetRequestBody sets the "request_body" field.
-func (m *RequestMutation) SetRequestBody(s string) {
-	m.request_body = &s
+func (m *RequestMutation) SetRequestBody(orm objects.JSONRawMessage) {
+	m.request_body = &orm
+	m.appendrequest_body = nil
 }
 
 // RequestBody returns the value of the "request_body" field in the mutation.
-func (m *RequestMutation) RequestBody() (r string, exists bool) {
+func (m *RequestMutation) RequestBody() (r objects.JSONRawMessage, exists bool) {
 	v := m.request_body
 	if v == nil {
 		return
@@ -2051,7 +2054,7 @@ func (m *RequestMutation) RequestBody() (r string, exists bool) {
 // OldRequestBody returns the old "request_body" field's value of the Request entity.
 // If the Request object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldRequestBody(ctx context.Context) (v string, err error) {
+func (m *RequestMutation) OldRequestBody(ctx context.Context) (v objects.JSONRawMessage, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldRequestBody is only allowed on UpdateOne operations")
 	}
@@ -2065,18 +2068,33 @@ func (m *RequestMutation) OldRequestBody(ctx context.Context) (v string, err err
 	return oldValue.RequestBody, nil
 }
 
+// AppendRequestBody adds orm to the "request_body" field.
+func (m *RequestMutation) AppendRequestBody(orm objects.JSONRawMessage) {
+	m.appendrequest_body = append(m.appendrequest_body, orm...)
+}
+
+// AppendedRequestBody returns the list of values that were appended to the "request_body" field in this mutation.
+func (m *RequestMutation) AppendedRequestBody() (objects.JSONRawMessage, bool) {
+	if len(m.appendrequest_body) == 0 {
+		return nil, false
+	}
+	return m.appendrequest_body, true
+}
+
 // ResetRequestBody resets all changes to the "request_body" field.
 func (m *RequestMutation) ResetRequestBody() {
 	m.request_body = nil
+	m.appendrequest_body = nil
 }
 
 // SetResponseBody sets the "response_body" field.
-func (m *RequestMutation) SetResponseBody(s string) {
-	m.response_body = &s
+func (m *RequestMutation) SetResponseBody(orm objects.JSONRawMessage) {
+	m.response_body = &orm
+	m.appendresponse_body = nil
 }
 
 // ResponseBody returns the value of the "response_body" field in the mutation.
-func (m *RequestMutation) ResponseBody() (r string, exists bool) {
+func (m *RequestMutation) ResponseBody() (r objects.JSONRawMessage, exists bool) {
 	v := m.response_body
 	if v == nil {
 		return
@@ -2087,7 +2105,7 @@ func (m *RequestMutation) ResponseBody() (r string, exists bool) {
 // OldResponseBody returns the old "response_body" field's value of the Request entity.
 // If the Request object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldResponseBody(ctx context.Context) (v string, err error) {
+func (m *RequestMutation) OldResponseBody(ctx context.Context) (v objects.JSONRawMessage, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldResponseBody is only allowed on UpdateOne operations")
 	}
@@ -2101,9 +2119,23 @@ func (m *RequestMutation) OldResponseBody(ctx context.Context) (v string, err er
 	return oldValue.ResponseBody, nil
 }
 
+// AppendResponseBody adds orm to the "response_body" field.
+func (m *RequestMutation) AppendResponseBody(orm objects.JSONRawMessage) {
+	m.appendresponse_body = append(m.appendresponse_body, orm...)
+}
+
+// AppendedResponseBody returns the list of values that were appended to the "response_body" field in this mutation.
+func (m *RequestMutation) AppendedResponseBody() (objects.JSONRawMessage, bool) {
+	if len(m.appendresponse_body) == 0 {
+		return nil, false
+	}
+	return m.appendresponse_body, true
+}
+
 // ClearResponseBody clears the value of the "response_body" field.
 func (m *RequestMutation) ClearResponseBody() {
 	m.response_body = nil
+	m.appendresponse_body = nil
 	m.clearedFields[request.FieldResponseBody] = struct{}{}
 }
 
@@ -2116,6 +2148,7 @@ func (m *RequestMutation) ResponseBodyCleared() bool {
 // ResetResponseBody resets all changes to the "response_body" field.
 func (m *RequestMutation) ResetResponseBody() {
 	m.response_body = nil
+	m.appendresponse_body = nil
 	delete(m.clearedFields, request.FieldResponseBody)
 }
 
@@ -2374,14 +2407,14 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 		m.SetAPIKeyID(v)
 		return nil
 	case request.FieldRequestBody:
-		v, ok := value.(string)
+		v, ok := value.(objects.JSONRawMessage)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRequestBody(v)
 		return nil
 	case request.FieldResponseBody:
-		v, ok := value.(string)
+		v, ok := value.(objects.JSONRawMessage)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -2597,24 +2630,26 @@ func (m *RequestMutation) ResetEdge(name string) error {
 // RequestExecutionMutation represents an operation that mutates the RequestExecution nodes in the graph.
 type RequestExecutionMutation struct {
 	config
-	op             Op
-	typ            string
-	id             *int
-	user_id        *int
-	adduser_id     *int
-	channel_id     *int
-	addchannel_id  *int
-	model_id       *int
-	addmodel_id    *int
-	request_body   *string
-	response_body  *string
-	status         *requestexecution.Status
-	clearedFields  map[string]struct{}
-	request        *int
-	clearedrequest bool
-	done           bool
-	oldValue       func(context.Context) (*RequestExecution, error)
-	predicates     []predicate.RequestExecution
+	op                  Op
+	typ                 string
+	id                  *int
+	user_id             *int
+	adduser_id          *int
+	channel_id          *int
+	addchannel_id       *int
+	model_id            *string
+	request_body        *objects.JSONRawMessage
+	appendrequest_body  objects.JSONRawMessage
+	response_body       *objects.JSONRawMessage
+	appendresponse_body objects.JSONRawMessage
+	error_message       *string
+	status              *requestexecution.Status
+	clearedFields       map[string]struct{}
+	request             *int
+	clearedrequest      bool
+	done                bool
+	oldValue            func(context.Context) (*RequestExecution, error)
+	predicates          []predicate.RequestExecution
 }
 
 var _ ent.Mutation = (*RequestExecutionMutation)(nil)
@@ -2864,13 +2899,12 @@ func (m *RequestExecutionMutation) ResetChannelID() {
 }
 
 // SetModelID sets the "model_id" field.
-func (m *RequestExecutionMutation) SetModelID(i int) {
-	m.model_id = &i
-	m.addmodel_id = nil
+func (m *RequestExecutionMutation) SetModelID(s string) {
+	m.model_id = &s
 }
 
 // ModelID returns the value of the "model_id" field in the mutation.
-func (m *RequestExecutionMutation) ModelID() (r int, exists bool) {
+func (m *RequestExecutionMutation) ModelID() (r string, exists bool) {
 	v := m.model_id
 	if v == nil {
 		return
@@ -2881,7 +2915,7 @@ func (m *RequestExecutionMutation) ModelID() (r int, exists bool) {
 // OldModelID returns the old "model_id" field's value of the RequestExecution entity.
 // If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestExecutionMutation) OldModelID(ctx context.Context) (v int, err error) {
+func (m *RequestExecutionMutation) OldModelID(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldModelID is only allowed on UpdateOne operations")
 	}
@@ -2895,37 +2929,19 @@ func (m *RequestExecutionMutation) OldModelID(ctx context.Context) (v int, err e
 	return oldValue.ModelID, nil
 }
 
-// AddModelID adds i to the "model_id" field.
-func (m *RequestExecutionMutation) AddModelID(i int) {
-	if m.addmodel_id != nil {
-		*m.addmodel_id += i
-	} else {
-		m.addmodel_id = &i
-	}
-}
-
-// AddedModelID returns the value that was added to the "model_id" field in this mutation.
-func (m *RequestExecutionMutation) AddedModelID() (r int, exists bool) {
-	v := m.addmodel_id
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
 // ResetModelID resets all changes to the "model_id" field.
 func (m *RequestExecutionMutation) ResetModelID() {
 	m.model_id = nil
-	m.addmodel_id = nil
 }
 
 // SetRequestBody sets the "request_body" field.
-func (m *RequestExecutionMutation) SetRequestBody(s string) {
-	m.request_body = &s
+func (m *RequestExecutionMutation) SetRequestBody(orm objects.JSONRawMessage) {
+	m.request_body = &orm
+	m.appendrequest_body = nil
 }
 
 // RequestBody returns the value of the "request_body" field in the mutation.
-func (m *RequestExecutionMutation) RequestBody() (r string, exists bool) {
+func (m *RequestExecutionMutation) RequestBody() (r objects.JSONRawMessage, exists bool) {
 	v := m.request_body
 	if v == nil {
 		return
@@ -2936,7 +2952,7 @@ func (m *RequestExecutionMutation) RequestBody() (r string, exists bool) {
 // OldRequestBody returns the old "request_body" field's value of the RequestExecution entity.
 // If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestExecutionMutation) OldRequestBody(ctx context.Context) (v string, err error) {
+func (m *RequestExecutionMutation) OldRequestBody(ctx context.Context) (v objects.JSONRawMessage, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldRequestBody is only allowed on UpdateOne operations")
 	}
@@ -2950,18 +2966,33 @@ func (m *RequestExecutionMutation) OldRequestBody(ctx context.Context) (v string
 	return oldValue.RequestBody, nil
 }
 
+// AppendRequestBody adds orm to the "request_body" field.
+func (m *RequestExecutionMutation) AppendRequestBody(orm objects.JSONRawMessage) {
+	m.appendrequest_body = append(m.appendrequest_body, orm...)
+}
+
+// AppendedRequestBody returns the list of values that were appended to the "request_body" field in this mutation.
+func (m *RequestExecutionMutation) AppendedRequestBody() (objects.JSONRawMessage, bool) {
+	if len(m.appendrequest_body) == 0 {
+		return nil, false
+	}
+	return m.appendrequest_body, true
+}
+
 // ResetRequestBody resets all changes to the "request_body" field.
 func (m *RequestExecutionMutation) ResetRequestBody() {
 	m.request_body = nil
+	m.appendrequest_body = nil
 }
 
 // SetResponseBody sets the "response_body" field.
-func (m *RequestExecutionMutation) SetResponseBody(s string) {
-	m.response_body = &s
+func (m *RequestExecutionMutation) SetResponseBody(orm objects.JSONRawMessage) {
+	m.response_body = &orm
+	m.appendresponse_body = nil
 }
 
 // ResponseBody returns the value of the "response_body" field in the mutation.
-func (m *RequestExecutionMutation) ResponseBody() (r string, exists bool) {
+func (m *RequestExecutionMutation) ResponseBody() (r objects.JSONRawMessage, exists bool) {
 	v := m.response_body
 	if v == nil {
 		return
@@ -2972,7 +3003,7 @@ func (m *RequestExecutionMutation) ResponseBody() (r string, exists bool) {
 // OldResponseBody returns the old "response_body" field's value of the RequestExecution entity.
 // If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestExecutionMutation) OldResponseBody(ctx context.Context) (v string, err error) {
+func (m *RequestExecutionMutation) OldResponseBody(ctx context.Context) (v objects.JSONRawMessage, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldResponseBody is only allowed on UpdateOne operations")
 	}
@@ -2986,9 +3017,23 @@ func (m *RequestExecutionMutation) OldResponseBody(ctx context.Context) (v strin
 	return oldValue.ResponseBody, nil
 }
 
+// AppendResponseBody adds orm to the "response_body" field.
+func (m *RequestExecutionMutation) AppendResponseBody(orm objects.JSONRawMessage) {
+	m.appendresponse_body = append(m.appendresponse_body, orm...)
+}
+
+// AppendedResponseBody returns the list of values that were appended to the "response_body" field in this mutation.
+func (m *RequestExecutionMutation) AppendedResponseBody() (objects.JSONRawMessage, bool) {
+	if len(m.appendresponse_body) == 0 {
+		return nil, false
+	}
+	return m.appendresponse_body, true
+}
+
 // ClearResponseBody clears the value of the "response_body" field.
 func (m *RequestExecutionMutation) ClearResponseBody() {
 	m.response_body = nil
+	m.appendresponse_body = nil
 	m.clearedFields[requestexecution.FieldResponseBody] = struct{}{}
 }
 
@@ -3001,7 +3046,57 @@ func (m *RequestExecutionMutation) ResponseBodyCleared() bool {
 // ResetResponseBody resets all changes to the "response_body" field.
 func (m *RequestExecutionMutation) ResetResponseBody() {
 	m.response_body = nil
+	m.appendresponse_body = nil
 	delete(m.clearedFields, requestexecution.FieldResponseBody)
+}
+
+// SetErrorMessage sets the "error_message" field.
+func (m *RequestExecutionMutation) SetErrorMessage(s string) {
+	m.error_message = &s
+}
+
+// ErrorMessage returns the value of the "error_message" field in the mutation.
+func (m *RequestExecutionMutation) ErrorMessage() (r string, exists bool) {
+	v := m.error_message
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldErrorMessage returns the old "error_message" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldErrorMessage(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldErrorMessage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldErrorMessage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldErrorMessage: %w", err)
+	}
+	return oldValue.ErrorMessage, nil
+}
+
+// ClearErrorMessage clears the value of the "error_message" field.
+func (m *RequestExecutionMutation) ClearErrorMessage() {
+	m.error_message = nil
+	m.clearedFields[requestexecution.FieldErrorMessage] = struct{}{}
+}
+
+// ErrorMessageCleared returns if the "error_message" field was cleared in this mutation.
+func (m *RequestExecutionMutation) ErrorMessageCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldErrorMessage]
+	return ok
+}
+
+// ResetErrorMessage resets all changes to the "error_message" field.
+func (m *RequestExecutionMutation) ResetErrorMessage() {
+	m.error_message = nil
+	delete(m.clearedFields, requestexecution.FieldErrorMessage)
 }
 
 // SetStatus sets the "status" field.
@@ -3101,7 +3196,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.user_id != nil {
 		fields = append(fields, requestexecution.FieldUserID)
 	}
@@ -3119,6 +3214,9 @@ func (m *RequestExecutionMutation) Fields() []string {
 	}
 	if m.response_body != nil {
 		fields = append(fields, requestexecution.FieldResponseBody)
+	}
+	if m.error_message != nil {
+		fields = append(fields, requestexecution.FieldErrorMessage)
 	}
 	if m.status != nil {
 		fields = append(fields, requestexecution.FieldStatus)
@@ -3143,6 +3241,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.RequestBody()
 	case requestexecution.FieldResponseBody:
 		return m.ResponseBody()
+	case requestexecution.FieldErrorMessage:
+		return m.ErrorMessage()
 	case requestexecution.FieldStatus:
 		return m.Status()
 	}
@@ -3166,6 +3266,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldRequestBody(ctx)
 	case requestexecution.FieldResponseBody:
 		return m.OldResponseBody(ctx)
+	case requestexecution.FieldErrorMessage:
+		return m.OldErrorMessage(ctx)
 	case requestexecution.FieldStatus:
 		return m.OldStatus(ctx)
 	}
@@ -3199,25 +3301,32 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 		m.SetChannelID(v)
 		return nil
 	case requestexecution.FieldModelID:
-		v, ok := value.(int)
+		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetModelID(v)
 		return nil
 	case requestexecution.FieldRequestBody:
-		v, ok := value.(string)
+		v, ok := value.(objects.JSONRawMessage)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRequestBody(v)
 		return nil
 	case requestexecution.FieldResponseBody:
-		v, ok := value.(string)
+		v, ok := value.(objects.JSONRawMessage)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetResponseBody(v)
+		return nil
+	case requestexecution.FieldErrorMessage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetErrorMessage(v)
 		return nil
 	case requestexecution.FieldStatus:
 		v, ok := value.(requestexecution.Status)
@@ -3240,9 +3349,6 @@ func (m *RequestExecutionMutation) AddedFields() []string {
 	if m.addchannel_id != nil {
 		fields = append(fields, requestexecution.FieldChannelID)
 	}
-	if m.addmodel_id != nil {
-		fields = append(fields, requestexecution.FieldModelID)
-	}
 	return fields
 }
 
@@ -3255,8 +3361,6 @@ func (m *RequestExecutionMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedUserID()
 	case requestexecution.FieldChannelID:
 		return m.AddedChannelID()
-	case requestexecution.FieldModelID:
-		return m.AddedModelID()
 	}
 	return nil, false
 }
@@ -3280,13 +3384,6 @@ func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error 
 		}
 		m.AddChannelID(v)
 		return nil
-	case requestexecution.FieldModelID:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddModelID(v)
-		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution numeric field %s", name)
 }
@@ -3297,6 +3394,9 @@ func (m *RequestExecutionMutation) ClearedFields() []string {
 	var fields []string
 	if m.FieldCleared(requestexecution.FieldResponseBody) {
 		fields = append(fields, requestexecution.FieldResponseBody)
+	}
+	if m.FieldCleared(requestexecution.FieldErrorMessage) {
+		fields = append(fields, requestexecution.FieldErrorMessage)
 	}
 	return fields
 }
@@ -3314,6 +3414,9 @@ func (m *RequestExecutionMutation) ClearField(name string) error {
 	switch name {
 	case requestexecution.FieldResponseBody:
 		m.ClearResponseBody()
+		return nil
+	case requestexecution.FieldErrorMessage:
+		m.ClearErrorMessage()
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution nullable field %s", name)
@@ -3340,6 +3443,9 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldResponseBody:
 		m.ResetResponseBody()
+		return nil
+	case requestexecution.FieldErrorMessage:
+		m.ResetErrorMessage()
 		return nil
 	case requestexecution.FieldStatus:
 		m.ResetStatus()

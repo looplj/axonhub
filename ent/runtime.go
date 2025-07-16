@@ -4,8 +4,6 @@ package ent
 
 import (
 	"github.com/looplj/axonhub/ent/channel"
-	"github.com/looplj/axonhub/ent/request"
-	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/ent/schema"
 )
 
@@ -19,16 +17,4 @@ func init() {
 	channelDescAPIKey := channelFields[3].Descriptor()
 	// channel.APIKeyValidator is a validator for the "api_key" field. It is called by the builders before save.
 	channel.APIKeyValidator = channelDescAPIKey.Validators[0].(func(string) error)
-	requestFields := schema.Request{}.Fields()
-	_ = requestFields
-	// requestDescRequestBody is the schema descriptor for request_body field.
-	requestDescRequestBody := requestFields[2].Descriptor()
-	// request.RequestBodyValidator is a validator for the "request_body" field. It is called by the builders before save.
-	request.RequestBodyValidator = requestDescRequestBody.Validators[0].(func(string) error)
-	requestexecutionFields := schema.RequestExecution{}.Fields()
-	_ = requestexecutionFields
-	// requestexecutionDescRequestBody is the schema descriptor for request_body field.
-	requestexecutionDescRequestBody := requestexecutionFields[4].Descriptor()
-	// requestexecution.RequestBodyValidator is a validator for the "request_body" field. It is called by the builders before save.
-	requestexecution.RequestBodyValidator = requestexecutionDescRequestBody.Validators[0].(func(string) error)
 }

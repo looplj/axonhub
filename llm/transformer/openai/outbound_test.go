@@ -37,7 +37,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			validate: func(req *llm.GenericHttpRequest) bool {
 				return req.Method == http.MethodPost &&
 					req.URL == "https://api.openai.com/v1/chat/completions" &&
-					req.Headers["Content-Type"] == "application/json" &&
+					req.Headers.Get("Content-Type") == "application/json" &&
 					req.Auth != nil &&
 					req.Auth.Type == "bearer" &&
 					req.Auth.APIKey == "test-api-key"

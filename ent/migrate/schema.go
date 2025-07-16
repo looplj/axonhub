@@ -88,8 +88,8 @@ var (
 	// RequestsColumns holds the columns for the "requests" table.
 	RequestsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "request_body", Type: field.TypeString},
-		{Name: "response_body", Type: field.TypeString, Nullable: true},
+		{Name: "request_body", Type: field.TypeJSON},
+		{Name: "response_body", Type: field.TypeJSON, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed"}},
 		{Name: "api_key_id", Type: field.TypeInt},
 		{Name: "channel_requests", Type: field.TypeInt, Nullable: true},
@@ -138,9 +138,10 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "user_id", Type: field.TypeInt},
 		{Name: "channel_id", Type: field.TypeInt},
-		{Name: "model_id", Type: field.TypeInt},
-		{Name: "request_body", Type: field.TypeString},
-		{Name: "response_body", Type: field.TypeString, Nullable: true},
+		{Name: "model_id", Type: field.TypeString},
+		{Name: "request_body", Type: field.TypeJSON},
+		{Name: "response_body", Type: field.TypeJSON, Nullable: true},
+		{Name: "error_message", Type: field.TypeString, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed"}},
 		{Name: "request_id", Type: field.TypeInt},
 	}
@@ -152,7 +153,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "request_executions_requests_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[7]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[8]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -161,7 +162,7 @@ var (
 			{
 				Name:    "request_executions_by_request_id",
 				Unique:  true,
-				Columns: []*schema.Column{RequestExecutionsColumns[7]},
+				Columns: []*schema.Column{RequestExecutionsColumns[8]},
 			},
 		},
 	}

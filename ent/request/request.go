@@ -88,11 +88,6 @@ func ValidColumn(column string) bool {
 	return false
 }
 
-var (
-	// RequestBodyValidator is a validator for the "request_body" field. It is called by the builders before save.
-	RequestBodyValidator func(string) error
-)
-
 // Status defines the type for the "status" enum field.
 type Status string
 
@@ -134,16 +129,6 @@ func ByUserID(opts ...sql.OrderTermOption) OrderOption {
 // ByAPIKeyID orders the results by the api_key_id field.
 func ByAPIKeyID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAPIKeyID, opts...).ToFunc()
-}
-
-// ByRequestBody orders the results by the request_body field.
-func ByRequestBody(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldRequestBody, opts...).ToFunc()
-}
-
-// ByResponseBody orders the results by the response_body field.
-func ByResponseBody(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldResponseBody, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

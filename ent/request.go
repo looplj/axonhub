@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/ent/apikey"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/user"
+	"github.com/looplj/axonhub/objects"
 )
 
 // Request is the model entity for the Request schema.
@@ -23,9 +25,9 @@ type Request struct {
 	// APIKeyID holds the value of the "api_key_id" field.
 	APIKeyID int `json:"api_key_id,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
-	RequestBody string `json:"request_body,omitempty"`
+	RequestBody objects.JSONRawMessage `json:"request_body,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
-	ResponseBody string `json:"response_body,omitempty"`
+	ResponseBody objects.JSONRawMessage `json:"response_body,omitempty"`
 	// Status holds the value of the "status" field.
 	Status request.Status `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -88,9 +90,11 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case request.FieldRequestBody, request.FieldResponseBody:
+			values[i] = new([]byte)
 		case request.FieldID, request.FieldUserID, request.FieldAPIKeyID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldRequestBody, request.FieldResponseBody, request.FieldStatus:
+		case request.FieldStatus:
 			values[i] = new(sql.NullString)
 		case request.ForeignKeys[0]: // channel_requests
 			values[i] = new(sql.NullInt64)
@@ -128,16 +132,20 @@ func (r *Request) assignValues(columns []string, values []any) error {
 				r.APIKeyID = int(value.Int64)
 			}
 		case request.FieldRequestBody:
-			if value, ok := values[i].(*sql.NullString); !ok {
+			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field request_body", values[i])
-			} else if value.Valid {
-				r.RequestBody = value.String
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &r.RequestBody); err != nil {
+					return fmt.Errorf("unmarshal field request_body: %w", err)
+				}
 			}
 		case request.FieldResponseBody:
-			if value, ok := values[i].(*sql.NullString); !ok {
+			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field response_body", values[i])
-			} else if value.Valid {
-				r.ResponseBody = value.String
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &r.ResponseBody); err != nil {
+					return fmt.Errorf("unmarshal field response_body: %w", err)
+				}
 			}
 		case request.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -210,10 +218,10 @@ func (r *Request) String() string {
 	builder.WriteString(fmt.Sprintf("%v", r.APIKeyID))
 	builder.WriteString(", ")
 	builder.WriteString("request_body=")
-	builder.WriteString(r.RequestBody)
+	builder.WriteString(fmt.Sprintf("%v", r.RequestBody))
 	builder.WriteString(", ")
 	builder.WriteString("response_body=")
-	builder.WriteString(r.ResponseBody)
+	builder.WriteString(fmt.Sprintf("%v", r.ResponseBody))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", r.Status))
