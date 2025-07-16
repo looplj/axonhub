@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 
-	"github.com/looplj/axonhub/llm/types"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/pkg/streams"
 )
 
@@ -21,10 +21,10 @@ type Provider interface {
 	Name() string
 
 	// ChatCompletion sends a chat completion request and returns the response
-	ChatCompletion(ctx context.Context, request *types.ChatCompletionRequest) (*types.ChatCompletionResponse, error)
+	ChatCompletion(ctx context.Context, request *llm.ChatCompletionRequest) (*llm.ChatCompletionResponse, error)
 
 	// ChatCompletionStream sends a streaming chat completion request
-	ChatCompletionStream(ctx context.Context, request *types.ChatCompletionRequest) (streams.Stream[*types.ChatCompletionResponse], error)
+	ChatCompletionStream(ctx context.Context, request *llm.ChatCompletionRequest) (streams.Stream[*llm.ChatCompletionResponse], error)
 
 	// SupportsModel checks if the provider supports a specific model
 	SupportsModel(model string) bool

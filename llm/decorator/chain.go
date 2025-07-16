@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/looplj/axonhub/llm/types"
+	"github.com/looplj/axonhub/llm"
 )
 
 // Chain implements DecoratorChain interface
@@ -36,7 +36,7 @@ func (c *Chain) Add(decorator ChatCompletionDecorator) {
 func (c *Chain) Remove(name string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	for i, decorator := range c.decorators {
 		if decorator.Name() == name {
 			// Remove the decorator at index i
@@ -47,13 +47,13 @@ func (c *Chain) Remove(name string) {
 }
 
 // Execute applies all decorators in the chain to the request
-func (c *Chain) Execute(ctx context.Context, request *types.ChatCompletionRequest) (*types.ChatCompletionRequest, error) {
+func (c *Chain) Execute(ctx context.Context, request *llm.ChatCompletionRequest) (*llm.ChatCompletionRequest, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	currentRequest := request
 	var err error
-	
+
 	// Apply each decorator in sequence
 	for _, decorator := range c.decorators {
 		currentRequest, err = decorator.Decorate(ctx, currentRequest)
@@ -61,7 +61,7 @@ func (c *Chain) Execute(ctx context.Context, request *types.ChatCompletionReques
 			return currentRequest, err
 		}
 	}
-	
+
 	return currentRequest, nil
 }
 
@@ -69,7 +69,7 @@ func (c *Chain) Execute(ctx context.Context, request *types.ChatCompletionReques
 func (c *Chain) List() []ChatCompletionDecorator {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	// Return a copy to prevent external modification
 	result := make([]ChatCompletionDecorator, len(c.decorators))
 	copy(result, c.decorators)

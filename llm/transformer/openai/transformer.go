@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer"
-	"github.com/looplj/axonhub/llm/types"
 )
 
 var (
@@ -33,8 +33,8 @@ func (t *Transformer) SupportsContentType(contentType string) bool {
 }
 
 // TransformRequest converts HTTP request to ChatCompletionRequest
-func (t *Transformer) TransformRequest(ctx context.Context, httpReq *http.Request) (*types.ChatCompletionRequest, error) {
-	var chatReq types.ChatCompletionRequest
+func (t *Transformer) TransformRequest(ctx context.Context, httpReq *http.Request) (*llm.ChatCompletionRequest, error) {
+	var chatReq llm.ChatCompletionRequest
 	if err := json.NewDecoder(httpReq.Body).Decode(&chatReq); err != nil {
 		return nil, fmt.Errorf("failed to decode openai request: %w", err)
 	}
@@ -52,31 +52,29 @@ func (t *Transformer) Priority() int {
 }
 
 // TransformResponse converts ChatCompletionResponse to GenericHttpResponse
-func (t *Transformer) TransformResponse(ctx context.Context, chatResp *types.ChatCompletionResponse) (*types.GenericHttpResponse, error) {
+func (t *Transformer) TransformResponse(ctx context.Context, chatResp *llm.ChatCompletionResponse) (*llm.GenericHttpResponse, error) {
 	body, err := json.Marshal(chatResp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chat completion response: %w", err)
 	}
 
 	// Create generic response
-	return &types.GenericHttpResponse{
+	return &llm.GenericHttpResponse{
 		StatusCode: http.StatusOK,
 		Body:       body,
-		Provider:   "openai",
 	}, nil
 }
 
 // TransformStreamResponse converts ChatCompletionResponse to GenericHttpResponse
-func (t *Transformer) TransformStreamResponse(ctx context.Context, chatResp *types.ChatCompletionResponse) (*types.GenericHttpResponse, error) {
+func (t *Transformer) TransformStreamResponse(ctx context.Context, chatResp *llm.ChatCompletionResponse) (*llm.GenericHttpResponse, error) {
 	body, err := json.Marshal(chatResp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chat completion response: %w", err)
 	}
 
 	// Create generic response
-	return &types.GenericHttpResponse{
+	return &llm.GenericHttpResponse{
 		StatusCode: http.StatusOK,
 		Body:       append(dataPrefix, body...),
-		Provider:   "openai",
 	}, nil
 }

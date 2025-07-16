@@ -1,11 +1,10 @@
-package types
+package llm
 
 import (
-	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 // GenericHttpRequest represents a generic HTTP request that can be adapted to different providers
@@ -16,59 +15,42 @@ type GenericHttpRequest struct {
 	Headers map[string]string `json:"headers"`
 	Body    []byte            `json:"body,omitempty"`
 
-	// Request configuration
-	Timeout         time.Duration `json:"timeout"`
-	RetryPolicy     *RetryPolicy  `json:"retry_policy,omitempty"`
-	FollowRedirects bool          `json:"follow_redirects"`
-
-	// Provider-specific configurations
-	ProviderConfig map[string]interface{} `json:"provider_config,omitempty"`
-
 	// Authentication
 	Auth *AuthConfig `json:"auth,omitempty"`
-
-	// Context and metadata
-	Context  context.Context   `json:"-"`
-	Metadata map[string]string `json:"metadata,omitempty"`
 
 	// Streaming support
 	Streaming bool `json:"streaming"`
 
 	// Request tracking
-	RequestID string    `json:"request_id"`
-	Timestamp time.Time `json:"timestamp"`
+	RequestID string `json:"request_id"`
+
+	// Raw HTTP request for advanced use cases
+	RawRequest *http.Request `json:"-"`
 }
 
 // AuthConfig represents authentication configuration
 type AuthConfig struct {
-	Type   string            `json:"type"` // "bearer", "api_key", "basic", "custom"
-	Token  string            `json:"token,omitempty"`
-	APIKey string            `json:"api_key,omitempty"`
-	Custom map[string]string `json:"custom,omitempty"`
-}
+	// Type represents the type of authentication.
+	// "bearer", "api_key"
+	Type string `json:"type"`
 
-// RetryPolicy defines retry behavior
-type RetryPolicy struct {
-	MaxRetries      int           `json:"max_retries"`
-	InitialDelay    time.Duration `json:"initial_delay"`
-	MaxDelay        time.Duration `json:"max_delay"`
-	BackoffFactor   float64       `json:"backoff_factor"`
-	RetryableErrors []string      `json:"retryable_errors,omitempty"`
+	// APIKey is the API key for the request.
+	APIKey string `json:"api_key,omitempty"`
+
+	// HeaderKey is the header key for the request if the type is "api_key".
+	HeaderKey string `json:"header_key,omitempty"`
 }
 
 // GenericHttpResponse represents a generic HTTP response
 type GenericHttpResponse struct {
 	// HTTP response basics
-	StatusCode int         `json:"status_code"`
-	Headers    http.Header `json:"headers"`
-	Body       []byte      `json:"body,omitempty"`
+	StatusCode int `json:"status_code"`
 
-	// Response metadata
-	Latency    time.Duration `json:"latency"`
-	RequestID  string        `json:"request_id"`
-	Provider   string        `json:"provider"`
-	RetryCount int           `json:"retry_count"`
-	CacheHit   bool          `json:"cache_hit"`
+	// Response headers
+	Headers http.Header `json:"headers"`
+
+	// Response body
+	Body []byte `json:"body,omitempty"`
 
 	// Error information
 	Error *ResponseError `json:"error,omitempty"`
@@ -76,14 +58,32 @@ type GenericHttpResponse struct {
 	// Streaming support
 	Stream io.ReadCloser `json:"-"`
 
+	// Request information
+	Request *GenericHttpRequest `json:"-"`
+
 	// Raw HTTP response for advanced use cases
 	RawResponse *http.Response `json:"-"`
+
+	// Raw HTTP request for advanced use cases
+	RawRequest *http.Request `json:"-"`
+}
+
+type GenericHttpError struct {
+	Method     string `json:"method"`
+	URL        string `json:"url"`
+	StatusCode int    `json:"status_code"`
+	Status     string `json:"status"`
+	Body       []byte `json:"body"`
+}
+
+func (e GenericHttpError) Error() string {
+	return fmt.Sprintf("%s - %s with status %s", e.Method, e.URL, e.Status)
 }
 
 // ResponseError represents an error in the response
 type ResponseError struct {
 	Code    string `json:"code"`
-	Message string `json:"message"`
+	Message string `json:"message,omitempty"`
 	Type    string `json:"type"`
 	Details string `json:"details,omitempty"`
 }
@@ -97,12 +97,8 @@ type RequestBuilder struct {
 func NewRequestBuilder() *RequestBuilder {
 	return &RequestBuilder{
 		request: &GenericHttpRequest{
-			Method:          "POST",
-			Headers:         make(map[string]string),
-			Timeout:         30 * time.Second,
-			FollowRedirects: true,
-			Metadata:        make(map[string]string),
-			Timestamp:       time.Now(),
+			Method:  "POST",
+			Headers: make(map[string]string),
 		},
 	}
 }
@@ -150,12 +146,6 @@ func (rb *RequestBuilder) WithBody(body any) *RequestBuilder {
 	return rb
 }
 
-// WithTimeout sets the request timeout
-func (rb *RequestBuilder) WithTimeout(timeout time.Duration) *RequestBuilder {
-	rb.request.Timeout = timeout
-	return rb
-}
-
 // WithAuth sets authentication
 func (rb *RequestBuilder) WithAuth(auth *AuthConfig) *RequestBuilder {
 	rb.request.Auth = auth
@@ -165,8 +155,8 @@ func (rb *RequestBuilder) WithAuth(auth *AuthConfig) *RequestBuilder {
 // WithBearerToken sets bearer token authentication
 func (rb *RequestBuilder) WithBearerToken(token string) *RequestBuilder {
 	rb.request.Auth = &AuthConfig{
-		Type:  "bearer",
-		Token: token,
+		Type:   "bearer",
+		APIKey: token,
 	}
 	return rb
 }
@@ -174,27 +164,9 @@ func (rb *RequestBuilder) WithBearerToken(token string) *RequestBuilder {
 // WithAPIKey sets API key authentication
 func (rb *RequestBuilder) WithAPIKey(apiKey string) *RequestBuilder {
 	rb.request.Auth = &AuthConfig{
-		Type:   "api_key",
-		APIKey: apiKey,
+		Type:      "api_key",
+		HeaderKey: apiKey,
 	}
-	return rb
-}
-
-// WithRetryPolicy sets retry policy
-func (rb *RequestBuilder) WithRetryPolicy(policy *RetryPolicy) *RequestBuilder {
-	rb.request.RetryPolicy = policy
-	return rb
-}
-
-// WithContext sets the request context
-func (rb *RequestBuilder) WithContext(ctx context.Context) *RequestBuilder {
-	rb.request.Context = ctx
-	return rb
-}
-
-// WithMetadata adds metadata
-func (rb *RequestBuilder) WithMetadata(key, value string) *RequestBuilder {
-	rb.request.Metadata[key] = value
 	return rb
 }
 
@@ -207,12 +179,6 @@ func (rb *RequestBuilder) WithRequestID(requestID string) *RequestBuilder {
 // WithStreaming enables streaming
 func (rb *RequestBuilder) WithStreaming(streaming bool) *RequestBuilder {
 	rb.request.Streaming = streaming
-	return rb
-}
-
-// WithProviderConfig sets provider-specific configuration
-func (rb *RequestBuilder) WithProviderConfig(config map[string]interface{}) *RequestBuilder {
-	rb.request.ProviderConfig = config
 	return rb
 }
 

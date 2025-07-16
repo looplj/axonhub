@@ -3,8 +3,8 @@ package maxtoken
 import (
 	"context"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/decorator"
-	"github.com/looplj/axonhub/llm/types"
 )
 
 // ChatCompletionDecoratorImpl implements ChatCompletionDecorator interface
@@ -27,7 +27,7 @@ func NewChatCompletionDecorator(name string) decorator.ChatCompletionDecorator {
 }
 
 // Decorate modifies the chat completion request
-func (d *ChatCompletionDecoratorImpl) Decorate(ctx context.Context, request *types.ChatCompletionRequest) (*types.ChatCompletionRequest, error) {
+func (d *ChatCompletionDecoratorImpl) Decorate(ctx context.Context, request *llm.ChatCompletionRequest) (*llm.ChatCompletionRequest, error) {
 	// Set default values if not specified
 	if request.Temperature == nil {
 		temp := 0.7

@@ -6,12 +6,12 @@ import (
 
 	"github.com/sashabaranov/go-openai"
 
-	"github.com/looplj/axonhub/llm/types"
+	"github.com/looplj/axonhub/llm"
 )
 
 type streamAdapter struct {
 	ChatCompletionStream *openai.ChatCompletionStream
-	current              *types.ChatCompletionResponse
+	current              *llm.ChatCompletionResponse
 	err                  error
 }
 
@@ -28,7 +28,7 @@ func (s *streamAdapter) Next() bool {
 	return s.err == nil
 }
 
-func (s *streamAdapter) Current() *types.ChatCompletionResponse {
+func (s *streamAdapter) Current() *llm.ChatCompletionResponse {
 	return s.current
 }
 

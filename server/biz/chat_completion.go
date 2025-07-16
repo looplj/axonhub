@@ -9,10 +9,10 @@ import (
 
 	"github.com/looplj/axonhub/contexts"
 	"github.com/looplj/axonhub/ent"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/provider"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
-	"github.com/looplj/axonhub/llm/types"
 	"github.com/looplj/axonhub/log"
 	"github.com/looplj/axonhub/pkg/streams"
 )
@@ -36,13 +36,13 @@ type ChatCompletionProcessor struct {
 }
 
 type ChatCompletionResult struct {
-	ChatCompletion       *types.GenericHttpResponse
-	ChatCompletionStream streams.Stream[*types.GenericHttpResponse]
+	ChatCompletion       *llm.GenericHttpResponse
+	ChatCompletionStream streams.Stream[*llm.GenericHttpResponse]
 }
 
 // TrackedStream wraps a stream and tracks all responses for final saving
 type TrackedStream struct {
-	stream          streams.Stream[*types.GenericHttpResponse]
+	stream          streams.Stream[*llm.GenericHttpResponse]
 	request         *ent.Request
 	requestExec     *ent.RequestExecution
 	requestService  *RequestService
@@ -51,10 +51,10 @@ type TrackedStream struct {
 }
 
 // Ensure TrackedStream implements Stream interface
-var _ streams.Stream[*types.GenericHttpResponse] = (*TrackedStream)(nil)
+var _ streams.Stream[*llm.GenericHttpResponse] = (*TrackedStream)(nil)
 
 func NewTrackedStream(
-	stream streams.Stream[*types.GenericHttpResponse],
+	stream streams.Stream[*llm.GenericHttpResponse],
 	request *ent.Request,
 	requestExec *ent.RequestExecution,
 	requestService *RequestService,
@@ -71,7 +71,7 @@ func (ts *TrackedStream) Next() bool {
 	return ts.stream.Next()
 }
 
-func (ts *TrackedStream) Current() *types.GenericHttpResponse {
+func (ts *TrackedStream) Current() *llm.GenericHttpResponse {
 	resp := ts.stream.Current()
 	if resp != nil && resp.Body != nil {
 		// Accumulate response body for final saving
@@ -183,7 +183,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, rawReques
 	return ChatCompletionResult{}, errors.New("no provider available")
 }
 
-func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context.Context, prov provider.Provider, chatReq *types.ChatCompletionRequest, req *ent.Request, requestExec *ent.RequestExecution) (*types.GenericHttpResponse, error) {
+func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context.Context, prov provider.Provider, chatReq *llm.ChatCompletionRequest, req *ent.Request, requestExec *ent.RequestExecution) (*llm.GenericHttpResponse, error) {
 	chatResp, err := prov.ChatCompletion(ctx, chatReq)
 	if err != nil {
 		log.Error(ctx, "Provider chat completion failed", log.Cause(err))
@@ -205,14 +205,14 @@ func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context
 	return transformedResp, nil
 }
 
-func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Context, prov provider.Provider, chatReq *types.ChatCompletionRequest, req *ent.Request, requestExec *ent.RequestExecution) (streams.Stream[*types.GenericHttpResponse], error) {
+func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Context, prov provider.Provider, chatReq *llm.ChatCompletionRequest, req *ent.Request, requestExec *ent.RequestExecution) (streams.Stream[*llm.GenericHttpResponse], error) {
 	stream, err := prov.ChatCompletionStream(ctx, chatReq)
 	if err != nil {
 		log.Error(ctx, "Provider streaming failed", log.Cause(err))
 		return nil, err
 	}
 
-	transformedStream := streams.MapErr(stream, func(resp *types.ChatCompletionResponse) (*types.GenericHttpResponse, error) {
+	transformedStream := streams.MapErr(stream, func(resp *llm.ChatCompletionResponse) (*llm.GenericHttpResponse, error) {
 		return processor.Transformer.TransformResponse(ctx, resp)
 	})
 

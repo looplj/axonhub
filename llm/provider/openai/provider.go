@@ -8,8 +8,9 @@ import (
 
 	"github.com/samber/lo"
 	openai "github.com/sashabaranov/go-openai"
+
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/provider"
-	"github.com/looplj/axonhub/llm/types"
 	"github.com/looplj/axonhub/pkg/streams"
 )
 
@@ -43,7 +44,7 @@ func (p *Provider) Name() string {
 }
 
 // ChatCompletion sends a chat completion request and returns the response
-func (p *Provider) ChatCompletion(ctx context.Context, request *types.ChatCompletionRequest) (*types.ChatCompletionResponse, error) {
+func (p *Provider) ChatCompletion(ctx context.Context, request *llm.ChatCompletionRequest) (*llm.ChatCompletionResponse, error) {
 	openaiReq, err := p.convertToOpenAIRequest(request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert request: %w", err)
@@ -58,7 +59,7 @@ func (p *Provider) ChatCompletion(ctx context.Context, request *types.ChatComple
 }
 
 // ChatCompletionStream sends a streaming chat completion request
-func (p *Provider) ChatCompletionStream(ctx context.Context, request *types.ChatCompletionRequest) (streams.Stream[*types.ChatCompletionResponse], error) {
+func (p *Provider) ChatCompletionStream(ctx context.Context, request *llm.ChatCompletionRequest) (streams.Stream[*llm.ChatCompletionResponse], error) {
 	// Convert internal request to OpenAI request
 	openaiReq, err := p.convertToOpenAIRequest(request)
 	if err != nil {
@@ -113,7 +114,7 @@ func (p *Provider) SetConfig(config *provider.ProviderConfig) {
 }
 
 // convertToOpenAIRequest converts internal request to OpenAI request
-func (p *Provider) convertToOpenAIRequest(req *types.ChatCompletionRequest) (*openai.ChatCompletionRequest, error) {
+func (p *Provider) convertToOpenAIRequest(req *llm.ChatCompletionRequest) (*openai.ChatCompletionRequest, error) {
 	openaiReq := &openai.ChatCompletionRequest{
 		Model: req.Model,
 	}
@@ -205,7 +206,7 @@ func (p *Provider) convertToOpenAIRequest(req *types.ChatCompletionRequest) (*op
 }
 
 // convertFromOpenAIResponse converts OpenAI response to internal response
-func convertFromOpenAIResponse(oaiResp *openai.ChatCompletionResponse) (*types.ChatCompletionResponse, error) {
+func convertFromOpenAIResponse(oaiResp *openai.ChatCompletionResponse) (*llm.ChatCompletionResponse, error) {
 	resp, err := convertToResponse(oaiResp)
 	if err != nil {
 		return nil, err
@@ -214,17 +215,17 @@ func convertFromOpenAIResponse(oaiResp *openai.ChatCompletionResponse) (*types.C
 	return resp, nil
 }
 
-func convertFromOpenAIStreamResponse(oaiResp *openai.ChatCompletionStreamResponse) (*types.ChatCompletionResponse, error) {
+func convertFromOpenAIStreamResponse(oaiResp *openai.ChatCompletionStreamResponse) (*llm.ChatCompletionResponse, error) {
 	return convertToResponse(oaiResp)
 }
 
-func convertToResponse(oaiResp any) (*types.ChatCompletionResponse, error) {
+func convertToResponse(oaiResp any) (*llm.ChatCompletionResponse, error) {
 	data, err := json.Marshal(oaiResp)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &types.ChatCompletionResponse{}
+	resp := &llm.ChatCompletionResponse{}
 	err = json.Unmarshal(data, resp)
 	if err != nil {
 		return nil, err

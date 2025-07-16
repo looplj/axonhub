@@ -3,11 +3,12 @@ package biz
 import (
 	"context"
 
+	"github.com/zhenzou/executors"
+
 	"github.com/looplj/axonhub/ent"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/provider"
 	"github.com/looplj/axonhub/llm/provider/openai"
-	"github.com/looplj/axonhub/llm/types"
-	"github.com/zhenzou/executors"
 )
 
 func NewChannelService(ent *ent.Client) *ChannelService {
@@ -51,7 +52,7 @@ func (s *ChannelService) loadProviders(ctx context.Context) error {
 	return nil
 }
 
-func (s *ChannelService) ChooseChannels(ctx context.Context, _ *types.ChatCompletionRequest) ([]*ent.Channel, error) {
+func (s *ChannelService) ChooseChannels(ctx context.Context, _ *llm.ChatCompletionRequest) ([]*ent.Channel, error) {
 	channels, err := s.Ent.Channel.Query().All(ctx)
 	if err != nil {
 		return nil, err
