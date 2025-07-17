@@ -9,6 +9,14 @@ import (
 	"github.com/looplj/axonhub/server/biz"
 )
 
+type ChatCompletionErrorHandler interface {
+	// HandlerError handles error in non-stream response, should return the proper error format to client.
+	HandlerError(c *gin.Context, err error)
+
+	// HandleStreamError handles error in stream response, should return the proper error format to client.
+	HandleStreamError(c *gin.Context, err error)
+}
+
 func NewChatCompletionHandlers(processor *biz.ChatCompletionProcessor) *ChatCompletionHandlers {
 	return &ChatCompletionHandlers{
 		ChatCompletionProcessor: processor,
@@ -17,7 +25,7 @@ func NewChatCompletionHandlers(processor *biz.ChatCompletionProcessor) *ChatComp
 
 type ChatCompletionHandlers struct {
 	ChatCompletionProcessor *biz.ChatCompletionProcessor
-	ErrorHandler            func(c *gin.Context, err error)
+	ErrorHandler            ChatCompletionErrorHandler
 }
 
 func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
@@ -26,13 +34,13 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 	// Use ReadHTTPRequest to parse the request
 	genericReq, err := llm.ReadHTTPRequest(c.Request)
 	if err != nil {
-		handlers.ErrorHandler(c, err)
+		handlers.ErrorHandler.HandlerError(c, err)
 		return
 	}
 
 	result, err := handlers.ChatCompletionProcessor.Process(ctx, genericReq)
 	if err != nil {
-		handlers.ErrorHandler(c, err)
+		handlers.ErrorHandler.HandlerError(c, err)
 		return
 	}
 
@@ -68,8 +76,17 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 			}
 			return false
 		})
+
 		if disconnected {
-			logger.Debug(ctx, "Client disconnected")
+			log.Warn(ctx, "Client disconnected")
+		}
+
+		err := result.ChatCompletionStream.Err()
+		if err != nil {
+			log.Error(ctx, "Error in stream", log.Cause(err))
+			if !disconnected {
+				handlers.ErrorHandler.HandleStreamError(c, err)
+			}
 		}
 	}
 }

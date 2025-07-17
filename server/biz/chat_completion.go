@@ -43,6 +43,7 @@ type ChatCompletionResult struct {
 
 // TrackedStream wraps a stream and tracks all responses for final saving
 type TrackedStream struct {
+	ctx                 context.Context
 	stream              streams.Stream[*llm.GenericHttpResponse]
 	request             *ent.Request
 	requestExec         *ent.RequestExecution
@@ -56,6 +57,7 @@ type TrackedStream struct {
 var _ streams.Stream[*llm.GenericHttpResponse] = (*TrackedStream)(nil)
 
 func NewTrackedStream(
+	ctx context.Context,
 	stream streams.Stream[*llm.GenericHttpResponse],
 	request *ent.Request,
 	requestExec *ent.RequestExecution,
@@ -63,6 +65,7 @@ func NewTrackedStream(
 	outboundTransformer transformer.Outbound,
 ) *TrackedStream {
 	return &TrackedStream{
+		ctx:                 ctx,
 		stream:              stream,
 		request:             request,
 		requestExec:         requestExec,
@@ -82,11 +85,10 @@ func (ts *TrackedStream) Current() *llm.GenericHttpResponse {
 		chunk := objects.JSONRawMessage(resp.Body)
 		ts.responseChunks = append(ts.responseChunks, chunk)
 
-		// Also save chunk to database immediately
-		ctx := context.Background()
-		err := ts.requestService.AppendRequestExecutionChunk(ctx, ts.requestExec.ID, chunk)
+		// Add options to control if save chunk to database
+		err := ts.requestService.AppendRequestExecutionChunk(ts.ctx, ts.requestExec.ID, chunk)
 		if err != nil {
-			log.Warn(ctx, "Failed to save response chunk", log.Cause(err))
+			log.Warn(ts.ctx, "Failed to save response chunk", log.Cause(err))
 		}
 	}
 	return resp
@@ -103,12 +105,18 @@ func (ts *TrackedStream) Close() error {
 	ts.closed = true
 
 	// Save final response body and update status
-	ctx := context.Background()
+	ctx := ts.ctx
 
 	// Update request execution
 	if ts.stream.Err() != nil {
-		ts.requestService.UpdateRequestExecutionFailed(ctx, ts.requestExec.ID, ts.stream.Err().Error())
-		ts.requestService.UpdateRequestFailed(ctx, ts.request.ID)
+		err := ts.requestService.UpdateRequestExecutionFailed(ctx, ts.requestExec.ID, ts.stream.Err().Error())
+		if err != nil {
+			log.Warn(ctx, "Failed to update request execution status", log.Cause(err))
+		}
+		err = ts.requestService.UpdateRequestFailed(ctx, ts.request.ID)
+		if err != nil {
+			log.Warn(ctx, "Failed to update request status", log.Cause(err))
+		}
 	} else {
 		// Use the new method to aggregate chunks and update status
 		err := ts.requestService.UpdateRequestExecutionCompletedWithChunks(ctx, ts.requestExec.ID, ts.responseChunks, ts.outboundTransformer)
@@ -159,16 +167,9 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericRe
 	for _, channel := range channels {
 		log.Info(ctx, "Using channel", log.Any("channel", channel.Name), log.Any("model", chatReq.Model))
 
-		// Get outbound transformer for the channel
-		outboundTransformer, err := processor.ChannelService.GetOutboundTransformer(ctx, channel)
-		if err != nil {
-			log.Warn(ctx, "Failed to get outbound transformer", log.String("channel", channel.Name), log.Cause(err))
-			continue
-		}
-
 		// Handle streaming vs non-streaming responses
 		if chatReq.Stream != nil && *chatReq.Stream {
-			stream, err := processor.handleStreamingResponse(ctx, outboundTransformer, chatReq, req, channel)
+			stream, err := processor.handleStreamingResponse(ctx, channel, chatReq, req)
 			if err != nil {
 				log.Warn(ctx, "Provider streaming failed", log.Cause(err))
 				continue
@@ -179,7 +180,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericRe
 			}, nil
 		}
 
-		resp, err := processor.handleNonStreamingResponse(ctx, outboundTransformer, chatReq, req, channel)
+		resp, err := processor.handleNonStreamingResponse(ctx, channel, chatReq, req)
 		if err != nil {
 			log.Warn(ctx, "Provider non-streaming failed", log.Cause(err))
 			continue
@@ -196,15 +197,15 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericRe
 	return ChatCompletionResult{}, errors.New("no provider available")
 }
 
-func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context.Context, outboundTransformer transformer.Outbound, chatReq *llm.ChatCompletionRequest, req *ent.Request, channel *ent.Channel) (*llm.GenericHttpResponse, error) {
+func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.ChatCompletionRequest, req *ent.Request) (*llm.GenericHttpResponse, error) {
 	// Transform ChatCompletionRequest to HTTP request
-	httpReq, err := outboundTransformer.TransformRequest(ctx, chatReq)
+	httpReq, err := channel.Transformer.TransformRequest(ctx, chatReq)
 	if err != nil {
 		log.Error(ctx, "Failed to transform request", log.Cause(err))
 		return nil, err
 	}
 
-	requestExec, err := processor.RequestService.CreateRequestExecution(ctx, req, channel, httpReq.Body)
+	requestExec, err := processor.RequestService.CreateRequestExecution(ctx, channel, req, httpReq.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -213,31 +214,31 @@ func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context
 	httpResp, err := processor.HttpClient.Do(ctx, httpReq)
 	if err != nil {
 		log.Error(ctx, "HTTP request failed", log.Cause(err))
-		err := processor.RequestService.UpdateRequestExecutionFailed(ctx, requestExec.ID, err.Error())
-		if err != nil {
-			log.Warn(ctx, "Failed to update request execution status", log.Cause(err))
+		innerErr := processor.RequestService.UpdateRequestExecutionFailed(ctx, requestExec.ID, err.Error())
+		if innerErr != nil {
+			log.Warn(ctx, "Failed to update request execution status", log.Cause(innerErr))
 		}
 		return nil, err
 	}
 
 	// Transform HTTP response to ChatCompletionResponse
-	chatResp, err := outboundTransformer.TransformResponse(ctx, httpResp)
+	chatResp, err := channel.Transformer.TransformResponse(ctx, httpResp)
 	if err != nil {
 		log.Error(ctx, "Failed to transform response", log.Cause(err))
-		err := processor.RequestService.UpdateRequestExecutionFailed(ctx, requestExec.ID, err.Error())
-		if err != nil {
-			log.Warn(ctx, "Failed to update request execution status", log.Cause(err))
+		innerErr := processor.RequestService.UpdateRequestExecutionFailed(ctx, requestExec.ID, err.Error())
+		if innerErr != nil {
+			log.Warn(ctx, "Failed to update request execution status", log.Cause(innerErr))
 		}
-		return nil, err
+		return nil, innerErr
 	}
 
 	log.Debug(ctx, "Chat completion response", log.Any("response", chatResp))
 
 	transformedResp, err := processor.InboundTransformer.TransformResponse(ctx, chatResp)
 	if err != nil {
-		err := processor.RequestService.UpdateRequestExecutionFailed(ctx, requestExec.ID, err.Error())
-		if err != nil {
-			log.Warn(ctx, "Failed to update request execution status to completed", log.Cause(err))
+		innerErr := processor.RequestService.UpdateRequestExecutionFailed(ctx, requestExec.ID, err.Error())
+		if innerErr != nil {
+			log.Warn(ctx, "Failed to update request execution status to completed", log.Cause(innerErr))
 		}
 		return nil, err
 	}
@@ -253,15 +254,15 @@ func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context
 	return transformedResp, nil
 }
 
-func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Context, outboundTransformer transformer.Outbound, chatReq *llm.ChatCompletionRequest, req *ent.Request, channel *ent.Channel) (streams.Stream[*llm.GenericHttpResponse], error) {
+func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.ChatCompletionRequest, req *ent.Request) (streams.Stream[*llm.GenericHttpResponse], error) {
 	// Transform ChatCompletionRequest to HTTP request
-	httpReq, err := outboundTransformer.TransformRequest(ctx, chatReq)
+	httpReq, err := channel.Transformer.TransformRequest(ctx, chatReq)
 	if err != nil {
 		log.Error(ctx, "Failed to transform streaming request", log.Cause(err))
 		return nil, err
 	}
 
-	requestExec, err := processor.RequestService.CreateRequestExecution(ctx, req, channel, httpReq.Body)
+	requestExec, err := processor.RequestService.CreateRequestExecution(ctx, channel, req, httpReq.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -270,9 +271,9 @@ func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Co
 	stream, err := processor.HttpClient.DoStream(ctx, httpReq)
 	if err != nil {
 		log.Error(ctx, "HTTP streaming request failed", log.Cause(err))
-		err := processor.RequestService.UpdateRequestExecutionFailed(ctx, requestExec.ID, err.Error())
-		if err != nil {
-			log.Warn(ctx, "Failed to update request execution status", log.Cause(err))
+		innerErr := processor.RequestService.UpdateRequestExecutionFailed(ctx, requestExec.ID, err.Error())
+		if innerErr != nil {
+			log.Warn(ctx, "Failed to update request execution status", log.Cause(innerErr))
 		}
 		return nil, err
 	}
@@ -280,7 +281,7 @@ func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Co
 	// Transform the stream: HTTP responses -> ChatCompletionResponse -> final HTTP responses
 	transformedStream := streams.MapErr(stream, func(httpResp *llm.GenericHttpResponse) (*llm.GenericHttpResponse, error) {
 		// Transform HTTP response to ChatCompletionResponse
-		chatResp, err := outboundTransformer.TransformResponse(ctx, httpResp)
+		chatResp, err := channel.Transformer.TransformResponse(ctx, httpResp)
 		if err != nil {
 			return nil, err
 		}
@@ -290,6 +291,6 @@ func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Co
 	})
 
 	// Wrap with tracked stream to save final response
-	trackedStream := NewTrackedStream(transformedStream, req, requestExec, processor.RequestService, outboundTransformer)
+	trackedStream := NewTrackedStream(ctx, transformedStream, req, requestExec, processor.RequestService, channel.Transformer)
 	return trackedStream, nil
 }

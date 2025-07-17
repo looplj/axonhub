@@ -49,7 +49,7 @@ func (s *RequestService) CreateRequest(ctx context.Context, apiKey *ent.APIKey, 
 }
 
 // CreateRequestExecution creates a new request execution record
-func (s *RequestService) CreateRequestExecution(ctx context.Context, req *ent.Request, channel *ent.Channel, requestBody any) (*ent.RequestExecution, error) {
+func (s *RequestService) CreateRequestExecution(ctx context.Context, channel *Channel, req *ent.Request, requestBody any) (*ent.RequestExecution, error) {
 	requestBodyBytes, err := Marshal(requestBody)
 	if err != nil {
 		log.Error(ctx, "Failed to marshal request body", log.Cause(err))

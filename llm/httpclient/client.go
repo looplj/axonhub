@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/log"
 	"github.com/looplj/axonhub/pkg/streams"
+	"github.com/zhenzou/executors/routine"
 )
 
 // HttpClientImpl implements the HttpClient interface
@@ -129,8 +130,14 @@ func (hc *HttpClientImpl) DoStream(ctx context.Context, request *llm.GenericHttp
 		closed:      false,
 	}
 
-	// Start background goroutine to read SSE events
-	go stream.readEvents()
+	routine.GoWithRecovery(log.GetGlobalLogger().AsSlog(),
+		func() {
+			// Start background goroutine to read SSE events
+			stream.readEvents()
+		},
+		func() {
+			_ = stream.Close()
+		})
 
 	return stream, nil
 }

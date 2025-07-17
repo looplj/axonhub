@@ -12,12 +12,17 @@ import (
 	openaiTransformer "github.com/looplj/axonhub/llm/transformer/openai"
 )
 
+type Channel struct {
+	*ent.Channel
+	Transformer transformer.Outbound
+}
+
 func NewChannelService(ent *ent.Client) *ChannelService {
 	svc := &ChannelService{
 		Ent:       ent,
 		Executors: executors.NewPoolScheduleExecutor(),
 	}
-	if err := svc.loadProviders(context.Background()); err != nil {
+	if err := svc.loadChannels(context.Background()); err != nil {
 		panic(err)
 	}
 	return svc
@@ -26,34 +31,34 @@ func NewChannelService(ent *ent.Client) *ChannelService {
 type ChannelService struct {
 	Ent *ent.Client
 	// TODO refresh registry periodically
+	Channels []*Channel
+
 	Executors executors.ScheduledExecutor
 }
 
-func (s *ChannelService) loadProviders(ctx context.Context) error {
-	providers, err := s.Ent.Channel.Query().All(ctx)
+func (s *ChannelService) loadChannels(ctx context.Context) error {
+	channels, err := s.Ent.Channel.Query().All(ctx)
 	if err != nil {
 		return err
 	}
-	for _, p := range providers {
+	for _, p := range channels {
 		switch p.Type {
 		case "openai":
-			// TODO use transformer
+			transformer := openaiTransformer.NewOutboundTransformer(p.BaseURL, p.APIKey)
+			s.Channels = append(s.Channels, &Channel{
+				Channel:     p,
+				Transformer: transformer,
+			})
 		}
 	}
 	return nil
 }
 
-func (s *ChannelService) ChooseChannels(ctx context.Context, _ *llm.ChatCompletionRequest) ([]*ent.Channel, error) {
-	channels, err := s.Ent.Channel.Query().All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	// TODO add cache
-	// TODO choose by model and user
-	return channels, nil
+func (s *ChannelService) ChooseChannels(ctx context.Context, _ *llm.ChatCompletionRequest) ([]*Channel, error) {
+	return s.Channels, nil
 }
 
-func (s *ChannelService) GetOutboundTransformer(ctx context.Context, channel *ent.Channel) (transformer.Outbound, error) {
+func (s *ChannelService) GetOutboundTransformer(ctx context.Context, channel *Channel) (transformer.Outbound, error) {
 	switch channel.Type {
 	case "openai":
 		return openaiTransformer.NewOutboundTransformer(channel.BaseURL, channel.APIKey), nil
