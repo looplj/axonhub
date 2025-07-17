@@ -1,9 +1,13 @@
 package objects
 
-import (
-	"github.com/looplj/axonhub/llm/provider"
-)
+type ModelMapping struct {
+	// From is the model name in the request.
+	From string `json:"from"`
+
+	// To is the model name in the provider.
+	To string `json:"to"`
+}
 
 type ChannelSettings struct {
-	ModelMappings []provider.ModelMapping
+	ModelMappings []ModelMapping
 }

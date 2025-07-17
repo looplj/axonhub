@@ -22,7 +22,6 @@ import (
 	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
-	"github.com/looplj/axonhub/llm/provider"
 	"github.com/looplj/axonhub/objects"
 )
 
@@ -4070,9 +4069,9 @@ func (ec *executionContext) _ChannelSettings_modelMappings(ctx context.Context, 
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]provider.ModelMapping)
+	res := resTmp.([]objects.ModelMapping)
 	fc.Result = res
-	return ec.marshalNModelMapping2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋllmᚋproviderᚐModelMappingᚄ(ctx, field.Selections, res)
+	return ec.marshalNModelMapping2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ChannelSettings_modelMappings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4270,7 +4269,7 @@ func (ec *executionContext) fieldContext_Job_context(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _ModelMapping_from(ctx context.Context, field graphql.CollectedField, obj *provider.ModelMapping) (ret graphql.Marshaler) {
+func (ec *executionContext) _ModelMapping_from(ctx context.Context, field graphql.CollectedField, obj *objects.ModelMapping) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ModelMapping_from(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4314,7 +4313,7 @@ func (ec *executionContext) fieldContext_ModelMapping_from(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _ModelMapping_to(ctx context.Context, field graphql.CollectedField, obj *provider.ModelMapping) (ret graphql.Marshaler) {
+func (ec *executionContext) _ModelMapping_to(ctx context.Context, field graphql.CollectedField, obj *objects.ModelMapping) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ModelMapping_to(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9954,7 +9953,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		switch k {
 		case "modelMappings":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelMappings"))
-			data, err := ec.unmarshalNModelMappingInput2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋllmᚋproviderᚐModelMappingᚄ(ctx, v)
+			data, err := ec.unmarshalNModelMappingInput2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -11093,8 +11092,8 @@ func (ec *executionContext) unmarshalInputJobWhereInput(ctx context.Context, obj
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputModelMappingInput(ctx context.Context, obj any) (provider.ModelMapping, error) {
-	var it provider.ModelMapping
+func (ec *executionContext) unmarshalInputModelMappingInput(ctx context.Context, obj any) (objects.ModelMapping, error) {
+	var it objects.ModelMapping
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -13397,7 +13396,7 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 
 var modelMappingImplementors = []string{"ModelMapping"}
 
-func (ec *executionContext) _ModelMapping(ctx context.Context, sel ast.SelectionSet, obj *provider.ModelMapping) graphql.Marshaler {
+func (ec *executionContext) _ModelMapping(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelMapping) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, modelMappingImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -15019,11 +15018,11 @@ func (ec *executionContext) unmarshalNJobWhereInput2ᚖgithubᚗcomᚋzhenzouᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNModelMapping2githubᚗcomᚋzhenzouᚋaxonhubᚋllmᚋproviderᚐModelMapping(ctx context.Context, sel ast.SelectionSet, v provider.ModelMapping) graphql.Marshaler {
+func (ec *executionContext) marshalNModelMapping2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMapping(ctx context.Context, sel ast.SelectionSet, v objects.ModelMapping) graphql.Marshaler {
 	return ec._ModelMapping(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNModelMapping2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋllmᚋproviderᚐModelMappingᚄ(ctx context.Context, sel ast.SelectionSet, v []provider.ModelMapping) graphql.Marshaler {
+func (ec *executionContext) marshalNModelMapping2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.ModelMapping) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -15047,7 +15046,7 @@ func (ec *executionContext) marshalNModelMapping2ᚕgithubᚗcomᚋzhenzouᚋaxo
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNModelMapping2githubᚗcomᚋzhenzouᚋaxonhubᚋllmᚋproviderᚐModelMapping(ctx, sel, v[i])
+			ret[i] = ec.marshalNModelMapping2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMapping(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -15067,19 +15066,19 @@ func (ec *executionContext) marshalNModelMapping2ᚕgithubᚗcomᚋzhenzouᚋaxo
 	return ret
 }
 
-func (ec *executionContext) unmarshalNModelMappingInput2githubᚗcomᚋzhenzouᚋaxonhubᚋllmᚋproviderᚐModelMapping(ctx context.Context, v any) (provider.ModelMapping, error) {
+func (ec *executionContext) unmarshalNModelMappingInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMapping(ctx context.Context, v any) (objects.ModelMapping, error) {
 	res, err := ec.unmarshalInputModelMappingInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNModelMappingInput2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋllmᚋproviderᚐModelMappingᚄ(ctx context.Context, v any) ([]provider.ModelMapping, error) {
+func (ec *executionContext) unmarshalNModelMappingInput2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx context.Context, v any) ([]objects.ModelMapping, error) {
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]provider.ModelMapping, len(vSlice))
+	res := make([]objects.ModelMapping, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNModelMappingInput2githubᚗcomᚋzhenzouᚋaxonhubᚋllmᚋproviderᚐModelMapping(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNModelMappingInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMapping(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}

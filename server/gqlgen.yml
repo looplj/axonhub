@@ -38,10 +38,10 @@ models:
       - github.com/looplj/axonhub/ent.Noder
   ModelMapping:
     model:
-      - github.com/looplj/axonhub/llm/provider.ModelMapping
+      - github.com/looplj/axonhub/objects.ModelMapping
   ModelMappingInput:
     model:
-      - github.com/looplj/axonhub/llm/provider.ModelMapping
+      - github.com/looplj/axonhub/objects.ModelMapping
   ChannelSettings:
     model:
       - github.com/looplj/axonhub/objects.ChannelSettings
