@@ -14,7 +14,7 @@ type RequestExecution struct {
 	ent.Schema
 }
 
-func (RequestExecution) Mixins() []ent.Mixin {
+func (RequestExecution) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
 	}
@@ -36,6 +36,7 @@ func (RequestExecution) Fields() []ent.Field {
 		field.String("model_id").Immutable(),
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable(),
 		field.JSON("response_body", objects.JSONRawMessage{}).Optional(),
+		field.JSON("response_chunks", []objects.JSONRawMessage{}).Optional(),
 		field.String("error_message").Optional(),
 		field.Enum("status").Values("pending", "processing", "completed", "failed"),
 	}

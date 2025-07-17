@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -27,6 +28,12 @@ type RequestUpdate struct {
 // Where appends a list predicates to the RequestUpdate builder.
 func (ru *RequestUpdate) Where(ps ...predicate.Request) *RequestUpdate {
 	ru.mutation.Where(ps...)
+	return ru
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (ru *RequestUpdate) SetUpdatedAt(t time.Time) *RequestUpdate {
+	ru.mutation.SetUpdatedAt(t)
 	return ru
 }
 
@@ -105,6 +112,7 @@ func (ru *RequestUpdate) RemoveExecutions(r ...*RequestExecution) *RequestUpdate
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (ru *RequestUpdate) Save(ctx context.Context) (int, error) {
+	ru.defaults()
 	return withHooks(ctx, ru.sqlSave, ru.mutation, ru.hooks)
 }
 
@@ -127,6 +135,14 @@ func (ru *RequestUpdate) Exec(ctx context.Context) error {
 func (ru *RequestUpdate) ExecX(ctx context.Context) {
 	if err := ru.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (ru *RequestUpdate) defaults() {
+	if _, ok := ru.mutation.UpdatedAt(); !ok {
+		v := request.UpdateDefaultUpdatedAt()
+		ru.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -157,6 +173,9 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := ru.mutation.UpdatedAt(); ok {
+		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := ru.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
@@ -235,6 +254,12 @@ type RequestUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *RequestMutation
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (ruo *RequestUpdateOne) SetUpdatedAt(t time.Time) *RequestUpdateOne {
+	ruo.mutation.SetUpdatedAt(t)
+	return ruo
 }
 
 // SetResponseBody sets the "response_body" field.
@@ -325,6 +350,7 @@ func (ruo *RequestUpdateOne) Select(field string, fields ...string) *RequestUpda
 
 // Save executes the query and returns the updated Request entity.
 func (ruo *RequestUpdateOne) Save(ctx context.Context) (*Request, error) {
+	ruo.defaults()
 	return withHooks(ctx, ruo.sqlSave, ruo.mutation, ruo.hooks)
 }
 
@@ -347,6 +373,14 @@ func (ruo *RequestUpdateOne) Exec(ctx context.Context) error {
 func (ruo *RequestUpdateOne) ExecX(ctx context.Context) {
 	if err := ruo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (ruo *RequestUpdateOne) defaults() {
+	if _, ok := ruo.mutation.UpdatedAt(); !ok {
+		v := request.UpdateDefaultUpdatedAt()
+		ruo.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -394,6 +428,9 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := ruo.mutation.UpdatedAt(); ok {
+		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := ruo.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)

@@ -3,7 +3,6 @@ package biz
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"github.com/looplj/axonhub/contexts"
 	"github.com/looplj/axonhub/ent"
@@ -12,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/log"
+	"github.com/looplj/axonhub/objects"
 	"github.com/looplj/axonhub/pkg/streams"
 )
 
@@ -43,12 +43,13 @@ type ChatCompletionResult struct {
 
 // TrackedStream wraps a stream and tracks all responses for final saving
 type TrackedStream struct {
-	stream          streams.Stream[*llm.GenericHttpResponse]
-	request         *ent.Request
-	requestExec     *ent.RequestExecution
-	requestService  *RequestService
-	responseBuilder strings.Builder
-	closed          bool
+	stream              streams.Stream[*llm.GenericHttpResponse]
+	request             *ent.Request
+	requestExec         *ent.RequestExecution
+	requestService      *RequestService
+	outboundTransformer transformer.Outbound
+	responseChunks      []objects.JSONRawMessage
+	closed              bool
 }
 
 // Ensure TrackedStream implements Stream interface
@@ -59,12 +60,14 @@ func NewTrackedStream(
 	request *ent.Request,
 	requestExec *ent.RequestExecution,
 	requestService *RequestService,
+	outboundTransformer transformer.Outbound,
 ) *TrackedStream {
 	return &TrackedStream{
-		stream:         stream,
-		request:        request,
-		requestExec:    requestExec,
-		requestService: requestService,
+		stream:              stream,
+		request:             request,
+		requestExec:         requestExec,
+		requestService:      requestService,
+		outboundTransformer: outboundTransformer,
 	}
 }
 
@@ -75,8 +78,16 @@ func (ts *TrackedStream) Next() bool {
 func (ts *TrackedStream) Current() *llm.GenericHttpResponse {
 	resp := ts.stream.Current()
 	if resp != nil && resp.Body != nil {
-		// Accumulate response body for final saving
-		ts.responseBuilder.Write(resp.Body)
+		// Save each chunk to response_chunks field
+		chunk := objects.JSONRawMessage(resp.Body)
+		ts.responseChunks = append(ts.responseChunks, chunk)
+
+		// Also save chunk to database immediately
+		ctx := context.Background()
+		err := ts.requestService.AppendRequestExecutionChunk(ctx, ts.requestExec.ID, chunk)
+		if err != nil {
+			log.Warn(ctx, "Failed to save response chunk", log.Cause(err))
+		}
 	}
 	return resp
 }
@@ -93,15 +104,28 @@ func (ts *TrackedStream) Close() error {
 
 	// Save final response body and update status
 	ctx := context.Background()
-	finalResponseBody := ts.responseBuilder.String()
 
 	// Update request execution
 	if ts.stream.Err() != nil {
 		ts.requestService.UpdateRequestExecutionFailed(ctx, ts.requestExec.ID, ts.stream.Err().Error())
 		ts.requestService.UpdateRequestFailed(ctx, ts.request.ID)
 	} else {
-		ts.requestService.UpdateRequestExecutionCompleted(ctx, ts.requestExec.ID, finalResponseBody)
-		ts.requestService.UpdateRequestCompleted(ctx, ts.request.ID, finalResponseBody)
+		// Use the new method to aggregate chunks and update status
+		err := ts.requestService.UpdateRequestExecutionCompletedWithChunks(ctx, ts.requestExec.ID, ts.responseChunks, ts.outboundTransformer)
+		if err != nil {
+			log.Warn(ctx, "Failed to update request execution with aggregated chunks", log.Cause(err))
+		}
+
+		// For the main request, we need to get the aggregated response using transformer
+		aggregatedResponse, err := ts.requestService.AggregateChunksToResponseWithTransformer(ctx, ts.responseChunks, ts.outboundTransformer)
+		if err != nil {
+			log.Warn(ctx, "Failed to aggregate chunks for request update", log.Cause(err))
+			aggregatedResponse = objects.JSONRawMessage("{}")
+		}
+		err = ts.requestService.UpdateRequestCompleted(ctx, ts.request.ID, aggregatedResponse)
+		if err != nil {
+			log.Warn(ctx, "Failed to update request status to completed", log.Cause(err))
+		}
 	}
 
 	return ts.stream.Close()
@@ -266,6 +290,6 @@ func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Co
 	})
 
 	// Wrap with tracked stream to save final response
-	trackedStream := NewTrackedStream(transformedStream, req, requestExec, processor.RequestService)
+	trackedStream := NewTrackedStream(transformedStream, req, requestExec, processor.RequestService, outboundTransformer)
 	return trackedStream, nil
 }

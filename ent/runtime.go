@@ -3,18 +3,97 @@
 package ent
 
 import (
+	"time"
+
+	"github.com/looplj/axonhub/ent/apikey"
 	"github.com/looplj/axonhub/ent/channel"
+	"github.com/looplj/axonhub/ent/request"
+	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/ent/schema"
+	"github.com/looplj/axonhub/ent/user"
 )
 
 // The init function reads all schema descriptors with runtime code
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	apikeyMixin := schema.APIKey{}.Mixin()
+	apikeyMixinFields0 := apikeyMixin[0].Fields()
+	_ = apikeyMixinFields0
+	apikeyFields := schema.APIKey{}.Fields()
+	_ = apikeyFields
+	// apikeyDescCreatedAt is the schema descriptor for created_at field.
+	apikeyDescCreatedAt := apikeyMixinFields0[0].Descriptor()
+	// apikey.DefaultCreatedAt holds the default value on creation for the created_at field.
+	apikey.DefaultCreatedAt = apikeyDescCreatedAt.Default.(func() time.Time)
+	// apikeyDescUpdatedAt is the schema descriptor for updated_at field.
+	apikeyDescUpdatedAt := apikeyMixinFields0[1].Descriptor()
+	// apikey.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	apikey.DefaultUpdatedAt = apikeyDescUpdatedAt.Default.(func() time.Time)
+	// apikey.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	apikey.UpdateDefaultUpdatedAt = apikeyDescUpdatedAt.UpdateDefault.(func() time.Time)
+	channelMixin := schema.Channel{}.Mixin()
+	channelMixinFields0 := channelMixin[0].Fields()
+	_ = channelMixinFields0
 	channelFields := schema.Channel{}.Fields()
 	_ = channelFields
+	// channelDescCreatedAt is the schema descriptor for created_at field.
+	channelDescCreatedAt := channelMixinFields0[0].Descriptor()
+	// channel.DefaultCreatedAt holds the default value on creation for the created_at field.
+	channel.DefaultCreatedAt = channelDescCreatedAt.Default.(func() time.Time)
+	// channelDescUpdatedAt is the schema descriptor for updated_at field.
+	channelDescUpdatedAt := channelMixinFields0[1].Descriptor()
+	// channel.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	channel.DefaultUpdatedAt = channelDescUpdatedAt.Default.(func() time.Time)
+	// channel.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	channel.UpdateDefaultUpdatedAt = channelDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// channelDescAPIKey is the schema descriptor for api_key field.
 	channelDescAPIKey := channelFields[3].Descriptor()
 	// channel.APIKeyValidator is a validator for the "api_key" field. It is called by the builders before save.
 	channel.APIKeyValidator = channelDescAPIKey.Validators[0].(func(string) error)
+	requestMixin := schema.Request{}.Mixin()
+	requestMixinFields0 := requestMixin[0].Fields()
+	_ = requestMixinFields0
+	requestFields := schema.Request{}.Fields()
+	_ = requestFields
+	// requestDescCreatedAt is the schema descriptor for created_at field.
+	requestDescCreatedAt := requestMixinFields0[0].Descriptor()
+	// request.DefaultCreatedAt holds the default value on creation for the created_at field.
+	request.DefaultCreatedAt = requestDescCreatedAt.Default.(func() time.Time)
+	// requestDescUpdatedAt is the schema descriptor for updated_at field.
+	requestDescUpdatedAt := requestMixinFields0[1].Descriptor()
+	// request.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	request.DefaultUpdatedAt = requestDescUpdatedAt.Default.(func() time.Time)
+	// request.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	request.UpdateDefaultUpdatedAt = requestDescUpdatedAt.UpdateDefault.(func() time.Time)
+	requestexecutionMixin := schema.RequestExecution{}.Mixin()
+	requestexecutionMixinFields0 := requestexecutionMixin[0].Fields()
+	_ = requestexecutionMixinFields0
+	requestexecutionFields := schema.RequestExecution{}.Fields()
+	_ = requestexecutionFields
+	// requestexecutionDescCreatedAt is the schema descriptor for created_at field.
+	requestexecutionDescCreatedAt := requestexecutionMixinFields0[0].Descriptor()
+	// requestexecution.DefaultCreatedAt holds the default value on creation for the created_at field.
+	requestexecution.DefaultCreatedAt = requestexecutionDescCreatedAt.Default.(func() time.Time)
+	// requestexecutionDescUpdatedAt is the schema descriptor for updated_at field.
+	requestexecutionDescUpdatedAt := requestexecutionMixinFields0[1].Descriptor()
+	// requestexecution.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	requestexecution.DefaultUpdatedAt = requestexecutionDescUpdatedAt.Default.(func() time.Time)
+	// requestexecution.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	requestexecution.UpdateDefaultUpdatedAt = requestexecutionDescUpdatedAt.UpdateDefault.(func() time.Time)
+	userMixin := schema.User{}.Mixin()
+	userMixinFields0 := userMixin[0].Fields()
+	_ = userMixinFields0
+	userFields := schema.User{}.Fields()
+	_ = userFields
+	// userDescCreatedAt is the schema descriptor for created_at field.
+	userDescCreatedAt := userMixinFields0[0].Descriptor()
+	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
+	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
+	// userDescUpdatedAt is the schema descriptor for updated_at field.
+	userDescUpdatedAt := userMixinFields0[1].Descriptor()
+	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
+	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
 }

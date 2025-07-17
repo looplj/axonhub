@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -29,6 +30,12 @@ func (reu *RequestExecutionUpdate) Where(ps ...predicate.RequestExecution) *Requ
 	return reu
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (reu *RequestExecutionUpdate) SetUpdatedAt(t time.Time) *RequestExecutionUpdate {
+	reu.mutation.SetUpdatedAt(t)
+	return reu
+}
+
 // SetResponseBody sets the "response_body" field.
 func (reu *RequestExecutionUpdate) SetResponseBody(orm objects.JSONRawMessage) *RequestExecutionUpdate {
 	reu.mutation.SetResponseBody(orm)
@@ -44,6 +51,24 @@ func (reu *RequestExecutionUpdate) AppendResponseBody(orm objects.JSONRawMessage
 // ClearResponseBody clears the value of the "response_body" field.
 func (reu *RequestExecutionUpdate) ClearResponseBody() *RequestExecutionUpdate {
 	reu.mutation.ClearResponseBody()
+	return reu
+}
+
+// SetResponseChunks sets the "response_chunks" field.
+func (reu *RequestExecutionUpdate) SetResponseChunks(orm []objects.JSONRawMessage) *RequestExecutionUpdate {
+	reu.mutation.SetResponseChunks(orm)
+	return reu
+}
+
+// AppendResponseChunks appends orm to the "response_chunks" field.
+func (reu *RequestExecutionUpdate) AppendResponseChunks(orm []objects.JSONRawMessage) *RequestExecutionUpdate {
+	reu.mutation.AppendResponseChunks(orm)
+	return reu
+}
+
+// ClearResponseChunks clears the value of the "response_chunks" field.
+func (reu *RequestExecutionUpdate) ClearResponseChunks() *RequestExecutionUpdate {
+	reu.mutation.ClearResponseChunks()
 	return reu
 }
 
@@ -88,6 +113,7 @@ func (reu *RequestExecutionUpdate) Mutation() *RequestExecutionMutation {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (reu *RequestExecutionUpdate) Save(ctx context.Context) (int, error) {
+	reu.defaults()
 	return withHooks(ctx, reu.sqlSave, reu.mutation, reu.hooks)
 }
 
@@ -110,6 +136,14 @@ func (reu *RequestExecutionUpdate) Exec(ctx context.Context) error {
 func (reu *RequestExecutionUpdate) ExecX(ctx context.Context) {
 	if err := reu.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (reu *RequestExecutionUpdate) defaults() {
+	if _, ok := reu.mutation.UpdatedAt(); !ok {
+		v := requestexecution.UpdateDefaultUpdatedAt()
+		reu.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -138,6 +172,9 @@ func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err erro
 			}
 		}
 	}
+	if value, ok := reu.mutation.UpdatedAt(); ok {
+		_spec.SetField(requestexecution.FieldUpdatedAt, field.TypeTime, value)
+	}
 	if value, ok := reu.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)
 	}
@@ -148,6 +185,17 @@ func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err erro
 	}
 	if reu.mutation.ResponseBodyCleared() {
 		_spec.ClearField(requestexecution.FieldResponseBody, field.TypeJSON)
+	}
+	if value, ok := reu.mutation.ResponseChunks(); ok {
+		_spec.SetField(requestexecution.FieldResponseChunks, field.TypeJSON, value)
+	}
+	if value, ok := reu.mutation.AppendedResponseChunks(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, requestexecution.FieldResponseChunks, value)
+		})
+	}
+	if reu.mutation.ResponseChunksCleared() {
+		_spec.ClearField(requestexecution.FieldResponseChunks, field.TypeJSON)
 	}
 	if value, ok := reu.mutation.ErrorMessage(); ok {
 		_spec.SetField(requestexecution.FieldErrorMessage, field.TypeString, value)
@@ -178,6 +226,12 @@ type RequestExecutionUpdateOne struct {
 	mutation *RequestExecutionMutation
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (reuo *RequestExecutionUpdateOne) SetUpdatedAt(t time.Time) *RequestExecutionUpdateOne {
+	reuo.mutation.SetUpdatedAt(t)
+	return reuo
+}
+
 // SetResponseBody sets the "response_body" field.
 func (reuo *RequestExecutionUpdateOne) SetResponseBody(orm objects.JSONRawMessage) *RequestExecutionUpdateOne {
 	reuo.mutation.SetResponseBody(orm)
@@ -193,6 +247,24 @@ func (reuo *RequestExecutionUpdateOne) AppendResponseBody(orm objects.JSONRawMes
 // ClearResponseBody clears the value of the "response_body" field.
 func (reuo *RequestExecutionUpdateOne) ClearResponseBody() *RequestExecutionUpdateOne {
 	reuo.mutation.ClearResponseBody()
+	return reuo
+}
+
+// SetResponseChunks sets the "response_chunks" field.
+func (reuo *RequestExecutionUpdateOne) SetResponseChunks(orm []objects.JSONRawMessage) *RequestExecutionUpdateOne {
+	reuo.mutation.SetResponseChunks(orm)
+	return reuo
+}
+
+// AppendResponseChunks appends orm to the "response_chunks" field.
+func (reuo *RequestExecutionUpdateOne) AppendResponseChunks(orm []objects.JSONRawMessage) *RequestExecutionUpdateOne {
+	reuo.mutation.AppendResponseChunks(orm)
+	return reuo
+}
+
+// ClearResponseChunks clears the value of the "response_chunks" field.
+func (reuo *RequestExecutionUpdateOne) ClearResponseChunks() *RequestExecutionUpdateOne {
+	reuo.mutation.ClearResponseChunks()
 	return reuo
 }
 
@@ -250,6 +322,7 @@ func (reuo *RequestExecutionUpdateOne) Select(field string, fields ...string) *R
 
 // Save executes the query and returns the updated RequestExecution entity.
 func (reuo *RequestExecutionUpdateOne) Save(ctx context.Context) (*RequestExecution, error) {
+	reuo.defaults()
 	return withHooks(ctx, reuo.sqlSave, reuo.mutation, reuo.hooks)
 }
 
@@ -272,6 +345,14 @@ func (reuo *RequestExecutionUpdateOne) Exec(ctx context.Context) error {
 func (reuo *RequestExecutionUpdateOne) ExecX(ctx context.Context) {
 	if err := reuo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (reuo *RequestExecutionUpdateOne) defaults() {
+	if _, ok := reuo.mutation.UpdatedAt(); !ok {
+		v := requestexecution.UpdateDefaultUpdatedAt()
+		reuo.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -317,6 +398,9 @@ func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Requ
 			}
 		}
 	}
+	if value, ok := reuo.mutation.UpdatedAt(); ok {
+		_spec.SetField(requestexecution.FieldUpdatedAt, field.TypeTime, value)
+	}
 	if value, ok := reuo.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)
 	}
@@ -327,6 +411,17 @@ func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Requ
 	}
 	if reuo.mutation.ResponseBodyCleared() {
 		_spec.ClearField(requestexecution.FieldResponseBody, field.TypeJSON)
+	}
+	if value, ok := reuo.mutation.ResponseChunks(); ok {
+		_spec.SetField(requestexecution.FieldResponseChunks, field.TypeJSON, value)
+	}
+	if value, ok := reuo.mutation.AppendedResponseChunks(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, requestexecution.FieldResponseChunks, value)
+		})
+	}
+	if reuo.mutation.ResponseChunksCleared() {
+		_spec.ClearField(requestexecution.FieldResponseChunks, field.TypeJSON)
 	}
 	if value, ok := reuo.mutation.ErrorMessage(); ok {
 		_spec.SetField(requestexecution.FieldErrorMessage, field.TypeString, value)

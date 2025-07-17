@@ -22,28 +22,28 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []int) ([]ent.Noder, erro
 }
 
 // APIKeys is the resolver for the apiKeys field.
-func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.APIKeyWhereInput) (*ent.APIKeyConnection, error) {
+func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) (*ent.APIKeyConnection, error) {
 	return r.client.APIKey.Query().Paginate(ctx, after, first, before, last, ent.WithAPIKeyFilter(func(q *ent.APIKeyQuery) (*ent.APIKeyQuery, error) {
 		return where.Filter(q)
 	}))
 }
 
 // Channels is the resolver for the channels field.
-func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.ChannelWhereInput) (*ent.ChannelConnection, error) {
+func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) (*ent.ChannelConnection, error) {
 	return r.client.Channel.Query().Paginate(ctx, after, first, before, last, ent.WithChannelFilter(func(q *ent.ChannelQuery) (*ent.ChannelQuery, error) {
 		return where.Filter(q)
 	}))
 }
 
 // Requests is the resolver for the requests field.
-func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.RequestWhereInput) (*ent.RequestConnection, error) {
+func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) (*ent.RequestConnection, error) {
 	return r.client.Request.Query().Paginate(ctx, after, first, before, last, ent.WithRequestFilter(func(q *ent.RequestQuery) (*ent.RequestQuery, error) {
 		return where.Filter(q)
 	}))
 }
 
 // Users is the resolver for the users field.
-func (r *queryResolver) Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, where *ent.UserWhereInput) (*ent.UserConnection, error) {
+func (r *queryResolver) Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error) {
 	return r.client.User.Query().Paginate(ctx, after, first, before, last, ent.WithUserFilter(func(q *ent.UserQuery) (*ent.UserQuery, error) {
 		return where.Filter(q)
 	}))

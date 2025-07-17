@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -21,6 +22,34 @@ type RequestExecutionCreate struct {
 	mutation *RequestExecutionMutation
 	hooks    []Hook
 	conflict []sql.ConflictOption
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (rec *RequestExecutionCreate) SetCreatedAt(t time.Time) *RequestExecutionCreate {
+	rec.mutation.SetCreatedAt(t)
+	return rec
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (rec *RequestExecutionCreate) SetNillableCreatedAt(t *time.Time) *RequestExecutionCreate {
+	if t != nil {
+		rec.SetCreatedAt(*t)
+	}
+	return rec
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (rec *RequestExecutionCreate) SetUpdatedAt(t time.Time) *RequestExecutionCreate {
+	rec.mutation.SetUpdatedAt(t)
+	return rec
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (rec *RequestExecutionCreate) SetNillableUpdatedAt(t *time.Time) *RequestExecutionCreate {
+	if t != nil {
+		rec.SetUpdatedAt(*t)
+	}
+	return rec
 }
 
 // SetUserID sets the "user_id" field.
@@ -59,6 +88,12 @@ func (rec *RequestExecutionCreate) SetResponseBody(orm objects.JSONRawMessage) *
 	return rec
 }
 
+// SetResponseChunks sets the "response_chunks" field.
+func (rec *RequestExecutionCreate) SetResponseChunks(orm []objects.JSONRawMessage) *RequestExecutionCreate {
+	rec.mutation.SetResponseChunks(orm)
+	return rec
+}
+
 // SetErrorMessage sets the "error_message" field.
 func (rec *RequestExecutionCreate) SetErrorMessage(s string) *RequestExecutionCreate {
 	rec.mutation.SetErrorMessage(s)
@@ -91,6 +126,7 @@ func (rec *RequestExecutionCreate) Mutation() *RequestExecutionMutation {
 
 // Save creates the RequestExecution in the database.
 func (rec *RequestExecutionCreate) Save(ctx context.Context) (*RequestExecution, error) {
+	rec.defaults()
 	return withHooks(ctx, rec.sqlSave, rec.mutation, rec.hooks)
 }
 
@@ -116,8 +152,26 @@ func (rec *RequestExecutionCreate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (rec *RequestExecutionCreate) defaults() {
+	if _, ok := rec.mutation.CreatedAt(); !ok {
+		v := requestexecution.DefaultCreatedAt()
+		rec.mutation.SetCreatedAt(v)
+	}
+	if _, ok := rec.mutation.UpdatedAt(); !ok {
+		v := requestexecution.DefaultUpdatedAt()
+		rec.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (rec *RequestExecutionCreate) check() error {
+	if _, ok := rec.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "RequestExecution.created_at"`)}
+	}
+	if _, ok := rec.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "RequestExecution.updated_at"`)}
+	}
 	if _, ok := rec.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "RequestExecution.user_id"`)}
 	}
@@ -171,6 +225,14 @@ func (rec *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cr
 		_spec = sqlgraph.NewCreateSpec(requestexecution.Table, sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt))
 	)
 	_spec.OnConflict = rec.conflict
+	if value, ok := rec.mutation.CreatedAt(); ok {
+		_spec.SetField(requestexecution.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := rec.mutation.UpdatedAt(); ok {
+		_spec.SetField(requestexecution.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
 	if value, ok := rec.mutation.UserID(); ok {
 		_spec.SetField(requestexecution.FieldUserID, field.TypeInt, value)
 		_node.UserID = value
@@ -190,6 +252,10 @@ func (rec *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cr
 	if value, ok := rec.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)
 		_node.ResponseBody = value
+	}
+	if value, ok := rec.mutation.ResponseChunks(); ok {
+		_spec.SetField(requestexecution.FieldResponseChunks, field.TypeJSON, value)
+		_node.ResponseChunks = value
 	}
 	if value, ok := rec.mutation.ErrorMessage(); ok {
 		_spec.SetField(requestexecution.FieldErrorMessage, field.TypeString, value)
@@ -223,7 +289,7 @@ func (rec *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cr
 // of the `INSERT` statement. For example:
 //
 //	client.RequestExecution.Create().
-//		SetUserID(v).
+//		SetCreatedAt(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -232,7 +298,7 @@ func (rec *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cr
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.RequestExecutionUpsert) {
-//			SetUserID(v+v).
+//			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
 func (rec *RequestExecutionCreate) OnConflict(opts ...sql.ConflictOption) *RequestExecutionUpsertOne {
@@ -268,6 +334,18 @@ type (
 	}
 )
 
+// SetUpdatedAt sets the "updated_at" field.
+func (u *RequestExecutionUpsert) SetUpdatedAt(v time.Time) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateUpdatedAt() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldUpdatedAt)
+	return u
+}
+
 // SetResponseBody sets the "response_body" field.
 func (u *RequestExecutionUpsert) SetResponseBody(v objects.JSONRawMessage) *RequestExecutionUpsert {
 	u.Set(requestexecution.FieldResponseBody, v)
@@ -283,6 +361,24 @@ func (u *RequestExecutionUpsert) UpdateResponseBody() *RequestExecutionUpsert {
 // ClearResponseBody clears the value of the "response_body" field.
 func (u *RequestExecutionUpsert) ClearResponseBody() *RequestExecutionUpsert {
 	u.SetNull(requestexecution.FieldResponseBody)
+	return u
+}
+
+// SetResponseChunks sets the "response_chunks" field.
+func (u *RequestExecutionUpsert) SetResponseChunks(v []objects.JSONRawMessage) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldResponseChunks, v)
+	return u
+}
+
+// UpdateResponseChunks sets the "response_chunks" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateResponseChunks() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldResponseChunks)
+	return u
+}
+
+// ClearResponseChunks clears the value of the "response_chunks" field.
+func (u *RequestExecutionUpsert) ClearResponseChunks() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldResponseChunks)
 	return u
 }
 
@@ -327,6 +423,9 @@ func (u *RequestExecutionUpsert) UpdateStatus() *RequestExecutionUpsert {
 func (u *RequestExecutionUpsertOne) UpdateNewValues() *RequestExecutionUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(requestexecution.FieldCreatedAt)
+		}
 		if _, exists := u.create.mutation.UserID(); exists {
 			s.SetIgnore(requestexecution.FieldUserID)
 		}
@@ -373,6 +472,20 @@ func (u *RequestExecutionUpsertOne) Update(set func(*RequestExecutionUpsert)) *R
 	return u
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (u *RequestExecutionUpsertOne) SetUpdatedAt(v time.Time) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateUpdatedAt() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
 // SetResponseBody sets the "response_body" field.
 func (u *RequestExecutionUpsertOne) SetResponseBody(v objects.JSONRawMessage) *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
@@ -391,6 +504,27 @@ func (u *RequestExecutionUpsertOne) UpdateResponseBody() *RequestExecutionUpsert
 func (u *RequestExecutionUpsertOne) ClearResponseBody() *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearResponseBody()
+	})
+}
+
+// SetResponseChunks sets the "response_chunks" field.
+func (u *RequestExecutionUpsertOne) SetResponseChunks(v []objects.JSONRawMessage) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetResponseChunks(v)
+	})
+}
+
+// UpdateResponseChunks sets the "response_chunks" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateResponseChunks() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateResponseChunks()
+	})
+}
+
+// ClearResponseChunks clears the value of the "response_chunks" field.
+func (u *RequestExecutionUpsertOne) ClearResponseChunks() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearResponseChunks()
 	})
 }
 
@@ -481,6 +615,7 @@ func (recb *RequestExecutionCreateBulk) Save(ctx context.Context) ([]*RequestExe
 	for i := range recb.builders {
 		func(i int, root context.Context) {
 			builder := recb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*RequestExecutionMutation)
 				if !ok {
@@ -563,7 +698,7 @@ func (recb *RequestExecutionCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.RequestExecutionUpsert) {
-//			SetUserID(v+v).
+//			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
 func (recb *RequestExecutionCreateBulk) OnConflict(opts ...sql.ConflictOption) *RequestExecutionUpsertBulk {
@@ -604,6 +739,9 @@ func (u *RequestExecutionUpsertBulk) UpdateNewValues() *RequestExecutionUpsertBu
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		for _, b := range u.create.builders {
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(requestexecution.FieldCreatedAt)
+			}
 			if _, exists := b.mutation.UserID(); exists {
 				s.SetIgnore(requestexecution.FieldUserID)
 			}
@@ -651,6 +789,20 @@ func (u *RequestExecutionUpsertBulk) Update(set func(*RequestExecutionUpsert)) *
 	return u
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (u *RequestExecutionUpsertBulk) SetUpdatedAt(v time.Time) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateUpdatedAt() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
 // SetResponseBody sets the "response_body" field.
 func (u *RequestExecutionUpsertBulk) SetResponseBody(v objects.JSONRawMessage) *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
@@ -669,6 +821,27 @@ func (u *RequestExecutionUpsertBulk) UpdateResponseBody() *RequestExecutionUpser
 func (u *RequestExecutionUpsertBulk) ClearResponseBody() *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearResponseBody()
+	})
+}
+
+// SetResponseChunks sets the "response_chunks" field.
+func (u *RequestExecutionUpsertBulk) SetResponseChunks(v []objects.JSONRawMessage) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetResponseChunks(v)
+	})
+}
+
+// UpdateResponseChunks sets the "response_chunks" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateResponseChunks() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateResponseChunks()
+	})
+}
+
+// ClearResponseChunks clears the value of the "response_chunks" field.
+func (u *RequestExecutionUpsertBulk) ClearResponseChunks() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearResponseChunks()
 	})
 }
 

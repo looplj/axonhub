@@ -300,12 +300,12 @@ func (req *RequestExecutionQuery) WithRequest(opts ...func(*RequestQuery)) *Requ
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.RequestExecution.Query().
-//		GroupBy(requestexecution.FieldUserID).
+//		GroupBy(requestexecution.FieldCreatedAt).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (req *RequestExecutionQuery) GroupBy(field string, fields ...string) *RequestExecutionGroupBy {
@@ -323,11 +323,11 @@ func (req *RequestExecutionQuery) GroupBy(field string, fields ...string) *Reque
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //	}
 //
 //	client.RequestExecution.Query().
-//		Select(requestexecution.FieldUserID).
+//		Select(requestexecution.FieldCreatedAt).
 //		Scan(ctx, &v)
 func (req *RequestExecutionQuery) Select(fields ...string) *RequestExecutionSelect {
 	req.ctx.Fields = append(req.ctx.Fields, fields...)

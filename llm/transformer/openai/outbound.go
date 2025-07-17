@@ -140,3 +140,78 @@ func (t *OutboundTransformer) SetAPIKey(apiKey string) {
 func (t *OutboundTransformer) SetBaseURL(baseURL string) {
 	t.baseURL = baseURL
 }
+
+// AggregateStreamChunks aggregates OpenAI streaming response chunks into a complete response
+func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks [][]byte) (*llm.ChatCompletionResponse, error) {
+	if len(chunks) == 0 {
+		return &llm.ChatCompletionResponse{}, nil
+	}
+
+	// For OpenAI-style streaming, we need to aggregate the delta content from chunks
+	// into a complete ChatCompletionResponse
+	var aggregatedContent strings.Builder
+	var lastChunk map[string]interface{}
+
+	for _, chunk := range chunks {
+		var chunkData map[string]interface{}
+		if err := json.Unmarshal(chunk, &chunkData); err != nil {
+			continue // Skip invalid chunks
+		}
+
+		// Extract content from choices[0].delta.content if it exists
+		if choices, ok := chunkData["choices"].([]interface{}); ok && len(choices) > 0 {
+			if choice, ok := choices[0].(map[string]interface{}); ok {
+				if delta, ok := choice["delta"].(map[string]interface{}); ok {
+					if content, ok := delta["content"].(string); ok {
+						aggregatedContent.WriteString(content)
+					}
+				}
+			}
+		}
+
+		// Keep the last chunk for metadata
+		lastChunk = chunkData
+	}
+
+	// Create a complete ChatCompletionResponse based on the last chunk structure
+	if lastChunk == nil {
+		return &llm.ChatCompletionResponse{}, nil
+	}
+
+	// Build the final response
+	finalResponse := map[string]interface{}{
+		"object": "chat.completion", // Change from "chat.completion.chunk" to "chat.completion"
+	}
+
+	// Copy metadata from the last chunk
+	for key, value := range lastChunk {
+		if key != "choices" && key != "object" {
+			finalResponse[key] = value
+		}
+	}
+
+	// Create the final choices with aggregated content
+	finalResponse["choices"] = []map[string]interface{}{
+		{
+			"index": 0,
+			"message": map[string]interface{}{
+				"role":    "assistant",
+				"content": aggregatedContent.String(),
+			},
+			"finish_reason": "stop",
+		},
+	}
+
+	// Marshal and unmarshal to convert to ChatCompletionResponse
+	finalJSON, err := json.Marshal(finalResponse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal final response: %w", err)
+	}
+
+	var chatResp llm.ChatCompletionResponse
+	if err := json.Unmarshal(finalJSON, &chatResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal to ChatCompletionResponse: %w", err)
+	}
+
+	return &chatResp, nil
+}

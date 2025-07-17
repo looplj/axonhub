@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -19,6 +20,10 @@ type RequestExecution struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// UserID holds the value of the "user_id" field.
 	UserID int `json:"user_id,omitempty"`
 	// RequestID holds the value of the "request_id" field.
@@ -31,6 +36,8 @@ type RequestExecution struct {
 	RequestBody objects.JSONRawMessage `json:"request_body,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
 	ResponseBody objects.JSONRawMessage `json:"response_body,omitempty"`
+	// ResponseChunks holds the value of the "response_chunks" field.
+	ResponseChunks []objects.JSONRawMessage `json:"response_chunks,omitempty"`
 	// ErrorMessage holds the value of the "error_message" field.
 	ErrorMessage string `json:"error_message,omitempty"`
 	// Status holds the value of the "status" field.
@@ -68,12 +75,14 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case requestexecution.FieldRequestBody, requestexecution.FieldResponseBody:
+		case requestexecution.FieldRequestBody, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks:
 			values[i] = new([]byte)
 		case requestexecution.FieldID, requestexecution.FieldUserID, requestexecution.FieldRequestID, requestexecution.FieldChannelID:
 			values[i] = new(sql.NullInt64)
 		case requestexecution.FieldModelID, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
 			values[i] = new(sql.NullString)
+		case requestexecution.FieldCreatedAt, requestexecution.FieldUpdatedAt:
+			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -95,6 +104,18 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			re.ID = int(value.Int64)
+		case requestexecution.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				re.CreatedAt = value.Time
+			}
+		case requestexecution.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				re.UpdatedAt = value.Time
+			}
 		case requestexecution.FieldUserID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
@@ -133,6 +154,14 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &re.ResponseBody); err != nil {
 					return fmt.Errorf("unmarshal field response_body: %w", err)
+				}
+			}
+		case requestexecution.FieldResponseChunks:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field response_chunks", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &re.ResponseChunks); err != nil {
+					return fmt.Errorf("unmarshal field response_chunks: %w", err)
 				}
 			}
 		case requestexecution.FieldErrorMessage:
@@ -188,6 +217,12 @@ func (re *RequestExecution) String() string {
 	var builder strings.Builder
 	builder.WriteString("RequestExecution(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", re.ID))
+	builder.WriteString("created_at=")
+	builder.WriteString(re.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(re.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
 	builder.WriteString("user_id=")
 	builder.WriteString(fmt.Sprintf("%v", re.UserID))
 	builder.WriteString(", ")
@@ -205,6 +240,9 @@ func (re *RequestExecution) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("response_body=")
 	builder.WriteString(fmt.Sprintf("%v", re.ResponseBody))
+	builder.WriteString(", ")
+	builder.WriteString("response_chunks=")
+	builder.WriteString(fmt.Sprintf("%v", re.ResponseChunks))
 	builder.WriteString(", ")
 	builder.WriteString("error_message=")
 	builder.WriteString(re.ErrorMessage)

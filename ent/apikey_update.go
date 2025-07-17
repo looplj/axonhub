@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -25,6 +26,12 @@ type APIKeyUpdate struct {
 // Where appends a list predicates to the APIKeyUpdate builder.
 func (aku *APIKeyUpdate) Where(ps ...predicate.APIKey) *APIKeyUpdate {
 	aku.mutation.Where(ps...)
+	return aku
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (aku *APIKeyUpdate) SetUpdatedAt(t time.Time) *APIKeyUpdate {
+	aku.mutation.SetUpdatedAt(t)
 	return aku
 }
 
@@ -85,6 +92,7 @@ func (aku *APIKeyUpdate) RemoveRequests(r ...*Request) *APIKeyUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (aku *APIKeyUpdate) Save(ctx context.Context) (int, error) {
+	aku.defaults()
 	return withHooks(ctx, aku.sqlSave, aku.mutation, aku.hooks)
 }
 
@@ -110,6 +118,14 @@ func (aku *APIKeyUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (aku *APIKeyUpdate) defaults() {
+	if _, ok := aku.mutation.UpdatedAt(); !ok {
+		v := apikey.UpdateDefaultUpdatedAt()
+		aku.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (aku *APIKeyUpdate) check() error {
 	if aku.mutation.UserCleared() && len(aku.mutation.UserIDs()) > 0 {
@@ -129,6 +145,9 @@ func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := aku.mutation.UpdatedAt(); ok {
+		_spec.SetField(apikey.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := aku.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)
@@ -196,6 +215,12 @@ type APIKeyUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *APIKeyMutation
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (akuo *APIKeyUpdateOne) SetUpdatedAt(t time.Time) *APIKeyUpdateOne {
+	akuo.mutation.SetUpdatedAt(t)
+	return akuo
 }
 
 // SetName sets the "name" field.
@@ -268,6 +293,7 @@ func (akuo *APIKeyUpdateOne) Select(field string, fields ...string) *APIKeyUpdat
 
 // Save executes the query and returns the updated APIKey entity.
 func (akuo *APIKeyUpdateOne) Save(ctx context.Context) (*APIKey, error) {
+	akuo.defaults()
 	return withHooks(ctx, akuo.sqlSave, akuo.mutation, akuo.hooks)
 }
 
@@ -290,6 +316,14 @@ func (akuo *APIKeyUpdateOne) Exec(ctx context.Context) error {
 func (akuo *APIKeyUpdateOne) ExecX(ctx context.Context) {
 	if err := akuo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (akuo *APIKeyUpdateOne) defaults() {
+	if _, ok := akuo.mutation.UpdatedAt(); !ok {
+		v := apikey.UpdateDefaultUpdatedAt()
+		akuo.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -329,6 +363,9 @@ func (akuo *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err er
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := akuo.mutation.UpdatedAt(); ok {
+		_spec.SetField(apikey.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := akuo.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)

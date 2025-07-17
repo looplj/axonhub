@@ -3,10 +3,12 @@ package biz
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/log"
 	"github.com/looplj/axonhub/objects"
 )
@@ -133,6 +135,137 @@ func (s *RequestService) UpdateRequestExecutionFailed(ctx context.Context, execu
 	}
 
 	return nil
+}
+
+// AppendRequestExecutionChunk appends a response chunk to request execution
+func (s *RequestService) AppendRequestExecutionChunk(ctx context.Context, executionID int, chunk any) error {
+	chunkBytes, err := Marshal(chunk)
+	if err != nil {
+		log.Error(ctx, "Failed to marshal chunk", log.Cause(err))
+		return err
+	}
+
+	_, err = s.EntClient.RequestExecution.UpdateOneID(executionID).
+		AppendResponseChunks([]objects.JSONRawMessage{chunkBytes}).
+		Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to append response chunk", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
+// UpdateRequestExecutionCompletedWithChunks updates request execution status to completed and aggregates chunks into response body
+func (s *RequestService) UpdateRequestExecutionCompletedWithChunks(ctx context.Context, executionID int, chunks []objects.JSONRawMessage, outboundTransformer transformer.Outbound) error {
+	// Convert JSONRawMessage chunks to [][]byte for transformer
+	bytesChunks := make([][]byte, len(chunks))
+	for i, chunk := range chunks {
+		bytesChunks[i] = []byte(chunk)
+	}
+
+	// Use outbound transformer to aggregate chunks
+	chatResp, err := outboundTransformer.AggregateStreamChunks(ctx, bytesChunks)
+	if err != nil {
+		log.Error(ctx, "Failed to aggregate chunks using transformer", log.Cause(err))
+		return err
+	}
+
+	// Marshal the aggregated response
+	aggregatedResponse, err := Marshal(chatResp)
+	if err != nil {
+		log.Error(ctx, "Failed to marshal aggregated response", log.Cause(err))
+		return err
+	}
+
+	_, err = s.EntClient.RequestExecution.UpdateOneID(executionID).
+		SetStatus(requestexecution.StatusCompleted).
+		SetResponseBody(aggregatedResponse).
+		Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to update request execution status to completed", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
+// AggregateChunksToResponseWithTransformer aggregates streaming chunks using the provided outbound transformer
+func (s *RequestService) AggregateChunksToResponseWithTransformer(ctx context.Context, chunks []objects.JSONRawMessage, outboundTransformer transformer.Outbound) (objects.JSONRawMessage, error) {
+	// Convert JSONRawMessage chunks to [][]byte for transformer
+	bytesChunks := make([][]byte, len(chunks))
+	for i, chunk := range chunks {
+		bytesChunks[i] = []byte(chunk)
+	}
+
+	// Use outbound transformer to aggregate chunks
+	chatResp, err := outboundTransformer.AggregateStreamChunks(ctx, bytesChunks)
+	if err != nil {
+		return nil, err
+	}
+
+	// Marshal the aggregated response
+	return Marshal(chatResp)
+}
+
+// AggregateChunksToResponse aggregates streaming chunks into a complete LLM response
+// Deprecated: Use AggregateChunksToResponseWithTransformer instead for better multi-platform support
+func (s *RequestService) AggregateChunksToResponse(chunks []objects.JSONRawMessage) (objects.JSONRawMessage, error) {
+	if len(chunks) == 0 {
+		return objects.JSONRawMessage("{}"), nil
+	}
+
+	// For OpenAI-style streaming, we need to aggregate the delta content from chunks
+	// into a complete ChatCompletionResponse
+	var aggregatedContent strings.Builder
+	var lastChunk map[string]interface{}
+
+	for _, chunk := range chunks {
+		var chunkData map[string]interface{}
+		if err := json.Unmarshal(chunk, &chunkData); err != nil {
+			continue // Skip invalid chunks
+		}
+
+		// Extract content from choices[0].delta.content if it exists
+		if choices, ok := chunkData["choices"].([]interface{}); ok && len(choices) > 0 {
+			if choice, ok := choices[0].(map[string]interface{}); ok {
+				if delta, ok := choice["delta"].(map[string]interface{}); ok {
+					if content, ok := delta["content"].(string); ok {
+						aggregatedContent.WriteString(content)
+					}
+				}
+			}
+		}
+
+		// Keep the last chunk for metadata
+		lastChunk = chunkData
+	}
+
+	// Create a complete response using the last chunk as template
+	if lastChunk != nil {
+		// Convert streaming response to complete response
+		if choices, ok := lastChunk["choices"].([]interface{}); ok && len(choices) > 0 {
+			if choice, ok := choices[0].(map[string]interface{}); ok {
+				// Replace delta with complete message
+				choice["message"] = map[string]interface{}{
+					"role":    "assistant",
+					"content": aggregatedContent.String(),
+				}
+				delete(choice, "delta")
+				choice["finish_reason"] = "stop"
+			}
+		}
+		// Change object type from chat.completion.chunk to chat.completion
+		lastChunk["object"] = "chat.completion"
+	}
+
+	// Marshal the aggregated response
+	responseBytes, err := json.Marshal(lastChunk)
+	if err != nil {
+		return nil, err
+	}
+
+	return objects.JSONRawMessage(responseBytes), nil
 }
 
 func Marshal(v any) (objects.JSONRawMessage, error) {

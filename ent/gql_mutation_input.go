@@ -3,6 +3,8 @@
 package ent
 
 import (
+	"time"
+
 	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/objects"
@@ -10,13 +12,21 @@ import (
 
 // CreateAPIKeyInput represents a mutation input for creating apikeys.
 type CreateAPIKeyInput struct {
-	Key    string
-	Name   string
-	UserID int
+	CreatedAt *time.Time
+	UpdatedAt *time.Time
+	Key       string
+	Name      string
+	UserID    int
 }
 
 // Mutate applies the CreateAPIKeyInput on the APIKeyMutation builder.
 func (i *CreateAPIKeyInput) Mutate(m *APIKeyMutation) {
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
 	m.SetKey(i.Key)
 	m.SetName(i.Name)
 	m.SetUserID(i.UserID)
@@ -30,11 +40,15 @@ func (c *APIKeyCreate) SetInput(i CreateAPIKeyInput) *APIKeyCreate {
 
 // UpdateAPIKeyInput represents a mutation input for updating apikeys.
 type UpdateAPIKeyInput struct {
-	Name *string
+	UpdatedAt *time.Time
+	Name      *string
 }
 
 // Mutate applies the UpdateAPIKeyInput on the APIKeyMutation builder.
 func (i *UpdateAPIKeyInput) Mutate(m *APIKeyMutation) {
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
 	}
@@ -54,6 +68,8 @@ func (c *APIKeyUpdateOne) SetInput(i UpdateAPIKeyInput) *APIKeyUpdateOne {
 
 // CreateChannelInput represents a mutation input for creating channels.
 type CreateChannelInput struct {
+	CreatedAt        *time.Time
+	UpdatedAt        *time.Time
 	Type             channel.Type
 	BaseURL          string
 	Name             string
@@ -65,6 +81,12 @@ type CreateChannelInput struct {
 
 // Mutate applies the CreateChannelInput on the ChannelMutation builder.
 func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
 	m.SetType(i.Type)
 	m.SetBaseURL(i.BaseURL)
 	m.SetName(i.Name)
@@ -86,6 +108,7 @@ func (c *ChannelCreate) SetInput(i CreateChannelInput) *ChannelCreate {
 
 // UpdateChannelInput represents a mutation input for updating channels.
 type UpdateChannelInput struct {
+	UpdatedAt             *time.Time
 	BaseURL               *string
 	Name                  *string
 	APIKey                *string
@@ -97,6 +120,9 @@ type UpdateChannelInput struct {
 
 // Mutate applies the UpdateChannelInput on the ChannelMutation builder.
 func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
 	if v := i.BaseURL; v != nil {
 		m.SetBaseURL(*v)
 	}
@@ -134,6 +160,8 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 
 // CreateRequestInput represents a mutation input for creating requests.
 type CreateRequestInput struct {
+	CreatedAt    *time.Time
+	UpdatedAt    *time.Time
 	RequestBody  objects.JSONRawMessage
 	ResponseBody objects.JSONRawMessage
 	Status       request.Status
@@ -143,6 +171,12 @@ type CreateRequestInput struct {
 
 // Mutate applies the CreateRequestInput on the RequestMutation builder.
 func (i *CreateRequestInput) Mutate(m *RequestMutation) {
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
 	if v := i.RequestBody; v != nil {
 		m.SetRequestBody(v)
 	}
@@ -162,6 +196,7 @@ func (c *RequestCreate) SetInput(i CreateRequestInput) *RequestCreate {
 
 // UpdateRequestInput represents a mutation input for updating requests.
 type UpdateRequestInput struct {
+	UpdatedAt          *time.Time
 	ClearResponseBody  bool
 	ResponseBody       objects.JSONRawMessage
 	AppendResponseBody objects.JSONRawMessage
@@ -170,6 +205,9 @@ type UpdateRequestInput struct {
 
 // Mutate applies the UpdateRequestInput on the RequestMutation builder.
 func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
 	if i.ClearResponseBody {
 		m.ClearResponseBody()
 	}
@@ -198,6 +236,8 @@ func (c *RequestUpdateOne) SetInput(i UpdateRequestInput) *RequestUpdateOne {
 
 // CreateUserInput represents a mutation input for creating users.
 type CreateUserInput struct {
+	CreatedAt  *time.Time
+	UpdatedAt  *time.Time
 	Email      string
 	Name       string
 	RequestIDs []int
@@ -206,6 +246,12 @@ type CreateUserInput struct {
 
 // Mutate applies the CreateUserInput on the UserMutation builder.
 func (i *CreateUserInput) Mutate(m *UserMutation) {
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
 	m.SetEmail(i.Email)
 	m.SetName(i.Name)
 	if v := i.RequestIDs; len(v) > 0 {
@@ -224,6 +270,7 @@ func (c *UserCreate) SetInput(i CreateUserInput) *UserCreate {
 
 // UpdateUserInput represents a mutation input for updating users.
 type UpdateUserInput struct {
+	UpdatedAt        *time.Time
 	Email            *string
 	Name             *string
 	ClearRequests    bool
@@ -236,6 +283,9 @@ type UpdateUserInput struct {
 
 // Mutate applies the UpdateUserInput on the UserMutation builder.
 func (i *UpdateUserInput) Mutate(m *UserMutation) {
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
 	if v := i.Email; v != nil {
 		m.SetEmail(*v)
 	}

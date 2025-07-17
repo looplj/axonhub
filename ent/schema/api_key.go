@@ -13,7 +13,7 @@ type APIKey struct {
 	ent.Schema
 }
 
-func (APIKey) Mixins() []ent.Mixin {
+func (APIKey) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
 	}

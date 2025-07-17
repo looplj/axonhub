@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -21,6 +22,34 @@ type APIKeyCreate struct {
 	mutation *APIKeyMutation
 	hooks    []Hook
 	conflict []sql.ConflictOption
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (akc *APIKeyCreate) SetCreatedAt(t time.Time) *APIKeyCreate {
+	akc.mutation.SetCreatedAt(t)
+	return akc
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (akc *APIKeyCreate) SetNillableCreatedAt(t *time.Time) *APIKeyCreate {
+	if t != nil {
+		akc.SetCreatedAt(*t)
+	}
+	return akc
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (akc *APIKeyCreate) SetUpdatedAt(t time.Time) *APIKeyCreate {
+	akc.mutation.SetUpdatedAt(t)
+	return akc
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (akc *APIKeyCreate) SetNillableUpdatedAt(t *time.Time) *APIKeyCreate {
+	if t != nil {
+		akc.SetUpdatedAt(*t)
+	}
+	return akc
 }
 
 // SetUserID sets the "user_id" field.
@@ -68,6 +97,7 @@ func (akc *APIKeyCreate) Mutation() *APIKeyMutation {
 
 // Save creates the APIKey in the database.
 func (akc *APIKeyCreate) Save(ctx context.Context) (*APIKey, error) {
+	akc.defaults()
 	return withHooks(ctx, akc.sqlSave, akc.mutation, akc.hooks)
 }
 
@@ -93,8 +123,26 @@ func (akc *APIKeyCreate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (akc *APIKeyCreate) defaults() {
+	if _, ok := akc.mutation.CreatedAt(); !ok {
+		v := apikey.DefaultCreatedAt()
+		akc.mutation.SetCreatedAt(v)
+	}
+	if _, ok := akc.mutation.UpdatedAt(); !ok {
+		v := apikey.DefaultUpdatedAt()
+		akc.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (akc *APIKeyCreate) check() error {
+	if _, ok := akc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "APIKey.created_at"`)}
+	}
+	if _, ok := akc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "APIKey.updated_at"`)}
+	}
 	if _, ok := akc.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "APIKey.user_id"`)}
 	}
@@ -134,6 +182,14 @@ func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 		_spec = sqlgraph.NewCreateSpec(apikey.Table, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt))
 	)
 	_spec.OnConflict = akc.conflict
+	if value, ok := akc.mutation.CreatedAt(); ok {
+		_spec.SetField(apikey.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := akc.mutation.UpdatedAt(); ok {
+		_spec.SetField(apikey.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
 	if value, ok := akc.mutation.Key(); ok {
 		_spec.SetField(apikey.FieldKey, field.TypeString, value)
 		_node.Key = value
@@ -182,7 +238,7 @@ func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.APIKey.Create().
-//		SetUserID(v).
+//		SetCreatedAt(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -191,7 +247,7 @@ func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.APIKeyUpsert) {
-//			SetUserID(v+v).
+//			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
 func (akc *APIKeyCreate) OnConflict(opts ...sql.ConflictOption) *APIKeyUpsertOne {
@@ -227,6 +283,18 @@ type (
 	}
 )
 
+// SetUpdatedAt sets the "updated_at" field.
+func (u *APIKeyUpsert) SetUpdatedAt(v time.Time) *APIKeyUpsert {
+	u.Set(apikey.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateUpdatedAt() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldUpdatedAt)
+	return u
+}
+
 // SetName sets the "name" field.
 func (u *APIKeyUpsert) SetName(v string) *APIKeyUpsert {
 	u.Set(apikey.FieldName, v)
@@ -250,6 +318,9 @@ func (u *APIKeyUpsert) UpdateName() *APIKeyUpsert {
 func (u *APIKeyUpsertOne) UpdateNewValues() *APIKeyUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(apikey.FieldCreatedAt)
+		}
 		if _, exists := u.create.mutation.UserID(); exists {
 			s.SetIgnore(apikey.FieldUserID)
 		}
@@ -285,6 +356,20 @@ func (u *APIKeyUpsertOne) Update(set func(*APIKeyUpsert)) *APIKeyUpsertOne {
 		set(&APIKeyUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *APIKeyUpsertOne) SetUpdatedAt(v time.Time) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateUpdatedAt() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateUpdatedAt()
+	})
 }
 
 // SetName sets the "name" field.
@@ -353,6 +438,7 @@ func (akcb *APIKeyCreateBulk) Save(ctx context.Context) ([]*APIKey, error) {
 	for i := range akcb.builders {
 		func(i int, root context.Context) {
 			builder := akcb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*APIKeyMutation)
 				if !ok {
@@ -435,7 +521,7 @@ func (akcb *APIKeyCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.APIKeyUpsert) {
-//			SetUserID(v+v).
+//			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
 func (akcb *APIKeyCreateBulk) OnConflict(opts ...sql.ConflictOption) *APIKeyUpsertBulk {
@@ -476,6 +562,9 @@ func (u *APIKeyUpsertBulk) UpdateNewValues() *APIKeyUpsertBulk {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		for _, b := range u.create.builders {
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(apikey.FieldCreatedAt)
+			}
 			if _, exists := b.mutation.UserID(); exists {
 				s.SetIgnore(apikey.FieldUserID)
 			}
@@ -512,6 +601,20 @@ func (u *APIKeyUpsertBulk) Update(set func(*APIKeyUpsert)) *APIKeyUpsertBulk {
 		set(&APIKeyUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *APIKeyUpsertBulk) SetUpdatedAt(v time.Time) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateUpdatedAt() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateUpdatedAt()
+	})
 }
 
 // SetName sets the "name" field.

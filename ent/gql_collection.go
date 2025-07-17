@@ -143,6 +143,16 @@ func (akq *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			akq.WithNamedRequests(alias, func(wq *RequestQuery) {
 				*wq = *query
 			})
+		case "createdAt":
+			if _, ok := fieldSeen[apikey.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, apikey.FieldCreatedAt)
+				fieldSeen[apikey.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[apikey.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, apikey.FieldUpdatedAt)
+				fieldSeen[apikey.FieldUpdatedAt] = struct{}{}
+			}
 		case "userID":
 			if _, ok := fieldSeen[apikey.FieldUserID]; !ok {
 				selectedFields = append(selectedFields, apikey.FieldUserID)
@@ -192,6 +202,28 @@ func newAPIKeyPaginateArgs(rv map[string]any) *apikeyPaginateArgs {
 	}
 	if v := rv[beforeField]; v != nil {
 		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &APIKeyOrder{Field: &APIKeyOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithAPIKeyOrder(order))
+			}
+		case *APIKeyOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithAPIKeyOrder(v))
+			}
+		}
 	}
 	if v, ok := rv[whereField].(*APIKeyWhereInput); ok {
 		args.opts = append(args.opts, WithAPIKeyFilter(v.Filter))
@@ -309,6 +341,16 @@ func (cq *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			cq.WithNamedRequests(alias, func(wq *RequestQuery) {
 				*wq = *query
 			})
+		case "createdAt":
+			if _, ok := fieldSeen[channel.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, channel.FieldCreatedAt)
+				fieldSeen[channel.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[channel.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, channel.FieldUpdatedAt)
+				fieldSeen[channel.FieldUpdatedAt] = struct{}{}
+			}
 		case "type":
 			if _, ok := fieldSeen[channel.FieldType]; !ok {
 				selectedFields = append(selectedFields, channel.FieldType)
@@ -373,6 +415,28 @@ func newChannelPaginateArgs(rv map[string]any) *channelPaginateArgs {
 	}
 	if v := rv[beforeField]; v != nil {
 		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &ChannelOrder{Field: &ChannelOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithChannelOrder(order))
+			}
+		case *ChannelOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithChannelOrder(v))
+			}
+		}
 	}
 	if v, ok := rv[whereField].(*ChannelWhereInput); ok {
 		args.opts = append(args.opts, WithChannelFilter(v.Filter))
@@ -597,6 +661,16 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			rq.WithNamedExecutions(alias, func(wq *RequestExecutionQuery) {
 				*wq = *query
 			})
+		case "createdAt":
+			if _, ok := fieldSeen[request.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, request.FieldCreatedAt)
+				fieldSeen[request.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[request.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, request.FieldUpdatedAt)
+				fieldSeen[request.FieldUpdatedAt] = struct{}{}
+			}
 		case "userID":
 			if _, ok := fieldSeen[request.FieldUserID]; !ok {
 				selectedFields = append(selectedFields, request.FieldUserID)
@@ -657,6 +731,28 @@ func newRequestPaginateArgs(rv map[string]any) *requestPaginateArgs {
 	if v := rv[beforeField]; v != nil {
 		args.before = v.(*Cursor)
 	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &RequestOrder{Field: &RequestOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithRequestOrder(order))
+			}
+		case *RequestOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithRequestOrder(v))
+			}
+		}
+	}
 	if v, ok := rv[whereField].(*RequestWhereInput); ok {
 		args.opts = append(args.opts, WithRequestFilter(v.Filter))
 	}
@@ -699,6 +795,16 @@ func (req *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool
 				selectedFields = append(selectedFields, requestexecution.FieldRequestID)
 				fieldSeen[requestexecution.FieldRequestID] = struct{}{}
 			}
+		case "createdAt":
+			if _, ok := fieldSeen[requestexecution.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldCreatedAt)
+				fieldSeen[requestexecution.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[requestexecution.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldUpdatedAt)
+				fieldSeen[requestexecution.FieldUpdatedAt] = struct{}{}
+			}
 		case "userID":
 			if _, ok := fieldSeen[requestexecution.FieldUserID]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldUserID)
@@ -728,6 +834,11 @@ func (req *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool
 			if _, ok := fieldSeen[requestexecution.FieldResponseBody]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldResponseBody)
 				fieldSeen[requestexecution.FieldResponseBody] = struct{}{}
+			}
+		case "responseChunks":
+			if _, ok := fieldSeen[requestexecution.FieldResponseChunks]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldResponseChunks)
+				fieldSeen[requestexecution.FieldResponseChunks] = struct{}{}
 			}
 		case "errorMessage":
 			if _, ok := fieldSeen[requestexecution.FieldErrorMessage]; !ok {
@@ -773,6 +884,28 @@ func newRequestExecutionPaginateArgs(rv map[string]any) *requestexecutionPaginat
 	}
 	if v := rv[beforeField]; v != nil {
 		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &RequestExecutionOrder{Field: &RequestExecutionOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithRequestExecutionOrder(order))
+			}
+		case *RequestExecutionOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithRequestExecutionOrder(v))
+			}
+		}
 	}
 	if v, ok := rv[whereField].(*RequestExecutionWhereInput); ok {
 		args.opts = append(args.opts, WithRequestExecutionFilter(v.Filter))
@@ -979,6 +1112,16 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 			uq.WithNamedAPIKeys(alias, func(wq *APIKeyQuery) {
 				*wq = *query
 			})
+		case "createdAt":
+			if _, ok := fieldSeen[user.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, user.FieldCreatedAt)
+				fieldSeen[user.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[user.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, user.FieldUpdatedAt)
+				fieldSeen[user.FieldUpdatedAt] = struct{}{}
+			}
 		case "email":
 			if _, ok := fieldSeen[user.FieldEmail]; !ok {
 				selectedFields = append(selectedFields, user.FieldEmail)
@@ -1023,6 +1166,28 @@ func newUserPaginateArgs(rv map[string]any) *userPaginateArgs {
 	}
 	if v := rv[beforeField]; v != nil {
 		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &UserOrder{Field: &UserOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithUserOrder(order))
+			}
+		case *UserOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithUserOrder(v))
+			}
+		}
 	}
 	if v, ok := rv[whereField].(*UserWhereInput); ok {
 		args.opts = append(args.opts, WithUserFilter(v.Filter))

@@ -302,12 +302,12 @@ func (cq *ChannelQuery) WithRequests(opts ...func(*RequestQuery)) *ChannelQuery 
 // Example:
 //
 //	var v []struct {
-//		Type channel.Type `json:"type,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Channel.Query().
-//		GroupBy(channel.FieldType).
+//		GroupBy(channel.FieldCreatedAt).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (cq *ChannelQuery) GroupBy(field string, fields ...string) *ChannelGroupBy {
@@ -325,11 +325,11 @@ func (cq *ChannelQuery) GroupBy(field string, fields ...string) *ChannelGroupBy 
 // Example:
 //
 //	var v []struct {
-//		Type channel.Type `json:"type,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //	}
 //
 //	client.Channel.Query().
-//		Select(channel.FieldType).
+//		Select(channel.FieldCreatedAt).
 //		Scan(ctx, &v)
 func (cq *ChannelQuery) Select(fields ...string) *ChannelSelect {
 	cq.ctx.Fields = append(cq.ctx.Fields, fields...)

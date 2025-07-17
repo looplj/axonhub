@@ -14,7 +14,7 @@ type Channel struct {
 	ent.Schema
 }
 
-func (Channel) Mixins() []ent.Mixin {
+func (Channel) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
 	}

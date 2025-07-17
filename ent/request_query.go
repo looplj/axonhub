@@ -375,12 +375,12 @@ func (rq *RequestQuery) WithExecutions(opts ...func(*RequestExecutionQuery)) *Re
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Request.Query().
-//		GroupBy(request.FieldUserID).
+//		GroupBy(request.FieldCreatedAt).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (rq *RequestQuery) GroupBy(field string, fields ...string) *RequestGroupBy {
@@ -398,11 +398,11 @@ func (rq *RequestQuery) GroupBy(field string, fields ...string) *RequestGroupBy 
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //	}
 //
 //	client.Request.Query().
-//		Select(request.FieldUserID).
+//		Select(request.FieldCreatedAt).
 //		Scan(ctx, &v)
 func (rq *RequestQuery) Select(fields ...string) *RequestSelect {
 	rq.ctx.Fields = append(rq.ctx.Fields, fields...)

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -21,6 +22,34 @@ type ChannelCreate struct {
 	mutation *ChannelMutation
 	hooks    []Hook
 	conflict []sql.ConflictOption
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (cc *ChannelCreate) SetCreatedAt(t time.Time) *ChannelCreate {
+	cc.mutation.SetCreatedAt(t)
+	return cc
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (cc *ChannelCreate) SetNillableCreatedAt(t *time.Time) *ChannelCreate {
+	if t != nil {
+		cc.SetCreatedAt(*t)
+	}
+	return cc
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (cc *ChannelCreate) SetUpdatedAt(t time.Time) *ChannelCreate {
+	cc.mutation.SetUpdatedAt(t)
+	return cc
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (cc *ChannelCreate) SetNillableUpdatedAt(t *time.Time) *ChannelCreate {
+	if t != nil {
+		cc.SetUpdatedAt(*t)
+	}
+	return cc
 }
 
 // SetType sets the "type" field.
@@ -87,6 +116,7 @@ func (cc *ChannelCreate) Mutation() *ChannelMutation {
 
 // Save creates the Channel in the database.
 func (cc *ChannelCreate) Save(ctx context.Context) (*Channel, error) {
+	cc.defaults()
 	return withHooks(ctx, cc.sqlSave, cc.mutation, cc.hooks)
 }
 
@@ -112,8 +142,26 @@ func (cc *ChannelCreate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (cc *ChannelCreate) defaults() {
+	if _, ok := cc.mutation.CreatedAt(); !ok {
+		v := channel.DefaultCreatedAt()
+		cc.mutation.SetCreatedAt(v)
+	}
+	if _, ok := cc.mutation.UpdatedAt(); !ok {
+		v := channel.DefaultUpdatedAt()
+		cc.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (cc *ChannelCreate) check() error {
+	if _, ok := cc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Channel.created_at"`)}
+	}
+	if _, ok := cc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Channel.updated_at"`)}
+	}
 	if _, ok := cc.mutation.GetType(); !ok {
 		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "Channel.type"`)}
 	}
@@ -172,6 +220,14 @@ func (cc *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 		_spec = sqlgraph.NewCreateSpec(channel.Table, sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt))
 	)
 	_spec.OnConflict = cc.conflict
+	if value, ok := cc.mutation.CreatedAt(); ok {
+		_spec.SetField(channel.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := cc.mutation.UpdatedAt(); ok {
+		_spec.SetField(channel.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
 	if value, ok := cc.mutation.GetType(); ok {
 		_spec.SetField(channel.FieldType, field.TypeEnum, value)
 		_node.Type = value
@@ -223,7 +279,7 @@ func (cc *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.Channel.Create().
-//		SetType(v).
+//		SetCreatedAt(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -232,7 +288,7 @@ func (cc *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.ChannelUpsert) {
-//			SetType(v+v).
+//			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
 func (cc *ChannelCreate) OnConflict(opts ...sql.ConflictOption) *ChannelUpsertOne {
@@ -267,6 +323,18 @@ type (
 		*sql.UpdateSet
 	}
 )
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *ChannelUpsert) SetUpdatedAt(v time.Time) *ChannelUpsert {
+	u.Set(channel.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateUpdatedAt() *ChannelUpsert {
+	u.SetExcluded(channel.FieldUpdatedAt)
+	return u
+}
 
 // SetBaseURL sets the "base_url" field.
 func (u *ChannelUpsert) SetBaseURL(v string) *ChannelUpsert {
@@ -351,6 +419,9 @@ func (u *ChannelUpsert) UpdateSettings() *ChannelUpsert {
 func (u *ChannelUpsertOne) UpdateNewValues() *ChannelUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(channel.FieldCreatedAt)
+		}
 		if _, exists := u.create.mutation.GetType(); exists {
 			s.SetIgnore(channel.FieldType)
 		}
@@ -383,6 +454,20 @@ func (u *ChannelUpsertOne) Update(set func(*ChannelUpsert)) *ChannelUpsertOne {
 		set(&ChannelUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *ChannelUpsertOne) SetUpdatedAt(v time.Time) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateUpdatedAt() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateUpdatedAt()
+	})
 }
 
 // SetBaseURL sets the "base_url" field.
@@ -521,6 +606,7 @@ func (ccb *ChannelCreateBulk) Save(ctx context.Context) ([]*Channel, error) {
 	for i := range ccb.builders {
 		func(i int, root context.Context) {
 			builder := ccb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*ChannelMutation)
 				if !ok {
@@ -603,7 +689,7 @@ func (ccb *ChannelCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.ChannelUpsert) {
-//			SetType(v+v).
+//			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
 func (ccb *ChannelCreateBulk) OnConflict(opts ...sql.ConflictOption) *ChannelUpsertBulk {
@@ -644,6 +730,9 @@ func (u *ChannelUpsertBulk) UpdateNewValues() *ChannelUpsertBulk {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		for _, b := range u.create.builders {
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(channel.FieldCreatedAt)
+			}
 			if _, exists := b.mutation.GetType(); exists {
 				s.SetIgnore(channel.FieldType)
 			}
@@ -677,6 +766,20 @@ func (u *ChannelUpsertBulk) Update(set func(*ChannelUpsert)) *ChannelUpsertBulk 
 		set(&ChannelUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *ChannelUpsertBulk) SetUpdatedAt(v time.Time) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateUpdatedAt() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateUpdatedAt()
+	})
 }
 
 // SetBaseURL sets the "base_url" field.

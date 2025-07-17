@@ -17,9 +17,10 @@ func (ak *APIKey) User(ctx context.Context) (*User, error) {
 }
 
 func (ak *APIKey) Requests(
-	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, where *RequestWhereInput,
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *RequestOrder, where *RequestWhereInput,
 ) (*RequestConnection, error) {
 	opts := []RequestPaginateOption{
+		WithRequestOrder(orderBy),
 		WithRequestFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
@@ -37,9 +38,10 @@ func (ak *APIKey) Requests(
 }
 
 func (c *Channel) Requests(
-	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, where *RequestWhereInput,
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *RequestOrder, where *RequestWhereInput,
 ) (*RequestConnection, error) {
 	opts := []RequestPaginateOption{
+		WithRequestOrder(orderBy),
 		WithRequestFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
@@ -73,9 +75,10 @@ func (r *Request) APIKey(ctx context.Context) (*APIKey, error) {
 }
 
 func (r *Request) Executions(
-	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, where *RequestExecutionWhereInput,
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *RequestExecutionOrder, where *RequestExecutionWhereInput,
 ) (*RequestExecutionConnection, error) {
 	opts := []RequestExecutionPaginateOption{
+		WithRequestExecutionOrder(orderBy),
 		WithRequestExecutionFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
@@ -101,9 +104,10 @@ func (re *RequestExecution) Request(ctx context.Context) (*Request, error) {
 }
 
 func (u *User) Requests(
-	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, where *RequestWhereInput,
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *RequestOrder, where *RequestWhereInput,
 ) (*RequestConnection, error) {
 	opts := []RequestPaginateOption{
+		WithRequestOrder(orderBy),
 		WithRequestFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
@@ -121,9 +125,10 @@ func (u *User) Requests(
 }
 
 func (u *User) APIKeys(
-	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, where *APIKeyWhereInput,
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *APIKeyOrder, where *APIKeyWhereInput,
 ) (*APIKeyConnection, error) {
 	opts := []APIKeyPaginateOption{
+		WithAPIKeyOrder(orderBy),
 		WithAPIKeyFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias

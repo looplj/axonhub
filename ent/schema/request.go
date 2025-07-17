@@ -14,7 +14,7 @@ type Request struct {
 	ent.Schema
 }
 
-func (Request) Mixins() []ent.Mixin {
+func (Request) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
 	}

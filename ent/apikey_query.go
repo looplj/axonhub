@@ -338,12 +338,12 @@ func (akq *APIKeyQuery) WithRequests(opts ...func(*RequestQuery)) *APIKeyQuery {
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.APIKey.Query().
-//		GroupBy(apikey.FieldUserID).
+//		GroupBy(apikey.FieldCreatedAt).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (akq *APIKeyQuery) GroupBy(field string, fields ...string) *APIKeyGroupBy {
@@ -361,11 +361,11 @@ func (akq *APIKeyQuery) GroupBy(field string, fields ...string) *APIKeyGroupBy {
 // Example:
 //
 //	var v []struct {
-//		UserID int `json:"user_id,omitempty"`
+//		CreatedAt time.Time `json:"created_at,omitempty"`
 //	}
 //
 //	client.APIKey.Query().
-//		Select(apikey.FieldUserID).
+//		Select(apikey.FieldCreatedAt).
 //		Scan(ctx, &v)
 func (akq *APIKeyQuery) Select(fields ...string) *APIKeySelect {
 	akq.ctx.Fields = append(akq.ctx.Fields, fields...)

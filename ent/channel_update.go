@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -27,6 +28,12 @@ type ChannelUpdate struct {
 // Where appends a list predicates to the ChannelUpdate builder.
 func (cu *ChannelUpdate) Where(ps ...predicate.Channel) *ChannelUpdate {
 	cu.mutation.Where(ps...)
+	return cu
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (cu *ChannelUpdate) SetUpdatedAt(t time.Time) *ChannelUpdate {
+	cu.mutation.SetUpdatedAt(t)
 	return cu
 }
 
@@ -147,6 +154,7 @@ func (cu *ChannelUpdate) RemoveRequests(r ...*Request) *ChannelUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (cu *ChannelUpdate) Save(ctx context.Context) (int, error) {
+	cu.defaults()
 	return withHooks(ctx, cu.sqlSave, cu.mutation, cu.hooks)
 }
 
@@ -172,6 +180,14 @@ func (cu *ChannelUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (cu *ChannelUpdate) defaults() {
+	if _, ok := cu.mutation.UpdatedAt(); !ok {
+		v := channel.UpdateDefaultUpdatedAt()
+		cu.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (cu *ChannelUpdate) check() error {
 	if v, ok := cu.mutation.APIKey(); ok {
@@ -193,6 +209,9 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := cu.mutation.UpdatedAt(); ok {
+		_spec.SetField(channel.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := cu.mutation.BaseURL(); ok {
 		_spec.SetField(channel.FieldBaseURL, field.TypeString, value)
@@ -280,6 +299,12 @@ type ChannelUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *ChannelMutation
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (cuo *ChannelUpdateOne) SetUpdatedAt(t time.Time) *ChannelUpdateOne {
+	cuo.mutation.SetUpdatedAt(t)
+	return cuo
 }
 
 // SetBaseURL sets the "base_url" field.
@@ -412,6 +437,7 @@ func (cuo *ChannelUpdateOne) Select(field string, fields ...string) *ChannelUpda
 
 // Save executes the query and returns the updated Channel entity.
 func (cuo *ChannelUpdateOne) Save(ctx context.Context) (*Channel, error) {
+	cuo.defaults()
 	return withHooks(ctx, cuo.sqlSave, cuo.mutation, cuo.hooks)
 }
 
@@ -434,6 +460,14 @@ func (cuo *ChannelUpdateOne) Exec(ctx context.Context) error {
 func (cuo *ChannelUpdateOne) ExecX(ctx context.Context) {
 	if err := cuo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (cuo *ChannelUpdateOne) defaults() {
+	if _, ok := cuo.mutation.UpdatedAt(); !ok {
+		v := channel.UpdateDefaultUpdatedAt()
+		cuo.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -475,6 +509,9 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := cuo.mutation.UpdatedAt(); ok {
+		_spec.SetField(channel.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if value, ok := cuo.mutation.BaseURL(); ok {
 		_spec.SetField(channel.FieldBaseURL, field.TypeString, value)

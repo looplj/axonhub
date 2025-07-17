@@ -5,6 +5,9 @@ package ent
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"strconv"
 
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
@@ -308,6 +311,53 @@ func (ak *APIKeyQuery) Paginate(
 	return conn, nil
 }
 
+var (
+	// APIKeyOrderFieldCreatedAt orders APIKey by created_at.
+	APIKeyOrderFieldCreatedAt = &APIKeyOrderField{
+		Value: func(ak *APIKey) (ent.Value, error) {
+			return ak.CreatedAt, nil
+		},
+		column: apikey.FieldCreatedAt,
+		toTerm: apikey.ByCreatedAt,
+		toCursor: func(ak *APIKey) Cursor {
+			return Cursor{
+				ID:    ak.ID,
+				Value: ak.CreatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f APIKeyOrderField) String() string {
+	var str string
+	switch f.column {
+	case APIKeyOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f APIKeyOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *APIKeyOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("APIKeyOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *APIKeyOrderFieldCreatedAt
+	default:
+		return fmt.Errorf("%s is not a valid APIKeyOrderField", str)
+	}
+	return nil
+}
+
 // APIKeyOrderField defines the ordering field of APIKey.
 type APIKeyOrderField struct {
 	// Value extracts the ordering value from the given APIKey.
@@ -555,6 +605,53 @@ func (c *ChannelQuery) Paginate(
 	}
 	conn.build(nodes, pager, after, first, before, last)
 	return conn, nil
+}
+
+var (
+	// ChannelOrderFieldCreatedAt orders Channel by created_at.
+	ChannelOrderFieldCreatedAt = &ChannelOrderField{
+		Value: func(c *Channel) (ent.Value, error) {
+			return c.CreatedAt, nil
+		},
+		column: channel.FieldCreatedAt,
+		toTerm: channel.ByCreatedAt,
+		toCursor: func(c *Channel) Cursor {
+			return Cursor{
+				ID:    c.ID,
+				Value: c.CreatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f ChannelOrderField) String() string {
+	var str string
+	switch f.column {
+	case ChannelOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f ChannelOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *ChannelOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ChannelOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *ChannelOrderFieldCreatedAt
+	default:
+		return fmt.Errorf("%s is not a valid ChannelOrderField", str)
+	}
+	return nil
 }
 
 // ChannelOrderField defines the ordering field of Channel.
@@ -1055,6 +1152,53 @@ func (r *RequestQuery) Paginate(
 	return conn, nil
 }
 
+var (
+	// RequestOrderFieldCreatedAt orders Request by created_at.
+	RequestOrderFieldCreatedAt = &RequestOrderField{
+		Value: func(r *Request) (ent.Value, error) {
+			return r.CreatedAt, nil
+		},
+		column: request.FieldCreatedAt,
+		toTerm: request.ByCreatedAt,
+		toCursor: func(r *Request) Cursor {
+			return Cursor{
+				ID:    r.ID,
+				Value: r.CreatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f RequestOrderField) String() string {
+	var str string
+	switch f.column {
+	case RequestOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f RequestOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *RequestOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("RequestOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *RequestOrderFieldCreatedAt
+	default:
+		return fmt.Errorf("%s is not a valid RequestOrderField", str)
+	}
+	return nil
+}
+
 // RequestOrderField defines the ordering field of Request.
 type RequestOrderField struct {
 	// Value extracts the ordering value from the given Request.
@@ -1304,6 +1448,53 @@ func (re *RequestExecutionQuery) Paginate(
 	return conn, nil
 }
 
+var (
+	// RequestExecutionOrderFieldCreatedAt orders RequestExecution by created_at.
+	RequestExecutionOrderFieldCreatedAt = &RequestExecutionOrderField{
+		Value: func(re *RequestExecution) (ent.Value, error) {
+			return re.CreatedAt, nil
+		},
+		column: requestexecution.FieldCreatedAt,
+		toTerm: requestexecution.ByCreatedAt,
+		toCursor: func(re *RequestExecution) Cursor {
+			return Cursor{
+				ID:    re.ID,
+				Value: re.CreatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f RequestExecutionOrderField) String() string {
+	var str string
+	switch f.column {
+	case RequestExecutionOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f RequestExecutionOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *RequestExecutionOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("RequestExecutionOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *RequestExecutionOrderFieldCreatedAt
+	default:
+		return fmt.Errorf("%s is not a valid RequestExecutionOrderField", str)
+	}
+	return nil
+}
+
 // RequestExecutionOrderField defines the ordering field of RequestExecution.
 type RequestExecutionOrderField struct {
 	// Value extracts the ordering value from the given RequestExecution.
@@ -1551,6 +1742,53 @@ func (u *UserQuery) Paginate(
 	}
 	conn.build(nodes, pager, after, first, before, last)
 	return conn, nil
+}
+
+var (
+	// UserOrderFieldCreatedAt orders User by created_at.
+	UserOrderFieldCreatedAt = &UserOrderField{
+		Value: func(u *User) (ent.Value, error) {
+			return u.CreatedAt, nil
+		},
+		column: user.FieldCreatedAt,
+		toTerm: user.ByCreatedAt,
+		toCursor: func(u *User) Cursor {
+			return Cursor{
+				ID:    u.ID,
+				Value: u.CreatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f UserOrderField) String() string {
+	var str string
+	switch f.column {
+	case UserOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f UserOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *UserOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("UserOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *UserOrderFieldCreatedAt
+	default:
+		return fmt.Errorf("%s is not a valid UserOrderField", str)
+	}
+	return nil
 }
 
 // UserOrderField defines the ordering field of User.

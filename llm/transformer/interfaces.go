@@ -25,6 +25,10 @@ type Outbound interface {
 
 	// TransformResponse transforms ChatCompletionResponse to HTTP response.
 	TransformResponse(ctx context.Context, chatResp *llm.GenericHttpResponse) (*llm.ChatCompletionResponse, error)
+
+	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
+	// This method handles provider-specific streaming formats and converts them to a unified response.
+	AggregateStreamChunks(ctx context.Context, chunks [][]byte) (*llm.ChatCompletionResponse, error)
 }
 
 // Transformer converts HTTP requests to ChatCompletionRequest

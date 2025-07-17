@@ -14,7 +14,7 @@ type User struct {
 	ent.Schema
 }
 
-func (User) Mixins() []ent.Mixin {
+func (User) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
 	}

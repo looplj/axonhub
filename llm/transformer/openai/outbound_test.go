@@ -25,13 +25,13 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			request: &llm.ChatCompletionRequest{
 				Model: "gpt-4",
 				Messages: []llm.ChatCompletionMessage{
-						{
-							Role: "user",
-							Content: llm.ChatCompletionMessageContent{
-								Content: stringPtr("Hello, world!"),
-							},
+					{
+						Role: "user",
+						Content: llm.ChatCompletionMessageContent{
+							Content: stringPtr("Hello, world!"),
 						},
 					},
+				},
 			},
 			wantErr: false,
 			validate: func(req *llm.GenericHttpRequest) bool {
@@ -169,6 +169,89 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				if err := json.Unmarshal(result.Body, &unmarshaled); err != nil {
 					t.Errorf("TransformRequest() body is not valid JSON: %v", err)
 				}
+			}
+		})
+	}
+}
+
+func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
+	transformer := NewOutboundTransformer("", "test-key").(*OutboundTransformer)
+
+	tests := []struct {
+		name        string
+		chunks      [][]byte
+		wantErr     bool
+		errContains string
+		validate    func(*llm.ChatCompletionResponse) bool
+	}{
+		{
+			name:   "empty chunks",
+			chunks: [][]byte{},
+			validate: func(resp *llm.ChatCompletionResponse) bool {
+				return resp != nil
+			},
+		},
+		{
+			name: "valid OpenAI streaming chunks",
+			chunks: [][]byte{
+				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"}}]}`),
+				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`),
+				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`),
+			},
+			validate: func(resp *llm.ChatCompletionResponse) bool {
+				if resp == nil || len(resp.Choices) == 0 {
+					return false
+				}
+				// Check if content is aggregated correctly
+				if *resp.Choices[0].Message.Content.Content != "Hello world" {
+					return false
+				}
+				// Check if object type is changed to chat.completion
+				if resp.Object != "chat.completion" {
+					return false
+				}
+				return true
+			},
+		},
+		{
+			name: "invalid JSON chunk",
+			chunks: [][]byte{
+				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"}}]}`),
+				[]byte(`invalid json`),
+				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`),
+			},
+			validate: func(resp *llm.ChatCompletionResponse) bool {
+				if resp == nil || len(resp.Choices) == 0 {
+					return false
+				}
+				// Should still aggregate valid chunks, skipping invalid ones
+				return *resp.Choices[0].Message.Content.Content == "Hello world"
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := transformer.AggregateStreamChunks(context.Background(), tt.chunks)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("AggregateStreamChunks() expected error, got nil")
+					return
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("AggregateStreamChunks() error = %v, want error containing %v", err, tt.errContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("AggregateStreamChunks() unexpected error = %v", err)
+				return
+			}
+
+			if tt.validate != nil && !tt.validate(resp) {
+				t.Errorf("AggregateStreamChunks() validation failed for response: %+v", resp)
 			}
 		})
 	}
@@ -384,10 +467,10 @@ func TestOutboundTransformer_SupportsModel(t *testing.T) {
 
 func TestOutboundTransformer_SetAPIKey(t *testing.T) {
 	transformer := NewOutboundTransformer("", "initial-key").(*OutboundTransformer)
-	
+
 	newKey := "new-api-key"
 	transformer.SetAPIKey(newKey)
-	
+
 	if transformer.apiKey != newKey {
 		t.Errorf("SetAPIKey() failed, got %v, want %v", transformer.apiKey, newKey)
 	}
@@ -395,10 +478,10 @@ func TestOutboundTransformer_SetAPIKey(t *testing.T) {
 
 func TestOutboundTransformer_SetBaseURL(t *testing.T) {
 	transformer := NewOutboundTransformer("initial-url", "test-key").(*OutboundTransformer)
-	
+
 	newURL := "https://new.api.com/v1"
 	transformer.SetBaseURL(newURL)
-	
+
 	if transformer.baseURL != newURL {
 		t.Errorf("SetBaseURL() failed, got %v, want %v", transformer.baseURL, newURL)
 	}
@@ -436,11 +519,11 @@ func TestNewOutboundTransformer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			transformer := NewOutboundTransformer(tt.baseURL, tt.apiKey).(*OutboundTransformer)
-			
+
 			if transformer.baseURL != tt.wantURL {
 				t.Errorf("NewOutboundTransformer() baseURL = %v, want %v", transformer.baseURL, tt.wantURL)
 			}
-			
+
 			if transformer.apiKey != tt.apiKey {
 				t.Errorf("NewOutboundTransformer() apiKey = %v, want %v", transformer.apiKey, tt.apiKey)
 			}

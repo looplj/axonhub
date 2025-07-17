@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -23,6 +24,34 @@ type RequestCreate struct {
 	mutation *RequestMutation
 	hooks    []Hook
 	conflict []sql.ConflictOption
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (rc *RequestCreate) SetCreatedAt(t time.Time) *RequestCreate {
+	rc.mutation.SetCreatedAt(t)
+	return rc
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (rc *RequestCreate) SetNillableCreatedAt(t *time.Time) *RequestCreate {
+	if t != nil {
+		rc.SetCreatedAt(*t)
+	}
+	return rc
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (rc *RequestCreate) SetUpdatedAt(t time.Time) *RequestCreate {
+	rc.mutation.SetUpdatedAt(t)
+	return rc
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (rc *RequestCreate) SetNillableUpdatedAt(t *time.Time) *RequestCreate {
+	if t != nil {
+		rc.SetUpdatedAt(*t)
+	}
+	return rc
 }
 
 // SetUserID sets the "user_id" field.
@@ -87,6 +116,7 @@ func (rc *RequestCreate) Mutation() *RequestMutation {
 
 // Save creates the Request in the database.
 func (rc *RequestCreate) Save(ctx context.Context) (*Request, error) {
+	rc.defaults()
 	return withHooks(ctx, rc.sqlSave, rc.mutation, rc.hooks)
 }
 
@@ -112,8 +142,26 @@ func (rc *RequestCreate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (rc *RequestCreate) defaults() {
+	if _, ok := rc.mutation.CreatedAt(); !ok {
+		v := request.DefaultCreatedAt()
+		rc.mutation.SetCreatedAt(v)
+	}
+	if _, ok := rc.mutation.UpdatedAt(); !ok {
+		v := request.DefaultUpdatedAt()
+		rc.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (rc *RequestCreate) check() error {
+	if _, ok := rc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Request.created_at"`)}
+	}
+	if _, ok := rc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Request.updated_at"`)}
+	}
 	if _, ok := rc.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "Request.user_id"`)}
 	}
@@ -164,6 +212,14 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_spec = sqlgraph.NewCreateSpec(request.Table, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt))
 	)
 	_spec.OnConflict = rc.conflict
+	if value, ok := rc.mutation.CreatedAt(); ok {
+		_spec.SetField(request.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := rc.mutation.UpdatedAt(); ok {
+		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
 	if value, ok := rc.mutation.RequestBody(); ok {
 		_spec.SetField(request.FieldRequestBody, field.TypeJSON, value)
 		_node.RequestBody = value
@@ -233,7 +289,7 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.Request.Create().
-//		SetUserID(v).
+//		SetCreatedAt(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -242,7 +298,7 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.RequestUpsert) {
-//			SetUserID(v+v).
+//			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
 func (rc *RequestCreate) OnConflict(opts ...sql.ConflictOption) *RequestUpsertOne {
@@ -277,6 +333,18 @@ type (
 		*sql.UpdateSet
 	}
 )
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *RequestUpsert) SetUpdatedAt(v time.Time) *RequestUpsert {
+	u.Set(request.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateUpdatedAt() *RequestUpsert {
+	u.SetExcluded(request.FieldUpdatedAt)
+	return u
+}
 
 // SetResponseBody sets the "response_body" field.
 func (u *RequestUpsert) SetResponseBody(v objects.JSONRawMessage) *RequestUpsert {
@@ -319,6 +387,9 @@ func (u *RequestUpsert) UpdateStatus() *RequestUpsert {
 func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(request.FieldCreatedAt)
+		}
 		if _, exists := u.create.mutation.UserID(); exists {
 			s.SetIgnore(request.FieldUserID)
 		}
@@ -357,6 +428,20 @@ func (u *RequestUpsertOne) Update(set func(*RequestUpsert)) *RequestUpsertOne {
 		set(&RequestUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *RequestUpsertOne) SetUpdatedAt(v time.Time) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateUpdatedAt() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateUpdatedAt()
+	})
 }
 
 // SetResponseBody sets the "response_body" field.
@@ -446,6 +531,7 @@ func (rcb *RequestCreateBulk) Save(ctx context.Context) ([]*Request, error) {
 	for i := range rcb.builders {
 		func(i int, root context.Context) {
 			builder := rcb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*RequestMutation)
 				if !ok {
@@ -528,7 +614,7 @@ func (rcb *RequestCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.RequestUpsert) {
-//			SetUserID(v+v).
+//			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
 func (rcb *RequestCreateBulk) OnConflict(opts ...sql.ConflictOption) *RequestUpsertBulk {
@@ -569,6 +655,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		for _, b := range u.create.builders {
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(request.FieldCreatedAt)
+			}
 			if _, exists := b.mutation.UserID(); exists {
 				s.SetIgnore(request.FieldUserID)
 			}
@@ -608,6 +697,20 @@ func (u *RequestUpsertBulk) Update(set func(*RequestUpsert)) *RequestUpsertBulk 
 		set(&RequestUpsert{UpdateSet: update})
 	}))
 	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *RequestUpsertBulk) SetUpdatedAt(v time.Time) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateUpdatedAt() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateUpdatedAt()
+	})
 }
 
 // SetResponseBody sets the "response_body" field.
