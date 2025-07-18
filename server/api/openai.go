@@ -2,9 +2,14 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"go.uber.org/fx"
+
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/server/biz"
 )
 
-type OpenAIError struct {
+type OpenAIResponseError struct {
 	Error struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
@@ -14,7 +19,7 @@ type OpenAIError struct {
 type OpenAIErrorHandler struct{}
 
 func (e *OpenAIErrorHandler) HandlerError(c *gin.Context, err error) {
-	c.JSON(500, &OpenAIError{
+	c.JSON(500, &OpenAIResponseError{
 		Error: struct {
 			Code    string `json:"code"`
 			Message string `json:"message"`
@@ -26,7 +31,7 @@ func (e *OpenAIErrorHandler) HandlerError(c *gin.Context, err error) {
 }
 
 func (e *OpenAIErrorHandler) HandleStreamError(c *gin.Context, err error) {
-	c.SSEvent("", &OpenAIError{
+	c.SSEvent("", &OpenAIResponseError{
 		Error: struct {
 			Code    string `json:"code"`
 			Message string `json:"message"`
@@ -37,13 +42,29 @@ func (e *OpenAIErrorHandler) HandleStreamError(c *gin.Context, err error) {
 	})
 }
 
+type OpenAIHandlersParams struct {
+	fx.In
+
+	ChannelService *biz.ChannelService
+	RequestService *biz.RequestService
+	HttpClient     httpclient.HttpClient
+}
+
 type OpenAIHandlers struct {
 	ChatCompletionHandlers *ChatCompletionHandlers
 }
 
-func NewOpenAIHandlers(chatCompletionHandlers *ChatCompletionHandlers) *OpenAIHandlers {
+func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 	return &OpenAIHandlers{
-		ChatCompletionHandlers: chatCompletionHandlers,
+		ChatCompletionHandlers: &ChatCompletionHandlers{
+			ChatCompletionProcessor: biz.NewChatCompletionProcessor(
+				params.ChannelService,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewInboundTransformer(),
+			),
+			ErrorHandler: &OpenAIErrorHandler{},
+		},
 	}
 }
 

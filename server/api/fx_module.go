@@ -6,6 +6,5 @@ import (
 
 var Module = fx.Module("api",
 	fx.Provide(NewOpenAIHandlers),
-	fx.Provide(NewChatCompletionHandlers),
 	fx.Invoke(initLogger),
 )
