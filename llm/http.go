@@ -68,7 +68,7 @@ type GenericHttpResponse struct {
 	// Response headers
 	Headers http.Header `json:"headers"`
 
-	// Response body
+	// Response body, for the non-streaming response.
 	Body []byte `json:"body,omitempty"`
 
 	// Error information
@@ -85,6 +85,11 @@ type GenericHttpResponse struct {
 
 	// Raw HTTP request for advanced use cases
 	RawRequest *http.Request `json:"-"`
+}
+
+type GenericStreamEvent struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
 }
 
 type GenericHttpError struct {

@@ -11,10 +11,14 @@ import (
 
 // WithAPIKey 中间件用于验证 API key
 func WithAPIKey(client *ent.Client) gin.HandlerFunc {
+	return WithAPIKeyConfig(client, nil)
+}
+
+// WithAPIKeyConfig 中间件用于验证 API key，支持自定义配置
+func WithAPIKeyConfig(client *ent.Client, config *APIKeyConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 从 Authorization header 中获取 API key
-		authHeader := c.GetHeader("Authorization")
-		apiKeyValue, err := ExtractAPIKeyFromHeader(authHeader)
+		// 从多个可能的 headers 中获取 API key
+		apiKeyValue, err := ExtractAPIKeyFromRequest(c.Request, config)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": err.Error(),

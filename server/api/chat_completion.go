@@ -71,7 +71,8 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 		disconnected := c.Stream(func(w io.Writer) bool {
 			if result.ChatCompletionStream.Next() {
 				cur := result.ChatCompletionStream.Current()
-				c.SSEvent("", cur.Body)
+				log.Debug(ctx, "stream event", log.Any("event", cur))
+				c.SSEvent(cur.Type, cur.Data)
 				return true
 			}
 			return false

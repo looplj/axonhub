@@ -15,7 +15,7 @@ import (
 func TestChatCompletionProcessor_Integration(t *testing.T) {
 	// Create a simple processor with real transformers but mock services
 	processor := &ChatCompletionProcessor{
-		Transformer: openai.NewInboundTransformer(),
+		Inbound: openai.NewInboundTransformer(),
 		// Note: We're not testing the full Process method here since it requires
 		// database connections and external services. This is just testing the
 		// basic request conversion functionality.
@@ -44,7 +44,7 @@ func TestChatCompletionProcessor_Integration(t *testing.T) {
 
 	// Test that the inbound transformer can parse the request
 	ctx := context.Background()
-	chatReq, err := processor.Transformer.TransformRequest(ctx, genericReq)
+	chatReq, err := processor.Inbound.TransformRequest(ctx, genericReq)
 	assert.NoError(t, err)
 	assert.NotNil(t, chatReq)
 	assert.Equal(t, "gpt-4", chatReq.Model)
@@ -69,5 +69,5 @@ func TestChatCompletionProcessor_NewConstructor(t *testing.T) {
 	assert.Equal(t, channelService, processor.ChannelService)
 	assert.Equal(t, requestService, processor.RequestService)
 	assert.Equal(t, httpClient, processor.HttpClient)
-	assert.NotNil(t, processor.Transformer)
+	assert.NotNil(t, processor.Inbound)
 }

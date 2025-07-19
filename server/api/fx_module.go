@@ -6,5 +6,6 @@ import (
 
 var Module = fx.Module("api",
 	fx.Provide(NewOpenAIHandlers),
+	fx.Provide(NewAnthropicHandlers),
 	fx.Invoke(initLogger),
 )

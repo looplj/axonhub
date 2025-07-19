@@ -22,3 +22,16 @@ func Is(err, target error) bool {
 func IsNot(err, target error) bool {
 	return !errors.Is(err, target)
 }
+
+func NoErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func NoErr2[T any](val T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return val
+}

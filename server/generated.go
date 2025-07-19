@@ -119,6 +119,7 @@ type ComplexityRoot struct {
 		CreateAPIKey  func(childComplexity int, input ent.CreateAPIKeyInput) int
 		CreateChannel func(childComplexity int, input ent.CreateChannelInput) int
 		CreateUser    func(childComplexity int, input ent.CreateUserInput) int
+		UpdateChannel func(childComplexity int, id int, input ent.UpdateChannelInput) int
 	}
 
 	PageInfo struct {
@@ -213,6 +214,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error)
+	UpdateChannel(ctx context.Context, id int, input ent.UpdateChannelInput) (*ent.Channel, error)
 	CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error)
 	CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error)
 }
@@ -534,6 +536,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CreateUser(childComplexity, args["input"].(ent.CreateUserInput)), true
+
+	case "Mutation.updateChannel":
+		if e.complexity.Mutation.UpdateChannel == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateChannel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateChannel(childComplexity, args["id"].(int), args["input"].(ent.UpdateChannelInput)), true
 
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
@@ -1485,6 +1499,57 @@ func (ec *executionContext) field_Mutation_createUser_argsInput(
 	}
 
 	var zeroVal ent.CreateUserInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateChannel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_updateChannel_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := ec.field_Mutation_updateChannel_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_updateChannel_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["id"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateChannel_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (ent.UpdateChannelInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal ent.UpdateChannelInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNUpdateChannelInput2githubᚗcomᚋzhenzouᚋaxonhubᚋentᚐUpdateChannelInput(ctx, tmp)
+	}
+
+	var zeroVal ent.UpdateChannelInput
 	return zeroVal, nil
 }
 
@@ -4428,6 +4493,83 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createChannel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateChannel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateChannel(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateChannel(rctx, fc.Args["id"].(int), fc.Args["input"].(ent.UpdateChannelInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Channel)
+	fc.Result = res
+	return ec.marshalNChannel2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋentᚐChannel(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Channel_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Channel_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Channel_updatedAt(ctx, field)
+			case "type":
+				return ec.fieldContext_Channel_type(ctx, field)
+			case "baseURL":
+				return ec.fieldContext_Channel_baseURL(ctx, field)
+			case "name":
+				return ec.fieldContext_Channel_name(ctx, field)
+			case "supportedModels":
+				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "defaultTestModel":
+				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
+			case "settings":
+				return ec.fieldContext_Channel_settings(ctx, field)
+			case "requests":
+				return ec.fieldContext_Channel_requests(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateChannel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -13464,6 +13606,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateChannel":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateChannel(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createAPIKey":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createAPIKey(ctx, field)
@@ -15294,6 +15443,11 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNUpdateChannelInput2githubᚗcomᚋzhenzouᚋaxonhubᚋentᚐUpdateChannelInput(ctx context.Context, v any) (ent.UpdateChannelInput, error) {
+	res, err := ec.unmarshalInputUpdateChannelInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNUser2githubᚗcomᚋzhenzouᚋaxonhubᚋentᚐUser(ctx context.Context, sel ast.SelectionSet, v ent.User) graphql.Marshaler {

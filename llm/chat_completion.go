@@ -165,7 +165,10 @@ func (s Stop) MarshalJSON() ([]byte, error) {
 	if s.Stop != nil {
 		return json.Marshal(s.Stop)
 	}
-	return json.Marshal(s.MultipleStop)
+	if len(s.MultipleStop) > 0 {
+		return json.Marshal(s.MultipleStop)
+	}
+	return []byte("[]"), nil
 }
 
 func (s *Stop) UnmarshalJSON(data []byte) error {
@@ -249,24 +252,24 @@ type Tool struct {
 	Function Function `json:"function"`
 }
 
-// Function represents a function definition
+// FunctionRequest represents a function definition
 type Function struct {
-	Name        string         `json:"name"`
-	Description *string        `json:"description,omitempty"`
-	Parameters  map[string]any `json:"parameters,omitempty"`
-}
-
-// ToolCall represents a tool call in the response
-type ToolCall struct {
-	ID       string   `json:"id"`
-	Type     string   `json:"type"`
-	Function Function `json:"function"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Parameters  json.RawMessage `json:"parameters"`
 }
 
 // FunctionCall represents a function call (deprecated)
 type FunctionCall struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
+}
+
+// ToolCall represents a tool call in the response
+type ToolCall struct {
+	ID       string       `json:"id"`
+	Type     string       `json:"type"`
+	Function FunctionCall `json:"function"`
 }
 
 // ResponseFormat specifies the format of the response
@@ -289,7 +292,8 @@ type ChatCompletionResponse struct {
 	Usage             *Usage `json:"usage,omitempty"`
 	SystemFingerprint string `json:"system_fingerprint,omitempty"`
 
-	header http.Header
+	ServiceTier string `json:"service_tier,omitempty"`
+	header      http.Header
 }
 
 func (c *ChatCompletionResponse) Header() http.Header {

@@ -18,11 +18,11 @@ func NewChatCompletionProcessor(
 	channelService *ChannelService,
 	requestService *RequestService,
 	httpClient httpclient.HttpClient,
-	transformer transformer.Inbound,
+	inbound transformer.Inbound,
 ) *ChatCompletionProcessor {
 	return &ChatCompletionProcessor{
 		ChannelService: channelService,
-		Transformer:    transformer,
+		Inbound:        inbound,
 		RequestService: requestService,
 		HttpClient:     httpClient,
 	}
@@ -30,18 +30,18 @@ func NewChatCompletionProcessor(
 
 type ChatCompletionProcessor struct {
 	ChannelService *ChannelService
-	Transformer    transformer.Inbound
+	Inbound        transformer.Inbound
 	RequestService *RequestService
 	HttpClient     httpclient.HttpClient
 }
 
 type ChatCompletionResult struct {
 	ChatCompletion       *llm.GenericHttpResponse
-	ChatCompletionStream streams.Stream[*llm.GenericHttpResponse]
+	ChatCompletionStream streams.Stream[*llm.GenericStreamEvent]
 }
 
 func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericReq *llm.GenericHttpRequest) (ChatCompletionResult, error) {
-	chatReq, err := processor.Transformer.TransformRequest(ctx, genericReq)
+	chatReq, err := processor.Inbound.TransformRequest(ctx, genericReq)
 	if err != nil {
 		return ChatCompletionResult{}, err
 	}
@@ -64,9 +64,13 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericRe
 	if err != nil {
 		return ChatCompletionResult{}, err
 	}
+	log.Debug(ctx, "choose channels", log.Any("channels", channels), log.Any("model", chatReq.Model))
+	if len(channels) == 0 {
+		return ChatCompletionResult{}, errors.New("no provider available")
+	}
 
 	for _, channel := range channels {
-		log.Info(ctx, "Using channel", log.Any("channel", channel.Name), log.Any("model", chatReq.Model))
+		log.Debug(ctx, "using channel", log.Any("channel", channel.Name), log.Any("model", chatReq.Model))
 
 		// Handle streaming vs non-streaming responses
 		if chatReq.Stream != nil && *chatReq.Stream {
@@ -95,12 +99,11 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericRe
 	if err != nil {
 		log.Warn(ctx, "Failed to update request status to failed", log.Cause(err))
 	}
-	return ChatCompletionResult{}, errors.New("no provider available")
+	return ChatCompletionResult{}, errors.New("Failed to reqeust provider")
 }
 
 func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.ChatCompletionRequest, req *ent.Request) (*llm.GenericHttpResponse, error) {
-	// Transform ChatCompletionRequest to HTTP request
-	httpReq, err := channel.Transformer.TransformRequest(ctx, chatReq)
+	httpReq, err := channel.Outbound.TransformRequest(ctx, chatReq)
 	if err != nil {
 		log.Error(ctx, "Failed to transform request", log.Cause(err))
 		return nil, err
@@ -122,8 +125,13 @@ func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context
 		return nil, err
 	}
 
+	err = processor.RequestService.UpdateRequestExecutionCompleted(ctx, requestExec.ID, httpResp.Body)
+	if err != nil {
+		log.Warn(ctx, "Failed to update request execution status to completed", log.Cause(err))
+	}
+
 	// Transform HTTP response to ChatCompletionResponse
-	chatResp, err := channel.Transformer.TransformResponse(ctx, httpResp)
+	chatResp, err := channel.Outbound.TransformResponse(ctx, httpResp)
 	if err != nil {
 		log.Error(ctx, "Failed to transform response", log.Cause(err))
 		innerErr := processor.RequestService.UpdateRequestExecutionFailed(ctx, requestExec.ID, err.Error())
@@ -135,7 +143,7 @@ func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context
 
 	log.Debug(ctx, "Chat completion response", log.Any("response", chatResp))
 
-	transformedResp, err := processor.Transformer.TransformResponse(ctx, chatResp)
+	transformedResp, err := processor.Inbound.TransformResponse(ctx, chatResp)
 	if err != nil {
 		innerErr := processor.RequestService.UpdateRequestExecutionFailed(ctx, requestExec.ID, err.Error())
 		if innerErr != nil {
@@ -144,10 +152,6 @@ func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context
 		return nil, err
 	}
 
-	err = processor.RequestService.UpdateRequestExecutionCompleted(ctx, requestExec.ID, chatReq)
-	if err != nil {
-		log.Warn(ctx, "Failed to update request execution status to completed", log.Cause(err))
-	}
 	err = processor.RequestService.UpdateRequestCompleted(ctx, req.ID, transformedResp.Body)
 	if err != nil {
 		log.Warn(ctx, "Failed to update request status to completed", log.Cause(err))
@@ -155,9 +159,9 @@ func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context
 	return transformedResp, nil
 }
 
-func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.ChatCompletionRequest, req *ent.Request) (streams.Stream[*llm.GenericHttpResponse], error) {
+func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.ChatCompletionRequest, req *ent.Request) (streams.Stream[*llm.GenericStreamEvent], error) {
 	// Transform ChatCompletionRequest to HTTP request
-	httpReq, err := channel.Transformer.TransformRequest(ctx, chatReq)
+	httpReq, err := channel.Outbound.TransformRequest(ctx, chatReq)
 	if err != nil {
 		log.Error(ctx, "Failed to transform streaming request", log.Cause(err))
 		return nil, err
@@ -179,19 +183,22 @@ func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Co
 		return nil, err
 	}
 
+	stream = NewTrackedStream(ctx, stream, req, requestExec, processor.RequestService, channel.Outbound)
+
 	// Transform the stream: HTTP responses -> ChatCompletionResponse -> final HTTP responses
-	transformedStream := streams.MapErr(stream, func(httpResp *llm.GenericHttpResponse) (*llm.GenericHttpResponse, error) {
-		// Transform HTTP response to ChatCompletionResponse
-		chatResp, err := channel.Transformer.TransformResponse(ctx, httpResp)
+	transformedStream := streams.MapErr(stream, func(httpResp *llm.GenericHttpResponse) (*llm.GenericStreamEvent, error) {
+		chatResp, err := channel.Outbound.TransformStreamChunk(ctx, httpResp)
 		if err != nil {
 			return nil, err
 		}
+		log.Debug(ctx, "chat stream response", log.Any("response", chatResp))
+		streamEvent, err := processor.Inbound.TransformStreamChunk(ctx, chatResp)
+		if err != nil {
+			return nil, err
+		}
+		log.Debug(ctx, "transformed stream event", log.Any("event", streamEvent))
 
-		// Transform ChatCompletionResponse to final HTTP response using inbound transformer
-		return processor.Transformer.TransformResponse(ctx, chatResp)
+		return streamEvent, nil
 	})
-
-	// Wrap with tracked stream to save final response
-	trackedStream := NewTrackedStream(ctx, transformedStream, req, requestExec, processor.RequestService, channel.Transformer)
-	return trackedStream, nil
+	return transformedStream, nil
 }

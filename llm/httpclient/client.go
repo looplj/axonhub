@@ -31,6 +31,7 @@ func NewHttpClient() HttpClient {
 
 // Do executes the HTTP request
 func (hc *HttpClientImpl) Do(ctx context.Context, request *llm.GenericHttpRequest) (*llm.GenericHttpResponse, error) {
+	log.Debug(ctx, "execute http request", log.Any("request", request))
 	rawReq, err := hc.buildHttpRequest(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
@@ -76,7 +77,8 @@ func (hc *HttpClientImpl) Do(ctx context.Context, request *llm.GenericHttpReques
 
 // DoStream executes a streaming HTTP request using Server-Sent Events
 func (hc *HttpClientImpl) DoStream(ctx context.Context, request *llm.GenericHttpRequest) (streams.Stream[*llm.GenericHttpResponse], error) {
-	// Create HTTP request
+	log.Debug(ctx, "execute stream request", log.Any("request", request))
+
 	rawReq, err := hc.buildHttpRequest(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
@@ -245,6 +247,12 @@ func (s *sseStream) readEvents() {
 
 		log.Debug(s.ctx, "SSE event received", log.Any("event", event))
 
+		// body, err := json.Marshal(event)
+		// if err != nil {
+		// 	log.Warn(s.ctx, "failed to marshal SSE event to JSON", log.Cause(err))
+		// 	continue
+		// }
+
 		// Create response for this event
 		response := &llm.GenericHttpResponse{
 			StatusCode:  s.response.StatusCode,
@@ -276,12 +284,11 @@ func (hc *HttpClientImpl) buildHttpRequest(ctx context.Context, request *llm.Gen
 		return nil, err
 	}
 
-	// Set headers
-	for key, values := range request.Headers {
-		for _, value := range values {
-			httpReq.Header.Add(key, value)
-		}
+	httpReq.Header = request.Headers
+	if httpReq.Header == nil {
+		httpReq.Header = make(http.Header)
 	}
+	httpReq.Header.Set("User-Agent", "axonhub/1.0")
 
 	// Apply authentication
 	if request.Auth != nil {

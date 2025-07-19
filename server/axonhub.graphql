@@ -21,6 +21,8 @@ scalar JSONRawMessageInput
 
 type Mutation {
     createChannel(input: CreateChannelInput!): Channel!
+    updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
+
     createAPIKey(input: CreateAPIKeyInput!): APIKey!
     createUser(input: CreateUserInput!): User!
 }

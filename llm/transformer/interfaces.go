@@ -2,7 +2,6 @@ package transformer
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/looplj/axonhub/llm"
 )
@@ -15,6 +14,9 @@ type Inbound interface {
 
 	// TransformResponse transforms ChatCompletionResponse to HTTP response.
 	TransformResponse(ctx context.Context, chatResp *llm.ChatCompletionResponse) (*llm.GenericHttpResponse, error)
+
+	// TransformStreamChunk transforms ChatCompletionResponse to HTTP response.
+	TransformStreamChunk(ctx context.Context, chatResp *llm.ChatCompletionResponse) (*llm.GenericStreamEvent, error)
 }
 
 // Outbound represents a transformer that convert request to the undering provider format.
@@ -26,24 +28,10 @@ type Outbound interface {
 	// TransformResponse transforms ChatCompletionResponse to HTTP response.
 	TransformResponse(ctx context.Context, chatResp *llm.GenericHttpResponse) (*llm.ChatCompletionResponse, error)
 
+	// TransformStreamChunks transforms generic HTTP response to ChatCompletionResponse.
+	TransformStreamChunk(ctx context.Context, chatResp *llm.GenericHttpResponse) (*llm.ChatCompletionResponse, error)
+
 	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
 	// This method handles provider-specific streaming formats and converts them to a unified response.
 	AggregateStreamChunks(ctx context.Context, chunks [][]byte) (*llm.ChatCompletionResponse, error)
-}
-
-// Transformer converts HTTP requests to ChatCompletionRequest
-type Transformer interface {
-	TransformRequest(ctx context.Context, httpReq *http.Request) (*llm.ChatCompletionRequest, error)
-	TransformResponse(ctx context.Context, chatResp *llm.ChatCompletionResponse) (*llm.GenericHttpResponse, error)
-	TransformStreamResponse(ctx context.Context, chatResp *llm.ChatCompletionResponse) (*llm.GenericHttpResponse, error)
-	SupportsContentType(contentType string) bool
-	Name() string
-	Priority() int
-}
-
-type Stream[T any] interface {
-	Next() bool
-	Current() T
-	Err() error
-	Close() error
 }

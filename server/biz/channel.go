@@ -2,67 +2,88 @@ package biz
 
 import (
 	"context"
-	"fmt"
+	"slices"
 
 	"github.com/zhenzou/executors"
+	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer"
-	openaiTransformer "github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
+	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/log"
+	"github.com/looplj/axonhub/pkg/xerrors"
 )
 
 type Channel struct {
 	*ent.Channel
-	Transformer transformer.Outbound
+	Outbound transformer.Outbound
 }
 
-func NewChannelService(ent *ent.Client) *ChannelService {
+type ChannelServiceParams struct {
+	fx.In
+
+	Ent      *ent.Client
+	Executor executors.ScheduledExecutor
+}
+
+func NewChannelService(params ChannelServiceParams) *ChannelService {
 	svc := &ChannelService{
-		Ent:       ent,
-		Executors: executors.NewPoolScheduleExecutor(),
+		Ent:       params.Ent,
+		Executors: params.Executor,
 	}
-	if err := svc.loadChannels(context.Background()); err != nil {
-		panic(err)
-	}
+
+	xerrors.NoErr(svc.loadChannels(context.Background()))
+	xerrors.NoErr2(params.Executor.ScheduleFuncAtCronRate(svc.loadChannelsPeriodic, executors.CRONRule{Expr: "*/1 * * * *"}))
 	return svc
 }
 
 type ChannelService struct {
-	Ent *ent.Client
-	// TODO refresh registry periodically
-	Channels []*Channel
-
+	Ent       *ent.Client
+	Channels  []*Channel
 	Executors executors.ScheduledExecutor
 }
 
-func (s *ChannelService) loadChannels(ctx context.Context) error {
-	channels, err := s.Ent.Channel.Query().All(ctx)
+func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {
+	err := svc.loadChannels(ctx)
+	if err != nil {
+		log.Error(ctx, "failed to load channels", log.Cause(err))
+	}
+}
+
+func (svc *ChannelService) loadChannels(ctx context.Context) error {
+	entities, err := svc.Ent.Channel.Query().All(ctx)
 	if err != nil {
 		return err
 	}
-	for _, p := range channels {
-		switch p.Type {
+	var channels []*Channel
+	for _, c := range entities {
+		switch c.Type {
 		case "openai":
-			transformer := openaiTransformer.NewOutboundTransformer(p.BaseURL, p.APIKey)
-			s.Channels = append(s.Channels, &Channel{
-				Channel:     p,
-				Transformer: transformer,
+			transformer := openai.NewOutboundTransformer(c.BaseURL, c.APIKey)
+			channels = append(channels, &Channel{
+				Channel:  c,
+				Outbound: transformer,
+			})
+		case "anthropic":
+			transformer := anthropic.NewOutboundTransformer(c.BaseURL, c.APIKey)
+			channels = append(channels, &Channel{
+				Channel:  c,
+				Outbound: transformer,
 			})
 		}
 	}
+	svc.Channels = channels
 	return nil
 }
 
-func (s *ChannelService) ChooseChannels(ctx context.Context, _ *llm.ChatCompletionRequest) ([]*Channel, error) {
-	return s.Channels, nil
-}
-
-func (s *ChannelService) GetOutboundTransformer(ctx context.Context, channel *Channel) (transformer.Outbound, error) {
-	switch channel.Type {
-	case "openai":
-		return openaiTransformer.NewOutboundTransformer(channel.BaseURL, channel.APIKey), nil
-	default:
-		return nil, fmt.Errorf("unsupported channel type: %s", channel.Type)
+func (svc *ChannelService) ChooseChannels(ctx context.Context, chatReq *llm.ChatCompletionRequest) ([]*Channel, error) {
+	var channels []*Channel
+	for _, channel := range svc.Channels {
+		if slices.Contains(channel.SupportedModels, chatReq.Model) {
+			channels = append(channels, channel)
+		}
 	}
+	return channels, nil
 }

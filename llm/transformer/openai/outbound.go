@@ -13,9 +13,9 @@ import (
 
 // OutboundTransformer implements transformer.Outbound for OpenAI format
 type OutboundTransformer struct {
-	name string
+	name    string
 	baseURL string
-	apiKey string
+	apiKey  string
 }
 
 // NewOutboundTransformer creates a new OpenAI OutboundTransformer
@@ -23,7 +23,7 @@ func NewOutboundTransformer(baseURL, apiKey string) transformer.Outbound {
 	if baseURL == "" {
 		baseURL = "https://api.openai.com/v1"
 	}
-	
+
 	return &OutboundTransformer{
 		name:    "openai-outbound",
 		baseURL: baseURL,
@@ -56,9 +56,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
-	
-	// Add User-Agent
-	headers.Set("User-Agent", "axonhub/1.0")
 
 	// Prepare authentication
 	var auth *llm.AuthConfig
@@ -108,6 +105,16 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *l
 	return &chatResp, nil
 }
 
+func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp *llm.GenericHttpResponse) (*llm.ChatCompletionResponse, error) {
+	// var event sse.Event
+	// err := json.Unmarshal(httpResp.Body, &event)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
+	// }
+	// httpResp.Body = []byte(event.Data)
+	return t.TransformResponse(ctx, httpResp)
+}
+
 // Name returns the transformer name
 func (t *OutboundTransformer) Name() string {
 	return t.name
@@ -121,13 +128,13 @@ func (t *OutboundTransformer) SupportsModel(model string) bool {
 		"gpt-3.5-turbo", "gpt-3.5-turbo-16k",
 		"text-davinci-003", "text-davinci-002",
 	}
-	
+
 	for _, supportedModel := range openaiModels {
 		if strings.HasPrefix(model, supportedModel) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -150,18 +157,24 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 	// For OpenAI-style streaming, we need to aggregate the delta content from chunks
 	// into a complete ChatCompletionResponse
 	var aggregatedContent strings.Builder
-	var lastChunk map[string]interface{}
+	var lastChunk map[string]any
 
 	for _, chunk := range chunks {
-		var chunkData map[string]interface{}
-		if err := json.Unmarshal(chunk, &chunkData); err != nil {
+		// var event sse.Event
+		// err := json.Unmarshal(chunk, &event)
+		// if err != nil {
+		// 	continue // Skip invalid chunks
+		// }
+
+		var chunkData map[string]any
+		if err := json.Unmarshal([]byte(chunk), &chunkData); err != nil {
 			continue // Skip invalid chunks
 		}
 
 		// Extract content from choices[0].delta.content if it exists
-		if choices, ok := chunkData["choices"].([]interface{}); ok && len(choices) > 0 {
-			if choice, ok := choices[0].(map[string]interface{}); ok {
-				if delta, ok := choice["delta"].(map[string]interface{}); ok {
+		if choices, ok := chunkData["choices"].([]any); ok && len(choices) > 0 {
+			if choice, ok := choices[0].(map[string]any); ok {
+				if delta, ok := choice["delta"].(map[string]any); ok {
 					if content, ok := delta["content"].(string); ok {
 						aggregatedContent.WriteString(content)
 					}

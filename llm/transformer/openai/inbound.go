@@ -82,6 +82,23 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 	}, nil
 }
 
+// TransformStreamChunk transforms ChatCompletionResponse to GenericStreamEvent
+func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp *llm.ChatCompletionResponse) (*llm.GenericStreamEvent, error) {
+	if chatResp == nil {
+		return nil, fmt.Errorf("chat completion response is nil")
+	}
+
+	// For OpenAI, we keep the original response format as the event data
+	eventData, err := json.Marshal(chatResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal chat completion response: %w", err)
+	}
+	return &llm.GenericStreamEvent{
+		Type: "",
+		Data: eventData,
+	}, nil
+}
+
 // Name returns the transformer name
 func (t *InboundTransformer) Name() string {
 	return t.name

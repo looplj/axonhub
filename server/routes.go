@@ -11,8 +11,9 @@ import (
 type Handlers struct {
 	fx.In
 
-	Graphql *GraphqlHandler
-	OpenAI  *api.OpenAIHandlers
+	Graphql   *GraphqlHandler
+	OpenAI    *api.OpenAIHandlers
+	Anthropic *api.AnthropicHandlers
 }
 
 func SetupRoutes(server *Server, handlers Handlers, deps Dependencies) {
@@ -28,6 +29,7 @@ func SetupRoutes(server *Server, handlers Handlers, deps Dependencies) {
 	apiGroup := server.Group("/v1")
 	apiGroup.Use(middleware.WithAPIKey(deps.Client))
 	{
+		apiGroup.POST("/messages", handlers.Anthropic.CreateMessage)
 		apiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)
 	}
 }

@@ -177,6 +177,143 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 	}
 }
 
+func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	tests := []struct {
+		name        string
+		response    *llm.ChatCompletionResponse
+		wantErr     bool
+		errContains string
+		validate    func(*llm.GenericStreamEvent) bool
+	}{
+		{
+			name: "streaming chunk with content",
+			response: &llm.ChatCompletionResponse{
+				ID:      "chatcmpl-123",
+				Object:  "chat.completion.chunk",
+				Created: 1677652288,
+				Model:   "gpt-4",
+				Choices: []llm.ChatCompletionChoice{
+					{
+						Index: 0,
+						Delta: &llm.ChatCompletionMessage{
+							Role: "assistant",
+							Content: llm.ChatCompletionMessageContent{
+								Content: stringPtr("Hello"),
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+			validate: func(event *llm.GenericStreamEvent) bool {
+				if event.Type != "data" {
+					return false
+				}
+				
+				// Unmarshal the data to verify it's a valid ChatCompletionResponse
+				var chatResp llm.ChatCompletionResponse
+				if err := json.Unmarshal(event.Data, &chatResp); err != nil {
+					return false
+				}
+				
+				return chatResp.ID == "chatcmpl-123" && 
+					len(chatResp.Choices) > 0 && 
+					chatResp.Choices[0].Delta != nil &&
+					chatResp.Choices[0].Delta.Content.Content != nil &&
+					*chatResp.Choices[0].Delta.Content.Content == "Hello"
+			},
+		},
+		{
+			name: "final streaming chunk with finish_reason",
+			response: &llm.ChatCompletionResponse{
+				ID:      "chatcmpl-123",
+				Object:  "chat.completion.chunk",
+				Created: 1677652288,
+				Model:   "gpt-4",
+				Choices: []llm.ChatCompletionChoice{
+					{
+						Index: 0,
+						Delta: &llm.ChatCompletionMessage{
+							Role: "assistant",
+						},
+						FinishReason: stringPtr("stop"),
+					},
+				},
+			},
+			wantErr: false,
+			validate: func(event *llm.GenericStreamEvent) bool {
+				if event.Type != "done" {
+					return false
+				}
+				
+				// Unmarshal the data to verify it's a valid ChatCompletionResponse
+				var chatResp llm.ChatCompletionResponse
+				if err := json.Unmarshal(event.Data, &chatResp); err != nil {
+					return false
+				}
+				
+				return chatResp.ID == "chatcmpl-123" && 
+					len(chatResp.Choices) > 0 && 
+					chatResp.Choices[0].FinishReason != nil &&
+					*chatResp.Choices[0].FinishReason == "stop"
+			},
+		},
+		{
+			name: "empty choices",
+			response: &llm.ChatCompletionResponse{
+				ID:      "chatcmpl-123",
+				Object:  "chat.completion.chunk",
+				Created: 1677652288,
+				Model:   "gpt-4",
+				Choices: []llm.ChatCompletionChoice{},
+			},
+			wantErr: false,
+			validate: func(event *llm.GenericStreamEvent) bool {
+				return event.Type == "data"
+			},
+		},
+		{
+			name:        "nil response",
+			response:    nil,
+			wantErr:     true,
+			errContains: "chat completion response is nil",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := transformer.TransformStreamChunk(context.Background(), tt.response)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("TransformStreamChunk() error = nil, wantErr %v", tt.wantErr)
+					return
+				}
+				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+					t.Errorf("TransformStreamChunk() error = %v, want error containing %v", err, tt.errContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("TransformStreamChunk() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if result == nil {
+				t.Error("TransformStreamChunk() returned nil result")
+				return
+			}
+
+			if tt.validate != nil && !tt.validate(result) {
+				t.Errorf("TransformStreamChunk() validation failed for result: %+v", result)
+			}
+		})
+	}
+}
+
 func TestInboundTransformer_TransformResponse(t *testing.T) {
 	transformer := NewInboundTransformer()
 

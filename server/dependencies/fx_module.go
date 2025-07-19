@@ -8,4 +8,5 @@ import (
 var Module = fx.Module("dependencies",
 	fx.Provide(NewEntClient),
 	fx.Provide(httpclient.NewHttpClient),
+	fx.Provide(NewExecutors),
 )

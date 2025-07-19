@@ -28,6 +28,22 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateCh
 	return channel, nil
 }
 
+// UpdateChannel is the resolver for the updateChannel field.
+func (r *mutationResolver) UpdateChannel(ctx context.Context, id int, input ent.UpdateChannelInput) (*ent.Channel, error) {
+	channel, err := r.client.Channel.UpdateOneID(id).
+		SetNillableBaseURL(input.BaseURL).
+		SetNillableName(input.Name).
+		SetNillableAPIKey(input.APIKey).
+		SetSupportedModels(input.SupportedModels).
+		SetNillableDefaultTestModel(input.DefaultTestModel).
+		SetSettings(input.Settings).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update channel: %w", err)
+	}
+	return channel, nil
+}
+
 // CreateAPIKey is the resolver for the createAPIKey field.
 func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error) {
 	apiKey, err := r.client.APIKey.Create().
