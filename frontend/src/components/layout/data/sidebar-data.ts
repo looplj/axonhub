@@ -31,19 +31,9 @@ export const sidebarData: SidebarData = {
   },
   teams: [
     {
-      name: 'Shadcn Admin',
+      name: 'AxonHub Admin',
       logo: Command,
-      plan: 'Vite + ShadcnUI',
-    },
-    {
-      name: 'Acme Inc',
-      logo: GalleryVerticalEnd,
-      plan: 'Enterprise',
-    },
-    {
-      name: 'Acme Corp.',
-      logo: AudioWaveform,
-      plan: 'Startup',
+      plan: 'AI + Unified',
     },
   ],
   navGroups: [
@@ -59,6 +49,11 @@ export const sidebarData: SidebarData = {
           title: 'Channels',
           url: '/channels',
           icon: IconChecklist,
+        },
+        {
+          title: 'Requests',
+          url: '/requests',
+          icon: IconBrowserCheck,
         },
         {
           title: 'Apps',
