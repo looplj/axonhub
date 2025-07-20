@@ -189,7 +189,7 @@ type Channel implements Node {
   name: String!
   supportedModels: [String!]!
   defaultTestModel: String!
-  settings: ChannelSettings!
+  settings: ChannelSettings
   requests(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -408,7 +408,7 @@ input CreateChannelInput {
   apiKey: String!
   supportedModels: [String!]!
   defaultTestModel: String!
-  settings: ChannelSettingsInput!
+  settings: ChannelSettingsInput
 }
 """
 CreateRequestInput is used for create Request object.
@@ -1092,6 +1092,7 @@ input UpdateChannelInput {
   appendSupportedModels: [String!]
   defaultTestModel: String
   settings: ChannelSettingsInput
+  clearSettings: Boolean
 }
 """
 UpdateRequestInput is used for update Request object.

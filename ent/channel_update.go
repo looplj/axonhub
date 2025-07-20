@@ -111,6 +111,12 @@ func (cu *ChannelUpdate) SetSettings(os *objects.ChannelSettings) *ChannelUpdate
 	return cu
 }
 
+// ClearSettings clears the value of the "settings" field.
+func (cu *ChannelUpdate) ClearSettings() *ChannelUpdate {
+	cu.mutation.ClearSettings()
+	return cu
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (cu *ChannelUpdate) AddRequestIDs(ids ...int) *ChannelUpdate {
 	cu.mutation.AddRequestIDs(ids...)
@@ -235,6 +241,9 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := cu.mutation.Settings(); ok {
 		_spec.SetField(channel.FieldSettings, field.TypeJSON, value)
+	}
+	if cu.mutation.SettingsCleared() {
+		_spec.ClearField(channel.FieldSettings, field.TypeJSON)
 	}
 	if cu.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -378,6 +387,12 @@ func (cuo *ChannelUpdateOne) SetNillableDefaultTestModel(s *string) *ChannelUpda
 // SetSettings sets the "settings" field.
 func (cuo *ChannelUpdateOne) SetSettings(os *objects.ChannelSettings) *ChannelUpdateOne {
 	cuo.mutation.SetSettings(os)
+	return cuo
+}
+
+// ClearSettings clears the value of the "settings" field.
+func (cuo *ChannelUpdateOne) ClearSettings() *ChannelUpdateOne {
+	cuo.mutation.ClearSettings()
 	return cuo
 }
 
@@ -535,6 +550,9 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 	}
 	if value, ok := cuo.mutation.Settings(); ok {
 		_spec.SetField(channel.FieldSettings, field.TypeJSON, value)
+	}
+	if cuo.mutation.SettingsCleared() {
+		_spec.ClearField(channel.FieldSettings, field.TypeJSON)
 	}
 	if cuo.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{

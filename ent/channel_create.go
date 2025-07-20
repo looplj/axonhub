@@ -152,6 +152,10 @@ func (cc *ChannelCreate) defaults() {
 		v := channel.DefaultUpdatedAt()
 		cc.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := cc.mutation.Settings(); !ok {
+		v := channel.DefaultSettings
+		cc.mutation.SetSettings(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -189,9 +193,6 @@ func (cc *ChannelCreate) check() error {
 	}
 	if _, ok := cc.mutation.DefaultTestModel(); !ok {
 		return &ValidationError{Name: "default_test_model", err: errors.New(`ent: missing required field "Channel.default_test_model"`)}
-	}
-	if _, ok := cc.mutation.Settings(); !ok {
-		return &ValidationError{Name: "settings", err: errors.New(`ent: missing required field "Channel.settings"`)}
 	}
 	return nil
 }
@@ -408,6 +409,12 @@ func (u *ChannelUpsert) UpdateSettings() *ChannelUpsert {
 	return u
 }
 
+// ClearSettings clears the value of the "settings" field.
+func (u *ChannelUpsert) ClearSettings() *ChannelUpsert {
+	u.SetNull(channel.FieldSettings)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -551,6 +558,13 @@ func (u *ChannelUpsertOne) SetSettings(v *objects.ChannelSettings) *ChannelUpser
 func (u *ChannelUpsertOne) UpdateSettings() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateSettings()
+	})
+}
+
+// ClearSettings clears the value of the "settings" field.
+func (u *ChannelUpsertOne) ClearSettings() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearSettings()
 	})
 }
 
@@ -863,6 +877,13 @@ func (u *ChannelUpsertBulk) SetSettings(v *objects.ChannelSettings) *ChannelUpse
 func (u *ChannelUpsertBulk) UpdateSettings() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateSettings()
+	})
+}
+
+// ClearSettings clears the value of the "settings" field.
+func (u *ChannelUpsertBulk) ClearSettings() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearSettings()
 	})
 }
 

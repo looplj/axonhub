@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/looplj/axonhub/objects"
 )
 
 const (
@@ -81,6 +82,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// APIKeyValidator is a validator for the "api_key" field. It is called by the builders before save.
 	APIKeyValidator func(string) error
+	// DefaultSettings holds the default value on creation for the "settings" field.
+	DefaultSettings *objects.ChannelSettings
 )
 
 // Type defines the type for the "type" enum field.

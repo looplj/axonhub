@@ -4,7 +4,7 @@ type ModelMapping {
 }
 
 type ChannelSettings {
-  modelMappings: [ModelMapping!]!
+  modelMappings: [ModelMapping!]
 }
 
 input ModelMappingInput {
@@ -13,8 +13,16 @@ input ModelMappingInput {
 }
 
 input ChannelSettingsInput {
-  modelMappings: [ModelMappingInput!]!
+  modelMappings: [ModelMappingInput!]
 }
+
+# extend input CreateChannelInput {
+#   settings: ChannelSettingsInput @goField(omittable: true)
+# }
+
+# extend input UpdateChannelInput{
+#   settings: ChannelSettingsInput @goField(omittable: true)
+# }
 
 scalar JSONRawMessage
 scalar JSONRawMessageInput

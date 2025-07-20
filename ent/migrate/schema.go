@@ -54,7 +54,7 @@ var (
 		{Name: "api_key", Type: field.TypeString},
 		{Name: "supported_models", Type: field.TypeJSON},
 		{Name: "default_test_model", Type: field.TypeString},
-		{Name: "settings", Type: field.TypeJSON},
+		{Name: "settings", Type: field.TypeJSON, Nullable: true},
 	}
 	// ChannelsTable holds the schema information for the "channels" table.
 	ChannelsTable = &schema.Table{

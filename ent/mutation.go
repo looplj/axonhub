@@ -1179,9 +1179,22 @@ func (m *ChannelMutation) OldSettings(ctx context.Context) (v *objects.ChannelSe
 	return oldValue.Settings, nil
 }
 
+// ClearSettings clears the value of the "settings" field.
+func (m *ChannelMutation) ClearSettings() {
+	m.settings = nil
+	m.clearedFields[channel.FieldSettings] = struct{}{}
+}
+
+// SettingsCleared returns if the "settings" field was cleared in this mutation.
+func (m *ChannelMutation) SettingsCleared() bool {
+	_, ok := m.clearedFields[channel.FieldSettings]
+	return ok
+}
+
 // ResetSettings resets all changes to the "settings" field.
 func (m *ChannelMutation) ResetSettings() {
 	m.settings = nil
+	delete(m.clearedFields, channel.FieldSettings)
 }
 
 // AddRequestIDs adds the "requests" edge to the Request entity by ids.
@@ -1454,7 +1467,11 @@ func (m *ChannelMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ChannelMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(channel.FieldSettings) {
+		fields = append(fields, channel.FieldSettings)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -1467,6 +1484,11 @@ func (m *ChannelMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ChannelMutation) ClearField(name string) error {
+	switch name {
+	case channel.FieldSettings:
+		m.ClearSettings()
+		return nil
+	}
 	return fmt.Errorf("unknown Channel nullable field %s", name)
 }
 

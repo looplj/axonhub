@@ -36,7 +36,24 @@ func (Channel) Fields() []ent.Field {
 		field.String("api_key").Sensitive().NotEmpty(),
 		field.Strings("supported_models"),
 		field.String("default_test_model"),
-		field.JSON("settings", &objects.ChannelSettings{}),
+		field.JSON("settings", &objects.ChannelSettings{}).
+			Default(&objects.ChannelSettings{
+				ModelMappings: []objects.ModelMapping{},
+			}).Optional().Annotations(
+		// entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+		// entgql.Directives(entgql.Directive{
+		// 	Name: "goField",
+		// 	Arguments: []*ast.Argument{
+		// 		{
+		// 			Name: "omittable",
+		// 			Value: &ast.Value{
+		// 				Raw:  "true",
+		// 				Kind: ast.BooleanValue,
+		// 			},
+		// 		},
+		// 	},
+		// }),
+		),
 	}
 }
 

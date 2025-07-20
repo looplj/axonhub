@@ -30,14 +30,19 @@ func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateCh
 
 // UpdateChannel is the resolver for the updateChannel field.
 func (r *mutationResolver) UpdateChannel(ctx context.Context, id int, input ent.UpdateChannelInput) (*ent.Channel, error) {
-	channel, err := r.client.Channel.UpdateOneID(id).
+	mut := r.client.Channel.UpdateOneID(id).
 		SetNillableBaseURL(input.BaseURL).
 		SetNillableName(input.Name).
 		SetNillableAPIKey(input.APIKey).
-		SetSupportedModels(input.SupportedModels).
-		SetNillableDefaultTestModel(input.DefaultTestModel).
-		SetSettings(input.Settings).
-		Save(ctx)
+		SetNillableDefaultTestModel(input.DefaultTestModel)
+
+	if input.SupportedModels != nil {
+		mut.SetSupportedModels(input.SupportedModels)
+	}
+	if input.Settings != nil {
+		mut.SetSettings(input.Settings)
+	}
+	channel, err := mut.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update channel: %w", err)
 	}

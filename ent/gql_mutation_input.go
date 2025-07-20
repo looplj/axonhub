@@ -115,6 +115,7 @@ type UpdateChannelInput struct {
 	SupportedModels       []string
 	AppendSupportedModels []string
 	DefaultTestModel      *string
+	ClearSettings         bool
 	Settings              *objects.ChannelSettings
 }
 
@@ -140,6 +141,9 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.DefaultTestModel; v != nil {
 		m.SetDefaultTestModel(*v)
+	}
+	if i.ClearSettings {
+		m.ClearSettings()
 	}
 	if v := i.Settings; v != nil {
 		m.SetSettings(v)

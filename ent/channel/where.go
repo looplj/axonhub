@@ -445,6 +445,16 @@ func DefaultTestModelContainsFold(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldContainsFold(FieldDefaultTestModel, v))
 }
 
+// SettingsIsNil applies the IsNil predicate on the "settings" field.
+func SettingsIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldSettings))
+}
+
+// SettingsNotNil applies the NotNil predicate on the "settings" field.
+func SettingsNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldSettings))
+}
+
 // HasRequests applies the HasEdge predicate on the "requests" edge.
 func HasRequests() predicate.Channel {
 	return predicate.Channel(func(s *sql.Selector) {

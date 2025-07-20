@@ -4,3 +4,6 @@ package server
 
 //go:generate go run -mod=mod ../ent/entc.go
 //go:generate go run -mod=mod github.com/99designs/gqlgen
+
+// DO NOT NEED FOR NOW
+//// go:generate go run ./gql/generate.go

@@ -51,3 +51,6 @@ alwaysApply: true
   - Include both DO and DON'T examples
   - Reference actual code over theoretical examples
   - Use consistent formatting across rules 
+
+- **Directory Structure:**
+  - The implementation tasks MUST store in `.trae/tasks` directory

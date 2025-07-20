@@ -3,6 +3,7 @@ package server
 import (
 	"go.uber.org/fx"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/looplj/axonhub/server/api"
 	"github.com/looplj/axonhub/server/middleware"
@@ -17,13 +18,18 @@ type Handlers struct {
 }
 
 func SetupRoutes(server *Server, handlers Handlers, deps Dependencies) {
+	adminGroup := server.Group("/admin", cors.Default())
 	// 管理员路由 - 不需要 API key 认证
-	server.GET("/admin/playground", func(c *gin.Context) {
-		handlers.Graphql.Playground.ServeHTTP(c.Writer, c.Request)
-	})
-	server.POST("/admin/graphql", func(ctx *gin.Context) {
-		handlers.Graphql.Graphql.ServeHTTP(ctx.Writer, ctx.Request)
-	})
+	// TODO Admin auth
+	{
+		adminGroup.OPTIONS("*any", cors.Default())
+		adminGroup.GET("/playground", func(c *gin.Context) {
+			handlers.Graphql.Playground.ServeHTTP(c.Writer, c.Request)
+		})
+		adminGroup.POST("/graphql", func(ctx *gin.Context) {
+			handlers.Graphql.Graphql.ServeHTTP(ctx.Writer, ctx.Request)
+		})
+	}
 
 	// API 路由 - 需要 API key 认证
 	apiGroup := server.Group("/v1")

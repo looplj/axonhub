@@ -100,3 +100,6 @@ node_modules/
 # tasks/ 
 
 .kiro
+.vercel
+.tanstack
+.trae/tasks

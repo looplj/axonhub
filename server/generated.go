@@ -3766,14 +3766,11 @@ func (ec *executionContext) _Channel_settings(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*objects.ChannelSettings)
 	fc.Result = res
-	return ec.marshalNChannelSettings2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐChannelSettings(ctx, field.Selections, res)
+	return ec.marshalOChannelSettings2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐChannelSettings(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4129,14 +4126,11 @@ func (ec *executionContext) _ChannelSettings_modelMappings(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.([]objects.ModelMapping)
 	fc.Result = res
-	return ec.marshalNModelMapping2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx, field.Selections, res)
+	return ec.marshalOModelMapping2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ChannelSettings_modelMappings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -10095,7 +10089,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		switch k {
 		case "modelMappings":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelMappings"))
-			data, err := ec.unmarshalNModelMappingInput2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx, v)
+			data, err := ec.unmarshalOModelMappingInput2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -10757,7 +10751,7 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 			it.DefaultTestModel = data
 		case "settings":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("settings"))
-			data, err := ec.unmarshalNChannelSettingsInput2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐChannelSettings(ctx, v)
+			data, err := ec.unmarshalOChannelSettingsInput2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐChannelSettings(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -12307,7 +12301,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"updatedAt", "baseURL", "name", "apiKey", "supportedModels", "appendSupportedModels", "defaultTestModel", "settings"}
+	fieldsInOrder := [...]string{"updatedAt", "baseURL", "name", "apiKey", "supportedModels", "appendSupportedModels", "defaultTestModel", "settings", "clearSettings"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -12370,6 +12364,13 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.Settings = data
+		case "clearSettings":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearSettings"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearSettings = data
 		}
 	}
 
@@ -13294,9 +13295,6 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "settings":
 			out.Values[i] = ec._Channel_settings(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "requests":
 			field := field
 
@@ -13456,9 +13454,6 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ChannelSettings")
 		case "modelMappings":
 			out.Values[i] = ec._ChannelSettings_modelMappings(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -15013,21 +15008,6 @@ func (ec *executionContext) marshalNChannelOrderField2ᚖgithubᚗcomᚋzhenzou�
 	return v
 }
 
-func (ec *executionContext) marshalNChannelSettings2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐChannelSettings(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelSettings) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ChannelSettings(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNChannelSettingsInput2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐChannelSettings(ctx context.Context, v any) (*objects.ChannelSettings, error) {
-	res, err := ec.unmarshalInputChannelSettingsInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) unmarshalNChannelType2githubᚗcomᚋzhenzouᚋaxonhubᚋentᚋchannelᚐType(ctx context.Context, v any) (channel.Type, error) {
 	var res channel.Type
 	err := res.UnmarshalGQL(v)
@@ -15171,68 +15151,9 @@ func (ec *executionContext) marshalNModelMapping2githubᚗcomᚋzhenzouᚋaxonhu
 	return ec._ModelMapping(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNModelMapping2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.ModelMapping) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNModelMapping2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMapping(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) unmarshalNModelMappingInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMapping(ctx context.Context, v any) (objects.ModelMapping, error) {
 	res, err := ec.unmarshalInputModelMappingInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalNModelMappingInput2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx context.Context, v any) ([]objects.ModelMapping, error) {
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]objects.ModelMapping, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNModelMappingInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMapping(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
 }
 
 func (ec *executionContext) marshalNNode2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋentᚐNoder(ctx context.Context, sel ast.SelectionSet, v []ent.Noder) graphql.Marshaler {
@@ -15934,6 +15855,13 @@ func (ec *executionContext) unmarshalOChannelOrder2ᚖgithubᚗcomᚋzhenzouᚋa
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOChannelSettings2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐChannelSettings(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelSettings) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOChannelSettingsInput2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐChannelSettings(ctx context.Context, v any) (*objects.ChannelSettings, error) {
 	if v == nil {
 		return nil, nil
@@ -16265,6 +16193,71 @@ func (ec *executionContext) unmarshalOJobWhereInput2ᚖgithubᚗcomᚋzhenzouᚋ
 	}
 	res, err := ec.unmarshalInputJobWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOModelMapping2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.ModelMapping) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModelMapping2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMapping(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOModelMappingInput2ᚕgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMappingᚄ(ctx context.Context, v any) ([]objects.ModelMapping, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.ModelMapping, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNModelMappingInput2githubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐModelMapping(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalONode2githubᚗcomᚋzhenzouᚋaxonhubᚋentᚐNoder(ctx context.Context, sel ast.SelectionSet, v ent.Noder) graphql.Marshaler {

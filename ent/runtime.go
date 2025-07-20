@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/ent/schema"
 	"github.com/looplj/axonhub/ent/user"
+	"github.com/looplj/axonhub/objects"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -51,6 +52,10 @@ func init() {
 	channelDescAPIKey := channelFields[3].Descriptor()
 	// channel.APIKeyValidator is a validator for the "api_key" field. It is called by the builders before save.
 	channel.APIKeyValidator = channelDescAPIKey.Validators[0].(func(string) error)
+	// channelDescSettings is the schema descriptor for settings field.
+	channelDescSettings := channelFields[6].Descriptor()
+	// channel.DefaultSettings holds the default value on creation for the settings field.
+	channel.DefaultSettings = channelDescSettings.Default.(*objects.ChannelSettings)
 	requestMixin := schema.Request{}.Mixin()
 	requestMixinFields0 := requestMixin[0].Fields()
 	_ = requestMixinFields0
