@@ -31,6 +31,8 @@ require (
 	go.uber.org/zap/exp v0.3.0
 )
 
+replace github.com/99designs/gqlgen => github.com/looplj/gqlgen v0.0.0-20250721163559-b09abcdca828
+
 require (
 	ariga.io/atlas v0.35.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect

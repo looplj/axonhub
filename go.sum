@@ -19,8 +19,6 @@ entgo.io/contrib v0.6.1-0.20250319063240-8a7f182943cb h1:602YeBygfuFSCEEioMJfRZa
 entgo.io/contrib v0.6.1-0.20250319063240-8a7f182943cb/go.mod h1:zbPSUrbn+6dfyv8S9HWEvn1MyGpO95ik2lUNgaqWTt4=
 entgo.io/ent v0.14.4 h1:/DhDraSLXIkBhyiVoJeSshr4ZYi7femzhj6/TckzZuI=
 entgo.io/ent v0.14.4/go.mod h1:aDPE/OziPEu8+OWbzy4UlvWmD2/kbRuWfK2A40hcxJM=
-github.com/99designs/gqlgen v0.17.76 h1:YsJBcfACWmXWU2t1yCjoGdOmqcTfOFpjbLAE443fmYI=
-github.com/99designs/gqlgen v0.17.76/go.mod h1:miiU+PkAnTIDKMQ1BseUOIVeQHoiwYDZGCswoxl7xec=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DATA-DOG/go-sqlmock v1.5.0 h1:Shsta01QNfFxHCfpW6YH2STWB0MudeXXEWMr20OEh60=
@@ -535,6 +533,8 @@ github.com/zclconf/go-cty-yaml v1.1.0 h1:nP+jp0qPHv2IhUVqmQSzjvqAWcObN0KBkUl2rWB
 github.com/zclconf/go-cty-yaml v1.1.0/go.mod h1:9YLUH4g7lOhVWqUbctnVlZ5KLpg7JAprQNgxSZ1Gyxs=
 github.com/zhenzou/executors v0.2.0 h1:m+NOSGdhM4OKxzr7YzUVK9GcGoPgewZq4EbPzDy9yeU=
 github.com/zhenzou/executors v0.2.0/go.mod h1:pBwN4DG4Pt3oeazmECbcV4EBgPxL/knWtQMA50gLG94=
+github.com/looplj/gqlgen v0.0.0-20250721163559-b09abcdca828 h1:HEhgL8gTv7Rq2yCRRBhoL7RR6dHSp0Nh4ga9FO6KPpw=
+github.com/looplj/gqlgen v0.0.0-20250721163559-b09abcdca828/go.mod h1:H7fOWI99JEHsOOrzdWJfCuf9lnz3kb8Zz2KNawzf2eE=
 github.com/zyedidia/generic v1.2.1 h1:Zv5KS/N2m0XZZiuLS82qheRG4X1o5gsWreGb0hR7XDc=
 github.com/zyedidia/generic v1.2.1/go.mod h1:ly2RBz4mnz1yeuVbQA/VFwGjK3mnHGRj1JuoG336Bis=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
