@@ -24,8 +24,14 @@ const REQUESTS_QUERY = `
           id
           createdAt
           updatedAt
-          userID
-          apiKeyID
+          user {
+            id
+            name
+          }
+          apiKey {
+            id
+            name
+          }
           requestBody
           responseBody
           status

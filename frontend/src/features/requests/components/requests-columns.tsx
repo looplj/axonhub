@@ -72,24 +72,24 @@ export const requestsColumns: ColumnDef<Request>[] = [
     },
   },
   {
-    accessorKey: 'userID',
+    accessorKey: 'user.name',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='用户ID' />
+      <DataTableColumnHeader column={column} title='用户' />
     ),
     cell: ({ row }) => (
       <div className='font-mono text-xs'>
-        {row.getValue('userID') || '未知'}
+        {row.original.user?.name || '未知'}
       </div>
     ),
   },
   {
-    accessorKey: 'apiKeyID',
+    accessorKey: 'apiKey',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='API密钥ID' />
+      <DataTableColumnHeader column={column} title='API密钥' />
     ),
     cell: ({ row }) => (
       <div className='font-mono text-xs'>
-        {row.getValue('apiKeyID') || '未知'}
+        {row.original.apiKey?.name || '未知'}
       </div>
     ),
   },
