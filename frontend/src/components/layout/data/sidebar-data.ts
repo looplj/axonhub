@@ -56,8 +56,8 @@ export const sidebarData: SidebarData = {
           icon: IconBrowserCheck,
         },
         {
-          title: 'Apps',
-          url: '/apps',
+          title: 'API Keys',
+          url: '/api-keys',
           icon: IconPackages,
         },
         {

@@ -1,13 +1,56 @@
-import { ColumnDef } from '@tanstack/react-table'
+import { useState } from 'react'
 import { format } from 'date-fns'
+import { ColumnDef } from '@tanstack/react-table'
+import { Copy, Eye, EyeOff } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import LongText from '@/components/long-text'
-import { User } from '../data/schema'
+import { ApiKey } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'
 
-export const columns: ColumnDef<User>[] = [
+function ApiKeyCell({ apiKey }: { apiKey: string }) {
+  const [isVisible, setIsVisible] = useState(false)
+
+  const maskedKey = apiKey.replace(/./g, '*').slice(0, -4) + apiKey.slice(-4)
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(apiKey)
+    toast.success('API Key 已复制到剪贴板')
+  }
+
+  return (
+    <div className='flex items-center space-x-2'>
+      <code className='bg-muted rounded px-2 py-1 font-mono text-sm'>
+        {isVisible ? apiKey : maskedKey}
+      </code>
+      <Button
+        variant='ghost'
+        size='sm'
+        onClick={() => setIsVisible(!isVisible)}
+        className='h-6 w-6 p-0'
+      >
+        {isVisible ? (
+          <EyeOff className='h-3 w-3' />
+        ) : (
+          <Eye className='h-3 w-3' />
+        )}
+      </Button>
+      <Button
+        variant='ghost'
+        size='sm'
+        onClick={copyToClipboard}
+        className='h-6 w-6 p-0'
+      >
+        <Copy className='h-3 w-3' />
+      </Button>
+    </div>
+  )
+}
+
+export const apiKeysColumns: ColumnDef<ApiKey>[] = [
   {
     id: 'select',
     header: ({ table }) => (
@@ -41,10 +84,12 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'name',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='姓名' />
+      <DataTableColumnHeader column={column} title='名称' />
     ),
     cell: ({ row }) => (
-      <LongText className='max-w-36 font-medium'>{row.getValue('name')}</LongText>
+      <LongText className='max-w-36 font-medium'>
+        {row.getValue('name')}
+      </LongText>
     ),
     meta: {
       className: cn(
@@ -56,13 +101,21 @@ export const columns: ColumnDef<User>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: 'email',
+    accessorKey: 'key',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='邮箱' />
+      <DataTableColumnHeader column={column} title='API Key' />
+    ),
+    cell: ({ row }) => <ApiKeyCell apiKey={row.getValue('key')} />,
+    enableSorting: false,
+  },
+  {
+    accessorKey: 'user',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='用户' />
     ),
     cell: ({ row }) => (
-      <LongText className='max-w-48 text-muted-foreground'>
-        {row.getValue('email')}
+      <LongText className='text-muted-foreground max-w-24'>
+        {row.original.user?.name || '-'}
       </LongText>
     ),
     enableSorting: false,
