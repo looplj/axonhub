@@ -2,6 +2,7 @@
 schema:
   - ent.graphql
   - axonhub.graphql
+  - dashboard.graphql
 
 #exec:
 #  layout: follow-schema

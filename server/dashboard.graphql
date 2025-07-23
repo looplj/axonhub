@@ -1,0 +1,59 @@
+# Dashboard statistics and analytics
+
+type DashboardStats {
+  totalUsers: Int!
+  totalChannels: Int!
+  totalRequests: Int!
+  totalAPIKeys: Int!
+  requestsToday: Int!
+  requestsThisWeek: Int!
+  requestsThisMonth: Int!
+  successfulRequests: Int!
+  failedRequests: Int!
+  averageResponseTime: Float
+}
+
+type RequestsByStatus {
+  status: String!
+  count: Int!
+}
+
+type RequestsByChannel {
+  channelName: String!
+  channelType: String!
+  count: Int!
+}
+
+type RequestsByModel {
+  modelId: String!
+  count: Int!
+}
+
+type DailyRequestStats {
+  date: String!
+  count: Int!
+  successCount: Int!
+  failedCount: Int!
+}
+
+type HourlyRequestStats {
+  hour: Int!
+  count: Int!
+}
+
+type TopUsers {
+  userId: ID!
+  userName: String!
+  userEmail: String!
+  requestCount: Int!
+}
+
+extend type Query {
+  dashboardStats: DashboardStats!
+  requestsByStatus: [RequestsByStatus!]!
+  requestsByChannel: [RequestsByChannel!]!
+  requestsByModel: [RequestsByModel!]!
+  dailyRequestStats(days: Int = 30): [DailyRequestStats!]!
+  hourlyRequestStats(date: String): [HourlyRequestStats!]!
+  topUsers(limit: Int = 10): [TopUsers!]!
+}
