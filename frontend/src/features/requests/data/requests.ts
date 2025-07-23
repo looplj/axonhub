@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { graphqlRequest } from '@/global/graphql'
+import { graphqlRequest } from '@/gql/graphql'
 import {
   Request,
   RequestConnection,

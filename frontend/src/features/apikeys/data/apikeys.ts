@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { graphqlRequest } from '@/global/graphql'
+import { graphqlRequest } from '@/gql/graphql'
 import type { ApiKey, ApiKeyConnection, CreateApiKeyInput, UpdateApiKeyInput } from './schema'
 import { apiKeyConnectionSchema, apiKeySchema } from './schema'
 import { toast } from 'sonner'

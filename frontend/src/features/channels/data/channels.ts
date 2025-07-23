@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { graphqlRequest } from '@/global/graphql'
+import { graphqlRequest } from '@/gql/graphql'
 import { toast } from 'sonner'
 import {
   Channel,

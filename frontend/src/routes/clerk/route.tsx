@@ -4,7 +4,7 @@ import { ClerkProvider } from '@clerk/clerk-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import { AuthenticatedLayout } from '@/components/layout/authenticated-layout'
+import { AuthenticatedLayout } from '@/authenticated-layout'
 import { Main } from '@/components/layout/main'
 import { ThemeSwitch } from '@/components/theme-switch'
 

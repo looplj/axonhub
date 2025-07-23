@@ -5,6 +5,7 @@ import { SearchProvider } from '@/context/search-context'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import SkipToMain from '@/components/skip-to-main'
+import { sidebarData } from './sidebar-data'
 
 interface Props {
   children?: React.ReactNode
@@ -16,7 +17,7 @@ export function AuthenticatedLayout({ children }: Props) {
     <SearchProvider>
       <SidebarProvider defaultOpen={defaultOpen}>
         <SkipToMain />
-        <AppSidebar />
+        <AppSidebar sidebarData={sidebarData} />
         <div
           id='content'
           className={cn(
