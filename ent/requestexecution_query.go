@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/predicate"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
@@ -24,6 +25,7 @@ type RequestExecutionQuery struct {
 	inters      []Interceptor
 	predicates  []predicate.RequestExecution
 	withRequest *RequestQuery
+	withChannel *ChannelQuery
 	modifiers   []func(*sql.Selector)
 	loadTotal   []func(context.Context, []*RequestExecution) error
 	// intermediate query (i.e. traversal path).
@@ -77,6 +79,28 @@ func (req *RequestExecutionQuery) QueryRequest() *RequestQuery {
 			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, selector),
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, requestexecution.RequestTable, requestexecution.RequestColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(req.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChannel chains the current query on the "channel" edge.
+func (req *RequestExecutionQuery) QueryChannel() *ChannelQuery {
+	query := (&ChannelClient{config: req.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := req.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := req.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, selector),
+			sqlgraph.To(channel.Table, channel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, requestexecution.ChannelTable, requestexecution.ChannelColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(req.driver.Dialect(), step)
 		return fromU, nil
@@ -277,6 +301,7 @@ func (req *RequestExecutionQuery) Clone() *RequestExecutionQuery {
 		inters:      append([]Interceptor{}, req.inters...),
 		predicates:  append([]predicate.RequestExecution{}, req.predicates...),
 		withRequest: req.withRequest.Clone(),
+		withChannel: req.withChannel.Clone(),
 		// clone intermediate query.
 		sql:  req.sql.Clone(),
 		path: req.path,
@@ -291,6 +316,17 @@ func (req *RequestExecutionQuery) WithRequest(opts ...func(*RequestQuery)) *Requ
 		opt(query)
 	}
 	req.withRequest = query
+	return req
+}
+
+// WithChannel tells the query-builder to eager-load the nodes that are connected to
+// the "channel" edge. The optional arguments are used to configure the query builder of the edge.
+func (req *RequestExecutionQuery) WithChannel(opts ...func(*ChannelQuery)) *RequestExecutionQuery {
+	query := (&ChannelClient{config: req.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	req.withChannel = query
 	return req
 }
 
@@ -372,8 +408,9 @@ func (req *RequestExecutionQuery) sqlAll(ctx context.Context, hooks ...queryHook
 	var (
 		nodes       = []*RequestExecution{}
 		_spec       = req.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			req.withRequest != nil,
+			req.withChannel != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -400,6 +437,12 @@ func (req *RequestExecutionQuery) sqlAll(ctx context.Context, hooks ...queryHook
 	if query := req.withRequest; query != nil {
 		if err := req.loadRequest(ctx, query, nodes, nil,
 			func(n *RequestExecution, e *Request) { n.Edges.Request = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := req.withChannel; query != nil {
+		if err := req.loadChannel(ctx, query, nodes, nil,
+			func(n *RequestExecution, e *Channel) { n.Edges.Channel = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -440,6 +483,35 @@ func (req *RequestExecutionQuery) loadRequest(ctx context.Context, query *Reques
 	}
 	return nil
 }
+func (req *RequestExecutionQuery) loadChannel(ctx context.Context, query *ChannelQuery, nodes []*RequestExecution, init func(*RequestExecution), assign func(*RequestExecution, *Channel)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*RequestExecution)
+	for i := range nodes {
+		fk := nodes[i].ChannelID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(channel.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "channel_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
 
 func (req *RequestExecutionQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := req.querySpec()
@@ -471,6 +543,9 @@ func (req *RequestExecutionQuery) querySpec() *sqlgraph.QuerySpec {
 		}
 		if req.withRequest != nil {
 			_spec.Node.AddColumnOnce(requestexecution.FieldRequestID)
+		}
+		if req.withChannel != nil {
+			_spec.Node.AddColumnOnce(requestexecution.FieldChannelID)
 		}
 	}
 	if ps := req.predicates; len(ps) > 0 {

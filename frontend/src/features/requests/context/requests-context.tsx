@@ -8,6 +8,20 @@ interface RequestsContextType {
   detailDialogOpen: boolean
   setDetailDialogOpen: (open: boolean) => void
   
+  // JSON viewer dialog states
+  jsonViewerOpen: boolean
+  setJsonViewerOpen: (open: boolean) => void
+  jsonViewerData: { title: string; data: any } | null
+  setJsonViewerData: (data: { title: string; data: any } | null) => void
+  
+  // Execution detail dialog states
+  executionDetailOpen: boolean
+  setExecutionDetailOpen: (open: boolean) => void
+  
+  // Executions drawer states
+  executionsDrawerOpen: boolean
+  setExecutionsDrawerOpen: (open: boolean) => void
+  
   // Current selected items
   currentRequest: Request | null
   setCurrentRequest: (request: Request | null) => void
@@ -28,6 +42,10 @@ interface RequestsProviderProps {
 
 export default function RequestsProvider({ children }: RequestsProviderProps) {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [jsonViewerOpen, setJsonViewerOpen] = useState(false)
+  const [jsonViewerData, setJsonViewerData] = useState<{ title: string; data: any } | null>(null)
+  const [executionDetailOpen, setExecutionDetailOpen] = useState(false)
+  const [executionsDrawerOpen, setExecutionsDrawerOpen] = useState(false)
   const [currentRequest, setCurrentRequest] = useState<Request | null>(null)
   const [currentExecution, setCurrentExecution] = useState<RequestExecution | null>(null)
   const [selectedRequests, setSelectedRequests] = useState<string[]>([])
@@ -35,6 +53,14 @@ export default function RequestsProvider({ children }: RequestsProviderProps) {
   const value: RequestsContextType = {
     detailDialogOpen,
     setDetailDialogOpen,
+    jsonViewerOpen,
+    setJsonViewerOpen,
+    jsonViewerData,
+    setJsonViewerData,
+    executionDetailOpen,
+    setExecutionDetailOpen,
+    executionsDrawerOpen,
+    setExecutionsDrawerOpen,
     currentRequest,
     setCurrentRequest,
     currentExecution,

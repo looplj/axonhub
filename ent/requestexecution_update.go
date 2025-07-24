@@ -157,6 +157,9 @@ func (reu *RequestExecutionUpdate) check() error {
 	if reu.mutation.RequestCleared() && len(reu.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "RequestExecution.request"`)
 	}
+	if reu.mutation.ChannelCleared() && len(reu.mutation.ChannelIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "RequestExecution.channel"`)
+	}
 	return nil
 }
 
@@ -365,6 +368,9 @@ func (reuo *RequestExecutionUpdateOne) check() error {
 	}
 	if reuo.mutation.RequestCleared() && len(reuo.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "RequestExecution.request"`)
+	}
+	if reuo.mutation.ChannelCleared() && len(reuo.mutation.ChannelIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "RequestExecution.channel"`)
 	}
 	return nil
 }

@@ -742,6 +742,9 @@ type ChannelMutation struct {
 	requests               map[int]struct{}
 	removedrequests        map[int]struct{}
 	clearedrequests        bool
+	executions             map[int]struct{}
+	removedexecutions      map[int]struct{}
+	clearedexecutions      bool
 	done                   bool
 	oldValue               func(context.Context) (*Channel, error)
 	predicates             []predicate.Channel
@@ -1251,6 +1254,60 @@ func (m *ChannelMutation) ResetRequests() {
 	m.removedrequests = nil
 }
 
+// AddExecutionIDs adds the "executions" edge to the RequestExecution entity by ids.
+func (m *ChannelMutation) AddExecutionIDs(ids ...int) {
+	if m.executions == nil {
+		m.executions = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.executions[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExecutions clears the "executions" edge to the RequestExecution entity.
+func (m *ChannelMutation) ClearExecutions() {
+	m.clearedexecutions = true
+}
+
+// ExecutionsCleared reports if the "executions" edge to the RequestExecution entity was cleared.
+func (m *ChannelMutation) ExecutionsCleared() bool {
+	return m.clearedexecutions
+}
+
+// RemoveExecutionIDs removes the "executions" edge to the RequestExecution entity by IDs.
+func (m *ChannelMutation) RemoveExecutionIDs(ids ...int) {
+	if m.removedexecutions == nil {
+		m.removedexecutions = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.executions, ids[i])
+		m.removedexecutions[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExecutions returns the removed IDs of the "executions" edge to the RequestExecution entity.
+func (m *ChannelMutation) RemovedExecutionsIDs() (ids []int) {
+	for id := range m.removedexecutions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExecutionsIDs returns the "executions" edge IDs in the mutation.
+func (m *ChannelMutation) ExecutionsIDs() (ids []int) {
+	for id := range m.executions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExecutions resets all changes to the "executions" edge.
+func (m *ChannelMutation) ResetExecutions() {
+	m.executions = nil
+	m.clearedexecutions = false
+	m.removedexecutions = nil
+}
+
 // Where appends a list predicates to the ChannelMutation builder.
 func (m *ChannelMutation) Where(ps ...predicate.Channel) {
 	m.predicates = append(m.predicates, ps...)
@@ -1529,9 +1586,12 @@ func (m *ChannelMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ChannelMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.requests != nil {
 		edges = append(edges, channel.EdgeRequests)
+	}
+	if m.executions != nil {
+		edges = append(edges, channel.EdgeExecutions)
 	}
 	return edges
 }
@@ -1546,15 +1606,24 @@ func (m *ChannelMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case channel.EdgeExecutions:
+		ids := make([]ent.Value, 0, len(m.executions))
+		for id := range m.executions {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ChannelMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedrequests != nil {
 		edges = append(edges, channel.EdgeRequests)
+	}
+	if m.removedexecutions != nil {
+		edges = append(edges, channel.EdgeExecutions)
 	}
 	return edges
 }
@@ -1569,15 +1638,24 @@ func (m *ChannelMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case channel.EdgeExecutions:
+		ids := make([]ent.Value, 0, len(m.removedexecutions))
+		for id := range m.removedexecutions {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ChannelMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedrequests {
 		edges = append(edges, channel.EdgeRequests)
+	}
+	if m.clearedexecutions {
+		edges = append(edges, channel.EdgeExecutions)
 	}
 	return edges
 }
@@ -1588,6 +1666,8 @@ func (m *ChannelMutation) EdgeCleared(name string) bool {
 	switch name {
 	case channel.EdgeRequests:
 		return m.clearedrequests
+	case channel.EdgeExecutions:
+		return m.clearedexecutions
 	}
 	return false
 }
@@ -1606,6 +1686,9 @@ func (m *ChannelMutation) ResetEdge(name string) error {
 	switch name {
 	case channel.EdgeRequests:
 		m.ResetRequests()
+		return nil
+	case channel.EdgeExecutions:
+		m.ResetExecutions()
 		return nil
 	}
 	return fmt.Errorf("unknown Channel edge %s", name)
@@ -2089,6 +2172,7 @@ type RequestMutation struct {
 	id                  *int
 	created_at          *time.Time
 	updated_at          *time.Time
+	model_id            *string
 	request_body        *objects.JSONRawMessage
 	appendrequest_body  objects.JSONRawMessage
 	response_body       *objects.JSONRawMessage
@@ -2347,6 +2431,42 @@ func (m *RequestMutation) OldAPIKeyID(ctx context.Context) (v int, err error) {
 // ResetAPIKeyID resets all changes to the "api_key_id" field.
 func (m *RequestMutation) ResetAPIKeyID() {
 	m.api_key = nil
+}
+
+// SetModelID sets the "model_id" field.
+func (m *RequestMutation) SetModelID(s string) {
+	m.model_id = &s
+}
+
+// ModelID returns the value of the "model_id" field in the mutation.
+func (m *RequestMutation) ModelID() (r string, exists bool) {
+	v := m.model_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelID returns the old "model_id" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldModelID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelID: %w", err)
+	}
+	return oldValue.ModelID, nil
+}
+
+// ResetModelID resets all changes to the "model_id" field.
+func (m *RequestMutation) ResetModelID() {
+	m.model_id = nil
 }
 
 // SetRequestBody sets the "request_body" field.
@@ -2643,7 +2763,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -2655,6 +2775,9 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.api_key != nil {
 		fields = append(fields, request.FieldAPIKeyID)
+	}
+	if m.model_id != nil {
+		fields = append(fields, request.FieldModelID)
 	}
 	if m.request_body != nil {
 		fields = append(fields, request.FieldRequestBody)
@@ -2681,6 +2804,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.UserID()
 	case request.FieldAPIKeyID:
 		return m.APIKeyID()
+	case request.FieldModelID:
+		return m.ModelID()
 	case request.FieldRequestBody:
 		return m.RequestBody()
 	case request.FieldResponseBody:
@@ -2704,6 +2829,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldUserID(ctx)
 	case request.FieldAPIKeyID:
 		return m.OldAPIKeyID(ctx)
+	case request.FieldModelID:
+		return m.OldModelID(ctx)
 	case request.FieldRequestBody:
 		return m.OldRequestBody(ctx)
 	case request.FieldResponseBody:
@@ -2746,6 +2873,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAPIKeyID(v)
+		return nil
+	case request.FieldModelID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelID(v)
 		return nil
 	case request.FieldRequestBody:
 		v, ok := value.(objects.JSONRawMessage)
@@ -2840,6 +2974,9 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldAPIKeyID:
 		m.ResetAPIKeyID()
+		return nil
+	case request.FieldModelID:
+		m.ResetModelID()
 		return nil
 	case request.FieldRequestBody:
 		m.ResetRequestBody()
@@ -2984,8 +3121,6 @@ type RequestExecutionMutation struct {
 	updated_at            *time.Time
 	user_id               *int
 	adduser_id            *int
-	channel_id            *int
-	addchannel_id         *int
 	model_id              *string
 	request_body          *objects.JSONRawMessage
 	appendrequest_body    objects.JSONRawMessage
@@ -2998,6 +3133,8 @@ type RequestExecutionMutation struct {
 	clearedFields         map[string]struct{}
 	request               *int
 	clearedrequest        bool
+	channel               *int
+	clearedchannel        bool
 	done                  bool
 	oldValue              func(context.Context) (*RequestExecution, error)
 	predicates            []predicate.RequestExecution
@@ -3267,13 +3404,12 @@ func (m *RequestExecutionMutation) ResetRequestID() {
 
 // SetChannelID sets the "channel_id" field.
 func (m *RequestExecutionMutation) SetChannelID(i int) {
-	m.channel_id = &i
-	m.addchannel_id = nil
+	m.channel = &i
 }
 
 // ChannelID returns the value of the "channel_id" field in the mutation.
 func (m *RequestExecutionMutation) ChannelID() (r int, exists bool) {
-	v := m.channel_id
+	v := m.channel
 	if v == nil {
 		return
 	}
@@ -3297,28 +3433,9 @@ func (m *RequestExecutionMutation) OldChannelID(ctx context.Context) (v int, err
 	return oldValue.ChannelID, nil
 }
 
-// AddChannelID adds i to the "channel_id" field.
-func (m *RequestExecutionMutation) AddChannelID(i int) {
-	if m.addchannel_id != nil {
-		*m.addchannel_id += i
-	} else {
-		m.addchannel_id = &i
-	}
-}
-
-// AddedChannelID returns the value that was added to the "channel_id" field in this mutation.
-func (m *RequestExecutionMutation) AddedChannelID() (r int, exists bool) {
-	v := m.addchannel_id
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
 // ResetChannelID resets all changes to the "channel_id" field.
 func (m *RequestExecutionMutation) ResetChannelID() {
-	m.channel_id = nil
-	m.addchannel_id = nil
+	m.channel = nil
 }
 
 // SetModelID sets the "model_id" field.
@@ -3650,6 +3767,33 @@ func (m *RequestExecutionMutation) ResetRequest() {
 	m.clearedrequest = false
 }
 
+// ClearChannel clears the "channel" edge to the Channel entity.
+func (m *RequestExecutionMutation) ClearChannel() {
+	m.clearedchannel = true
+	m.clearedFields[requestexecution.FieldChannelID] = struct{}{}
+}
+
+// ChannelCleared reports if the "channel" edge to the Channel entity was cleared.
+func (m *RequestExecutionMutation) ChannelCleared() bool {
+	return m.clearedchannel
+}
+
+// ChannelIDs returns the "channel" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ChannelID instead. It exists only for internal usage by the builders.
+func (m *RequestExecutionMutation) ChannelIDs() (ids []int) {
+	if id := m.channel; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetChannel resets all changes to the "channel" edge.
+func (m *RequestExecutionMutation) ResetChannel() {
+	m.channel = nil
+	m.clearedchannel = false
+}
+
 // Where appends a list predicates to the RequestExecutionMutation builder.
 func (m *RequestExecutionMutation) Where(ps ...predicate.RequestExecution) {
 	m.predicates = append(m.predicates, ps...)
@@ -3697,7 +3841,7 @@ func (m *RequestExecutionMutation) Fields() []string {
 	if m.request != nil {
 		fields = append(fields, requestexecution.FieldRequestID)
 	}
-	if m.channel_id != nil {
+	if m.channel != nil {
 		fields = append(fields, requestexecution.FieldChannelID)
 	}
 	if m.model_id != nil {
@@ -3876,9 +4020,6 @@ func (m *RequestExecutionMutation) AddedFields() []string {
 	if m.adduser_id != nil {
 		fields = append(fields, requestexecution.FieldUserID)
 	}
-	if m.addchannel_id != nil {
-		fields = append(fields, requestexecution.FieldChannelID)
-	}
 	return fields
 }
 
@@ -3889,8 +4030,6 @@ func (m *RequestExecutionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case requestexecution.FieldUserID:
 		return m.AddedUserID()
-	case requestexecution.FieldChannelID:
-		return m.AddedChannelID()
 	}
 	return nil, false
 }
@@ -3906,13 +4045,6 @@ func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddUserID(v)
-		return nil
-	case requestexecution.FieldChannelID:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddChannelID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution numeric field %s", name)
@@ -4001,9 +4133,12 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RequestExecutionMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.request != nil {
 		edges = append(edges, requestexecution.EdgeRequest)
+	}
+	if m.channel != nil {
+		edges = append(edges, requestexecution.EdgeChannel)
 	}
 	return edges
 }
@@ -4016,13 +4151,17 @@ func (m *RequestExecutionMutation) AddedIDs(name string) []ent.Value {
 		if id := m.request; id != nil {
 			return []ent.Value{*id}
 		}
+	case requestexecution.EdgeChannel:
+		if id := m.channel; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RequestExecutionMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	return edges
 }
 
@@ -4034,9 +4173,12 @@ func (m *RequestExecutionMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RequestExecutionMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedrequest {
 		edges = append(edges, requestexecution.EdgeRequest)
+	}
+	if m.clearedchannel {
+		edges = append(edges, requestexecution.EdgeChannel)
 	}
 	return edges
 }
@@ -4047,6 +4189,8 @@ func (m *RequestExecutionMutation) EdgeCleared(name string) bool {
 	switch name {
 	case requestexecution.EdgeRequest:
 		return m.clearedrequest
+	case requestexecution.EdgeChannel:
+		return m.clearedchannel
 	}
 	return false
 }
@@ -4058,6 +4202,9 @@ func (m *RequestExecutionMutation) ClearEdge(name string) error {
 	case requestexecution.EdgeRequest:
 		m.ClearRequest()
 		return nil
+	case requestexecution.EdgeChannel:
+		m.ClearChannel()
+		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution unique edge %s", name)
 }
@@ -4068,6 +4215,9 @@ func (m *RequestExecutionMutation) ResetEdge(name string) error {
 	switch name {
 	case requestexecution.EdgeRequest:
 		m.ResetRequest()
+		return nil
+	case requestexecution.EdgeChannel:
+		m.ResetChannel()
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution edge %s", name)

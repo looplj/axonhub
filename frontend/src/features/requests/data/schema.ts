@@ -1,6 +1,8 @@
 import { z } from 'zod'
-import { userSchema } from '@/features/users/data/schema'
+import { channel } from 'diagnostics_channel'
 import { apiKeySchema } from '@/features/apikeys/data/schema'
+import { userSchema } from '@/features/users/data/schema'
+import { channelSchema } from '@/features/channels/data'
 
 // Request Status
 export const requestStatusSchema = z.enum([
@@ -29,7 +31,8 @@ export const requestExecutionSchema = z.object({
   updatedAt: z.coerce.date(),
   userID: z.number(),
   requestID: z.string(),
-  channelID: z.number(),
+  // channelID: z.number(),
+  channel: channelSchema.partial(),
   modelID: z.string(),
   requestBody: z.any(), // JSONRawMessage
   responseBody: z.any().nullable(), // JSONRawMessage

@@ -484,6 +484,10 @@ type ChannelWhereInput struct {
 	// "requests" edge predicates.
 	HasRequests     *bool                `json:"hasRequests,omitempty"`
 	HasRequestsWith []*RequestWhereInput `json:"hasRequestsWith,omitempty"`
+
+	// "executions" edge predicates.
+	HasExecutions     *bool                         `json:"hasExecutions,omitempty"`
+	HasExecutionsWith []*RequestExecutionWhereInput `json:"hasExecutionsWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -816,6 +820,24 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 		}
 		predicates = append(predicates, channel.HasRequestsWith(with...))
 	}
+	if i.HasExecutions != nil {
+		p := channel.HasExecutions()
+		if !*i.HasExecutions {
+			p = channel.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasExecutionsWith) > 0 {
+		with := make([]predicate.RequestExecution, 0, len(i.HasExecutionsWith))
+		for _, w := range i.HasExecutionsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasExecutionsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, channel.HasExecutionsWith(with...))
+	}
 	switch len(predicates) {
 	case 0:
 		return nil, ErrEmptyChannelWhereInput
@@ -1141,6 +1163,21 @@ type RequestWhereInput struct {
 	APIKeyIDIn    []int `json:"apiKeyIDIn,omitempty"`
 	APIKeyIDNotIn []int `json:"apiKeyIDNotIn,omitempty"`
 
+	// "model_id" field predicates.
+	ModelID             *string  `json:"modelID,omitempty"`
+	ModelIDNEQ          *string  `json:"modelIDNEQ,omitempty"`
+	ModelIDIn           []string `json:"modelIDIn,omitempty"`
+	ModelIDNotIn        []string `json:"modelIDNotIn,omitempty"`
+	ModelIDGT           *string  `json:"modelIDGT,omitempty"`
+	ModelIDGTE          *string  `json:"modelIDGTE,omitempty"`
+	ModelIDLT           *string  `json:"modelIDLT,omitempty"`
+	ModelIDLTE          *string  `json:"modelIDLTE,omitempty"`
+	ModelIDContains     *string  `json:"modelIDContains,omitempty"`
+	ModelIDHasPrefix    *string  `json:"modelIDHasPrefix,omitempty"`
+	ModelIDHasSuffix    *string  `json:"modelIDHasSuffix,omitempty"`
+	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
+	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
+
 	// "status" field predicates.
 	Status      *request.Status  `json:"status,omitempty"`
 	StatusNEQ   *request.Status  `json:"statusNEQ,omitempty"`
@@ -1327,6 +1364,45 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	if len(i.APIKeyIDNotIn) > 0 {
 		predicates = append(predicates, request.APIKeyIDNotIn(i.APIKeyIDNotIn...))
 	}
+	if i.ModelID != nil {
+		predicates = append(predicates, request.ModelIDEQ(*i.ModelID))
+	}
+	if i.ModelIDNEQ != nil {
+		predicates = append(predicates, request.ModelIDNEQ(*i.ModelIDNEQ))
+	}
+	if len(i.ModelIDIn) > 0 {
+		predicates = append(predicates, request.ModelIDIn(i.ModelIDIn...))
+	}
+	if len(i.ModelIDNotIn) > 0 {
+		predicates = append(predicates, request.ModelIDNotIn(i.ModelIDNotIn...))
+	}
+	if i.ModelIDGT != nil {
+		predicates = append(predicates, request.ModelIDGT(*i.ModelIDGT))
+	}
+	if i.ModelIDGTE != nil {
+		predicates = append(predicates, request.ModelIDGTE(*i.ModelIDGTE))
+	}
+	if i.ModelIDLT != nil {
+		predicates = append(predicates, request.ModelIDLT(*i.ModelIDLT))
+	}
+	if i.ModelIDLTE != nil {
+		predicates = append(predicates, request.ModelIDLTE(*i.ModelIDLTE))
+	}
+	if i.ModelIDContains != nil {
+		predicates = append(predicates, request.ModelIDContains(*i.ModelIDContains))
+	}
+	if i.ModelIDHasPrefix != nil {
+		predicates = append(predicates, request.ModelIDHasPrefix(*i.ModelIDHasPrefix))
+	}
+	if i.ModelIDHasSuffix != nil {
+		predicates = append(predicates, request.ModelIDHasSuffix(*i.ModelIDHasSuffix))
+	}
+	if i.ModelIDEqualFold != nil {
+		predicates = append(predicates, request.ModelIDEqualFold(*i.ModelIDEqualFold))
+	}
+	if i.ModelIDContainsFold != nil {
+		predicates = append(predicates, request.ModelIDContainsFold(*i.ModelIDContainsFold))
+	}
 	if i.Status != nil {
 		predicates = append(predicates, request.StatusEQ(*i.Status))
 	}
@@ -1462,10 +1538,6 @@ type RequestExecutionWhereInput struct {
 	ChannelIDNEQ   *int  `json:"channelIDNEQ,omitempty"`
 	ChannelIDIn    []int `json:"channelIDIn,omitempty"`
 	ChannelIDNotIn []int `json:"channelIDNotIn,omitempty"`
-	ChannelIDGT    *int  `json:"channelIDGT,omitempty"`
-	ChannelIDGTE   *int  `json:"channelIDGTE,omitempty"`
-	ChannelIDLT    *int  `json:"channelIDLT,omitempty"`
-	ChannelIDLTE   *int  `json:"channelIDLTE,omitempty"`
 
 	// "model_id" field predicates.
 	ModelID             *string  `json:"modelID,omitempty"`
@@ -1508,6 +1580,10 @@ type RequestExecutionWhereInput struct {
 	// "request" edge predicates.
 	HasRequest     *bool                `json:"hasRequest,omitempty"`
 	HasRequestWith []*RequestWhereInput `json:"hasRequestWith,omitempty"`
+
+	// "channel" edge predicates.
+	HasChannel     *bool                `json:"hasChannel,omitempty"`
+	HasChannelWith []*ChannelWhereInput `json:"hasChannelWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -1701,18 +1777,6 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	if len(i.ChannelIDNotIn) > 0 {
 		predicates = append(predicates, requestexecution.ChannelIDNotIn(i.ChannelIDNotIn...))
 	}
-	if i.ChannelIDGT != nil {
-		predicates = append(predicates, requestexecution.ChannelIDGT(*i.ChannelIDGT))
-	}
-	if i.ChannelIDGTE != nil {
-		predicates = append(predicates, requestexecution.ChannelIDGTE(*i.ChannelIDGTE))
-	}
-	if i.ChannelIDLT != nil {
-		predicates = append(predicates, requestexecution.ChannelIDLT(*i.ChannelIDLT))
-	}
-	if i.ChannelIDLTE != nil {
-		predicates = append(predicates, requestexecution.ChannelIDLTE(*i.ChannelIDLTE))
-	}
 	if i.ModelID != nil {
 		predicates = append(predicates, requestexecution.ModelIDEQ(*i.ModelID))
 	}
@@ -1827,6 +1891,24 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, requestexecution.HasRequestWith(with...))
+	}
+	if i.HasChannel != nil {
+		p := requestexecution.HasChannel()
+		if !*i.HasChannel {
+			p = requestexecution.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasChannelWith) > 0 {
+		with := make([]predicate.Channel, 0, len(i.HasChannelWith))
+		for _, w := range i.HasChannelWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasChannelWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, requestexecution.HasChannelWith(with...))
 	}
 	switch len(predicates) {
 	case 0:

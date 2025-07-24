@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/objects"
@@ -52,11 +53,13 @@ type RequestExecution struct {
 type RequestExecutionEdges struct {
 	// Request holds the value of the request edge.
 	Request *Request `json:"request,omitempty"`
+	// Channel holds the value of the channel edge.
+	Channel *Channel `json:"channel,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 	// totalCount holds the count of the edges above.
-	totalCount [1]map[string]int
+	totalCount [2]map[string]int
 }
 
 // RequestOrErr returns the Request value or an error if the edge
@@ -68,6 +71,17 @@ func (e RequestExecutionEdges) RequestOrErr() (*Request, error) {
 		return nil, &NotFoundError{label: request.Label}
 	}
 	return nil, &NotLoadedError{edge: "request"}
+}
+
+// ChannelOrErr returns the Channel value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e RequestExecutionEdges) ChannelOrErr() (*Channel, error) {
+	if e.Channel != nil {
+		return e.Channel, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: channel.Label}
+	}
+	return nil, &NotLoadedError{edge: "channel"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -192,6 +206,11 @@ func (re *RequestExecution) Value(name string) (ent.Value, error) {
 // QueryRequest queries the "request" edge of the RequestExecution entity.
 func (re *RequestExecution) QueryRequest() *RequestQuery {
 	return NewRequestExecutionClient(re.config).QueryRequest(re)
+}
+
+// QueryChannel queries the "channel" edge of the RequestExecution entity.
+func (re *RequestExecution) QueryChannel() *ChannelQuery {
+	return NewRequestExecutionClient(re.config).QueryChannel(re)
 }
 
 // Update returns a builder for updating this RequestExecution.

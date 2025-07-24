@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { useRequests } from './data'
-import { RequestsTable, RequestDetailDialog } from './components'
+import { 
+  RequestsTable, 
+  RequestDetailDialog, 
+  JsonViewerDialog,
+  ExecutionDetailDialog,
+  ExecutionsDrawer
+} from './components'
 import { requestsColumns } from './components/requests-columns'
 import { RequestsProvider, useRequestsContext } from './context'
 import { Button } from '@/components/ui/button'
@@ -18,10 +24,26 @@ function RequestsContent() {
   const { 
     detailDialogOpen, 
     setDetailDialogOpen, 
-    currentRequest: selectedRequest 
+    currentRequest: selectedRequest,
+    jsonViewerOpen,
+    setJsonViewerOpen,
+    jsonViewerData,
+    executionDetailOpen,
+    setExecutionDetailOpen,
+    currentExecution,
+    setCurrentExecution,
+    executionsDrawerOpen,
+    setExecutionsDrawerOpen,
+    currentRequest
   } = useRequestsContext()
 
   const requests = data?.edges?.map(edge => edge.node) || []
+
+  const handleExecutionSelect = (execution: any) => {
+    setCurrentExecution(execution)
+    setExecutionsDrawerOpen(false)
+    setExecutionDetailOpen(true)
+  }
 
   return (
     <>
@@ -54,6 +76,30 @@ function RequestsContent() {
         </div>
       </div>
 
+      {/* JSON 查看器弹窗 */}
+      <JsonViewerDialog
+        open={jsonViewerOpen}
+        onOpenChange={setJsonViewerOpen}
+        title={jsonViewerData?.title || ''}
+        jsonData={jsonViewerData?.data}
+      />
+
+      {/* 执行详情弹窗 */}
+      <ExecutionDetailDialog
+        open={executionDetailOpen}
+        onOpenChange={setExecutionDetailOpen}
+        execution={currentExecution}
+      />
+
+      {/* 执行列表抽屉 */}
+      <ExecutionsDrawer
+        open={executionsDrawerOpen}
+        onOpenChange={setExecutionsDrawerOpen}
+        executions={currentRequest?.executions?.edges?.map(edge => edge.node) || []}
+        onExecutionSelect={handleExecutionSelect}
+      />
+
+      {/* 保留原有的详情弹窗（如果需要的话） */}
       <RequestDetailDialog
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}

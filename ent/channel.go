@@ -47,13 +47,16 @@ type Channel struct {
 type ChannelEdges struct {
 	// Requests holds the value of the requests edge.
 	Requests []*Request `json:"requests,omitempty"`
+	// Executions holds the value of the executions edge.
+	Executions []*RequestExecution `json:"executions,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 	// totalCount holds the count of the edges above.
-	totalCount [1]map[string]int
+	totalCount [2]map[string]int
 
-	namedRequests map[string][]*Request
+	namedRequests   map[string][]*Request
+	namedExecutions map[string][]*RequestExecution
 }
 
 // RequestsOrErr returns the Requests value or an error if the edge
@@ -63,6 +66,15 @@ func (e ChannelEdges) RequestsOrErr() ([]*Request, error) {
 		return e.Requests, nil
 	}
 	return nil, &NotLoadedError{edge: "requests"}
+}
+
+// ExecutionsOrErr returns the Executions value or an error if the edge
+// was not loaded in eager-loading.
+func (e ChannelEdges) ExecutionsOrErr() ([]*RequestExecution, error) {
+	if e.loadedTypes[1] {
+		return e.Executions, nil
+	}
+	return nil, &NotLoadedError{edge: "executions"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -175,6 +187,11 @@ func (c *Channel) QueryRequests() *RequestQuery {
 	return NewChannelClient(c.config).QueryRequests(c)
 }
 
+// QueryExecutions queries the "executions" edge of the Channel entity.
+func (c *Channel) QueryExecutions() *RequestExecutionQuery {
+	return NewChannelClient(c.config).QueryExecutions(c)
+}
+
 // Update returns a builder for updating this Channel.
 // Note that you need to call Channel.Unwrap() before calling this method if this Channel
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -248,6 +265,30 @@ func (c *Channel) appendNamedRequests(name string, edges ...*Request) {
 		c.Edges.namedRequests[name] = []*Request{}
 	} else {
 		c.Edges.namedRequests[name] = append(c.Edges.namedRequests[name], edges...)
+	}
+}
+
+// NamedExecutions returns the Executions named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (c *Channel) NamedExecutions(name string) ([]*RequestExecution, error) {
+	if c.Edges.namedExecutions == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := c.Edges.namedExecutions[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (c *Channel) appendNamedExecutions(name string, edges ...*RequestExecution) {
+	if c.Edges.namedExecutions == nil {
+		c.Edges.namedExecutions = make(map[string][]*RequestExecution)
+	}
+	if len(edges) == 0 {
+		c.Edges.namedExecutions[name] = []*RequestExecution{}
+	} else {
+		c.Edges.namedExecutions[name] = append(c.Edges.namedExecutions[name], edges...)
 	}
 }
 

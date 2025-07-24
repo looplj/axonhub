@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/request"
+	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/objects"
 )
 
@@ -107,6 +108,21 @@ func (cc *ChannelCreate) AddRequests(r ...*Request) *ChannelCreate {
 		ids[i] = r[i].ID
 	}
 	return cc.AddRequestIDs(ids...)
+}
+
+// AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
+func (cc *ChannelCreate) AddExecutionIDs(ids ...int) *ChannelCreate {
+	cc.mutation.AddExecutionIDs(ids...)
+	return cc
+}
+
+// AddExecutions adds the "executions" edges to the RequestExecution entity.
+func (cc *ChannelCreate) AddExecutions(r ...*RequestExecution) *ChannelCreate {
+	ids := make([]int, len(r))
+	for i := range r {
+		ids[i] = r[i].ID
+	}
+	return cc.AddExecutionIDs(ids...)
 }
 
 // Mutation returns the ChannelMutation object of the builder.
@@ -266,6 +282,22 @@ func (cc *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := cc.mutation.ExecutionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ExecutionsTable,
+			Columns: []string{channel.ExecutionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

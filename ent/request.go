@@ -29,6 +29,8 @@ type Request struct {
 	UserID int `json:"user_id,omitempty"`
 	// APIKeyID holds the value of the "api_key_id" field.
 	APIKeyID int `json:"api_key_id,omitempty"`
+	// ModelID holds the value of the "model_id" field.
+	ModelID string `json:"model_id,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
 	RequestBody objects.JSONRawMessage `json:"request_body,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
@@ -99,7 +101,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case request.FieldID, request.FieldUserID, request.FieldAPIKeyID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldStatus:
+		case request.FieldModelID, request.FieldStatus:
 			values[i] = new(sql.NullString)
 		case request.FieldCreatedAt, request.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -149,6 +151,12 @@ func (r *Request) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field api_key_id", values[i])
 			} else if value.Valid {
 				r.APIKeyID = int(value.Int64)
+			}
+		case request.FieldModelID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field model_id", values[i])
+			} else if value.Valid {
+				r.ModelID = value.String
 			}
 		case request.FieldRequestBody:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -241,6 +249,9 @@ func (r *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("api_key_id=")
 	builder.WriteString(fmt.Sprintf("%v", r.APIKeyID))
+	builder.WriteString(", ")
+	builder.WriteString("model_id=")
+	builder.WriteString(r.ModelID)
 	builder.WriteString(", ")
 	builder.WriteString("request_body=")
 	builder.WriteString(fmt.Sprintf("%v", r.RequestBody))

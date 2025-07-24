@@ -536,6 +536,22 @@ func (c *ChannelClient) QueryRequests(ch *Channel) *RequestQuery {
 	return query
 }
 
+// QueryExecutions queries the executions edge of a Channel.
+func (c *ChannelClient) QueryExecutions(ch *Channel) *RequestExecutionQuery {
+	query := (&RequestExecutionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ch.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, id),
+			sqlgraph.To(requestexecution.Table, requestexecution.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, channel.ExecutionsTable, channel.ExecutionsColumn),
+		)
+		fromV = sqlgraph.Neighbors(ch.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ChannelClient) Hooks() []Hook {
 	return c.hooks.Channel
@@ -992,6 +1008,22 @@ func (c *RequestExecutionClient) QueryRequest(re *RequestExecution) *RequestQuer
 			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, id),
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, requestexecution.RequestTable, requestexecution.RequestColumn),
+		)
+		fromV = sqlgraph.Neighbors(re.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryChannel queries the channel edge of a RequestExecution.
+func (c *RequestExecutionClient) QueryChannel(re *RequestExecution) *ChannelQuery {
+	query := (&ChannelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := re.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, id),
+			sqlgraph.To(channel.Table, channel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, requestexecution.ChannelTable, requestexecution.ChannelColumn),
 		)
 		fromV = sqlgraph.Neighbors(re.driver.Dialect(), step)
 		return fromV, nil

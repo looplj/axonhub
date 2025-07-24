@@ -94,6 +94,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "model_id", Type: field.TypeString},
 		{Name: "request_body", Type: field.TypeJSON},
 		{Name: "response_body", Type: field.TypeJSON, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed"}},
@@ -109,19 +110,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "requests_api_keys_requests",
-				Columns:    []*schema.Column{RequestsColumns[6]},
+				Columns:    []*schema.Column{RequestsColumns[7]},
 				RefColumns: []*schema.Column{APIKeysColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "requests_channels_requests",
-				Columns:    []*schema.Column{RequestsColumns[7]},
+				Columns:    []*schema.Column{RequestsColumns[8]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_users_requests",
-				Columns:    []*schema.Column{RequestsColumns[8]},
+				Columns:    []*schema.Column{RequestsColumns[9]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -130,12 +131,12 @@ var (
 			{
 				Name:    "requests_by_user_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[8]},
+				Columns: []*schema.Column{RequestsColumns[9]},
 			},
 			{
 				Name:    "requests_by_api_key_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[6]},
+				Columns: []*schema.Column{RequestsColumns[7]},
 			},
 		},
 	}
@@ -145,13 +146,13 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "user_id", Type: field.TypeInt},
-		{Name: "channel_id", Type: field.TypeInt},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "request_body", Type: field.TypeJSON},
 		{Name: "response_body", Type: field.TypeJSON, Nullable: true},
 		{Name: "response_chunks", Type: field.TypeJSON, Nullable: true},
 		{Name: "error_message", Type: field.TypeString, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed"}},
+		{Name: "channel_id", Type: field.TypeInt},
 		{Name: "request_id", Type: field.TypeInt},
 	}
 	// RequestExecutionsTable holds the schema information for the "request_executions" table.
@@ -160,6 +161,12 @@ var (
 		Columns:    RequestExecutionsColumns,
 		PrimaryKey: []*schema.Column{RequestExecutionsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "request_executions_channels_executions",
+				Columns:    []*schema.Column{RequestExecutionsColumns[10]},
+				RefColumns: []*schema.Column{ChannelsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
 			{
 				Symbol:     "request_executions_requests_executions",
 				Columns:    []*schema.Column{RequestExecutionsColumns[11]},
@@ -205,5 +212,6 @@ func init() {
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[2].RefTable = UsersTable
-	RequestExecutionsTable.ForeignKeys[0].RefTable = RequestsTable
+	RequestExecutionsTable.ForeignKeys[0].RefTable = ChannelsTable
+	RequestExecutionsTable.ForeignKeys[1].RefTable = RequestsTable
 }

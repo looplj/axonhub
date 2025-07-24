@@ -58,6 +58,27 @@ func (c *Channel) Requests(
 	return c.QueryRequests().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (c *Channel) Executions(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *RequestExecutionOrder, where *RequestExecutionWhereInput,
+) (*RequestExecutionConnection, error) {
+	opts := []RequestExecutionPaginateOption{
+		WithRequestExecutionOrder(orderBy),
+		WithRequestExecutionFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := c.Edges.totalCount[1][alias]
+	if nodes, err := c.NamedExecutions(alias); err == nil || hasTotalCount {
+		pager, err := newRequestExecutionPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &RequestExecutionConnection{Edges: []*RequestExecutionEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return c.QueryExecutions().Paginate(ctx, after, first, before, last, opts...)
+}
+
 func (r *Request) User(ctx context.Context) (*User, error) {
 	result, err := r.Edges.UserOrErr()
 	if IsNotLoaded(err) {
@@ -99,6 +120,14 @@ func (re *RequestExecution) Request(ctx context.Context) (*Request, error) {
 	result, err := re.Edges.RequestOrErr()
 	if IsNotLoaded(err) {
 		result, err = re.QueryRequest().Only(ctx)
+	}
+	return result, err
+}
+
+func (re *RequestExecution) Channel(ctx context.Context) (*Channel, error) {
+	result, err := re.Edges.ChannelOrErr()
+	if IsNotLoaded(err) {
+		result, err = re.QueryChannel().Only(ctx)
 	}
 	return result, err
 }

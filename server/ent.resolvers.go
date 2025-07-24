@@ -128,6 +128,11 @@ func (r *requestExecutionResolver) RequestID(ctx context.Context, obj *ent.Reque
 	}, nil
 }
 
+// ChannelID is the resolver for the channelID field.
+func (r *requestExecutionResolver) ChannelID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ChannelID - channelID"))
+}
+
 // ID is the resolver for the id field.
 func (r *userResolver) ID(ctx context.Context, obj *ent.User) (*objects.GUID, error) {
 	return &objects.GUID{

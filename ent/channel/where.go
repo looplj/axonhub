@@ -478,6 +478,29 @@ func HasRequestsWith(preds ...predicate.Request) predicate.Channel {
 	})
 }
 
+// HasExecutions applies the HasEdge predicate on the "executions" edge.
+func HasExecutions() predicate.Channel {
+	return predicate.Channel(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ExecutionsTable, ExecutionsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasExecutionsWith applies the HasEdge predicate on the "executions" edge with a given conditions (other predicates).
+func HasExecutionsWith(preds ...predicate.RequestExecution) predicate.Channel {
+	return predicate.Channel(func(s *sql.Selector) {
+		step := newExecutionsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Channel) predicate.Channel {
 	return predicate.Channel(sql.AndPredicates(predicates...))

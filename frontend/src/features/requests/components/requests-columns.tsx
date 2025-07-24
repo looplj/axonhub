@@ -3,7 +3,8 @@
 import { format } from 'date-fns'
 import { ColumnDef } from '@tanstack/react-table'
 import { zhCN } from 'date-fns/locale'
-import { Eye, MoreHorizontal } from 'lucide-react'
+import { Eye, MoreHorizontal, FileText } from 'lucide-react'
+import { extractNumberID } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,6 +16,7 @@ import {
 import { useRequestsContext } from '../context'
 import { Request, RequestStatus } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
+import { getStatusColor } from './help'
 
 const statusColors: Record<RequestStatus, string> = {
   pending:
@@ -39,32 +41,34 @@ export const requestsColumns: ColumnDef<Request>[] = [
       <DataTableColumnHeader column={column} title='ID' />
     ),
     cell: ({ row }) => (
-      <div className='font-mono text-xs'>{row.getValue('id')}</div>
+      <div className='font-mono text-xs'>
+        #{extractNumberID(row.getValue('id'))}
+      </div>
     ),
     enableSorting: true,
     enableHiding: false,
+  },
+  {
+    id: 'modelId',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='模型ID' />
+    ),
+    enableSorting: false,
+    cell: ({ row }) => {
+      const request = row.original
+      // 从 executions 中获取第一个 execution 的 modelID
+      const modelId = request.executions?.edges?.[0]?.node?.modelID
+      return <div className='font-mono text-xs'>{modelId || '未知'}</div>
+    },
   },
   {
     accessorKey: 'status',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='状态' />
     ),
+    enableSorting: false,
     cell: ({ row }) => {
       const status = row.getValue('status') as string
-      const getStatusColor = (status: string) => {
-        switch (status) {
-          case 'COMPLETED':
-            return 'bg-green-100 text-green-800'
-          case 'FAILED':
-            return 'bg-red-100 text-red-800'
-          case 'PENDING':
-            return 'bg-yellow-100 text-yellow-800'
-          case 'PROCESSING':
-            return 'bg-blue-100 text-blue-800'
-          default:
-            return 'bg-gray-100 text-gray-800'
-        }
-      }
       return <Badge className={getStatusColor(status)}>{status}</Badge>
     },
     filterFn: (row, id, value) => {
@@ -76,6 +80,7 @@ export const requestsColumns: ColumnDef<Request>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='用户' />
     ),
+    enableSorting: false,
     cell: ({ row }) => (
       <div className='font-mono text-xs'>
         {row.original.user?.name || '未知'}
@@ -87,6 +92,7 @@ export const requestsColumns: ColumnDef<Request>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='API密钥' />
     ),
+    enableSorting: false,
     cell: ({ row }) => (
       <div className='font-mono text-xs'>
         {row.original.apiKey?.name || '未知'}
@@ -94,17 +100,55 @@ export const requestsColumns: ColumnDef<Request>[] = [
     ),
   },
   {
-    accessorKey: 'requestBody',
+    id: 'requestBody',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='请求体' />
     ),
     cell: ({ row }) => {
-      const requestBody = JSON.stringify(row.getValue('requestBody'))
-      const preview = requestBody ? requestBody.substring(0, 50) + '...' : '无'
+      const { setJsonViewerOpen, setJsonViewerData } = useRequestsContext()
+
+      const handleViewRequestBody = () => {
+        setJsonViewerData({
+          title: '请求体',
+          data: row.original.requestBody,
+        })
+        setJsonViewerOpen(true)
+      }
+
       return (
-        <div className='max-w-[200px] truncate text-xs' title={requestBody}>
-          {preview}
-        </div>
+        <Button variant='outline' size='sm' onClick={handleViewRequestBody}>
+          <FileText className='mr-2 h-4 w-4' />
+          查看请求
+        </Button>
+      )
+    },
+  },
+  {
+    id: 'responseBody',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='响应体' />
+    ),
+    cell: ({ row }) => {
+      const { setJsonViewerOpen, setJsonViewerData } = useRequestsContext()
+
+      const handleViewResponseBody = () => {
+        setJsonViewerData({
+          title: '响应体',
+          data: row.original.responseBody,
+        })
+        setJsonViewerOpen(true)
+      }
+
+      return (
+        <Button
+          variant='outline'
+          size='sm'
+          onClick={handleViewResponseBody}
+          disabled={!row.original.responseBody}
+        >
+          <FileText className='mr-2 h-4 w-4' />
+          查看响应
+        </Button>
       )
     },
   },
@@ -126,12 +170,31 @@ export const requestsColumns: ColumnDef<Request>[] = [
     id: 'actions',
     cell: ({ row }) => {
       const request = row.original
-      const { setDetailDialogOpen, setCurrentRequest: setSelectedRequest } =
-        useRequestsContext()
+      const {
+        setCurrentRequest,
+        setCurrentExecution,
+        setExecutionDetailOpen,
+        setExecutionsDrawerOpen,
+      } = useRequestsContext()
 
       const handleViewDetails = () => {
-        setSelectedRequest(request)
-        setDetailDialogOpen(true)
+        setCurrentRequest(request)
+
+        // 获取 executions
+        const executions =
+          request.executions?.edges?.map((edge) => edge.node) || []
+
+        if (executions.length === 1) {
+          // 如果只有一个 execution，直接打开详情弹窗
+          setCurrentExecution(executions[0])
+          setExecutionDetailOpen(true)
+        } else if (executions.length > 1) {
+          // 如果有多个 executions，打开抽屉
+          setExecutionsDrawerOpen(true)
+        } else {
+          // 如果没有 executions，可以显示一个提示或者什么都不做
+          console.log('No executions found for this request')
+        }
       }
 
       return (

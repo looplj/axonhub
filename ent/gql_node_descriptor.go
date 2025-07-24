@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 
 	"github.com/looplj/axonhub/ent/apikey"
+	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/ent/user"
@@ -112,7 +113,7 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 		ID:     c.ID,
 		Type:   "Channel",
 		Fields: make([]*Field, 9),
-		Edges:  make([]*Edge, 1),
+		Edges:  make([]*Edge, 2),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(c.CreatedAt); err != nil {
@@ -197,6 +198,16 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if err != nil {
 		return nil, err
 	}
+	node.Edges[1] = &Edge{
+		Type: "RequestExecution",
+		Name: "executions",
+	}
+	err = c.QueryExecutions().
+		Select(requestexecution.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
 	return node, nil
 }
 
@@ -241,7 +252,7 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     r.ID,
 		Type:   "Request",
-		Fields: make([]*Field, 7),
+		Fields: make([]*Field, 8),
 		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
@@ -277,10 +288,18 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "api_key_id",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(r.RequestBody); err != nil {
+	if buf, err = json.Marshal(r.ModelID); err != nil {
 		return nil, err
 	}
 	node.Fields[4] = &Field{
+		Type:  "string",
+		Name:  "model_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(r.RequestBody); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
 		Type:  "objects.JSONRawMessage",
 		Name:  "request_body",
 		Value: string(buf),
@@ -288,7 +307,7 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(r.ResponseBody); err != nil {
 		return nil, err
 	}
-	node.Fields[5] = &Field{
+	node.Fields[6] = &Field{
 		Type:  "objects.JSONRawMessage",
 		Name:  "response_body",
 		Value: string(buf),
@@ -296,7 +315,7 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(r.Status); err != nil {
 		return nil, err
 	}
-	node.Fields[6] = &Field{
+	node.Fields[7] = &Field{
 		Type:  "request.Status",
 		Name:  "status",
 		Value: string(buf),
@@ -340,7 +359,7 @@ func (re *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 		ID:     re.ID,
 		Type:   "RequestExecution",
 		Fields: make([]*Field, 11),
-		Edges:  make([]*Edge, 1),
+		Edges:  make([]*Edge, 2),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(re.CreatedAt); err != nil {
@@ -438,6 +457,16 @@ func (re *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 	err = re.QueryRequest().
 		Select(request.FieldID).
 		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "Channel",
+		Name: "channel",
+	}
+	err = re.QueryChannel().
+		Select(channel.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
 	if err != nil {
 		return nil, err
 	}

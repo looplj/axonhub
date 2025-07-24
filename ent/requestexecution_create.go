@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/objects"
@@ -119,6 +120,11 @@ func (rec *RequestExecutionCreate) SetRequest(r *Request) *RequestExecutionCreat
 	return rec.SetRequestID(r.ID)
 }
 
+// SetChannel sets the "channel" edge to the Channel entity.
+func (rec *RequestExecutionCreate) SetChannel(c *Channel) *RequestExecutionCreate {
+	return rec.SetChannelID(c.ID)
+}
+
 // Mutation returns the RequestExecutionMutation object of the builder.
 func (rec *RequestExecutionCreate) Mutation() *RequestExecutionMutation {
 	return rec.mutation
@@ -198,6 +204,9 @@ func (rec *RequestExecutionCreate) check() error {
 	if len(rec.mutation.RequestIDs()) == 0 {
 		return &ValidationError{Name: "request", err: errors.New(`ent: missing required edge "RequestExecution.request"`)}
 	}
+	if len(rec.mutation.ChannelIDs()) == 0 {
+		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required edge "RequestExecution.channel"`)}
+	}
 	return nil
 }
 
@@ -236,10 +245,6 @@ func (rec *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cr
 	if value, ok := rec.mutation.UserID(); ok {
 		_spec.SetField(requestexecution.FieldUserID, field.TypeInt, value)
 		_node.UserID = value
-	}
-	if value, ok := rec.mutation.ChannelID(); ok {
-		_spec.SetField(requestexecution.FieldChannelID, field.TypeInt, value)
-		_node.ChannelID = value
 	}
 	if value, ok := rec.mutation.ModelID(); ok {
 		_spec.SetField(requestexecution.FieldModelID, field.TypeString, value)
@@ -280,6 +285,23 @@ func (rec *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cr
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.RequestID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := rec.mutation.ChannelIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   requestexecution.ChannelTable,
+			Columns: []string{requestexecution.ChannelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.ChannelID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

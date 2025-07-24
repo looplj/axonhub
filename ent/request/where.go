@@ -75,6 +75,11 @@ func APIKeyID(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldAPIKeyID, v))
 }
 
+// ModelID applies equality check predicate on the "model_id" field. It's identical to ModelIDEQ.
+func ModelID(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldModelID, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldCreatedAt, v))
@@ -193,6 +198,71 @@ func APIKeyIDIn(vs ...int) predicate.Request {
 // APIKeyIDNotIn applies the NotIn predicate on the "api_key_id" field.
 func APIKeyIDNotIn(vs ...int) predicate.Request {
 	return predicate.Request(sql.FieldNotIn(FieldAPIKeyID, vs...))
+}
+
+// ModelIDEQ applies the EQ predicate on the "model_id" field.
+func ModelIDEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldModelID, v))
+}
+
+// ModelIDNEQ applies the NEQ predicate on the "model_id" field.
+func ModelIDNEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldModelID, v))
+}
+
+// ModelIDIn applies the In predicate on the "model_id" field.
+func ModelIDIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldModelID, vs...))
+}
+
+// ModelIDNotIn applies the NotIn predicate on the "model_id" field.
+func ModelIDNotIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldModelID, vs...))
+}
+
+// ModelIDGT applies the GT predicate on the "model_id" field.
+func ModelIDGT(v string) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldModelID, v))
+}
+
+// ModelIDGTE applies the GTE predicate on the "model_id" field.
+func ModelIDGTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldModelID, v))
+}
+
+// ModelIDLT applies the LT predicate on the "model_id" field.
+func ModelIDLT(v string) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldModelID, v))
+}
+
+// ModelIDLTE applies the LTE predicate on the "model_id" field.
+func ModelIDLTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldModelID, v))
+}
+
+// ModelIDContains applies the Contains predicate on the "model_id" field.
+func ModelIDContains(v string) predicate.Request {
+	return predicate.Request(sql.FieldContains(FieldModelID, v))
+}
+
+// ModelIDHasPrefix applies the HasPrefix predicate on the "model_id" field.
+func ModelIDHasPrefix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasPrefix(FieldModelID, v))
+}
+
+// ModelIDHasSuffix applies the HasSuffix predicate on the "model_id" field.
+func ModelIDHasSuffix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasSuffix(FieldModelID, v))
+}
+
+// ModelIDEqualFold applies the EqualFold predicate on the "model_id" field.
+func ModelIDEqualFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldEqualFold(FieldModelID, v))
+}
+
+// ModelIDContainsFold applies the ContainsFold predicate on the "model_id" field.
+func ModelIDContainsFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldContainsFold(FieldModelID, v))
 }
 
 // ResponseBodyIsNil applies the IsNil predicate on the "response_body" field.

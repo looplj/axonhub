@@ -33,6 +33,7 @@ func (Request) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("user_id").Immutable(),
 		field.Int("api_key_id").Immutable(),
+		field.String("model_id").Immutable(),
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable(),
 		field.JSON("response_body", objects.JSONRawMessage{}).Optional(),
 		field.Enum("status").Values("pending", "processing", "completed", "failed"),

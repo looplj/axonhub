@@ -15,19 +15,22 @@ import (
 	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/predicate"
 	"github.com/looplj/axonhub/ent/request"
+	"github.com/looplj/axonhub/ent/requestexecution"
 )
 
 // ChannelQuery is the builder for querying Channel entities.
 type ChannelQuery struct {
 	config
-	ctx               *QueryContext
-	order             []channel.OrderOption
-	inters            []Interceptor
-	predicates        []predicate.Channel
-	withRequests      *RequestQuery
-	modifiers         []func(*sql.Selector)
-	loadTotal         []func(context.Context, []*Channel) error
-	withNamedRequests map[string]*RequestQuery
+	ctx                 *QueryContext
+	order               []channel.OrderOption
+	inters              []Interceptor
+	predicates          []predicate.Channel
+	withRequests        *RequestQuery
+	withExecutions      *RequestExecutionQuery
+	modifiers           []func(*sql.Selector)
+	loadTotal           []func(context.Context, []*Channel) error
+	withNamedRequests   map[string]*RequestQuery
+	withNamedExecutions map[string]*RequestExecutionQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -79,6 +82,28 @@ func (cq *ChannelQuery) QueryRequests() *RequestQuery {
 			sqlgraph.From(channel.Table, channel.FieldID, selector),
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, channel.RequestsTable, channel.RequestsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(cq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryExecutions chains the current query on the "executions" edge.
+func (cq *ChannelQuery) QueryExecutions() *RequestExecutionQuery {
+	query := (&RequestExecutionClient{config: cq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := cq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := cq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, selector),
+			sqlgraph.To(requestexecution.Table, requestexecution.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, channel.ExecutionsTable, channel.ExecutionsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(cq.driver.Dialect(), step)
 		return fromU, nil
@@ -273,12 +298,13 @@ func (cq *ChannelQuery) Clone() *ChannelQuery {
 		return nil
 	}
 	return &ChannelQuery{
-		config:       cq.config,
-		ctx:          cq.ctx.Clone(),
-		order:        append([]channel.OrderOption{}, cq.order...),
-		inters:       append([]Interceptor{}, cq.inters...),
-		predicates:   append([]predicate.Channel{}, cq.predicates...),
-		withRequests: cq.withRequests.Clone(),
+		config:         cq.config,
+		ctx:            cq.ctx.Clone(),
+		order:          append([]channel.OrderOption{}, cq.order...),
+		inters:         append([]Interceptor{}, cq.inters...),
+		predicates:     append([]predicate.Channel{}, cq.predicates...),
+		withRequests:   cq.withRequests.Clone(),
+		withExecutions: cq.withExecutions.Clone(),
 		// clone intermediate query.
 		sql:  cq.sql.Clone(),
 		path: cq.path,
@@ -293,6 +319,17 @@ func (cq *ChannelQuery) WithRequests(opts ...func(*RequestQuery)) *ChannelQuery 
 		opt(query)
 	}
 	cq.withRequests = query
+	return cq
+}
+
+// WithExecutions tells the query-builder to eager-load the nodes that are connected to
+// the "executions" edge. The optional arguments are used to configure the query builder of the edge.
+func (cq *ChannelQuery) WithExecutions(opts ...func(*RequestExecutionQuery)) *ChannelQuery {
+	query := (&RequestExecutionClient{config: cq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	cq.withExecutions = query
 	return cq
 }
 
@@ -374,8 +411,9 @@ func (cq *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 	var (
 		nodes       = []*Channel{}
 		_spec       = cq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			cq.withRequests != nil,
+			cq.withExecutions != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -406,10 +444,24 @@ func (cq *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 			return nil, err
 		}
 	}
+	if query := cq.withExecutions; query != nil {
+		if err := cq.loadExecutions(ctx, query, nodes,
+			func(n *Channel) { n.Edges.Executions = []*RequestExecution{} },
+			func(n *Channel, e *RequestExecution) { n.Edges.Executions = append(n.Edges.Executions, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range cq.withNamedRequests {
 		if err := cq.loadRequests(ctx, query, nodes,
 			func(n *Channel) { n.appendNamedRequests(name) },
 			func(n *Channel, e *Request) { n.appendNamedRequests(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range cq.withNamedExecutions {
+		if err := cq.loadExecutions(ctx, query, nodes,
+			func(n *Channel) { n.appendNamedExecutions(name) },
+			func(n *Channel, e *RequestExecution) { n.appendNamedExecutions(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -447,6 +499,36 @@ func (cq *ChannelQuery) loadRequests(ctx context.Context, query *RequestQuery, n
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "channel_requests" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (cq *ChannelQuery) loadExecutions(ctx context.Context, query *RequestExecutionQuery, nodes []*Channel, init func(*Channel), assign func(*Channel, *RequestExecution)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Channel)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(requestexecution.FieldChannelID)
+	}
+	query.Where(predicate.RequestExecution(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(channel.ExecutionsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ChannelID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "channel_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -548,6 +630,20 @@ func (cq *ChannelQuery) WithNamedRequests(name string, opts ...func(*RequestQuer
 		cq.withNamedRequests = make(map[string]*RequestQuery)
 	}
 	cq.withNamedRequests[name] = query
+	return cq
+}
+
+// WithNamedExecutions tells the query-builder to eager-load the nodes that are connected to the "executions"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (cq *ChannelQuery) WithNamedExecutions(name string, opts ...func(*RequestExecutionQuery)) *ChannelQuery {
+	query := (&RequestExecutionClient{config: cq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if cq.withNamedExecutions == nil {
+		cq.withNamedExecutions = make(map[string]*RequestExecutionQuery)
+	}
+	cq.withNamedExecutions[name] = query
 	return cq
 }
 

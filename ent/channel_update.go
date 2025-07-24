@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/predicate"
 	"github.com/looplj/axonhub/ent/request"
+	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/objects"
 )
 
@@ -132,6 +133,21 @@ func (cu *ChannelUpdate) AddRequests(r ...*Request) *ChannelUpdate {
 	return cu.AddRequestIDs(ids...)
 }
 
+// AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
+func (cu *ChannelUpdate) AddExecutionIDs(ids ...int) *ChannelUpdate {
+	cu.mutation.AddExecutionIDs(ids...)
+	return cu
+}
+
+// AddExecutions adds the "executions" edges to the RequestExecution entity.
+func (cu *ChannelUpdate) AddExecutions(r ...*RequestExecution) *ChannelUpdate {
+	ids := make([]int, len(r))
+	for i := range r {
+		ids[i] = r[i].ID
+	}
+	return cu.AddExecutionIDs(ids...)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (cu *ChannelUpdate) Mutation() *ChannelMutation {
 	return cu.mutation
@@ -156,6 +172,27 @@ func (cu *ChannelUpdate) RemoveRequests(r ...*Request) *ChannelUpdate {
 		ids[i] = r[i].ID
 	}
 	return cu.RemoveRequestIDs(ids...)
+}
+
+// ClearExecutions clears all "executions" edges to the RequestExecution entity.
+func (cu *ChannelUpdate) ClearExecutions() *ChannelUpdate {
+	cu.mutation.ClearExecutions()
+	return cu
+}
+
+// RemoveExecutionIDs removes the "executions" edge to RequestExecution entities by IDs.
+func (cu *ChannelUpdate) RemoveExecutionIDs(ids ...int) *ChannelUpdate {
+	cu.mutation.RemoveExecutionIDs(ids...)
+	return cu
+}
+
+// RemoveExecutions removes "executions" edges to RequestExecution entities.
+func (cu *ChannelUpdate) RemoveExecutions(r ...*RequestExecution) *ChannelUpdate {
+	ids := make([]int, len(r))
+	for i := range r {
+		ids[i] = r[i].ID
+	}
+	return cu.RemoveExecutionIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -290,6 +327,51 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if cu.mutation.ExecutionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ExecutionsTable,
+			Columns: []string{channel.ExecutionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cu.mutation.RemovedExecutionsIDs(); len(nodes) > 0 && !cu.mutation.ExecutionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ExecutionsTable,
+			Columns: []string{channel.ExecutionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cu.mutation.ExecutionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ExecutionsTable,
+			Columns: []string{channel.ExecutionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, cu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{channel.Label}
@@ -411,6 +493,21 @@ func (cuo *ChannelUpdateOne) AddRequests(r ...*Request) *ChannelUpdateOne {
 	return cuo.AddRequestIDs(ids...)
 }
 
+// AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
+func (cuo *ChannelUpdateOne) AddExecutionIDs(ids ...int) *ChannelUpdateOne {
+	cuo.mutation.AddExecutionIDs(ids...)
+	return cuo
+}
+
+// AddExecutions adds the "executions" edges to the RequestExecution entity.
+func (cuo *ChannelUpdateOne) AddExecutions(r ...*RequestExecution) *ChannelUpdateOne {
+	ids := make([]int, len(r))
+	for i := range r {
+		ids[i] = r[i].ID
+	}
+	return cuo.AddExecutionIDs(ids...)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (cuo *ChannelUpdateOne) Mutation() *ChannelMutation {
 	return cuo.mutation
@@ -435,6 +532,27 @@ func (cuo *ChannelUpdateOne) RemoveRequests(r ...*Request) *ChannelUpdateOne {
 		ids[i] = r[i].ID
 	}
 	return cuo.RemoveRequestIDs(ids...)
+}
+
+// ClearExecutions clears all "executions" edges to the RequestExecution entity.
+func (cuo *ChannelUpdateOne) ClearExecutions() *ChannelUpdateOne {
+	cuo.mutation.ClearExecutions()
+	return cuo
+}
+
+// RemoveExecutionIDs removes the "executions" edge to RequestExecution entities by IDs.
+func (cuo *ChannelUpdateOne) RemoveExecutionIDs(ids ...int) *ChannelUpdateOne {
+	cuo.mutation.RemoveExecutionIDs(ids...)
+	return cuo
+}
+
+// RemoveExecutions removes "executions" edges to RequestExecution entities.
+func (cuo *ChannelUpdateOne) RemoveExecutions(r ...*RequestExecution) *ChannelUpdateOne {
+	ids := make([]int, len(r))
+	for i := range r {
+		ids[i] = r[i].ID
+	}
+	return cuo.RemoveExecutionIDs(ids...)
 }
 
 // Where appends a list predicates to the ChannelUpdate builder.
@@ -592,6 +710,51 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if cuo.mutation.ExecutionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ExecutionsTable,
+			Columns: []string{channel.ExecutionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cuo.mutation.RemovedExecutionsIDs(); len(nodes) > 0 && !cuo.mutation.ExecutionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ExecutionsTable,
+			Columns: []string{channel.ExecutionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cuo.mutation.ExecutionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.ExecutionsTable,
+			Columns: []string{channel.ExecutionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

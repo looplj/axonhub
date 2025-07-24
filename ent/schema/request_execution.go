@@ -50,6 +50,12 @@ func (RequestExecution) Edges() []ent.Edge {
 			Required().
 			Immutable().
 			Unique(),
+		edge.From("channel", Channel.Type).
+			Field("channel_id").
+			Ref("executions").
+			Required().
+			Immutable().
+			Unique(),
 	}
 }
 

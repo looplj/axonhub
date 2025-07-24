@@ -66,6 +66,12 @@ func (rc *RequestCreate) SetAPIKeyID(i int) *RequestCreate {
 	return rc
 }
 
+// SetModelID sets the "model_id" field.
+func (rc *RequestCreate) SetModelID(s string) *RequestCreate {
+	rc.mutation.SetModelID(s)
+	return rc
+}
+
 // SetRequestBody sets the "request_body" field.
 func (rc *RequestCreate) SetRequestBody(orm objects.JSONRawMessage) *RequestCreate {
 	rc.mutation.SetRequestBody(orm)
@@ -168,6 +174,9 @@ func (rc *RequestCreate) check() error {
 	if _, ok := rc.mutation.APIKeyID(); !ok {
 		return &ValidationError{Name: "api_key_id", err: errors.New(`ent: missing required field "Request.api_key_id"`)}
 	}
+	if _, ok := rc.mutation.ModelID(); !ok {
+		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "Request.model_id"`)}
+	}
 	if _, ok := rc.mutation.RequestBody(); !ok {
 		return &ValidationError{Name: "request_body", err: errors.New(`ent: missing required field "Request.request_body"`)}
 	}
@@ -219,6 +228,10 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := rc.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if value, ok := rc.mutation.ModelID(); ok {
+		_spec.SetField(request.FieldModelID, field.TypeString, value)
+		_node.ModelID = value
 	}
 	if value, ok := rc.mutation.RequestBody(); ok {
 		_spec.SetField(request.FieldRequestBody, field.TypeJSON, value)
@@ -395,6 +408,9 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 		}
 		if _, exists := u.create.mutation.APIKeyID(); exists {
 			s.SetIgnore(request.FieldAPIKeyID)
+		}
+		if _, exists := u.create.mutation.ModelID(); exists {
+			s.SetIgnore(request.FieldModelID)
 		}
 		if _, exists := u.create.mutation.RequestBody(); exists {
 			s.SetIgnore(request.FieldRequestBody)
@@ -663,6 +679,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 			}
 			if _, exists := b.mutation.APIKeyID(); exists {
 				s.SetIgnore(request.FieldAPIKeyID)
+			}
+			if _, exists := b.mutation.ModelID(); exists {
+				s.SetIgnore(request.FieldModelID)
 			}
 			if _, exists := b.mutation.RequestBody(); exists {
 				s.SetIgnore(request.FieldRequestBody)

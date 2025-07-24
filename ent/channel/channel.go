@@ -38,6 +38,8 @@ const (
 	FieldSettings = "settings"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
 	EdgeRequests = "requests"
+	// EdgeExecutions holds the string denoting the executions edge name in mutations.
+	EdgeExecutions = "executions"
 	// Table holds the table name of the channel in the database.
 	Table = "channels"
 	// RequestsTable is the table that holds the requests relation/edge.
@@ -47,6 +49,13 @@ const (
 	RequestsInverseTable = "requests"
 	// RequestsColumn is the table column denoting the requests relation/edge.
 	RequestsColumn = "channel_requests"
+	// ExecutionsTable is the table that holds the executions relation/edge.
+	ExecutionsTable = "request_executions"
+	// ExecutionsInverseTable is the table name for the RequestExecution entity.
+	// It exists in this package in order to avoid circular dependency with the "requestexecution" package.
+	ExecutionsInverseTable = "request_executions"
+	// ExecutionsColumn is the table column denoting the executions relation/edge.
+	ExecutionsColumn = "channel_id"
 )
 
 // Columns holds all SQL columns for channel fields.
@@ -169,11 +178,32 @@ func ByRequests(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newRequestsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByExecutionsCount orders the results by executions count.
+func ByExecutionsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newExecutionsStep(), opts...)
+	}
+}
+
+// ByExecutions orders the results by executions terms.
+func ByExecutions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newExecutionsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newRequestsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(RequestsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, RequestsTable, RequestsColumn),
+	)
+}
+func newExecutionsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ExecutionsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ExecutionsTable, ExecutionsColumn),
 	)
 }
 

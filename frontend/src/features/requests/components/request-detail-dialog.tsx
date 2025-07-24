@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRequestsContext } from '../context'
 import { useRequest, useRequestExecutions } from '../data'
 import { Request, RequestExecution } from '../data/schema'
+import { getStatusColor } from './help'
 
 interface RequestDetailDialogProps {
   open: boolean
@@ -46,21 +47,6 @@ export function RequestDetailDialog({
       return JSON.stringify(JSON.parse(jsonString), null, 2)
     } catch {
       return jsonString
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return 'bg-green-100 text-green-800'
-      case 'FAILED':
-        return 'bg-red-100 text-red-800'
-      case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'PROCESSING':
-        return 'bg-blue-100 text-blue-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
     }
   }
 
@@ -100,7 +86,7 @@ export function RequestDetailDialog({
                     <span className='text-sm font-medium'>用户ID</span>
                   </div>
                   <p className='text-muted-foreground text-sm'>
-                    {request.userID || '未知'}
+                    {request.user?.id || '未知'}
                   </p>
                 </div>
                 <div className='space-y-2'>
@@ -109,7 +95,7 @@ export function RequestDetailDialog({
                     <span className='text-sm font-medium'>API密钥ID</span>
                   </div>
                   <p className='text-muted-foreground text-sm'>
-                    {request.apiKeyID || '未知'}
+                    {request.apiKey?.id || '未知'}
                   </p>
                 </div>
                 <div className='space-y-2'>

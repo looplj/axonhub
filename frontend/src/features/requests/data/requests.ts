@@ -35,6 +35,35 @@ const REQUESTS_QUERY = `
           requestBody
           responseBody
           status
+          executions(first: 10, orderBy: { field: CREATED_AT, direction: DESC }) {
+            edges {
+              node {
+                id
+                createdAt
+                updatedAt
+                userID
+                requestID
+                channel {
+                  id
+                  name
+                }
+                modelID
+                requestBody
+                responseBody
+                responseChunks
+                errorMessage
+                status
+              }
+              cursor
+            }
+            pageInfo {
+              hasNextPage
+              hasPreviousPage
+              startCursor
+              endCursor
+            }
+            totalCount
+          }
         }
         cursor
       }

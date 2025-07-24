@@ -166,6 +166,7 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 type CreateRequestInput struct {
 	CreatedAt    *time.Time
 	UpdatedAt    *time.Time
+	ModelID      string
 	RequestBody  objects.JSONRawMessage
 	ResponseBody objects.JSONRawMessage
 	Status       request.Status
@@ -181,6 +182,7 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
 	}
+	m.SetModelID(i.ModelID)
 	if v := i.RequestBody; v != nil {
 		m.SetRequestBody(v)
 	}
