@@ -88,6 +88,12 @@ func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp 
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
 
+	if chatResp.Object == "[DONE]" {
+		return &llm.GenericStreamEvent{
+			Data: []byte("[DONE]"),
+		}, nil
+	}
+
 	// For OpenAI, we keep the original response format as the event data
 	eventData, err := json.Marshal(chatResp)
 	if err != nil {

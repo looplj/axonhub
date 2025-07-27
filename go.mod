@@ -33,6 +33,8 @@ require (
 
 replace github.com/99designs/gqlgen => github.com/looplj/gqlgen v0.0.0-20250721163559-b09abcdca828
 
+replace github.com/tmaxmax/go-sse => github.com/looplj/go-sse v0.0.0-20250727032219-ed497bf38e71
+
 require (
 	ariga.io/atlas v0.35.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect

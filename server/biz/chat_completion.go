@@ -53,7 +53,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericRe
 		return ChatCompletionResult{}, errors.New("API key not found in context")
 	}
 
-	req, err := processor.RequestService.CreateRequest(ctx, apiKey, chatReq)
+	req, err := processor.RequestService.CreateRequest(ctx, apiKey, chatReq, genericReq.Body)
 	if err != nil {
 		return ChatCompletionResult{}, err
 	}

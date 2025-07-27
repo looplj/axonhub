@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -106,12 +107,11 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *l
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp *llm.GenericHttpResponse) (*llm.ChatCompletionResponse, error) {
-	// var event sse.Event
-	// err := json.Unmarshal(httpResp.Body, &event)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
-	// }
-	// httpResp.Body = []byte(event.Data)
+	if bytes.HasPrefix(httpResp.Body, []byte("[DONE]")) {
+		return &llm.ChatCompletionResponse{
+			Object: "[DONE]",
+		}, nil
+	}
 	return t.TransformResponse(ctx, httpResp)
 }
 

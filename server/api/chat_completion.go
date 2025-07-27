@@ -75,6 +75,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 				c.SSEvent(cur.Type, cur.Data)
 				return true
 			}
+
 			return false
 		})
 

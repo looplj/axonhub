@@ -208,7 +208,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(event *llm.GenericStreamEvent) bool {
-				if event.Type != "data" {
+				if event.Type != "" {
 					return false
 				}
 				
@@ -244,7 +244,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(event *llm.GenericStreamEvent) bool {
-				if event.Type != "done" {
+				if event.Type != "" {
 					return false
 				}
 				
@@ -271,7 +271,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(event *llm.GenericStreamEvent) bool {
-				return event.Type == "data"
+				return event.Type == ""
 			},
 		},
 		{

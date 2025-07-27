@@ -12,7 +12,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/log"
 	"github.com/looplj/axonhub/pkg/streams"
-	"github.com/zhenzou/executors/routine"
 )
 
 // HttpClientImpl implements the HttpClient interface
@@ -118,158 +117,92 @@ func (hc *HttpClientImpl) DoStream(ctx context.Context, request *llm.GenericHttp
 		}
 	}
 
-	// Create SSE stream with buffered event handling
-	stream := &sseStream{
+	// Create SSE stream using go-sse Stream
+	sseStream := sse.NewStream(rawResp.Body)
+
+	stream := &sseStreamWrapper{
 		ctx: ctx,
 		response: &llm.GenericHttpResponse{
 			StatusCode:  rawResp.StatusCode,
 			Headers:     rawResp.Header,
 			RawResponse: rawResp,
 		},
-		body:        rawResp.Body,
-		eventBuffer: make(chan *llm.GenericHttpResponse, 100), // Buffer up to 100 events
-		errorCh:     make(chan error, 1),
-		closed:      false,
+		sseStream: sseStream,
+		current:   nil,
+		err:       nil,
 	}
-
-	routine.GoWithRecovery(log.GetGlobalLogger().AsSlog(),
-		func() {
-			// Start background goroutine to read SSE events
-			stream.readEvents()
-		},
-		func() {
-			_ = stream.Close()
-		})
 
 	return stream, nil
 }
 
-// sseStream implements streams.Stream for Server-Sent Events
-type sseStream struct {
-	ctx         context.Context
-	response    *llm.GenericHttpResponse
-	body        io.ReadCloser
-	eventBuffer chan *llm.GenericHttpResponse
-	errorCh     chan error
-	current     *llm.GenericHttpResponse
-	err         error
-	closed      bool
+// sseStreamWrapper implements streams.Stream for Server-Sent Events using go-sse Stream
+type sseStreamWrapper struct {
+	ctx       context.Context
+	response  *llm.GenericHttpResponse
+	sseStream *sse.Stream
+	current   *llm.GenericHttpResponse
+	err       error
 }
 
 // Next advances to the next event in the stream
-func (s *sseStream) Next() bool {
-	if s.closed || s.err != nil {
+func (s *sseStreamWrapper) Next() bool {
+	if s.err != nil {
 		return false
 	}
 
-	// Check context cancellation and read from channels
+	// Check context cancellation
 	select {
 	case <-s.ctx.Done():
 		s.err = s.ctx.Err()
 		_ = s.Close()
 		return false
-	case event, ok := <-s.eventBuffer:
-		if !ok {
-			// Channel closed, no more events
+	default:
+	}
+
+	// Receive next event from go-sse Stream
+	event, err := s.sseStream.Recv()
+	if err != nil {
+		if err == io.EOF {
+			// End of stream
 			_ = s.Close()
 			return false
 		}
-		s.current = event
-		return true
-	case err := <-s.errorCh:
 		s.err = err
 		_ = s.Close()
 		return false
 	}
+
+	log.Debug(s.ctx, "SSE event received", log.Any("event", event))
+
+	// Create response for this event
+	s.current = &llm.GenericHttpResponse{
+		StatusCode:  s.response.StatusCode,
+		Headers:     s.response.Headers,
+		Body:        []byte(event.Data),
+		RawResponse: s.response.RawResponse,
+	}
+
+	return true
 }
 
 // Current returns the current event data
-func (s *sseStream) Current() *llm.GenericHttpResponse {
+func (s *sseStreamWrapper) Current() *llm.GenericHttpResponse {
 	return s.current
 }
 
 // Err returns any error that occurred during streaming
-func (s *sseStream) Err() error {
+func (s *sseStreamWrapper) Err() error {
 	return s.err
 }
 
 // Close closes the stream and releases resources
-func (s *sseStream) Close() error {
-	if s.closed {
-		return nil
-	}
-
-	s.closed = true
-
-	// Close channels safely (check if they exist)
-	if s.eventBuffer != nil {
-		close(s.eventBuffer)
-	}
-	if s.errorCh != nil {
-		close(s.errorCh)
-	}
-
-	// Close body
-	if s.body != nil {
-		return s.body.Close()
+func (s *sseStreamWrapper) Close() error {
+	if s.sseStream != nil {
+		err := s.sseStream.Close()
+		log.Debug(s.ctx, "SSE stream closed")
+		return err
 	}
 	return nil
-}
-
-// readEvents reads SSE events in background and sends them to the event buffer
-func (s *sseStream) readEvents() {
-	defer func() {
-		if !s.closed {
-			_ = s.Close()
-		}
-	}()
-
-	for event, err := range sse.Read(s.body, nil) {
-		select {
-		case <-s.ctx.Done():
-			return
-		default:
-		}
-
-		if s.closed {
-			return
-		}
-
-		if err != nil {
-			log.Warn(s.ctx, "SSE event read error", log.Cause(err))
-			// Send error to error channel (non-blocking)
-			select {
-			case s.errorCh <- err:
-			default:
-			}
-			return
-		}
-
-		log.Debug(s.ctx, "SSE event received", log.Any("event", event))
-
-		// body, err := json.Marshal(event)
-		// if err != nil {
-		// 	log.Warn(s.ctx, "failed to marshal SSE event to JSON", log.Cause(err))
-		// 	continue
-		// }
-
-		// Create response for this event
-		response := &llm.GenericHttpResponse{
-			StatusCode:  s.response.StatusCode,
-			Headers:     s.response.Headers,
-			Body:        []byte(event.Data),
-			RawResponse: s.response.RawResponse,
-		}
-
-		// Send event to buffer (non-blocking to prevent deadlock)
-		select {
-		case s.eventBuffer <- response:
-			// Event sent successfully
-		case <-s.ctx.Done():
-			// Context cancelled, stop reading
-			return
-		}
-	}
 }
 
 // buildHttpRequest builds an HTTP request from GenericHttpRequest

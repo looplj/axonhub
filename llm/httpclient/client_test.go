@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tmaxmax/go-sse"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -492,14 +493,13 @@ data: [DONE]
 `
 	body := io.NopCloser(strings.NewReader(sseData))
 
-	stream := &sseStream{
+	stream := &sseStreamWrapper{
 		ctx: context.Background(),
 		response: &llm.GenericHttpResponse{
 			StatusCode: http.StatusOK,
 			Headers:    http.Header{"Content-Type": []string{"text/event-stream"}},
 		},
-		body:   body,
-		closed: false,
+		sseStream: sse.NewStream(body),
 	}
 
 	// Test that we can close the stream
