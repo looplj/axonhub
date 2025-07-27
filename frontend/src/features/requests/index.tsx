@@ -13,12 +13,16 @@ import { Button } from '@/components/ui/button'
 import { RefreshCw } from 'lucide-react'
 
 function RequestsContent() {
-  const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
+  const [cursor, setCursor] = useState<string | undefined>(undefined)
   
   const { data, isLoading, refetch } = useRequests({
     first: pageSize,
-    after: page > 1 ? btoa(`cursor:${(page - 1) * pageSize}`) : undefined,
+    after: cursor,
+    orderBy: {
+      field: 'CREATED_AT',
+      direction: 'DESC',
+    },
   })
 
   const { 
@@ -38,11 +42,29 @@ function RequestsContent() {
   } = useRequestsContext()
 
   const requests = data?.edges?.map(edge => edge.node) || []
+  const pageInfo = data?.pageInfo
 
   const handleExecutionSelect = (execution: any) => {
     setCurrentExecution(execution)
     setExecutionsDrawerOpen(false)
     setExecutionDetailOpen(true)
+  }
+
+  const handleNextPage = () => {
+    if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
+      setCursor(data.pageInfo.endCursor)
+    }
+  }
+
+  const handlePreviousPage = () => {
+    if (data?.pageInfo?.hasPreviousPage && data?.pageInfo?.startCursor) {
+      setCursor(data.pageInfo.startCursor)
+    }
+  }
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize)
+    setCursor(undefined) // Reset to first page
   }
 
   return (
@@ -72,6 +94,12 @@ function RequestsContent() {
             columns={requestsColumns}
             data={requests}
             isLoading={isLoading}
+            pageInfo={pageInfo}
+            pageSize={pageSize}
+            totalCount={data?.totalCount}
+            onNextPage={handleNextPage}
+            onPreviousPage={handlePreviousPage}
+            onPageSizeChange={handlePageSizeChange}
           />
         </div>
       </div>

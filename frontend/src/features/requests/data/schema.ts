@@ -50,7 +50,7 @@ export const requestSchema = z.object({
   // userID: z.string().optional().nullable(),
   user: userSchema.partial(),
   // apiKeyID: z.string().optional().nullable(),
-  apiKey: apiKeySchema.partial(),
+  apiKey: apiKeySchema.partial().nullable(),
   requestBody: z.any(), // JSONRawMessage
   responseBody: z.any().nullable(), // JSONRawMessage
   status: requestStatusSchema,

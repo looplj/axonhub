@@ -10,7 +10,6 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
@@ -22,9 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Request } from '../data/schema'
-import { DataTablePagination } from './data-table-pagination'
+import { Request, RequestConnection } from '../data/schema'
 import { DataTableToolbar } from './data-table-toolbar'
+import { ServerSidePagination } from './server-side-pagination'
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -37,9 +36,25 @@ interface DataTableProps {
   columns: ColumnDef<Request>[]
   data: Request[]
   isLoading?: boolean
+  pageInfo?: RequestConnection['pageInfo']
+  pageSize: number
+  totalCount?: number
+  onNextPage: () => void
+  onPreviousPage: () => void
+  onPageSizeChange: (pageSize: number) => void
 }
 
-export function RequestsTable({ columns, data, isLoading }: DataTableProps) {
+export function RequestsTable({
+  columns,
+  data,
+  isLoading,
+  pageInfo,
+  pageSize,
+  totalCount,
+  onNextPage,
+  onPreviousPage,
+  onPageSizeChange,
+}: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -61,10 +76,11 @@ export function RequestsTable({ columns, data, isLoading }: DataTableProps) {
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    // Disable client-side pagination since we're using server-side
+    manualPagination: true,
   })
 
   return (
@@ -137,7 +153,16 @@ export function RequestsTable({ columns, data, isLoading }: DataTableProps) {
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      <ServerSidePagination
+        pageInfo={pageInfo}
+        pageSize={pageSize}
+        dataLength={data.length}
+        totalCount={totalCount}
+        selectedRows={table.getFilteredSelectedRowModel().rows.length}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   )
 }

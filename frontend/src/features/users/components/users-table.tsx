@@ -10,7 +10,6 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
@@ -22,8 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { User } from '../data/schema'
-import { DataTablePagination } from './data-table-pagination'
+import { ServerSidePagination } from '@/components/server-side-pagination'
+import { User, UserConnection } from '../data/schema'
 import { DataTableToolbar } from './data-table-toolbar'
 
 declare module '@tanstack/react-table' {
@@ -36,9 +35,24 @@ declare module '@tanstack/react-table' {
 interface DataTableProps {
   columns: ColumnDef<User>[]
   data: User[]
+  pageInfo?: UserConnection['pageInfo']
+  pageSize: number
+  totalCount?: number
+  onNextPage: () => void
+  onPreviousPage: () => void
+  onPageSizeChange: (pageSize: number) => void
 }
 
-export function UsersTable({ columns, data }: DataTableProps) {
+export function UsersTable({ 
+  columns, 
+  data, 
+  pageInfo,
+  pageSize,
+  totalCount,
+  onNextPage,
+  onPreviousPage,
+  onPageSizeChange
+}: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -60,10 +74,10 @@ export function UsersTable({ columns, data }: DataTableProps) {
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    manualPagination: true,
   })
 
   return (
@@ -127,7 +141,16 @@ export function UsersTable({ columns, data }: DataTableProps) {
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      <ServerSidePagination
+        pageInfo={pageInfo}
+        pageSize={pageSize}
+        dataLength={data.length}
+        totalCount={totalCount}
+        selectedRows={Object.keys(rowSelection).length}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   )
 }

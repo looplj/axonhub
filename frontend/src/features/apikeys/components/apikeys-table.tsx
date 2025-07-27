@@ -10,7 +10,6 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
@@ -22,8 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ApiKey } from '../data/schema'
-import { DataTablePagination } from './data-table-pagination'
+import { ServerSidePagination } from '@/components/server-side-pagination'
+import { ApiKey, ApiKeyConnection } from '../data/schema'
 import { DataTableToolbar } from './data-table-toolbar'
 
 declare module '@tanstack/react-table' {
@@ -36,10 +35,24 @@ declare module '@tanstack/react-table' {
 interface DataTableProps {
   columns: ColumnDef<ApiKey>[]
   data: ApiKey[]
-  isLoading?: boolean
+  pageInfo?: ApiKeyConnection['pageInfo']
+  pageSize: number
+  totalCount?: number
+  onNextPage: () => void
+  onPreviousPage: () => void
+  onPageSizeChange: (pageSize: number) => void
 }
 
-export function ApiKeysTable({ columns, data, isLoading }: DataTableProps) {
+export function ApiKeysTable({ 
+  columns, 
+  data, 
+  pageInfo,
+  pageSize,
+  totalCount,
+  onNextPage,
+  onPreviousPage,
+  onPageSizeChange
+}: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -61,10 +74,10 @@ export function ApiKeysTable({ columns, data, isLoading }: DataTableProps) {
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    manualPagination: true,
   })
 
   return (
@@ -121,14 +134,23 @@ export function ApiKeysTable({ columns, data, isLoading }: DataTableProps) {
                   colSpan={columns.length}
                   className='h-24 text-center'
                 >
-                  {isLoading ? '加载中...' : '暂无数据'}
+                  暂无数据
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      <ServerSidePagination
+        pageInfo={pageInfo}
+        pageSize={pageSize}
+        dataLength={data.length}
+        totalCount={totalCount}
+        selectedRows={Object.keys(rowSelection).length}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   )
 }

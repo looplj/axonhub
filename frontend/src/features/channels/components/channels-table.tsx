@@ -10,7 +10,6 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
@@ -22,8 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Channel } from '../data/schema'
-import { DataTablePagination } from './data-table-pagination'
+import { ServerSidePagination } from '@/components/server-side-pagination'
+import { Channel, ChannelConnection } from '../data/schema'
 import { DataTableToolbar } from './data-table-toolbar'
 
 declare module '@tanstack/react-table' {
@@ -36,10 +35,24 @@ declare module '@tanstack/react-table' {
 interface DataTableProps {
   columns: ColumnDef<Channel>[]
   data: Channel[]
-  isLoading?: boolean
+  pageInfo?: ChannelConnection['pageInfo']
+  pageSize: number
+  totalCount?: number
+  onNextPage: () => void
+  onPreviousPage: () => void
+  onPageSizeChange: (pageSize: number) => void
 }
 
-export function ChannelsTable({ columns, data, isLoading }: DataTableProps) {
+export function ChannelsTable({ 
+  columns, 
+  data, 
+  pageInfo,
+  pageSize,
+  totalCount,
+  onNextPage,
+  onPreviousPage,
+  onPageSizeChange
+}: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -61,10 +74,10 @@ export function ChannelsTable({ columns, data, isLoading }: DataTableProps) {
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    manualPagination: true,
   })
 
   return (
@@ -95,16 +108,7 @@ export function ChannelsTable({ columns, data, isLoading }: DataTableProps) {
             ))}
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className='h-24 text-center'
-                >
-                  加载中...
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows?.length ? (
+            {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -137,7 +141,16 @@ export function ChannelsTable({ columns, data, isLoading }: DataTableProps) {
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      <ServerSidePagination
+        pageInfo={pageInfo}
+        pageSize={pageSize}
+        dataLength={data.length}
+        totalCount={totalCount}
+        selectedRows={Object.keys(rowSelection).length}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   )
 }

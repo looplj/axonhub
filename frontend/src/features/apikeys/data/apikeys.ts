@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
+import { useErrorHandler } from '@/hooks/use-error-handler'
 import type { ApiKey, ApiKeyConnection, CreateApiKeyInput, UpdateApiKeyInput } from './schema'
 import { apiKeyConnectionSchema, apiKeySchema } from './schema'
 import { toast } from 'sonner'
@@ -90,19 +91,45 @@ const DELETE_APIKEY_MUTATION = `
 `
 
 // React Query hooks
-export function useApiKeys(first = 10, after?: string) {
+export function useApiKeys(variables?: {
+  first?: number
+  after?: string
+  orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
+  where?: Record<string, any>
+}) {
+  const { handleError } = useErrorHandler()
+  
   return useQuery({
-    queryKey: ['apiKeys', first, after],
-    queryFn: () => graphqlRequest<{ apiKeys: ApiKeyConnection }>(APIKEYS_QUERY, { first, after }),
-    select: (data) => data.apiKeys,
+    queryKey: ['apiKeys', variables],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(
+          APIKEYS_QUERY,
+          variables
+        )
+        return apiKeyConnectionSchema.parse(data?.apiKeys)
+      } catch (error) {
+        handleError(error, '获取API密钥数据')
+        throw error
+      }
+    },
   })
 }
 
 export function useApiKey(id: string) {
+  const { handleError } = useErrorHandler()
+  
   return useQuery({
     queryKey: ['apiKey', id],
-    queryFn: () => graphqlRequest<{ apiKey: ApiKey }>(APIKEY_QUERY, { id }),
-    select: (data) => data.apiKey,
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ apiKey: ApiKey }>(APIKEY_QUERY, { id })
+        return apiKeySchema.parse(data.apiKey)
+      } catch (error) {
+        handleError(error, '获取API密钥详情')
+        throw error
+      }
+    },
     enabled: !!id,
   })
 }

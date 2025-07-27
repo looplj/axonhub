@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -10,9 +11,60 @@ import { UsersTable } from './components/users-table'
 import UsersProvider from './context/users-context'
 import { useUsers } from './data/users'
 
-export default function UsersManagement() {
-  const { data: users, isLoading, error } = useUsers()
+function UsersContent() {
+  const [pageSize, setPageSize] = useState(20)
+  const [cursor, setCursor] = useState<string | undefined>(undefined)
+  
+  const { data, isLoading, error } = useUsers({
+    first: pageSize,
+    after: cursor,
+  })
 
+  const handleNextPage = () => {
+    if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
+      setCursor(data.pageInfo.endCursor)
+    }
+  }
+
+  const handlePreviousPage = () => {
+    if (data?.pageInfo?.hasPreviousPage && data?.pageInfo?.startCursor) {
+      setCursor(data.pageInfo.startCursor)
+    }
+  }
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize)
+    setCursor(undefined) // Reset to first page
+  }
+
+  return (
+    <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+      {isLoading ? (
+        <div className='flex items-center justify-center h-32'>
+          <div className='text-muted-foreground'>加载中...</div>
+        </div>
+      ) : error ? (
+        <div className='flex items-center justify-center h-32'>
+          <div className='text-destructive'>加载失败: {error.message}</div>
+        </div>
+      ) : (
+        <UsersTable 
+          data={data?.edges?.map(edge => edge.node) || []} 
+          columns={columns}
+          isLoading={isLoading}
+          pageInfo={data?.pageInfo}
+          pageSize={pageSize}
+          totalCount={data?.totalCount}
+          onNextPage={handleNextPage}
+          onPreviousPage={handlePreviousPage}
+          onPageSizeChange={handlePageSizeChange}
+        />
+      )}
+    </div>
+  )
+}
+
+export default function UsersManagement() {
   return (
     <UsersProvider>
       <Header fixed>
@@ -33,19 +85,7 @@ export default function UsersManagement() {
           </div>
           <UsersPrimaryButtons />
         </div>
-        <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-          {isLoading ? (
-            <div className='flex items-center justify-center h-32'>
-              <div className='text-muted-foreground'>加载中...</div>
-            </div>
-          ) : error ? (
-            <div className='flex items-center justify-center h-32'>
-              <div className='text-destructive'>加载失败: {error.message}</div>
-            </div>
-          ) : (
-            <UsersTable data={users?.edges?.map(edge => edge.node) || []} columns={columns} />
-          )}
-        </div>
+        <UsersContent />
       </Main>
       <UsersDialogs />
     </UsersProvider>

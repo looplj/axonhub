@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
 import { toast } from 'sonner'
+import { useErrorHandler } from '@/hooks/use-error-handler'
 import {
   Channel,
   ChannelConnection,
@@ -105,31 +106,45 @@ export function useChannels(variables?: {
   orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
   where?: Record<string, any>
 }) {
+  const { handleError } = useErrorHandler()
+  
   return useQuery({
     queryKey: ['channels', variables],
     queryFn: async () => {
-      const data = await graphqlRequest<{ channels: ChannelConnection }>(
-        CHANNELS_QUERY,
-        variables
-      )
-      return channelConnectionSchema.parse(data?.channels)
+      try {
+        const data = await graphqlRequest<{ channels: ChannelConnection }>(
+          CHANNELS_QUERY,
+          variables
+        )
+        return channelConnectionSchema.parse(data?.channels)
+      } catch (error) {
+        handleError(error, '获取渠道数据')
+        throw error
+      }
     },
   })
 }
 
 export function useChannel(id: string) {
+  const { handleError } = useErrorHandler()
+  
   return useQuery({
     queryKey: ['channel', id],
     queryFn: async () => {
-      const data = await graphqlRequest<{ channels: ChannelConnection }>(
-        CHANNELS_QUERY,
-        { where: { id } }
-      )
-      const channel = data.channels.edges[0]?.node
-      if (!channel) {
-        throw new Error('Channel not found')
+      try {
+        const data = await graphqlRequest<{ channels: ChannelConnection }>(
+          CHANNELS_QUERY,
+          { where: { id } }
+        )
+        const channel = data.channels.edges[0]?.node
+        if (!channel) {
+          throw new Error('Channel not found')
+        }
+        return channelSchema.parse(channel)
+      } catch (error) {
+        handleError(error, '获取渠道详情')
+        throw error
       }
-      return channelSchema.parse(channel)
     },
     enabled: !!id,
   })
