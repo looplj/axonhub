@@ -15,6 +15,7 @@ type Handlers struct {
 	Graphql   *GraphqlHandler
 	OpenAI    *api.OpenAIHandlers
 	Anthropic *api.AnthropicHandlers
+	AiSDK     *api.AiSDKHandlers
 }
 
 func SetupRoutes(server *Server, handlers Handlers, deps Dependencies) {
@@ -29,6 +30,8 @@ func SetupRoutes(server *Server, handlers Handlers, deps Dependencies) {
 		adminGroup.POST("/graphql", func(ctx *gin.Context) {
 			handlers.Graphql.Graphql.ServeHTTP(ctx.Writer, ctx.Request)
 		})
+		// OpenAI 兼容 API for admin playground
+		adminGroup.POST("/v1/chat", handlers.AiSDK.ChatCompletion)
 	}
 
 	// API 路由 - 需要 API key 认证

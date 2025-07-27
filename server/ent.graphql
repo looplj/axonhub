@@ -458,7 +458,7 @@ input CreateRequestInput {
   responseBody: JSONRawMessageInput
   status: RequestStatus!
   userID: ID!
-  apiKeyID: ID!
+  apiKeyID: ID
 }
 """
 CreateUserInput is used for create User object.
@@ -740,13 +740,13 @@ type Request implements Node {
   createdAt: Time!
   updatedAt: Time!
   userID: ID!
-  apiKeyID: ID!
+  apiKeyID: ID
   modelID: String!
   requestBody: JSONRawMessage!
   responseBody: JSONRawMessage
   status: RequestStatus!
   user: User!
-  apiKey: APIKey!
+  apiKey: APIKey
   executions(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -1084,6 +1084,8 @@ input RequestWhereInput {
   apiKeyIDNEQ: ID
   apiKeyIDIn: [ID!]
   apiKeyIDNotIn: [ID!]
+  apiKeyIDIsNil: Boolean
+  apiKeyIDNotNil: Boolean
   """
   model_id field predicates
   """

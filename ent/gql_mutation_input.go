@@ -171,7 +171,7 @@ type CreateRequestInput struct {
 	ResponseBody objects.JSONRawMessage
 	Status       request.Status
 	UserID       int
-	APIKeyID     int
+	APIKeyID     *int
 }
 
 // Mutate applies the CreateRequestInput on the RequestMutation builder.
@@ -191,7 +191,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	}
 	m.SetStatus(i.Status)
 	m.SetUserID(i.UserID)
-	m.SetAPIKeyID(i.APIKeyID)
+	if v := i.APIKeyID; v != nil {
+		m.SetAPIKeyID(*v)
+	}
 }
 
 // SetInput applies the change-set in the CreateRequestInput on the RequestCreate builder.

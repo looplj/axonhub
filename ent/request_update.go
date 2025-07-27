@@ -156,9 +156,6 @@ func (ru *RequestUpdate) check() error {
 	if ru.mutation.UserCleared() && len(ru.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Request.user"`)
 	}
-	if ru.mutation.APIKeyCleared() && len(ru.mutation.APIKeyIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Request.api_key"`)
-	}
 	return nil
 }
 
@@ -393,9 +390,6 @@ func (ruo *RequestUpdateOne) check() error {
 	}
 	if ruo.mutation.UserCleared() && len(ruo.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Request.user"`)
-	}
-	if ruo.mutation.APIKeyCleared() && len(ruo.mutation.APIKeyIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Request.api_key"`)
 	}
 	return nil
 }

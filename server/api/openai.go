@@ -51,12 +51,12 @@ type OpenAIHandlersParams struct {
 }
 
 type OpenAIHandlers struct {
-	ChatCompletionHandlers *ChatCompletionHandlers
+	ChatCompletionHandlers *ChatCompletionSSEHandlers
 }
 
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 	return &OpenAIHandlers{
-		ChatCompletionHandlers: &ChatCompletionHandlers{
+		ChatCompletionHandlers: &ChatCompletionSSEHandlers{
 			ChatCompletionProcessor: biz.NewChatCompletionProcessor(
 				params.ChannelService,
 				params.RequestService,

@@ -32,7 +32,7 @@ func (Request) Indexes() []ent.Index {
 func (Request) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("user_id").Immutable(),
-		field.Int("api_key_id").Immutable(),
+		field.Int("api_key_id").Optional().Immutable(),
 		field.String("model_id").Immutable(),
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable(),
 		field.JSON("response_body", objects.JSONRawMessage{}).Optional(),
@@ -43,7 +43,7 @@ func (Request) Fields() []ent.Field {
 func (Request) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("user", User.Type).Ref("requests").Field("user_id").Required().Immutable().Unique(),
-		edge.From("api_key", APIKey.Type).Ref("requests").Field("api_key_id").Required().Immutable().Unique(),
+		edge.From("api_key", APIKey.Type).Ref("requests").Field("api_key_id").Immutable().Unique(),
 		edge.To("executions", RequestExecution.Type).
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),

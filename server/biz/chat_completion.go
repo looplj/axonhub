@@ -49,8 +49,8 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericRe
 	log.Debug(ctx, "receive chat request", log.Any("request", chatReq))
 
 	apiKey, ok := contexts.GetAPIKey(ctx)
-	if !ok || apiKey == nil {
-		return ChatCompletionResult{}, errors.New("API key not found in context")
+	if !ok {
+		log.Warn(ctx, "api key not found")
 	}
 
 	req, err := processor.RequestService.CreateRequest(ctx, apiKey, chatReq, genericReq.Body)

@@ -51,12 +51,12 @@ type AnthropicHandlersParams struct {
 }
 
 type AnthropicHandlers struct {
-	ChatCompletionHandlers *ChatCompletionHandlers
+	ChatCompletionHandlers *ChatCompletionSSEHandlers
 }
 
 func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 	return &AnthropicHandlers{
-		ChatCompletionHandlers: &ChatCompletionHandlers{
+		ChatCompletionHandlers: &ChatCompletionSSEHandlers{
 			ChatCompletionProcessor: biz.NewChatCompletionProcessor(
 				params.ChannelService,
 				params.RequestService,

@@ -17,18 +17,18 @@ type ChatCompletionErrorHandler interface {
 	HandleStreamError(c *gin.Context, err error)
 }
 
-func NewChatCompletionHandlers(processor *biz.ChatCompletionProcessor) *ChatCompletionHandlers {
-	return &ChatCompletionHandlers{
+func NewChatCompletionHandlers(processor *biz.ChatCompletionProcessor) *ChatCompletionSSEHandlers {
+	return &ChatCompletionSSEHandlers{
 		ChatCompletionProcessor: processor,
 	}
 }
 
-type ChatCompletionHandlers struct {
+type ChatCompletionSSEHandlers struct {
 	ChatCompletionProcessor *biz.ChatCompletionProcessor
 	ErrorHandler            ChatCompletionErrorHandler
 }
 
-func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
+func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	// Use ReadHTTPRequest to parse the request

@@ -2428,9 +2428,22 @@ func (m *RequestMutation) OldAPIKeyID(ctx context.Context) (v int, err error) {
 	return oldValue.APIKeyID, nil
 }
 
+// ClearAPIKeyID clears the value of the "api_key_id" field.
+func (m *RequestMutation) ClearAPIKeyID() {
+	m.api_key = nil
+	m.clearedFields[request.FieldAPIKeyID] = struct{}{}
+}
+
+// APIKeyIDCleared returns if the "api_key_id" field was cleared in this mutation.
+func (m *RequestMutation) APIKeyIDCleared() bool {
+	_, ok := m.clearedFields[request.FieldAPIKeyID]
+	return ok
+}
+
 // ResetAPIKeyID resets all changes to the "api_key_id" field.
 func (m *RequestMutation) ResetAPIKeyID() {
 	m.api_key = nil
+	delete(m.clearedFields, request.FieldAPIKeyID)
 }
 
 // SetModelID sets the "model_id" field.
@@ -2656,7 +2669,7 @@ func (m *RequestMutation) ClearAPIKey() {
 
 // APIKeyCleared reports if the "api_key" edge to the APIKey entity was cleared.
 func (m *RequestMutation) APIKeyCleared() bool {
-	return m.clearedapi_key
+	return m.APIKeyIDCleared() || m.clearedapi_key
 }
 
 // APIKeyIDs returns the "api_key" edge IDs in the mutation.
@@ -2935,6 +2948,9 @@ func (m *RequestMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *RequestMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(request.FieldAPIKeyID) {
+		fields = append(fields, request.FieldAPIKeyID)
+	}
 	if m.FieldCleared(request.FieldResponseBody) {
 		fields = append(fields, request.FieldResponseBody)
 	}
@@ -2952,6 +2968,9 @@ func (m *RequestMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *RequestMutation) ClearField(name string) error {
 	switch name {
+	case request.FieldAPIKeyID:
+		m.ClearAPIKeyID()
+		return nil
 	case request.FieldResponseBody:
 		m.ClearResponseBody()
 		return nil

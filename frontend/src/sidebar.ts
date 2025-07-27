@@ -18,6 +18,7 @@ import {
   IconUserCog,
   IconUserOff,
   IconUsers,
+  IconRobot,
 } from '@tabler/icons-react'
 import { AudioWaveform, Command, GalleryVerticalEnd } from 'lucide-react'
 import { ClerkLogo } from '@/assets/clerk-logo'
@@ -69,6 +70,11 @@ export const sidebarData: SidebarData = {
           title: 'API Keys',
           url: '/api-keys',
           icon: IconPackages,
+        },
+        {
+          title: 'Playground',
+          url: '/playground',
+          icon: IconRobot,
         },
         // {
         //   title: 'Chats',

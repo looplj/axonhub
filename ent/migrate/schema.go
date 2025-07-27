@@ -98,7 +98,7 @@ var (
 		{Name: "request_body", Type: field.TypeJSON},
 		{Name: "response_body", Type: field.TypeJSON, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed"}},
-		{Name: "api_key_id", Type: field.TypeInt},
+		{Name: "api_key_id", Type: field.TypeInt, Nullable: true},
 		{Name: "channel_requests", Type: field.TypeInt, Nullable: true},
 		{Name: "user_id", Type: field.TypeInt},
 	}
@@ -112,7 +112,7 @@ var (
 				Symbol:     "requests_api_keys_requests",
 				Columns:    []*schema.Column{RequestsColumns[7]},
 				RefColumns: []*schema.Column{APIKeysColumns[0]},
-				OnDelete:   schema.NoAction,
+				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_channels_requests",

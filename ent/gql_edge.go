@@ -92,7 +92,7 @@ func (r *Request) APIKey(ctx context.Context) (*APIKey, error) {
 	if IsNotLoaded(err) {
 		result, err = r.QueryAPIKey().Only(ctx)
 	}
-	return result, err
+	return result, MaskNotFound(err)
 }
 
 func (r *Request) Executions(

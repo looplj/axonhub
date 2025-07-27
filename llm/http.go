@@ -88,8 +88,8 @@ type GenericHttpResponse struct {
 }
 
 type GenericStreamEvent struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data"`
+	Type string `json:"type"`
+	Data []byte `json:"data"`
 }
 
 type GenericHttpError struct {

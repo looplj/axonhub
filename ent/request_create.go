@@ -66,6 +66,14 @@ func (rc *RequestCreate) SetAPIKeyID(i int) *RequestCreate {
 	return rc
 }
 
+// SetNillableAPIKeyID sets the "api_key_id" field if the given value is not nil.
+func (rc *RequestCreate) SetNillableAPIKeyID(i *int) *RequestCreate {
+	if i != nil {
+		rc.SetAPIKeyID(*i)
+	}
+	return rc
+}
+
 // SetModelID sets the "model_id" field.
 func (rc *RequestCreate) SetModelID(s string) *RequestCreate {
 	rc.mutation.SetModelID(s)
@@ -171,9 +179,6 @@ func (rc *RequestCreate) check() error {
 	if _, ok := rc.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "Request.user_id"`)}
 	}
-	if _, ok := rc.mutation.APIKeyID(); !ok {
-		return &ValidationError{Name: "api_key_id", err: errors.New(`ent: missing required field "Request.api_key_id"`)}
-	}
 	if _, ok := rc.mutation.ModelID(); !ok {
 		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "Request.model_id"`)}
 	}
@@ -190,9 +195,6 @@ func (rc *RequestCreate) check() error {
 	}
 	if len(rc.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Request.user"`)}
-	}
-	if len(rc.mutation.APIKeyIDs()) == 0 {
-		return &ValidationError{Name: "api_key", err: errors.New(`ent: missing required edge "Request.api_key"`)}
 	}
 	return nil
 }

@@ -7354,14 +7354,11 @@ func (ec *executionContext) _Request_apiKeyID(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*objects.GUID)
 	fc.Result = res
-	return ec.marshalNID2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐGUID(ctx, field.Selections, res)
+	return ec.marshalOID2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐGUID(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Request_apiKeyID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -7631,14 +7628,11 @@ func (ec *executionContext) _Request_apiKey(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*ent.APIKey)
 	fc.Result = res
-	return ec.marshalNAPIKey2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋentᚐAPIKey(ctx, field.Selections, res)
+	return ec.marshalOAPIKey2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋentᚐAPIKey(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Request_apiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -13314,11 +13308,11 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 			it.UserID = converted
 		case "apiKeyID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyID"))
-			data, err := ec.unmarshalNID2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐGUID(ctx, v)
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋzhenzouᚋaxonhubᚋobjectsᚐGUID(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			converted, err := objects.ConvertGUIDPtrToInt(data)
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
 			if err != nil {
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
@@ -14520,7 +14514,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasAPIKey", "hasAPIKeyWith", "hasExecutions", "hasExecutionsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasAPIKey", "hasAPIKeyWith", "hasExecutions", "hasExecutionsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -14836,6 +14830,20 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.APIKeyIDNotIn = converted
+		case "apiKeyIDIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyIDIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKeyIDIsNil = data
+		case "apiKeyIDNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyIDNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKeyIDNotNil = data
 		case "modelID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -17252,16 +17260,13 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 		case "apiKeyID":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Request_apiKeyID(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -17341,16 +17346,13 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 		case "apiKey":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Request_apiKey(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 

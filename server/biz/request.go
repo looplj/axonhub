@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/samber/lo"
 	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
@@ -36,8 +37,8 @@ func (s *RequestService) CreateRequest(ctx context.Context, apiKey *ent.APIKey, 
 
 	// Create request record
 	req, err := s.EntClient.Request.Create().
-		SetAPIKey(apiKey).
-		SetUserID(apiKey.UserID).
+		// SetAPIKey(lo.TernaryF(apiKey != nil, func() *ent.APIKey { return apiKey }, func() *ent.APIKey { return nil })).
+		SetUserID(lo.TernaryF(apiKey != nil, func() int { return int(apiKey.UserID) }, func() int { return 0 })).
 		SetModelID(chatReq.Model).
 		SetStatus(request.StatusProcessing).
 		SetRequestBody(requestBodyBytes).
