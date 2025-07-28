@@ -81,7 +81,7 @@ export function UsersTable({
   })
 
   return (
-    <div className='space-y-4'>
+    <div className='space-y-4' data-testid="users-table">
       <DataTableToolbar table={table} />
       <div className='rounded-md border'>
         <Table>
@@ -150,6 +150,7 @@ export function UsersTable({
         onNextPage={onNextPage}
         onPreviousPage={onPreviousPage}
         onPageSizeChange={onPageSizeChange}
+        data-testid="pagination"
       />
     </div>
   )

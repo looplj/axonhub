@@ -65,14 +65,92 @@ func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPI
 
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error) {
-	user, err := r.client.User.Create().
-		SetName(input.Name).
+	mut := r.client.User.Create().
+		SetNillableFirstName(input.FirstName).
+		SetNillableLastName(input.LastName).
 		SetEmail(input.Email).
-		Save(ctx)
+		SetScopes(input.Scopes)
+
+	if input.RoleIDs != nil {
+		mut.AddRoleIDs(input.RoleIDs...)
+	}
+
+	user, err := mut.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 	return user, nil
+}
+
+// UpdateUser is the resolver for the updateUser field.
+func (r *mutationResolver) UpdateUser(ctx context.Context, id objects.GUID, input ent.UpdateUserInput) (*ent.User, error) {
+	mut := r.client.User.UpdateOneID(id.ID).
+		SetNillableEmail(input.Email).
+		SetNillableFirstName(input.FirstName).
+		SetNillableLastName(input.LastName).
+		SetNillableIsOwner(input.IsOwner)
+
+	if input.Scopes != nil {
+		mut.SetScopes(input.Scopes)
+	}
+	if input.AppendScopes != nil {
+		mut.AppendScopes(input.AppendScopes)
+	}
+	if input.ClearScopes {
+		mut.ClearScopes()
+	}
+
+	if input.AddRoleIDs != nil {
+		mut.AddRoleIDs(input.AddRoleIDs...)
+	}
+	if input.RemoveRoleIDs != nil {
+		mut.RemoveRoleIDs(input.RemoveRoleIDs...)
+	}
+	if input.ClearRoles {
+		mut.ClearRoles()
+	}
+
+	user, err := mut.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update user: %w", err)
+	}
+	return user, nil
+}
+
+// DeleteUser is the resolver for the deleteUser field.
+func (r *mutationResolver) DeleteUser(ctx context.Context, id objects.GUID) (bool, error) {
+	err := r.client.User.DeleteOneID(id.ID).Exec(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete user: %w", err)
+	}
+	return true, nil
+}
+
+// CreateRole is the resolver for the createRole field.
+func (r *mutationResolver) CreateRole(ctx context.Context, input ent.CreateRoleInput) (*ent.Role, error) {
+	role, err := r.client.Role.Create().
+		SetCode(input.Code).
+		SetName(input.Name).
+		SetScopes(input.Scopes).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create role: %w", err)
+	}
+	return role, nil
+}
+
+// UpdateRole is the resolver for the updateRole field.
+func (r *mutationResolver) UpdateRole(ctx context.Context, id objects.GUID, input ent.UpdateRoleInput) (*ent.Role, error) {
+	mut := r.client.Role.UpdateOneID(id.ID).
+		SetNillableName(input.Name)
+	if input.Scopes != nil {
+		mut.SetScopes(input.Scopes)
+	}
+	role, err := mut.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update role: %w", err)
+	}
+	return role, nil
 }
 
 // Mutation returns MutationResolver implementation.

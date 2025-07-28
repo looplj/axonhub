@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/ent/job"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
+	"github.com/looplj/axonhub/ent/role"
 	"github.com/looplj/axonhub/ent/user"
 	"golang.org/x/sync/semaphore"
 )
@@ -53,6 +54,11 @@ var requestexecutionImplementors = []string{"RequestExecution", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*RequestExecution) IsNode() {}
+
+var roleImplementors = []string{"Role", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Role) IsNode() {}
 
 var userImplementors = []string{"User", "Node"}
 
@@ -158,6 +164,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(requestexecution.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, requestexecutionImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case role.Table:
+		query := c.Role.Query().
+			Where(role.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, roleImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -312,6 +327,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.RequestExecution.Query().
 			Where(requestexecution.IDIn(ids...))
 		query, err := query.CollectFields(ctx, requestexecutionImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case role.Table:
+		query := c.Role.Query().
+			Where(role.IDIn(ids...))
+		query, err := query.CollectFields(ctx, roleImplementors...)
 		if err != nil {
 			return nil, err
 		}

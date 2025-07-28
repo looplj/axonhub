@@ -103,3 +103,4 @@ node_modules/
 .vercel
 .tanstack
 .trae/tasks
+playwright-report/

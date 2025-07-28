@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/ent/apikey"
 	"github.com/looplj/axonhub/ent/request"
+	"github.com/looplj/axonhub/ent/role"
 	"github.com/looplj/axonhub/ent/user"
 )
 
@@ -58,9 +59,51 @@ func (uc *UserCreate) SetEmail(s string) *UserCreate {
 	return uc
 }
 
-// SetName sets the "name" field.
-func (uc *UserCreate) SetName(s string) *UserCreate {
-	uc.mutation.SetName(s)
+// SetFirstName sets the "first_name" field.
+func (uc *UserCreate) SetFirstName(s string) *UserCreate {
+	uc.mutation.SetFirstName(s)
+	return uc
+}
+
+// SetNillableFirstName sets the "first_name" field if the given value is not nil.
+func (uc *UserCreate) SetNillableFirstName(s *string) *UserCreate {
+	if s != nil {
+		uc.SetFirstName(*s)
+	}
+	return uc
+}
+
+// SetLastName sets the "last_name" field.
+func (uc *UserCreate) SetLastName(s string) *UserCreate {
+	uc.mutation.SetLastName(s)
+	return uc
+}
+
+// SetNillableLastName sets the "last_name" field if the given value is not nil.
+func (uc *UserCreate) SetNillableLastName(s *string) *UserCreate {
+	if s != nil {
+		uc.SetLastName(*s)
+	}
+	return uc
+}
+
+// SetIsOwner sets the "is_owner" field.
+func (uc *UserCreate) SetIsOwner(b bool) *UserCreate {
+	uc.mutation.SetIsOwner(b)
+	return uc
+}
+
+// SetNillableIsOwner sets the "is_owner" field if the given value is not nil.
+func (uc *UserCreate) SetNillableIsOwner(b *bool) *UserCreate {
+	if b != nil {
+		uc.SetIsOwner(*b)
+	}
+	return uc
+}
+
+// SetScopes sets the "scopes" field.
+func (uc *UserCreate) SetScopes(s []string) *UserCreate {
+	uc.mutation.SetScopes(s)
 	return uc
 }
 
@@ -92,6 +135,21 @@ func (uc *UserCreate) AddAPIKeys(a ...*APIKey) *UserCreate {
 		ids[i] = a[i].ID
 	}
 	return uc.AddAPIKeyIDs(ids...)
+}
+
+// AddRoleIDs adds the "roles" edge to the Role entity by IDs.
+func (uc *UserCreate) AddRoleIDs(ids ...int) *UserCreate {
+	uc.mutation.AddRoleIDs(ids...)
+	return uc
+}
+
+// AddRoles adds the "roles" edges to the Role entity.
+func (uc *UserCreate) AddRoles(r ...*Role) *UserCreate {
+	ids := make([]int, len(r))
+	for i := range r {
+		ids[i] = r[i].ID
+	}
+	return uc.AddRoleIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -137,6 +195,22 @@ func (uc *UserCreate) defaults() {
 		v := user.DefaultUpdatedAt()
 		uc.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := uc.mutation.FirstName(); !ok {
+		v := user.DefaultFirstName
+		uc.mutation.SetFirstName(v)
+	}
+	if _, ok := uc.mutation.LastName(); !ok {
+		v := user.DefaultLastName
+		uc.mutation.SetLastName(v)
+	}
+	if _, ok := uc.mutation.IsOwner(); !ok {
+		v := user.DefaultIsOwner
+		uc.mutation.SetIsOwner(v)
+	}
+	if _, ok := uc.mutation.Scopes(); !ok {
+		v := user.DefaultScopes
+		uc.mutation.SetScopes(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -150,8 +224,14 @@ func (uc *UserCreate) check() error {
 	if _, ok := uc.mutation.Email(); !ok {
 		return &ValidationError{Name: "email", err: errors.New(`ent: missing required field "User.email"`)}
 	}
-	if _, ok := uc.mutation.Name(); !ok {
-		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "User.name"`)}
+	if _, ok := uc.mutation.FirstName(); !ok {
+		return &ValidationError{Name: "first_name", err: errors.New(`ent: missing required field "User.first_name"`)}
+	}
+	if _, ok := uc.mutation.LastName(); !ok {
+		return &ValidationError{Name: "last_name", err: errors.New(`ent: missing required field "User.last_name"`)}
+	}
+	if _, ok := uc.mutation.IsOwner(); !ok {
+		return &ValidationError{Name: "is_owner", err: errors.New(`ent: missing required field "User.is_owner"`)}
 	}
 	return nil
 }
@@ -192,9 +272,21 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldEmail, field.TypeString, value)
 		_node.Email = value
 	}
-	if value, ok := uc.mutation.Name(); ok {
-		_spec.SetField(user.FieldName, field.TypeString, value)
-		_node.Name = value
+	if value, ok := uc.mutation.FirstName(); ok {
+		_spec.SetField(user.FieldFirstName, field.TypeString, value)
+		_node.FirstName = value
+	}
+	if value, ok := uc.mutation.LastName(); ok {
+		_spec.SetField(user.FieldLastName, field.TypeString, value)
+		_node.LastName = value
+	}
+	if value, ok := uc.mutation.IsOwner(); ok {
+		_spec.SetField(user.FieldIsOwner, field.TypeBool, value)
+		_node.IsOwner = value
+	}
+	if value, ok := uc.mutation.Scopes(); ok {
+		_spec.SetField(user.FieldScopes, field.TypeJSON, value)
+		_node.Scopes = value
 	}
 	if nodes := uc.mutation.RequestsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -221,6 +313,22 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.RolesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.RolesTable,
+			Columns: user.RolesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -304,15 +412,57 @@ func (u *UserUpsert) UpdateEmail() *UserUpsert {
 	return u
 }
 
-// SetName sets the "name" field.
-func (u *UserUpsert) SetName(v string) *UserUpsert {
-	u.Set(user.FieldName, v)
+// SetFirstName sets the "first_name" field.
+func (u *UserUpsert) SetFirstName(v string) *UserUpsert {
+	u.Set(user.FieldFirstName, v)
 	return u
 }
 
-// UpdateName sets the "name" field to the value that was provided on create.
-func (u *UserUpsert) UpdateName() *UserUpsert {
-	u.SetExcluded(user.FieldName)
+// UpdateFirstName sets the "first_name" field to the value that was provided on create.
+func (u *UserUpsert) UpdateFirstName() *UserUpsert {
+	u.SetExcluded(user.FieldFirstName)
+	return u
+}
+
+// SetLastName sets the "last_name" field.
+func (u *UserUpsert) SetLastName(v string) *UserUpsert {
+	u.Set(user.FieldLastName, v)
+	return u
+}
+
+// UpdateLastName sets the "last_name" field to the value that was provided on create.
+func (u *UserUpsert) UpdateLastName() *UserUpsert {
+	u.SetExcluded(user.FieldLastName)
+	return u
+}
+
+// SetIsOwner sets the "is_owner" field.
+func (u *UserUpsert) SetIsOwner(v bool) *UserUpsert {
+	u.Set(user.FieldIsOwner, v)
+	return u
+}
+
+// UpdateIsOwner sets the "is_owner" field to the value that was provided on create.
+func (u *UserUpsert) UpdateIsOwner() *UserUpsert {
+	u.SetExcluded(user.FieldIsOwner)
+	return u
+}
+
+// SetScopes sets the "scopes" field.
+func (u *UserUpsert) SetScopes(v []string) *UserUpsert {
+	u.Set(user.FieldScopes, v)
+	return u
+}
+
+// UpdateScopes sets the "scopes" field to the value that was provided on create.
+func (u *UserUpsert) UpdateScopes() *UserUpsert {
+	u.SetExcluded(user.FieldScopes)
+	return u
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (u *UserUpsert) ClearScopes() *UserUpsert {
+	u.SetNull(user.FieldScopes)
 	return u
 }
 
@@ -389,17 +539,66 @@ func (u *UserUpsertOne) UpdateEmail() *UserUpsertOne {
 	})
 }
 
-// SetName sets the "name" field.
-func (u *UserUpsertOne) SetName(v string) *UserUpsertOne {
+// SetFirstName sets the "first_name" field.
+func (u *UserUpsertOne) SetFirstName(v string) *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
-		s.SetName(v)
+		s.SetFirstName(v)
 	})
 }
 
-// UpdateName sets the "name" field to the value that was provided on create.
-func (u *UserUpsertOne) UpdateName() *UserUpsertOne {
+// UpdateFirstName sets the "first_name" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateFirstName() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
-		s.UpdateName()
+		s.UpdateFirstName()
+	})
+}
+
+// SetLastName sets the "last_name" field.
+func (u *UserUpsertOne) SetLastName(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetLastName(v)
+	})
+}
+
+// UpdateLastName sets the "last_name" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateLastName() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateLastName()
+	})
+}
+
+// SetIsOwner sets the "is_owner" field.
+func (u *UserUpsertOne) SetIsOwner(v bool) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetIsOwner(v)
+	})
+}
+
+// UpdateIsOwner sets the "is_owner" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateIsOwner() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateIsOwner()
+	})
+}
+
+// SetScopes sets the "scopes" field.
+func (u *UserUpsertOne) SetScopes(v []string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetScopes(v)
+	})
+}
+
+// UpdateScopes sets the "scopes" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateScopes() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateScopes()
+	})
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (u *UserUpsertOne) ClearScopes() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearScopes()
 	})
 }
 
@@ -642,17 +841,66 @@ func (u *UserUpsertBulk) UpdateEmail() *UserUpsertBulk {
 	})
 }
 
-// SetName sets the "name" field.
-func (u *UserUpsertBulk) SetName(v string) *UserUpsertBulk {
+// SetFirstName sets the "first_name" field.
+func (u *UserUpsertBulk) SetFirstName(v string) *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
-		s.SetName(v)
+		s.SetFirstName(v)
 	})
 }
 
-// UpdateName sets the "name" field to the value that was provided on create.
-func (u *UserUpsertBulk) UpdateName() *UserUpsertBulk {
+// UpdateFirstName sets the "first_name" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateFirstName() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
-		s.UpdateName()
+		s.UpdateFirstName()
+	})
+}
+
+// SetLastName sets the "last_name" field.
+func (u *UserUpsertBulk) SetLastName(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetLastName(v)
+	})
+}
+
+// UpdateLastName sets the "last_name" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateLastName() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateLastName()
+	})
+}
+
+// SetIsOwner sets the "is_owner" field.
+func (u *UserUpsertBulk) SetIsOwner(v bool) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetIsOwner(v)
+	})
+}
+
+// UpdateIsOwner sets the "is_owner" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateIsOwner() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateIsOwner()
+	})
+}
+
+// SetScopes sets the "scopes" field.
+func (u *UserUpsertBulk) SetScopes(v []string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetScopes(v)
+	})
+}
+
+// UpdateScopes sets the "scopes" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateScopes() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateScopes()
+	})
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (u *UserUpsertBulk) ClearScopes() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearScopes()
 	})
 }
 

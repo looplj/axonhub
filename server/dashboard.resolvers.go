@@ -335,12 +335,16 @@ func (r *queryResolver) TopUsers(ctx context.Context, limit *int) ([]*TopUsers, 
 	var response []*TopUsers
 	for _, result := range results {
 		if user, exists := userMap[result.UserID]; exists {
+			fullName := user.FirstName
+			if user.LastName != "" {
+				fullName = fullName + " " + user.LastName
+			}
 			response = append(response, &TopUsers{
 				UserID: objects.GUID{
 					Type: "User",
 					ID:   result.UserID,
 				},
-				UserName:     user.Name,
+				UserName:     fullName,
 				UserEmail:    user.Email,
 				RequestCount: result.RequestCount,
 			})

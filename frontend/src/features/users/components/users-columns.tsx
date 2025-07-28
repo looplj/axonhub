@@ -1,102 +1,100 @@
-import { ColumnDef } from '@tanstack/react-table'
-import { format } from 'date-fns'
-import { cn } from '@/lib/utils'
-import { Checkbox } from '@/components/ui/checkbox'
-import LongText from '@/components/long-text'
-import { User } from '../data/schema'
-import { DataTableColumnHeader } from './data-table-column-header'
-import { DataTableRowActions } from './data-table-row-actions'
+"use client";
+
+import { ColumnDef } from "@tanstack/react-table";
+import { Checkbox } from "@/components/ui/checkbox";
+import LongText from "@/components/long-text";
+import { Badge } from "@/components/ui/badge";
+import { User } from "../data/schema";
+import { DataTableRowActions } from "./data-table-row-actions";
 
 export const columns: ColumnDef<User>[] = [
   {
-    id: 'select',
+    id: "select",
     header: ({ table }) => (
       <Checkbox
         checked={
           table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && 'indeterminate')
+          (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label='Select all'
-        className='translate-y-[2px]'
+        aria-label="Select all"
       />
     ),
-    meta: {
-      className: cn(
-        'sticky md:table-cell left-0 z-10 rounded-tl',
-        'bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted'
-      ),
-    },
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label='Select row'
-        className='translate-y-[2px]'
+        aria-label="Select row"
       />
     ),
     enableSorting: false,
     enableHiding: false,
   },
   {
-    accessorKey: 'name',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='姓名' />
-    ),
-    cell: ({ row }) => (
-      <LongText className='max-w-36 font-medium'>{row.getValue('name')}</LongText>
-    ),
-    meta: {
-      className: cn(
-        'drop-shadow-[0_1px_2px_rgb(0_0_0_/_0.1)] dark:drop-shadow-[0_1px_2px_rgb(255_255_255_/_0.1)] lg:drop-shadow-none',
-        'bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted',
-        'sticky left-6 md:table-cell'
-      ),
-    },
-    enableHiding: false,
+    accessorKey: "firstName",
+    header: "First Name",
+    cell: ({ row }) => <LongText>{row.getValue("firstName")}</LongText>,
   },
   {
-    accessorKey: 'email',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='邮箱' />
-    ),
-    cell: ({ row }) => (
-      <LongText className='max-w-48 text-muted-foreground'>
-        {row.getValue('email')}
-      </LongText>
-    ),
-    enableSorting: false,
+    accessorKey: "lastName",
+    header: "Last Name",
+    cell: ({ row }) => <LongText>{row.getValue("lastName")}</LongText>,
   },
   {
-    accessorKey: 'createdAt',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='创建时间' />
-    ),
+    accessorKey: "email",
+    header: "Email",
+    cell: ({ row }) => <LongText>{row.getValue("email")}</LongText>,
+  },
+  {
+    accessorKey: "isOwner",
+    header: "Owner",
     cell: ({ row }) => {
-      const date = row.getValue('createdAt') as Date
-      return (
-        <div className='text-muted-foreground'>
-          {format(date, 'yyyy-MM-dd HH:mm')}
-        </div>
-      )
+      const isOwner = row.getValue("isOwner") as boolean;
+      return isOwner ? (
+        <Badge variant="default">Owner</Badge>
+      ) : (
+        <Badge variant="secondary">User</Badge>
+      );
     },
   },
   {
-    accessorKey: 'updatedAt',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='更新时间' />
-    ),
+    accessorKey: "roles",
+    header: "Roles",
     cell: ({ row }) => {
-      const date = row.getValue('updatedAt') as Date
+      const user = row.original;
+      const roles = user.roles?.edges?.map((edge) => edge.node);
+      if (!roles || roles.length === 0) {
+        return <span className="text-muted-foreground">No roles</span>;
+      }
       return (
-        <div className='text-muted-foreground'>
-          {format(date, 'yyyy-MM-dd HH:mm')}
+        <div className="flex flex-wrap gap-1">
+          {roles.map((role) => (
+            <Badge key={role.id} variant="outline">
+              {role.name}
+            </Badge>
+          ))}
         </div>
-      )
+      );
     },
   },
   {
-    id: 'actions',
-    cell: DataTableRowActions,
+    accessorKey: "createdAt",
+    header: "Created At",
+    cell: ({ row }) => {
+      const date = new Date(row.getValue("createdAt"));
+      return date.toLocaleDateString();
+    },
   },
-]
+  {
+    accessorKey: "updatedAt",
+    header: "Updated At",
+    cell: ({ row }) => {
+      const date = new Date(row.getValue("updatedAt"));
+      return date.toLocaleDateString();
+    },
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => <DataTableRowActions row={row} />,
+  },
+];

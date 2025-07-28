@@ -242,14 +242,82 @@ func (c *RequestUpdateOne) SetInput(i UpdateRequestInput) *RequestUpdateOne {
 	return c
 }
 
+// CreateRoleInput represents a mutation input for creating roles.
+type CreateRoleInput struct {
+	CreatedAt *time.Time
+	UpdatedAt *time.Time
+	Code      string
+	Name      string
+	Scopes    []string
+}
+
+// Mutate applies the CreateRoleInput on the RoleMutation builder.
+func (i *CreateRoleInput) Mutate(m *RoleMutation) {
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
+	m.SetCode(i.Code)
+	m.SetName(i.Name)
+	if v := i.Scopes; v != nil {
+		m.SetScopes(v)
+	}
+}
+
+// SetInput applies the change-set in the CreateRoleInput on the RoleCreate builder.
+func (c *RoleCreate) SetInput(i CreateRoleInput) *RoleCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateRoleInput represents a mutation input for updating roles.
+type UpdateRoleInput struct {
+	UpdatedAt    *time.Time
+	Name         *string
+	Scopes       []string
+	AppendScopes []string
+}
+
+// Mutate applies the UpdateRoleInput on the RoleMutation builder.
+func (i *UpdateRoleInput) Mutate(m *RoleMutation) {
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Scopes; v != nil {
+		m.SetScopes(v)
+	}
+	if i.AppendScopes != nil {
+		m.AppendScopes(i.Scopes)
+	}
+}
+
+// SetInput applies the change-set in the UpdateRoleInput on the RoleUpdate builder.
+func (c *RoleUpdate) SetInput(i UpdateRoleInput) *RoleUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateRoleInput on the RoleUpdateOne builder.
+func (c *RoleUpdateOne) SetInput(i UpdateRoleInput) *RoleUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
 // CreateUserInput represents a mutation input for creating users.
 type CreateUserInput struct {
-	CreatedAt  *time.Time
-	UpdatedAt  *time.Time
-	Email      string
-	Name       string
-	RequestIDs []int
-	APIKeyIDs  []int
+	CreatedAt *time.Time
+	UpdatedAt *time.Time
+	Email     string
+	FirstName *string
+	LastName  *string
+	IsOwner   *bool
+	Scopes    []string
+	RoleIDs   []int
 }
 
 // Mutate applies the CreateUserInput on the UserMutation builder.
@@ -261,12 +329,20 @@ func (i *CreateUserInput) Mutate(m *UserMutation) {
 		m.SetUpdatedAt(*v)
 	}
 	m.SetEmail(i.Email)
-	m.SetName(i.Name)
-	if v := i.RequestIDs; len(v) > 0 {
-		m.AddRequestIDs(v...)
+	if v := i.FirstName; v != nil {
+		m.SetFirstName(*v)
 	}
-	if v := i.APIKeyIDs; len(v) > 0 {
-		m.AddAPIKeyIDs(v...)
+	if v := i.LastName; v != nil {
+		m.SetLastName(*v)
+	}
+	if v := i.IsOwner; v != nil {
+		m.SetIsOwner(*v)
+	}
+	if v := i.Scopes; v != nil {
+		m.SetScopes(v)
+	}
+	if v := i.RoleIDs; len(v) > 0 {
+		m.AddRoleIDs(v...)
 	}
 }
 
@@ -278,15 +354,17 @@ func (c *UserCreate) SetInput(i CreateUserInput) *UserCreate {
 
 // UpdateUserInput represents a mutation input for updating users.
 type UpdateUserInput struct {
-	UpdatedAt        *time.Time
-	Email            *string
-	Name             *string
-	ClearRequests    bool
-	AddRequestIDs    []int
-	RemoveRequestIDs []int
-	ClearAPIKeys     bool
-	AddAPIKeyIDs     []int
-	RemoveAPIKeyIDs  []int
+	UpdatedAt     *time.Time
+	Email         *string
+	FirstName     *string
+	LastName      *string
+	IsOwner       *bool
+	ClearScopes   bool
+	Scopes        []string
+	AppendScopes  []string
+	ClearRoles    bool
+	AddRoleIDs    []int
+	RemoveRoleIDs []int
 }
 
 // Mutate applies the UpdateUserInput on the UserMutation builder.
@@ -297,26 +375,32 @@ func (i *UpdateUserInput) Mutate(m *UserMutation) {
 	if v := i.Email; v != nil {
 		m.SetEmail(*v)
 	}
-	if v := i.Name; v != nil {
-		m.SetName(*v)
+	if v := i.FirstName; v != nil {
+		m.SetFirstName(*v)
 	}
-	if i.ClearRequests {
-		m.ClearRequests()
+	if v := i.LastName; v != nil {
+		m.SetLastName(*v)
 	}
-	if v := i.AddRequestIDs; len(v) > 0 {
-		m.AddRequestIDs(v...)
+	if v := i.IsOwner; v != nil {
+		m.SetIsOwner(*v)
 	}
-	if v := i.RemoveRequestIDs; len(v) > 0 {
-		m.RemoveRequestIDs(v...)
+	if i.ClearScopes {
+		m.ClearScopes()
 	}
-	if i.ClearAPIKeys {
-		m.ClearAPIKeys()
+	if v := i.Scopes; v != nil {
+		m.SetScopes(v)
 	}
-	if v := i.AddAPIKeyIDs; len(v) > 0 {
-		m.AddAPIKeyIDs(v...)
+	if i.AppendScopes != nil {
+		m.AppendScopes(i.Scopes)
 	}
-	if v := i.RemoveAPIKeyIDs; len(v) > 0 {
-		m.RemoveAPIKeyIDs(v...)
+	if i.ClearRoles {
+		m.ClearRoles()
+	}
+	if v := i.AddRoleIDs; len(v) > 0 {
+		m.AddRoleIDs(v...)
+	}
+	if v := i.RemoveRoleIDs; len(v) > 0 {
+		m.RemoveRoleIDs(v...)
 	}
 }
 

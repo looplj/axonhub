@@ -132,6 +132,27 @@ func (re *RequestExecution) Channel(ctx context.Context) (*Channel, error) {
 	return result, err
 }
 
+func (r *Role) Users(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UserOrder, where *UserWhereInput,
+) (*UserConnection, error) {
+	opts := []UserPaginateOption{
+		WithUserOrder(orderBy),
+		WithUserFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := r.Edges.totalCount[0][alias]
+	if nodes, err := r.NamedUsers(alias); err == nil || hasTotalCount {
+		pager, err := newUserPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &UserConnection{Edges: []*UserEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return r.QueryUsers().Paginate(ctx, after, first, before, last, opts...)
+}
+
 func (u *User) Requests(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *RequestOrder, where *RequestWhereInput,
 ) (*RequestConnection, error) {
@@ -172,4 +193,25 @@ func (u *User) APIKeys(
 		return conn, nil
 	}
 	return u.QueryAPIKeys().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (u *User) Roles(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *RoleOrder, where *RoleWhereInput,
+) (*RoleConnection, error) {
+	opts := []RolePaginateOption{
+		WithRoleOrder(orderBy),
+		WithRoleFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := u.Edges.totalCount[2][alias]
+	if nodes, err := u.NamedRoles(alias); err == nil || hasTotalCount {
+		pager, err := newRolePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &RoleConnection{Edges: []*RoleEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return u.QueryRoles().Paginate(ctx, after, first, before, last, opts...)
 }

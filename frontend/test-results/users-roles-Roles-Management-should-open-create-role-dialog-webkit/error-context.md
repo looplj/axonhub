@@ -1,0 +1,51 @@
+# Page snapshot
+
+```yaml
+- region "Notifications alt+T"
+- dialog "新建角色":
+  - heading "新建角色" [level=2]
+  - paragraph: 创建一个新的角色并配置其权限范围。
+  - text: 角色代码
+  - textbox "角色代码"
+  - paragraph: 唯一标识符，只能包含字母、数字和下划线
+  - text: 角色名称
+  - textbox "角色名称"
+  - paragraph: 用户友好的角色名称
+  - text: 权限范围
+  - paragraph: 选择此角色拥有的权限
+  - checkbox "read_channels 查看渠道信息"
+  - text: read_channels 查看渠道信息
+  - checkbox "write_channels 管理渠道（创建、编辑、删除）"
+  - text: write_channels 管理渠道（创建、编辑、删除）
+  - checkbox "read_users 查看用户信息"
+  - text: read_users 查看用户信息
+  - checkbox "write_users 管理用户（创建、编辑、删除）"
+  - text: write_users 管理用户（创建、编辑、删除）
+  - checkbox "read_roles 查看角色信息"
+  - text: read_roles 查看角色信息
+  - checkbox "write_roles 管理角色（创建、编辑、删除）"
+  - text: write_roles 管理角色（创建、编辑、删除）
+  - checkbox "read_api_keys 查看API密钥"
+  - text: read_api_keys 查看API密钥
+  - checkbox "write_api_keys 管理API密钥（创建、编辑、删除）"
+  - text: write_api_keys 管理API密钥（创建、编辑、删除）
+  - checkbox "read_requests 查看请求记录"
+  - text: read_requests 查看请求记录
+  - checkbox "write_requests 管理请求记录"
+  - text: write_requests 管理请求记录
+  - checkbox "read_jobs 查看任务信息"
+  - text: read_jobs 查看任务信息
+  - checkbox "write_jobs 管理任务"
+  - text: write_jobs 管理任务
+  - checkbox "read_dashboard 查看仪表板"
+  - text: read_dashboard 查看仪表板
+  - checkbox "read_settings 查看系统设置"
+  - text: read_settings 查看系统设置
+  - checkbox "write_settings 管理系统设置"
+  - text: write_settings 管理系统设置
+  - checkbox "admin 系统管理员（完全访问权限）"
+  - text: admin 系统管理员（完全访问权限）
+  - button "取消"
+  - button "创建角色"
+  - button "Close"
+```

@@ -47,6 +47,11 @@ type RequestsByStatus struct {
 	Count  int    `json:"count"`
 }
 
+type ScopeInfo struct {
+	Scope       string `json:"scope"`
+	Description string `json:"description"`
+}
+
 type TopUsers struct {
 	UserID       objects.GUID `json:"userId"`
 	UserName     string       `json:"userName"`

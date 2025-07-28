@@ -1,10 +1,11 @@
-'use client'
+"use client";
 
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { showSubmittedData } from '@/utils/show-submitted-data'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect } from "react";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -20,301 +21,368 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { PasswordInput } from '@/components/password-input'
-import { SelectDropdown } from '@/components/select-dropdown'
-import { userTypes } from '../data/data'
-import { User } from '../data/schema'
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
+import { graphqlRequest } from "@/gql/graphql";
+import { ROLES_QUERY, ALL_SCOPES_QUERY } from "@/gql/roles";
+import { User, CreateUserInput, UpdateUserInput } from "../data/schema";
+import { useCreateUser, useUpdateUser } from "../data/users";
 
-const formSchema = z
-  .object({
-    firstName: z.string().min(1, { message: 'First Name is required.' }),
-    lastName: z.string().min(1, { message: 'Last Name is required.' }),
-    username: z.string().min(1, { message: 'Username is required.' }),
-    phoneNumber: z.string().min(1, { message: 'Phone number is required.' }),
-    email: z
-      .string()
-      .min(1, { message: 'Email is required.' })
-      .email({ message: 'Email is invalid.' }),
-    password: z.string().transform((pwd) => pwd.trim()),
-    role: z.string().min(1, { message: 'Role is required.' }),
-    confirmPassword: z.string().transform((pwd) => pwd.trim()),
-    isEdit: z.boolean(),
-  })
-  .superRefine(({ isEdit, password, confirmPassword }, ctx) => {
-    if (!isEdit || (isEdit && password !== '')) {
-      if (password === '') {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Password is required.',
-          path: ['password'],
-        })
-      }
+const formSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  isOwner: z.boolean().optional(),
+  roleIDs: z.array(z.string()).optional(),
+  scopes: z.array(z.string()).optional(),
+});
 
-      if (password.length < 8) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Password must be at least 8 characters long.',
-          path: ['password'],
-        })
-      }
+type UserForm = z.infer<typeof formSchema>;
 
-      if (!password.match(/[a-z]/)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Password must contain at least one lowercase letter.',
-          path: ['password'],
-        })
-      }
+interface Role {
+  id: string;
+  name: string;
+  description?: string;
+  scopes?: string[];
+}
 
-      if (!password.match(/\d/)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Password must contain at least one number.',
-          path: ['password'],
-        })
-      }
-
-      if (password !== confirmPassword) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Passwords don't match.",
-          path: ['confirmPassword'],
-        })
-      }
-    }
-  })
-type UserForm = z.infer<typeof formSchema>
+interface ScopeInfo {
+  scope: string;
+  description?: string;
+}
 
 interface Props {
-  currentRow?: User
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  currentRow?: User;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
-  const isEdit = !!currentRow
+  const isEdit = !!currentRow;
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [allScopes, setAllScopes] = useState<ScopeInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
+
   const form = useForm<UserForm>({
     resolver: zodResolver(formSchema),
     defaultValues: isEdit
       ? {
-          ...currentRow,
-          password: '',
-          confirmPassword: '',
-          isEdit,
+          firstName: currentRow.firstName,
+          lastName: currentRow.lastName,
+          email: currentRow.email,
+          isOwner: currentRow.isOwner,
+          roleIDs: currentRow.roles?.edges?.map(edge => edge.node.id) || [],
+          scopes: currentRow.scopes || [],
         }
       : {
-          firstName: '',
-          lastName: '',
-          username: '',
-          email: '',
-          role: '',
-          phoneNumber: '',
-          password: '',
-          confirmPassword: '',
-          isEdit,
+          firstName: "",
+          lastName: "",
+          email: "",
+          isOwner: false,
+          roleIDs: [],
+          scopes: [],
         },
-  })
+  });
 
-  const onSubmit = (values: UserForm) => {
-    form.reset()
-    showSubmittedData(values)
-    onOpenChange(false)
-  }
+  // Load roles and scopes when dialog opens
+  useEffect(() => {
+    if (open) {
+      loadRolesAndScopes();
+    }
+  }, [open]);
 
-  const isPasswordTouched = !!form.formState.dirtyFields.password
+  const loadRolesAndScopes = async () => {
+    setLoading(true);
+    try {
+      const [rolesData, scopesData] = await Promise.all([
+        graphqlRequest(ROLES_QUERY, { first: 100 }),
+        graphqlRequest(ALL_SCOPES_QUERY),
+      ]);
+      
+      // Type the responses properly
+      const rolesResponse = rolesData as {
+        roles: {
+          edges: Array<{
+            node: {
+              id: string;
+              name: string;
+              description?: string;
+              scopes?: string[];
+            };
+          }>;
+        };
+      };
+      
+      const scopesResponse = scopesData as {
+        allScopes: Array<{
+          scope: string;
+          description?: string;
+        }>;
+      };
+      
+      setRoles(rolesResponse.roles.edges.map(edge => edge.node));
+      setAllScopes(scopesResponse.allScopes);
+    } catch (error) {
+      console.error("Failed to load roles and scopes:", error);
+      toast.error("Failed to load roles and scopes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmit = async (values: UserForm) => {
+    try {
+      if (isEdit && currentRow) {
+        // For updates, we need to calculate role changes
+        const currentRoleIDs = currentRow.roles?.edges?.map(edge => edge.node.id) || [];
+        const newRoleIDs = values.roleIDs || [];
+        
+        const addRoleIDs = newRoleIDs.filter(id => !currentRoleIDs.includes(id));
+        const removeRoleIDs = currentRoleIDs.filter(id => !newRoleIDs.includes(id));
+        
+        const updateInput: UpdateUserInput = {
+          firstName: values.firstName,
+          lastName: values.lastName,
+          email: values.email,
+          isOwner: values.isOwner,
+          scopes: values.scopes,
+        };
+        
+        // Only add role fields if there are changes
+        if (addRoleIDs.length > 0) {
+          updateInput.addRoleIDs = addRoleIDs;
+        }
+        if (removeRoleIDs.length > 0) {
+          updateInput.removeRoleIDs = removeRoleIDs;
+        }
+        
+        await updateUser.mutateAsync({
+          id: currentRow.id,
+          input: updateInput,
+        });
+        toast.success("User updated successfully");
+      } else {
+        const createInput: CreateUserInput = {
+          firstName: values.firstName,
+          lastName: values.lastName,
+          email: values.email,
+          isOwner: values.isOwner,
+          scopes: values.scopes,
+          roleIDs: values.roleIDs,
+        };
+        
+        await createUser.mutateAsync(createInput);
+        toast.success("User created successfully");
+      }
+      
+      form.reset();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Failed to save user:", error);
+      toast.error("Failed to save user");
+    }
+  };
+
+  const handleRoleToggle = (roleId: string) => {
+    const currentRoles = form.getValues("roleIDs") || [];
+    const newRoles = currentRoles.includes(roleId)
+      ? currentRoles.filter(id => id !== roleId)
+      : [...currentRoles, roleId];
+    form.setValue("roleIDs", newRoles);
+  };
+
+  const handleScopeToggle = (scopeName: string) => {
+    const currentScopes = form.getValues("scopes") || [];
+    const newScopes = currentScopes.includes(scopeName)
+      ? currentScopes.filter(name => name !== scopeName)
+      : [...currentScopes, scopeName];
+    form.setValue("scopes", newScopes);
+  };
+
+  const handleScopeRemove = (scopeName: string) => {
+    const currentScopes = form.getValues("scopes") || [];
+    const newScopes = currentScopes.filter(name => name !== scopeName);
+    form.setValue("scopes", newScopes);
+  };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(state) => {
-        form.reset()
-        onOpenChange(state)
+        if (!state) {
+          form.reset();
+        }
+        onOpenChange(state);
       }}
     >
-      <DialogContent className='sm:max-w-lg'>
-        <DialogHeader className='text-left'>
-          <DialogTitle>{isEdit ? 'Edit User' : 'Add New User'}</DialogTitle>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader className="text-left">
+          <DialogTitle>{isEdit ? "Edit User" : "Add New User"}</DialogTitle>
           <DialogDescription>
-            {isEdit ? 'Update the user here. ' : 'Create new user here. '}
-            Click save when you&apos;re done.
+            {isEdit ? "Update the user here. " : "Create new user here. "}
+            Click save when you're done.
           </DialogDescription>
         </DialogHeader>
-        <div className='-mr-4 h-[26.25rem] w-full overflow-y-auto py-1 pr-4'>
+        
+        <div className="max-h-[60vh] overflow-y-auto">
           <Form {...form}>
             <form
-              id='user-form'
+              id="user-form"
               onSubmit={form.handleSubmit(onSubmit)}
-              className='space-y-4 p-0.5'
+              className="space-y-6"
             >
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
-                name='firstName'
+                name="email"
                 render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
-                      First Name
-                    </FormLabel>
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder='John'
-                        className='col-span-4'
-                        autoComplete='off'
-                        {...field}
+                      <Input placeholder="john.doe@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="isOwner"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Owner
+                      </FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Grant owner privileges to this user
+                      </p>
+                    </div>
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name='lastName'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
-                      Last Name
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder='Doe'
-                        className='col-span-4'
-                        autoComplete='off'
-                        {...field}
+
+              {/* Roles Section */}
+              <div className="space-y-3">
+                <FormLabel>Roles</FormLabel>
+                {loading ? (
+                  <div>Loading roles...</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {roles.map((role) => (
+                      <div key={role.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`role-${role.id}`}
+                          checked={(form.watch("roleIDs") || []).includes(role.id)}
+                          onCheckedChange={() => handleRoleToggle(role.id)}
+                        />
+                        <label
+                          htmlFor={`role-${role.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {role.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Scopes Section */}
+              <div className="space-y-3">
+                <FormLabel>Scopes</FormLabel>
+                
+                {/* Selected Scopes */}
+                <div className="flex flex-wrap gap-2">
+                  {(form.watch("scopes") || []).map((scope) => (
+                    <Badge key={scope} variant="secondary" className="flex items-center gap-1">
+                      {scope}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => handleScopeRemove(scope)}
                       />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
+                    </Badge>
+                  ))}
+                </div>
+
+                {/* Available Scopes */}
+                {loading ? (
+                  <div>Loading scopes...</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
+                    {allScopes.map((scope) => (
+                      <div key={scope.scope} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`scope-${scope.scope}`}
+                          checked={(form.watch("scopes") || []).includes(scope.scope)}
+                          onCheckedChange={() => handleScopeToggle(scope.scope)}
+                        />
+                        <label
+                          htmlFor={`scope-${scope.scope}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {scope.scope}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 )}
-              />
-              <FormField
-                control={form.control}
-                name='username'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
-                      Username
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder='john_doe'
-                        className='col-span-4'
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name='email'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
-                      Email
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder='john.doe@gmail.com'
-                        className='col-span-4'
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name='phoneNumber'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
-                      Phone Number
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder='+123456789'
-                        className='col-span-4'
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name='role'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
-                      Role
-                    </FormLabel>
-                    <SelectDropdown
-                      defaultValue={field.value}
-                      onValueChange={field.onChange}
-                      placeholder='Select a role'
-                      className='col-span-4'
-                      items={userTypes.map(({ label, value }) => ({
-                        label,
-                        value,
-                      }))}
-                    />
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name='password'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
-                      Password
-                    </FormLabel>
-                    <FormControl>
-                      <PasswordInput
-                        placeholder='e.g., S3cur3P@ssw0rd'
-                        className='col-span-4'
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name='confirmPassword'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
-                      Confirm Password
-                    </FormLabel>
-                    <FormControl>
-                      <PasswordInput
-                        disabled={!isPasswordTouched}
-                        placeholder='e.g., S3cur3P@ssw0rd'
-                        className='col-span-4'
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
+              </div>
             </form>
           </Form>
         </div>
+
         <DialogFooter>
-          <Button type='submit' form='user-form'>
-            Save changes
+          <Button
+            type="submit"
+            form="user-form"
+            disabled={createUser.isPending || updateUser.isPending}
+          >
+            {createUser.isPending || updateUser.isPending ? "Saving..." : "Save changes"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

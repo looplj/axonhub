@@ -50,7 +50,7 @@ function ApiKeyCell({ apiKey }: { apiKey: string }) {
   )
 }
 
-export const apiKeysColumns: ColumnDef<ApiKey>[] = [
+export const columns: ColumnDef<ApiKey>[] = [
   {
     id: 'select',
     header: ({ table }) => (

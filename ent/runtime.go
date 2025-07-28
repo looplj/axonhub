@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/ent/channel"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
+	"github.com/looplj/axonhub/ent/role"
 	"github.com/looplj/axonhub/ent/schema"
 	"github.com/looplj/axonhub/ent/user"
 	"github.com/looplj/axonhub/objects"
@@ -86,6 +87,21 @@ func init() {
 	requestexecution.DefaultUpdatedAt = requestexecutionDescUpdatedAt.Default.(func() time.Time)
 	// requestexecution.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	requestexecution.UpdateDefaultUpdatedAt = requestexecutionDescUpdatedAt.UpdateDefault.(func() time.Time)
+	roleMixin := schema.Role{}.Mixin()
+	roleMixinFields0 := roleMixin[0].Fields()
+	_ = roleMixinFields0
+	roleFields := schema.Role{}.Fields()
+	_ = roleFields
+	// roleDescCreatedAt is the schema descriptor for created_at field.
+	roleDescCreatedAt := roleMixinFields0[0].Descriptor()
+	// role.DefaultCreatedAt holds the default value on creation for the created_at field.
+	role.DefaultCreatedAt = roleDescCreatedAt.Default.(func() time.Time)
+	// roleDescUpdatedAt is the schema descriptor for updated_at field.
+	roleDescUpdatedAt := roleMixinFields0[1].Descriptor()
+	// role.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	role.DefaultUpdatedAt = roleDescUpdatedAt.Default.(func() time.Time)
+	// role.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	role.UpdateDefaultUpdatedAt = roleDescUpdatedAt.UpdateDefault.(func() time.Time)
 	userMixin := schema.User{}.Mixin()
 	userMixinFields0 := userMixin[0].Fields()
 	_ = userMixinFields0
@@ -101,4 +117,20 @@ func init() {
 	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
 	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// userDescFirstName is the schema descriptor for first_name field.
+	userDescFirstName := userFields[1].Descriptor()
+	// user.DefaultFirstName holds the default value on creation for the first_name field.
+	user.DefaultFirstName = userDescFirstName.Default.(string)
+	// userDescLastName is the schema descriptor for last_name field.
+	userDescLastName := userFields[2].Descriptor()
+	// user.DefaultLastName holds the default value on creation for the last_name field.
+	user.DefaultLastName = userDescLastName.Default.(string)
+	// userDescIsOwner is the schema descriptor for is_owner field.
+	userDescIsOwner := userFields[3].Descriptor()
+	// user.DefaultIsOwner holds the default value on creation for the is_owner field.
+	user.DefaultIsOwner = userDescIsOwner.Default.(bool)
+	// userDescScopes is the schema descriptor for scopes field.
+	userDescScopes := userFields[4].Descriptor()
+	// user.DefaultScopes holds the default value on creation for the scopes field.
+	user.DefaultScopes = userDescScopes.Default.([]string)
 }

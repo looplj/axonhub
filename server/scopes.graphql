@@ -1,0 +1,10 @@
+# Scopes and permissions
+
+type ScopeInfo {
+  scope: String!
+  description: String!
+}
+
+extend type Query {
+  allScopes: [ScopeInfo!]!
+}

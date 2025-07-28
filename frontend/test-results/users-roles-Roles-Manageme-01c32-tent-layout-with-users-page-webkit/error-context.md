@@ -1,0 +1,139 @@
+# Page snapshot
+
+```yaml
+- link "Skip to Main":
+  - /url: "#content"
+- list:
+  - listitem:
+    - button "AxonHub Admin AI + Unified"
+- text: Admin
+- list:
+  - listitem:
+    - link "Dashboard":
+      - /url: /
+      - img
+      - text: Dashboard
+  - listitem:
+    - link "Users":
+      - /url: /users
+      - img
+      - text: Users
+  - listitem:
+    - link "Roles":
+      - /url: /roles
+      - img
+      - text: Roles
+  - listitem:
+    - link "Channels":
+      - /url: /channels
+      - img
+      - text: Channels
+- text: General
+- list:
+  - listitem:
+    - link "Requests":
+      - /url: /requests
+      - img
+      - text: Requests
+  - listitem:
+    - link "API Keys":
+      - /url: /api-keys
+      - img
+      - text: API Keys
+  - listitem:
+    - link "Playground":
+      - /url: /playground
+      - img
+      - text: Playground
+- text: Settings
+- list:
+  - listitem:
+    - link "Profile":
+      - /url: /settings
+      - img
+      - text: Profile
+  - listitem:
+    - link "Account":
+      - /url: /settings/account
+      - img
+      - text: Account
+  - listitem:
+    - link "Appearance":
+      - /url: /settings/appearance
+      - img
+      - text: Appearance
+  - listitem:
+    - link "Notifications":
+      - /url: /settings/notifications
+      - img
+      - text: Notifications
+- list:
+  - listitem:
+    - button "SN Admin admin@axonhub.com"
+- button "Toggle Sidebar"
+- banner:
+  - button "Toggle Sidebar"
+  - button "Search ⌘ K"
+  - button "Toggle theme":
+    - img
+    - img
+    - text: Toggle theme
+  - button "SN"
+- main:
+  - heading "角色管理" [level=2]
+  - paragraph: 管理系统角色和权限配置。
+  - button "新建角色":
+    - img
+    - text: 新建角色
+  - textbox "搜索角色名称..."
+  - table:
+    - rowgroup:
+      - row "Select all 角色代码 角色名称 权限范围 创建时间 更新时间":
+        - cell "Select all":
+          - checkbox "Select all"
+        - cell "角色代码"
+        - cell "角色名称"
+        - cell "权限范围"
+        - cell "创建时间"
+        - cell "更新时间"
+        - cell
+    - rowgroup:
+      - row "Select row admin 管理员 read_channels write_channels write_jobs +1 更多 2025-07-28 22:55 2025-07-28 23:15 打开菜单":
+        - cell "Select row":
+          - checkbox "Select row"
+        - cell "admin"
+        - cell "管理员"
+        - cell "read_channels write_channels write_jobs +1 更多"
+        - cell "2025-07-28 22:55"
+        - cell "2025-07-28 23:15"
+        - cell "打开菜单":
+          - button "打开菜单":
+            - img
+            - text: 打开菜单
+  - text: 已选择 0 行，当前页显示 1 行 / 共 1 行
+  - paragraph: 每页行数
+  - combobox: "20"
+  - text: 第一页 | 最后一页
+  - button "跳转到第一页" [disabled]:
+    - text: 跳转到第一页
+    - img
+  - button "跳转到上一页" [disabled]:
+    - text: 跳转到上一页
+    - img
+  - button "跳转到下一页" [disabled]:
+    - text: 跳转到下一页
+    - img
+  - button "跳转到最后一页" [disabled]:
+    - text: 跳转到最后一页
+    - img
+- heading "Command Palette" [level=2]
+- paragraph: Search for a command to run...
+- region "Notifications alt+T"
+- button "Open Tanstack query devtools":
+  - img
+- contentinfo:
+  - button "Open TanStack Router Devtools":
+    - img
+    - img
+    - text: "- TanStack Router"
+```

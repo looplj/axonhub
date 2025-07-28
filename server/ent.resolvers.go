@@ -84,6 +84,14 @@ func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int],
 	)
 }
 
+// Roles is the resolver for the roles field.
+func (r *queryResolver) Roles(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) (*ent.RoleConnection, error) {
+	return r.client.Role.Query().Paginate(ctx, after, first, before, last,
+		ent.WithRoleOrder(orderBy),
+		ent.WithRoleFilter(where.Filter),
+	)
+}
+
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error) {
 	return r.client.User.Query().Paginate(ctx, after, first, before, last,
@@ -138,6 +146,14 @@ func (r *requestExecutionResolver) ChannelID(ctx context.Context, obj *ent.Reque
 }
 
 // ID is the resolver for the id field.
+func (r *roleResolver) ID(ctx context.Context, obj *ent.Role) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: "Role",
+		ID:   obj.ID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *userResolver) ID(ctx context.Context, obj *ent.User) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: "User",
@@ -163,6 +179,9 @@ func (r *Resolver) Request() RequestResolver { return &requestResolver{r} }
 // RequestExecution returns RequestExecutionResolver implementation.
 func (r *Resolver) RequestExecution() RequestExecutionResolver { return &requestExecutionResolver{r} }
 
+// Role returns RoleResolver implementation.
+func (r *Resolver) Role() RoleResolver { return &roleResolver{r} }
+
 // User returns UserResolver implementation.
 func (r *Resolver) User() UserResolver { return &userResolver{r} }
 
@@ -172,4 +191,5 @@ type jobResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }
 type requestExecutionResolver struct{ *Resolver }
+type roleResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }

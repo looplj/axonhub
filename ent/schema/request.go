@@ -32,7 +32,7 @@ func (Request) Indexes() []ent.Index {
 func (Request) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("user_id").Immutable(),
-		field.Int("api_key_id").Optional().Immutable(),
+		field.Int("api_key_id").Optional().Immutable().Comment("API Key ID of the request, null for the request from the Admin."),
 		field.String("model_id").Immutable(),
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable(),
 		field.JSON("response_body", objects.JSONRawMessage{}).Optional(),

@@ -12,6 +12,7 @@ var guidTypeToNodeType = map[string]string{
 	"Channel": "channels",
 	"Job":     "jobs",
 	"Request": "requests",
+	"Role":    "roles",
 }
 
 // This file will not be regenerated automatically.

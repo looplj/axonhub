@@ -50,6 +50,8 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
+export default ApiKeysProvider
+
 export function useApiKeysContext() {
   const context = useContext(ApiKeysContext)
   if (context === undefined) {

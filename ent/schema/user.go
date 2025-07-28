@@ -24,7 +24,13 @@ func (User) Mixin() []ent.Mixin {
 func (User) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("email").Unique(),
-		field.String("name"),
+		field.String("first_name").Default(""),
+		field.String("last_name").Default(""),
+		field.Bool("is_owner").Default(false),
+		field.Strings("scopes").
+			Comment("User-specific scopes: write_channels, read_channels, add_users, read_users, etc.").
+			Default([]string{}).
+			Optional(),
 	}
 }
 
@@ -33,9 +39,15 @@ func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("requests", Request.Type).
 			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
 			),
 		edge.To("api_keys", APIKey.Type).
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entgql.RelayConnection(),
+			),
+		edge.To("roles", Role.Type).
 			Annotations(
 				entgql.RelayConnection(),
 			),

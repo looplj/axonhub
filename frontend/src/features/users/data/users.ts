@@ -3,6 +3,13 @@ import { graphqlRequest } from '@/gql/graphql'
 import { toast } from 'sonner'
 import { useErrorHandler } from '@/hooks/use-error-handler'
 import {
+  USERS_QUERY,
+  USER_QUERY,
+  CREATE_USER_MUTATION,
+  UPDATE_USER_MUTATION,
+  DELETE_USER_MUTATION
+} from '@/gql/users'
+import {
   User,
   UserConnection,
   CreateUserInput,
@@ -10,66 +17,6 @@ import {
   userConnectionSchema,
   userSchema,
 } from './schema'
-
-// GraphQL queries and mutations
-const USERS_QUERY = `
-  query GetUsers(
-    $first: Int
-    $after: Cursor
-    $orderBy: UserOrder
-    $where: UserWhereInput
-  ) {
-    users(first: $first, after: $after, orderBy: $orderBy, where: $where) {
-      edges {
-        node {
-          id
-          createdAt
-          updatedAt
-          email
-          name
-        }
-        cursor
-      }
-      pageInfo {
-        hasNextPage
-        hasPreviousPage
-        startCursor
-        endCursor
-      }
-      totalCount
-    }
-  }
-`
-
-const CREATE_USER_MUTATION = `
-  mutation CreateUser($input: CreateUserInput!) {
-    createUser(input: $input) {
-      id
-      createdAt
-      updatedAt
-      email
-      name
-    }
-  }
-`
-
-const UPDATE_USER_MUTATION = `
-  mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
-    updateUser(id: $id, input: $input) {
-      id
-      createdAt
-      updatedAt
-      email
-      name
-    }
-  }
-`
-
-const DELETE_USER_MUTATION = `
-  mutation DeleteUser($id: ID!) {
-    deleteUser(id: $id)
-  }
-`
 
 // Query hooks
 export function useUsers(variables?: {

@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/ent/job"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
+	"github.com/looplj/axonhub/ent/role"
 	"github.com/looplj/axonhub/ent/user"
 )
 
@@ -1533,6 +1534,302 @@ func (re *RequestExecution) ToEdge(order *RequestExecutionOrder) *RequestExecuti
 	return &RequestExecutionEdge{
 		Node:   re,
 		Cursor: order.Field.toCursor(re),
+	}
+}
+
+// RoleEdge is the edge representation of Role.
+type RoleEdge struct {
+	Node   *Role  `json:"node"`
+	Cursor Cursor `json:"cursor"`
+}
+
+// RoleConnection is the connection containing edges to Role.
+type RoleConnection struct {
+	Edges      []*RoleEdge `json:"edges"`
+	PageInfo   PageInfo    `json:"pageInfo"`
+	TotalCount int         `json:"totalCount"`
+}
+
+func (c *RoleConnection) build(nodes []*Role, pager *rolePager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *Role
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *Role {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *Role {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*RoleEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &RoleEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// RolePaginateOption enables pagination customization.
+type RolePaginateOption func(*rolePager) error
+
+// WithRoleOrder configures pagination ordering.
+func WithRoleOrder(order *RoleOrder) RolePaginateOption {
+	if order == nil {
+		order = DefaultRoleOrder
+	}
+	o := *order
+	return func(pager *rolePager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultRoleOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithRoleFilter configures pagination filter.
+func WithRoleFilter(filter func(*RoleQuery) (*RoleQuery, error)) RolePaginateOption {
+	return func(pager *rolePager) error {
+		if filter == nil {
+			return errors.New("RoleQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type rolePager struct {
+	reverse bool
+	order   *RoleOrder
+	filter  func(*RoleQuery) (*RoleQuery, error)
+}
+
+func newRolePager(opts []RolePaginateOption, reverse bool) (*rolePager, error) {
+	pager := &rolePager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultRoleOrder
+	}
+	return pager, nil
+}
+
+func (p *rolePager) applyFilter(query *RoleQuery) (*RoleQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *rolePager) toCursor(r *Role) Cursor {
+	return p.order.Field.toCursor(r)
+}
+
+func (p *rolePager) applyCursors(query *RoleQuery, after, before *Cursor) (*RoleQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultRoleOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *rolePager) applyOrder(query *RoleQuery) *RoleQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultRoleOrder.Field {
+		query = query.Order(DefaultRoleOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *rolePager) orderExpr(query *RoleQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultRoleOrder.Field {
+			b.Comma().Ident(DefaultRoleOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to Role.
+func (r *RoleQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...RolePaginateOption,
+) (*RoleConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newRolePager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if r, err = pager.applyFilter(r); err != nil {
+		return nil, err
+	}
+	conn := &RoleConnection{Edges: []*RoleEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := r.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if r, err = pager.applyCursors(r, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		r.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := r.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	r = pager.applyOrder(r)
+	nodes, err := r.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// RoleOrderFieldCreatedAt orders Role by created_at.
+	RoleOrderFieldCreatedAt = &RoleOrderField{
+		Value: func(r *Role) (ent.Value, error) {
+			return r.CreatedAt, nil
+		},
+		column: role.FieldCreatedAt,
+		toTerm: role.ByCreatedAt,
+		toCursor: func(r *Role) Cursor {
+			return Cursor{
+				ID:    r.ID,
+				Value: r.CreatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f RoleOrderField) String() string {
+	var str string
+	switch f.column {
+	case RoleOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f RoleOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *RoleOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("RoleOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *RoleOrderFieldCreatedAt
+	default:
+		return fmt.Errorf("%s is not a valid RoleOrderField", str)
+	}
+	return nil
+}
+
+// RoleOrderField defines the ordering field of Role.
+type RoleOrderField struct {
+	// Value extracts the ordering value from the given Role.
+	Value    func(*Role) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) role.OrderOption
+	toCursor func(*Role) Cursor
+}
+
+// RoleOrder defines the ordering of Role.
+type RoleOrder struct {
+	Direction OrderDirection  `json:"direction"`
+	Field     *RoleOrderField `json:"field"`
+}
+
+// DefaultRoleOrder is the default ordering of Role.
+var DefaultRoleOrder = &RoleOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &RoleOrderField{
+		Value: func(r *Role) (ent.Value, error) {
+			return r.ID, nil
+		},
+		column: role.FieldID,
+		toTerm: role.ByID,
+		toCursor: func(r *Role) Cursor {
+			return Cursor{ID: r.ID}
+		},
+	},
+}
+
+// ToEdge converts Role into RoleEdge.
+func (r *Role) ToEdge(order *RoleOrder) *RoleEdge {
+	if order == nil {
+		order = DefaultRoleOrder
+	}
+	return &RoleEdge{
+		Node:   r,
+		Cursor: order.Field.toCursor(r),
 	}
 }
 

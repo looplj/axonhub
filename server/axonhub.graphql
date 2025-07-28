@@ -32,5 +32,11 @@ type Mutation {
     updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
 
     createAPIKey(input: CreateAPIKeyInput!): APIKey!
+
     createUser(input: CreateUserInput!): User!
+    updateUser(id: ID!, input: UpdateUserInput!): User!
+    deleteUser(id: ID!): Boolean!
+
+    createRole(input: CreateRoleInput!): Role!
+    updateRole(id: ID!, input: UpdateRoleInput!): Role!
 }
