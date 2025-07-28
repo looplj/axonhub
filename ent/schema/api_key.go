@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+	"github.com/looplj/axonhub/ent/schema/schematype"
 )
 
 type APIKey struct {
@@ -16,6 +17,7 @@ type APIKey struct {
 func (APIKey) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
+		schematype.SoftDeleteMixin{},
 	}
 }
 

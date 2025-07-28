@@ -397,12 +397,14 @@ func (c *APIKeyClient) QueryRequests(ak *APIKey) *RequestQuery {
 
 // Hooks returns the client hooks.
 func (c *APIKeyClient) Hooks() []Hook {
-	return c.hooks.APIKey
+	hooks := c.hooks.APIKey
+	return append(hooks[:len(hooks):len(hooks)], apikey.Hooks[:]...)
 }
 
 // Interceptors returns the client interceptors.
 func (c *APIKeyClient) Interceptors() []Interceptor {
-	return c.inters.APIKey
+	inters := c.inters.APIKey
+	return append(inters[:len(inters):len(inters)], apikey.Interceptors[:]...)
 }
 
 func (c *APIKeyClient) mutate(ctx context.Context, m *APIKeyMutation) (Value, error) {
@@ -562,12 +564,14 @@ func (c *ChannelClient) QueryExecutions(ch *Channel) *RequestExecutionQuery {
 
 // Hooks returns the client hooks.
 func (c *ChannelClient) Hooks() []Hook {
-	return c.hooks.Channel
+	hooks := c.hooks.Channel
+	return append(hooks[:len(hooks):len(hooks)], channel.Hooks[:]...)
 }
 
 // Interceptors returns the client interceptors.
 func (c *ChannelClient) Interceptors() []Interceptor {
-	return c.inters.Channel
+	inters := c.inters.Channel
+	return append(inters[:len(inters):len(inters)], channel.Interceptors[:]...)
 }
 
 func (c *ChannelClient) mutate(ctx context.Context, m *ChannelMutation) (Value, error) {
@@ -876,12 +880,14 @@ func (c *RequestClient) QueryExecutions(r *Request) *RequestExecutionQuery {
 
 // Hooks returns the client hooks.
 func (c *RequestClient) Hooks() []Hook {
-	return c.hooks.Request
+	hooks := c.hooks.Request
+	return append(hooks[:len(hooks):len(hooks)], request.Hooks[:]...)
 }
 
 // Interceptors returns the client interceptors.
 func (c *RequestClient) Interceptors() []Interceptor {
-	return c.inters.Request
+	inters := c.inters.Request
+	return append(inters[:len(inters):len(inters)], request.Interceptors[:]...)
 }
 
 func (c *RequestClient) mutate(ctx context.Context, m *RequestMutation) (Value, error) {
@@ -1190,12 +1196,14 @@ func (c *RoleClient) QueryUsers(r *Role) *UserQuery {
 
 // Hooks returns the client hooks.
 func (c *RoleClient) Hooks() []Hook {
-	return c.hooks.Role
+	hooks := c.hooks.Role
+	return append(hooks[:len(hooks):len(hooks)], role.Hooks[:]...)
 }
 
 // Interceptors returns the client interceptors.
 func (c *RoleClient) Interceptors() []Interceptor {
-	return c.inters.Role
+	inters := c.inters.Role
+	return append(inters[:len(inters):len(inters)], role.Interceptors[:]...)
 }
 
 func (c *RoleClient) mutate(ctx context.Context, m *RoleMutation) (Value, error) {
@@ -1371,12 +1379,14 @@ func (c *UserClient) QueryRoles(u *User) *RoleQuery {
 
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
-	return c.hooks.User
+	hooks := c.hooks.User
+	return append(hooks[:len(hooks):len(hooks)], user.Hooks[:]...)
 }
 
 // Interceptors returns the client interceptors.
 func (c *UserClient) Interceptors() []Interceptor {
-	return c.inters.User
+	inters := c.inters.User
+	return append(inters[:len(inters):len(inters)], user.Interceptors[:]...)
 }
 
 func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error) {

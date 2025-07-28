@@ -65,6 +65,11 @@ func UpdatedAt(v time.Time) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
+// DeletedAt applies equality check predicate on the "deleted_at" field. It's identical to DeletedAtEQ.
+func DeletedAt(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldEQ(FieldDeletedAt, v))
+}
+
 // BaseURL applies equality check predicate on the "base_url" field. It's identical to BaseURLEQ.
 func BaseURL(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldBaseURL, v))
@@ -163,6 +168,46 @@ func UpdatedAtLT(v time.Time) predicate.Channel {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Channel {
 	return predicate.Channel(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
+func DeletedAtEQ(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldEQ(FieldDeletedAt, v))
+}
+
+// DeletedAtNEQ applies the NEQ predicate on the "deleted_at" field.
+func DeletedAtNEQ(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldNEQ(FieldDeletedAt, v))
+}
+
+// DeletedAtIn applies the In predicate on the "deleted_at" field.
+func DeletedAtIn(vs ...int) predicate.Channel {
+	return predicate.Channel(sql.FieldIn(FieldDeletedAt, vs...))
+}
+
+// DeletedAtNotIn applies the NotIn predicate on the "deleted_at" field.
+func DeletedAtNotIn(vs ...int) predicate.Channel {
+	return predicate.Channel(sql.FieldNotIn(FieldDeletedAt, vs...))
+}
+
+// DeletedAtGT applies the GT predicate on the "deleted_at" field.
+func DeletedAtGT(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldGT(FieldDeletedAt, v))
+}
+
+// DeletedAtGTE applies the GTE predicate on the "deleted_at" field.
+func DeletedAtGTE(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldGTE(FieldDeletedAt, v))
+}
+
+// DeletedAtLT applies the LT predicate on the "deleted_at" field.
+func DeletedAtLT(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldLT(FieldDeletedAt, v))
+}
+
+// DeletedAtLTE applies the LTE predicate on the "deleted_at" field.
+func DeletedAtLTE(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldLTE(FieldDeletedAt, v))
 }
 
 // TypeEQ applies the EQ predicate on the "type" field.

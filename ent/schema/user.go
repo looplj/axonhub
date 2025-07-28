@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/mixin"
+	"github.com/looplj/axonhub/ent/schema/schematype"
 )
 
 // User holds the schema definition for the User entity.
@@ -17,6 +18,7 @@ type User struct {
 func (User) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
+		schematype.SoftDeleteMixin{},
 	}
 }
 

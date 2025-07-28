@@ -154,6 +154,11 @@ func (akq *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, apikey.FieldUpdatedAt)
 				fieldSeen[apikey.FieldUpdatedAt] = struct{}{}
 			}
+		case "deletedAt":
+			if _, ok := fieldSeen[apikey.FieldDeletedAt]; !ok {
+				selectedFields = append(selectedFields, apikey.FieldDeletedAt)
+				fieldSeen[apikey.FieldDeletedAt] = struct{}{}
+			}
 		case "userID":
 			if _, ok := fieldSeen[apikey.FieldUserID]; !ok {
 				selectedFields = append(selectedFields, apikey.FieldUserID)
@@ -440,6 +445,11 @@ func (cq *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			if _, ok := fieldSeen[channel.FieldUpdatedAt]; !ok {
 				selectedFields = append(selectedFields, channel.FieldUpdatedAt)
 				fieldSeen[channel.FieldUpdatedAt] = struct{}{}
+			}
+		case "deletedAt":
+			if _, ok := fieldSeen[channel.FieldDeletedAt]; !ok {
+				selectedFields = append(selectedFields, channel.FieldDeletedAt)
+				fieldSeen[channel.FieldDeletedAt] = struct{}{}
 			}
 		case "type":
 			if _, ok := fieldSeen[channel.FieldType]; !ok {
@@ -760,6 +770,11 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			if _, ok := fieldSeen[request.FieldUpdatedAt]; !ok {
 				selectedFields = append(selectedFields, request.FieldUpdatedAt)
 				fieldSeen[request.FieldUpdatedAt] = struct{}{}
+			}
+		case "deletedAt":
+			if _, ok := fieldSeen[request.FieldDeletedAt]; !ok {
+				selectedFields = append(selectedFields, request.FieldDeletedAt)
+				fieldSeen[request.FieldDeletedAt] = struct{}{}
 			}
 		case "userID":
 			if _, ok := fieldSeen[request.FieldUserID]; !ok {
@@ -1147,6 +1162,11 @@ func (rq *RoleQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 				selectedFields = append(selectedFields, role.FieldUpdatedAt)
 				fieldSeen[role.FieldUpdatedAt] = struct{}{}
 			}
+		case "deletedAt":
+			if _, ok := fieldSeen[role.FieldDeletedAt]; !ok {
+				selectedFields = append(selectedFields, role.FieldDeletedAt)
+				fieldSeen[role.FieldDeletedAt] = struct{}{}
+			}
 		case "code":
 			if _, ok := fieldSeen[role.FieldCode]; !ok {
 				selectedFields = append(selectedFields, role.FieldCode)
@@ -1526,6 +1546,11 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 			if _, ok := fieldSeen[user.FieldUpdatedAt]; !ok {
 				selectedFields = append(selectedFields, user.FieldUpdatedAt)
 				fieldSeen[user.FieldUpdatedAt] = struct{}{}
+			}
+		case "deletedAt":
+			if _, ok := fieldSeen[user.FieldDeletedAt]; !ok {
+				selectedFields = append(selectedFields, user.FieldDeletedAt)
+				fieldSeen[user.FieldDeletedAt] = struct{}{}
 			}
 		case "email":
 			if _, ok := fieldSeen[user.FieldEmail]; !ok {

@@ -13,7 +13,7 @@ import (
 )
 
 func NewEntClient() *ent.Client {
-	client, err := ent.Open(dialect.SQLite, "file:axonhub.db?cache=shared&_fk=1&journal_mode=WAL")
+	client, err := ent.Open(dialect.SQLite, "file:axonhub.db?cache=shared&_fk=1&journal_mode=WAL", ent.Debug())
 	if err != nil {
 		panic(err)
 	}

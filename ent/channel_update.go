@@ -38,6 +38,27 @@ func (cu *ChannelUpdate) SetUpdatedAt(t time.Time) *ChannelUpdate {
 	return cu
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (cu *ChannelUpdate) SetDeletedAt(i int) *ChannelUpdate {
+	cu.mutation.ResetDeletedAt()
+	cu.mutation.SetDeletedAt(i)
+	return cu
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (cu *ChannelUpdate) SetNillableDeletedAt(i *int) *ChannelUpdate {
+	if i != nil {
+		cu.SetDeletedAt(*i)
+	}
+	return cu
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (cu *ChannelUpdate) AddDeletedAt(i int) *ChannelUpdate {
+	cu.mutation.AddDeletedAt(i)
+	return cu
+}
+
 // SetBaseURL sets the "base_url" field.
 func (cu *ChannelUpdate) SetBaseURL(s string) *ChannelUpdate {
 	cu.mutation.SetBaseURL(s)
@@ -197,7 +218,9 @@ func (cu *ChannelUpdate) RemoveExecutions(r ...*RequestExecution) *ChannelUpdate
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (cu *ChannelUpdate) Save(ctx context.Context) (int, error) {
-	cu.defaults()
+	if err := cu.defaults(); err != nil {
+		return 0, err
+	}
 	return withHooks(ctx, cu.sqlSave, cu.mutation, cu.hooks)
 }
 
@@ -224,11 +247,15 @@ func (cu *ChannelUpdate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (cu *ChannelUpdate) defaults() {
+func (cu *ChannelUpdate) defaults() error {
 	if _, ok := cu.mutation.UpdatedAt(); !ok {
+		if channel.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized channel.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := channel.UpdateDefaultUpdatedAt()
 		cu.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -255,6 +282,12 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := cu.mutation.UpdatedAt(); ok {
 		_spec.SetField(channel.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := cu.mutation.DeletedAt(); ok {
+		_spec.SetField(channel.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := cu.mutation.AddedDeletedAt(); ok {
+		_spec.AddField(channel.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := cu.mutation.BaseURL(); ok {
 		_spec.SetField(channel.FieldBaseURL, field.TypeString, value)
@@ -395,6 +428,27 @@ type ChannelUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (cuo *ChannelUpdateOne) SetUpdatedAt(t time.Time) *ChannelUpdateOne {
 	cuo.mutation.SetUpdatedAt(t)
+	return cuo
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (cuo *ChannelUpdateOne) SetDeletedAt(i int) *ChannelUpdateOne {
+	cuo.mutation.ResetDeletedAt()
+	cuo.mutation.SetDeletedAt(i)
+	return cuo
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (cuo *ChannelUpdateOne) SetNillableDeletedAt(i *int) *ChannelUpdateOne {
+	if i != nil {
+		cuo.SetDeletedAt(*i)
+	}
+	return cuo
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (cuo *ChannelUpdateOne) AddDeletedAt(i int) *ChannelUpdateOne {
+	cuo.mutation.AddDeletedAt(i)
 	return cuo
 }
 
@@ -570,7 +624,9 @@ func (cuo *ChannelUpdateOne) Select(field string, fields ...string) *ChannelUpda
 
 // Save executes the query and returns the updated Channel entity.
 func (cuo *ChannelUpdateOne) Save(ctx context.Context) (*Channel, error) {
-	cuo.defaults()
+	if err := cuo.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, cuo.sqlSave, cuo.mutation, cuo.hooks)
 }
 
@@ -597,11 +653,15 @@ func (cuo *ChannelUpdateOne) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (cuo *ChannelUpdateOne) defaults() {
+func (cuo *ChannelUpdateOne) defaults() error {
 	if _, ok := cuo.mutation.UpdatedAt(); !ok {
+		if channel.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized channel.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := channel.UpdateDefaultUpdatedAt()
 		cuo.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -645,6 +705,12 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 	}
 	if value, ok := cuo.mutation.UpdatedAt(); ok {
 		_spec.SetField(channel.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := cuo.mutation.DeletedAt(); ok {
+		_spec.SetField(channel.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := cuo.mutation.AddedDeletedAt(); ok {
+		_spec.AddField(channel.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := cuo.mutation.BaseURL(); ok {
 		_spec.SetField(channel.FieldBaseURL, field.TypeString, value)

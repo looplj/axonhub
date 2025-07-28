@@ -25,6 +25,8 @@ type Request struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// DeletedAt holds the value of the "deleted_at" field.
+	DeletedAt int `json:"deleted_at,omitempty"`
 	// UserID holds the value of the "user_id" field.
 	UserID int `json:"user_id,omitempty"`
 	// API Key ID of the request, null for the request from the Admin.
@@ -99,7 +101,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case request.FieldRequestBody, request.FieldResponseBody:
 			values[i] = new([]byte)
-		case request.FieldID, request.FieldUserID, request.FieldAPIKeyID:
+		case request.FieldID, request.FieldDeletedAt, request.FieldUserID, request.FieldAPIKeyID:
 			values[i] = new(sql.NullInt64)
 		case request.FieldModelID, request.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -139,6 +141,12 @@ func (r *Request) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
 				r.UpdatedAt = value.Time
+			}
+		case request.FieldDeletedAt:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
+			} else if value.Valid {
+				r.DeletedAt = int(value.Int64)
 			}
 		case request.FieldUserID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -243,6 +251,9 @@ func (r *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(r.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("deleted_at=")
+	builder.WriteString(fmt.Sprintf("%v", r.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("user_id=")
 	builder.WriteString(fmt.Sprintf("%v", r.UserID))

@@ -37,6 +37,27 @@ func (ru *RequestUpdate) SetUpdatedAt(t time.Time) *RequestUpdate {
 	return ru
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (ru *RequestUpdate) SetDeletedAt(i int) *RequestUpdate {
+	ru.mutation.ResetDeletedAt()
+	ru.mutation.SetDeletedAt(i)
+	return ru
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (ru *RequestUpdate) SetNillableDeletedAt(i *int) *RequestUpdate {
+	if i != nil {
+		ru.SetDeletedAt(*i)
+	}
+	return ru
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (ru *RequestUpdate) AddDeletedAt(i int) *RequestUpdate {
+	ru.mutation.AddDeletedAt(i)
+	return ru
+}
+
 // SetResponseBody sets the "response_body" field.
 func (ru *RequestUpdate) SetResponseBody(orm objects.JSONRawMessage) *RequestUpdate {
 	ru.mutation.SetResponseBody(orm)
@@ -112,7 +133,9 @@ func (ru *RequestUpdate) RemoveExecutions(r ...*RequestExecution) *RequestUpdate
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (ru *RequestUpdate) Save(ctx context.Context) (int, error) {
-	ru.defaults()
+	if err := ru.defaults(); err != nil {
+		return 0, err
+	}
 	return withHooks(ctx, ru.sqlSave, ru.mutation, ru.hooks)
 }
 
@@ -139,11 +162,15 @@ func (ru *RequestUpdate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (ru *RequestUpdate) defaults() {
+func (ru *RequestUpdate) defaults() error {
 	if _, ok := ru.mutation.UpdatedAt(); !ok {
+		if request.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized request.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := request.UpdateDefaultUpdatedAt()
 		ru.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -173,6 +200,12 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := ru.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := ru.mutation.DeletedAt(); ok {
+		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := ru.mutation.AddedDeletedAt(); ok {
+		_spec.AddField(request.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := ru.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
@@ -256,6 +289,27 @@ type RequestUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (ruo *RequestUpdateOne) SetUpdatedAt(t time.Time) *RequestUpdateOne {
 	ruo.mutation.SetUpdatedAt(t)
+	return ruo
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (ruo *RequestUpdateOne) SetDeletedAt(i int) *RequestUpdateOne {
+	ruo.mutation.ResetDeletedAt()
+	ruo.mutation.SetDeletedAt(i)
+	return ruo
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (ruo *RequestUpdateOne) SetNillableDeletedAt(i *int) *RequestUpdateOne {
+	if i != nil {
+		ruo.SetDeletedAt(*i)
+	}
+	return ruo
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (ruo *RequestUpdateOne) AddDeletedAt(i int) *RequestUpdateOne {
+	ruo.mutation.AddDeletedAt(i)
 	return ruo
 }
 
@@ -347,7 +401,9 @@ func (ruo *RequestUpdateOne) Select(field string, fields ...string) *RequestUpda
 
 // Save executes the query and returns the updated Request entity.
 func (ruo *RequestUpdateOne) Save(ctx context.Context) (*Request, error) {
-	ruo.defaults()
+	if err := ruo.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, ruo.sqlSave, ruo.mutation, ruo.hooks)
 }
 
@@ -374,11 +430,15 @@ func (ruo *RequestUpdateOne) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (ruo *RequestUpdateOne) defaults() {
+func (ruo *RequestUpdateOne) defaults() error {
 	if _, ok := ruo.mutation.UpdatedAt(); !ok {
+		if request.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized request.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := request.UpdateDefaultUpdatedAt()
 		ruo.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -425,6 +485,12 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 	}
 	if value, ok := ruo.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := ruo.mutation.DeletedAt(); ok {
+		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := ruo.mutation.AddedDeletedAt(); ok {
+		_spec.AddField(request.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := ruo.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)

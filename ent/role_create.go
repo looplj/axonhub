@@ -51,6 +51,20 @@ func (rc *RoleCreate) SetNillableUpdatedAt(t *time.Time) *RoleCreate {
 	return rc
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (rc *RoleCreate) SetDeletedAt(i int) *RoleCreate {
+	rc.mutation.SetDeletedAt(i)
+	return rc
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (rc *RoleCreate) SetNillableDeletedAt(i *int) *RoleCreate {
+	if i != nil {
+		rc.SetDeletedAt(*i)
+	}
+	return rc
+}
+
 // SetCode sets the "code" field.
 func (rc *RoleCreate) SetCode(s string) *RoleCreate {
 	rc.mutation.SetCode(s)
@@ -91,7 +105,9 @@ func (rc *RoleCreate) Mutation() *RoleMutation {
 
 // Save creates the Role in the database.
 func (rc *RoleCreate) Save(ctx context.Context) (*Role, error) {
-	rc.defaults()
+	if err := rc.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, rc.sqlSave, rc.mutation, rc.hooks)
 }
 
@@ -118,15 +134,26 @@ func (rc *RoleCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (rc *RoleCreate) defaults() {
+func (rc *RoleCreate) defaults() error {
 	if _, ok := rc.mutation.CreatedAt(); !ok {
+		if role.DefaultCreatedAt == nil {
+			return fmt.Errorf("ent: uninitialized role.DefaultCreatedAt (forgotten import ent/runtime?)")
+		}
 		v := role.DefaultCreatedAt()
 		rc.mutation.SetCreatedAt(v)
 	}
 	if _, ok := rc.mutation.UpdatedAt(); !ok {
+		if role.DefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized role.DefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := role.DefaultUpdatedAt()
 		rc.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := rc.mutation.DeletedAt(); !ok {
+		v := role.DefaultDeletedAt
+		rc.mutation.SetDeletedAt(v)
+	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -136,6 +163,9 @@ func (rc *RoleCreate) check() error {
 	}
 	if _, ok := rc.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Role.updated_at"`)}
+	}
+	if _, ok := rc.mutation.DeletedAt(); !ok {
+		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Role.deleted_at"`)}
 	}
 	if _, ok := rc.mutation.Code(); !ok {
 		return &ValidationError{Name: "code", err: errors.New(`ent: missing required field "Role.code"`)}
@@ -180,6 +210,10 @@ func (rc *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 	if value, ok := rc.mutation.UpdatedAt(); ok {
 		_spec.SetField(role.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if value, ok := rc.mutation.DeletedAt(); ok {
+		_spec.SetField(role.FieldDeletedAt, field.TypeInt, value)
+		_node.DeletedAt = value
 	}
 	if value, ok := rc.mutation.Code(); ok {
 		_spec.SetField(role.FieldCode, field.TypeString, value)
@@ -273,6 +307,24 @@ func (u *RoleUpsert) UpdateUpdatedAt() *RoleUpsert {
 	return u
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (u *RoleUpsert) SetDeletedAt(v int) *RoleUpsert {
+	u.Set(role.FieldDeletedAt, v)
+	return u
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *RoleUpsert) UpdateDeletedAt() *RoleUpsert {
+	u.SetExcluded(role.FieldDeletedAt)
+	return u
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *RoleUpsert) AddDeletedAt(v int) *RoleUpsert {
+	u.Add(role.FieldDeletedAt, v)
+	return u
+}
+
 // SetName sets the "name" field.
 func (u *RoleUpsert) SetName(v string) *RoleUpsert {
 	u.Set(role.FieldName, v)
@@ -356,6 +408,27 @@ func (u *RoleUpsertOne) SetUpdatedAt(v time.Time) *RoleUpsertOne {
 func (u *RoleUpsertOne) UpdateUpdatedAt() *RoleUpsertOne {
 	return u.Update(func(s *RoleUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *RoleUpsertOne) SetDeletedAt(v int) *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *RoleUpsertOne) AddDeletedAt(v int) *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.AddDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *RoleUpsertOne) UpdateDeletedAt() *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateDeletedAt()
 	})
 }
 
@@ -612,6 +685,27 @@ func (u *RoleUpsertBulk) SetUpdatedAt(v time.Time) *RoleUpsertBulk {
 func (u *RoleUpsertBulk) UpdateUpdatedAt() *RoleUpsertBulk {
 	return u.Update(func(s *RoleUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *RoleUpsertBulk) SetDeletedAt(v int) *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *RoleUpsertBulk) AddDeletedAt(v int) *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.AddDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *RoleUpsertBulk) UpdateDeletedAt() *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.UpdateDeletedAt()
 	})
 }
 

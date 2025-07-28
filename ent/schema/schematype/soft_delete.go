@@ -16,6 +16,7 @@ import (
 )
 
 // SoftDeleteMixin implements the soft delete pattern for schemas.
+// Ref: https://medium.com/@bluznierca1/implementing-soft-deletes-in-golang-with-ent-a-guide-to-mixins-and-interceptors-399c327d3cfe
 type SoftDeleteMixin struct {
 	mixin.Schema
 }

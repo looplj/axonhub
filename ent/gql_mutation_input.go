@@ -14,6 +14,7 @@ import (
 type CreateAPIKeyInput struct {
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
+	DeletedAt *int
 	Key       string
 	Name      string
 	UserID    int
@@ -26,6 +27,9 @@ func (i *CreateAPIKeyInput) Mutate(m *APIKeyMutation) {
 	}
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
 	}
 	m.SetKey(i.Key)
 	m.SetName(i.Name)
@@ -41,6 +45,7 @@ func (c *APIKeyCreate) SetInput(i CreateAPIKeyInput) *APIKeyCreate {
 // UpdateAPIKeyInput represents a mutation input for updating apikeys.
 type UpdateAPIKeyInput struct {
 	UpdatedAt *time.Time
+	DeletedAt *int
 	Name      *string
 }
 
@@ -48,6 +53,9 @@ type UpdateAPIKeyInput struct {
 func (i *UpdateAPIKeyInput) Mutate(m *APIKeyMutation) {
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
 	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
@@ -70,6 +78,7 @@ func (c *APIKeyUpdateOne) SetInput(i UpdateAPIKeyInput) *APIKeyUpdateOne {
 type CreateChannelInput struct {
 	CreatedAt        *time.Time
 	UpdatedAt        *time.Time
+	DeletedAt        *int
 	Type             channel.Type
 	BaseURL          string
 	Name             string
@@ -86,6 +95,9 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
 	}
 	m.SetType(i.Type)
 	m.SetBaseURL(i.BaseURL)
@@ -109,6 +121,7 @@ func (c *ChannelCreate) SetInput(i CreateChannelInput) *ChannelCreate {
 // UpdateChannelInput represents a mutation input for updating channels.
 type UpdateChannelInput struct {
 	UpdatedAt             *time.Time
+	DeletedAt             *int
 	BaseURL               *string
 	Name                  *string
 	APIKey                *string
@@ -123,6 +136,9 @@ type UpdateChannelInput struct {
 func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
 	}
 	if v := i.BaseURL; v != nil {
 		m.SetBaseURL(*v)
@@ -166,6 +182,7 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 type CreateRequestInput struct {
 	CreatedAt    *time.Time
 	UpdatedAt    *time.Time
+	DeletedAt    *int
 	ModelID      string
 	RequestBody  objects.JSONRawMessage
 	ResponseBody objects.JSONRawMessage
@@ -181,6 +198,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
 	}
 	m.SetModelID(i.ModelID)
 	if v := i.RequestBody; v != nil {
@@ -205,6 +225,7 @@ func (c *RequestCreate) SetInput(i CreateRequestInput) *RequestCreate {
 // UpdateRequestInput represents a mutation input for updating requests.
 type UpdateRequestInput struct {
 	UpdatedAt          *time.Time
+	DeletedAt          *int
 	ClearResponseBody  bool
 	ResponseBody       objects.JSONRawMessage
 	AppendResponseBody objects.JSONRawMessage
@@ -215,6 +236,9 @@ type UpdateRequestInput struct {
 func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
 	}
 	if i.ClearResponseBody {
 		m.ClearResponseBody()
@@ -246,6 +270,7 @@ func (c *RequestUpdateOne) SetInput(i UpdateRequestInput) *RequestUpdateOne {
 type CreateRoleInput struct {
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
+	DeletedAt *int
 	Code      string
 	Name      string
 	Scopes    []string
@@ -258,6 +283,9 @@ func (i *CreateRoleInput) Mutate(m *RoleMutation) {
 	}
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
 	}
 	m.SetCode(i.Code)
 	m.SetName(i.Name)
@@ -275,6 +303,7 @@ func (c *RoleCreate) SetInput(i CreateRoleInput) *RoleCreate {
 // UpdateRoleInput represents a mutation input for updating roles.
 type UpdateRoleInput struct {
 	UpdatedAt    *time.Time
+	DeletedAt    *int
 	Name         *string
 	Scopes       []string
 	AppendScopes []string
@@ -284,6 +313,9 @@ type UpdateRoleInput struct {
 func (i *UpdateRoleInput) Mutate(m *RoleMutation) {
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
 	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
@@ -312,6 +344,7 @@ func (c *RoleUpdateOne) SetInput(i UpdateRoleInput) *RoleUpdateOne {
 type CreateUserInput struct {
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
+	DeletedAt *int
 	Email     string
 	FirstName *string
 	LastName  *string
@@ -327,6 +360,9 @@ func (i *CreateUserInput) Mutate(m *UserMutation) {
 	}
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
 	}
 	m.SetEmail(i.Email)
 	if v := i.FirstName; v != nil {
@@ -355,6 +391,7 @@ func (c *UserCreate) SetInput(i CreateUserInput) *UserCreate {
 // UpdateUserInput represents a mutation input for updating users.
 type UpdateUserInput struct {
 	UpdatedAt     *time.Time
+	DeletedAt     *int
 	Email         *string
 	FirstName     *string
 	LastName      *string
@@ -371,6 +408,9 @@ type UpdateUserInput struct {
 func (i *UpdateUserInput) Mutate(m *UserMutation) {
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
 	}
 	if v := i.Email; v != nil {
 		m.SetEmail(*v)

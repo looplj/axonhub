@@ -53,6 +53,20 @@ func (cc *ChannelCreate) SetNillableUpdatedAt(t *time.Time) *ChannelCreate {
 	return cc
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (cc *ChannelCreate) SetDeletedAt(i int) *ChannelCreate {
+	cc.mutation.SetDeletedAt(i)
+	return cc
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (cc *ChannelCreate) SetNillableDeletedAt(i *int) *ChannelCreate {
+	if i != nil {
+		cc.SetDeletedAt(*i)
+	}
+	return cc
+}
+
 // SetType sets the "type" field.
 func (cc *ChannelCreate) SetType(c channel.Type) *ChannelCreate {
 	cc.mutation.SetType(c)
@@ -132,7 +146,9 @@ func (cc *ChannelCreate) Mutation() *ChannelMutation {
 
 // Save creates the Channel in the database.
 func (cc *ChannelCreate) Save(ctx context.Context) (*Channel, error) {
-	cc.defaults()
+	if err := cc.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, cc.sqlSave, cc.mutation, cc.hooks)
 }
 
@@ -159,19 +175,30 @@ func (cc *ChannelCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (cc *ChannelCreate) defaults() {
+func (cc *ChannelCreate) defaults() error {
 	if _, ok := cc.mutation.CreatedAt(); !ok {
+		if channel.DefaultCreatedAt == nil {
+			return fmt.Errorf("ent: uninitialized channel.DefaultCreatedAt (forgotten import ent/runtime?)")
+		}
 		v := channel.DefaultCreatedAt()
 		cc.mutation.SetCreatedAt(v)
 	}
 	if _, ok := cc.mutation.UpdatedAt(); !ok {
+		if channel.DefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized channel.DefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := channel.DefaultUpdatedAt()
 		cc.mutation.SetUpdatedAt(v)
+	}
+	if _, ok := cc.mutation.DeletedAt(); !ok {
+		v := channel.DefaultDeletedAt
+		cc.mutation.SetDeletedAt(v)
 	}
 	if _, ok := cc.mutation.Settings(); !ok {
 		v := channel.DefaultSettings
 		cc.mutation.SetSettings(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -181,6 +208,9 @@ func (cc *ChannelCreate) check() error {
 	}
 	if _, ok := cc.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Channel.updated_at"`)}
+	}
+	if _, ok := cc.mutation.DeletedAt(); !ok {
+		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Channel.deleted_at"`)}
 	}
 	if _, ok := cc.mutation.GetType(); !ok {
 		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "Channel.type"`)}
@@ -244,6 +274,10 @@ func (cc *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := cc.mutation.UpdatedAt(); ok {
 		_spec.SetField(channel.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if value, ok := cc.mutation.DeletedAt(); ok {
+		_spec.SetField(channel.FieldDeletedAt, field.TypeInt, value)
+		_node.DeletedAt = value
 	}
 	if value, ok := cc.mutation.GetType(); ok {
 		_spec.SetField(channel.FieldType, field.TypeEnum, value)
@@ -366,6 +400,24 @@ func (u *ChannelUpsert) SetUpdatedAt(v time.Time) *ChannelUpsert {
 // UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
 func (u *ChannelUpsert) UpdateUpdatedAt() *ChannelUpsert {
 	u.SetExcluded(channel.FieldUpdatedAt)
+	return u
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *ChannelUpsert) SetDeletedAt(v int) *ChannelUpsert {
+	u.Set(channel.FieldDeletedAt, v)
+	return u
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateDeletedAt() *ChannelUpsert {
+	u.SetExcluded(channel.FieldDeletedAt)
+	return u
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *ChannelUpsert) AddDeletedAt(v int) *ChannelUpsert {
+	u.Add(channel.FieldDeletedAt, v)
 	return u
 }
 
@@ -506,6 +558,27 @@ func (u *ChannelUpsertOne) SetUpdatedAt(v time.Time) *ChannelUpsertOne {
 func (u *ChannelUpsertOne) UpdateUpdatedAt() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *ChannelUpsertOne) SetDeletedAt(v int) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *ChannelUpsertOne) AddDeletedAt(v int) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.AddDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateDeletedAt() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateDeletedAt()
 	})
 }
 
@@ -825,6 +898,27 @@ func (u *ChannelUpsertBulk) SetUpdatedAt(v time.Time) *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) UpdateUpdatedAt() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *ChannelUpsertBulk) SetDeletedAt(v int) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *ChannelUpsertBulk) AddDeletedAt(v int) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.AddDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateDeletedAt() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateDeletedAt()
 	})
 }
 

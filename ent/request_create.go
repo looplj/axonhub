@@ -54,6 +54,20 @@ func (rc *RequestCreate) SetNillableUpdatedAt(t *time.Time) *RequestCreate {
 	return rc
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (rc *RequestCreate) SetDeletedAt(i int) *RequestCreate {
+	rc.mutation.SetDeletedAt(i)
+	return rc
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (rc *RequestCreate) SetNillableDeletedAt(i *int) *RequestCreate {
+	if i != nil {
+		rc.SetDeletedAt(*i)
+	}
+	return rc
+}
+
 // SetUserID sets the "user_id" field.
 func (rc *RequestCreate) SetUserID(i int) *RequestCreate {
 	rc.mutation.SetUserID(i)
@@ -130,7 +144,9 @@ func (rc *RequestCreate) Mutation() *RequestMutation {
 
 // Save creates the Request in the database.
 func (rc *RequestCreate) Save(ctx context.Context) (*Request, error) {
-	rc.defaults()
+	if err := rc.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, rc.sqlSave, rc.mutation, rc.hooks)
 }
 
@@ -157,15 +173,26 @@ func (rc *RequestCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (rc *RequestCreate) defaults() {
+func (rc *RequestCreate) defaults() error {
 	if _, ok := rc.mutation.CreatedAt(); !ok {
+		if request.DefaultCreatedAt == nil {
+			return fmt.Errorf("ent: uninitialized request.DefaultCreatedAt (forgotten import ent/runtime?)")
+		}
 		v := request.DefaultCreatedAt()
 		rc.mutation.SetCreatedAt(v)
 	}
 	if _, ok := rc.mutation.UpdatedAt(); !ok {
+		if request.DefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized request.DefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := request.DefaultUpdatedAt()
 		rc.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := rc.mutation.DeletedAt(); !ok {
+		v := request.DefaultDeletedAt
+		rc.mutation.SetDeletedAt(v)
+	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -175,6 +202,9 @@ func (rc *RequestCreate) check() error {
 	}
 	if _, ok := rc.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Request.updated_at"`)}
+	}
+	if _, ok := rc.mutation.DeletedAt(); !ok {
+		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Request.deleted_at"`)}
 	}
 	if _, ok := rc.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "Request.user_id"`)}
@@ -230,6 +260,10 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := rc.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if value, ok := rc.mutation.DeletedAt(); ok {
+		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
+		_node.DeletedAt = value
 	}
 	if value, ok := rc.mutation.ModelID(); ok {
 		_spec.SetField(request.FieldModelID, field.TypeString, value)
@@ -361,6 +395,24 @@ func (u *RequestUpsert) UpdateUpdatedAt() *RequestUpsert {
 	return u
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (u *RequestUpsert) SetDeletedAt(v int) *RequestUpsert {
+	u.Set(request.FieldDeletedAt, v)
+	return u
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateDeletedAt() *RequestUpsert {
+	u.SetExcluded(request.FieldDeletedAt)
+	return u
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *RequestUpsert) AddDeletedAt(v int) *RequestUpsert {
+	u.Add(request.FieldDeletedAt, v)
+	return u
+}
+
 // SetResponseBody sets the "response_body" field.
 func (u *RequestUpsert) SetResponseBody(v objects.JSONRawMessage) *RequestUpsert {
 	u.Set(request.FieldResponseBody, v)
@@ -459,6 +511,27 @@ func (u *RequestUpsertOne) SetUpdatedAt(v time.Time) *RequestUpsertOne {
 func (u *RequestUpsertOne) UpdateUpdatedAt() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *RequestUpsertOne) SetDeletedAt(v int) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *RequestUpsertOne) AddDeletedAt(v int) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.AddDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateDeletedAt() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateDeletedAt()
 	})
 }
 
@@ -731,6 +804,27 @@ func (u *RequestUpsertBulk) SetUpdatedAt(v time.Time) *RequestUpsertBulk {
 func (u *RequestUpsertBulk) UpdateUpdatedAt() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *RequestUpsertBulk) SetDeletedAt(v int) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *RequestUpsertBulk) AddDeletedAt(v int) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.AddDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateDeletedAt() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateDeletedAt()
 	})
 }
 

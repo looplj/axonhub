@@ -35,6 +35,27 @@ func (aku *APIKeyUpdate) SetUpdatedAt(t time.Time) *APIKeyUpdate {
 	return aku
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (aku *APIKeyUpdate) SetDeletedAt(i int) *APIKeyUpdate {
+	aku.mutation.ResetDeletedAt()
+	aku.mutation.SetDeletedAt(i)
+	return aku
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (aku *APIKeyUpdate) SetNillableDeletedAt(i *int) *APIKeyUpdate {
+	if i != nil {
+		aku.SetDeletedAt(*i)
+	}
+	return aku
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (aku *APIKeyUpdate) AddDeletedAt(i int) *APIKeyUpdate {
+	aku.mutation.AddDeletedAt(i)
+	return aku
+}
+
 // SetName sets the "name" field.
 func (aku *APIKeyUpdate) SetName(s string) *APIKeyUpdate {
 	aku.mutation.SetName(s)
@@ -92,7 +113,9 @@ func (aku *APIKeyUpdate) RemoveRequests(r ...*Request) *APIKeyUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (aku *APIKeyUpdate) Save(ctx context.Context) (int, error) {
-	aku.defaults()
+	if err := aku.defaults(); err != nil {
+		return 0, err
+	}
 	return withHooks(ctx, aku.sqlSave, aku.mutation, aku.hooks)
 }
 
@@ -119,11 +142,15 @@ func (aku *APIKeyUpdate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (aku *APIKeyUpdate) defaults() {
+func (aku *APIKeyUpdate) defaults() error {
 	if _, ok := aku.mutation.UpdatedAt(); !ok {
+		if apikey.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized apikey.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := apikey.UpdateDefaultUpdatedAt()
 		aku.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -148,6 +175,12 @@ func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := aku.mutation.UpdatedAt(); ok {
 		_spec.SetField(apikey.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := aku.mutation.DeletedAt(); ok {
+		_spec.SetField(apikey.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := aku.mutation.AddedDeletedAt(); ok {
+		_spec.AddField(apikey.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := aku.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)
@@ -223,6 +256,27 @@ func (akuo *APIKeyUpdateOne) SetUpdatedAt(t time.Time) *APIKeyUpdateOne {
 	return akuo
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (akuo *APIKeyUpdateOne) SetDeletedAt(i int) *APIKeyUpdateOne {
+	akuo.mutation.ResetDeletedAt()
+	akuo.mutation.SetDeletedAt(i)
+	return akuo
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (akuo *APIKeyUpdateOne) SetNillableDeletedAt(i *int) *APIKeyUpdateOne {
+	if i != nil {
+		akuo.SetDeletedAt(*i)
+	}
+	return akuo
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (akuo *APIKeyUpdateOne) AddDeletedAt(i int) *APIKeyUpdateOne {
+	akuo.mutation.AddDeletedAt(i)
+	return akuo
+}
+
 // SetName sets the "name" field.
 func (akuo *APIKeyUpdateOne) SetName(s string) *APIKeyUpdateOne {
 	akuo.mutation.SetName(s)
@@ -293,7 +347,9 @@ func (akuo *APIKeyUpdateOne) Select(field string, fields ...string) *APIKeyUpdat
 
 // Save executes the query and returns the updated APIKey entity.
 func (akuo *APIKeyUpdateOne) Save(ctx context.Context) (*APIKey, error) {
-	akuo.defaults()
+	if err := akuo.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, akuo.sqlSave, akuo.mutation, akuo.hooks)
 }
 
@@ -320,11 +376,15 @@ func (akuo *APIKeyUpdateOne) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (akuo *APIKeyUpdateOne) defaults() {
+func (akuo *APIKeyUpdateOne) defaults() error {
 	if _, ok := akuo.mutation.UpdatedAt(); !ok {
+		if apikey.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized apikey.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := apikey.UpdateDefaultUpdatedAt()
 		akuo.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -366,6 +426,12 @@ func (akuo *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err er
 	}
 	if value, ok := akuo.mutation.UpdatedAt(); ok {
 		_spec.SetField(apikey.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := akuo.mutation.DeletedAt(); ok {
+		_spec.SetField(apikey.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := akuo.mutation.AddedDeletedAt(); ok {
+		_spec.AddField(apikey.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := akuo.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)

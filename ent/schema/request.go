@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+	"github.com/looplj/axonhub/ent/schema/schematype"
 	"github.com/looplj/axonhub/objects"
 )
 
@@ -17,6 +18,7 @@ type Request struct {
 func (Request) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
+		schematype.SoftDeleteMixin{},
 	}
 }
 

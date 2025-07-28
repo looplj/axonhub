@@ -52,6 +52,20 @@ func (akc *APIKeyCreate) SetNillableUpdatedAt(t *time.Time) *APIKeyCreate {
 	return akc
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (akc *APIKeyCreate) SetDeletedAt(i int) *APIKeyCreate {
+	akc.mutation.SetDeletedAt(i)
+	return akc
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (akc *APIKeyCreate) SetNillableDeletedAt(i *int) *APIKeyCreate {
+	if i != nil {
+		akc.SetDeletedAt(*i)
+	}
+	return akc
+}
+
 // SetUserID sets the "user_id" field.
 func (akc *APIKeyCreate) SetUserID(i int) *APIKeyCreate {
 	akc.mutation.SetUserID(i)
@@ -97,7 +111,9 @@ func (akc *APIKeyCreate) Mutation() *APIKeyMutation {
 
 // Save creates the APIKey in the database.
 func (akc *APIKeyCreate) Save(ctx context.Context) (*APIKey, error) {
-	akc.defaults()
+	if err := akc.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, akc.sqlSave, akc.mutation, akc.hooks)
 }
 
@@ -124,15 +140,26 @@ func (akc *APIKeyCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (akc *APIKeyCreate) defaults() {
+func (akc *APIKeyCreate) defaults() error {
 	if _, ok := akc.mutation.CreatedAt(); !ok {
+		if apikey.DefaultCreatedAt == nil {
+			return fmt.Errorf("ent: uninitialized apikey.DefaultCreatedAt (forgotten import ent/runtime?)")
+		}
 		v := apikey.DefaultCreatedAt()
 		akc.mutation.SetCreatedAt(v)
 	}
 	if _, ok := akc.mutation.UpdatedAt(); !ok {
+		if apikey.DefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized apikey.DefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := apikey.DefaultUpdatedAt()
 		akc.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := akc.mutation.DeletedAt(); !ok {
+		v := apikey.DefaultDeletedAt
+		akc.mutation.SetDeletedAt(v)
+	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -142,6 +169,9 @@ func (akc *APIKeyCreate) check() error {
 	}
 	if _, ok := akc.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "APIKey.updated_at"`)}
+	}
+	if _, ok := akc.mutation.DeletedAt(); !ok {
+		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "APIKey.deleted_at"`)}
 	}
 	if _, ok := akc.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "APIKey.user_id"`)}
@@ -189,6 +219,10 @@ func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	if value, ok := akc.mutation.UpdatedAt(); ok {
 		_spec.SetField(apikey.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if value, ok := akc.mutation.DeletedAt(); ok {
+		_spec.SetField(apikey.FieldDeletedAt, field.TypeInt, value)
+		_node.DeletedAt = value
 	}
 	if value, ok := akc.mutation.Key(); ok {
 		_spec.SetField(apikey.FieldKey, field.TypeString, value)
@@ -295,6 +329,24 @@ func (u *APIKeyUpsert) UpdateUpdatedAt() *APIKeyUpsert {
 	return u
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (u *APIKeyUpsert) SetDeletedAt(v int) *APIKeyUpsert {
+	u.Set(apikey.FieldDeletedAt, v)
+	return u
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateDeletedAt() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldDeletedAt)
+	return u
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *APIKeyUpsert) AddDeletedAt(v int) *APIKeyUpsert {
+	u.Add(apikey.FieldDeletedAt, v)
+	return u
+}
+
 // SetName sets the "name" field.
 func (u *APIKeyUpsert) SetName(v string) *APIKeyUpsert {
 	u.Set(apikey.FieldName, v)
@@ -369,6 +421,27 @@ func (u *APIKeyUpsertOne) SetUpdatedAt(v time.Time) *APIKeyUpsertOne {
 func (u *APIKeyUpsertOne) UpdateUpdatedAt() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *APIKeyUpsertOne) SetDeletedAt(v int) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *APIKeyUpsertOne) AddDeletedAt(v int) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.AddDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateDeletedAt() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateDeletedAt()
 	})
 }
 
@@ -614,6 +687,27 @@ func (u *APIKeyUpsertBulk) SetUpdatedAt(v time.Time) *APIKeyUpsertBulk {
 func (u *APIKeyUpsertBulk) UpdateUpdatedAt() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *APIKeyUpsertBulk) SetDeletedAt(v int) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// AddDeletedAt adds v to the "deleted_at" field.
+func (u *APIKeyUpsertBulk) AddDeletedAt(v int) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.AddDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateDeletedAt() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateDeletedAt()
 	})
 }
 
