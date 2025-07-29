@@ -13,12 +13,15 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 
 	"github.com/looplj/axonhub/ent"
+	"github.com/looplj/axonhub/server/biz"
 )
 
 type Dependencies struct {
 	fx.In
 
-	Client *ent.Client
+	Client        *ent.Client
+	AuthService   *biz.AuthService
+	SystemService *biz.SystemService
 }
 
 type GraphqlHandler struct {
@@ -27,7 +30,7 @@ type GraphqlHandler struct {
 }
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
-	gqlSrv := handler.New(NewSchema(deps.Client))
+	gqlSrv := handler.New(NewSchema(deps.Client, deps.AuthService, deps.SystemService))
 
 	gqlSrv.AddTransport(transport.Options{})
 	gqlSrv.AddTransport(transport.GET{})

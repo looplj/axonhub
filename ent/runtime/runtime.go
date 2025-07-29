@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/ent/role"
 	"github.com/looplj/axonhub/ent/schema"
+	"github.com/looplj/axonhub/ent/system"
 	"github.com/looplj/axonhub/ent/user"
 	"github.com/looplj/axonhub/objects"
 )
@@ -142,6 +143,31 @@ func init() {
 	roleDescDeletedAt := roleMixinFields1[0].Descriptor()
 	// role.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	role.DefaultDeletedAt = roleDescDeletedAt.Default.(int)
+	systemMixin := schema.System{}.Mixin()
+	systemMixinHooks1 := systemMixin[1].Hooks()
+	system.Hooks[0] = systemMixinHooks1[0]
+	systemMixinInters1 := systemMixin[1].Interceptors()
+	system.Interceptors[0] = systemMixinInters1[0]
+	systemMixinFields0 := systemMixin[0].Fields()
+	_ = systemMixinFields0
+	systemMixinFields1 := systemMixin[1].Fields()
+	_ = systemMixinFields1
+	systemFields := schema.System{}.Fields()
+	_ = systemFields
+	// systemDescCreatedAt is the schema descriptor for created_at field.
+	systemDescCreatedAt := systemMixinFields0[0].Descriptor()
+	// system.DefaultCreatedAt holds the default value on creation for the created_at field.
+	system.DefaultCreatedAt = systemDescCreatedAt.Default.(func() time.Time)
+	// systemDescUpdatedAt is the schema descriptor for updated_at field.
+	systemDescUpdatedAt := systemMixinFields0[1].Descriptor()
+	// system.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	system.DefaultUpdatedAt = systemDescUpdatedAt.Default.(func() time.Time)
+	// system.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	system.UpdateDefaultUpdatedAt = systemDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// systemDescDeletedAt is the schema descriptor for deleted_at field.
+	systemDescDeletedAt := systemMixinFields1[0].Descriptor()
+	// system.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	system.DefaultDeletedAt = systemDescDeletedAt.Default.(int)
 	userMixin := schema.User{}.Mixin()
 	userMixinHooks1 := userMixin[1].Hooks()
 	user.Hooks[0] = userMixinHooks1[0]
@@ -168,19 +194,19 @@ func init() {
 	// user.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	user.DefaultDeletedAt = userDescDeletedAt.Default.(int)
 	// userDescFirstName is the schema descriptor for first_name field.
-	userDescFirstName := userFields[1].Descriptor()
+	userDescFirstName := userFields[2].Descriptor()
 	// user.DefaultFirstName holds the default value on creation for the first_name field.
 	user.DefaultFirstName = userDescFirstName.Default.(string)
 	// userDescLastName is the schema descriptor for last_name field.
-	userDescLastName := userFields[2].Descriptor()
+	userDescLastName := userFields[3].Descriptor()
 	// user.DefaultLastName holds the default value on creation for the last_name field.
 	user.DefaultLastName = userDescLastName.Default.(string)
 	// userDescIsOwner is the schema descriptor for is_owner field.
-	userDescIsOwner := userFields[3].Descriptor()
+	userDescIsOwner := userFields[4].Descriptor()
 	// user.DefaultIsOwner holds the default value on creation for the is_owner field.
 	user.DefaultIsOwner = userDescIsOwner.Default.(bool)
 	// userDescScopes is the schema descriptor for scopes field.
-	userDescScopes := userFields[4].Descriptor()
+	userDescScopes := userFields[5].Descriptor()
 	// user.DefaultScopes holds the default value on creation for the scopes field.
 	user.DefaultScopes = userDescScopes.Default.([]string)
 }

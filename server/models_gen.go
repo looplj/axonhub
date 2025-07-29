@@ -3,6 +3,7 @@
 package server
 
 import (
+	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/objects"
 )
 
@@ -50,6 +51,16 @@ type RequestsByStatus struct {
 type ScopeInfo struct {
 	Scope       string `json:"scope"`
 	Description string `json:"description"`
+}
+
+type SignInInput struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type SignInPayload struct {
+	User  *ent.User `json:"user"`
+	Token string    `json:"token"`
 }
 
 type TopUsers struct {

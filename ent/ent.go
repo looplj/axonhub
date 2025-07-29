@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/ent/role"
+	"github.com/looplj/axonhub/ent/system"
 	"github.com/looplj/axonhub/ent/user"
 )
 
@@ -85,6 +86,7 @@ func checkColumn(table, column string) error {
 			request.Table:          request.ValidColumn,
 			requestexecution.Table: requestexecution.ValidColumn,
 			role.Table:             role.ValidColumn,
+			system.Table:           system.ValidColumn,
 			user.Table:             user.ValidColumn,
 		})
 	})

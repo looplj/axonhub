@@ -104,3 +104,4 @@ node_modules/
 .tanstack
 .trae/tasks
 playwright-report/
+.trae/summary/

@@ -27,7 +27,8 @@ const REQUESTS_QUERY = `
           updatedAt
           user {
             id
-            name
+            firstName
+            lastName
           }
           apiKey {
             id

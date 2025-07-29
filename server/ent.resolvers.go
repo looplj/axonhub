@@ -92,6 +92,11 @@ func (r *queryResolver) Roles(ctx context.Context, after *entgql.Cursor[int], fi
 	)
 }
 
+// Systems is the resolver for the systems field.
+func (r *queryResolver) Systems(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) (*ent.SystemConnection, error) {
+	panic(fmt.Errorf("not implemented: Systems - systems"))
+}
+
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error) {
 	return r.client.User.Query().Paginate(ctx, after, first, before, last,
@@ -154,6 +159,11 @@ func (r *roleResolver) ID(ctx context.Context, obj *ent.Role) (*objects.GUID, er
 }
 
 // ID is the resolver for the id field.
+func (r *systemResolver) ID(ctx context.Context, obj *ent.System) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// ID is the resolver for the id field.
 func (r *userResolver) ID(ctx context.Context, obj *ent.User) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: "User",
@@ -182,6 +192,9 @@ func (r *Resolver) RequestExecution() RequestExecutionResolver { return &request
 // Role returns RoleResolver implementation.
 func (r *Resolver) Role() RoleResolver { return &roleResolver{r} }
 
+// System returns SystemResolver implementation.
+func (r *Resolver) System() SystemResolver { return &systemResolver{r} }
+
 // User returns UserResolver implementation.
 func (r *Resolver) User() UserResolver { return &userResolver{r} }
 
@@ -192,4 +205,5 @@ type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }
 type requestExecutionResolver struct{ *Resolver }
 type roleResolver struct{ *Resolver }
+type systemResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }

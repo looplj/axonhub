@@ -113,11 +113,15 @@ export const columns: ColumnDef<ApiKey>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='用户' />
     ),
-    cell: ({ row }) => (
-      <LongText className='text-muted-foreground max-w-24'>
-        {row.original.user?.name || '-'}
-      </LongText>
-    ),
+    cell: ({ row }) => {
+      const user = row.original.user
+      const displayName = user ? `${user.firstName} ${user.lastName}` : '-'
+      return (
+        <LongText className='text-muted-foreground max-w-24'>
+          {displayName}
+        </LongText>
+      )
+    },
     enableSorting: false,
   },
   {

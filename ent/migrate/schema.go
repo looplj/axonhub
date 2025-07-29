@@ -208,6 +208,21 @@ var (
 			},
 		},
 	}
+	// SystemsColumns holds the columns for the "systems" table.
+	SystemsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "key", Type: field.TypeString, Unique: true},
+		{Name: "value", Type: field.TypeString},
+	}
+	// SystemsTable holds the schema information for the "systems" table.
+	SystemsTable = &schema.Table{
+		Name:       "systems",
+		Columns:    SystemsColumns,
+		PrimaryKey: []*schema.Column{SystemsColumns[0]},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -215,6 +230,7 @@ var (
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "email", Type: field.TypeString, Unique: true},
+		{Name: "password", Type: field.TypeString},
 		{Name: "first_name", Type: field.TypeString, Default: ""},
 		{Name: "last_name", Type: field.TypeString, Default: ""},
 		{Name: "is_owner", Type: field.TypeBool, Default: false},
@@ -259,6 +275,7 @@ var (
 		RequestsTable,
 		RequestExecutionsTable,
 		RolesTable,
+		SystemsTable,
 		UsersTable,
 		UserRolesTable,
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/ent/role"
+	"github.com/looplj/axonhub/ent/system"
 	"github.com/looplj/axonhub/ent/user"
 )
 
@@ -41,6 +42,8 @@ type Client struct {
 	RequestExecution *RequestExecutionClient
 	// Role is the client for interacting with the Role builders.
 	Role *RoleClient
+	// System is the client for interacting with the System builders.
+	System *SystemClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 	// additional fields for node api
@@ -62,6 +65,7 @@ func (c *Client) init() {
 	c.Request = NewRequestClient(c.config)
 	c.RequestExecution = NewRequestExecutionClient(c.config)
 	c.Role = NewRoleClient(c.config)
+	c.System = NewSystemClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -161,6 +165,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Request:          NewRequestClient(cfg),
 		RequestExecution: NewRequestExecutionClient(cfg),
 		Role:             NewRoleClient(cfg),
+		System:           NewSystemClient(cfg),
 		User:             NewUserClient(cfg),
 	}, nil
 }
@@ -187,6 +192,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Request:          NewRequestClient(cfg),
 		RequestExecution: NewRequestExecutionClient(cfg),
 		Role:             NewRoleClient(cfg),
+		System:           NewSystemClient(cfg),
 		User:             NewUserClient(cfg),
 	}, nil
 }
@@ -217,7 +223,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.APIKey, c.Channel, c.Job, c.Request, c.RequestExecution, c.Role, c.User,
+		c.APIKey, c.Channel, c.Job, c.Request, c.RequestExecution, c.Role, c.System,
+		c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -227,7 +234,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.APIKey, c.Channel, c.Job, c.Request, c.RequestExecution, c.Role, c.User,
+		c.APIKey, c.Channel, c.Job, c.Request, c.RequestExecution, c.Role, c.System,
+		c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -248,6 +256,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.RequestExecution.mutate(ctx, m)
 	case *RoleMutation:
 		return c.Role.mutate(ctx, m)
+	case *SystemMutation:
+		return c.System.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
@@ -1221,6 +1231,141 @@ func (c *RoleClient) mutate(ctx context.Context, m *RoleMutation) (Value, error)
 	}
 }
 
+// SystemClient is a client for the System schema.
+type SystemClient struct {
+	config
+}
+
+// NewSystemClient returns a client for the System from the given config.
+func NewSystemClient(c config) *SystemClient {
+	return &SystemClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `system.Hooks(f(g(h())))`.
+func (c *SystemClient) Use(hooks ...Hook) {
+	c.hooks.System = append(c.hooks.System, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `system.Intercept(f(g(h())))`.
+func (c *SystemClient) Intercept(interceptors ...Interceptor) {
+	c.inters.System = append(c.inters.System, interceptors...)
+}
+
+// Create returns a builder for creating a System entity.
+func (c *SystemClient) Create() *SystemCreate {
+	mutation := newSystemMutation(c.config, OpCreate)
+	return &SystemCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of System entities.
+func (c *SystemClient) CreateBulk(builders ...*SystemCreate) *SystemCreateBulk {
+	return &SystemCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SystemClient) MapCreateBulk(slice any, setFunc func(*SystemCreate, int)) *SystemCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SystemCreateBulk{err: fmt.Errorf("calling to SystemClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SystemCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SystemCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for System.
+func (c *SystemClient) Update() *SystemUpdate {
+	mutation := newSystemMutation(c.config, OpUpdate)
+	return &SystemUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SystemClient) UpdateOne(s *System) *SystemUpdateOne {
+	mutation := newSystemMutation(c.config, OpUpdateOne, withSystem(s))
+	return &SystemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SystemClient) UpdateOneID(id int) *SystemUpdateOne {
+	mutation := newSystemMutation(c.config, OpUpdateOne, withSystemID(id))
+	return &SystemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for System.
+func (c *SystemClient) Delete() *SystemDelete {
+	mutation := newSystemMutation(c.config, OpDelete)
+	return &SystemDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SystemClient) DeleteOne(s *System) *SystemDeleteOne {
+	return c.DeleteOneID(s.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SystemClient) DeleteOneID(id int) *SystemDeleteOne {
+	builder := c.Delete().Where(system.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SystemDeleteOne{builder}
+}
+
+// Query returns a query builder for System.
+func (c *SystemClient) Query() *SystemQuery {
+	return &SystemQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSystem},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a System entity by its id.
+func (c *SystemClient) Get(ctx context.Context, id int) (*System, error) {
+	return c.Query().Where(system.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SystemClient) GetX(ctx context.Context, id int) *System {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *SystemClient) Hooks() []Hook {
+	hooks := c.hooks.System
+	return append(hooks[:len(hooks):len(hooks)], system.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *SystemClient) Interceptors() []Interceptor {
+	inters := c.inters.System
+	return append(inters[:len(inters):len(inters)], system.Interceptors[:]...)
+}
+
+func (c *SystemClient) mutate(ctx context.Context, m *SystemMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SystemCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SystemUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SystemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SystemDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown System mutation op: %q", m.Op())
+	}
+}
+
 // UserClient is a client for the User schema.
 type UserClient struct {
 	config
@@ -1407,9 +1552,10 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, Channel, Job, Request, RequestExecution, Role, User []ent.Hook
+		APIKey, Channel, Job, Request, RequestExecution, Role, System, User []ent.Hook
 	}
 	inters struct {
-		APIKey, Channel, Job, Request, RequestExecution, Role, User []ent.Interceptor
+		APIKey, Channel, Job, Request, RequestExecution, Role, System,
+		User []ent.Interceptor
 	}
 )

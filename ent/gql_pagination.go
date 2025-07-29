@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/ent/role"
+	"github.com/looplj/axonhub/ent/system"
 	"github.com/looplj/axonhub/ent/user"
 )
 
@@ -1830,6 +1831,302 @@ func (r *Role) ToEdge(order *RoleOrder) *RoleEdge {
 	return &RoleEdge{
 		Node:   r,
 		Cursor: order.Field.toCursor(r),
+	}
+}
+
+// SystemEdge is the edge representation of System.
+type SystemEdge struct {
+	Node   *System `json:"node"`
+	Cursor Cursor  `json:"cursor"`
+}
+
+// SystemConnection is the connection containing edges to System.
+type SystemConnection struct {
+	Edges      []*SystemEdge `json:"edges"`
+	PageInfo   PageInfo      `json:"pageInfo"`
+	TotalCount int           `json:"totalCount"`
+}
+
+func (c *SystemConnection) build(nodes []*System, pager *systemPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *System
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *System {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *System {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*SystemEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &SystemEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// SystemPaginateOption enables pagination customization.
+type SystemPaginateOption func(*systemPager) error
+
+// WithSystemOrder configures pagination ordering.
+func WithSystemOrder(order *SystemOrder) SystemPaginateOption {
+	if order == nil {
+		order = DefaultSystemOrder
+	}
+	o := *order
+	return func(pager *systemPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultSystemOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithSystemFilter configures pagination filter.
+func WithSystemFilter(filter func(*SystemQuery) (*SystemQuery, error)) SystemPaginateOption {
+	return func(pager *systemPager) error {
+		if filter == nil {
+			return errors.New("SystemQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type systemPager struct {
+	reverse bool
+	order   *SystemOrder
+	filter  func(*SystemQuery) (*SystemQuery, error)
+}
+
+func newSystemPager(opts []SystemPaginateOption, reverse bool) (*systemPager, error) {
+	pager := &systemPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultSystemOrder
+	}
+	return pager, nil
+}
+
+func (p *systemPager) applyFilter(query *SystemQuery) (*SystemQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *systemPager) toCursor(s *System) Cursor {
+	return p.order.Field.toCursor(s)
+}
+
+func (p *systemPager) applyCursors(query *SystemQuery, after, before *Cursor) (*SystemQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultSystemOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *systemPager) applyOrder(query *SystemQuery) *SystemQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultSystemOrder.Field {
+		query = query.Order(DefaultSystemOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *systemPager) orderExpr(query *SystemQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultSystemOrder.Field {
+			b.Comma().Ident(DefaultSystemOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to System.
+func (s *SystemQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...SystemPaginateOption,
+) (*SystemConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newSystemPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if s, err = pager.applyFilter(s); err != nil {
+		return nil, err
+	}
+	conn := &SystemConnection{Edges: []*SystemEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := s.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if s, err = pager.applyCursors(s, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		s.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := s.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	s = pager.applyOrder(s)
+	nodes, err := s.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// SystemOrderFieldCreatedAt orders System by created_at.
+	SystemOrderFieldCreatedAt = &SystemOrderField{
+		Value: func(s *System) (ent.Value, error) {
+			return s.CreatedAt, nil
+		},
+		column: system.FieldCreatedAt,
+		toTerm: system.ByCreatedAt,
+		toCursor: func(s *System) Cursor {
+			return Cursor{
+				ID:    s.ID,
+				Value: s.CreatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f SystemOrderField) String() string {
+	var str string
+	switch f.column {
+	case SystemOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f SystemOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *SystemOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("SystemOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *SystemOrderFieldCreatedAt
+	default:
+		return fmt.Errorf("%s is not a valid SystemOrderField", str)
+	}
+	return nil
+}
+
+// SystemOrderField defines the ordering field of System.
+type SystemOrderField struct {
+	// Value extracts the ordering value from the given System.
+	Value    func(*System) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) system.OrderOption
+	toCursor func(*System) Cursor
+}
+
+// SystemOrder defines the ordering of System.
+type SystemOrder struct {
+	Direction OrderDirection    `json:"direction"`
+	Field     *SystemOrderField `json:"field"`
+}
+
+// DefaultSystemOrder is the default ordering of System.
+var DefaultSystemOrder = &SystemOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &SystemOrderField{
+		Value: func(s *System) (ent.Value, error) {
+			return s.ID, nil
+		},
+		column: system.FieldID,
+		toTerm: system.ByID,
+		toCursor: func(s *System) Cursor {
+			return Cursor{ID: s.ID}
+		},
+	},
+}
+
+// ToEdge converts System into SystemEdge.
+func (s *System) ToEdge(order *SystemOrder) *SystemEdge {
+	if order == nil {
+		order = DefaultSystemOrder
+	}
+	return &SystemEdge{
+		Node:   s,
+		Cursor: order.Field.toCursor(s),
 	}
 }
 

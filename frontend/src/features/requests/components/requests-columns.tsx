@@ -76,16 +76,20 @@ export const requestsColumns: ColumnDef<Request>[] = [
     },
   },
   {
-    accessorKey: 'user.name',
+    id: 'user',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='用户' />
     ),
     enableSorting: false,
-    cell: ({ row }) => (
-      <div className='font-mono text-xs'>
-        {row.original.user?.name || '未知'}
-      </div>
-    ),
+    cell: ({ row }) => {
+      const user = row.original.user
+      const displayName = user ? `${user.firstName} ${user.lastName}` : '未知'
+      return (
+        <div className='font-mono text-xs'>
+          {displayName}
+        </div>
+      )
+    },
   },
   {
     accessorKey: 'apiKey',

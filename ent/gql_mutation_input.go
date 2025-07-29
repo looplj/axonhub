@@ -340,12 +340,75 @@ func (c *RoleUpdateOne) SetInput(i UpdateRoleInput) *RoleUpdateOne {
 	return c
 }
 
+// CreateSystemInput represents a mutation input for creating systems.
+type CreateSystemInput struct {
+	CreatedAt *time.Time
+	UpdatedAt *time.Time
+	DeletedAt *int
+	Key       string
+	Value     string
+}
+
+// Mutate applies the CreateSystemInput on the SystemMutation builder.
+func (i *CreateSystemInput) Mutate(m *SystemMutation) {
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
+	}
+	m.SetKey(i.Key)
+	m.SetValue(i.Value)
+}
+
+// SetInput applies the change-set in the CreateSystemInput on the SystemCreate builder.
+func (c *SystemCreate) SetInput(i CreateSystemInput) *SystemCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateSystemInput represents a mutation input for updating systems.
+type UpdateSystemInput struct {
+	UpdatedAt *time.Time
+	DeletedAt *int
+	Value     *string
+}
+
+// Mutate applies the UpdateSystemInput on the SystemMutation builder.
+func (i *UpdateSystemInput) Mutate(m *SystemMutation) {
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
+	if v := i.DeletedAt; v != nil {
+		m.SetDeletedAt(*v)
+	}
+	if v := i.Value; v != nil {
+		m.SetValue(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateSystemInput on the SystemUpdate builder.
+func (c *SystemUpdate) SetInput(i UpdateSystemInput) *SystemUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateSystemInput on the SystemUpdateOne builder.
+func (c *SystemUpdateOne) SetInput(i UpdateSystemInput) *SystemUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
 // CreateUserInput represents a mutation input for creating users.
 type CreateUserInput struct {
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
 	DeletedAt *int
 	Email     string
+	Password  string
 	FirstName *string
 	LastName  *string
 	IsOwner   *bool
@@ -365,6 +428,7 @@ func (i *CreateUserInput) Mutate(m *UserMutation) {
 		m.SetDeletedAt(*v)
 	}
 	m.SetEmail(i.Email)
+	m.SetPassword(i.Password)
 	if v := i.FirstName; v != nil {
 		m.SetFirstName(*v)
 	}
@@ -393,6 +457,7 @@ type UpdateUserInput struct {
 	UpdatedAt     *time.Time
 	DeletedAt     *int
 	Email         *string
+	Password      *string
 	FirstName     *string
 	LastName      *string
 	IsOwner       *bool
@@ -414,6 +479,9 @@ func (i *UpdateUserInput) Mutate(m *UserMutation) {
 	}
 	if v := i.Email; v != nil {
 		m.SetEmail(*v)
+	}
+	if v := i.Password; v != nil {
+		m.SetPassword(*v)
 	}
 	if v := i.FirstName; v != nil {
 		m.SetFirstName(*v)

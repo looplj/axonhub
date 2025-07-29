@@ -24,5 +24,8 @@ type RequestExecution func(*sql.Selector)
 // Role is the predicate function for role builders.
 type Role func(*sql.Selector)
 
+// System is the predicate function for system builders.
+type System func(*sql.Selector)
+
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

@@ -65,10 +65,17 @@ func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPI
 
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error) {
+	// Hash the password using our auth service
+	hashedPassword, err := r.authService.HashPassword(input.Password)
+	if err != nil {
+		return nil, err
+	}
+
 	mut := r.client.User.Create().
 		SetNillableFirstName(input.FirstName).
 		SetNillableLastName(input.LastName).
 		SetEmail(input.Email).
+		SetPassword(hashedPassword).
 		SetScopes(input.Scopes)
 
 	if input.RoleIDs != nil {
@@ -89,6 +96,14 @@ func (r *mutationResolver) UpdateUser(ctx context.Context, id objects.GUID, inpu
 		SetNillableFirstName(input.FirstName).
 		SetNillableLastName(input.LastName).
 		SetNillableIsOwner(input.IsOwner)
+
+	if input.Password != nil {
+		hashedPassword, err := r.authService.HashPassword(*input.Password)
+		if err != nil {
+			return nil, err
+		}
+		mut.SetPassword(hashedPassword)
+	}
 
 	if input.Scopes != nil {
 		mut.SetScopes(input.Scopes)
@@ -151,6 +166,26 @@ func (r *mutationResolver) UpdateRole(ctx context.Context, id objects.GUID, inpu
 		return nil, fmt.Errorf("failed to update role: %w", err)
 	}
 	return role, nil
+}
+
+// SignIn is the resolver for the signIn field.
+func (r *mutationResolver) SignIn(ctx context.Context, input SignInInput) (*SignInPayload, error) {
+	// Authenticate user
+	user, err := r.authService.AuthenticateUser(ctx, input.Email, input.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate JWT token
+	token, err := r.authService.GenerateJWTToken(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SignInPayload{
+		User:  user,
+		Token: token,
+	}, nil
 }
 
 // Mutation returns MutationResolver implementation.

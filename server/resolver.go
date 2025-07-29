@@ -4,6 +4,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 
 	"github.com/looplj/axonhub/ent"
+	"github.com/looplj/axonhub/server/biz"
 )
 
 var guidTypeToNodeType = map[string]string{
@@ -20,11 +21,19 @@ var guidTypeToNodeType = map[string]string{
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 // Resolver is the resolver root.
-type Resolver struct{ client *ent.Client }
+type Resolver struct{
+	client        *ent.Client
+	authService   *biz.AuthService
+	systemService *biz.SystemService
+}
 
 // NewSchema creates a graphql executable schema.
-func NewSchema(client *ent.Client) graphql.ExecutableSchema {
+func NewSchema(client *ent.Client, authService *biz.AuthService, systemService *biz.SystemService) graphql.ExecutableSchema {
 	return NewExecutableSchema(Config{
-		Resolvers: &Resolver{client},
+		Resolvers: &Resolver{
+			client:        client,
+			authService:   authService,
+			systemService: systemService,
+		},
 	})
 }

@@ -16,7 +16,8 @@ const APIKEYS_QUERY = `
           updatedAt
           user {
             id
-            name
+            firstName
+            lastName
           }
           key
           name
@@ -42,7 +43,8 @@ const APIKEY_QUERY = `
       updatedAt
       user {
         id
-        name
+        firstName
+        lastName
       }
       key
       name
@@ -58,7 +60,8 @@ const CREATE_APIKEY_MUTATION = `
       updatedAt
       user {
         id
-        name
+        firstName
+        lastName
       }
       key
       name
@@ -74,7 +77,8 @@ const UPDATE_APIKEY_MUTATION = `
       updatedAt
       user {
         id
-        name
+        firstName
+        lastName
       }
       key
       name

@@ -569,11 +569,63 @@ func (r *Role) Node(ctx context.Context) (node *Node, err error) {
 }
 
 // Node implements Noder interface
+func (s *System) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     s.ID,
+		Type:   "System",
+		Fields: make([]*Field, 5),
+		Edges:  make([]*Edge, 0),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(s.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(s.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(s.DeletedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "deleted_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(s.Key); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "string",
+		Name:  "key",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(s.Value); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "string",
+		Name:  "value",
+		Value: string(buf),
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
 func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     u.ID,
 		Type:   "User",
-		Fields: make([]*Field, 8),
+		Fields: make([]*Field, 9),
 		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
@@ -609,10 +661,18 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "email",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(u.FirstName); err != nil {
+	if buf, err = json.Marshal(u.Password); err != nil {
 		return nil, err
 	}
 	node.Fields[4] = &Field{
+		Type:  "string",
+		Name:  "password",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(u.FirstName); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
 		Type:  "string",
 		Name:  "first_name",
 		Value: string(buf),
@@ -620,7 +680,7 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(u.LastName); err != nil {
 		return nil, err
 	}
-	node.Fields[5] = &Field{
+	node.Fields[6] = &Field{
 		Type:  "string",
 		Name:  "last_name",
 		Value: string(buf),
@@ -628,7 +688,7 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(u.IsOwner); err != nil {
 		return nil, err
 	}
-	node.Fields[6] = &Field{
+	node.Fields[7] = &Field{
 		Type:  "bool",
 		Name:  "is_owner",
 		Value: string(buf),
@@ -636,7 +696,7 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(u.Scopes); err != nil {
 		return nil, err
 	}
-	node.Fields[7] = &Field{
+	node.Fields[8] = &Field{
 		Type:  "[]string",
 		Name:  "scopes",
 		Value: string(buf),

@@ -22,6 +22,7 @@ require (
 	github.com/99designs/gqlgen v0.17.76
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
+	github.com/golang-jwt/jwt/v5 v5.2.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/samber/lo v1.51.0
 	github.com/stretchr/testify v1.10.0
@@ -29,6 +30,7 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.30
 	github.com/zhenzou/executors v0.2.0
 	go.uber.org/zap/exp v0.3.0
+	golang.org/x/crypto v0.40.0
 )
 
 replace github.com/99designs/gqlgen => github.com/looplj/gqlgen v0.0.0-20250721163559-b09abcdca828
@@ -86,7 +88,6 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	golang.org/x/arch v0.19.0 // indirect
-	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
 	golang.org/x/mod v0.26.0 // indirect
 	golang.org/x/net v0.42.0 // indirect

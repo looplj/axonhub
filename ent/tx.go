@@ -24,6 +24,8 @@ type Tx struct {
 	RequestExecution *RequestExecutionClient
 	// Role is the client for interacting with the Role builders.
 	Role *RoleClient
+	// System is the client for interacting with the System builders.
+	System *SystemClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -163,6 +165,7 @@ func (tx *Tx) init() {
 	tx.Request = NewRequestClient(tx.config)
 	tx.RequestExecution = NewRequestExecutionClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
+	tx.System = NewSystemClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

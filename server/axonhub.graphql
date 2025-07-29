@@ -27,6 +27,16 @@ input ChannelSettingsInput {
 scalar JSONRawMessage
 scalar JSONRawMessageInput
 
+input SignInInput {
+  email: String!
+  password: String!
+}
+
+type SignInPayload {
+  user: User!
+  token: String!
+}
+
 type Mutation {
     createChannel(input: CreateChannelInput!): Channel!
     updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
@@ -39,4 +49,6 @@ type Mutation {
 
     createRole(input: CreateRoleInput!): Role!
     updateRole(id: ID!, input: UpdateRoleInput!): Role!
+
+    signIn(input: SignInInput!): SignInPayload!
 }
