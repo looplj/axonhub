@@ -9,7 +9,9 @@ import (
 
 	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/ent/system"
+	"github.com/looplj/axonhub/log"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
 const (
@@ -45,8 +47,13 @@ func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
 	return strings.EqualFold(sys.Value, "true"), nil
 }
 
+type InitializeSystemArgs struct {
+	OwnerEmail    string
+	OwnerPassword string
+}
+
 // Initialize initializes the system with a secret key and sets the initialized flag
-func (s *SystemService) Initialize(ctx context.Context, secretKey string) error {
+func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemArgs) error {
 	// Check if system is already initialized
 	isInitialized, err := s.IsInitialized(ctx)
 	if err != nil {
@@ -57,13 +64,9 @@ func (s *SystemService) Initialize(ctx context.Context, secretKey string) error 
 		return nil
 	}
 
-	// If no secret key provided, generate one
-	if secretKey == "" {
-		generatedKey, err := s.generateSecretKey()
-		if err != nil {
-			return fmt.Errorf("failed to generate secret key: %w", err)
-		}
-		secretKey = generatedKey
+	secretKey, err := s.generateSecretKey()
+	if err != nil {
+		return fmt.Errorf("failed to generate secret key: %w", err)
 	}
 
 	// Start a transaction
@@ -73,9 +76,30 @@ func (s *SystemService) Initialize(ctx context.Context, secretKey string) error 
 	}
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			tErr := tx.Rollback()
+			if tErr != nil {
+				log.Error(ctx, "failed to rollback transaction", zap.Error(tErr))
+			}
 		}
 	}()
+	// Hash the owner password
+	hashedPassword, err := HashPassword(args.OwnerPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Create the owner user
+	user, err := tx.User.Create().
+		SetEmail(args.OwnerEmail).
+		SetPassword(hashedPassword).
+		SetIsOwner(true).
+		SetScopes([]string{"*"}). // Give owner all scopes
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create owner user: %w", err)
+	}
+
+	log.Info(ctx, "created owner user", zap.Int("user_id", user.ID))
 
 	// Set secret key
 	err = s.setSystemValue(ctx, tx.System, SystemKeySecretKey, secretKey)
@@ -94,7 +118,6 @@ func (s *SystemService) Initialize(ctx context.Context, secretKey string) error 
 	if err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
-
 	return nil
 }
 

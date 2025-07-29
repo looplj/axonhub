@@ -32,6 +32,18 @@ type HourlyRequestStats struct {
 	Count int `json:"count"`
 }
 
+type InitializeSystemInput struct {
+	OwnerEmail    string `json:"ownerEmail"`
+	OwnerPassword string `json:"ownerPassword"`
+}
+
+type InitializeSystemPayload struct {
+	Success bool      `json:"success"`
+	Message string    `json:"message"`
+	User    *ent.User `json:"user,omitempty"`
+	Token   *string   `json:"token,omitempty"`
+}
+
 type RequestsByChannel struct {
 	ChannelName string `json:"channelName"`
 	ChannelType string `json:"channelType"`
@@ -61,6 +73,10 @@ type SignInInput struct {
 type SignInPayload struct {
 	User  *ent.User `json:"user"`
 	Token string    `json:"token"`
+}
+
+type SystemStatus struct {
+	IsInitialized bool `json:"isInitialized"`
 }
 
 type TopUsers struct {

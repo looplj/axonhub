@@ -37,6 +37,26 @@ type SignInPayload {
   token: String!
 }
 
+input InitializeSystemInput {
+  ownerEmail: String!
+  ownerPassword: String!
+}
+
+type InitializeSystemPayload {
+  success: Boolean!
+  message: String!
+  user: User
+  token: String
+}
+
+type SystemStatus {
+  isInitialized: Boolean!
+}
+
+extend type Query {
+    systemStatus: SystemStatus!
+}
+
 type Mutation {
     createChannel(input: CreateChannelInput!): Channel!
     updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
@@ -51,4 +71,5 @@ type Mutation {
     updateRole(id: ID!, input: UpdateRoleInput!): Role!
 
     signIn(input: SignInInput!): SignInPayload!
+    initializeSystem(input: InitializeSystemInput!): InitializeSystemPayload!
 }

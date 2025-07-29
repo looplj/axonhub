@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 	"go.uber.org/fx"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/ent/user"
@@ -35,7 +35,7 @@ type AuthService struct {
 }
 
 // HashPassword hashes a password using bcrypt
-func (s *AuthService) HashPassword(password string) (string, error) {
+func HashPassword(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", fmt.Errorf("failed to hash password: %w", err)
@@ -44,7 +44,7 @@ func (s *AuthService) HashPassword(password string) (string, error) {
 }
 
 // VerifyPassword verifies a password against a hash
-func (s *AuthService) VerifyPassword(hashedPassword, password string) error {
+func VerifyPassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
@@ -81,7 +81,7 @@ func (s *AuthService) AuthenticateUser(ctx context.Context, email, password stri
 	}
 
 	// Verify password
-	err = s.VerifyPassword(user.Password, password)
+	err = VerifyPassword(user.Password, password)
 	if err != nil {
 		return nil, fmt.Errorf("invalid email or password")
 	}

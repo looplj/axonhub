@@ -129,3 +129,37 @@ export const SIGN_IN_MUTATION = `
     }
   }
 `;
+
+export const SYSTEM_STATUS_QUERY = `
+  query SystemStatus {
+    systemStatus {
+      isInitialized
+    }
+  }
+`;
+
+export const INITIALIZE_SYSTEM_MUTATION = `
+  mutation InitializeSystem($input: InitializeSystemInput!) {
+    initializeSystem(input: $input) {
+      success
+      message
+      user {
+        id
+        email
+        firstName
+        lastName
+        isOwner
+        scopes
+        roles {
+          edges {
+            node {
+              id
+              name
+            }
+          }
+        }
+      }
+      token
+    }
+  }
+`;

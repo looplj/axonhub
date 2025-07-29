@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/looplj/axonhub/ent/enttest"
 	_ "github.com/looplj/axonhub/ent/runtime"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func TestSystemService_Initialize(t *testing.T) {
@@ -20,7 +20,10 @@ func TestSystemService_Initialize(t *testing.T) {
 	ctx := context.Background()
 
 	// Test system initialization with auto-generated secret key
-	err := service.Initialize(ctx, "")
+	err := service.Initialize(ctx, &InitializeSystemArgs{
+		OwnerEmail:    "owner@example.com",
+		OwnerPassword: "password123",
+	})
 	require.NoError(t, err)
 
 	// Verify system is initialized
@@ -37,32 +40,16 @@ func TestSystemService_Initialize(t *testing.T) {
 	// Test idempotency - calling Initialize again should not error
 	// but should not change the existing secret key
 	originalKey := secretKey
-	err = service.Initialize(ctx, "")
+	err = service.Initialize(ctx, &InitializeSystemArgs{
+		OwnerEmail:    "owner@example.com",
+		OwnerPassword: "password123",
+	})
 	require.NoError(t, err)
 
 	// Secret key should remain the same after second initialization
 	secretKey2, err := service.GetSecretKey(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, originalKey, secretKey2)
-}
-
-func TestSystemService_Initialize_WithCustomKey(t *testing.T) {
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
-	defer client.Close()
-
-	service := NewSystemService(SystemServiceParams{Ent: client})
-	ctx := context.Background()
-
-	customKey := "my-custom-secret-key-for-testing"
-
-	// Test system initialization with custom secret key
-	err := service.Initialize(ctx, customKey)
-	require.NoError(t, err)
-
-	// Verify secret key is set to custom value
-	secretKey, err := service.GetSecretKey(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, customKey, secretKey)
 }
 
 func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {

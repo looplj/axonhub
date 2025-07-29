@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/objects"
+	"github.com/looplj/axonhub/server/biz"
 )
 
 // CreateChannel is the resolver for the createChannel field.
@@ -66,7 +67,7 @@ func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPI
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error) {
 	// Hash the password using our auth service
-	hashedPassword, err := r.authService.HashPassword(input.Password)
+	hashedPassword, err := biz.HashPassword(input.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +99,7 @@ func (r *mutationResolver) UpdateUser(ctx context.Context, id objects.GUID, inpu
 		SetNillableIsOwner(input.IsOwner)
 
 	if input.Password != nil {
-		hashedPassword, err := r.authService.HashPassword(*input.Password)
+		hashedPassword, err := biz.HashPassword(*input.Password)
 		if err != nil {
 			return nil, err
 		}
@@ -185,6 +186,67 @@ func (r *mutationResolver) SignIn(ctx context.Context, input SignInInput) (*Sign
 	return &SignInPayload{
 		User:  user,
 		Token: token,
+	}, nil
+}
+
+// InitializeSystem is the resolver for the initializeSystem field.
+func (r *mutationResolver) InitializeSystem(ctx context.Context, input InitializeSystemInput) (*InitializeSystemPayload, error) {
+	// Check if system is already initialized
+	isInitialized, err := r.systemService.IsInitialized(ctx)
+	if err != nil {
+		return &InitializeSystemPayload{
+			Success: false,
+			Message: fmt.Sprintf("Failed to check initialization status: %v", err),
+		}, nil
+	}
+
+	if isInitialized {
+		return &InitializeSystemPayload{
+			Success: false,
+			Message: "System is already initialized",
+		}, nil
+	}
+
+	err = r.systemService.Initialize(ctx, &biz.InitializeSystemArgs{
+		OwnerEmail:    input.OwnerEmail,
+		OwnerPassword: input.OwnerPassword,
+	})
+	if err != nil {
+		return &InitializeSystemPayload{
+			Success: false,
+			Message: fmt.Sprintf("Failed to initialize system: %v", err),
+		}, nil
+	}
+
+	// Generate JWT token for the owner
+	token, err := r.SignIn(ctx, SignInInput{
+		Email:    input.OwnerEmail,
+		Password: input.OwnerPassword,
+	})
+	if err != nil {
+		return &InitializeSystemPayload{
+			Success: false,
+			Message: fmt.Sprintf("Failed to generate token: %v", err),
+		}, nil
+	}
+
+	return &InitializeSystemPayload{
+		Success: true,
+		Message: "System initialized successfully",
+		User:    token.User,
+		Token:   &token.Token,
+	}, nil
+}
+
+// SystemStatus is the resolver for the systemStatus field.
+func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error) {
+	isInitialized, err := r.systemService.IsInitialized(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check initialization status: %w", err)
+	}
+
+	return &SystemStatus{
+		IsInitialized: isInitialized,
 	}, nil
 }
 
