@@ -8,5 +8,6 @@ var Module = fx.Module("api",
 	fx.Provide(NewOpenAIHandlers),
 	fx.Provide(NewAnthropicHandlers),
 	fx.Provide(NewAiSDKHandlers),
+	fx.Provide(NewSystemHandlers),
 	fx.Invoke(initLogger),
 )

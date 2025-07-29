@@ -16,12 +16,27 @@ type Handlers struct {
 	OpenAI    *api.OpenAIHandlers
 	Anthropic *api.AnthropicHandlers
 	AiSDK     *api.AiSDKHandlers
+	System    *api.SystemHandlers
 }
 
 func SetupRoutes(server *Server, handlers Handlers, deps Dependencies) {
-	adminGroup := server.Group("/admin", cors.Default())
+	unAuthGroup := server.Group("/v1", cors.Default())
+	{
+		unAuthGroup.OPTIONS("*any", cors.Default())
+		// 系统状态和初始化 API - 不需要认证
+		unAuthGroup.GET("/system/status", handlers.System.GetSystemStatus)
+		unAuthGroup.POST("/system/initialize", handlers.System.InitializeSystem)
+		// 用户登录 API - 不需要认证
+		unAuthGroup.POST("/auth/signin", handlers.System.SignIn)
+	}
+	adminCorsConfig := cors.DefaultConfig()
+	adminCorsConfig.AllowAllOrigins = true
+	adminCorsConfig.AddAllowHeaders("Authorization")
+	adminGroup := server.Group("/admin",
+		cors.New(adminCorsConfig),
+		middleware.WithJWTAuth(deps.AuthService),
+	)
 	// 管理员路由 - 不需要 API key 认证
-	// TODO Admin auth
 	{
 		adminGroup.OPTIONS("*any", cors.Default())
 		adminGroup.GET("/playground", func(c *gin.Context) {
@@ -36,7 +51,7 @@ func SetupRoutes(server *Server, handlers Handlers, deps Dependencies) {
 
 	// API 路由 - 需要 API key 认证
 	apiGroup := server.Group("/v1")
-	apiGroup.Use(middleware.WithAPIKey(deps.Client))
+	apiGroup.Use(middleware.WithAPIKeyAuth(deps.Client))
 	{
 		apiGroup.POST("/messages", handlers.Anthropic.CreateMessage)
 		apiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)

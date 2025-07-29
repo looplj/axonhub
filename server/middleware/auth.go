@@ -1,16 +1,18 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/looplj/axonhub/contexts"
 	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/ent/apikey"
+	"github.com/looplj/axonhub/server/biz"
 )
 
-// WithAPIKey 中间件用于验证 API key
-func WithAPIKey(client *ent.Client) gin.HandlerFunc {
+// WithAPIKeyAuth 中间件用于验证 API key
+func WithAPIKeyAuth(client *ent.Client) gin.HandlerFunc {
 	return WithAPIKeyConfig(client, nil)
 }
 
@@ -50,6 +52,52 @@ func WithAPIKeyConfig(client *ent.Client, config *APIKeyConfig) gin.HandlerFunc 
 		c.Request = c.Request.WithContext(ctx)
 
 		// 继续处理请求
+		c.Next()
+	}
+}
+
+func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 从请求头中获取 JWT token
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Missing Authorization header",
+			})
+			c.Abort()
+			return
+		}
+
+		token, err := ExtractAPIKeyFromRequest(c.Request, &APIKeyConfig{
+			Headers:       []string{"Authorization"},
+			RequireBearer: true,
+		})
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": err.Error(),
+			})
+			c.Abort()
+			return
+		}
+
+		// 验证 JWT token
+		user, err := auth.ValidateJWTToken(c.Request.Context(), token)
+		if err != nil {
+			if errors.Is(err, biz.ErrInvalidJWT) {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "Invalid JWT token",
+				})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "Failed to validate JWT token",
+				})
+			}
+			c.Abort()
+			return
+		}
+		ctx := contexts.WithUser(c.Request.Context(), user)
+		c.Request = c.Request.WithContext(ctx)
+
 		c.Next()
 	}
 }

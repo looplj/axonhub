@@ -1,7 +1,6 @@
-import Cookies from 'js-cookie'
 import { create } from 'zustand'
 
-const ACCESS_TOKEN = 'thisisjustarandomstring'
+const ACCESS_TOKEN = 'axonhub_access_token'
 
 interface AuthUser {
   accountNo: string
@@ -21,9 +20,35 @@ interface AuthState {
   }
 }
 
+// Helper functions for localStorage
+const getTokenFromStorage = (): string => {
+  try {
+    return localStorage.getItem(ACCESS_TOKEN) || ''
+  } catch (error) {
+    console.warn('Failed to read token from localStorage:', error)
+    return ''
+  }
+}
+
+const setTokenToStorage = (token: string): void => {
+  try {
+    localStorage.setItem(ACCESS_TOKEN, token)
+  } catch (error) {
+    console.warn('Failed to save token to localStorage:', error)
+  }
+}
+
+const removeTokenFromStorage = (): void => {
+  try {
+    localStorage.removeItem(ACCESS_TOKEN)
+  } catch (error) {
+    console.warn('Failed to remove token from localStorage:', error)
+  }
+}
+
 export const useAuthStore = create<AuthState>()((set) => {
-  const cookieState = Cookies.get(ACCESS_TOKEN)
-  const initToken = cookieState ? JSON.parse(cookieState) : ''
+  const initToken = getTokenFromStorage()
+  
   return {
     auth: {
       user: null,
@@ -32,17 +57,17 @@ export const useAuthStore = create<AuthState>()((set) => {
       accessToken: initToken,
       setAccessToken: (accessToken) =>
         set((state) => {
-          Cookies.set(ACCESS_TOKEN, JSON.stringify(accessToken))
+          setTokenToStorage(accessToken)
           return { ...state, auth: { ...state.auth, accessToken } }
         }),
       resetAccessToken: () =>
         set((state) => {
-          Cookies.remove(ACCESS_TOKEN)
+          removeTokenFromStorage()
           return { ...state, auth: { ...state.auth, accessToken: '' } }
         }),
       reset: () =>
         set((state) => {
-          Cookies.remove(ACCESS_TOKEN)
+          removeTokenFromStorage()
           return {
             ...state,
             auth: { ...state.auth, user: null, accessToken: '' },

@@ -31,12 +31,12 @@ const formSchema = z.object({
     .min(8, {
       message: 'Password must be at least 8 characters long',
     }),
-  secretKey: z
-    .string()
-    .optional(),
 })
 
-export function InitializationForm({ className, ...props }: InitializationFormProps) {
+export function InitializationForm({
+  className,
+  ...props
+}: InitializationFormProps) {
   const initializeSystemMutation = useInitializeSystem()
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -44,7 +44,6 @@ export function InitializationForm({ className, ...props }: InitializationFormPr
     defaultValues: {
       ownerEmail: '',
       ownerPassword: '',
-      secretKey: '',
     },
   })
 
@@ -52,7 +51,6 @@ export function InitializationForm({ className, ...props }: InitializationFormPr
     const input = {
       ownerEmail: data.ownerEmail,
       ownerPassword: data.ownerPassword,
-      secretKey: data.secretKey || undefined,
     }
     initializeSystemMutation.mutate(input)
   }
@@ -90,31 +88,14 @@ export function InitializationForm({ className, ...props }: InitializationFormPr
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name='secretKey'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Secret Key (Optional)</FormLabel>
-              <FormControl>
-                <Input 
-                  placeholder='Leave empty to auto-generate' 
-                  {...field} 
-                />
-              </FormControl>
-              <FormMessage />
-              <p className='text-sm text-muted-foreground'>
-                If left empty, a secure secret key will be automatically generated for JWT tokens.
-              </p>
-            </FormItem>
-          )}
-        />
-        <Button 
-          type='submit' 
-          className='mt-2' 
+        <Button
+          type='submit'
+          className='mt-2'
           disabled={initializeSystemMutation.isPending}
         >
-          {initializeSystemMutation.isPending ? 'Initializing...' : 'Initialize System'}
+          {initializeSystemMutation.isPending
+            ? 'Initializing...'
+            : 'Initialize System'}
         </Button>
       </form>
     </Form>

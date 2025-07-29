@@ -58,7 +58,6 @@ func (s *AuthService) GenerateJWTToken(ctx context.Context, user *ent.User) (str
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
-		"email":   user.Email,
 		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
 	})
 
@@ -89,8 +88,8 @@ func (s *AuthService) AuthenticateUser(ctx context.Context, email, password stri
 	return user, nil
 }
 
-// ValidateJWTToken validates a JWT token and returns the user claims
-func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) (jwt.MapClaims, error) {
+// ValidateJWTToken validates a JWT token and returns the user
+func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) (*ent.User, error) {
 	// Get JWT secret from system
 	secretKey, err := s.SystemService.GetSecretKey(ctx)
 	if err != nil {
@@ -108,11 +107,21 @@ func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) 
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		return claims, nil
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token")
 	}
 
-	return nil, fmt.Errorf("invalid token")
+	userID, ok := claims["user_id"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+
+	user, err := s.Ent.User.Get(ctx, int(userID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	return user, nil
 }
 
 // GenerateSecretKey generates a random secret key for JWT
