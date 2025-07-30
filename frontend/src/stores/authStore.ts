@@ -2,11 +2,18 @@ import { create } from 'zustand'
 
 const ACCESS_TOKEN = 'axonhub_access_token'
 
+interface Role {
+  id: string
+  name: string
+}
+
 interface AuthUser {
-  accountNo: string
   email: string
-  role: string[]
-  exp: number
+  firstName: string
+  lastName: string
+  isOwner: boolean
+  scopes: string[]
+  roles: Role[]
 }
 
 interface AuthState {

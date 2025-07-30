@@ -1,12 +1,40 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi, setTokenInStorage, removeTokenFromStorage } from '@/lib/api-client'
 import { useAuthStore } from '@/stores/authStore'
 import { toast } from 'sonner'
 import { useRouter } from '@tanstack/react-router'
+import { graphqlRequest } from '@/gql/graphql'
+import { ME_QUERY } from '@/gql/users'
 
 export interface SignInInput {
   email: string
   password: string
+}
+
+interface MeResponse {
+  me: {
+    email: string
+    firstName: string
+    lastName: string
+    isOwner: boolean
+    scopes: string[]
+    roles: Array<{
+      id: string
+      name: string
+    }>
+  }
+}
+
+export function useMe() {
+  return useQuery({
+    queryKey: ['me'],
+    queryFn: async () => {
+      const data = await graphqlRequest<MeResponse>(ME_QUERY)
+      return data.me
+    },
+    enabled: !!useAuthStore.getState().auth.accessToken,
+    retry: false,
+  })
 }
 
 export function useSignIn() {
@@ -24,10 +52,15 @@ export function useSignIn() {
       // Update auth store
       setAccessToken(data.token)
       setUser({
-        accountNo: data.user.id,
         email: data.user.email,
-        role: data.user.roles.map(role => role.name),
-        exp: 0 // Will be extracted from JWT if needed
+        firstName: data.user.firstName || '',
+        lastName: data.user.lastName || '',
+        isOwner: data.user.isOwner,
+        scopes: data.user.scopes,
+        roles: data.user.roles.map(role => ({
+          id: role.id,
+          name: role.name
+        }))
       })
       
       toast.success('Successfully signed in!')

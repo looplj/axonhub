@@ -60,6 +60,11 @@ type RequestsByStatus struct {
 	Count  int    `json:"count"`
 }
 
+type RoleInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 type ScopeInfo struct {
 	Scope       string `json:"scope"`
 	Description string `json:"description"`
@@ -84,4 +89,13 @@ type TopUsers struct {
 	UserName     string       `json:"userName"`
 	UserEmail    string       `json:"userEmail"`
 	RequestCount int          `json:"requestCount"`
+}
+
+type UserInfo struct {
+	Email     string      `json:"email"`
+	FirstName string      `json:"firstName"`
+	LastName  string      `json:"lastName"`
+	IsOwner   bool        `json:"isOwner"`
+	Scopes    []string    `json:"scopes"`
+	Roles     []*RoleInfo `json:"roles"`
 }

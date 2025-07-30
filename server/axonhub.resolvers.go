@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/looplj/axonhub/contexts"
 	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/objects"
 	"github.com/looplj/axonhub/server/biz"
@@ -247,6 +248,39 @@ func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error)
 
 	return &SystemStatus{
 		IsInitialized: isInitialized,
+	}, nil
+}
+
+// Me is the resolver for the me field.
+func (r *queryResolver) Me(ctx context.Context) (*UserInfo, error) {
+	// Get current user from context
+	user, ok := contexts.GetUser(ctx)
+	if !ok || user == nil {
+		return nil, fmt.Errorf("user not found in context")
+	}
+
+	// Load user roles
+	roles, err := user.QueryRoles().All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load user roles: %w", err)
+	}
+
+	// Convert ent.Role to RoleInfo
+	userRoles := make([]*RoleInfo, len(roles))
+	for i, role := range roles {
+		userRoles[i] = &RoleInfo{
+			ID:   fmt.Sprintf("%d", role.ID),
+			Name: role.Name,
+		}
+	}
+
+	return &UserInfo{
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		IsOwner:   user.IsOwner,
+		Scopes:    user.Scopes,
+		Roles:     userRoles,
 	}, nil
 }
 

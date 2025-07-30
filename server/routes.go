@@ -17,6 +17,7 @@ type Handlers struct {
 	Anthropic *api.AnthropicHandlers
 	AiSDK     *api.AiSDKHandlers
 	System    *api.SystemHandlers
+	Auth      *api.AuthHandlers
 }
 
 func SetupRoutes(server *Server, handlers Handlers, deps Dependencies) {
@@ -27,7 +28,7 @@ func SetupRoutes(server *Server, handlers Handlers, deps Dependencies) {
 		unAuthGroup.GET("/system/status", handlers.System.GetSystemStatus)
 		unAuthGroup.POST("/system/initialize", handlers.System.InitializeSystem)
 		// 用户登录 API - 不需要认证
-		unAuthGroup.POST("/auth/signin", handlers.System.SignIn)
+		unAuthGroup.POST("/auth/signin", handlers.Auth.SignIn)
 	}
 	adminCorsConfig := cors.DefaultConfig()
 	adminCorsConfig.AllowAllOrigins = true

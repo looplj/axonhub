@@ -1,3 +1,19 @@
+export const ME_QUERY = `
+  query Me {
+    me {
+      email
+      firstName
+      lastName
+      isOwner
+      scopes
+      roles {
+        id
+        name
+      }
+    }
+  }
+`;
+
 export const USERS_QUERY = `
   query Users($first: Int, $after: Cursor) {
     users(first: $first, after: $after) {

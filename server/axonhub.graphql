@@ -53,8 +53,23 @@ type SystemStatus {
   isInitialized: Boolean!
 }
 
+type UserInfo {
+  email: String!
+  firstName: String!
+  lastName: String!
+  isOwner: Boolean!
+  scopes: [String!]!
+  roles: [RoleInfo!]!
+}
+
+type RoleInfo {
+  id: String!
+  name: String!
+}
+
 extend type Query {
     systemStatus: SystemStatus!
+    me: UserInfo!
 }
 
 type Mutation {

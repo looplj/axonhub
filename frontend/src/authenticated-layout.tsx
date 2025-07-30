@@ -5,7 +5,7 @@ import { SearchProvider } from '@/context/search-context'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import SkipToMain from '@/components/skip-to-main'
-import { sidebarData } from './sidebar'
+import { useSidebarData } from './sidebar'
 
 interface Props {
   children?: React.ReactNode
@@ -13,6 +13,8 @@ interface Props {
 
 export function AuthenticatedLayout({ children }: Props) {
   const defaultOpen = Cookies.get('sidebar_state') !== 'false'
+  const sidebarData = useSidebarData()
+  
   return (
     <SearchProvider>
       <SidebarProvider defaultOpen={defaultOpen}>
