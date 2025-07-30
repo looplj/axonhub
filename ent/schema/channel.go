@@ -3,12 +3,14 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/privacy"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/looplj/axonhub/ent/schema/schematype"
 	"github.com/looplj/axonhub/objects"
+	"github.com/looplj/axonhub/scopes"
 )
 
 type Channel struct {
@@ -79,5 +81,19 @@ func (Channel) Annotations() []schema.Annotation {
 		entgql.QueryField(),
 		entgql.RelayConnection(),
 		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
+	}
+}
+
+// Policy 定义 Channel 的权限策略
+func (Channel) Policy() ent.Policy {
+	return privacy.Policy{
+		Query: privacy.QueryPolicy{
+			scopes.OwnerRule(),                            // owner 用户可以访问所有渠道
+			scopes.ReadScopeRule(scopes.ScopeReadChannels), // 需要 channels 读取权限
+		},
+		Mutation: privacy.MutationPolicy{
+			scopes.OwnerRule(),                             // owner 用户可以修改所有渠道
+			scopes.WriteScopeRule(scopes.ScopeWriteChannels), // 需要 channels 写入权限
+		},
 	}
 }

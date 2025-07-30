@@ -153,6 +153,10 @@ func (rc *RoleCreate) defaults() error {
 		v := role.DefaultDeletedAt
 		rc.mutation.SetDeletedAt(v)
 	}
+	if _, ok := rc.mutation.Scopes(); !ok {
+		v := role.DefaultScopes
+		rc.mutation.SetScopes(v)
+	}
 	return nil
 }
 
@@ -172,9 +176,6 @@ func (rc *RoleCreate) check() error {
 	}
 	if _, ok := rc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Role.name"`)}
-	}
-	if _, ok := rc.mutation.Scopes(); !ok {
-		return &ValidationError{Name: "scopes", err: errors.New(`ent: missing required field "Role.scopes"`)}
 	}
 	return nil
 }
@@ -349,6 +350,12 @@ func (u *RoleUpsert) UpdateScopes() *RoleUpsert {
 	return u
 }
 
+// ClearScopes clears the value of the "scopes" field.
+func (u *RoleUpsert) ClearScopes() *RoleUpsert {
+	u.SetNull(role.FieldScopes)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -457,6 +464,13 @@ func (u *RoleUpsertOne) SetScopes(v []string) *RoleUpsertOne {
 func (u *RoleUpsertOne) UpdateScopes() *RoleUpsertOne {
 	return u.Update(func(s *RoleUpsert) {
 		s.UpdateScopes()
+	})
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (u *RoleUpsertOne) ClearScopes() *RoleUpsertOne {
+	return u.Update(func(s *RoleUpsert) {
+		s.ClearScopes()
 	})
 }
 
@@ -734,6 +748,13 @@ func (u *RoleUpsertBulk) SetScopes(v []string) *RoleUpsertBulk {
 func (u *RoleUpsertBulk) UpdateScopes() *RoleUpsertBulk {
 	return u.Update(func(s *RoleUpsert) {
 		s.UpdateScopes()
+	})
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (u *RoleUpsertBulk) ClearScopes() *RoleUpsertBulk {
+	return u.Update(func(s *RoleUpsert) {
+		s.ClearScopes()
 	})
 }
 

@@ -4876,10 +4876,24 @@ func (m *RoleMutation) AppendedScopes() ([]string, bool) {
 	return m.appendscopes, true
 }
 
+// ClearScopes clears the value of the "scopes" field.
+func (m *RoleMutation) ClearScopes() {
+	m.scopes = nil
+	m.appendscopes = nil
+	m.clearedFields[role.FieldScopes] = struct{}{}
+}
+
+// ScopesCleared returns if the "scopes" field was cleared in this mutation.
+func (m *RoleMutation) ScopesCleared() bool {
+	_, ok := m.clearedFields[role.FieldScopes]
+	return ok
+}
+
 // ResetScopes resets all changes to the "scopes" field.
 func (m *RoleMutation) ResetScopes() {
 	m.scopes = nil
 	m.appendscopes = nil
+	delete(m.clearedFields, role.FieldScopes)
 }
 
 // AddUserIDs adds the "users" edge to the User entity by ids.
@@ -5125,7 +5139,11 @@ func (m *RoleMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *RoleMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(role.FieldScopes) {
+		fields = append(fields, role.FieldScopes)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -5138,6 +5156,11 @@ func (m *RoleMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *RoleMutation) ClearField(name string) error {
+	switch name {
+	case role.FieldScopes:
+		m.ClearScopes()
+		return nil
+	}
 	return fmt.Errorf("unknown Role nullable field %s", name)
 }
 

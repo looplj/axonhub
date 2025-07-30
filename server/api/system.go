@@ -48,7 +48,7 @@ func (h *SystemHandlers) GetSystemStatus(c *gin.Context) {
 	isInitialized, err := h.SystemService.IsInitialized(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
-			Message: "Failed to check system status",
+			Error: "Failed to check system status",
 		})
 		return
 	}

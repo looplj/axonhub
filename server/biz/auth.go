@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/privacy"
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/fx"
 	"golang.org/x/crypto/bcrypt"
@@ -48,9 +49,18 @@ func VerifyPassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
+// GenerateSecretKey generates a random secret key for JWT
+func GenerateSecretKey() (string, error) {
+	bytes := make([]byte, 32) // 256 bits
+	if _, err := rand.Read(bytes); err != nil {
+		return "", fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
 // GenerateJWTToken generates a JWT token for a user
 func (s *AuthService) GenerateJWTToken(ctx context.Context, user *ent.User) (string, error) {
-	// Get JWT secret from system
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	secretKey, err := s.SystemService.GetSecretKey(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get secret key: %w", err)
@@ -71,7 +81,7 @@ func (s *AuthService) GenerateJWTToken(ctx context.Context, user *ent.User) (str
 
 // AuthenticateUser authenticates a user with email and password
 func (s *AuthService) AuthenticateUser(ctx context.Context, email, password string) (*ent.User, error) {
-	// Find user by email
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	user, err := s.Ent.User.Query().
 		Where(user.EmailEQ(email)).
 		Only(ctx)
@@ -90,7 +100,7 @@ func (s *AuthService) AuthenticateUser(ctx context.Context, email, password stri
 
 // ValidateJWTToken validates a JWT token and returns the user
 func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) (*ent.User, error) {
-	// Get JWT secret from system
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	secretKey, err := s.SystemService.GetSecretKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret key: %w", err)
@@ -122,13 +132,4 @@ func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) 
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	return user, nil
-}
-
-// GenerateSecretKey generates a random secret key for JWT
-func (s *AuthService) GenerateSecretKey() (string, error) {
-	bytes := make([]byte, 32) // 256 bits
-	if _, err := rand.Read(bytes); err != nil {
-		return "", fmt.Errorf("failed to generate random bytes: %w", err)
-	}
-	return hex.EncodeToString(bytes), nil
 }

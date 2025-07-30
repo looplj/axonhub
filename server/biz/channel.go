@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 
+	"entgo.io/ent/privacy"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 
@@ -53,6 +54,7 @@ func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {
 }
 
 func (svc *ChannelService) loadChannels(ctx context.Context) error {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	entities, err := svc.Ent.Channel.Query().All(ctx)
 	if err != nil {
 		return err

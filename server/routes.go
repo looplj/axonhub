@@ -30,6 +30,7 @@ func SetupRoutes(server *Server, handlers Handlers, deps Dependencies) {
 		// 用户登录 API - 不需要认证
 		unAuthGroup.POST("/auth/signin", handlers.Auth.SignIn)
 	}
+
 	adminCorsConfig := cors.DefaultConfig()
 	adminCorsConfig.AllowAllOrigins = true
 	adminCorsConfig.AddAllowHeaders("Authorization")
@@ -43,8 +44,8 @@ func SetupRoutes(server *Server, handlers Handlers, deps Dependencies) {
 		adminGroup.GET("/playground", func(c *gin.Context) {
 			handlers.Graphql.Playground.ServeHTTP(c.Writer, c.Request)
 		})
-		adminGroup.POST("/graphql", func(ctx *gin.Context) {
-			handlers.Graphql.Graphql.ServeHTTP(ctx.Writer, ctx.Request)
+		adminGroup.POST("/graphql", func(c *gin.Context) {
+			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
 		})
 		// OpenAI 兼容 API for admin playground
 		adminGroup.POST("/v1/chat", handlers.AiSDK.ChatCompletion)

@@ -3,12 +3,14 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/privacy"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/looplj/axonhub/ent/schema/schematype"
 	"github.com/looplj/axonhub/objects"
+	"github.com/looplj/axonhub/scopes"
 )
 
 type Request struct {
@@ -59,5 +61,21 @@ func (Request) Annotations() []schema.Annotation {
 		entgql.QueryField(),
 		entgql.RelayConnection(),
 		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
+	}
+}
+
+// Policy 定义 Request 的权限策略
+func (Request) Policy() ent.Policy {
+	return privacy.Policy{
+		Query: privacy.QueryPolicy{
+			scopes.OwnerRule(),                          // owner 用户可以访问所有请求
+			scopes.UserOwnedQueryRule(),                 // 用户只能查看自己的请求
+			scopes.ReadScopeRule(scopes.ScopeReadRequests), // 需要 requests 读取权限
+		},
+		Mutation: privacy.MutationPolicy{
+			scopes.OwnerRule(),                           // owner 用户可以修改所有请求
+			scopes.UserOwnedMutationRule(),               // 用户只能修改自己的请求
+			scopes.WriteScopeRule(scopes.ScopeWriteRequests), // 需要 requests 写入权限
+		},
 	}
 }

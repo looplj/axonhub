@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
@@ -328,6 +329,12 @@ func (jq *JobQuery) prepareQuery(ctx context.Context) error {
 			return err
 		}
 		jq.sql = prev
+	}
+	if job.Policy == nil {
+		return errors.New("ent: uninitialized job.Policy (forgotten import ent/runtime?)")
+	}
+	if err := job.Policy.EvalQuery(ctx, jq); err != nil {
+		return err
 	}
 	return nil
 }

@@ -55,6 +55,20 @@ func (su *SystemUpdate) AddDeletedAt(i int) *SystemUpdate {
 	return su
 }
 
+// SetKey sets the "key" field.
+func (su *SystemUpdate) SetKey(s string) *SystemUpdate {
+	su.mutation.SetKey(s)
+	return su
+}
+
+// SetNillableKey sets the "key" field if the given value is not nil.
+func (su *SystemUpdate) SetNillableKey(s *string) *SystemUpdate {
+	if s != nil {
+		su.SetKey(*s)
+	}
+	return su
+}
+
 // SetValue sets the "value" field.
 func (su *SystemUpdate) SetValue(s string) *SystemUpdate {
 	su.mutation.SetValue(s)
@@ -134,6 +148,9 @@ func (su *SystemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := su.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(system.FieldDeletedAt, field.TypeInt, value)
 	}
+	if value, ok := su.mutation.Key(); ok {
+		_spec.SetField(system.FieldKey, field.TypeString, value)
+	}
 	if value, ok := su.mutation.Value(); ok {
 		_spec.SetField(system.FieldValue, field.TypeString, value)
 	}
@@ -181,6 +198,20 @@ func (suo *SystemUpdateOne) SetNillableDeletedAt(i *int) *SystemUpdateOne {
 // AddDeletedAt adds i to the "deleted_at" field.
 func (suo *SystemUpdateOne) AddDeletedAt(i int) *SystemUpdateOne {
 	suo.mutation.AddDeletedAt(i)
+	return suo
+}
+
+// SetKey sets the "key" field.
+func (suo *SystemUpdateOne) SetKey(s string) *SystemUpdateOne {
+	suo.mutation.SetKey(s)
+	return suo
+}
+
+// SetNillableKey sets the "key" field if the given value is not nil.
+func (suo *SystemUpdateOne) SetNillableKey(s *string) *SystemUpdateOne {
+	if s != nil {
+		suo.SetKey(*s)
+	}
 	return suo
 }
 
@@ -292,6 +323,9 @@ func (suo *SystemUpdateOne) sqlSave(ctx context.Context) (_node *System, err err
 	}
 	if value, ok := suo.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(system.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := suo.mutation.Key(); ok {
+		_spec.SetField(system.FieldKey, field.TypeString, value)
 	}
 	if value, ok := suo.mutation.Value(); ok {
 		_spec.SetField(system.FieldValue, field.TypeString, value)

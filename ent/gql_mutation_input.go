@@ -274,6 +274,7 @@ type CreateRoleInput struct {
 	Code      string
 	Name      string
 	Scopes    []string
+	UserIDs   []int
 }
 
 // Mutate applies the CreateRoleInput on the RoleMutation builder.
@@ -292,6 +293,9 @@ func (i *CreateRoleInput) Mutate(m *RoleMutation) {
 	if v := i.Scopes; v != nil {
 		m.SetScopes(v)
 	}
+	if v := i.UserIDs; len(v) > 0 {
+		m.AddUserIDs(v...)
+	}
 }
 
 // SetInput applies the change-set in the CreateRoleInput on the RoleCreate builder.
@@ -302,11 +306,15 @@ func (c *RoleCreate) SetInput(i CreateRoleInput) *RoleCreate {
 
 // UpdateRoleInput represents a mutation input for updating roles.
 type UpdateRoleInput struct {
-	UpdatedAt    *time.Time
-	DeletedAt    *int
-	Name         *string
-	Scopes       []string
-	AppendScopes []string
+	UpdatedAt     *time.Time
+	DeletedAt     *int
+	Name          *string
+	ClearScopes   bool
+	Scopes        []string
+	AppendScopes  []string
+	ClearUsers    bool
+	AddUserIDs    []int
+	RemoveUserIDs []int
 }
 
 // Mutate applies the UpdateRoleInput on the RoleMutation builder.
@@ -320,11 +328,23 @@ func (i *UpdateRoleInput) Mutate(m *RoleMutation) {
 	if v := i.Name; v != nil {
 		m.SetName(*v)
 	}
+	if i.ClearScopes {
+		m.ClearScopes()
+	}
 	if v := i.Scopes; v != nil {
 		m.SetScopes(v)
 	}
 	if i.AppendScopes != nil {
 		m.AppendScopes(i.Scopes)
+	}
+	if i.ClearUsers {
+		m.ClearUsers()
+	}
+	if v := i.AddUserIDs; len(v) > 0 {
+		m.AddUserIDs(v...)
+	}
+	if v := i.RemoveUserIDs; len(v) > 0 {
+		m.RemoveUserIDs(v...)
 	}
 }
 
@@ -374,6 +394,7 @@ func (c *SystemCreate) SetInput(i CreateSystemInput) *SystemCreate {
 type UpdateSystemInput struct {
 	UpdatedAt *time.Time
 	DeletedAt *int
+	Key       *string
 	Value     *string
 }
 
@@ -384,6 +405,9 @@ func (i *UpdateSystemInput) Mutate(m *SystemMutation) {
 	}
 	if v := i.DeletedAt; v != nil {
 		m.SetDeletedAt(*v)
+	}
+	if v := i.Key; v != nil {
+		m.SetKey(*v)
 	}
 	if v := i.Value; v != nil {
 		m.SetValue(*v)

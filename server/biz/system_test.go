@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"entgo.io/ent/privacy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -32,6 +33,7 @@ func TestSystemService_Initialize(t *testing.T) {
 	assert.True(t, isInitialized)
 
 	// Verify secret key is set
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	secretKey, err := service.GetSecretKey(ctx)
 	require.NoError(t, err)
 	assert.NotEmpty(t, secretKey)
@@ -60,6 +62,7 @@ func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 	ctx := context.Background()
 
 	// Getting secret key before initialization should return error
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	_, err := service.GetSecretKey(ctx)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "secret key not found")

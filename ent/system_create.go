@@ -280,6 +280,18 @@ func (u *SystemUpsert) AddDeletedAt(v int) *SystemUpsert {
 	return u
 }
 
+// SetKey sets the "key" field.
+func (u *SystemUpsert) SetKey(v string) *SystemUpsert {
+	u.Set(system.FieldKey, v)
+	return u
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *SystemUpsert) UpdateKey() *SystemUpsert {
+	u.SetExcluded(system.FieldKey)
+	return u
+}
+
 // SetValue sets the "value" field.
 func (u *SystemUpsert) SetValue(v string) *SystemUpsert {
 	u.Set(system.FieldValue, v)
@@ -305,9 +317,6 @@ func (u *SystemUpsertOne) UpdateNewValues() *SystemUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(system.FieldCreatedAt)
-		}
-		if _, exists := u.create.mutation.Key(); exists {
-			s.SetIgnore(system.FieldKey)
 		}
 	}))
 	return u
@@ -372,6 +381,20 @@ func (u *SystemUpsertOne) AddDeletedAt(v int) *SystemUpsertOne {
 func (u *SystemUpsertOne) UpdateDeletedAt() *SystemUpsertOne {
 	return u.Update(func(s *SystemUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetKey sets the "key" field.
+func (u *SystemUpsertOne) SetKey(v string) *SystemUpsertOne {
+	return u.Update(func(s *SystemUpsert) {
+		s.SetKey(v)
+	})
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *SystemUpsertOne) UpdateKey() *SystemUpsertOne {
+	return u.Update(func(s *SystemUpsert) {
+		s.UpdateKey()
 	})
 }
 
@@ -568,9 +591,6 @@ func (u *SystemUpsertBulk) UpdateNewValues() *SystemUpsertBulk {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(system.FieldCreatedAt)
 			}
-			if _, exists := b.mutation.Key(); exists {
-				s.SetIgnore(system.FieldKey)
-			}
 		}
 	}))
 	return u
@@ -635,6 +655,20 @@ func (u *SystemUpsertBulk) AddDeletedAt(v int) *SystemUpsertBulk {
 func (u *SystemUpsertBulk) UpdateDeletedAt() *SystemUpsertBulk {
 	return u.Update(func(s *SystemUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetKey sets the "key" field.
+func (u *SystemUpsertBulk) SetKey(v string) *SystemUpsertBulk {
+	return u.Update(func(s *SystemUpsert) {
+		s.SetKey(v)
+	})
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *SystemUpsertBulk) UpdateKey() *SystemUpsertBulk {
+	return u.Update(func(s *SystemUpsert) {
+		s.UpdateKey()
 	})
 }
 

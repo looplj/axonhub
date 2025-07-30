@@ -83,6 +83,12 @@ func (ru *RoleUpdate) AppendScopes(s []string) *RoleUpdate {
 	return ru
 }
 
+// ClearScopes clears the value of the "scopes" field.
+func (ru *RoleUpdate) ClearScopes() *RoleUpdate {
+	ru.mutation.ClearScopes()
+	return ru
+}
+
 // AddUserIDs adds the "users" edge to the User entity by IDs.
 func (ru *RoleUpdate) AddUserIDs(ids ...int) *RoleUpdate {
 	ru.mutation.AddUserIDs(ids...)
@@ -194,6 +200,9 @@ func (ru *RoleUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, role.FieldScopes, value)
 		})
+	}
+	if ru.mutation.ScopesCleared() {
+		_spec.ClearField(role.FieldScopes, field.TypeJSON)
 	}
 	if ru.mutation.UsersCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -310,6 +319,12 @@ func (ruo *RoleUpdateOne) SetScopes(s []string) *RoleUpdateOne {
 // AppendScopes appends s to the "scopes" field.
 func (ruo *RoleUpdateOne) AppendScopes(s []string) *RoleUpdateOne {
 	ruo.mutation.AppendScopes(s)
+	return ruo
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (ruo *RoleUpdateOne) ClearScopes() *RoleUpdateOne {
+	ruo.mutation.ClearScopes()
 	return ruo
 }
 
@@ -454,6 +469,9 @@ func (ruo *RoleUpdateOne) sqlSave(ctx context.Context) (_node *Role, err error) 
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, role.FieldScopes, value)
 		})
+	}
+	if ruo.mutation.ScopesCleared() {
+		_spec.ClearField(role.FieldScopes, field.TypeJSON)
 	}
 	if ruo.mutation.UsersCleared() {
 		edge := &sqlgraph.EdgeSpec{

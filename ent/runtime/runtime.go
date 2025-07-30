@@ -3,10 +3,12 @@
 package runtime
 
 import (
+	"context"
 	"time"
 
 	"github.com/looplj/axonhub/ent/apikey"
 	"github.com/looplj/axonhub/ent/channel"
+	"github.com/looplj/axonhub/ent/job"
 	"github.com/looplj/axonhub/ent/request"
 	"github.com/looplj/axonhub/ent/requestexecution"
 	"github.com/looplj/axonhub/ent/role"
@@ -14,6 +16,9 @@ import (
 	"github.com/looplj/axonhub/ent/system"
 	"github.com/looplj/axonhub/ent/user"
 	"github.com/looplj/axonhub/objects"
+
+	"entgo.io/ent"
+	"entgo.io/ent/privacy"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -21,8 +26,18 @@ import (
 // to their package variables.
 func init() {
 	apikeyMixin := schema.APIKey{}.Mixin()
+	apikey.Policy = privacy.NewPolicies(schema.APIKey{})
+	apikey.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := apikey.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	apikeyMixinHooks1 := apikeyMixin[1].Hooks()
-	apikey.Hooks[0] = apikeyMixinHooks1[0]
+
+	apikey.Hooks[1] = apikeyMixinHooks1[0]
 	apikeyMixinInters1 := apikeyMixin[1].Interceptors()
 	apikey.Interceptors[0] = apikeyMixinInters1[0]
 	apikeyMixinFields0 := apikeyMixin[0].Fields()
@@ -46,8 +61,18 @@ func init() {
 	// apikey.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	apikey.DefaultDeletedAt = apikeyDescDeletedAt.Default.(int)
 	channelMixin := schema.Channel{}.Mixin()
+	channel.Policy = privacy.NewPolicies(schema.Channel{})
+	channel.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := channel.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	channelMixinHooks1 := channelMixin[1].Hooks()
-	channel.Hooks[0] = channelMixinHooks1[0]
+
+	channel.Hooks[1] = channelMixinHooks1[0]
 	channelMixinInters1 := channelMixin[1].Interceptors()
 	channel.Interceptors[0] = channelMixinInters1[0]
 	channelMixinFields0 := channelMixin[0].Fields()
@@ -78,9 +103,28 @@ func init() {
 	channelDescSettings := channelFields[6].Descriptor()
 	// channel.DefaultSettings holds the default value on creation for the settings field.
 	channel.DefaultSettings = channelDescSettings.Default.(*objects.ChannelSettings)
+	job.Policy = privacy.NewPolicies(schema.Job{})
+	job.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := job.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	requestMixin := schema.Request{}.Mixin()
+	request.Policy = privacy.NewPolicies(schema.Request{})
+	request.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := request.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	requestMixinHooks1 := requestMixin[1].Hooks()
-	request.Hooks[0] = requestMixinHooks1[0]
+
+	request.Hooks[1] = requestMixinHooks1[0]
 	requestMixinInters1 := requestMixin[1].Interceptors()
 	request.Interceptors[0] = requestMixinInters1[0]
 	requestMixinFields0 := requestMixin[0].Fields()
@@ -119,8 +163,18 @@ func init() {
 	// requestexecution.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	requestexecution.UpdateDefaultUpdatedAt = requestexecutionDescUpdatedAt.UpdateDefault.(func() time.Time)
 	roleMixin := schema.Role{}.Mixin()
+	role.Policy = privacy.NewPolicies(schema.Role{})
+	role.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := role.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	roleMixinHooks1 := roleMixin[1].Hooks()
-	role.Hooks[0] = roleMixinHooks1[0]
+
+	role.Hooks[1] = roleMixinHooks1[0]
 	roleMixinInters1 := roleMixin[1].Interceptors()
 	role.Interceptors[0] = roleMixinInters1[0]
 	roleMixinFields0 := roleMixin[0].Fields()
@@ -143,9 +197,23 @@ func init() {
 	roleDescDeletedAt := roleMixinFields1[0].Descriptor()
 	// role.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	role.DefaultDeletedAt = roleDescDeletedAt.Default.(int)
+	// roleDescScopes is the schema descriptor for scopes field.
+	roleDescScopes := roleFields[2].Descriptor()
+	// role.DefaultScopes holds the default value on creation for the scopes field.
+	role.DefaultScopes = roleDescScopes.Default.([]string)
 	systemMixin := schema.System{}.Mixin()
+	system.Policy = privacy.NewPolicies(schema.System{})
+	system.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := system.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	systemMixinHooks1 := systemMixin[1].Hooks()
-	system.Hooks[0] = systemMixinHooks1[0]
+
+	system.Hooks[1] = systemMixinHooks1[0]
 	systemMixinInters1 := systemMixin[1].Interceptors()
 	system.Interceptors[0] = systemMixinInters1[0]
 	systemMixinFields0 := systemMixin[0].Fields()
@@ -169,8 +237,18 @@ func init() {
 	// system.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	system.DefaultDeletedAt = systemDescDeletedAt.Default.(int)
 	userMixin := schema.User{}.Mixin()
+	user.Policy = privacy.NewPolicies(schema.User{})
+	user.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := user.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	userMixinHooks1 := userMixin[1].Hooks()
-	user.Hooks[0] = userMixinHooks1[0]
+
+	user.Hooks[1] = userMixinHooks1[0]
 	userMixinInters1 := userMixin[1].Interceptors()
 	user.Interceptors[0] = userMixinInters1[0]
 	userMixinFields0 := userMixin[0].Fields()

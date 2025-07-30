@@ -58,16 +58,6 @@ func WithAPIKeyConfig(client *ent.Client, config *APIKeyConfig) gin.HandlerFunc 
 
 func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 从请求头中获取 JWT token
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Missing Authorization header",
-			})
-			c.Abort()
-			return
-		}
-
 		token, err := ExtractAPIKeyFromRequest(c.Request, &APIKeyConfig{
 			Headers:       []string{"Authorization"},
 			RequireBearer: true,

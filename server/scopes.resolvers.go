@@ -7,16 +7,16 @@ package server
 import (
 	"context"
 
-	"github.com/looplj/axonhub/server/biz"
+	"github.com/looplj/axonhub/scopes"
 )
 
 // AllScopes returns all available scopes with descriptions
 func (r *queryResolver) AllScopes(ctx context.Context) ([]*ScopeInfo, error) {
-	scopes := biz.AllScopes()
-	descriptions := biz.ScopeDescriptions()
+	allScopes := scopes.AllScopes()
+	descriptions := scopes.ScopeDescriptions()
 
-	result := make([]*ScopeInfo, len(scopes))
-	for i, scope := range scopes {
+	result := make([]*ScopeInfo, len(allScopes))
+	for i, scope := range allScopes {
 		result[i] = &ScopeInfo{
 			Scope:       string(scope),
 			Description: descriptions[scope],

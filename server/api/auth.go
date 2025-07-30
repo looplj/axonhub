@@ -42,7 +42,7 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 	var req SignInRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
-			Message: "Invalid request format",
+			Error: "Invalid request format",
 		})
 		return
 	}
@@ -51,7 +51,7 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 	user, err := h.AuthService.AuthenticateUser(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, objects.ErrorResponse{
-			Message: "Invalid email or password",
+			Error: "Invalid email or password",
 		})
 		return
 	}
@@ -60,7 +60,7 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 	token, err := h.AuthService.GenerateJWTToken(c.Request.Context(), user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
-			Message: "Failed to generate token",
+			Error: "Failed to generate token",
 		})
 		return
 	}

@@ -709,7 +709,8 @@ func (c *JobClient) GetX(ctx context.Context, id int) *Job {
 
 // Hooks returns the client hooks.
 func (c *JobClient) Hooks() []Hook {
-	return c.hooks.Job
+	hooks := c.hooks.Job
+	return append(hooks[:len(hooks):len(hooks)], job.Hooks[:]...)
 }
 
 // Interceptors returns the client interceptors.

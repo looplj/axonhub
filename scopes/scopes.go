@@ -1,4 +1,4 @@
-package biz
+package scopes
 
 // Scope represents a permission scope
 type Scope string

@@ -5,6 +5,7 @@ package ent
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"math"
 
@@ -402,6 +403,12 @@ func (akq *APIKeyQuery) prepareQuery(ctx context.Context) error {
 			return err
 		}
 		akq.sql = prev
+	}
+	if apikey.Policy == nil {
+		return errors.New("ent: uninitialized apikey.Policy (forgotten import ent/runtime?)")
+	}
+	if err := apikey.Policy.EvalQuery(ctx, akq); err != nil {
+		return err
 	}
 	return nil
 }

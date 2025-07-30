@@ -3,11 +3,13 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/privacy"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/looplj/axonhub/ent/schema/schematype"
+	"github.com/looplj/axonhub/scopes"
 )
 
 type APIKey struct {
@@ -59,5 +61,21 @@ func (APIKey) Annotations() []schema.Annotation {
 		entgql.QueryField(),
 		entgql.RelayConnection(),
 		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
+	}
+}
+
+// Policy 定义 APIKey 的权限策略
+func (APIKey) Policy() ent.Policy {
+	return privacy.Policy{
+		Query: privacy.QueryPolicy{
+			scopes.OwnerRule(),                        // owner 用户可以访问所有 API Keys
+			scopes.UserOwnedQueryRule(),               // 用户只能查看自己的 API Keys
+			scopes.ReadScopeRule(scopes.ScopeReadAPIKeys), // 需要 API Keys 读取权限
+		},
+		Mutation: privacy.MutationPolicy{
+			scopes.OwnerRule(),                         // owner 用户可以修改所有 API Keys
+			scopes.UserOwnedMutationRule(),             // 用户只能修改自己的 API Keys
+			scopes.WriteScopeRule(scopes.ScopeWriteAPIKeys), // 需要 API Keys 写入权限
+		},
 	}
 }

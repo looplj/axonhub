@@ -5,6 +5,7 @@ package ent
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"math"
 
@@ -366,6 +367,12 @@ func (rq *RoleQuery) prepareQuery(ctx context.Context) error {
 			return err
 		}
 		rq.sql = prev
+	}
+	if role.Policy == nil {
+		return errors.New("ent: uninitialized role.Policy (forgotten import ent/runtime?)")
+	}
+	if err := role.Policy.EvalQuery(ctx, rq); err != nil {
+		return err
 	}
 	return nil
 }

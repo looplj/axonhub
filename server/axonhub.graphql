@@ -16,14 +16,6 @@ input ChannelSettingsInput {
   modelMappings: [ModelMappingInput!]
 }
 
-# extend input CreateChannelInput {
-#   settings: ChannelSettingsInput @goField(omittable: true)
-# }
-
-# extend input UpdateChannelInput{
-#   settings: ChannelSettingsInput @goField(omittable: true)
-# }
-
 scalar JSONRawMessage
 scalar JSONRawMessageInput
 

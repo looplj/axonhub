@@ -3,9 +3,11 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/privacy"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/ent/schema/schematype"
+	"github.com/looplj/axonhub/scopes"
 )
 
 // System holds the schema definition for the System entity.
@@ -20,14 +22,10 @@ func (System) Mixin() []ent.Mixin {
 	}
 }
 
-func (System) Indexes() []ent.Index {
-	return []ent.Index{}
-}
-
 // Fields of the System.
 func (System) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("key").Unique().Immutable(),
+		field.String("key").Unique(),
 		field.String("value"),
 	}
 }
@@ -42,5 +40,19 @@ func (System) Annotations() []schema.Annotation {
 		entgql.QueryField(),
 		entgql.RelayConnection(),
 		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
+	}
+}
+
+// Policy 定义 System 的权限策略
+func (System) Policy() ent.Policy {
+	return privacy.Policy{
+		Query: privacy.QueryPolicy{
+			scopes.OwnerRule(),                            // owner 用户可以访问所有系统设置
+			scopes.ReadScopeRule(scopes.ScopeReadSettings), // 需要 settings 读取权限
+		},
+		Mutation: privacy.MutationPolicy{
+			scopes.OwnerRule(),                             // owner 用户可以修改所有系统设置
+			scopes.WriteScopeRule(scopes.ScopeWriteSettings), // 需要 settings 写入权限
+		},
 	}
 }

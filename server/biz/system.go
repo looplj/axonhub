@@ -2,11 +2,10 @@ package biz
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"strings"
 
+	"entgo.io/ent/privacy"
 	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/ent/system"
 	"github.com/looplj/axonhub/log"
@@ -37,6 +36,7 @@ type SystemService struct {
 }
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	sys, err := s.Ent.System.Query().Where(system.KeyEQ(SystemKeyInitialized)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -54,6 +54,7 @@ type InitializeSystemArgs struct {
 
 // Initialize initializes the system with a secret key and sets the initialized flag
 func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemArgs) error {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	// Check if system is already initialized
 	isInitialized, err := s.IsInitialized(ctx)
 	if err != nil {
@@ -64,7 +65,7 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 		return nil
 	}
 
-	secretKey, err := s.generateSecretKey()
+	secretKey, err := GenerateSecretKey()
 	if err != nil {
 		return fmt.Errorf("failed to generate secret key: %w", err)
 	}
@@ -136,15 +137,6 @@ func (s *SystemService) GetSecretKey(ctx context.Context) (string, error) {
 // SetSecretKey sets a new JWT secret key
 func (s *SystemService) SetSecretKey(ctx context.Context, secretKey string) error {
 	return s.setSystemValue(ctx, s.Ent.System, SystemKeySecretKey, secretKey)
-}
-
-// generateSecretKey generates a random secret key for JWT
-func (s *SystemService) generateSecretKey() (string, error) {
-	bytes := make([]byte, 32) // 256 bits
-	if _, err := rand.Read(bytes); err != nil {
-		return "", fmt.Errorf("failed to generate random bytes: %w", err)
-	}
-	return hex.EncodeToString(bytes), nil
 }
 
 // setSystemValue sets or updates a system key-value pair
