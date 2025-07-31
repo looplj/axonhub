@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
-import { SearchProvider } from '@/context/search-context';
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { columns } from './components/apikeys-columns'
@@ -66,30 +65,28 @@ function ApiKeysContent() {
 
 export default function ApiKeysManagement() {
   return (
-    <SearchProvider>
-      <ApiKeysProvider>
-        <Header fixed>
-          <Search />
-          <div className='ml-auto flex items-center space-x-4'>
-            <ThemeSwitch />
-            <ProfileDropdown />
-          </div>
-        </Header>
+    <ApiKeysProvider>
+      <Header fixed>
+        <Search />
+        <div className='ml-auto flex items-center space-x-4'>
+          <ThemeSwitch />
+          <ProfileDropdown />
+        </div>
+      </Header>
 
-        <Main>
-          <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
-            <div>
-              <h2 className='text-2xl font-bold tracking-tight'>API 密钥管理</h2>
-              <p className='text-muted-foreground'>
-                管理系统 API 密钥和访问权限。
-              </p>
-            </div>
-            <ApiKeysPrimaryButtons />
+      <Main>
+        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+          <div>
+            <h2 className='text-2xl font-bold tracking-tight'>API 密钥管理</h2>
+            <p className='text-muted-foreground'>
+              管理系统 API 密钥和访问权限。
+            </p>
           </div>
-          <ApiKeysContent />
-        </Main>
-        <ApiKeysDialogs />
-      </ApiKeysProvider>
-    </SearchProvider>
+          <ApiKeysPrimaryButtons />
+        </div>
+        <ApiKeysContent />
+      </Main>
+      <ApiKeysDialogs />
+    </ApiKeysProvider>
   )
 }

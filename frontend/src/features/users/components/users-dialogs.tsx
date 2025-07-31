@@ -2,6 +2,7 @@ import { useUsers } from '../context/users-context'
 import { UsersActionDialog } from './users-action-dialog'
 import { UsersDeleteDialog } from './users-delete-dialog'
 import { UsersInviteDialog } from './users-invite-dialog'
+import { UsersChangePasswordDialog } from './users-change-password-dialog'
 
 export function UsersDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = useUsers()
@@ -26,6 +27,18 @@ export function UsersDialogs() {
             open={open === 'edit'}
             onOpenChange={() => {
               setOpen('edit')
+              setTimeout(() => {
+                setCurrentRow(null)
+              }, 500)
+            }}
+            currentRow={currentRow}
+          />
+
+          <UsersChangePasswordDialog
+            key={`user-change-password-${currentRow.id}`}
+            open={open === 'changePassword'}
+            onOpenChange={() => {
+              setOpen('changePassword')
               setTimeout(() => {
                 setCurrentRow(null)
               }, 500)

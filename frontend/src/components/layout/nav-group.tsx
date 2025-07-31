@@ -59,6 +59,23 @@ const NavBadge = ({ children }: { children: ReactNode }) => (
 
 const SidebarMenuLink = ({ item, href }: { item: NavLink; href: string }) => {
   const { setOpenMobile } = useSidebar()
+  
+  if (item.isDisabled) {
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          disabled
+          tooltip={`${item.title} (无权限)`}
+          className="opacity-50 cursor-not-allowed"
+        >
+          {item.icon && <item.icon />}
+          <span>{item.title}</span>
+          {item.badge && <NavBadge>{item.badge}</NavBadge>}
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    )
+  }
+  
   return (
     <SidebarMenuItem>
       <SidebarMenuButton

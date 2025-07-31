@@ -16,6 +16,7 @@ interface BaseNavItem {
   title: string
   badge?: string
   icon?: React.ElementType
+  isDisabled?: boolean
 }
 
 type NavLink = BaseNavItem & {

@@ -84,6 +84,7 @@ func (s *AuthService) AuthenticateUser(ctx context.Context, email, password stri
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	user, err := s.Ent.User.Query().
 		Where(user.EmailEQ(email)).
+		WithRoles().
 		Only(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("invalid email or password")

@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { authApi, setTokenInStorage, removeTokenFromStorage } from '@/lib/api-client'
 import { useAuthStore } from '@/stores/authStore'
 import { toast } from 'sonner'
@@ -26,7 +27,9 @@ interface MeResponse {
 }
 
 export function useMe() {
-  return useQuery({
+  const { setUser } = useAuthStore((state) => state.auth)
+  
+  const query = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
       const data = await graphqlRequest<MeResponse>(ME_QUERY)
@@ -35,6 +38,25 @@ export function useMe() {
     enabled: !!useAuthStore.getState().auth.accessToken,
     retry: false,
   })
+
+  // Update auth store when data changes
+  useEffect(() => {
+    if (query.data) {
+      setUser({
+        email: query.data.email,
+        firstName: query.data.firstName,
+        lastName: query.data.lastName,
+        isOwner: query.data.isOwner,
+        scopes: query.data.scopes,
+        roles: query.data.roles.map(role => ({
+          id: role.id,
+          name: role.name
+        }))
+      })
+    }
+  }, [query.data, setUser])
+
+  return query
 }
 
 export function useSignIn() {

@@ -1,5 +1,5 @@
 import React from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import {
   IconArrowRightDashed,
   IconChevronRight,
@@ -22,10 +22,17 @@ import { useSidebarData } from '../sidebar'
 import { ScrollArea } from './ui/scroll-area'
 
 export function CommandMenu() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const { setTheme } = useTheme()
   const { open, setOpen } = useSearch()
   const sidebarData = useSidebarData()
+
+  // Don't render if router is not available
+  if (!router) {
+    return null
+  }
+
+  const navigate = useNavigate()
 
   const runCommand = React.useCallback(
     (command: () => unknown) => {

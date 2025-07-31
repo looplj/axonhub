@@ -259,7 +259,6 @@ func (r *queryResolver) Me(ctx context.Context) (*UserInfo, error) {
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	// Load user roles
 	roles, err := user.QueryRoles().All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load user roles: %w", err)
@@ -274,12 +273,33 @@ func (r *queryResolver) Me(ctx context.Context) (*UserInfo, error) {
 		}
 	}
 
+	// Calculate all scopes (user scopes + role scopes)
+	allScopes := make(map[string]bool)
+
+	// Add user's direct scopes
+	for _, scope := range user.Scopes {
+		allScopes[scope] = true
+	}
+
+	// Add scopes from all roles
+	for _, role := range roles {
+		for _, scope := range role.Scopes {
+			allScopes[scope] = true
+		}
+	}
+
+	// Convert map to slice
+	scopesList := make([]string, 0, len(allScopes))
+	for scope := range allScopes {
+		scopesList = append(scopesList, scope)
+	}
+
 	return &UserInfo{
 		Email:     user.Email,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		IsOwner:   user.IsOwner,
-		Scopes:    user.Scopes,
+		Scopes:    scopesList,
 		Roles:     userRoles,
 	}, nil
 }

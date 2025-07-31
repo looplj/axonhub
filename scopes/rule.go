@@ -3,11 +3,15 @@ package scopes
 import (
 	"context"
 
+	"entgo.io/ent/dialect/sql"
+
 	"entgo.io/ent/privacy"
 	"github.com/looplj/axonhub/contexts"
 	"github.com/looplj/axonhub/ent"
 	"github.com/looplj/axonhub/ent/apikey"
 	"github.com/looplj/axonhub/ent/request"
+	"github.com/looplj/axonhub/ent/role"
+	"github.com/looplj/axonhub/ent/user"
 )
 
 // OwnerRule 允许 owner 用户访问所有功能
@@ -119,23 +123,28 @@ func WriteScopeRule(writeScope Scope) privacy.MutationRule {
 type userOwnedQueryRule struct{}
 
 func (r userOwnedQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
-	user, ok := contexts.GetUser(ctx)
-	if !ok || user == nil {
+	ctxUser, ok := contexts.GetUser(ctx)
+	if !ok || ctxUser == nil {
 		return privacy.Denyf("no user in context")
 	}
 
 	// owner 用户拥有所有权限
-	if user.IsOwner {
+	if ctxUser.IsOwner {
 		return privacy.Allow
 	}
 
 	// 对于查询，过滤只属于当前用户的资源
 	switch query := q.(type) {
 	case *ent.APIKeyQuery:
-		query.Where(apikey.UserID(user.ID))
+		query.Where(apikey.UserID(ctxUser.ID))
 		return privacy.Allow
 	case *ent.RequestQuery:
-		query.Where(request.UserID(user.ID))
+		query.Where(request.UserID(ctxUser.ID))
+		return privacy.Allow
+	case *ent.RoleQuery:
+		query.Where(role.HasUsersWith(func(s *sql.Selector) {
+			s.Where(sql.EQ(user.FieldID, ctxUser.ID))
+		}))
 		return privacy.Allow
 	}
 
@@ -208,7 +217,7 @@ func hasScope(userScopes []string, requiredScope string) bool {
 func hasRoleScope(ctx context.Context, user *ent.User, requiredScope Scope) bool {
 	// 这里需要查询用户的角色，但为了避免循环依赖，我们需要在调用时确保角色已经加载
 	// 或者使用一个专门的服务来处理这个逻辑
-	
+
 	// 如果用户的角色已经预加载，我们可以直接检查
 	if user.Edges.Roles != nil {
 		for _, role := range user.Edges.Roles {
@@ -217,7 +226,7 @@ func hasRoleScope(ctx context.Context, user *ent.User, requiredScope Scope) bool
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -228,12 +237,12 @@ func GetUserScopes(ctx context.Context, user *ent.User) []string {
 	}
 
 	scopeSet := make(map[string]bool)
-	
+
 	// 添加用户直接拥有的 scopes
 	for _, scope := range user.Scopes {
 		scopeSet[scope] = true
 	}
-	
+
 	// 添加角色的 scopes
 	if user.Edges.Roles != nil {
 		for _, role := range user.Edges.Roles {
@@ -242,13 +251,13 @@ func GetUserScopes(ctx context.Context, user *ent.User) []string {
 			}
 		}
 	}
-	
+
 	// 转换为切片
 	scopes := make([]string, 0, len(scopeSet))
 	for scope := range scopeSet {
 		scopes = append(scopes, scope)
 	}
-	
+
 	return scopes
 }
 
@@ -257,12 +266,12 @@ func HasScope(ctx context.Context, user *ent.User, requiredScope Scope) bool {
 	if user.IsOwner {
 		return true
 	}
-	
+
 	// 检查用户直接拥有的 scopes
 	if hasScope(user.Scopes, string(requiredScope)) {
 		return true
 	}
-	
+
 	// 检查用户角色的 scopes
 	return hasRoleScope(ctx, user, requiredScope)
 }

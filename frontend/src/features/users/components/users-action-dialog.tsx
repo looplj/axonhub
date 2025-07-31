@@ -31,13 +31,35 @@ import { ROLES_QUERY, ALL_SCOPES_QUERY } from "@/gql/roles";
 import { User, CreateUserInput, UpdateUserInput } from "../data/schema";
 import { useCreateUser, useUpdateUser } from "../data/users";
 
+// 统一的表单模式，包含所有字段
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
+  password: z.string().optional(),
+  confirmPassword: z.string().optional(),
   isOwner: z.boolean().optional(),
   roleIDs: z.array(z.string()).optional(),
   scopes: z.array(z.string()).optional(),
+}).superRefine((data, ctx) => {
+  // 只在创建用户且提供了密码时验证
+  if (data.password || data.confirmPassword) {
+    if (!data.password || data.password.length < 6) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Password must be at least 6 characters",
+        path: ["password"],
+      });
+    }
+    
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Passwords don't match",
+        path: ["confirmPassword"],
+      });
+    }
+  }
 });
 
 type UserForm = z.infer<typeof formSchema>;
@@ -69,6 +91,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
 
+  // 根据是否为编辑模式使用不同的表单配置
   const form = useForm<UserForm>({
     resolver: zodResolver(formSchema),
     defaultValues: isEdit
@@ -76,6 +99,8 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
           firstName: currentRow.firstName,
           lastName: currentRow.lastName,
           email: currentRow.email,
+          password: "",
+          confirmPassword: "",
           isOwner: currentRow.isOwner,
           roleIDs: currentRow.roles?.edges?.map(edge => edge.node.id) || [],
           scopes: currentRow.scopes || [],
@@ -84,6 +109,8 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
           firstName: "",
           lastName: "",
           email: "",
+          password: "",
+          confirmPassword: "",
           isOwner: false,
           roleIDs: [],
           scopes: [],
@@ -168,10 +195,13 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         });
         toast.success("User updated successfully");
       } else {
+        // 创建用户时，移除 confirmPassword 字段
         const createInput: CreateUserInput = {
           firstName: values.firstName,
           lastName: values.lastName,
           email: values.email,
+          password: values.password || "",
+          // 注意：不包含 confirmPassword
           isOwner: values.isOwner,
           scopes: values.scopes,
           roleIDs: values.roleIDs,
@@ -279,6 +309,46 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                   </FormItem>
                 )}
               />
+
+              {/* Password fields - only show when creating new user */}
+              {!isEdit && (
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="password" 
+                            placeholder="Enter password" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="password" 
+                            placeholder="Confirm password" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
 
               <FormField
                 control={form.control}

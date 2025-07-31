@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 const ACCESS_TOKEN = 'axonhub_access_token'
+const USER_INFO = 'axonhub_user_info'
 
 interface Role {
   id: string
@@ -53,14 +54,48 @@ const removeTokenFromStorage = (): void => {
   }
 }
 
+const getUserFromStorage = (): AuthUser | null => {
+  try {
+    const userStr = localStorage.getItem(USER_INFO)
+    return userStr ? JSON.parse(userStr) : null
+  } catch (error) {
+    console.warn('Failed to read user info from localStorage:', error)
+    return null
+  }
+}
+
+const setUserToStorage = (user: AuthUser | null): void => {
+  try {
+    if (user) {
+      localStorage.setItem(USER_INFO, JSON.stringify(user))
+    } else {
+      localStorage.removeItem(USER_INFO)
+    }
+  } catch (error) {
+    console.warn('Failed to save user info to localStorage:', error)
+  }
+}
+
+const removeUserFromStorage = (): void => {
+  try {
+    localStorage.removeItem(USER_INFO)
+  } catch (error) {
+    console.warn('Failed to remove user info from localStorage:', error)
+  }
+}
+
 export const useAuthStore = create<AuthState>()((set) => {
   const initToken = getTokenFromStorage()
+  const initUser = getUserFromStorage()
   
   return {
     auth: {
-      user: null,
+      user: initUser,
       setUser: (user) =>
-        set((state) => ({ ...state, auth: { ...state.auth, user } })),
+        set((state) => {
+          setUserToStorage(user)
+          return { ...state, auth: { ...state.auth, user } }
+        }),
       accessToken: initToken,
       setAccessToken: (accessToken) =>
         set((state) => {
@@ -75,6 +110,7 @@ export const useAuthStore = create<AuthState>()((set) => {
       reset: () =>
         set((state) => {
           removeTokenFromStorage()
+          removeUserFromStorage()
           return {
             ...state,
             auth: { ...state.auth, user: null, accessToken: '' },

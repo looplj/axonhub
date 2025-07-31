@@ -10,15 +10,18 @@ import {
   IconUsers,
   IconRobot,
   IconShield,
+  IconSettings,
 } from '@tabler/icons-react'
 import { Command } from 'lucide-react'
-import { type SidebarData } from './components/layout/types'
+import { type SidebarData, type NavGroup, type NavLink } from './components/layout/types'
 import { useAuthStore } from '@/stores/authStore'
 import { useMe } from '@/features/auth/data/auth'
+import { useRoutePermissions } from '@/hooks/useRoutePermissions'
 
 export function useSidebarData(): SidebarData {
   const { user: authUser } = useAuthStore((state) => state.auth)
   const { data: meData } = useMe()
+  const { filterNavGroups } = useRoutePermissions()
   
   // Use data from me query if available, otherwise fall back to auth store
   const user = meData || authUser
@@ -52,6 +55,88 @@ export function useSidebarData(): SidebarData {
     return 'User'
   }
 
+  // 原始导航组配置
+  const rawNavGroups: NavGroup[] = [
+    {
+      title: 'Admin',
+      items: [
+        {
+          title: 'Dashboard',
+          url: '/',
+          icon: IconLayoutDashboard,
+        } as NavLink,
+        {
+          title: 'Users',
+          url: '/users',
+          icon: IconUsers,
+        } as NavLink,
+        {
+          title: 'Roles',
+          url: '/roles',
+          icon: IconShield,
+        } as NavLink,
+        {
+          title: 'Channels',
+          url: '/channels',
+          icon: IconChecklist,
+        } as NavLink,
+        // {
+        //   title: 'Permission Demo',
+        //   url: '/permission-demo',
+        //   icon: IconSettings,
+        // } as NavLink,
+      ],
+    },
+    {
+      title: 'General',
+      items: [
+        {
+          title: 'Requests',
+          url: '/requests',
+          icon: IconBrowserCheck,
+        } as NavLink,
+        {
+          title: 'API Keys',
+          url: '/api-keys',
+          icon: IconPackages,
+        } as NavLink,
+        {
+          title: 'Playground',
+          url: '/playground',
+          icon: IconRobot,
+        } as NavLink,
+      ],
+    },
+    {
+      title: 'Settings',
+      items: [
+        {
+          title: 'Profile',
+          url: '/settings',
+          icon: IconUserCog,
+        } as NavLink,
+        {
+          title: 'Account',
+          url: '/settings/account',
+          icon: IconTool,
+        } as NavLink,
+        {
+          title: 'Appearance',
+          url: '/settings/appearance',
+          icon: IconPalette,
+        } as NavLink,
+        {
+          title: 'Notifications',
+          url: '/settings/notifications',
+          icon: IconNotification,
+        } as NavLink,
+      ],
+    },
+  ]
+
+  // 使用权限过滤导航组
+  const filteredNavGroups = filterNavGroups(rawNavGroups)
+
   return {
     user: {
       name: getDisplayName(user?.firstName, user?.lastName, user?.email),
@@ -65,113 +150,6 @@ export function useSidebarData(): SidebarData {
         plan: 'AI + Unified',
       },
     ],
-    navGroups: [
-      {
-        title: 'Admin',
-        items: [
-          {
-            title: 'Dashboard',
-            url: '/',
-            icon: IconLayoutDashboard,
-          },
-          {
-            title: 'Users',
-            url: '/users',
-            icon: IconUsers,
-          },
-          {
-            title: 'Roles',
-            url: '/roles',
-            icon: IconShield,
-          },
-          {
-            title: 'Channels',
-            url: '/channels',
-            icon: IconChecklist,
-          },
-        ],
-      },
-      {
-        title: 'General',
-        items: [
-          {
-            title: 'Requests',
-            url: '/requests',
-            icon: IconBrowserCheck,
-          },
-          {
-            title: 'API Keys',
-            url: '/api-keys',
-            icon: IconPackages,
-          },
-          {
-            title: 'Playground',
-            url: '/playground',
-            icon: IconRobot,
-          },
-          // {
-          //   title: 'Chats',
-          //   url: '/chats',
-          //   badge: '3',
-          //   icon: IconMessages,
-          // },
-          // {
-          //   title: 'Secured by Clerk',
-          //   icon: ClerkLogo,
-          //   items: [
-          //     {
-          //       title: 'Sign In',
-          //       url: '/clerk/sign-in',
-          //     },
-          //     {
-          //       title: 'Sign Up',
-          //       url: '/clerk/sign-up',
-          //     },
-          //     {
-          //       title: 'User Management',
-          //       url: '/clerk/user-management',
-          //     },
-          //   ],
-          // },
-        ],
-      },
-
-      {
-        title: 'Settings',
-        items: [
-          {
-            title: 'Profile',
-            url: '/settings',
-            icon: IconUserCog,
-          },
-          {
-            title: 'Account',
-            url: '/settings/account',
-            icon: IconTool,
-          },
-          {
-            title: 'Appearance',
-            url: '/settings/appearance',
-            icon: IconPalette,
-          },
-          {
-            title: 'Notifications',
-            url: '/settings/notifications',
-            icon: IconNotification,
-          },
-          // {
-          //   title: 'Display',
-          //   url: '/settings/display',
-          //   icon: IconBrowserCheck,
-          // },
-        ],
-      },
-
-      // {
-      //   title: 'Help Center',
-      //   url: '/help-center',
-      //   icon: IconHelp,
-      // },
-    ],
+    navGroups: filteredNavGroups,
   }
 }
