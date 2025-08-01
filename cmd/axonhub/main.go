@@ -6,12 +6,14 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/log"
-	"github.com/looplj/axonhub/server"
+	"github.com/looplj/axonhub/conf"
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server"
 )
 
 func main() {
 	server.Run(
+		fx.Provide(conf.Load),
 		fx.Supply(log.Config{
 			Name:        "AxonHub",
 			Debug:       true,

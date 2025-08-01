@@ -1,46 +1,25 @@
 package conf
 
 import (
-	"time"
-
 	"go.uber.org/fx"
+
+	"github.com/looplj/axonhub/internal/server"
 )
 
 type Config struct {
 	fx.Out
-	APIServer Server
-}
-
-type Server struct {
-	Port           int
-	Name           string
-	BasePath       string
-	RequestTimeout time.Duration
-	Debug          bool
-	CORS           CORS
-}
-
-type CORS struct {
-	Debug              bool
-	Enabled            bool
-	AllowedOrigins     []string
-	AllowedMethods     []string
-	AllowedHeaders     []string
-	ExposedHeaders     []string
-	AllowCredentials   bool
-	MaxAge             int
-	OptionsPassthrough bool
+	APIServer server.Config
 }
 
 func Load() Config {
 	return Config{
-		APIServer: Server{
+		APIServer: server.Config{
 			Port:           8090,
 			Name:           "AxonHub",
 			BasePath:       "",
 			RequestTimeout: 0,
 			Debug:          false,
-			CORS: CORS{
+			CORS: server.CORS{
 				Debug:   false,
 				Enabled: true,
 				AllowedOrigins: []string{

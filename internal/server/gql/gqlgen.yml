@@ -1,0 +1,83 @@
+# schema tells gqlgen where the GraphQL schema is located.
+schema:
+  - ent.graphql
+  - axonhub.graphql
+  - dashboard.graphql
+  - scopes.graphql
+
+#exec:
+#  layout: follow-schema
+#  dir: ./graph
+#  package: graph
+
+# resolver reports where the resolver implementations go.
+resolver:
+  layout: follow-schema
+  dir: .
+
+# gqlgen will search for any type names in the schema in these go packages
+# if they match it will use them, otherwise it will generate them.
+
+# autobind tells gqngen to search for any type names in the GraphQL schema in the
+# provided package. If they match it will use them, otherwise it will generate new.
+autobind:
+  - github.com/99designs/gqlgen/graphql/introspection
+  - github.com/looplj/axonhub/internal/ent
+  - github.com/looplj/axonhub/internal/ent/user
+  - github.com/looplj/axonhub/internal/ent/apikey
+  - github.com/looplj/axonhub/internal/ent/request
+  - github.com/looplj/axonhub/internal/ent/requestexecution
+  - github.com/looplj/axonhub/internal/ent/channel
+
+converters:
+  - from: "*github.com/looplj/axonhub/internal/objects.GUID"
+    to: "int"
+    with: "github.com/looplj/axonhub/internal/objects.ConvertGUIDPtrToInt"
+
+  - from: "github.com/looplj/axonhub/internal/objects.GUID"
+    to: "int"
+    with: "github.com/looplj/axonhub/internal/objects.ConvertGUIDPtrToInt"
+
+  - from: "github.com/looplj/axonhub/internal/objects.GUID"
+    to: "*int"
+    with: "github.com/looplj/axonhub/internal/objects.ConvertGUIDPtrToIntPtr"
+
+  - from: "*github.com/looplj/axonhub/internal/objects.GUID"
+    to: "*int"
+    with: "github.com/looplj/axonhub/internal/objects.ConvertGUIDPtrToIntPtr"
+
+  - from: "[]*github.com/looplj/axonhub/internal/objects.GUID"
+    to: "[]*int"
+    with: "github.com/looplj/axonhub/internal/objects.ConvertGUIDPtrsToIntPtrs"
+
+  - from: "[]*github.com/looplj/axonhub/internal/objects.GUID"
+    to: "[]int"
+    with: "github.com/looplj/axonhub/internal/objects.ConvertGUIDPtrsToInts"
+
+# This section declares type mapping between the GraphQL and Go type systems.
+models:
+  # Defines the ID field as Go 'int'.
+  ID:
+    model:
+      - github.com/looplj/axonhub/internal/objects.GUID
+  Node:
+    model:
+      - github.com/looplj/axonhub/internal/ent.Noder
+  ModelMapping:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelMapping
+  ModelMappingInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelMapping
+  ChannelSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelSettings
+  ChannelSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelSettings
+  JSONRawMessage:
+    model:
+      - github.com/looplj/axonhub/internal/objects.JSONRawMessage
+  JSONRawMessageInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.JSONRawMessage

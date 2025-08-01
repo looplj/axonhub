@@ -1,0 +1,255 @@
+package aisdk
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/samber/lo"
+	"github.com/looplj/axonhub/internal/llm"
+)
+
+// InboundTransformer implements the Inbound interface for AI SDK
+type InboundTransformer struct{}
+
+// NewInboundTransformer creates a new AI SDK inbound transformer
+func NewInboundTransformer() *InboundTransformer {
+	return &InboundTransformer{}
+}
+
+// AiSDKRequest represents the AI SDK request format
+type AiSDKRequest struct {
+	Messages []AiSDKMessage `json:"messages"`
+	Model    string         `json:"model,omitempty"`
+	Stream   *bool          `json:"stream,omitempty"`
+	Tools    []AiSDKTool    `json:"tools,omitempty"`
+}
+
+// AiSDKMessage represents a message in AI SDK format
+type AiSDKMessage struct {
+	Role    string      `json:"role"`
+	Content interface{} `json:"content"` // can be string or array of content parts
+	Name    *string     `json:"name,omitempty"`
+}
+
+// AiSDKTool represents a tool in AI SDK format
+type AiSDKTool struct {
+	Type     string            `json:"type"`
+	Function AiSDKToolFunction `json:"function"`
+}
+
+// AiSDKToolFunction represents a tool function in AI SDK format
+type AiSDKToolFunction struct {
+	Name        string      `json:"name"`
+	Description string      `json:"description,omitempty"`
+	Parameters  interface{} `json:"parameters,omitempty"`
+}
+
+// TransformRequest transforms AI SDK request to LLM request
+func (t *InboundTransformer) TransformRequest(ctx context.Context, req *llm.GenericHttpRequest) (*llm.ChatCompletionRequest, error) {
+	// Parse JSON body
+	var aiSDKReq AiSDKRequest
+	if err := json.Unmarshal(req.Body, &aiSDKReq); err != nil {
+		return nil, fmt.Errorf("failed to parse AI SDK request: %w", err)
+	}
+
+	// Convert to LLM request
+	llmReq := &llm.ChatCompletionRequest{
+		Model:    aiSDKReq.Model,
+		Messages: make([]llm.ChatCompletionMessage, len(aiSDKReq.Messages)),
+		Stream:   lo.ToPtr(true),
+	}
+
+	// Convert messages
+	for i, msg := range aiSDKReq.Messages {
+		llmMsg := llm.ChatCompletionMessage{
+			Role: msg.Role,
+			Name: msg.Name,
+		}
+
+		// Handle content - can be string or array
+		switch content := msg.Content.(type) {
+		case string:
+			llmMsg.Content = llm.ChatCompletionMessageContent{
+				Content: &content,
+			}
+		case []interface{}:
+			// Handle multi-part content
+			parts := make([]llm.ContentPart, len(content))
+			for j, part := range content {
+				if partMap, ok := part.(map[string]interface{}); ok {
+					contentPart := llm.ContentPart{}
+					if partType, exists := partMap["type"]; exists {
+						contentPart.Type = partType.(string)
+					}
+					if text, exists := partMap["text"]; exists {
+						textStr := text.(string)
+						contentPart.Text = &textStr
+					}
+					if imageURL, exists := partMap["image_url"]; exists {
+						if imageMap, ok := imageURL.(map[string]interface{}); ok {
+							contentPart.ImageURL = &llm.ImageURL{}
+							if url, exists := imageMap["url"]; exists {
+								contentPart.ImageURL.URL = url.(string)
+							}
+							if detail, exists := imageMap["detail"]; exists {
+								contentPart.ImageURL.Detail = detail.(string)
+							}
+						}
+					}
+					parts[j] = contentPart
+				}
+			}
+			llmMsg.Content = llm.ChatCompletionMessageContent{
+				MultipleContent: parts,
+			}
+		}
+
+		llmReq.Messages[i] = llmMsg
+	}
+
+	// Convert tools
+	if len(aiSDKReq.Tools) > 0 {
+		llmReq.Tools = make([]llm.Tool, len(aiSDKReq.Tools))
+		for i, tool := range aiSDKReq.Tools {
+			llmReq.Tools[i] = llm.Tool{
+				Type: tool.Type,
+				Function: llm.Function{
+					Name:        tool.Function.Name,
+					Description: tool.Function.Description,
+				},
+			}
+
+			// Handle parameters
+			if tool.Function.Parameters != nil {
+				if paramsBytes, err := json.Marshal(tool.Function.Parameters); err == nil {
+					llmReq.Tools[i].Function.Parameters = json.RawMessage(paramsBytes)
+				}
+			}
+		}
+	}
+
+	return llmReq, nil
+}
+
+// TransformResponse transforms LLM response to AI SDK response
+func (t *InboundTransformer) TransformResponse(ctx context.Context, resp *llm.ChatCompletionResponse) (*llm.GenericHttpResponse, error) {
+	// Convert to AI SDK response format
+	aiSDKResp := map[string]interface{}{
+		"id":      resp.ID,
+		"object":  resp.Object,
+		"created": resp.Created,
+		"model":   resp.Model,
+		"choices": resp.Choices,
+	}
+
+	if resp.Usage != nil {
+		aiSDKResp["usage"] = resp.Usage
+	}
+
+	// Marshal to JSON
+	respBody, err := json.Marshal(aiSDKResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal AI SDK response: %w", err)
+	}
+
+	// Create response headers
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+
+	return &llm.GenericHttpResponse{
+		StatusCode: 200,
+		Headers:    headers,
+		Body:       respBody,
+	}, nil
+}
+
+// TransformStreamChunk transforms LLM stream chunk to AI SDK stream format
+func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chunk *llm.ChatCompletionResponse) (*llm.GenericStreamEvent, error) {
+	var streamData []string
+
+	// Process each choice
+	for _, choice := range chunk.Choices {
+		// Handle text content - Format: 0:"text"\n
+		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
+			textJSON, _ := json.Marshal(*choice.Delta.Content.Content)
+			streamData = append(streamData, fmt.Sprintf("0:%s\n", string(textJSON)))
+		}
+
+		// Handle tool call streaming start - Format: b:{"toolCallId":"id","toolName":"name"}\n
+		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
+			for _, toolCall := range choice.Delta.ToolCalls {
+				if toolCall.Function.Name != "" {
+					// Tool call streaming start
+					toolCallStart := map[string]interface{}{
+						"toolCallId": toolCall.ID,
+						"toolName":   toolCall.Function.Name,
+					}
+					toolCallJSON, _ := json.Marshal(toolCallStart)
+					streamData = append(streamData, fmt.Sprintf("b:%s\n", string(toolCallJSON)))
+				}
+
+				if toolCall.Function.Arguments != "" {
+					// Tool call delta - Format: c:{"toolCallId":"id","argsTextDelta":"delta"}\n
+					toolCallDelta := map[string]interface{}{
+						"toolCallId":    toolCall.ID,
+						"argsTextDelta": toolCall.Function.Arguments,
+					}
+					toolCallJSON, _ := json.Marshal(toolCallDelta)
+					streamData = append(streamData, fmt.Sprintf("c:%s\n", string(toolCallJSON)))
+				}
+			}
+		}
+
+		// Handle complete tool calls - Format: 9:{"toolCallId":"id","toolName":"name","args":{}}\n
+		if choice.Message != nil && len(choice.Message.ToolCalls) > 0 {
+			for _, toolCall := range choice.Message.ToolCalls {
+				var args interface{}
+				if toolCall.Function.Arguments != "" {
+					err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
+					if err != nil {
+						return nil, fmt.Errorf("failed to unmarshal tool call arguments: %w", err)
+					}
+				}
+
+				toolCallComplete := map[string]interface{}{
+					"toolCallId": toolCall.ID,
+					"toolName":   toolCall.Function.Name,
+					"args":       args,
+				}
+				toolCallJSON, err := json.Marshal(toolCallComplete)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal tool call complete: %w", err)
+				}
+				streamData = append(streamData, fmt.Sprintf("9:%s\n", string(toolCallJSON)))
+			}
+		}
+
+		// Handle finish reason and usage - Format: e:{"finishReason":"stop","usage":{}}\n
+		if choice.FinishReason != nil {
+			finishData := map[string]interface{}{
+				"finishReason": *choice.FinishReason,
+			}
+			if chunk.Usage != nil {
+				finishData["usage"] = chunk.Usage
+			}
+			finishJSON, _ := json.Marshal(finishData)
+			streamData = append(streamData, fmt.Sprintf("e:%s\n", string(finishJSON)))
+		}
+	}
+
+	// Join all stream data
+	eventData := strings.Join(streamData, "")
+
+	// Create headers for AI SDK data stream
+	headers := make(http.Header)
+	headers.Set("Content-Type", "text/plain; charset=utf-8")
+	headers.Set("x-vercel-ai-data-stream", "v1")
+
+	return &llm.GenericStreamEvent{
+		// Type: "data",
+		Data: []byte(eventData),
+	}, nil
+}
