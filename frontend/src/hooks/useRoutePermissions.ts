@@ -16,13 +16,8 @@ export function useRoutePermissions() {
   // Owner用户拥有所有权限
   const effectiveScopes = useMemo(() => {
     if (isOwner) {
-      // Owner拥有所有可能的scopes
-      return [
-        'read_dashboard', 'read_users', 'read_roles', 'read_channels',
-        'read_requests', 'read_api_keys', 'read_settings', 'write_users',
-        'write_roles', 'write_channels', 'write_requests', 'write_api_keys',
-        'write_settings', 'admin'
-      ]
+      // Owner拥有通配符权限，可以访问所有路由
+      return ['*']
     }
     return userScopes
   }, [userScopes, isOwner])

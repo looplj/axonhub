@@ -106,6 +106,11 @@ export function hasRouteAccess(userScopes: string[], routeConfig: RouteConfig): 
     return true
   }
   
+  // 如果用户有通配符权限，则拥有所有权限
+  if (userScopes.includes('*')) {
+    return true
+  }
+  
   // 检查用户是否拥有所需的任一权限
   return routeConfig.requiredScopes.some(scope => userScopes.includes(scope))
 }
