@@ -12,19 +12,15 @@ import (
 )
 
 // InboundTransformer implements transformer.Inbound for OpenAI format
-type InboundTransformer struct {
-	name string
-}
+type InboundTransformer struct{}
 
 // NewInboundTransformer creates a new OpenAI InboundTransformer
 func NewInboundTransformer() transformer.Inbound {
-	return &InboundTransformer{
-		name: "openai-inbound",
-	}
+	return &InboundTransformer{}
 }
 
 // TransformRequest transforms HTTP request to ChatCompletionRequest
-func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.GenericHttpRequest) (*llm.ChatCompletionRequest, error) {
+func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.GenericHttpRequest) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("http request is nil")
 	}
@@ -43,7 +39,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.
 		return nil, fmt.Errorf("unsupported content type: %s", contentType)
 	}
 
-	var chatReq llm.ChatCompletionRequest
+	var chatReq llm.Request
 	if err := json.Unmarshal(httpReq.Body, &chatReq); err != nil {
 		return nil, fmt.Errorf("failed to decode openai request: %w", err)
 	}
@@ -61,7 +57,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.
 }
 
 // TransformResponse transforms ChatCompletionResponse to GenericHttpResponse
-func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.ChatCompletionResponse) (*llm.GenericHttpResponse, error) {
+func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.Response) (*llm.GenericHttpResponse, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
@@ -83,7 +79,7 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 }
 
 // TransformStreamChunk transforms ChatCompletionResponse to GenericStreamEvent
-func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp *llm.ChatCompletionResponse) (*llm.GenericStreamEvent, error) {
+func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp *llm.Response) (*llm.GenericStreamEvent, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
@@ -103,19 +99,4 @@ func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp 
 		Type: "",
 		Data: eventData,
 	}, nil
-}
-
-// Name returns the transformer name
-func (t *InboundTransformer) Name() string {
-	return t.name
-}
-
-// SupportsContentType returns true if the transformer supports the given content type
-func (t *InboundTransformer) SupportsContentType(contentType string) bool {
-	return strings.Contains(strings.ToLower(contentType), "application/json")
-}
-
-// Priority returns the priority of the transformer
-func (t *InboundTransformer) Priority() int {
-	return 100 // Default priority
 }

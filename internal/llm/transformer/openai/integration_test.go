@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -43,7 +44,7 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 		}
 
 		// Parse request body
-		var chatReq llm.ChatCompletionRequest
+		var chatReq llm.Request
 		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(`{"error": {"message": "Invalid JSON"}}`))
@@ -51,21 +52,21 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 		}
 
 		// Create mock response
-		response := llm.ChatCompletionResponse{
+		response := llm.Response{
 			ID:      "chatcmpl-123",
 			Object:  "chat.completion",
 			Created: time.Now().Unix(),
 			Model:   chatReq.Model,
-			Choices: []llm.ChatCompletionChoice{
+			Choices: []llm.Choice{
 				{
 					Index: 0,
-					Message: &llm.ChatCompletionMessage{
+					Message: &llm.Message{
 						Role: "assistant",
-						Content: llm.ChatCompletionMessageContent{
-							Content: stringPtr(fmt.Sprintf("Echo: %s", *chatReq.Messages[0].Content.Content)),
+						Content: llm.MessageContent{
+							Content: lo.ToPtr(fmt.Sprintf("Echo: %s", *chatReq.Messages[0].Content.Content)),
 						},
 					},
-					FinishReason: stringPtr("stop"),
+					FinishReason: lo.ToPtr("stop"),
 				},
 			},
 		}
@@ -86,13 +87,13 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 		Headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
-		Body: mustMarshal(llm.ChatCompletionRequest{
+		Body: mustMarshal(llm.Request{
 			Model: "gpt-4",
-			Messages: []llm.ChatCompletionMessage{
+			Messages: []llm.Message{
 				{
 					Role: "user",
-					Content: llm.ChatCompletionMessageContent{
-						Content: stringPtr("Hello, world!"),
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("Hello, world!"),
 					},
 				},
 			},
@@ -171,7 +172,7 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 	}
 
 	// Verify final response body can be unmarshaled back to ChatCompletionResponse
-	var finalChatResp llm.ChatCompletionResponse
+	var finalChatResp llm.Response
 	if err := json.Unmarshal(finalResp.Body, &finalChatResp); err != nil {
 		t.Fatalf("Failed to unmarshal final response: %v", err)
 	}
@@ -234,14 +235,14 @@ func TestIntegration_StreamingFlow(t *testing.T) {
 		Headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
-		Body: mustMarshal(llm.ChatCompletionRequest{
+		Body: mustMarshal(llm.Request{
 			Model:  "gpt-4",
 			Stream: boolPtr(true),
-			Messages: []llm.ChatCompletionMessage{
+			Messages: []llm.Message{
 				{
 					Role: "user",
-					Content: llm.ChatCompletionMessageContent{
-						Content: stringPtr("Hello, world!"),
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("Hello, world!"),
 					},
 				},
 			},
@@ -264,12 +265,8 @@ func TestIntegration_StreamingFlow(t *testing.T) {
 			continue
 		}
 
-		if current.StatusCode != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", current.StatusCode)
-		}
-
-		if len(current.Body) == 0 {
-			t.Error("Event body is empty")
+		if len(current.Data) == 0 {
+			t.Error("Event data is empty")
 		}
 
 		eventCount++
@@ -312,13 +309,13 @@ func TestIntegration_ErrorHandling(t *testing.T) {
 		Headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
-		Body: mustMarshal(llm.ChatCompletionRequest{
+		Body: mustMarshal(llm.Request{
 			Model: "gpt-4",
-			Messages: []llm.ChatCompletionMessage{
+			Messages: []llm.Message{
 				{
 					Role: "user",
-					Content: llm.ChatCompletionMessageContent{
-						Content: stringPtr("Hello, world!"),
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("Hello, world!"),
 					},
 				},
 			},

@@ -3,15 +3,30 @@ package llm
 import (
 	"encoding/json"
 	"errors"
-	"net/http"
 )
 
-// ChatCompletionRequest represents the OpenAI chat completion request and is the core request struct for AsonHub.
-// All the transformer and decorator is built on the ChatCompletionRequest.
-type ChatCompletionRequest struct {
-	Model string `json:"model"`
+// Request is the unified llm request model for AxonHub, to keep compatibility with major app and framework.
+// It choose to base on the OpenAI chat completion request, but add some extra fields to support more features.
+type Request struct {
+	// Messages is a list of messages to send to the llm model.
+	Messages []Message `json:"messages" validator:"required,min=1"`
 
-	Messages []ChatCompletionMessage `json:"messages"`
+	// Model is the model ID used to generate the response.
+	Model string `json:"model" validator:"required"`
+
+	// Number between -2.0 and 2.0. Positive values penalize new tokens based on
+	// their existing frequency in the text so far, decreasing the model's likelihood
+	// to repeat the same line verbatim.
+	//
+	// See [OpenAI's
+	// documentation](https://platform.openai.com/docs/api-reference/parameter-details)
+	// for more information.
+	FrequencyPenalty *float64 `json:"frequency_penalty,omitempty"`
+
+	// Whether to return log probabilities of the output tokens or not. If true,
+	// returns the log probabilities of each output token returned in the `content` of
+	// `message`.
+	Logprobs *bool `json:"logprobs,omitempty"`
 
 	// An upper bound for the number of tokens that can be generated for a completion,
 	// including visible output tokens and
@@ -35,10 +50,6 @@ type ChatCompletionRequest struct {
 	// Number between -2.0 and 2.0. Positive values penalize new tokens based on
 	// whether they appear in the text so far, increasing the model's likelihood to
 	// talk about new topics.
-	//
-	// See [OpenAI's
-	// documentation](https://platform.openai.com/docs/api-reference/parameter-details)
-	// for more information.
 	PresencePenalty *float64 `json:"presence_penalty,omitempty"`
 
 	// This feature is in Beta. If specified, our system will make a best effort to
@@ -55,20 +66,16 @@ type ChatCompletionRequest struct {
 	// Supports text and image inputs. Note: image inputs over 10MB will be dropped.
 	Store *bool `json:"store,omitzero"`
 
-	// Number between -2.0 and 2.0. Positive values penalize new tokens based on
-	// their existing frequency in the text so far, decreasing the model's likelihood
-	// to repeat the same line verbatim.
-	//
-	// See [OpenAI's
-	// documentation](https://platform.openai.com/docs/api-reference/parameter-details)
-	// for more information.
-	FrequencyPenalty *float64 `json:"frequency_penalty,omitempty"`
-
 	// What sampling temperature to use, between 0 and 2. Higher values like 0.8 will
 	// make the output more random, while lower values like 0.2 will make it more
 	// focused and deterministic. We generally recommend altering this or `top_p` but
 	// not both.
 	Temperature *float64 `json:"temperature,omitempty"`
+
+	// An integer between 0 and 20 specifying the number of most likely tokens to
+	// return at each token position, each with an associated log probability.
+	// `logprobs` must be set to `true` if this parameter is used.
+	TopLogprobs *int64 `json:"top_logprobs,omitzero"`
 
 	// An alternative to sampling with temperature, called nucleus sampling, where the
 	// model considers the results of the tokens with top_p probability mass. So 0.1
@@ -77,14 +84,30 @@ type ChatCompletionRequest struct {
 	// We generally recommend altering this or `temperature` but not both.
 	TopP *float64 `json:"top_p,omitempty"`
 
-	Stream        *bool          `json:"stream,omitempty"`
-	StreamOptions *StreamOptions `json:"stream_options,omitempty"`
+	// Used by OpenAI to cache responses for similar requests to optimize your cache
+	// hit rates. Replaces the `user` field.
+	// [Learn more](https://platform.openai.com/docs/guides/prompt-caching).
+	PromptCacheKey *bool `json:"prompt_cache_key,omitzero"`
 
-	// Not supported with latest reasoning models `o3` and `o4-mini`.
-	//
-	// Up to 4 sequences where the API will stop generating further tokens. The
-	// returned text will not contain the stop sequence.
-	Stop *Stop `json:"stop,omitempty"` // string or []string
+	// A stable identifier used to help detect users of your application that may be
+	// violating OpenAI's usage policies. The IDs should be a string that uniquely
+	// identifies each user. We recommend hashing their username or email address, in
+	// order to avoid sending us any identifying information.
+	// [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers).
+	SafetyIdentifier *string `json:"safety_identifier,omitzero"`
+
+	// This field is being replaced by `safety_identifier` and `prompt_cache_key`. Use
+	// `prompt_cache_key` instead to maintain caching optimizations. A stable
+	// identifier for your end-users. Used to boost cache hit rates by better bucketing
+	// similar requests and to help OpenAI detect and prevent abuse.
+	// [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers).
+	User *string `json:"user,omitempty"`
+
+	// Parameters for audio output. Required when audio output is requested with
+	// `modalities: ["audio"]`.
+	// [Learn more](https://platform.openai.com/docs/guides/audio).
+	// TODO
+	// Audio ChatCompletionAudioParam `json:"audio,omitzero"`
 
 	// Modify the likelihood of specified tokens appearing in the completion.
 	//
@@ -96,15 +119,41 @@ type ChatCompletionRequest struct {
 	// or exclusive selection of the relevant token.
 	LogitBias map[string]int64 `json:"logit_bias,omitempty"`
 
+	// Set of 16 key-value pairs that can be attached to an object. This can be useful
+	// for storing additional information about the object in a structured format, and
+	// querying for objects via API or the dashboard.
+	//
+	// Keys are strings with a maximum length of 64 characters. Values are strings with
+	// a maximum length of 512 characters.
+	Metadata map[string]string `json:"metadata,omitempty"`
+
 	// Controls effort on reasoning for reasoning models. It can be set to "low", "medium", or "high".
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 
-	// Metadata to store with the completion.
-	Metadata map[string]string `json:"metadata,omitempty"`
+	// Specifies the processing type used for serving the request.
+	ServiceTier *string `json:"service_tier,omitempty"`
 
-	User           *string         `json:"user,omitempty"`
-	Tools          []Tool          `json:"tools,omitempty"`
-	ToolChoice     *ToolChoice     `json:"tool_choice,omitempty"`
+	// Not supported with latest reasoning models `o3` and `o4-mini`.
+	//
+	// Up to 4 sequences where the API will stop generating further tokens. The
+	// returned text will not contain the stop sequence.
+	Stop *Stop `json:"stop,omitempty"` // string or []string
+
+	Stream        *bool          `json:"stream,omitempty"`
+	StreamOptions *StreamOptions `json:"stream_options,omitempty"`
+
+	// Static predicted output content, such as the content of a text file that is
+	// being regenerated.
+	// TODO
+	// Prediction ChatCompletionPredictionContentParam `json:"prediction,omitzero"`
+
+	// Whether to enable
+	// [parallel function calling](https://platform.openai.com/docs/guides/function-calling#configuring-parallel-function-calling)
+	// during tool use.
+	ParallelToolCalls *bool       `json:"parallel_tool_calls,omitzero"`
+	Tools             []Tool      `json:"tools,omitempty"`
+	ToolChoice        *ToolChoice `json:"tool_choice,omitempty"`
+
 	ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
 
 	// Extra parameters for gateway functionality
@@ -187,11 +236,14 @@ func (s *Stop) UnmarshalJSON(data []byte) error {
 	return errors.New("invalid stop type")
 }
 
-// ChatCompletionMessage represents a message in the conversation
-type ChatCompletionMessage struct {
-	Role    string                       `json:"role"`
-	Content ChatCompletionMessageContent `json:"content"` // string or []ContentPart
-	Name    *string                      `json:"name,omitempty"`
+// Message represents a message in the conversation
+type Message struct {
+	Role    string         `json:"role"`
+	Content MessageContent `json:"content"` // string or []ContentPart
+	Name    *string        `json:"name,omitempty"`
+
+	// The refusal message generated by the model.
+	Refusal string `json:"refusal"`
 
 	// For response
 	ToolCallID *string    `json:"tool_call_id,omitempty"`
@@ -203,26 +255,26 @@ type ChatCompletionMessage struct {
 	ReasoningContent *string `json:"reasoning_content,omitempty"`
 }
 
-type ChatCompletionMessageContent struct {
-	Content         *string       `json:"content,omitempty"`
-	MultipleContent []ContentPart `json:"multiple_content,omitempty"`
+type MessageContent struct {
+	Content         *string              `json:"content,omitempty"`
+	MultipleContent []MessageContentPart `json:"multiple_content,omitempty"`
 }
 
-func (c ChatCompletionMessageContent) MarshalJSON() ([]byte, error) {
+func (c MessageContent) MarshalJSON() ([]byte, error) {
 	if c.Content != nil {
 		return json.Marshal(c.Content)
 	}
 	return json.Marshal(c.MultipleContent)
 }
 
-func (c *ChatCompletionMessageContent) UnmarshalJSON(data []byte) error {
+func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	var str string
 	if err := json.Unmarshal(data, &str); err == nil {
 		c.Content = &str
 		return nil
 	}
 
-	var parts []ContentPart
+	var parts []MessageContentPart
 	if err := json.Unmarshal(data, &parts); err == nil {
 		c.MultipleContent = parts
 		return nil
@@ -230,17 +282,41 @@ func (c *ChatCompletionMessageContent) UnmarshalJSON(data []byte) error {
 	return errors.New("invalid content type")
 }
 
-// ContentPart represents different types of content (text, image, etc.)
-type ContentPart struct {
-	Type     string    `json:"type"`
-	Text     *string   `json:"text,omitempty"`
+// MessageContentPart represents different types of content (text, image, etc.)
+type MessageContentPart struct {
+	// Type is the type of the content part.
+	// e.g. "text", "image_url"
+	Type string `json:"type"`
+	// Text is the text content, required when type is "text"
+	Text *string `json:"text,omitempty"`
+
+	// ImageURL is the image URL content, required when type is "image_url"
 	ImageURL *ImageURL `json:"image_url,omitempty"`
+
+	// Audio is the audio content, required when type is "input_audio"
+	Audio *Audio `json:"audio,omitempty"`
 }
 
 // ImageURL represents an image URL with optional detail level
 type ImageURL struct {
-	URL    string `json:"url"`
+	// URL is the URL of the image.
+	URL string `json:"url"`
+
+	// Specifies the detail level of the image. Learn more in the
+	// [Vision guide](https://platform.openai.com/docs/guides/vision#low-or-high-fidelity-image-understanding).
+	//
+	// Any of "auto", "low", "high".
 	Detail string `json:"detail,omitempty"`
+}
+
+type Audio struct {
+	// The format of the encoded audio data. Currently supports "wav" and "mp3".
+	//
+	// Any of "wav", "mp3".
+	Format string `json:"format"`
+
+	// Base64 encoded audio data.
+	Data string `json:"data"`
 }
 
 // Tool represents a function tool
@@ -258,14 +334,23 @@ type Function struct {
 
 // FunctionCall represents a function call (deprecated)
 type FunctionCall struct {
-	Name      string `json:"name"`
+	// The name of the function to call.
+	Name string `json:"name"`
+
+	// The arguments to call the function with, as generated by the model in JSON
+	// format. Note that the model does not always generate valid JSON, and may
+	// hallucinate parameters not defined by your function schema. Validate the
+	// arguments in your code before calling your function.
 	Arguments string `json:"arguments"`
 }
 
 // ToolCall represents a tool call in the response
 type ToolCall struct {
-	ID       string       `json:"id"`
-	Type     string       `json:"type"`
+	ID string `json:"id"`
+
+	// The type of the tool. Currently, only `function` is supported.
+	Type string `json:"type"`
+
 	Function FunctionCall `json:"function"`
 }
 
@@ -275,40 +360,56 @@ type ResponseFormat struct {
 	// TODO: Schema
 }
 
-// ChatCompletionResponse represents the OpenAI chat completion response
-type ChatCompletionResponse struct {
-	ID      string                 `json:"id"`
-	Object  string                 `json:"object"`
-	Created int64                  `json:"created"`
-	Model   string                 `json:"model"`
-	Choices []ChatCompletionChoice `json:"choices"`
+// Response is the unified response model.
+type Response struct {
+	ID string `json:"id"`
+
+	// A list of chat completion choices. Can be more than one if `n` is greater
+	// than 1.
+	Choices []Choice `json:"choices"`
+
+	// Object is the type of the response.
+	// e.g. "chat.completion"
+	Object string `json:"object"`
+
+	// Created is the timestamp of when the response was created.
+	Created int64 `json:"created"`
+
+	// Model is the model used to generate the response.
+	Model string `json:"model"`
 
 	// An optional field that will only be present when you set stream_options: {"include_usage": true} in your request.
 	// When present, it contains a null value except for the last chunk which contains the token usage statistics
 	// for the entire request.
-	Usage             *Usage `json:"usage,omitempty"`
+	Usage *Usage `json:"usage,omitempty"`
+
+	// This fingerprint represents the backend configuration that the model runs with.
+	//
+	// Can be used in conjunction with the `seed` request parameter to understand when
+	// backend changes have been made that might impact determinism.
 	SystemFingerprint string `json:"system_fingerprint,omitempty"`
 
+	// ServiceTier is the service tier of the response.
+	// e.g. "free", "standard", "premium"
 	ServiceTier string `json:"service_tier,omitempty"`
-	header      http.Header
 }
 
-func (c *ChatCompletionResponse) Header() http.Header {
-	return c.header
-}
-
-func (c *ChatCompletionResponse) SetHeader(header http.Header) {
-	c.header = header
-}
-
-// ChatCompletionChoice represents a choice in the response
-type ChatCompletionChoice struct {
+// Choice represents a choice in the response
+type Choice struct {
+	// Index is the index of the choice in the list of choices.
 	Index int `json:"index"`
-	// Delta present if stream is true
-	Delta        *ChatCompletionMessage `json:"delta,omitempty"`
-	Message      *ChatCompletionMessage `json:"message,omitempty"`
-	FinishReason *string                `json:"finish_reason"`
-	Logprobs     *LogprobsContent       `json:"logprobs,omitempty"`
+
+	// Message is the message content, will present if stream is false
+	Message *Message `json:"message,omitempty"`
+
+	// Delta is the stream event content, will present if stream is true
+	Delta *Message `json:"delta,omitempty"`
+
+	// FinishReason is the reason the model stopped generating tokens.
+	// e.g. "stop", "length", "content_filter", "function_call", "tool_calls"
+	FinishReason *string `json:"finish_reason,omitempty"`
+
+	Logprobs *LogprobsContent `json:"logprobs,omitempty"`
 }
 
 // LogprobsContent represents logprobs information

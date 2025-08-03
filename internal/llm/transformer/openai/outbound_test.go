@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/llm"
 )
 
@@ -14,7 +15,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	tests := []struct {
 		name        string
 		transformer *OutboundTransformer
-		request     *llm.ChatCompletionRequest
+		request     *llm.Request
 		wantErr     bool
 		errContains string
 		validate    func(*llm.GenericHttpRequest) bool
@@ -22,13 +23,13 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		{
 			name:        "valid request with default URL",
 			transformer: NewOutboundTransformer("", "test-api-key").(*OutboundTransformer),
-			request: &llm.ChatCompletionRequest{
+			request: &llm.Request{
 				Model: "gpt-4",
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
-							Content: stringPtr("Hello, world!"),
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
 						},
 					},
 				},
@@ -46,13 +47,13 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		{
 			name:        "valid request with custom URL",
 			transformer: NewOutboundTransformer("https://custom.api.com/v1", "test-key").(*OutboundTransformer),
-			request: &llm.ChatCompletionRequest{
+			request: &llm.Request{
 				Model: "gpt-4",
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
-							Content: stringPtr("Hello, world!"),
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
 						},
 					},
 				},
@@ -65,13 +66,13 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		{
 			name:        "valid request without API key",
 			transformer: NewOutboundTransformer("https://api.openai.com/v1", "").(*OutboundTransformer),
-			request: &llm.ChatCompletionRequest{
+			request: &llm.Request{
 				Model: "gpt-4",
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
-							Content: stringPtr("Hello, world!"),
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
 						},
 					},
 				},
@@ -91,12 +92,12 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		{
 			name:        "missing model",
 			transformer: NewOutboundTransformer("", "test-key").(*OutboundTransformer),
-			request: &llm.ChatCompletionRequest{
-				Messages: []llm.ChatCompletionMessage{
+			request: &llm.Request{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
-							Content: stringPtr("Hello, world!"),
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
 						},
 					},
 				},
@@ -107,7 +108,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		{
 			name:        "missing messages",
 			transformer: NewOutboundTransformer("", "test-key").(*OutboundTransformer),
-			request: &llm.ChatCompletionRequest{
+			request: &llm.Request{
 				Model: "gpt-4",
 			},
 			wantErr:     true,
@@ -116,13 +117,13 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		{
 			name:        "URL with trailing slash",
 			transformer: NewOutboundTransformer("https://api.openai.com/v1/", "test-key").(*OutboundTransformer),
-			request: &llm.ChatCompletionRequest{
+			request: &llm.Request{
 				Model: "gpt-4",
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
-							Content: stringPtr("Hello, world!"),
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
 						},
 					},
 				},
@@ -143,7 +144,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					t.Errorf("TransformRequest() expected error but got none")
 					return
 				}
-				if tt.errContains != "" && !containsString(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("TransformRequest() error = %v, want error containing %v", err, tt.errContains)
 				}
 				return
@@ -165,7 +166,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 
 			// Validate that body can be unmarshaled back to original request
 			if len(result.Body) > 0 {
-				var unmarshaled llm.ChatCompletionRequest
+				var unmarshaled llm.Request
 				if err := json.Unmarshal(result.Body, &unmarshaled); err != nil {
 					t.Errorf("TransformRequest() body is not valid JSON: %v", err)
 				}
@@ -182,12 +183,12 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 		chunks      [][]byte
 		wantErr     bool
 		errContains string
-		validate    func(*llm.ChatCompletionResponse) bool
+		validate    func(*llm.Response) bool
 	}{
 		{
 			name:   "empty chunks",
 			chunks: [][]byte{},
-			validate: func(resp *llm.ChatCompletionResponse) bool {
+			validate: func(resp *llm.Response) bool {
 				return resp != nil
 			},
 		},
@@ -198,7 +199,7 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`),
 				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`),
 			},
-			validate: func(resp *llm.ChatCompletionResponse) bool {
+			validate: func(resp *llm.Response) bool {
 				if resp == nil || len(resp.Choices) == 0 {
 					return false
 				}
@@ -220,7 +221,7 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 				[]byte(`invalid json`),
 				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`),
 			},
-			validate: func(resp *llm.ChatCompletionResponse) bool {
+			validate: func(resp *llm.Response) bool {
 				if resp == nil || len(resp.Choices) == 0 {
 					return false
 				}
@@ -257,11 +258,6 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 	}
 }
 
-// Helper functions
-func containsString(s, substr string) bool {
-	return strings.Contains(s, substr)
-}
-
 func TestOutboundTransformer_TransformResponse(t *testing.T) {
 	transformer := NewOutboundTransformer("", "test-key").(*OutboundTransformer)
 
@@ -270,34 +266,34 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 		response    *llm.GenericHttpResponse
 		wantErr     bool
 		errContains string
-		validate    func(*llm.ChatCompletionResponse) bool
+		validate    func(*llm.Response) bool
 	}{
 		{
 			name: "valid response",
 			response: &llm.GenericHttpResponse{
 				StatusCode: http.StatusOK,
 				Headers:    http.Header{"Content-Type": []string{"application/json"}},
-				Body: mustMarshal(llm.ChatCompletionResponse{
+				Body: mustMarshal(llm.Response{
 					ID:      "chatcmpl-123",
 					Object:  "chat.completion",
 					Created: 1677652288,
 					Model:   "gpt-4",
-					Choices: []llm.ChatCompletionChoice{
+					Choices: []llm.Choice{
 						{
 							Index: 0,
-							Message: &llm.ChatCompletionMessage{
+							Message: &llm.Message{
 								Role: "assistant",
-								Content: llm.ChatCompletionMessageContent{
-									Content: stringPtr("Hello! How can I help you today?"),
+								Content: llm.MessageContent{
+									Content: lo.ToPtr("Hello! How can I help you today?"),
 								},
 							},
-							FinishReason: stringPtr("stop"),
+							FinishReason: lo.ToPtr("stop"),
 						},
 					},
 				}),
 			},
 			wantErr: false,
-			validate: func(resp *llm.ChatCompletionResponse) bool {
+			validate: func(resp *llm.Response) bool {
 				return resp.ID == "chatcmpl-123" &&
 					resp.Model == "gpt-4" &&
 					len(resp.Choices) == 1 &&
@@ -367,7 +363,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 					t.Errorf("TransformResponse() expected error but got none")
 					return
 				}
-				if tt.errContains != "" && !containsString(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("TransformResponse() error = %v, want error containing %v", err, tt.errContains)
 				}
 				return
@@ -484,14 +480,6 @@ func TestOutboundTransformer_SetBaseURL(t *testing.T) {
 
 	if transformer.baseURL != newURL {
 		t.Errorf("SetBaseURL() failed, got %v, want %v", transformer.baseURL, newURL)
-	}
-}
-
-func TestOutboundTransformer_Name(t *testing.T) {
-	transformer := NewOutboundTransformer("", "test-key").(*OutboundTransformer)
-	name := transformer.Name()
-	if name == "" {
-		t.Errorf("Name() returned empty string")
 	}
 }
 

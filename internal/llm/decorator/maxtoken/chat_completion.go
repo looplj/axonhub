@@ -27,7 +27,7 @@ func NewChatCompletionDecorator(name string) decorator.ChatCompletionDecorator {
 }
 
 // Decorate modifies the chat completion request
-func (d *ChatCompletionDecoratorImpl) Decorate(ctx context.Context, request *llm.ChatCompletionRequest) (*llm.ChatCompletionRequest, error) {
+func (d *ChatCompletionDecoratorImpl) Decorate(ctx context.Context, request *llm.Request) (*llm.Request, error) {
 	// Set default values if not specified
 	if request.Temperature == nil {
 		temp := 0.7

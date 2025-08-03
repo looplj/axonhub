@@ -81,7 +81,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	return nil
 }
 
-func (svc *ChannelService) ChooseChannels(ctx context.Context, chatReq *llm.ChatCompletionRequest) ([]*Channel, error) {
+func (svc *ChannelService) ChooseChannels(ctx context.Context, chatReq *llm.Request) ([]*Channel, error) {
 	var channels []*Channel
 	for _, channel := range svc.Channels {
 		if slices.Contains(channel.SupportedModels, chatReq.Model) {

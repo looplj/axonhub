@@ -105,3 +105,4 @@ node_modules/
 .trae/tasks
 playwright-report/
 .trae/summary/
+.claude

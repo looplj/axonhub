@@ -35,7 +35,7 @@ func NewOutboundTransformer(baseURL, apiKey string) transformer.Outbound {
 }
 
 // TransformRequest transforms ChatCompletionRequest to Anthropic HTTP request
-func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm.ChatCompletionRequest) (*llm.GenericHttpRequest, error) {
+func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm.Request) (*llm.GenericHttpRequest, error) {
 	if chatReq == nil {
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
@@ -87,7 +87,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 	}, nil
 }
 
-func (t *OutboundTransformer) convertToAnthropicRequest(chatReq *llm.ChatCompletionRequest) *MessageRequest {
+func (t *OutboundTransformer) convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 	req := &MessageRequest{
 		Model:       chatReq.Model,
 		Temperature: chatReq.Temperature,
@@ -202,7 +202,7 @@ func (t *OutboundTransformer) convertToAnthropicRequest(chatReq *llm.ChatComplet
 }
 
 // TransformResponse transforms Anthropic HTTP response to ChatCompletionResponse
-func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *llm.GenericHttpResponse) (*llm.ChatCompletionResponse, error) {
+func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *llm.GenericHttpResponse) (*llm.Response, error) {
 	if httpResp == nil {
 		return nil, fmt.Errorf("http response is nil")
 	}
@@ -231,54 +231,46 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *l
 }
 
 // TransformStreamChunk transforms a single Anthropic streaming chunk to ChatCompletionResponse
-func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp *llm.GenericHttpResponse) (*llm.ChatCompletionResponse, error) {
-	if httpResp == nil {
-		return nil, fmt.Errorf("http response is nil")
+func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *llm.GenericStreamEvent) (*llm.Response, error) {
+	if event == nil {
+		return nil, fmt.Errorf("stream event is nil")
 	}
 
-	// Check for HTTP errors
-	if httpResp.StatusCode >= 400 {
-		if httpResp.Error != nil {
-			return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, httpResp.Error.Message)
-		}
-		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
-	}
-
-	if len(httpResp.Body) == 0 {
-		return nil, fmt.Errorf("response body is empty")
+	if len(event.Data) == 0 {
+		return nil, fmt.Errorf("event data is empty")
 	}
 
 	// Parse the streaming event
-	var event StreamEvent
-	if err := json.Unmarshal(httpResp.Body, &event); err != nil {
+	var streamEvent StreamEvent
+	if err := json.Unmarshal(event.Data, &streamEvent); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal anthropic stream event: %w", err)
 	}
 
 	// Convert the stream event to ChatCompletionResponse
-	resp := &llm.ChatCompletionResponse{
-		Object: event.Type,
+	resp := &llm.Response{
+		Object: streamEvent.Type,
 	}
 
-	switch event.Type {
+	switch streamEvent.Type {
 	case "message_start":
-		if event.Message != nil {
-			resp.ID = event.Message.ID
-			resp.Model = event.Message.Model
+		if streamEvent.Message != nil {
+			resp.ID = streamEvent.Message.ID
+			resp.Model = streamEvent.Message.Model
 			resp.Created = 0
-			resp.ServiceTier = event.Message.Usage.ServiceTier
+			resp.ServiceTier = streamEvent.Message.Usage.ServiceTier
 			resp.Usage = &llm.Usage{
-				PromptTokens:     event.Message.Usage.InputTokens,
-				CompletionTokens: event.Message.Usage.OutputTokens,
-				TotalTokens:      event.Message.Usage.InputTokens + event.Message.Usage.OutputTokens,
+				PromptTokens:     streamEvent.Message.Usage.InputTokens,
+				CompletionTokens: streamEvent.Message.Usage.OutputTokens,
+				TotalTokens:      streamEvent.Message.Usage.InputTokens + streamEvent.Message.Usage.OutputTokens,
 			}
 		}
 		// For message_start, we return an empty choice to indicate the start
-		resp.Choices = []llm.ChatCompletionChoice{
+		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
-				Delta: &llm.ChatCompletionMessage{
+				Delta: &llm.Message{
 					Role: "assistant",
-					Content: llm.ChatCompletionMessageContent{
+					Content: llm.MessageContent{
 						Content: lo.ToPtr(""),
 					},
 				},
@@ -287,12 +279,12 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp
 
 	case "content_block_start":
 		// Initialize content block
-		resp.Choices = []llm.ChatCompletionChoice{
+		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
-				Delta: &llm.ChatCompletionMessage{
+				Delta: &llm.Message{
 					Role: "assistant",
-					Content: llm.ChatCompletionMessageContent{
+					Content: llm.MessageContent{
 						Content: lo.ToPtr(""),
 					},
 				},
@@ -303,14 +295,14 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp
 		// Ping event - return empty response to indicate connection is alive
 
 	case "content_block_delta":
-		if event.Delta != nil && event.Delta.Text != nil {
-			resp.Choices = []llm.ChatCompletionChoice{
+		if streamEvent.Delta != nil && streamEvent.Delta.Text != nil {
+			resp.Choices = []llm.Choice{
 				{
 					Index: 0,
-					Delta: &llm.ChatCompletionMessage{
+					Delta: &llm.Message{
 						Role: "assistant",
-						Content: llm.ChatCompletionMessageContent{
-							Content: event.Delta.Text,
+						Content: llm.MessageContent{
+							Content: streamEvent.Delta.Text,
 						},
 					},
 				},
@@ -319,12 +311,12 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp
 
 	case "content_block_stop":
 		// Content block finished
-		resp.Choices = []llm.ChatCompletionChoice{
+		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
-				Delta: &llm.ChatCompletionMessage{
+				Delta: &llm.Message{
 					Role: "assistant",
-					Content: llm.ChatCompletionMessageContent{
+					Content: llm.MessageContent{
 						Content: lo.ToPtr(""),
 					},
 				},
@@ -332,10 +324,10 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp
 		}
 
 	case "message_delta":
-		if event.Delta != nil && event.Delta.StopReason != nil {
+		if streamEvent.Delta != nil && streamEvent.Delta.StopReason != nil {
 			// Determine finish reason
 			var finishReason *string
-			switch *event.Delta.StopReason {
+			switch *streamEvent.Delta.StopReason {
 			case "end_turn":
 				reason := "stop"
 				finishReason = &reason
@@ -349,16 +341,16 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp
 				reason := "tool_calls"
 				finishReason = &reason
 			default:
-				finishReason = event.Delta.StopReason
+				finishReason = streamEvent.Delta.StopReason
 			}
 
-			resp.Choices = []llm.ChatCompletionChoice{
+			resp.Choices = []llm.Choice{
 				{
 					Index:        0,
 					FinishReason: finishReason,
-					Delta: &llm.ChatCompletionMessage{
+					Delta: &llm.Message{
 						Role: "assistant",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := ""; return &s }(),
 						},
 					},
@@ -367,22 +359,22 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp
 		}
 
 		// Add usage if available
-		if event.Usage != nil {
+		if streamEvent.Usage != nil {
 			resp.Usage = &llm.Usage{
-				PromptTokens:     event.Usage.InputTokens,
-				CompletionTokens: event.Usage.OutputTokens,
-				TotalTokens:      event.Usage.InputTokens + event.Usage.OutputTokens,
+				PromptTokens:     streamEvent.Usage.InputTokens,
+				CompletionTokens: streamEvent.Usage.OutputTokens,
+				TotalTokens:      streamEvent.Usage.InputTokens + streamEvent.Usage.OutputTokens,
 			}
 		}
 
 	case "message_stop":
 		// Final event - return empty response to indicate completion
-		resp.Choices = []llm.ChatCompletionChoice{
+		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
-				Delta: &llm.ChatCompletionMessage{
+				Delta: &llm.Message{
 					Role: "assistant",
-					Content: llm.ChatCompletionMessageContent{
+					Content: llm.MessageContent{
 						Content: func() *string { s := ""; return &s }(),
 					},
 				},
@@ -392,12 +384,12 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp
 
 	default:
 		// Unknown event type, return empty response
-		resp.Choices = []llm.ChatCompletionChoice{
+		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
-				Delta: &llm.ChatCompletionMessage{
+				Delta: &llm.Message{
 					Role: "assistant",
-					Content: llm.ChatCompletionMessageContent{
+					Content: llm.MessageContent{
 						Content: func() *string { s := ""; return &s }(),
 					},
 				},
@@ -408,8 +400,8 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp
 	return resp, nil
 }
 
-func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *MessageResponse) *llm.ChatCompletionResponse {
-	resp := &llm.ChatCompletionResponse{
+func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *MessageResponse) *llm.Response {
+	resp := &llm.Response{
 		ID:      anthropicResp.ID,
 		Object:  "chat.completion",
 		Model:   anthropicResp.Model,
@@ -417,7 +409,7 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Mes
 	}
 
 	// Convert content to message
-	var content llm.ChatCompletionMessageContent
+	var content llm.MessageContent
 	var toolCalls []llm.ToolCall
 	var textParts []string
 
@@ -426,7 +418,7 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Mes
 		case "text":
 			if block.Text != nil {
 				textParts = append(textParts, *block.Text)
-				content.MultipleContent = append(content.MultipleContent, llm.ContentPart{
+				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
 					Type:     "text",
 					Text:     block.Text,
 					ImageURL: &llm.ImageURL{},
@@ -434,7 +426,7 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Mes
 			}
 		case "image":
 			if block.Source != nil {
-				content.MultipleContent = append(content.MultipleContent, llm.ContentPart{
+				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
 					Type: "image",
 					ImageURL: &llm.ImageURL{
 						URL:    block.Source.Data,
@@ -469,7 +461,7 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Mes
 		content.MultipleContent = nil
 	}
 
-	message := &llm.ChatCompletionMessage{
+	message := &llm.Message{
 		Role:      anthropicResp.Role,
 		Content:   content,
 		ToolCalls: toolCalls,
@@ -496,13 +488,13 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Mes
 		}
 	}
 
-	choice := llm.ChatCompletionChoice{
+	choice := llm.Choice{
 		Index:        0,
 		Message:      message,
 		FinishReason: finishReason,
 	}
 
-	resp.Choices = []llm.ChatCompletionChoice{choice}
+	resp.Choices = []llm.Choice{choice}
 
 	// Convert usage
 	if anthropicResp.Usage != nil {
@@ -517,9 +509,9 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Mes
 }
 
 // AggregateStreamChunks aggregates Anthropic streaming response chunks into a complete response
-func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks [][]byte) (*llm.ChatCompletionResponse, error) {
+func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks [][]byte) (*llm.Response, error) {
 	if len(chunks) == 0 {
-		return &llm.ChatCompletionResponse{}, nil
+		return &llm.Response{}, nil
 	}
 
 	var messageStart *StreamEvent

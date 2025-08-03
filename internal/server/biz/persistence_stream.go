@@ -15,7 +15,7 @@ import (
 // TrackedStream wraps a stream and tracks all responses for final saving
 type TrackedStream struct {
 	ctx                 context.Context
-	stream              streams.Stream[*llm.GenericHttpResponse]
+	stream              streams.Stream[*llm.GenericStreamEvent]
 	request             *ent.Request
 	requestExec         *ent.RequestExecution
 	requestService      *RequestService
@@ -25,11 +25,11 @@ type TrackedStream struct {
 }
 
 // Ensure TrackedStream implements Stream interface
-var _ streams.Stream[*llm.GenericHttpResponse] = (*TrackedStream)(nil)
+var _ streams.Stream[*llm.GenericStreamEvent] = (*TrackedStream)(nil)
 
 func NewTrackedStream(
 	ctx context.Context,
-	stream streams.Stream[*llm.GenericHttpResponse],
+	stream streams.Stream[*llm.GenericStreamEvent],
 	request *ent.Request,
 	requestExec *ent.RequestExecution,
 	requestService *RequestService,
@@ -49,11 +49,11 @@ func (ts *TrackedStream) Next() bool {
 	return ts.stream.Next()
 }
 
-func (ts *TrackedStream) Current() *llm.GenericHttpResponse {
-	resp := ts.stream.Current()
-	if resp != nil && resp.Body != nil {
+func (ts *TrackedStream) Current() *llm.GenericStreamEvent {
+	event := ts.stream.Current()
+	if event != nil && event.Data != nil {
 		// Save each chunk to response_chunks field
-		chunk := objects.JSONRawMessage(resp.Body)
+		chunk := objects.JSONRawMessage(event.Data)
 		ts.responseChunks = append(ts.responseChunks, chunk)
 
 		// Add options to control if save chunk to database
@@ -62,7 +62,7 @@ func (ts *TrackedStream) Current() *llm.GenericHttpResponse {
 			log.Warn(ts.ctx, "Failed to save response chunk", log.Cause(err))
 		}
 	}
-	return resp
+	return event
 }
 
 func (ts *TrackedStream) Err() error {

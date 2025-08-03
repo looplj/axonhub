@@ -20,7 +20,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    *llm.GenericHttpRequest
-		expected *llm.ChatCompletionRequest
+		expected *llm.Request
 		wantErr  bool
 	}{
 		{
@@ -42,12 +42,12 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					"stream": true
 				}`),
 			},
-			expected: &llm.ChatCompletionRequest{
+			expected: &llm.Request{
 				Model: "gpt-3.5-turbo",
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: stringPtr("Hello, world!"),
 						},
 					},
@@ -94,12 +94,12 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					"toolChoice": "auto"
 				}`),
 			},
-			expected: &llm.ChatCompletionRequest{
+			expected: &llm.Request{
 				Model: "gpt-4",
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: stringPtr("What's the weather like?"),
 						},
 					},
@@ -182,23 +182,23 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    *llm.ChatCompletionResponse
+		input    *llm.Response
 		expected *llm.GenericHttpResponse
 		wantErr  bool
 	}{
 		{
 			name: "basic response",
-			input: &llm.ChatCompletionResponse{
+			input: &llm.Response{
 				ID:      "chatcmpl-123",
 				Object:  "chat.completion",
 				Created: 1677652288,
 				Model:   "gpt-3.5-turbo",
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index: 0,
-						Message: &llm.ChatCompletionMessage{
+						Message: &llm.Message{
 							Role: "assistant",
-							Content: llm.ChatCompletionMessageContent{
+							Content: llm.MessageContent{
 								Content: stringPtr("Hello! How can I help you today?"),
 							},
 						},
@@ -248,22 +248,22 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    *llm.ChatCompletionResponse
+		input    *llm.Response
 		expected string
 		wantErr  bool
 	}{
 		{
 			name: "text chunk",
-			input: &llm.ChatCompletionResponse{
+			input: &llm.Response{
 				ID:      "chatcmpl-123",
 				Object:  "chat.completion.chunk",
 				Created: 1677652288,
 				Model:   "gpt-3.5-turbo",
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index: 0,
-						Delta: &llm.ChatCompletionMessage{
-							Content: llm.ChatCompletionMessageContent{
+						Delta: &llm.Message{
+							Content: llm.MessageContent{
 								Content: stringPtr("Hello"),
 							},
 						},

@@ -14,7 +14,6 @@ import (
 
 // OutboundTransformer implements transformer.Outbound for OpenAI format
 type OutboundTransformer struct {
-	name    string
 	baseURL string
 	apiKey  string
 }
@@ -26,14 +25,13 @@ func NewOutboundTransformer(baseURL, apiKey string) transformer.Outbound {
 	}
 
 	return &OutboundTransformer{
-		name:    "openai-outbound",
 		baseURL: baseURL,
 		apiKey:  apiKey,
 	}
 }
 
 // TransformRequest transforms ChatCompletionRequest to GenericHttpRequest
-func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm.ChatCompletionRequest) (*llm.GenericHttpRequest, error) {
+func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm.Request) (*llm.GenericHttpRequest, error) {
 	if chatReq == nil {
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
@@ -81,7 +79,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 }
 
 // TransformResponse transforms GenericHttpResponse to ChatCompletionResponse
-func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *llm.GenericHttpResponse) (*llm.ChatCompletionResponse, error) {
+func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *llm.GenericHttpResponse) (*llm.Response, error) {
 	if httpResp == nil {
 		return nil, fmt.Errorf("http response is nil")
 	}
@@ -98,7 +96,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *l
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	var chatResp llm.ChatCompletionResponse
+	var chatResp llm.Response
 	if err := json.Unmarshal(httpResp.Body, &chatResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
 	}
@@ -106,18 +104,18 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *l
 	return &chatResp, nil
 }
 
-func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, httpResp *llm.GenericHttpResponse) (*llm.ChatCompletionResponse, error) {
-	if bytes.HasPrefix(httpResp.Body, []byte("[DONE]")) {
-		return &llm.ChatCompletionResponse{
+func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *llm.GenericStreamEvent) (*llm.Response, error) {
+	if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
+		return &llm.Response{
 			Object: "[DONE]",
 		}, nil
 	}
-	return t.TransformResponse(ctx, httpResp)
-}
 
-// Name returns the transformer name
-func (t *OutboundTransformer) Name() string {
-	return t.name
+	// Create a synthetic HTTP response for compatibility with existing logic
+	httpResp := &llm.GenericHttpResponse{
+		Body: event.Data,
+	}
+	return t.TransformResponse(ctx, httpResp)
 }
 
 // SupportsModel checks if the transformer supports a specific model
@@ -149,9 +147,9 @@ func (t *OutboundTransformer) SetBaseURL(baseURL string) {
 }
 
 // AggregateStreamChunks aggregates OpenAI streaming response chunks into a complete response
-func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks [][]byte) (*llm.ChatCompletionResponse, error) {
+func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks [][]byte) (*llm.Response, error) {
 	if len(chunks) == 0 {
-		return &llm.ChatCompletionResponse{}, nil
+		return &llm.Response{}, nil
 	}
 
 	// For OpenAI-style streaming, we need to aggregate the delta content from chunks
@@ -188,7 +186,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 
 	// Create a complete ChatCompletionResponse based on the last chunk structure
 	if lastChunk == nil {
-		return &llm.ChatCompletionResponse{}, nil
+		return &llm.Response{}, nil
 	}
 
 	// Build the final response
@@ -221,7 +219,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 		return nil, fmt.Errorf("failed to marshal final response: %w", err)
 	}
 
-	var chatResp llm.ChatCompletionResponse
+	var chatResp llm.Response
 	if err := json.Unmarshal(finalJSON, &chatResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal to ChatCompletionResponse: %w", err)
 	}

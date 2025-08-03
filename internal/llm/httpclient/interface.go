@@ -14,5 +14,5 @@ type HttpClient interface {
 	Do(ctx context.Context, request *llm.GenericHttpRequest) (*llm.GenericHttpResponse, error)
 
 	// DoStream a HTTP request with streaming response
-	DoStream(ctx context.Context, request *llm.GenericHttpRequest) (streams.Stream[*llm.GenericHttpResponse], error)
+	DoStream(ctx context.Context, request *llm.GenericHttpRequest) (streams.Stream[*llm.GenericStreamEvent], error)
 }

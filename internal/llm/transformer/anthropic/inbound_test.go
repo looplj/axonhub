@@ -17,7 +17,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 	tests := []struct {
 		name        string
 		httpReq     *llm.GenericHttpRequest
-		expected    *llm.ChatCompletionRequest
+		expected    *llm.Request
 		expectError bool
 	}{
 		{
@@ -37,13 +37,13 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					]
 				}`),
 			},
-			expected: &llm.ChatCompletionRequest{
+			expected: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "Hello, Claude!"; return &s }(),
 						},
 					},
@@ -69,19 +69,19 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					]
 				}`),
 			},
-			expected: &llm.ChatCompletionRequest{
+			expected: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "system",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "You are a helpful assistant."; return &s }(),
 						},
 					},
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "Hello!"; return &s }(),
 						},
 					},
@@ -119,14 +119,14 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					]
 				}`),
 			},
-			expected: &llm.ChatCompletionRequest{
+			expected: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
-							MultipleContent: []llm.ContentPart{
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
 								{
 									Type: "text",
 									Text: func() *string { s := "What's in this image?"; return &s }(),
@@ -163,17 +163,17 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					]
 				}`),
 			},
-			expected: &llm.ChatCompletionRequest{
+			expected: &llm.Request{
 				Model:       "claude-3-sonnet-20240229",
 				MaxTokens:   func() *int64 { v := int64(1024); return &v }(),
 				Temperature: func() *float64 { v := 0.7; return &v }(),
 				Stop: &llm.Stop{
 					MultipleStop: []string{"Human:", "Assistant:"},
 				},
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "Hello!"; return &s }(),
 						},
 					},
@@ -302,22 +302,22 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		chatResp    *llm.ChatCompletionResponse
+		chatResp    *llm.Response
 		expectError bool
 	}{
 		{
 			name: "valid response",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:      "msg_123",
 				Object:  "chat.completion",
 				Model:   "claude-3-sonnet-20240229",
 				Created: 1234567890,
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index: 0,
-						Message: &llm.ChatCompletionMessage{
+						Message: &llm.Message{
 							Role: "assistant",
-							Content: llm.ChatCompletionMessageContent{
+							Content: llm.MessageContent{
 								Content: func() *string { s := "Hello! How can I help you?"; return &s }(),
 							},
 						},
@@ -334,18 +334,18 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 		},
 		{
 			name: "response with multimodal content",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:      "msg_456",
 				Object:  "chat.completion",
 				Model:   "claude-3-sonnet-20240229",
 				Created: 1234567890,
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index: 0,
-						Message: &llm.ChatCompletionMessage{
+						Message: &llm.Message{
 							Role: "assistant",
-							Content: llm.ChatCompletionMessageContent{
-								MultipleContent: []llm.ContentPart{
+							Content: llm.MessageContent{
+								MultipleContent: []llm.MessageContentPart{
 									{
 										Type: "text",
 										Text: func() *string { s := "I can see an image."; return &s }(),
@@ -442,13 +442,13 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		chatResp    *llm.ChatCompletionResponse
+		chatResp    *llm.Response
 		expectError bool
 		checkEvent  func(t *testing.T, event *llm.GenericStreamEvent)
 	}{
 		{
 			name: "message_start event",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:      "msg_123",
 				Object:  "message_start",
 				Model:   "claude-3-sonnet-20240229",
@@ -481,7 +481,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		},
 		{
 			name: "content_block_start event",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:     "msg_123",
 				Object: "content_block_start",
 				Model:  "claude-3-sonnet-20240229",
@@ -502,16 +502,16 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		},
 		{
 			name: "content_block_delta event",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:     "msg_123",
 				Object: "content_block_delta",
 				Model:  "claude-3-sonnet-20240229",
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index: 0,
-						Delta: &llm.ChatCompletionMessage{
+						Delta: &llm.Message{
 							Role: "assistant",
-							Content: llm.ChatCompletionMessageContent{
+							Content: llm.MessageContent{
 								Content: func() *string { s := "Hello"; return &s }(),
 							},
 						},
@@ -535,7 +535,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		},
 		{
 			name: "content_block_stop event",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:     "msg_123",
 				Object: "content_block_stop",
 				Model:  "claude-3-sonnet-20240229",
@@ -554,11 +554,11 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		},
 		{
 			name: "message_delta event with stop reason",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:     "msg_123",
 				Object: "message_delta",
 				Model:  "claude-3-sonnet-20240229",
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index:        0,
 						FinishReason: func() *string { s := "stop"; return &s }(),
@@ -590,11 +590,11 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		},
 		{
 			name: "message_delta event with length reason",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:     "msg_123",
 				Object: "message_delta",
 				Model:  "claude-3-sonnet-20240229",
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index:        0,
 						FinishReason: func() *string { s := "length"; return &s }(),
@@ -618,11 +618,11 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		},
 		{
 			name: "message_delta event with tool_calls reason",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:     "msg_123",
 				Object: "message_delta",
 				Model:  "claude-3-sonnet-20240229",
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index:        0,
 						FinishReason: func() *string { s := "tool_calls"; return &s }(),
@@ -646,7 +646,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		},
 		{
 			name: "message_stop event",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:     "msg_123",
 				Object: "message_stop",
 				Model:  "claude-3-sonnet-20240229",
@@ -665,16 +665,16 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		},
 		{
 			name: "default/data event with content",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:     "msg_123",
 				Object: "", // Empty object defaults to "data"
 				Model:  "claude-3-sonnet-20240229",
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index: 0,
-						Delta: &llm.ChatCompletionMessage{
+						Delta: &llm.Message{
 							Role: "assistant",
-							Content: llm.ChatCompletionMessageContent{
+							Content: llm.MessageContent{
 								Content: lo.ToPtr("Hello world"),
 							},
 						},
@@ -697,11 +697,11 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		},
 		{
 			name: "empty choices",
-			chatResp: &llm.ChatCompletionResponse{
+			chatResp: &llm.Response{
 				ID:      "msg_123",
 				Object:  "content_block_delta",
 				Model:   "claude-3-sonnet-20240229",
-				Choices: []llm.ChatCompletionChoice{},
+				Choices: []llm.Choice{},
 			},
 			expectError: false, // Should not error, just create empty event
 			checkEvent: func(t *testing.T, event *llm.GenericStreamEvent) {

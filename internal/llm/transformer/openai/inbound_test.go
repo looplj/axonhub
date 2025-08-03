@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/llm"
 )
 
@@ -17,7 +19,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		request     *llm.GenericHttpRequest
 		wantErr     bool
 		errContains string
-		validate    func(*llm.ChatCompletionRequest) bool
+		validate    func(*llm.Request) bool
 	}{
 		{
 			name: "valid request",
@@ -27,20 +29,20 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
-				Body: mustMarshal(llm.ChatCompletionRequest{
+				Body: mustMarshal(llm.Request{
 					Model: "gpt-4",
-					Messages: []llm.ChatCompletionMessage{
+					Messages: []llm.Message{
 						{
 							Role: "user",
-							Content: llm.ChatCompletionMessageContent{
-								Content: stringPtr("Hello, world!"),
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Hello, world!"),
 							},
 						},
 					},
 				}),
 			},
 			wantErr: false,
-			validate: func(req *llm.ChatCompletionRequest) bool {
+			validate: func(req *llm.Request) bool {
 				return req.Model == "gpt-4" && len(req.Messages) == 1 &&
 					req.Messages[0].Content.Content != nil && *req.Messages[0].Content.Content == "Hello, world!"
 			},
@@ -98,12 +100,12 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
-				Body: mustMarshal(llm.ChatCompletionRequest{
-					Messages: []llm.ChatCompletionMessage{
+				Body: mustMarshal(llm.Request{
+					Messages: []llm.Message{
 						{
 							Role: "user",
-							Content: llm.ChatCompletionMessageContent{
-								Content: stringPtr("Hello, world!"),
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Hello, world!"),
 							},
 						},
 					},
@@ -120,7 +122,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
-				Body: mustMarshal(llm.ChatCompletionRequest{
+				Body: mustMarshal(llm.Request{
 					Model: "gpt-4",
 				}),
 			},
@@ -135,9 +137,9 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
-				Body: mustMarshal(llm.ChatCompletionRequest{
+				Body: mustMarshal(llm.Request{
 					Model:    "gpt-4",
-					Messages: []llm.ChatCompletionMessage{},
+					Messages: []llm.Message{},
 				}),
 			},
 			wantErr:     true,
@@ -154,7 +156,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					t.Errorf("TransformRequest() error = nil, wantErr %v", tt.wantErr)
 					return
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("TransformRequest() error = %v, want error containing %v", err, tt.errContains)
 				}
 				return
@@ -182,25 +184,25 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		response    *llm.ChatCompletionResponse
+		response    *llm.Response
 		wantErr     bool
 		errContains string
 		validate    func(*llm.GenericStreamEvent) bool
 	}{
 		{
 			name: "streaming chunk with content",
-			response: &llm.ChatCompletionResponse{
+			response: &llm.Response{
 				ID:      "chatcmpl-123",
 				Object:  "chat.completion.chunk",
 				Created: 1677652288,
 				Model:   "gpt-4",
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index: 0,
-						Delta: &llm.ChatCompletionMessage{
+						Delta: &llm.Message{
 							Role: "assistant",
-							Content: llm.ChatCompletionMessageContent{
-								Content: stringPtr("Hello"),
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Hello"),
 							},
 						},
 					},
@@ -213,7 +215,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				}
 
 				// Unmarshal the data to verify it's a valid ChatCompletionResponse
-				var chatResp llm.ChatCompletionResponse
+				var chatResp llm.Response
 				if err := json.Unmarshal(event.Data, &chatResp); err != nil {
 					return false
 				}
@@ -227,18 +229,18 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		},
 		{
 			name: "final streaming chunk with finish_reason",
-			response: &llm.ChatCompletionResponse{
+			response: &llm.Response{
 				ID:      "chatcmpl-123",
 				Object:  "chat.completion.chunk",
 				Created: 1677652288,
 				Model:   "gpt-4",
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index: 0,
-						Delta: &llm.ChatCompletionMessage{
+						Delta: &llm.Message{
 							Role: "assistant",
 						},
-						FinishReason: stringPtr("stop"),
+						FinishReason: lo.ToPtr("stop"),
 					},
 				},
 			},
@@ -249,7 +251,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				}
 
 				// Unmarshal the data to verify it's a valid ChatCompletionResponse
-				var chatResp llm.ChatCompletionResponse
+				var chatResp llm.Response
 				if err := json.Unmarshal(event.Data, &chatResp); err != nil {
 					return false
 				}
@@ -262,12 +264,12 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		},
 		{
 			name: "empty choices",
-			response: &llm.ChatCompletionResponse{
+			response: &llm.Response{
 				ID:      "chatcmpl-123",
 				Object:  "chat.completion.chunk",
 				Created: 1677652288,
 				Model:   "gpt-4",
-				Choices: []llm.ChatCompletionChoice{},
+				Choices: []llm.Choice{},
 			},
 			wantErr: false,
 			validate: func(event *llm.GenericStreamEvent) bool {
@@ -291,7 +293,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 					t.Errorf("TransformStreamChunk() error = nil, wantErr %v", tt.wantErr)
 					return
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("TransformStreamChunk() error = %v, want error containing %v", err, tt.errContains)
 				}
 				return
@@ -319,28 +321,28 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		response    *llm.ChatCompletionResponse
+		response    *llm.Response
 		wantErr     bool
 		errContains string
 		validate    func(*llm.GenericHttpResponse) bool
 	}{
 		{
 			name: "valid response",
-			response: &llm.ChatCompletionResponse{
+			response: &llm.Response{
 				ID:      "chatcmpl-123",
 				Object:  "chat.completion",
 				Created: 1677652288,
 				Model:   "gpt-4",
-				Choices: []llm.ChatCompletionChoice{
+				Choices: []llm.Choice{
 					{
 						Index: 0,
-						Message: &llm.ChatCompletionMessage{
+						Message: &llm.Message{
 							Role: "assistant",
-							Content: llm.ChatCompletionMessageContent{
-								Content: stringPtr("Hello! How can I help you today?"),
+							Content: llm.MessageContent{
+								Content: lo.ToPtr("Hello! How can I help you today?"),
 							},
 						},
-						FinishReason: stringPtr("stop"),
+						FinishReason: lo.ToPtr("stop"),
 					},
 				},
 			},
@@ -357,7 +359,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 				}
 
 				// Try to unmarshal the response body
-				var chatResp llm.ChatCompletionResponse
+				var chatResp llm.Response
 				if err := json.Unmarshal(resp.Body, &chatResp); err != nil {
 					return false
 				}
@@ -382,7 +384,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 					t.Errorf("TransformResponse() error = nil, wantErr %v", tt.wantErr)
 					return
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("TransformResponse() error = %v, want error containing %v", err, tt.errContains)
 				}
 				return
@@ -405,22 +407,6 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
-func TestInboundTransformer_Name(t *testing.T) {
-	transformer := NewInboundTransformer().(*InboundTransformer)
-	name := transformer.Name()
-	if name == "" {
-		t.Errorf("Name() returned empty string")
-	}
-}
-
-func TestInboundTransformer_Priority(t *testing.T) {
-	transformer := NewInboundTransformer().(*InboundTransformer)
-	priority := transformer.Priority()
-	if priority <= 0 {
-		t.Errorf("Priority() = %v, want positive number", priority)
-	}
-}
-
 // Helper functions
 func mustMarshal(v interface{}) []byte {
 	data, err := json.Marshal(v)
@@ -428,21 +414,4 @@ func mustMarshal(v interface{}) []byte {
 		panic(err)
 	}
 	return data
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
-			func() bool {
-				for i := 1; i <= len(s)-len(substr); i++ {
-					if s[i:i+len(substr)] == substr {
-						return true
-					}
-				}
-				return false
-			}())))
-}
-
-func stringPtr(s string) *string {
-	return &s
 }

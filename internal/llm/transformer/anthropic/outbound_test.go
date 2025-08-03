@@ -16,18 +16,18 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		chatReq     *llm.ChatCompletionRequest
+		chatReq     *llm.Request
 		expectError bool
 	}{
 		{
 			name: "valid simple request",
-			chatReq: &llm.ChatCompletionRequest{
+			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "Hello, Claude!"; return &s }(),
 						},
 					},
@@ -37,19 +37,19 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "request with system message",
-			chatReq: &llm.ChatCompletionRequest{
+			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "system",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "You are a helpful assistant."; return &s }(),
 						},
 					},
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "Hello!"; return &s }(),
 						},
 					},
@@ -59,14 +59,14 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "request with multimodal content",
-			chatReq: &llm.ChatCompletionRequest{
+			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
-							MultipleContent: []llm.ContentPart{
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
 								{
 									Type: "text",
 									Text: func() *string { s := "What's in this image?"; return &s }(),
@@ -86,17 +86,17 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "request with temperature and stop sequences",
-			chatReq: &llm.ChatCompletionRequest{
+			chatReq: &llm.Request{
 				Model:       "claude-3-sonnet-20240229",
 				MaxTokens:   func() *int64 { v := int64(1024); return &v }(),
 				Temperature: func() *float64 { v := 0.7; return &v }(),
 				Stop: &llm.Stop{
 					MultipleStop: []string{"Human:", "Assistant:"},
 				},
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "Hello!"; return &s }(),
 						},
 					},
@@ -106,12 +106,12 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "request without max_tokens (should use default)",
-			chatReq: &llm.ChatCompletionRequest{
+			chatReq: &llm.Request{
 				Model: "claude-3-sonnet-20240229",
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "Hello!"; return &s }(),
 						},
 					},
@@ -126,12 +126,12 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "missing model",
-			chatReq: &llm.ChatCompletionRequest{
+			chatReq: &llm.Request{
 				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "Hello!"; return &s }(),
 						},
 					},
@@ -141,10 +141,10 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "empty messages",
-			chatReq: &llm.ChatCompletionRequest{
+			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages:  []llm.ChatCompletionMessage{},
+				Messages:  []llm.Message{},
 			},
 			expectError: true,
 		},
@@ -418,18 +418,18 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		chatReq  *llm.ChatCompletionRequest
+		chatReq  *llm.Request
 		expected *MessageRequest
 	}{
 		{
 			name: "simple request",
-			chatReq: &llm.ChatCompletionRequest{
+			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "Hello!"; return &s }(),
 						},
 					},
@@ -450,19 +450,19 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 		},
 		{
 			name: "request with system message",
-			chatReq: &llm.ChatCompletionRequest{
+			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.ChatCompletionMessage{
+				Messages: []llm.Message{
 					{
 						Role: "system",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "You are helpful."; return &s }(),
 						},
 					},
 					{
 						Role: "user",
-						Content: llm.ChatCompletionMessageContent{
+						Content: llm.MessageContent{
 							Content: func() *string { s := "Hello!"; return &s }(),
 						},
 					},

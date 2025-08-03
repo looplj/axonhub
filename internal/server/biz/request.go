@@ -30,7 +30,7 @@ func NewRequestService(entClient *ent.Client) *RequestService {
 }
 
 // CreateRequest creates a new request record
-func (s *RequestService) CreateRequest(ctx context.Context, apiKey *ent.APIKey, chatReq *llm.ChatCompletionRequest, requestBody any) (*ent.Request, error) {
+func (s *RequestService) CreateRequest(ctx context.Context, apiKey *ent.APIKey, chatReq *llm.Request, requestBody any) (*ent.Request, error) {
 	requestBodyBytes, err := Marshal(requestBody)
 	if err != nil {
 		log.Error(ctx, "Failed to serialize request body", log.Cause(err))

@@ -12,6 +12,8 @@ The rules for AxonHub
 
 3. DO NOT ADD ANY NEW METHOD/STRUCTURE/FUNCTION/VARIABLE IN *.resolvers.go
 
+4. USE github.com/samber/lo package to handle collection, slice, map, ptr, etc.
+
 # Frontend rules
 
 1. We use the pnpm as the package manager, can run `pnpm dev` to start the development server

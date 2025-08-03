@@ -77,7 +77,7 @@ func (hc *HttpClientImpl) Do(ctx context.Context, request *llm.GenericHttpReques
 }
 
 // DoStream executes a streaming HTTP request using Server-Sent Events
-func (hc *HttpClientImpl) DoStream(ctx context.Context, request *llm.GenericHttpRequest) (streams.Stream[*llm.GenericHttpResponse], error) {
+func (hc *HttpClientImpl) DoStream(ctx context.Context, request *llm.GenericHttpRequest) (streams.Stream[*llm.GenericStreamEvent], error) {
 	log.Debug(ctx, "execute stream request", log.Any("request", request))
 
 	rawReq, err := hc.buildHttpRequest(ctx, request)
@@ -123,12 +123,7 @@ func (hc *HttpClientImpl) DoStream(ctx context.Context, request *llm.GenericHttp
 	sseStream := sse.NewStream(rawResp.Body)
 
 	stream := &sseStreamWrapper{
-		ctx: ctx,
-		response: &llm.GenericHttpResponse{
-			StatusCode:  rawResp.StatusCode,
-			Headers:     rawResp.Header,
-			RawResponse: rawResp,
-		},
+		ctx:       ctx,
 		sseStream: sseStream,
 		current:   nil,
 		err:       nil,
@@ -140,9 +135,8 @@ func (hc *HttpClientImpl) DoStream(ctx context.Context, request *llm.GenericHttp
 // sseStreamWrapper implements streams.Stream for Server-Sent Events using go-sse Stream
 type sseStreamWrapper struct {
 	ctx       context.Context
-	response  *llm.GenericHttpResponse
 	sseStream *sse.Stream
-	current   *llm.GenericHttpResponse
+	current   *llm.GenericStreamEvent
 	err       error
 }
 
@@ -176,19 +170,18 @@ func (s *sseStreamWrapper) Next() bool {
 
 	log.Debug(s.ctx, "SSE event received", log.Any("event", event))
 
-	// Create response for this event
-	s.current = &llm.GenericHttpResponse{
-		StatusCode:  s.response.StatusCode,
-		Headers:     s.response.Headers,
-		Body:        []byte(event.Data),
-		RawResponse: s.response.RawResponse,
+	// Create stream event for this event
+	s.current = &llm.GenericStreamEvent{
+		LastEventID: event.LastEventID,
+		Type:        event.Type,
+		Data:        []byte(event.Data),
 	}
 
 	return true
 }
 
 // Current returns the current event data
-func (s *sseStreamWrapper) Current() *llm.GenericHttpResponse {
+func (s *sseStreamWrapper) Current() *llm.GenericStreamEvent {
 	return s.current
 }
 

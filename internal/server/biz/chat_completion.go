@@ -104,7 +104,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericRe
 	return ChatCompletionResult{}, errors.New("Failed to reqeust provider")
 }
 
-func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.ChatCompletionRequest, req *ent.Request) (*llm.GenericHttpResponse, error) {
+func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.Request, req *ent.Request) (*llm.GenericHttpResponse, error) {
 	httpReq, err := channel.Outbound.TransformRequest(ctx, chatReq)
 	if err != nil {
 		log.Error(ctx, "Failed to transform request", log.Cause(err))
@@ -161,7 +161,7 @@ func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context
 	return transformedResp, nil
 }
 
-func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.ChatCompletionRequest, req *ent.Request) (streams.Stream[*llm.GenericStreamEvent], error) {
+func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.Request, req *ent.Request) (streams.Stream[*llm.GenericStreamEvent], error) {
 	// Transform ChatCompletionRequest to HTTP request
 	httpReq, err := channel.Outbound.TransformRequest(ctx, chatReq)
 	if err != nil {
@@ -187,9 +187,9 @@ func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Co
 
 	stream = NewTrackedStream(ctx, stream, req, requestExec, processor.RequestService, channel.Outbound)
 
-	// Transform the stream: HTTP responses -> ChatCompletionResponse -> final HTTP responses
-	transformedStream := streams.MapErr(stream, func(httpResp *llm.GenericHttpResponse) (*llm.GenericStreamEvent, error) {
-		chatResp, err := channel.Outbound.TransformStreamChunk(ctx, httpResp)
+	// Transform the stream: Stream events -> ChatCompletionResponse -> final HTTP responses
+	transformedStream := streams.MapErr(stream, func(event *llm.GenericStreamEvent) (*llm.GenericStreamEvent, error) {
+		chatResp, err := channel.Outbound.TransformStreamChunk(ctx, event)
 		if err != nil {
 			return nil, err
 		}

@@ -494,11 +494,7 @@ data: [DONE]
 	body := io.NopCloser(strings.NewReader(sseData))
 
 	stream := &sseStreamWrapper{
-		ctx: context.Background(),
-		response: &llm.GenericHttpResponse{
-			StatusCode: http.StatusOK,
-			Headers:    http.Header{"Content-Type": []string{"text/event-stream"}},
-		},
+		ctx:       context.Background(),
 		sseStream: sse.NewStream(body),
 	}
 

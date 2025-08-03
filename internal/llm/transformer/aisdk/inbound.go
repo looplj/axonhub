@@ -48,7 +48,7 @@ type AiSDKToolFunction struct {
 }
 
 // TransformRequest transforms AI SDK request to LLM request
-func (t *InboundTransformer) TransformRequest(ctx context.Context, req *llm.GenericHttpRequest) (*llm.ChatCompletionRequest, error) {
+func (t *InboundTransformer) TransformRequest(ctx context.Context, req *llm.GenericHttpRequest) (*llm.Request, error) {
 	// Parse JSON body
 	var aiSDKReq AiSDKRequest
 	if err := json.Unmarshal(req.Body, &aiSDKReq); err != nil {
@@ -56,15 +56,15 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, req *llm.Gene
 	}
 
 	// Convert to LLM request
-	llmReq := &llm.ChatCompletionRequest{
+	llmReq := &llm.Request{
 		Model:    aiSDKReq.Model,
-		Messages: make([]llm.ChatCompletionMessage, len(aiSDKReq.Messages)),
+		Messages: make([]llm.Message, len(aiSDKReq.Messages)),
 		Stream:   lo.ToPtr(true),
 	}
 
 	// Convert messages
 	for i, msg := range aiSDKReq.Messages {
-		llmMsg := llm.ChatCompletionMessage{
+		llmMsg := llm.Message{
 			Role: msg.Role,
 			Name: msg.Name,
 		}
@@ -72,15 +72,15 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, req *llm.Gene
 		// Handle content - can be string or array
 		switch content := msg.Content.(type) {
 		case string:
-			llmMsg.Content = llm.ChatCompletionMessageContent{
+			llmMsg.Content = llm.MessageContent{
 				Content: &content,
 			}
 		case []interface{}:
 			// Handle multi-part content
-			parts := make([]llm.ContentPart, len(content))
+			parts := make([]llm.MessageContentPart, len(content))
 			for j, part := range content {
 				if partMap, ok := part.(map[string]interface{}); ok {
-					contentPart := llm.ContentPart{}
+					contentPart := llm.MessageContentPart{}
 					if partType, exists := partMap["type"]; exists {
 						contentPart.Type = partType.(string)
 					}
@@ -102,7 +102,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, req *llm.Gene
 					parts[j] = contentPart
 				}
 			}
-			llmMsg.Content = llm.ChatCompletionMessageContent{
+			llmMsg.Content = llm.MessageContent{
 				MultipleContent: parts,
 			}
 		}
@@ -135,7 +135,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, req *llm.Gene
 }
 
 // TransformResponse transforms LLM response to AI SDK response
-func (t *InboundTransformer) TransformResponse(ctx context.Context, resp *llm.ChatCompletionResponse) (*llm.GenericHttpResponse, error) {
+func (t *InboundTransformer) TransformResponse(ctx context.Context, resp *llm.Response) (*llm.GenericHttpResponse, error) {
 	// Convert to AI SDK response format
 	aiSDKResp := map[string]interface{}{
 		"id":      resp.ID,
@@ -167,7 +167,7 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, resp *llm.Ch
 }
 
 // TransformStreamChunk transforms LLM stream chunk to AI SDK stream format
-func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chunk *llm.ChatCompletionResponse) (*llm.GenericStreamEvent, error) {
+func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chunk *llm.Response) (*llm.GenericStreamEvent, error) {
 	var streamData []string
 
 	// Process each choice

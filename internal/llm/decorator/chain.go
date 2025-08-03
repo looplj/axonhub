@@ -47,7 +47,7 @@ func (c *Chain) Remove(name string) {
 }
 
 // Execute applies all decorators in the chain to the request
-func (c *Chain) Execute(ctx context.Context, request *llm.ChatCompletionRequest) (*llm.ChatCompletionRequest, error) {
+func (c *Chain) Execute(ctx context.Context, request *llm.Request) (*llm.Request, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 

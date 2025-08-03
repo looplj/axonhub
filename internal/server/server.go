@@ -9,7 +9,6 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/api"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -68,7 +67,6 @@ func Run(opts ...fx.Option) {
 		append([]fx.Option{
 			fx.Provide(constructors...),
 			dependencies.Module,
-			transformer.Module,
 			biz.Module,
 			api.Module,
 			fx.Invoke(func(cfg log.Config) {

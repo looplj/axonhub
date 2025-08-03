@@ -13,15 +13,11 @@ import (
 )
 
 // InboundTransformer implements transformer.Inbound for Anthropic format
-type InboundTransformer struct {
-	name string
-}
+type InboundTransformer struct{}
 
 // NewInboundTransformer creates a new Anthropic InboundTransformer
 func NewInboundTransformer() transformer.Inbound {
-	return &InboundTransformer{
-		name: "anthropic-inbound",
-	}
+	return &InboundTransformer{}
 }
 
 // MessageRequest represents the Anthropic Messages API request format
@@ -118,7 +114,7 @@ type ImageSource struct {
 }
 
 // TransformRequest transforms Anthropic HTTP request to ChatCompletionRequest
-func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.GenericHttpRequest) (*llm.ChatCompletionRequest, error) {
+func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.GenericHttpRequest) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("http request is nil")
 	}
@@ -156,7 +152,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.
 	}
 
 	// Convert to ChatCompletionRequest
-	chatReq := &llm.ChatCompletionRequest{
+	chatReq := &llm.Request{
 		Model:       anthropicReq.Model,
 		MaxTokens:   &anthropicReq.MaxTokens,
 		Temperature: anthropicReq.Temperature,
@@ -165,13 +161,13 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.
 	}
 
 	// Convert messages
-	messages := make([]llm.ChatCompletionMessage, 0, len(anthropicReq.Messages))
+	messages := make([]llm.Message, 0, len(anthropicReq.Messages))
 
 	// Add system message if present
 	if anthropicReq.System != nil {
-		messages = append(messages, llm.ChatCompletionMessage{
+		messages = append(messages, llm.Message{
 			Role: "system",
-			Content: llm.ChatCompletionMessageContent{
+			Content: llm.MessageContent{
 				Content: anthropicReq.System,
 			},
 		})
@@ -179,21 +175,21 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.
 
 	// Convert Anthropic messages to ChatCompletionMessage
 	for _, msg := range anthropicReq.Messages {
-		chatMsg := llm.ChatCompletionMessage{
+		chatMsg := llm.Message{
 			Role: msg.Role,
 		}
 
 		// Convert content
 		if msg.Content.Content != nil {
-			chatMsg.Content = llm.ChatCompletionMessageContent{
+			chatMsg.Content = llm.MessageContent{
 				Content: msg.Content.Content,
 			}
 		} else if len(msg.Content.MultipleContent) > 0 {
-			contentParts := make([]llm.ContentPart, 0, len(msg.Content.MultipleContent))
+			contentParts := make([]llm.MessageContentPart, 0, len(msg.Content.MultipleContent))
 			for _, block := range msg.Content.MultipleContent {
 				switch block.Type {
 				case "text":
-					contentParts = append(contentParts, llm.ContentPart{
+					contentParts = append(contentParts, llm.MessageContentPart{
 						Type: "text",
 						Text: block.Text,
 					})
@@ -201,7 +197,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.
 					if block.Source != nil {
 						// Convert Anthropic image format to OpenAI format
 						imageURL := fmt.Sprintf("data:%s;base64,%s", block.Source.MediaType, block.Source.Data)
-						contentParts = append(contentParts, llm.ContentPart{
+						contentParts = append(contentParts, llm.MessageContentPart{
 							Type: "image_url",
 							ImageURL: &llm.ImageURL{
 								URL: imageURL,
@@ -210,7 +206,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.
 					}
 				}
 			}
-			chatMsg.Content = llm.ChatCompletionMessageContent{
+			chatMsg.Content = llm.MessageContent{
 				MultipleContent: contentParts,
 			}
 		}
@@ -237,7 +233,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.
 }
 
 // TransformResponse transforms ChatCompletionResponse to Anthropic HTTP response
-func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.ChatCompletionResponse) (*llm.GenericHttpResponse, error) {
+func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.Response) (*llm.GenericHttpResponse, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
@@ -281,7 +277,7 @@ type Usage struct {
 	ServiceTier              string `json:"service_tier"`
 }
 
-func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.ChatCompletionResponse) *MessageResponse {
+func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) *MessageResponse {
 	resp := &MessageResponse{
 		ID:    chatResp.ID,
 		Type:  "message",
@@ -292,7 +288,7 @@ func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.ChatComple
 	// Convert choices to content blocks
 	if len(chatResp.Choices) > 0 {
 		choice := chatResp.Choices[0]
-		var message *llm.ChatCompletionMessage
+		var message *llm.Message
 
 		if choice.Message != nil {
 			message = choice.Message
@@ -350,7 +346,7 @@ func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.ChatComple
 }
 
 // TransformStreamChunk transforms ChatCompletionResponse to GenericStreamEvent
-func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp *llm.ChatCompletionResponse) (*llm.GenericStreamEvent, error) {
+func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp *llm.Response) (*llm.GenericStreamEvent, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
@@ -471,7 +467,7 @@ func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp 
 		// Try to extract content from choices if available
 		if len(chatResp.Choices) > 0 {
 			choice := chatResp.Choices[0]
-			var message *llm.ChatCompletionMessage
+			var message *llm.Message
 
 			if choice.Message != nil {
 				message = choice.Message
