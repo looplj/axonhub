@@ -399,6 +399,493 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
+	transformer := NewOutboundTransformer("", "")
+
+	t.Run("Streaming edge cases", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			chunks      [][]byte
+			expectError bool
+			validate    func(t *testing.T, result *llm.Response)
+			errorMsg    string
+		}{
+			{
+				name:        "nil chunks",
+				chunks:      nil,
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					assert.NotNil(t, result)
+					assert.Empty(t, result.Choices)
+				},
+			},
+			{
+				name: "chunks with invalid JSON",
+				chunks: [][]byte{
+					[]byte(`{
+						"type": "message_start",
+						"message": {
+							"id": "msg_123",
+							"type": "message",
+							"role": "assistant",
+							"content": [],
+							"model": "claude-3-sonnet-20240229"
+						}
+					}`),
+					[]byte(`{invalid json}`), // This should be skipped
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "text_delta",
+							"text": "Hello"
+						}
+					}`),
+					[]byte(`{
+						"type": "message_delta",
+						"delta": {
+							"stop_reason": "end_turn"
+						}
+					}`),
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					assert.NotNil(t, result)
+					assert.NotEmpty(t, result.Choices)
+					assert.Equal(t, "Hello", *result.Choices[0].Message.Content.Content)
+				},
+			},
+			{
+				name: "chunks with unknown event types",
+				chunks: [][]byte{
+					[]byte(`{
+						"type": "message_start",
+						"message": {
+							"id": "msg_123",
+							"type": "message",
+							"role": "assistant",
+							"content": [],
+							"model": "claude-3-sonnet-20240229"
+						}
+					}`),
+					[]byte(`{
+						"type": "unknown_event",
+						"some_field": "value"
+					}`), // Should be skipped
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "text_delta",
+							"text": "Hello"
+						}
+					}`),
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					assert.NotNil(t, result)
+					assert.NotEmpty(t, result.Choices)
+					assert.Equal(t, "Hello", *result.Choices[0].Message.Content.Content)
+				},
+			},
+			{
+				name: "chunks missing message_start",
+				chunks: [][]byte{
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "text_delta",
+							"text": "Hello"
+						}
+					}`),
+					[]byte(`{
+						"type": "message_delta",
+						"delta": {
+							"stop_reason": "end_turn"
+						}
+					}`),
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					assert.NotNil(t, result)
+					// Should handle gracefully, might have empty fields
+				},
+			},
+			{
+				name: "chunks with all event types",
+				chunks: [][]byte{
+					[]byte(`{
+						"type": "message_start",
+						"message": {
+							"id": "msg_complete",
+							"type": "message",
+							"role": "assistant",
+							"content": [],
+							"model": "claude-3-sonnet-20240229",
+							"usage": {"input_tokens": 5, "output_tokens": 0}
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_start",
+						"index": 0,
+						"content_block": {
+							"type": "text",
+							"text": ""
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "text_delta",
+							"text": "Complete"
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_stop",
+						"index": 0
+					}`),
+					[]byte(`{
+						"type": "message_delta",
+						"delta": {
+							"stop_reason": "end_turn"
+						},
+						"usage": {"input_tokens": 5, "output_tokens": 8}
+					}`),
+					[]byte(`{
+						"type": "message_stop"
+					}`),
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					assert.NotNil(t, result)
+					assert.NotEmpty(t, result.Choices)
+					assert.Equal(t, "Complete", *result.Choices[0].Message.Content.Content)
+					assert.Equal(t, "msg_complete", result.ID)
+					assert.Equal(t, "stop", *result.Choices[0].FinishReason)
+					assert.NotNil(t, result.Usage)
+					assert.Equal(t, 5, result.Usage.PromptTokens)
+					assert.Equal(t, 8, result.Usage.CompletionTokens)
+				},
+			},
+			{
+				name: "chunks with thinking blocks",
+				chunks: [][]byte{
+					[]byte(`{
+						"type": "message_start",
+						"message": {
+							"id": "msg_thinking",
+							"type": "message",
+							"role": "assistant",
+							"content": [],
+							"model": "claude-3-sonnet-20240229"
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_start",
+						"index": 0,
+						"content_block": {
+							"type": "thinking",
+							"thinking": "Let me think about this..."
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "thinking_delta",
+							"thinking": " some more"
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_start",
+						"index": 1,
+						"content_block": {
+							"type": "text",
+							"text": ""
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 1,
+						"delta": {
+							"type": "text_delta",
+							"text": "Final answer"
+						}
+					}`),
+					[]byte(`{
+						"type": "message_delta",
+						"delta": {
+							"stop_reason": "end_turn"
+						}
+					}`),
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					assert.NotNil(t, result)
+					assert.NotEmpty(t, result.Choices)
+					// Should contain both thinking and text content
+					assert.NotNil(t, result.Choices[0].Message.Content.MultipleContent)
+					assert.Len(t, result.Choices[0].Message.Content.MultipleContent, 2)
+				},
+			},
+			{
+				name: "chunks with tool use",
+				chunks: [][]byte{
+					[]byte(`{
+						"type": "message_start",
+						"message": {
+							"id": "msg_tool",
+							"type": "message",
+							"role": "assistant",
+							"content": [],
+							"model": "claude-3-sonnet-20240229"
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_start",
+						"index": 0,
+						"content_block": {
+							"type": "text",
+							"text": ""
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "text_delta",
+							"text": "I'll use a tool"
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_start",
+						"index": 1,
+						"content_block": {
+							"type": "tool_use",
+							"id": "tool_123",
+							"name": "calculator",
+							"input": "{\"expression\": \"2+2\"}"
+						}
+					}`),
+					[]byte(`{
+						"type": "message_delta",
+						"delta": {
+							"stop_reason": "tool_use"
+						}
+					}`),
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					assert.NotNil(t, result)
+					assert.NotEmpty(t, result.Choices)
+					assert.Equal(t, "tool_calls", *result.Choices[0].FinishReason)
+					assert.NotNil(t, result.Choices[0].Message.ToolCalls)
+					assert.Len(t, result.Choices[0].Message.ToolCalls, 1)
+					assert.Equal(t, "tool_123", result.Choices[0].Message.ToolCalls[0].ID)
+				},
+			},
+			{
+				name: "chunks with partial JSON",
+				chunks: [][]byte{
+					[]byte(`{
+						"type": "message_start",
+						"message": {
+							"id": "msg_partial",
+							"type": "message",
+							"role": "assistant",
+							"content": [],
+							"model": "claude-3-sonnet-20240229"
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_start",
+						"index": 0,
+						"content_block": {
+							"type": "tool_use",
+							"id": "tool_456",
+							"name": "json_tool"
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "input_json_delta",
+							"partial_json": "{\"key\":"
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "input_json_delta",
+							"partial_json": "\"value\"}"
+						}
+					}`),
+					[]byte(`{
+						"type": "message_delta",
+						"delta": {
+							"stop_reason": "tool_use"
+						}
+					}`),
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					assert.NotNil(t, result)
+					assert.NotEmpty(t, result.Choices)
+					assert.Equal(t, "tool_calls", *result.Choices[0].FinishReason)
+					assert.NotNil(t, result.Choices[0].Message.ToolCalls)
+					assert.Len(t, result.Choices[0].Message.ToolCalls, 1)
+					assert.Equal(t, "tool_456", result.Choices[0].Message.ToolCalls[0].ID)
+					assert.Equal(t, `{"key":"value"}`, result.Choices[0].Message.ToolCalls[0].Function.Arguments)
+				},
+			},
+			{
+				name: "chunks with ping events",
+				chunks: [][]byte{
+					[]byte(`{
+						"type": "message_start",
+						"message": {
+							"id": "msg_ping",
+							"type": "message",
+							"role": "assistant",
+							"content": [],
+							"model": "claude-3-sonnet-20240229"
+						}
+					}`),
+					[]byte(`{
+						"type": "ping"
+					}`), // Should be ignored
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "text_delta",
+							"text": "After ping"
+						}
+					}`),
+					[]byte(`{
+						"type": "message_delta",
+						"delta": {
+							"stop_reason": "end_turn"
+						}
+					}`),
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					assert.NotNil(t, result)
+					assert.NotEmpty(t, result.Choices)
+					assert.Equal(t, "After ping", *result.Choices[0].Message.Content.Content)
+				},
+			},
+			{
+				name: "chunks with signature delta",
+				chunks: [][]byte{
+					[]byte(`{
+						"type": "message_start",
+						"message": {
+							"id": "msg_sig",
+							"type": "message",
+							"role": "assistant",
+							"content": [],
+							"model": "claude-3-sonnet-20240229"
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_start",
+						"index": 0,
+						"content_block": {
+							"type": "thinking",
+							"thinking": ""
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "thinking_delta",
+							"thinking": "Thinking..."
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "signature_delta",
+							"signature": "abc123"
+						}
+					}`),
+					[]byte(`{
+						"type": "message_delta",
+						"delta": {
+							"stop_reason": "end_turn"
+						}
+					}`),
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					assert.NotNil(t, result)
+					assert.NotEmpty(t, result.Choices)
+					// Should handle signature delta gracefully
+					assert.NotNil(t, result.Choices[0].Message.Content.MultipleContent)
+				},
+			},
+			{
+				name: "chunks with multiple stop reasons",
+				chunks: [][]byte{
+					[]byte(`{
+						"type": "message_start",
+						"message": {
+							"id": "msg_multi_stop",
+							"type": "message",
+							"role": "assistant",
+							"content": [],
+							"model": "claude-3-sonnet-20240229"
+						}
+					}`),
+					[]byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "text_delta",
+							"text": "Test"
+						}
+					}`),
+					[]byte(`{
+						"type": "message_delta",
+						"delta": {
+							"stop_reason": "max_tokens"
+						}
+					}`),
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					assert.NotNil(t, result)
+					assert.NotEmpty(t, result.Choices)
+					assert.Equal(t, "length", *result.Choices[0].FinishReason)
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result, err := transformer.AggregateStreamChunks(context.Background(), tt.chunks)
+				if tt.expectError {
+					assert.Error(t, err)
+					if tt.errorMsg != "" {
+						assert.Contains(t, err.Error(), tt.errorMsg)
+					}
+				} else {
+					assert.NoError(t, err)
+					tt.validate(t, result)
+				}
+			})
+		}
+	})
+}
+
 func TestOutboundTransformer_SetAPIKey(t *testing.T) {
 	transformer := NewOutboundTransformer("", "").(*OutboundTransformer)
 
@@ -413,6 +900,540 @@ func TestOutboundTransformer_SetBaseURL(t *testing.T) {
 	newBaseURL := "https://custom.api.com"
 	transformer.SetBaseURL(newBaseURL)
 	assert.Equal(t, newBaseURL, transformer.baseURL)
+}
+
+func TestOutboundTransformer_ErrorHandling(t *testing.T) {
+	transformer := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+
+	t.Run("TransformRequest error cases", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			chatReq     *llm.Request
+			expectError bool
+			errorMsg    string
+		}{
+			{
+				name:        "nil request",
+				chatReq:     nil,
+				expectError: true,
+				errorMsg:    "chat completion request is nil",
+			},
+			{
+				name: "empty model",
+				chatReq: &llm.Request{
+					Model:     "",
+					MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+					Messages: []llm.Message{
+						{
+							Role: "user",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Hello"; return &s }(),
+							},
+						},
+					},
+				},
+				expectError: true,
+				errorMsg:    "model is required",
+			},
+			{
+				name: "no messages",
+				chatReq: &llm.Request{
+					Model:     "claude-3-sonnet-20240229",
+					MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+					Messages:  []llm.Message{},
+				},
+				expectError: true,
+				errorMsg:    "messages are required",
+			},
+			{
+				name: "negative max tokens",
+				chatReq: &llm.Request{
+					Model:     "claude-3-sonnet-20240229",
+					MaxTokens: func() *int64 { v := int64(-1); return &v }(),
+					Messages: []llm.Message{
+						{
+							Role: "user",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Hello"; return &s }(),
+							},
+						},
+					},
+				},
+				expectError: true,
+				errorMsg:    "max_tokens must be positive",
+			},
+			{
+				name: "zero max tokens",
+				chatReq: &llm.Request{
+					Model:     "claude-3-sonnet-20240229",
+					MaxTokens: func() *int64 { v := int64(0); return &v }(),
+					Messages: []llm.Message{
+						{
+							Role: "user",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Hello"; return &s }(),
+							},
+						},
+					},
+				},
+				expectError: true,
+				errorMsg:    "max_tokens must be positive",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := transformer.TransformRequest(context.Background(), tt.chatReq)
+				if tt.expectError {
+					assert.Error(t, err)
+					assert.Contains(t, err.Error(), tt.errorMsg)
+				} else {
+					assert.NoError(t, err)
+				}
+			})
+		}
+	})
+
+	t.Run("TransformResponse error cases", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			httpResp    *httpclient.Response
+			expectError bool
+			errorMsg    string
+		}{
+			{
+				name:        "nil response",
+				httpResp:    nil,
+				expectError: true,
+				errorMsg:    "http response is nil",
+			},
+			{
+				name: "HTTP error status",
+				httpResp: &httpclient.Response{
+					StatusCode: http.StatusBadRequest,
+					Body:       []byte(`{"error": {"message": "Bad request"}}`),
+				},
+				expectError: true,
+				errorMsg:    "HTTP error 400",
+			},
+			{
+				name: "HTTP error with error object",
+				httpResp: &httpclient.Response{
+					StatusCode: http.StatusTooManyRequests,
+					Body:       []byte(`{"error": {"message": "Rate limit exceeded"}}`),
+					Error: &httpclient.ResponseError{
+						Message: "Rate limit exceeded",
+						Type:    "rate_limit_error",
+					},
+				},
+				expectError: true,
+				errorMsg:    "HTTP error 429",
+			},
+			{
+				name: "empty response body",
+				httpResp: &httpclient.Response{
+					StatusCode: http.StatusOK,
+					Body:       []byte{},
+				},
+				expectError: true,
+				errorMsg:    "response body is empty",
+			},
+			{
+				name: "invalid JSON response",
+				httpResp: &httpclient.Response{
+					StatusCode: http.StatusOK,
+					Body:       []byte(`{invalid json}`),
+				},
+				expectError: true,
+				errorMsg:    "failed to unmarshal anthropic response",
+			},
+			{
+				name: "malformed JSON response",
+				httpResp: &httpclient.Response{
+					StatusCode: http.StatusOK,
+					Body:       []byte(`{"id": 123, "type": "message"}`), // ID should be string
+				},
+				expectError: true,
+				errorMsg:    "failed to unmarshal anthropic response",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := transformer.TransformResponse(context.Background(), tt.httpResp)
+				if tt.expectError {
+					assert.Error(t, err)
+					assert.Contains(t, err.Error(), tt.errorMsg)
+				} else {
+					assert.NoError(t, err)
+				}
+			})
+		}
+	})
+
+	t.Run("TransformStreamChunk error cases", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			event       *httpclient.StreamEvent
+			expectError bool
+			errorMsg    string
+		}{
+			{
+				name:        "nil event",
+				event:       nil,
+				expectError: true,
+				errorMsg:    "stream event is nil",
+			},
+			{
+				name: "empty event data",
+				event: &httpclient.StreamEvent{
+					Type: "message_start",
+					Data: []byte{},
+				},
+				expectError: true,
+				errorMsg:    "event data is empty",
+			},
+			{
+				name: "invalid JSON in event data",
+				event: &httpclient.StreamEvent{
+					Type: "message_start",
+					Data: []byte(`{invalid json}`),
+				},
+				expectError: true,
+				errorMsg:    "failed to unmarshal anthropic stream event",
+			},
+			{
+				name: "malformed stream event structure",
+				event: &httpclient.StreamEvent{
+					Type: "message_start",
+					Data: []byte(`{"message": {"id": 123}}`), // ID should be string
+				},
+				expectError: true,
+				errorMsg:    "failed to unmarshal anthropic stream event",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := transformer.TransformStreamChunk(context.Background(), tt.event)
+				if tt.expectError {
+					assert.Error(t, err)
+					assert.Contains(t, err.Error(), tt.errorMsg)
+				} else {
+					assert.NoError(t, err)
+				}
+			})
+		}
+	})
+}
+
+func TestOutboundTransformer_ToolUse(t *testing.T) {
+	transformer := NewOutboundTransformer("", "")
+
+	t.Run("Tool conversion and handling", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			chatReq     *llm.Request
+			expectError bool
+			validate    func(t *testing.T, result *httpclient.Request)
+		}{
+			{
+				name: "request with single tool",
+				chatReq: &llm.Request{
+					Model:     "claude-3-sonnet-20240229",
+					MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+					Messages: []llm.Message{
+						{
+							Role: "user",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "What's the weather?"; return &s }(),
+							},
+						},
+					},
+					Tools: []llm.Tool{
+						{
+							Type: "function",
+							Function: llm.Function{
+								Name:        "get_weather",
+								Description: "Get the current weather for a location",
+								Parameters:  json.RawMessage(`{"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}`),
+							},
+						},
+					},
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *httpclient.Request) {
+					var anthropicReq MessageRequest
+					err := json.Unmarshal(result.Body, &anthropicReq)
+					require.NoError(t, err)
+					assert.NotNil(t, anthropicReq.Tools)
+					assert.Len(t, anthropicReq.Tools, 1)
+					assert.Equal(t, "get_weather", anthropicReq.Tools[0].Name)
+					assert.Equal(t, "Get the current weather for a location", anthropicReq.Tools[0].Description)
+					// Compare JSON content flexibly (ignore whitespace differences)
+	expectedSchema := map[string]interface{}{
+		"type": "object",
+		"properties": map[string]interface{}{
+			"location": map[string]interface{}{
+				"type": "string",
+			},
+		},
+		"required": []interface{}{"location"},
+	}
+	var actualSchema map[string]interface{}
+	unmarshalErr := json.Unmarshal(anthropicReq.Tools[0].InputSchema, &actualSchema)
+	require.NoError(t, unmarshalErr)
+	assert.Equal(t, expectedSchema, actualSchema)
+				},
+			},
+			{
+				name: "request with multiple tools",
+				chatReq: &llm.Request{
+					Model:     "claude-3-sonnet-20240229",
+					MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+					Messages: []llm.Message{
+						{
+							Role: "user",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Help me calculate and check weather"; return &s }(),
+							},
+						},
+					},
+					Tools: []llm.Tool{
+						{
+							Type: "function",
+							Function: llm.Function{
+								Name:        "calculator",
+								Description: "Perform mathematical calculations",
+								Parameters:  json.RawMessage(`{"type": "object", "properties": {"expression": {"type": "string"}}, "required": ["expression"]}`),
+							},
+						},
+						{
+							Type: "function",
+							Function: llm.Function{
+								Name:        "get_weather",
+								Description: "Get the current weather for a location",
+								Parameters:  json.RawMessage(`{"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}`),
+							},
+						},
+					},
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *httpclient.Request) {
+					var anthropicReq MessageRequest
+					err := json.Unmarshal(result.Body, &anthropicReq)
+					require.NoError(t, err)
+					assert.NotNil(t, anthropicReq.Tools)
+					assert.Len(t, anthropicReq.Tools, 2)
+
+					// Check first tool
+					assert.Equal(t, "calculator", anthropicReq.Tools[0].Name)
+					assert.Equal(t, "Perform mathematical calculations", anthropicReq.Tools[0].Description)
+
+					// Check second tool
+					assert.Equal(t, "get_weather", anthropicReq.Tools[1].Name)
+					assert.Equal(t, "Get the current weather for a location", anthropicReq.Tools[1].Description)
+				},
+			},
+			{
+				name: "request with non-function tool (should be filtered out)",
+				chatReq: &llm.Request{
+					Model:     "claude-3-sonnet-20240229",
+					MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+					Messages: []llm.Message{
+						{
+							Role: "user",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Use any tool available"; return &s }(),
+							},
+						},
+					},
+					Tools: []llm.Tool{
+						{
+							Type: "function",
+							Function: llm.Function{
+								Name:        "valid_function",
+								Description: "A valid function",
+								Parameters:  json.RawMessage(`{"type": "object"}`),
+							},
+						},
+						{
+							Type: "code_interpreter", // This should be filtered out
+							Function: llm.Function{
+								Name:        "invalid_tool",
+								Description: "This should not be included",
+								Parameters:  json.RawMessage(`{"type": "object"}`),
+							},
+						},
+					},
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *httpclient.Request) {
+					var anthropicReq MessageRequest
+					err := json.Unmarshal(result.Body, &anthropicReq)
+					require.NoError(t, err)
+					assert.NotNil(t, anthropicReq.Tools)
+					assert.Len(t, anthropicReq.Tools, 1) // Only the function tool should be included
+					assert.Equal(t, "valid_function", anthropicReq.Tools[0].Name)
+				},
+			},
+			{
+				name: "request with empty tools array",
+				chatReq: &llm.Request{
+					Model:     "claude-3-sonnet-20240229",
+					MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+					Messages: []llm.Message{
+						{
+							Role: "user",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Hello"; return &s }(),
+							},
+						},
+					},
+					Tools: []llm.Tool{},
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *httpclient.Request) {
+					var anthropicReq MessageRequest
+					err := json.Unmarshal(result.Body, &anthropicReq)
+					require.NoError(t, err)
+					assert.Nil(t, anthropicReq.Tools) // Should not include tools field if empty
+				},
+			},
+			{
+				name: "request with tool choice",
+				chatReq: &llm.Request{
+					Model:     "claude-3-sonnet-20240229",
+					MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+					Messages: []llm.Message{
+						{
+							Role: "user",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Use the calculator"; return &s }(),
+							},
+						},
+					},
+					Tools: []llm.Tool{
+						{
+							Type: "function",
+							Function: llm.Function{
+								Name:        "calculator",
+								Description: "Perform calculations",
+								Parameters:  json.RawMessage(`{"type": "object", "properties": {"expression": {"type": "string"}}, "required": ["expression"]}`),
+							},
+						},
+					},
+					ToolChoice: &llm.ToolChoice{
+						NamedToolChoice: &llm.NamedToolChoice{
+							Type: "function",
+							Function: llm.ToolFunction{
+								Name: "calculator",
+							},
+						},
+					},
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *httpclient.Request) {
+					var anthropicReq MessageRequest
+					err := json.Unmarshal(result.Body, &anthropicReq)
+					require.NoError(t, err)
+					// Note: Tool choice is not directly supported in current implementation
+					// but should not cause errors
+					assert.NotNil(t, anthropicReq.Tools)
+					assert.Len(t, anthropicReq.Tools, 1)
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result, err := transformer.TransformRequest(context.Background(), tt.chatReq)
+				if tt.expectError {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+					tt.validate(t, result)
+				}
+			})
+		}
+	})
+}
+
+func TestOutboundTransformer_ValidationEdgeCases(t *testing.T) {
+	transformer := NewOutboundTransformer("", "")
+
+	t.Run("Message content validation", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			chatReq     *llm.Request
+			expectError bool
+		}{
+			{
+				name: "message with nil content",
+				chatReq: &llm.Request{
+					Model:     "claude-3-sonnet-20240229",
+					MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+					Messages: []llm.Message{
+						{
+							Role:    "user",
+							Content: llm.MessageContent{}, // Empty content
+						},
+					},
+				},
+				expectError: false, // Should handle gracefully
+			},
+			{
+				name: "message with empty multiple content",
+				chatReq: &llm.Request{
+					Model:     "claude-3-sonnet-20240229",
+					MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+					Messages: []llm.Message{
+						{
+							Role: "user",
+							Content: llm.MessageContent{
+								MultipleContent: []llm.MessageContentPart{},
+							},
+						},
+					},
+				},
+				expectError: false, // Should handle gracefully
+			},
+			{
+				name: "message with invalid image URL",
+				chatReq: &llm.Request{
+					Model:     "claude-3-sonnet-20240229",
+					MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+					Messages: []llm.Message{
+						{
+							Role: "user",
+							Content: llm.MessageContent{
+								MultipleContent: []llm.MessageContentPart{
+									{
+										Type: "image_url",
+										ImageURL: &llm.ImageURL{
+											URL: "invalid-url-format", // Not a data URL
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				expectError: false, // Should handle gracefully, not convert to image block
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := transformer.TransformRequest(context.Background(), tt.chatReq)
+				if tt.expectError {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+				}
+			})
+		}
+	})
 }
 
 func TestConvertToAnthropicRequest(t *testing.T) {
@@ -440,7 +1461,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 			expected: &MessageRequest{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: 1024,
-				Messages: []Message{
+				Messages: []MessageParam{
 					{
 						Role: "user",
 						Content: MessageContent{
@@ -473,8 +1494,8 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 			expected: &MessageRequest{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: 1024,
-				System:    func() *string { s := "You are helpful."; return &s }(),
-				Messages: []Message{
+				System:    &SystemPrompt{Prompt: func() *string { s := "You are helpful."; return &s }()},
+				Messages: []MessageParam{
 					{
 						Role: "user",
 						Content: MessageContent{
@@ -500,14 +1521,14 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 func TestConvertToChatCompletionResponse(t *testing.T) {
 	transformer := NewOutboundTransformer("", "").(*OutboundTransformer)
 
-	anthropicResp := &MessageResponse{
+	anthropicResp := &Message{
 		ID:   "msg_123",
 		Type: "message",
 		Role: "assistant",
 		Content: []ContentBlock{
 			{
 				Type: "text",
-				Text: func() *string { s := "Hello! How can I help?"; return &s }(),
+				Text: "Hello! How can I help?",
 			},
 		},
 		Model:      "claude-3-sonnet-20240229",
@@ -530,4 +1551,205 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 	assert.Equal(t, 10, result.Usage.PromptTokens)
 	assert.Equal(t, 20, result.Usage.CompletionTokens)
 	assert.Equal(t, 30, result.Usage.TotalTokens)
+}
+
+func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
+	transformer := NewOutboundTransformer("", "").(*OutboundTransformer)
+
+	tests := []struct {
+		name     string
+		input    *Message
+		validate func(t *testing.T, result *llm.Response)
+	}{
+		{
+			name:  "nil response",
+			input: nil,
+			validate: func(t *testing.T, result *llm.Response) {
+				// Should handle nil gracefully or panic appropriately
+				if result != nil {
+					assert.Empty(t, result.ID)
+					assert.Empty(t, result.Choices)
+				}
+			},
+		},
+		{
+			name: "empty content blocks",
+			input: &Message{
+				ID:      "msg_empty",
+				Type:    "message",
+				Role:    "assistant",
+				Content: []ContentBlock{},
+				Model:   "claude-3-sonnet-20240229",
+			},
+			validate: func(t *testing.T, result *llm.Response) {
+				assert.Equal(t, "msg_empty", result.ID)
+				assert.Equal(t, "chat.completion", result.Object)
+				assert.NotNil(t, result.Choices)
+				if len(result.Choices) > 0 {
+					assert.Nil(t, result.Choices[0].Message.Content.Content)
+					assert.Empty(t, result.Choices[0].Message.Content.MultipleContent)
+				}
+			},
+		},
+		{
+			name: "multiple text content blocks",
+			input: &Message{
+				ID:   "msg_multi",
+				Type: "message",
+				Role: "assistant",
+				Content: []ContentBlock{
+					{Type: "text", Text: "Hello"},
+					{Type: "text", Text: " world!"},
+					{Type: "text", Text: " How are you?"},
+				},
+				Model: "claude-3-sonnet-20240229",
+			},
+			validate: func(t *testing.T, result *llm.Response) {
+				assert.Equal(t, "msg_multi", result.ID)
+				assert.NotNil(t, result.Choices[0].Message.Content.Content)
+				assert.Equal(t, "Hello world! How are you?", *result.Choices[0].Message.Content.Content)
+			},
+		},
+		{
+			name: "mixed content types",
+			input: &Message{
+				ID:   "msg_mixed",
+				Type: "message",
+				Role: "assistant",
+				Content: []ContentBlock{
+					{Type: "text", Text: "Check this image: "},
+					{Type: "image", Source: &ImageSource{
+						Type:      "base64",
+						MediaType: "image/jpeg",
+						Data:      "/9j/4AAQSkZJRg==",
+					}},
+					{Type: "text", Text: " and this text"},
+				},
+				Model: "claude-3-sonnet-20240229",
+			},
+			validate: func(t *testing.T, result *llm.Response) {
+				assert.Equal(t, "msg_mixed", result.ID)
+				assert.Nil(t, result.Choices[0].Message.Content.Content) // Should use MultipleContent for mixed types
+				assert.Len(t, result.Choices[0].Message.Content.MultipleContent, 3)
+			},
+		},
+		{
+			name: "tool use content",
+			input: &Message{
+				ID:   "msg_tool",
+				Type: "message",
+				Role: "assistant",
+				Content: []ContentBlock{
+					{
+						Type: "text",
+						Text: "I'll help you with that calculation.",
+					},
+					{
+						Type:  "tool_use",
+						ID:    "tool_123",
+						Name:  func() *string { s := "calculator"; return &s }(),
+						Input: json.RawMessage(`{"expression": "2+2"}`),
+					},
+				},
+				Model: "claude-3-sonnet-20240229",
+			},
+			validate: func(t *testing.T, result *llm.Response) {
+				assert.Equal(t, "msg_tool", result.ID)
+				assert.NotNil(t, result.Choices[0].Message.ToolCalls)
+				assert.Len(t, result.Choices[0].Message.ToolCalls, 1)
+				assert.Equal(t, "tool_123", result.Choices[0].Message.ToolCalls[0].ID)
+				assert.Equal(t, "calculator", result.Choices[0].Message.ToolCalls[0].Function.Name)
+				assert.Equal(t, `{"expression": "2+2"}`, result.Choices[0].Message.ToolCalls[0].Function.Arguments)
+			},
+		},
+		{
+			name: "all stop reasons",
+			input: func() *Message {
+				return &Message{
+					ID:      "msg_stop",
+					Type:    "message",
+					Role:    "assistant",
+					Content: []ContentBlock{{Type: "text", Text: "Test"}},
+					Model:   "claude-3-sonnet-20240229",
+				}
+			}(),
+			validate: func(t *testing.T, result *llm.Response) {
+				// Test each stop reason
+				stopReasons := map[string]string{
+					"end_turn":      "stop",
+					"max_tokens":    "length",
+					"stop_sequence": "stop",
+					"tool_use":      "tool_calls",
+					"pause_turn":    "pause_turn",
+					"refusal":       "refusal",
+				}
+
+				for anthropicReason, expectedReason := range stopReasons {
+					msg := &Message{
+						ID:         "msg_stop",
+						Type:       "message",
+						Role:       "assistant",
+						Content:    []ContentBlock{{Type: "text", Text: "Test"}},
+						Model:      "claude-3-sonnet-20240229",
+						StopReason: func() *string { s := anthropicReason; return &s }(),
+					}
+
+					result := transformer.convertToChatCompletionResponse(msg)
+					if expectedReason == "stop" {
+						assert.Equal(t, expectedReason, *result.Choices[0].FinishReason)
+					} else {
+						assert.Equal(t, expectedReason, *result.Choices[0].FinishReason)
+					}
+				}
+			},
+		},
+		{
+			name: "usage with cache tokens",
+			input: &Message{
+				ID:   "msg_cache",
+				Type: "message",
+				Role: "assistant",
+				Content: []ContentBlock{
+					{Type: "text", Text: "Cached response"},
+				},
+				Model: "claude-3-sonnet-20240229",
+				Usage: &Usage{
+					InputTokens:              100,
+					OutputTokens:             50,
+					CacheCreationInputTokens: 20,
+					CacheReadInputTokens:     30,
+					ServiceTier:              "standard",
+				},
+			},
+			validate: func(t *testing.T, result *llm.Response) {
+				assert.Equal(t, "msg_cache", result.ID)
+				assert.Equal(t, 100, result.Usage.PromptTokens)
+				assert.Equal(t, 50, result.Usage.CompletionTokens)
+				assert.Equal(t, 150, result.Usage.TotalTokens)
+				// Cache tokens should be included in input tokens
+			},
+		},
+		{
+			name: "nil usage",
+			input: &Message{
+				ID:      "msg_nusage",
+				Type:    "message",
+				Role:    "assistant",
+				Content: []ContentBlock{{Type: "text", Text: "No usage"}},
+				Model:   "claude-3-sonnet-20240229",
+				Usage:   nil,
+			},
+			validate: func(t *testing.T, result *llm.Response) {
+				assert.Equal(t, "msg_nusage", result.ID)
+				assert.Nil(t, result.Usage)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := transformer.convertToChatCompletionResponse(tt.input)
+			tt.validate(t, result)
+		})
+	}
 }

@@ -50,6 +50,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 		return nil, fmt.Errorf("messages are required")
 	}
 
+	// Validate max_tokens
+	if chatReq.MaxTokens != nil && *chatReq.MaxTokens <= 0 {
+		return nil, fmt.Errorf("max_tokens must be positive")
+	}
+
 	// Convert to Anthropic request format
 	anthropicReq := t.convertToAnthropicRequest(chatReq)
 
@@ -123,18 +128,20 @@ func (t *OutboundTransformer) convertToAnthropicRequest(chatReq *llm.Request) *M
 	}
 
 	// Convert messages
-	messages := make([]Message, 0, len(chatReq.Messages))
+	messages := make([]MessageParam, 0, len(chatReq.Messages))
 
 	for _, msg := range chatReq.Messages {
 		// Handle system messages separately
 		if msg.Role == "system" {
 			if msg.Content.Content != nil {
-				req.System = msg.Content.Content
+				req.System = &SystemPrompt{
+					Prompt: msg.Content.Content,
+				}
 			}
 			continue
 		}
 
-		anthropicMsg := Message{
+		anthropicMsg := MessageParam{
 			Role: msg.Role,
 		}
 
@@ -148,10 +155,12 @@ func (t *OutboundTransformer) convertToAnthropicRequest(chatReq *llm.Request) *M
 			for _, part := range msg.Content.MultipleContent {
 				switch part.Type {
 				case "text":
-					blocks = append(blocks, ContentBlock{
-						Type: "text",
-						Text: part.Text,
-					})
+					if part.Text != nil {
+						blocks = append(blocks, ContentBlock{
+							Type: "text",
+							Text: *part.Text,
+						})
+					}
 				case "image_url":
 					if part.ImageURL != nil {
 						// Convert OpenAI image format to Anthropic format
@@ -220,7 +229,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	var anthropicResp MessageResponse
+	var anthropicResp Message
 	if err := json.Unmarshal(httpResp.Body, &anthropicResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal anthropic response: %w", err)
 	}
@@ -260,9 +269,9 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 			resp.Created = 0
 			resp.ServiceTier = streamEvent.Message.Usage.ServiceTier
 			resp.Usage = &llm.Usage{
-				PromptTokens:     streamEvent.Message.Usage.InputTokens,
-				CompletionTokens: streamEvent.Message.Usage.OutputTokens,
-				TotalTokens:      streamEvent.Message.Usage.InputTokens + streamEvent.Message.Usage.OutputTokens,
+				PromptTokens:     int(streamEvent.Message.Usage.InputTokens),
+				CompletionTokens: int(streamEvent.Message.Usage.OutputTokens),
+				TotalTokens:      int(streamEvent.Message.Usage.InputTokens + streamEvent.Message.Usage.OutputTokens),
 			}
 		}
 		// For message_start, we return an empty choice to indicate the start
@@ -362,9 +371,9 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 		// Add usage if available
 		if streamEvent.Usage != nil {
 			resp.Usage = &llm.Usage{
-				PromptTokens:     streamEvent.Usage.InputTokens,
-				CompletionTokens: streamEvent.Usage.OutputTokens,
-				TotalTokens:      streamEvent.Usage.InputTokens + streamEvent.Usage.OutputTokens,
+				PromptTokens:     int(streamEvent.Usage.InputTokens),
+				CompletionTokens: int(streamEvent.Usage.OutputTokens),
+				TotalTokens:      int(streamEvent.Usage.InputTokens + streamEvent.Usage.OutputTokens),
 			}
 		}
 
@@ -401,7 +410,16 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 	return resp, nil
 }
 
-func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *MessageResponse) *llm.Response {
+func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Message) *llm.Response {
+	if anthropicResp == nil {
+		return &llm.Response{
+			ID:      "",
+			Object:  "chat.completion",
+			Model:   "",
+			Created: 0,
+		}
+	}
+
 	resp := &llm.Response{
 		ID:      anthropicResp.ID,
 		Object:  "chat.completion",
@@ -417,11 +435,11 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Mes
 	for _, block := range anthropicResp.Content {
 		switch block.Type {
 		case "text":
-			if block.Text != nil {
-				textParts = append(textParts, *block.Text)
+			if block.Text != "" {
+				textParts = append(textParts, block.Text)
 				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
 					Type:     "text",
-					Text:     block.Text,
+					Text:     &block.Text,
 					ImageURL: &llm.ImageURL{},
 				})
 			}
@@ -436,9 +454,9 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Mes
 				})
 			}
 		case "tool_use":
-			if block.ID != nil && block.Name != nil {
+			if block.ID != "" && block.Name != nil {
 				toolCall := llm.ToolCall{
-					ID:   *block.ID,
+					ID:   block.ID,
 					Type: "function",
 					Function: llm.FunctionCall{
 						Name:      *block.Name,
@@ -446,6 +464,17 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Mes
 					},
 				}
 				toolCalls = append(toolCalls, toolCall)
+			}
+		case "thinking":
+			if block.Thinking != "" {
+				// Add thinking content as a text part but don't include in textParts
+				// to preserve it as a separate content block
+				thinkingText := block.Thinking
+				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
+					Type:     "text",
+					Text:     &thinkingText,
+					ImageURL: &llm.ImageURL{},
+				})
 			}
 		}
 	}
@@ -500,9 +529,9 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Mes
 	// Convert usage
 	if anthropicResp.Usage != nil {
 		resp.Usage = &llm.Usage{
-			PromptTokens:     anthropicResp.Usage.InputTokens,
-			CompletionTokens: anthropicResp.Usage.OutputTokens,
-			TotalTokens:      anthropicResp.Usage.InputTokens + anthropicResp.Usage.OutputTokens,
+			PromptTokens:     int(anthropicResp.Usage.InputTokens),
+			CompletionTokens: int(anthropicResp.Usage.OutputTokens),
+			TotalTokens:      int(anthropicResp.Usage.InputTokens + anthropicResp.Usage.OutputTokens),
 		}
 	}
 
@@ -536,11 +565,51 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 				contentBlocks = append(contentBlocks, *event.ContentBlock)
 			}
 		case "content_block_delta":
-			if event.Delta != nil && event.Delta.Text != nil {
-				contentBlocks = append(contentBlocks, ContentBlock{
-					Type: "text",
-					Text: event.Delta.Text,
-				})
+			if event.Index != nil {
+				index := int(*event.Index)
+				// Ensure we have enough content blocks
+				for len(contentBlocks) <= index {
+					contentBlocks = append(contentBlocks, ContentBlock{Type: "text", Text: ""})
+				}
+
+				if event.Delta != nil {
+					if event.Delta.Text != nil {
+						if contentBlocks[index].Type == "text" {
+							contentBlocks[index].Text += *event.Delta.Text
+						}
+					}
+					if event.Delta.Thinking != nil {
+						if contentBlocks[index].Type == "thinking" {
+							contentBlocks[index].Thinking += *event.Delta.Thinking
+						} else {
+							// Convert to thinking block if it's not already
+							contentBlocks[index].Type = "thinking"
+							contentBlocks[index].Thinking = *event.Delta.Thinking
+						}
+					}
+					if event.Delta.Signature != nil {
+						// Handle signature delta - append to thinking block signature
+						if contentBlocks[index].Type == "thinking" {
+							contentBlocks[index].Signature += *event.Delta.Signature
+						} else {
+							// Convert to thinking block if it's not already
+							contentBlocks[index].Type = "thinking"
+							contentBlocks[index].Signature = *event.Delta.Signature
+						}
+					}
+					if event.Delta.PartialJSON != nil {
+						switch contentBlocks[index].Type {
+						case "tool_use":
+							if contentBlocks[index].Input == nil {
+								contentBlocks[index].Input = []byte(*event.Delta.PartialJSON)
+							} else {
+								contentBlocks[index].Input = append(contentBlocks[index].Input, []byte(*event.Delta.PartialJSON)...)
+							}
+						case "text":
+							contentBlocks[index].Text += *event.Delta.PartialJSON
+						}
+					}
+				}
 			}
 		case "message_delta":
 			if event.Delta != nil {
@@ -556,50 +625,46 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 		}
 	}
 
-	var message = &MessageResponse{
-		ID:         messageStart.Message.ID,
-		Type:       messageStart.Message.Type,
-		Role:       messageStart.Message.Role,
-		Content:    contentBlocks,
-		Model:      messageStart.Message.Model,
-		StopReason: stopReason,
-		Usage:      usage,
+	// If no message_start event, create a default message
+	var message *Message
+	if messageStart != nil {
+		// Ensure we have at least one content block
+		if len(contentBlocks) == 0 {
+			contentBlocks = []ContentBlock{
+				{Type: "text", Text: ""},
+			}
+		}
+
+		message = &Message{
+			ID:         messageStart.Message.ID,
+			Type:       messageStart.Message.Type,
+			Role:       messageStart.Message.Role,
+			Content:    contentBlocks,
+			Model:      messageStart.Message.Model,
+			StopReason: stopReason,
+			Usage:      usage,
+		}
+	} else {
+		// Ensure we have at least one content block
+		if len(contentBlocks) == 0 {
+			contentBlocks = []ContentBlock{
+				{Type: "text", Text: ""},
+			}
+		}
+
+		// Create a default message when no message_start event is received
+		message = &Message{
+			ID:         "msg_unknown",
+			Type:       "message",
+			Role:       "assistant",
+			Content:    contentBlocks,
+			Model:      "claude-3-sonnet-20240229",
+			StopReason: stopReason,
+			Usage:      usage,
+		}
 	}
 
 	return t.convertToChatCompletionResponse(message), nil
-}
-
-// StreamEvent represents events in Anthropic streaming response
-type StreamEvent struct {
-	Type         string         `json:"type"`
-	Message      *StreamMessage `json:"message,omitempty"`
-	Index        *int           `json:"index,omitempty"`
-	ContentBlock *ContentBlock  `json:"content_block,omitempty"`
-	Delta        *StreamDelta   `json:"delta,omitempty"`
-	Usage        *Usage         `json:"usage,omitempty"`
-}
-
-// StreamMessage represents message in streaming response
-type StreamMessage struct {
-	ID           string         `json:"id"`
-	Type         string         `json:"type"`
-	Role         string         `json:"role"`
-	Content      []ContentBlock `json:"content"`
-	Model        string         `json:"model"`
-	StopReason   *string        `json:"stop_reason"`
-	StopSequence *string        `json:"stop_sequence"`
-	Usage        *Usage         `json:"usage"`
-}
-
-// StreamDelta represents delta in streaming response
-type StreamDelta struct {
-	// Type is the type of delta.
-	// Available values: text_detla
-	Type         *string `json:"type,omitempty"`
-	Text         *string `json:"text,omitempty"`
-	StopReason   *string `json:"stop_reason,omitempty"`
-	StopSequence *string `json:"stop_sequence,omitempty"`
-	ServiceTier  string  `json:"service_tier"`
 }
 
 // SetAPIKey updates the API key

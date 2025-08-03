@@ -22,99 +22,6 @@ func NewInboundTransformer() transformer.Inbound {
 	return &InboundTransformer{}
 }
 
-// MessageRequest represents the Anthropic Messages API request format
-type MessageRequest struct {
-	Model         string         `json:"model"`
-	MaxTokens     int64          `json:"max_tokens"`
-	Messages      []Message      `json:"messages"`
-	System        *string        `json:"system,omitempty"`
-	Temperature   *float64       `json:"temperature,omitempty"`
-	TopP          *float64       `json:"top_p,omitempty"`
-	TopK          *int64         `json:"top_k,omitempty"`
-	StopSequences []string       `json:"stop_sequences,omitempty"`
-	Stream        *bool          `json:"stream,omitempty"`
-	Tools         []Tool         `json:"tools,omitempty"`
-	Metadata      map[string]any `json:"metadata,omitempty"`
-}
-
-// Tool represents a tool definition for Anthropic API
-type Tool struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	InputSchema json.RawMessage `json:"input_schema"`
-}
-
-// InputSchema represents the JSON schema for tool input
-type InputSchema struct {
-	Type       string                 `json:"type"`
-	Properties map[string]interface{} `json:"properties,omitempty"`
-	Required   []string               `json:"required,omitempty"`
-}
-
-// Message represents a message in Anthropic format
-type Message struct {
-	Role    string         `json:"role"`
-	Content MessageContent `json:"content"`
-}
-
-// MessageContent supports both string and array formats
-type MessageContent struct {
-	Content         *string        `json:"content,omitempty"`
-	MultipleContent []ContentBlock `json:"multiple_content,omitempty"`
-}
-
-func (c MessageContent) MarshalJSON() ([]byte, error) {
-	if c.Content != nil {
-		return json.Marshal(c.Content)
-	}
-	return json.Marshal(c.MultipleContent)
-}
-
-func (c *MessageContent) UnmarshalJSON(data []byte) error {
-	// Handle null values
-	if string(data) == "null" {
-		return fmt.Errorf("content cannot be null")
-	}
-	var blocks []ContentBlock
-	if err := json.Unmarshal(data, &blocks); err == nil {
-		c.MultipleContent = blocks
-		return nil
-	}
-
-	var str string
-	if err := json.Unmarshal(data, &str); err == nil {
-		c.Content = &str
-		return nil
-	}
-	return fmt.Errorf("invalid content type")
-}
-
-// ContentBlock represents different types of content blocks
-type ContentBlock struct {
-	// Type is the type of the content block.
-	// Available values: text, image, tool_use, tool_result
-	Type   string       `json:"type"`
-	Text   *string      `json:"text,omitempty"`
-	Source *ImageSource `json:"source,omitempty"`
-
-	// Tool use fields
-	ID    *string         `json:"id,omitempty"`
-	Name  *string         `json:"name,omitempty"`
-	Input json.RawMessage `json:"input,omitempty"`
-
-	// Tool result fields
-	ToolUseID *string `json:"tool_use_id,omitempty"`
-	Content   *string `json:"content,omitempty"`
-	IsError   *bool   `json:"is_error,omitempty"`
-}
-
-// ImageSource represents image source for Anthropic
-type ImageSource struct {
-	Type      string `json:"type"`
-	MediaType string `json:"media_type"`
-	Data      string `json:"data"`
-}
-
 // TransformRequest transforms Anthropic HTTP request to ChatCompletionRequest
 func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
@@ -153,6 +60,18 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 		return nil, fmt.Errorf("max_tokens is required and must be positive")
 	}
 
+	// Validate system prompt format
+	if anthropicReq.System != nil {
+		if anthropicReq.System.Prompt == nil && len(anthropicReq.System.MultiplePrompts) > 0 {
+			// Validate that all system prompts are text type
+			for _, prompt := range anthropicReq.System.MultiplePrompts {
+				if prompt.Type != "text" {
+					return nil, fmt.Errorf("system prompt array must contain only text type elements")
+				}
+			}
+		}
+	}
+
 	// Convert to ChatCompletionRequest
 	chatReq := &llm.Request{
 		Model:       anthropicReq.Model,
@@ -167,12 +86,25 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 
 	// Add system message if present
 	if anthropicReq.System != nil {
-		messages = append(messages, llm.Message{
-			Role: "system",
-			Content: llm.MessageContent{
-				Content: anthropicReq.System,
-			},
-		})
+		var systemContent *string
+		if anthropicReq.System.Prompt != nil {
+			systemContent = anthropicReq.System.Prompt
+		} else if len(anthropicReq.System.MultiplePrompts) > 0 {
+			// Join multiple system prompts
+			var systemText string
+			for _, prompt := range anthropicReq.System.MultiplePrompts {
+				systemText += prompt.Text + "\n"
+			}
+			systemContent = &systemText
+		}
+		if systemContent != nil {
+			messages = append(messages, llm.Message{
+				Role: "system",
+				Content: llm.MessageContent{
+					Content: systemContent,
+				},
+			})
+		}
 	}
 
 	// Convert Anthropic messages to ChatCompletionMessage
@@ -193,7 +125,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 				case "text":
 					contentParts = append(contentParts, llm.MessageContentPart{
 						Type: "text",
-						Text: block.Text,
+						Text: &block.Text,
 					})
 				case "image":
 					if block.Source != nil {
@@ -258,29 +190,8 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 	}, nil
 }
 
-// MessageResponse represents the Anthropic Messages API response format
-type MessageResponse struct {
-	ID           string         `json:"id"`
-	Type         string         `json:"type"`
-	Role         string         `json:"role"`
-	Content      []ContentBlock `json:"content"`
-	Model        string         `json:"model"`
-	StopReason   *string        `json:"stop_reason,omitempty"`
-	StopSequence *string        `json:"stop_sequence,omitempty"`
-	Usage        *Usage         `json:"usage,omitempty"`
-}
-
-// Usage represents usage information in Anthropic format
-type Usage struct {
-	InputTokens              int    `json:"input_tokens"`
-	OutputTokens             int    `json:"output_tokens"`
-	CacheCreationInputTokens int    `json:"cache_creation_input_tokens"`
-	CacheReadInputTokens     int    `json:"cache_read_input_tokens"`
-	ServiceTier              string `json:"service_tier"`
-}
-
-func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) *MessageResponse {
-	resp := &MessageResponse{
+func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) *Message {
+	resp := &Message{
 		ID:    chatResp.ID,
 		Type:  "message",
 		Role:  "assistant",
@@ -304,7 +215,7 @@ func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) 
 				resp.Content = []ContentBlock{
 					{
 						Type: "text",
-						Text: message.Content.Content,
+						Text: *message.Content.Content,
 					},
 				}
 			} else if len(message.Content.MultipleContent) > 0 {
@@ -313,7 +224,7 @@ func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) 
 					if part.Type == "text" && part.Text != nil {
 						content = append(content, ContentBlock{
 							Type: "text",
-							Text: part.Text,
+							Text: *part.Text,
 						})
 					}
 				}
@@ -339,8 +250,8 @@ func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) 
 	// Convert usage
 	if chatResp.Usage != nil {
 		resp.Usage = &Usage{
-			InputTokens:  chatResp.Usage.PromptTokens,
-			OutputTokens: chatResp.Usage.CompletionTokens,
+			InputTokens:  int64(chatResp.Usage.PromptTokens),
+			OutputTokens: int64(chatResp.Usage.CompletionTokens),
 		}
 	}
 
@@ -365,8 +276,8 @@ func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp 
 			ServiceTier: chatResp.ServiceTier,
 		}
 		if chatResp.Usage != nil {
-			usage.InputTokens = chatResp.Usage.PromptTokens
-			usage.OutputTokens = chatResp.Usage.CompletionTokens
+			usage.InputTokens = int64(chatResp.Usage.PromptTokens)
+			usage.OutputTokens = int64(chatResp.Usage.CompletionTokens)
 		}
 		streamEvent = StreamEvent{
 			Type: "message_start",
@@ -386,17 +297,17 @@ func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp 
 	case "content_block_start":
 		streamEvent = StreamEvent{
 			Type:  "content_block_start",
-			Index: func() *int { i := 0; return &i }(),
+			Index: func() *int64 { i := int64(0); return &i }(),
 			ContentBlock: &ContentBlock{
 				Type: "text",
-				Text: lo.ToPtr(""),
+				Text: "",
 			},
 		}
 
 	case "content_block_delta":
 		streamEvent = StreamEvent{
 			Type:  "content_block_delta",
-			Index: func() *int { i := 0; return &i }(),
+			Index: func() *int64 { i := int64(0); return &i }(),
 		}
 
 		// Extract content from choices
@@ -413,7 +324,7 @@ func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp 
 	case "content_block_stop":
 		streamEvent = StreamEvent{
 			Type:  "content_block_stop",
-			Index: lo.ToPtr(0),
+			Index: lo.ToPtr(int64(0)),
 		}
 
 	case "message_delta":
@@ -450,8 +361,8 @@ func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp 
 		// Add usage if available
 		if chatResp.Usage != nil {
 			streamEvent.Usage = &Usage{
-				InputTokens:  chatResp.Usage.PromptTokens,
-				OutputTokens: chatResp.Usage.CompletionTokens,
+				InputTokens:  int64(chatResp.Usage.PromptTokens),
+				OutputTokens: int64(chatResp.Usage.CompletionTokens),
 			}
 		}
 

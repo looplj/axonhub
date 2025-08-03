@@ -164,12 +164,17 @@ type ToolFunction struct {
 	Name string `json:"name"`
 }
 
+// ToolChoice represents the tool choice parameter for function calling.
+//
+// Tool choice can be a string or a struct.
 type ToolChoice struct {
-	ToolChoice      *string `json:"tool_choice,omitempty"`
-	NamedToolChoice *struct {
-		Type     string       `json:"type"`
-		Function ToolFunction `json:"function,omitempty"`
-	}
+	ToolChoice      *string          `json:"tool_choice,omitempty"`
+	NamedToolChoice *NamedToolChoice `json:"named_tool_choice,omitempty"`
+}
+
+type NamedToolChoice struct {
+	Type     string       `json:"type"`
+	Function ToolFunction `json:"function,omitempty"`
 }
 
 func (t ToolChoice) MarshalJSON() ([]byte, error) {
@@ -186,10 +191,7 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	var named struct {
-		Type     string       `json:"type"`
-		Function ToolFunction `json:"function,omitempty"`
-	}
+	var named NamedToolChoice
 	if err := json.Unmarshal(data, &named); err == nil {
 		t.NamedToolChoice = &named
 		return nil

@@ -122,14 +122,14 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 			assert.Equal(t, tt.expectedMaxTokens, anthropicReq.MaxTokens)
 
 			// Step 3: Simulate Anthropic response and transform back
-			anthropicResponse := &MessageResponse{
+			anthropicResponse := &Message{
 				ID:   "msg_test_123",
 				Type: "message",
 				Role: "assistant",
 				Content: []ContentBlock{
 					{
 						Type: "text",
-						Text: func() *string { s := "This is a test response from Claude."; return &s }(),
+						Text: "This is a test response from Claude.",
 					},
 				},
 				Model:      tt.expectedModel,
@@ -171,7 +171,7 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 			assert.Equal(t, http.StatusOK, finalHttpResp.StatusCode)
 			assert.Equal(t, "application/json", finalHttpResp.Headers.Get("Content-Type"))
 
-			var finalAnthropicResp MessageResponse
+			var finalAnthropicResp Message
 			err = json.Unmarshal(finalHttpResp.Body, &finalAnthropicResp)
 			require.NoError(t, err)
 			assert.Equal(t, "msg_test_123", finalAnthropicResp.ID)

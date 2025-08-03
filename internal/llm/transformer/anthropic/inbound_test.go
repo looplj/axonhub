@@ -383,7 +383,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 				require.NotEmpty(t, result.Body)
 
 				// Verify the response can be unmarshaled to AnthropicResponse
-				var anthropicResp MessageResponse
+				var anthropicResp Message
 				err := json.Unmarshal(result.Body, &anthropicResp)
 				require.NoError(t, err)
 				require.Equal(t, tt.chatResp.ID, anthropicResp.ID)
@@ -393,6 +393,277 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInboundTransformer_ErrorHandling(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	t.Run("TransformRequest error cases", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			httpReq     *httpclient.Request
+			expectError bool
+			errorMsg    string
+		}{
+			{
+				name:        "nil request",
+				httpReq:     nil,
+				expectError: true,
+				errorMsg:    "http request is nil",
+			},
+			{
+				name: "empty body",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte{},
+				},
+				expectError: true,
+				errorMsg:    "request body is empty",
+			},
+			{
+				name: "invalid content type",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": []}`),
+				},
+				expectError: true,
+				errorMsg:    "unsupported content type",
+			},
+			{
+				name: "no content type header",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{},
+					Body:    []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": []}`),
+				},
+				expectError: true,
+				errorMsg:    "unsupported content type",
+			},
+			{
+				name: "invalid JSON",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{invalid json}`),
+				},
+				expectError: true,
+				errorMsg:    "failed to decode anthropic request",
+			},
+			{
+				name: "missing model field",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{"max_tokens": 1024, "messages": [{"role": "user", "content": "Hello"}]}`),
+				},
+				expectError: true,
+				errorMsg:    "model is required",
+			},
+			{
+				name: "empty model field",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{"model": "", "max_tokens": 1024, "messages": [{"role": "user", "content": "Hello"}]}`),
+				},
+				expectError: true,
+				errorMsg:    "model is required",
+			},
+			{
+				name: "missing messages field",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024}`),
+				},
+				expectError: true,
+				errorMsg:    "messages are required",
+			},
+			{
+				name: "empty messages array",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": []}`),
+				},
+				expectError: true,
+				errorMsg:    "messages are required",
+			},
+			{
+				name: "invalid max_tokens (negative)",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": -1, "messages": [{"role": "user", "content": "Hello"}]}`),
+				},
+				expectError: true,
+				errorMsg:    "max_tokens is required and must be positive",
+			},
+			{
+				name: "invalid max_tokens (zero)",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 0, "messages": [{"role": "user", "content": "Hello"}]}`),
+				},
+				expectError: true,
+				errorMsg:    "max_tokens is required and must be positive",
+			},
+			{
+				name: "missing max_tokens field",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{"model": "claude-3-sonnet-20240229", "messages": [{"role": "user", "content": "Hello"}]}`),
+				},
+				expectError: true,
+				errorMsg:    "max_tokens is required and must be positive",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := transformer.TransformRequest(context.Background(), tt.httpReq)
+				if tt.expectError {
+					require.Error(t, err)
+					require.Contains(t, err.Error(), tt.errorMsg)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	})
+
+	t.Run("TransformResponse error cases", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			chatResp    *llm.Response
+			expectError bool
+			errorMsg    string
+		}{
+			{
+				name:        "nil response",
+				chatResp:    nil,
+				expectError: true,
+				errorMsg:    "chat completion response is nil",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := transformer.TransformResponse(context.Background(), tt.chatResp)
+				if tt.expectError {
+					require.Error(t, err)
+					require.Contains(t, err.Error(), tt.errorMsg)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	})
+
+	t.Run("TransformStreamChunk error cases", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			chatResp    *llm.Response
+			expectError bool
+			errorMsg    string
+		}{
+			{
+				name:        "nil response",
+				chatResp:    nil,
+				expectError: true,
+				errorMsg:    "chat completion response is nil",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := transformer.TransformStreamChunk(context.Background(), tt.chatResp)
+				if tt.expectError {
+					require.Error(t, err)
+					require.Contains(t, err.Error(), tt.errorMsg)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	})
+}
+
+func TestInboundTransformer_ValidationEdgeCases(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	t.Run("Message content validation", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			httpReq     *httpclient.Request
+			expectError bool
+		}{
+			{
+				name: "null content in message",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": [{"role": "user", "content": null}]}`),
+				},
+				expectError: true, // Should error on null content
+			},
+			{
+				name: "invalid content type",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": [{"role": "user", "content": 123}]}`),
+				},
+				expectError: true, // Should error on invalid content type
+			},
+			{
+				name: "invalid system prompt type",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "system": 123, "messages": [{"role": "user", "content": "Hello"}]}`),
+				},
+				expectError: true, // Should error on invalid system type
+			},
+			{
+				name: "invalid system prompt array type",
+				httpReq: &httpclient.Request{
+					Headers: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "system": [{"type": "invalid"}], "messages": [{"role": "user", "content": "Hello"}]}`),
+				},
+				expectError: true, // Should error on invalid system prompt array
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := transformer.TransformRequest(context.Background(), tt.httpReq)
+				if tt.expectError {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	})
 }
 
 func TestAnthropicMessageContent_MarshalUnmarshal(t *testing.T) {
@@ -414,7 +685,7 @@ func TestAnthropicMessageContent_MarshalUnmarshal(t *testing.T) {
 				MultipleContent: []ContentBlock{
 					{
 						Type: "text",
-						Text: func() *string { s := "Hello"; return &s }(),
+						Text: "Hello",
 					},
 				},
 			},
@@ -477,8 +748,8 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				require.Equal(t, "claude-3-sonnet-20240229", streamEvent.Message.Model)
 
 				require.NotNil(t, streamEvent.Message.Usage)
-				require.Equal(t, 10, streamEvent.Message.Usage.InputTokens)
-				require.Equal(t, 20, streamEvent.Message.Usage.OutputTokens)
+				require.Equal(t, int64(10), streamEvent.Message.Usage.InputTokens)
+				require.Equal(t, int64(20), streamEvent.Message.Usage.OutputTokens)
 			},
 		},
 		{
@@ -586,8 +857,8 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				require.NotNil(t, streamEvent.Delta.StopReason)
 				require.Equal(t, "end_turn", *streamEvent.Delta.StopReason)
 				require.NotNil(t, streamEvent.Usage)
-				require.Equal(t, 10, streamEvent.Usage.InputTokens)
-				require.Equal(t, 20, streamEvent.Usage.OutputTokens)
+				require.Equal(t, int64(10), streamEvent.Usage.InputTokens)
+				require.Equal(t, int64(20), streamEvent.Usage.OutputTokens)
 			},
 		},
 		{
