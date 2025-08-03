@@ -8,7 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/looplj/axonhub/internal/llm"
+
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 func TestAnthropicTransformers_Integration(t *testing.T) {
@@ -86,7 +87,7 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Step 1: Transform Anthropic request to ChatCompletionRequest
-			httpReq := &llm.GenericHttpRequest{
+			httpReq := &httpclient.Request{
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -142,7 +143,7 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 			responseBody, err := json.Marshal(anthropicResponse)
 			require.NoError(t, err)
 
-			httpResp := &llm.GenericHttpResponse{
+			httpResp := &httpclient.Response{
 				StatusCode: http.StatusOK,
 				Body:       responseBody,
 			}
@@ -274,7 +275,7 @@ func TestAnthropicTransformers_ErrorHandling(t *testing.T) {
 
 	t.Run("inbound error handling", func(t *testing.T) {
 		// Test invalid JSON
-		httpReq := &llm.GenericHttpRequest{
+		httpReq := &httpclient.Request{
 			Headers: http.Header{
 				"Content-Type": []string{"application/json"},
 			},
@@ -288,10 +289,10 @@ func TestAnthropicTransformers_ErrorHandling(t *testing.T) {
 
 	t.Run("outbound error handling", func(t *testing.T) {
 		// Test HTTP error response
-		httpResp := &llm.GenericHttpResponse{
+		httpResp := &httpclient.Response{
 			StatusCode: http.StatusBadRequest,
 			Body:       []byte(`{"error": {"message": "Invalid request", "type": "invalid_request_error"}}`),
-			Error: &llm.ResponseError{
+			Error: &httpclient.ResponseError{
 				Message: "Invalid request",
 				Type:    "invalid_request_error",
 			},

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
@@ -81,7 +81,7 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 	outbound.(*OutboundTransformer).SetBaseURL(server.URL)
 
 	// Test data
-	originalRequest := &llm.GenericHttpRequest{
+	originalRequest := &httpclient.Request{
 		Method: http.MethodPost,
 		URL:    "/v1/chat/completions",
 		Headers: http.Header{
@@ -229,7 +229,7 @@ func TestIntegration_StreamingFlow(t *testing.T) {
 	defer server.Close()
 
 	// Create streaming request
-	streamReq := &llm.GenericHttpRequest{
+	streamReq := &httpclient.Request{
 		Method: http.MethodPost,
 		URL:    server.URL,
 		Headers: http.Header{
@@ -303,7 +303,7 @@ func TestIntegration_ErrorHandling(t *testing.T) {
 	outbound.(*OutboundTransformer).SetBaseURL(server.URL)
 
 	// Create request
-	originalRequest := &llm.GenericHttpRequest{
+	originalRequest := &httpclient.Request{
 		Method: http.MethodPost,
 		URL:    "/v1/chat/completions",
 		Headers: http.Header{
@@ -338,7 +338,7 @@ func TestIntegration_ErrorHandling(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, httpResp)
 
-	rawErr, ok := xerrors.As[llm.GenericHttpError](err)
+	rawErr, ok := xerrors.As[httpclient.HttpError](err)
 	require.True(t, ok)
 
 	// Should have error in response

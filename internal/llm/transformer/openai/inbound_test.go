@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 func TestInboundTransformer_TransformRequest(t *testing.T) {
@@ -16,14 +18,14 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		request     *llm.GenericHttpRequest
+		request     *httpclient.Request
 		wantErr     bool
 		errContains string
 		validate    func(*llm.Request) bool
 	}{
 		{
 			name: "valid request",
-			request: &llm.GenericHttpRequest{
+			request: &httpclient.Request{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
 				Headers: http.Header{
@@ -55,7 +57,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "empty body",
-			request: &llm.GenericHttpRequest{
+			request: &httpclient.Request{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
 				Headers: http.Header{
@@ -68,7 +70,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "unsupported content type",
-			request: &llm.GenericHttpRequest{
+			request: &httpclient.Request{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
 				Headers: http.Header{
@@ -81,7 +83,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "invalid JSON",
-			request: &llm.GenericHttpRequest{
+			request: &httpclient.Request{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
 				Headers: http.Header{
@@ -94,7 +96,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "missing model",
-			request: &llm.GenericHttpRequest{
+			request: &httpclient.Request{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
 				Headers: http.Header{
@@ -116,7 +118,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "missing messages",
-			request: &llm.GenericHttpRequest{
+			request: &httpclient.Request{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
 				Headers: http.Header{
@@ -131,7 +133,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "empty messages",
-			request: &llm.GenericHttpRequest{
+			request: &httpclient.Request{
 				Method: http.MethodPost,
 				URL:    "/v1/chat/completions",
 				Headers: http.Header{
@@ -187,7 +189,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		response    *llm.Response
 		wantErr     bool
 		errContains string
-		validate    func(*llm.GenericStreamEvent) bool
+		validate    func(*httpclient.StreamEvent) bool
 	}{
 		{
 			name: "streaming chunk with content",
@@ -209,7 +211,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(event *llm.GenericStreamEvent) bool {
+			validate: func(event *httpclient.StreamEvent) bool {
 				if event.Type != "" {
 					return false
 				}
@@ -245,7 +247,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(event *llm.GenericStreamEvent) bool {
+			validate: func(event *httpclient.StreamEvent) bool {
 				if event.Type != "" {
 					return false
 				}
@@ -272,7 +274,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				Choices: []llm.Choice{},
 			},
 			wantErr: false,
-			validate: func(event *llm.GenericStreamEvent) bool {
+			validate: func(event *httpclient.StreamEvent) bool {
 				return event.Type == ""
 			},
 		},
@@ -324,7 +326,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 		response    *llm.Response
 		wantErr     bool
 		errContains string
-		validate    func(*llm.GenericHttpResponse) bool
+		validate    func(*httpclient.Response) bool
 	}{
 		{
 			name: "valid response",
@@ -347,7 +349,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(resp *llm.GenericHttpResponse) bool {
+			validate: func(resp *httpclient.Response) bool {
 				if resp.StatusCode != http.StatusOK {
 					return false
 				}

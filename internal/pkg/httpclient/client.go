@@ -10,7 +10,6 @@ import (
 
 	"github.com/tmaxmax/go-sse"
 
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/log"
 
 	"github.com/looplj/axonhub/internal/pkg/streams"
@@ -31,7 +30,7 @@ func NewHttpClient() HttpClient {
 }
 
 // Do executes the HTTP request
-func (hc *HttpClientImpl) Do(ctx context.Context, request *llm.GenericHttpRequest) (*llm.GenericHttpResponse, error) {
+func (hc *HttpClientImpl) Do(ctx context.Context, request *Request) (*Response, error) {
 	log.Debug(ctx, "execute http request", log.Any("request", request))
 	rawReq, err := hc.buildHttpRequest(ctx, request)
 	if err != nil {
@@ -56,7 +55,7 @@ func (hc *HttpClientImpl) Do(ctx context.Context, request *llm.GenericHttpReques
 
 	// Check for HTTP errors
 	if rawResp.StatusCode >= 400 {
-		return nil, llm.GenericHttpError{
+		return nil, HttpError{
 			Method:     rawReq.Method,
 			URL:        rawReq.URL.String(),
 			StatusCode: rawResp.StatusCode,
@@ -66,7 +65,7 @@ func (hc *HttpClientImpl) Do(ctx context.Context, request *llm.GenericHttpReques
 	}
 
 	// Build generic response
-	response := &llm.GenericHttpResponse{
+	response := &Response{
 		StatusCode:  rawResp.StatusCode,
 		Headers:     rawResp.Header,
 		Body:        body,
@@ -77,7 +76,7 @@ func (hc *HttpClientImpl) Do(ctx context.Context, request *llm.GenericHttpReques
 }
 
 // DoStream executes a streaming HTTP request using Server-Sent Events
-func (hc *HttpClientImpl) DoStream(ctx context.Context, request *llm.GenericHttpRequest) (streams.Stream[*llm.GenericStreamEvent], error) {
+func (hc *HttpClientImpl) DoStream(ctx context.Context, request *Request) (streams.Stream[*StreamEvent], error) {
 	log.Debug(ctx, "execute stream request", log.Any("request", request))
 
 	rawReq, err := hc.buildHttpRequest(ctx, request)
@@ -110,7 +109,7 @@ func (hc *HttpClientImpl) DoStream(ctx context.Context, request *llm.GenericHttp
 			return nil, err
 		}
 
-		return nil, llm.GenericHttpError{
+		return nil, HttpError{
 			Method:     rawReq.Method,
 			URL:        rawReq.URL.String(),
 			StatusCode: rawResp.StatusCode,
@@ -136,7 +135,7 @@ func (hc *HttpClientImpl) DoStream(ctx context.Context, request *llm.GenericHttp
 type sseStreamWrapper struct {
 	ctx       context.Context
 	sseStream *sse.Stream
-	current   *llm.GenericStreamEvent
+	current   *StreamEvent
 	err       error
 }
 
@@ -171,7 +170,7 @@ func (s *sseStreamWrapper) Next() bool {
 	log.Debug(s.ctx, "SSE event received", log.Any("event", event))
 
 	// Create stream event for this event
-	s.current = &llm.GenericStreamEvent{
+	s.current = &StreamEvent{
 		LastEventID: event.LastEventID,
 		Type:        event.Type,
 		Data:        []byte(event.Data),
@@ -181,7 +180,7 @@ func (s *sseStreamWrapper) Next() bool {
 }
 
 // Current returns the current event data
-func (s *sseStreamWrapper) Current() *llm.GenericStreamEvent {
+func (s *sseStreamWrapper) Current() *StreamEvent {
 	return s.current
 }
 
@@ -200,8 +199,8 @@ func (s *sseStreamWrapper) Close() error {
 	return nil
 }
 
-// buildHttpRequest builds an HTTP request from GenericHttpRequest
-func (hc *HttpClientImpl) buildHttpRequest(ctx context.Context, request *llm.GenericHttpRequest) (*http.Request, error) {
+// buildHttpRequest builds an HTTP request from Request
+func (hc *HttpClientImpl) buildHttpRequest(ctx context.Context, request *Request) (*http.Request, error) {
 	var body io.Reader
 	if len(request.Body) > 0 {
 		body = bytes.NewReader(request.Body)
@@ -230,7 +229,7 @@ func (hc *HttpClientImpl) buildHttpRequest(ctx context.Context, request *llm.Gen
 }
 
 // applyAuth applies authentication to the HTTP request
-func (hc *HttpClientImpl) applyAuth(req *http.Request, auth *llm.AuthConfig) error {
+func (hc *HttpClientImpl) applyAuth(req *http.Request, auth *AuthConfig) error {
 	switch auth.Type {
 	case "bearer":
 		if auth.APIKey == "" {

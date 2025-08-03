@@ -12,21 +12,20 @@ import (
 	"time"
 
 	"github.com/tmaxmax/go-sse"
-	"github.com/looplj/axonhub/internal/llm"
 )
 
 func TestHttpClientImpl_Do(t *testing.T) {
 	tests := []struct {
 		name           string
-		request        *llm.GenericHttpRequest
+		request        *Request
 		serverResponse func(w http.ResponseWriter, r *http.Request)
 		wantErr        bool
 		errReg         *regexp.Regexp
-		validate       func(*llm.GenericHttpResponse) bool
+		validate       func(*Response) bool
 	}{
 		{
 			name: "successful request",
-			request: &llm.GenericHttpRequest{
+			request: &Request{
 				Method: http.MethodPost,
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
@@ -39,7 +38,7 @@ func TestHttpClientImpl_Do(t *testing.T) {
 				w.Write([]byte(`{"response": "success"}`))
 			},
 			wantErr: false,
-			validate: func(resp *llm.GenericHttpResponse) bool {
+			validate: func(resp *Response) bool {
 				return resp.StatusCode == http.StatusOK &&
 					string(resp.Body) == `{"response": "success"}` &&
 					resp.Error == nil
@@ -47,13 +46,13 @@ func TestHttpClientImpl_Do(t *testing.T) {
 		},
 		{
 			name: "request with authentication",
-			request: &llm.GenericHttpRequest{
+			request: &Request{
 				Method: http.MethodPost,
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
 				Body: []byte(`{"test": "data"}`),
-				Auth: &llm.AuthConfig{
+				Auth: &AuthConfig{
 					Type:   "bearer",
 					APIKey: "test-token",
 				},
@@ -69,14 +68,14 @@ func TestHttpClientImpl_Do(t *testing.T) {
 				w.Write([]byte(`{"response": "authenticated"}`))
 			},
 			wantErr: false,
-			validate: func(resp *llm.GenericHttpResponse) bool {
+			validate: func(resp *Response) bool {
 				return resp.StatusCode == http.StatusOK &&
 					string(resp.Body) == `{"response": "authenticated"}`
 			},
 		},
 		{
 			name: "HTTP error response",
-			request: &llm.GenericHttpRequest{
+			request: &Request{
 				Method: http.MethodPost,
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
@@ -89,7 +88,7 @@ func TestHttpClientImpl_Do(t *testing.T) {
 			},
 			wantErr: true,
 			errReg:  regexp.MustCompile("POST - http://127.0.0.1:\\d+ with status 400 Bad Request"),
-			validate: func(resp *llm.GenericHttpResponse) bool {
+			validate: func(resp *Response) bool {
 				return resp == nil
 			},
 		},
@@ -141,7 +140,7 @@ func TestHttpClientImpl_Do(t *testing.T) {
 func TestHttpClientImpl_DoStream(t *testing.T) {
 	tests := []struct {
 		name           string
-		request        *llm.GenericHttpRequest
+		request        *Request
 		serverResponse func(w http.ResponseWriter, r *http.Request)
 		wantErr        bool
 		errContains    string
@@ -149,7 +148,7 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 	}{
 		{
 			name: "successful streaming request",
-			request: &llm.GenericHttpRequest{
+			request: &Request{
 				Method: http.MethodPost,
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
@@ -194,7 +193,7 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 		},
 		{
 			name: "HTTP error in streaming request",
-			request: &llm.GenericHttpRequest{
+			request: &Request{
 				Method: http.MethodPost,
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
@@ -267,14 +266,14 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		request     *llm.GenericHttpRequest
+		request     *Request
 		wantErr     bool
 		errContains string
 		validate    func(*http.Request) bool
 	}{
 		{
 			name: "basic request",
-			request: &llm.GenericHttpRequest{
+			request: &Request{
 				Method: http.MethodPost,
 				URL:    "https://api.example.com/test",
 				Headers: http.Header{
@@ -291,10 +290,10 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 		},
 		{
 			name: "request with bearer auth",
-			request: &llm.GenericHttpRequest{
+			request: &Request{
 				Method: http.MethodPost,
 				URL:    "https://api.example.com/test",
-				Auth: &llm.AuthConfig{
+				Auth: &AuthConfig{
 					Type:   "bearer",
 					APIKey: "test-token",
 				},
@@ -306,10 +305,10 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 		},
 		{
 			name: "request with api_key auth",
-			request: &llm.GenericHttpRequest{
+			request: &Request{
 				Method: http.MethodPost,
 				URL:    "https://api.example.com/test",
-				Auth: &llm.AuthConfig{
+				Auth: &AuthConfig{
 					Type:      "api_key",
 					APIKey:    "test-key",
 					HeaderKey: "X-API-Key",
@@ -322,7 +321,7 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 		},
 		{
 			name: "invalid URL",
-			request: &llm.GenericHttpRequest{
+			request: &Request{
 				Method: http.MethodPost,
 				URL:    "://invalid-url",
 			},
@@ -368,14 +367,14 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		auth        *llm.AuthConfig
+		auth        *AuthConfig
 		wantErr     bool
 		errContains string
 		validate    func(*http.Request) bool
 	}{
 		{
 			name: "bearer auth",
-			auth: &llm.AuthConfig{
+			auth: &AuthConfig{
 				Type:   "bearer",
 				APIKey: "test-token",
 			},
@@ -386,7 +385,7 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 		},
 		{
 			name: "api_key auth",
-			auth: &llm.AuthConfig{
+			auth: &AuthConfig{
 				Type:      "api_key",
 				APIKey:    "test-key",
 				HeaderKey: "X-API-Key",
@@ -398,7 +397,7 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 		},
 		{
 			name: "bearer auth without token",
-			auth: &llm.AuthConfig{
+			auth: &AuthConfig{
 				Type: "bearer",
 			},
 			wantErr:     true,
@@ -406,7 +405,7 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 		},
 		{
 			name: "api_key auth without header key",
-			auth: &llm.AuthConfig{
+			auth: &AuthConfig{
 				Type:   "api_key",
 				APIKey: "test-key",
 			},
@@ -415,7 +414,7 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 		},
 		{
 			name: "unsupported auth type",
-			auth: &llm.AuthConfig{
+			auth: &AuthConfig{
 				Type: "oauth",
 			},
 			wantErr:     true,

@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
@@ -18,7 +20,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		request     *llm.Request
 		wantErr     bool
 		errContains string
-		validate    func(*llm.GenericHttpRequest) bool
+		validate    func(*httpclient.Request) bool
 	}{
 		{
 			name:        "valid request with default URL",
@@ -35,7 +37,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(req *llm.GenericHttpRequest) bool {
+			validate: func(req *httpclient.Request) bool {
 				return req.Method == http.MethodPost &&
 					req.URL == "https://api.openai.com/v1/chat/completions" &&
 					req.Headers.Get("Content-Type") == "application/json" &&
@@ -59,7 +61,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(req *llm.GenericHttpRequest) bool {
+			validate: func(req *httpclient.Request) bool {
 				return req.URL == "https://custom.api.com/v1/chat/completions"
 			},
 		},
@@ -78,7 +80,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(req *llm.GenericHttpRequest) bool {
+			validate: func(req *httpclient.Request) bool {
 				return req.Auth == nil
 			},
 		},
@@ -129,7 +131,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			validate: func(req *llm.GenericHttpRequest) bool {
+			validate: func(req *httpclient.Request) bool {
 				return req.URL == "https://api.openai.com/v1/chat/completions"
 			},
 		},
@@ -263,14 +265,14 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		response    *llm.GenericHttpResponse
+		response    *httpclient.Response
 		wantErr     bool
 		errContains string
 		validate    func(*llm.Response) bool
 	}{
 		{
 			name: "valid response",
-			response: &llm.GenericHttpResponse{
+			response: &httpclient.Response{
 				StatusCode: http.StatusOK,
 				Headers:    http.Header{"Content-Type": []string{"application/json"}},
 				Body: mustMarshal(llm.Response{
@@ -309,7 +311,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 		},
 		{
 			name: "HTTP error response",
-			response: &llm.GenericHttpResponse{
+			response: &httpclient.Response{
 				StatusCode: http.StatusBadRequest,
 				Headers:    http.Header{"Content-Type": []string{"application/json"}},
 				Body:       []byte(`{"error": "Bad request"}`),
@@ -319,11 +321,11 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 		},
 		{
 			name: "HTTP error with error object",
-			response: &llm.GenericHttpResponse{
+			response: &httpclient.Response{
 				StatusCode: http.StatusUnauthorized,
 				Headers:    http.Header{"Content-Type": []string{"application/json"}},
 				Body:       []byte(`{"error": "Unauthorized"}`),
-				Error: &llm.ResponseError{
+				Error: &httpclient.ResponseError{
 					Code:    "HTTP_401",
 					Message: "Unauthorized access",
 					Type:    "http_error",
@@ -334,7 +336,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 		},
 		{
 			name: "empty response body",
-			response: &llm.GenericHttpResponse{
+			response: &httpclient.Response{
 				StatusCode: http.StatusOK,
 				Headers:    http.Header{"Content-Type": []string{"application/json"}},
 				Body:       []byte{},
@@ -344,7 +346,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 		},
 		{
 			name: "invalid JSON response",
-			response: &llm.GenericHttpResponse{
+			response: &httpclient.Response{
 				StatusCode: http.StatusOK,
 				Headers:    http.Header{"Content-Type": []string{"application/json"}},
 				Body:       []byte("invalid json"),

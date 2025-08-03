@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 func TestInboundTransformer_TransformRequest(t *testing.T) {
@@ -19,13 +20,13 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    *llm.GenericHttpRequest
+		input    *httpclient.Request
 		expected *llm.Request
 		wantErr  bool
 	}{
 		{
 			name: "basic text message",
-			input: &llm.GenericHttpRequest{
+			input: &httpclient.Request{
 				Method: "POST",
 				URL:    "/api/chat",
 				Headers: http.Header{
@@ -58,7 +59,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "message with tools",
-			input: &llm.GenericHttpRequest{
+			input: &httpclient.Request{
 				Method: "POST",
 				URL:    "/api/chat",
 				Headers: http.Header{
@@ -128,7 +129,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "invalid JSON",
-			input: &llm.GenericHttpRequest{
+			input: &httpclient.Request{
 				Method: "POST",
 				URL:    "/api/chat",
 				Headers: http.Header{
@@ -183,7 +184,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    *llm.Response
-		expected *llm.GenericHttpResponse
+		expected *httpclient.Response
 		wantErr  bool
 	}{
 		{

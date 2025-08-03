@@ -1,8 +1,9 @@
 package dependencies
 
 import (
-	"github.com/looplj/axonhub/internal/llm/httpclient"
 	"go.uber.org/fx"
+
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 var Module = fx.Module("dependencies",

@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 // InboundTransformer implements transformer.Inbound for OpenAI format
@@ -20,7 +21,7 @@ func NewInboundTransformer() transformer.Inbound {
 }
 
 // TransformRequest transforms HTTP request to ChatCompletionRequest
-func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.GenericHttpRequest) (*llm.Request, error) {
+func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("http request is nil")
 	}
@@ -56,8 +57,8 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.
 	return &chatReq, nil
 }
 
-// TransformResponse transforms ChatCompletionResponse to GenericHttpResponse
-func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.Response) (*llm.GenericHttpResponse, error) {
+// TransformResponse transforms ChatCompletionResponse to Response
+func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.Response) (*httpclient.Response, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
@@ -68,7 +69,7 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 	}
 
 	// Create generic response
-	return &llm.GenericHttpResponse{
+	return &httpclient.Response{
 		StatusCode: http.StatusOK,
 		Body:       body,
 		Headers: http.Header{
@@ -78,14 +79,14 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 	}, nil
 }
 
-// TransformStreamChunk transforms ChatCompletionResponse to GenericStreamEvent
-func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp *llm.Response) (*llm.GenericStreamEvent, error) {
+// TransformStreamChunk transforms ChatCompletionResponse to StreamEvent
+func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp *llm.Response) (*httpclient.StreamEvent, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
 
 	if chatResp.Object == "[DONE]" {
-		return &llm.GenericStreamEvent{
+		return &httpclient.StreamEvent{
 			Data: []byte("[DONE]"),
 		}, nil
 	}
@@ -95,7 +96,7 @@ func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp 
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chat completion response: %w", err)
 	}
-	return &llm.GenericStreamEvent{
+	return &httpclient.StreamEvent{
 		Type: "",
 		Data: eventData,
 	}, nil

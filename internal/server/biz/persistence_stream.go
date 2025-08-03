@@ -6,16 +6,16 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 )
 
 // TrackedStream wraps a stream and tracks all responses for final saving
 type TrackedStream struct {
 	ctx                 context.Context
-	stream              streams.Stream[*llm.GenericStreamEvent]
+	stream              streams.Stream[*httpclient.StreamEvent]
 	request             *ent.Request
 	requestExec         *ent.RequestExecution
 	requestService      *RequestService
@@ -25,11 +25,11 @@ type TrackedStream struct {
 }
 
 // Ensure TrackedStream implements Stream interface
-var _ streams.Stream[*llm.GenericStreamEvent] = (*TrackedStream)(nil)
+var _ streams.Stream[*httpclient.StreamEvent] = (*TrackedStream)(nil)
 
 func NewTrackedStream(
 	ctx context.Context,
-	stream streams.Stream[*llm.GenericStreamEvent],
+	stream streams.Stream[*httpclient.StreamEvent],
 	request *ent.Request,
 	requestExec *ent.RequestExecution,
 	requestService *RequestService,
@@ -49,7 +49,7 @@ func (ts *TrackedStream) Next() bool {
 	return ts.stream.Next()
 }
 
-func (ts *TrackedStream) Current() *llm.GenericStreamEvent {
+func (ts *TrackedStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil && event.Data != nil {
 		// Save each chunk to response_chunks field

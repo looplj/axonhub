@@ -6,10 +6,10 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 
 	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/httpclient"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -38,11 +38,11 @@ type ChatCompletionProcessor struct {
 }
 
 type ChatCompletionResult struct {
-	ChatCompletion       *llm.GenericHttpResponse
-	ChatCompletionStream streams.Stream[*llm.GenericStreamEvent]
+	ChatCompletion       *httpclient.Response
+	ChatCompletionStream streams.Stream[*httpclient.StreamEvent]
 }
 
-func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericReq *llm.GenericHttpRequest) (ChatCompletionResult, error) {
+func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericReq *httpclient.Request) (ChatCompletionResult, error) {
 	chatReq, err := processor.Inbound.TransformRequest(ctx, genericReq)
 	if err != nil {
 		return ChatCompletionResult{}, err
@@ -104,7 +104,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, genericRe
 	return ChatCompletionResult{}, errors.New("Failed to reqeust provider")
 }
 
-func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.Request, req *ent.Request) (*llm.GenericHttpResponse, error) {
+func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.Request, req *ent.Request) (*httpclient.Response, error) {
 	httpReq, err := channel.Outbound.TransformRequest(ctx, chatReq)
 	if err != nil {
 		log.Error(ctx, "Failed to transform request", log.Cause(err))
@@ -161,7 +161,7 @@ func (processor *ChatCompletionProcessor) handleNonStreamingResponse(ctx context
 	return transformedResp, nil
 }
 
-func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.Request, req *ent.Request) (streams.Stream[*llm.GenericStreamEvent], error) {
+func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Context, channel *Channel, chatReq *llm.Request, req *ent.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	// Transform ChatCompletionRequest to HTTP request
 	httpReq, err := channel.Outbound.TransformRequest(ctx, chatReq)
 	if err != nil {
@@ -188,7 +188,7 @@ func (processor *ChatCompletionProcessor) handleStreamingResponse(ctx context.Co
 	stream = NewTrackedStream(ctx, stream, req, requestExec, processor.RequestService, channel.Outbound)
 
 	// Transform the stream: Stream events -> ChatCompletionResponse -> final HTTP responses
-	transformedStream := streams.MapErr(stream, func(event *llm.GenericStreamEvent) (*llm.GenericStreamEvent, error) {
+	transformedStream := streams.MapErr(stream, func(event *httpclient.StreamEvent) (*httpclient.StreamEvent, error) {
 		chatResp, err := channel.Outbound.TransformStreamChunk(ctx, event)
 		if err != nil {
 			return nil, err

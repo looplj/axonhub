@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 // OutboundTransformer implements transformer.Outbound for OpenAI format
@@ -30,8 +31,8 @@ func NewOutboundTransformer(baseURL, apiKey string) transformer.Outbound {
 	}
 }
 
-// TransformRequest transforms ChatCompletionRequest to GenericHttpRequest
-func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm.Request) (*llm.GenericHttpRequest, error) {
+// TransformRequest transforms ChatCompletionRequest to Request
+func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm.Request) (*httpclient.Request, error) {
 	if chatReq == nil {
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
@@ -57,9 +58,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 	headers.Set("Accept", "application/json")
 
 	// Prepare authentication
-	var auth *llm.AuthConfig
+	var auth *httpclient.AuthConfig
 	if t.apiKey != "" {
-		auth = &llm.AuthConfig{
+		auth = &httpclient.AuthConfig{
 			Type:   "bearer",
 			APIKey: t.apiKey,
 		}
@@ -69,7 +70,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 	endpoint := "/chat/completions"
 	url := strings.TrimSuffix(t.baseURL, "/") + endpoint
 
-	return &llm.GenericHttpRequest{
+	return &httpclient.Request{
 		Method:  http.MethodPost,
 		URL:     url,
 		Headers: headers,
@@ -78,8 +79,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 	}, nil
 }
 
-// TransformResponse transforms GenericHttpResponse to ChatCompletionResponse
-func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *llm.GenericHttpResponse) (*llm.Response, error) {
+// TransformResponse transforms Response to ChatCompletionResponse
+func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	if httpResp == nil {
 		return nil, fmt.Errorf("http response is nil")
 	}
@@ -104,7 +105,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *l
 	return &chatResp, nil
 }
 
-func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *llm.GenericStreamEvent) (*llm.Response, error) {
+func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error) {
 	if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
 		return &llm.Response{
 			Object: "[DONE]",
@@ -112,7 +113,7 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *l
 	}
 
 	// Create a synthetic HTTP response for compatibility with existing logic
-	httpResp := &llm.GenericHttpResponse{
+	httpResp := &httpclient.Response{
 		Body: event.Data,
 	}
 	return t.TransformResponse(ctx, httpResp)

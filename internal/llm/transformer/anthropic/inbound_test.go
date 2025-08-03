@@ -8,7 +8,9 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 func TestInboundTransformer_TransformRequest(t *testing.T) {
@@ -16,13 +18,13 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		httpReq     *llm.GenericHttpRequest
+		httpReq     *httpclient.Request
 		expected    *llm.Request
 		expectError bool
 	}{
 		{
 			name: "valid simple text request",
-			httpReq: &llm.GenericHttpRequest{
+			httpReq: &httpclient.Request{
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -53,7 +55,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "request with system message",
-			httpReq: &llm.GenericHttpRequest{
+			httpReq: &httpclient.Request{
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -91,7 +93,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "request with multimodal content",
-			httpReq: &llm.GenericHttpRequest{
+			httpReq: &httpclient.Request{
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -146,7 +148,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "request with temperature and stop sequences",
-			httpReq: &llm.GenericHttpRequest{
+			httpReq: &httpclient.Request{
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -188,7 +190,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "empty body",
-			httpReq: &llm.GenericHttpRequest{
+			httpReq: &httpclient.Request{
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -198,7 +200,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "missing model",
-			httpReq: &llm.GenericHttpRequest{
+			httpReq: &httpclient.Request{
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -216,7 +218,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "missing max_tokens",
-			httpReq: &llm.GenericHttpRequest{
+			httpReq: &httpclient.Request{
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -234,7 +236,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "missing messages",
-			httpReq: &llm.GenericHttpRequest{
+			httpReq: &httpclient.Request{
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
 				},
@@ -247,7 +249,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name: "invalid content type",
-			httpReq: &llm.GenericHttpRequest{
+			httpReq: &httpclient.Request{
 				Headers: http.Header{
 					"Content-Type": []string{"text/plain"},
 				},
@@ -444,7 +446,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 		name        string
 		chatResp    *llm.Response
 		expectError bool
-		checkEvent  func(t *testing.T, event *llm.GenericStreamEvent)
+		checkEvent  func(t *testing.T, event *httpclient.StreamEvent)
 	}{
 		{
 			name: "message_start event",
@@ -460,7 +462,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				},
 			},
 			expectError: false,
-			checkEvent: func(t *testing.T, event *llm.GenericStreamEvent) {
+			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
 				require.Equal(t, "message_start", event.Type)
 
 				// Unmarshal the data to check the event
@@ -487,7 +489,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				Model:  "claude-3-sonnet-20240229",
 			},
 			expectError: false,
-			checkEvent: func(t *testing.T, event *llm.GenericStreamEvent) {
+			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
 				require.Equal(t, "content_block_start", event.Type)
 
 				// Unmarshal the data to check the event
@@ -519,7 +521,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				},
 			},
 			expectError: false,
-			checkEvent: func(t *testing.T, event *llm.GenericStreamEvent) {
+			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
 				require.Equal(t, "content_block_delta", event.Type)
 
 				// Unmarshal the data to check the event
@@ -541,7 +543,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				Model:  "claude-3-sonnet-20240229",
 			},
 			expectError: false,
-			checkEvent: func(t *testing.T, event *llm.GenericStreamEvent) {
+			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
 				require.Equal(t, "content_block_stop", event.Type)
 
 				// Unmarshal the data to check the event
@@ -571,7 +573,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				},
 			},
 			expectError: false,
-			checkEvent: func(t *testing.T, event *llm.GenericStreamEvent) {
+			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
 				require.Equal(t, "message_delta", event.Type)
 
 				// Unmarshal the data to check the event
@@ -602,7 +604,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				},
 			},
 			expectError: false,
-			checkEvent: func(t *testing.T, event *llm.GenericStreamEvent) {
+			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
 				require.Equal(t, "message_delta", event.Type)
 
 				// Unmarshal the data to check the event
@@ -630,7 +632,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				},
 			},
 			expectError: false,
-			checkEvent: func(t *testing.T, event *llm.GenericStreamEvent) {
+			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
 				require.Equal(t, "message_delta", event.Type)
 
 				// Unmarshal the data to check the event
@@ -652,7 +654,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				Model:  "claude-3-sonnet-20240229",
 			},
 			expectError: false,
-			checkEvent: func(t *testing.T, event *llm.GenericStreamEvent) {
+			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
 				require.Equal(t, "message_stop", event.Type)
 
 				// Unmarshal the data to check the event
@@ -682,7 +684,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				},
 			},
 			expectError: false,
-			checkEvent: func(t *testing.T, event *llm.GenericStreamEvent) {
+			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
 				require.Empty(t, event.Type)
 				// Unmarshal the data to check the event
 				var streamEvent StreamEvent
@@ -704,7 +706,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 				Choices: []llm.Choice{},
 			},
 			expectError: false, // Should not error, just create empty event
-			checkEvent: func(t *testing.T, event *llm.GenericStreamEvent) {
+			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
 				require.Equal(t, "content_block_delta", event.Type)
 
 				// Unmarshal the data to check the event

@@ -8,8 +8,10 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 // InboundTransformer implements transformer.Inbound for Anthropic format
@@ -114,7 +116,7 @@ type ImageSource struct {
 }
 
 // TransformRequest transforms Anthropic HTTP request to ChatCompletionRequest
-func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.GenericHttpRequest) (*llm.Request, error) {
+func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("http request is nil")
 	}
@@ -233,7 +235,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *llm.
 }
 
 // TransformResponse transforms ChatCompletionResponse to Anthropic HTTP response
-func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.Response) (*llm.GenericHttpResponse, error) {
+func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.Response) (*httpclient.Response, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
@@ -246,7 +248,7 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 		return nil, fmt.Errorf("failed to marshal anthropic response: %w", err)
 	}
 
-	return &llm.GenericHttpResponse{
+	return &httpclient.Response{
 		StatusCode: http.StatusOK,
 		Body:       body,
 		Headers: http.Header{
@@ -345,8 +347,8 @@ func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) 
 	return resp
 }
 
-// TransformStreamChunk transforms ChatCompletionResponse to GenericStreamEvent
-func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp *llm.Response) (*llm.GenericStreamEvent, error) {
+// TransformStreamChunk transforms ChatCompletionResponse to StreamEvent
+func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp *llm.Response) (*httpclient.StreamEvent, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
@@ -490,7 +492,7 @@ func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp 
 		return nil, fmt.Errorf("failed to marshal stream event: %w", err)
 	}
 
-	return &llm.GenericStreamEvent{
+	return &httpclient.StreamEvent{
 		Type: eventType,
 		Data: eventData,
 	}, nil

@@ -7,10 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/httpclient"
 	"github.com/looplj/axonhub/internal/llm/transformer/aisdk"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -69,7 +68,7 @@ func (handlers *AiSDKHandlers) ChatCompletion(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	// Use ReadHTTPRequest to parse the request
-	genericReq, err := llm.ReadHTTPRequest(c.Request)
+	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
 	if err != nil {
 		handlers.ErrorHandler.HandlerError(c, err)
 		return

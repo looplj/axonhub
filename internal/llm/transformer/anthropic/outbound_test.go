@@ -8,7 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
@@ -188,12 +190,12 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		httpResp    *llm.GenericHttpResponse
+		httpResp    *httpclient.Response
 		expectError bool
 	}{
 		{
 			name: "valid response",
-			httpResp: &llm.GenericHttpResponse{
+			httpResp: &httpclient.Response{
 				StatusCode: http.StatusOK,
 				Body: []byte(`{
 					"id": "msg_123",
@@ -217,7 +219,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 		},
 		{
 			name: "response with multiple content blocks",
-			httpResp: &llm.GenericHttpResponse{
+			httpResp: &httpclient.Response{
 				StatusCode: http.StatusOK,
 				Body: []byte(`{
 					"id": "msg_456",
@@ -246,10 +248,10 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 		},
 		{
 			name: "HTTP error response",
-			httpResp: &llm.GenericHttpResponse{
+			httpResp: &httpclient.Response{
 				StatusCode: http.StatusBadRequest,
 				Body:       []byte(`{"error": {"message": "Invalid request"}}`),
-				Error: &llm.ResponseError{
+				Error: &httpclient.ResponseError{
 					Message: "Invalid request",
 				},
 			},
@@ -257,7 +259,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 		},
 		{
 			name: "empty body",
-			httpResp: &llm.GenericHttpResponse{
+			httpResp: &httpclient.Response{
 				StatusCode: http.StatusOK,
 				Body:       []byte{},
 			},
@@ -265,7 +267,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 		},
 		{
 			name: "invalid JSON",
-			httpResp: &llm.GenericHttpResponse{
+			httpResp: &httpclient.Response{
 				StatusCode: http.StatusOK,
 				Body:       []byte(`invalid json`),
 			},

@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/httpclient"
+
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 func TestChatCompletionProcessor_Integration(t *testing.T) {
@@ -38,7 +38,7 @@ func TestChatCompletionProcessor_Integration(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer test-key")
 
 	// Test convertToGenericRequest
-	genericReq, err := llm.ReadHTTPRequest(req)
+	genericReq, err := httpclient.ReadHTTPRequest(req)
 	assert.NoError(t, err)
 	assert.NotNil(t, genericReq)
 

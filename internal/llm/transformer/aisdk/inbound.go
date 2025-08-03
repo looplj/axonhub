@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 // InboundTransformer implements the Inbound interface for AI SDK
@@ -48,7 +50,7 @@ type AiSDKToolFunction struct {
 }
 
 // TransformRequest transforms AI SDK request to LLM request
-func (t *InboundTransformer) TransformRequest(ctx context.Context, req *llm.GenericHttpRequest) (*llm.Request, error) {
+func (t *InboundTransformer) TransformRequest(ctx context.Context, req *httpclient.Request) (*llm.Request, error) {
 	// Parse JSON body
 	var aiSDKReq AiSDKRequest
 	if err := json.Unmarshal(req.Body, &aiSDKReq); err != nil {
@@ -135,7 +137,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, req *llm.Gene
 }
 
 // TransformResponse transforms LLM response to AI SDK response
-func (t *InboundTransformer) TransformResponse(ctx context.Context, resp *llm.Response) (*llm.GenericHttpResponse, error) {
+func (t *InboundTransformer) TransformResponse(ctx context.Context, resp *llm.Response) (*httpclient.Response, error) {
 	// Convert to AI SDK response format
 	aiSDKResp := map[string]interface{}{
 		"id":      resp.ID,
@@ -159,7 +161,7 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, resp *llm.Re
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 
-	return &llm.GenericHttpResponse{
+	return &httpclient.Response{
 		StatusCode: 200,
 		Headers:    headers,
 		Body:       respBody,
@@ -167,7 +169,7 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, resp *llm.Re
 }
 
 // TransformStreamChunk transforms LLM stream chunk to AI SDK stream format
-func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chunk *llm.Response) (*llm.GenericStreamEvent, error) {
+func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chunk *llm.Response) (*httpclient.StreamEvent, error) {
 	var streamData []string
 
 	// Process each choice
@@ -248,7 +250,7 @@ func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chunk *ll
 	headers.Set("Content-Type", "text/plain; charset=utf-8")
 	headers.Set("x-vercel-ai-data-stream", "v1")
 
-	return &llm.GenericStreamEvent{
+	return &httpclient.StreamEvent{
 		// Type: "data",
 		Data: []byte(eventData),
 	}, nil
