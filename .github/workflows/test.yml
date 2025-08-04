@@ -1,0 +1,24 @@
+# Copy from https://github.com/spf13/cobra
+# https://github.com/spf13/cobra/blob/master/LICENSE.txt
+name: Test
+on:
+  push:
+    branches:
+      - 'master'
+  pull_request:
+env:
+  GO111MODULE: on
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          stable: true
+
+      - name: Test
+        run: go test -v ./...

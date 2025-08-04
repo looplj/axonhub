@@ -7,7 +7,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/chat"
 )
 
 type ChatCompletionErrorHandler interface {
@@ -18,14 +18,14 @@ type ChatCompletionErrorHandler interface {
 	HandleStreamError(c *gin.Context, err error)
 }
 
-func NewChatCompletionHandlers(processor *biz.ChatCompletionProcessor) *ChatCompletionSSEHandlers {
+func NewChatCompletionHandlers(processor *chat.ChatCompletionProcessor) *ChatCompletionSSEHandlers {
 	return &ChatCompletionSSEHandlers{
 		ChatCompletionProcessor: processor,
 	}
 }
 
 type ChatCompletionSSEHandlers struct {
-	ChatCompletionProcessor *biz.ChatCompletionProcessor
+	ChatCompletionProcessor *chat.ChatCompletionProcessor
 	ErrorHandler            ChatCompletionErrorHandler
 }
 

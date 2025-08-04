@@ -140,6 +140,7 @@ func (s *AuthService) ValidateAPIKey(ctx context.Context, key string) (*ent.APIK
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	// 查询数据库验证 API key 是否存在
 	apiKey, err := s.Ent.APIKey.Query().
+		WithUser().
 		Where(apikey.KeyEQ(key)).
 		First(ctx)
 	if err != nil {

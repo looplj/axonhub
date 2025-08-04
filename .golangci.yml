@@ -20,141 +20,10 @@ run:
   # list of build tags, all linters use it. Default is empty list.
   build-tags: []
 
-# output configuration options
-output:
-  # print lines of code with issue, default is true
-  print-issued-lines: true
 
-  # print linter name in the end of issue text, default is true
-  print-linter-name: true
-
-# all available settings of specific linters
-linters-settings:
-  dogsled:
-    # checks assignments with too many blank identifiers; default is 2
-    max-blank-identifiers: 2
-  dupl:
-    # tokens count to trigger issue, 150 by default
-    threshold: 100
-  errcheck:
-    # report about not checking of errors in type assertions: `a := b.(MyStruct)`;
-    # default is false: such cases aren't reported by default.
-    check-type-assertions: false
-
-    # report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`;
-    # default is false: such cases aren't reported by default.
-    check-blank: false
-
-  funlen:
-    lines: 60
-    statements: 40
-  gocognit:
-    # minimal code complexity to report, 30 by default (but we recommend 10-20)
-    min-complexity: 20
-  goconst:
-    # minimal length of string constant, 3 by default
-    min-len: 3
-    # minimal occurrences count to trigger, 3 by default
-    min-occurrences: 3
-  gocritic:
-    # Which checks should be enabled; can't be combined with 'disabled-checks';
-    # See https://go-critic.github.io/overview#checks-overview
-    # To check which checks are enabled run `GL_DEBUG=gocritic golangci-lint run`
-    # By default list of stable checks is used.
-    enabled-checks: []
-
-    # Enable multiple checks by tags, run `GL_DEBUG=gocritic golangci-lint run` to see all tags and checks.
-    # Empty list by default. See https://github.com/go-critic/go-critic#usage -> section "Tags".
-    enabled-tags:
-      - performance
-
-    settings: # settings passed to gocritic
-      captLocal: # must be valid enabled check name
-        paramsOnly: true
-      rangeValCopy:
-        sizeThreshold: 32
-  gocyclo:
-    # minimal code complexity to report, 30 by default (but we recommend 10-20)
-    min-complexity: 10
-  godox:
-    # report any comments starting with keywords, this is useful for TODO or FIXME comments that
-    # might be left in the code accidentally and should be resolved before merging
-    keywords: [] # default keywords are TODO, BUG, and FIXME, these can be overwritten by this setting
-  gofmt:
-    # simplify code: gofmt with `-s` option, true by default
-    simplify: true
-  goimports:
-    # put imports beginning with prefix after 3rd-party packages;
-    # it's a comma-separated list of prefixes
-    local-prefixes: ""
-  govet:
-    # settings per analyzer
-    settings:
-      printf: # analyzer name, run `go tool vet help` to see all analyzers
-        funcs: # run `go tool vet help printf` to see available settings for `printf` analyzer
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
-
-    # enable or disable analyzers by name
-    enable:
-      - atomicalign
-    enable-all: false
-    disable:
-      - shadow
-    disable-all: false
-
-  lll:
-    # max line length, lines longer will be reported. Default is 120.
-    # '\t' is counted as 1 character by default, and can be changed with the tab-width option
-    line-length: 180
-    # tab width in spaces. Default to 1.
-    tab-width: 1
-  misspell:
-    # Correct spellings using locale preferences for US or UK.
-    # Default is to use a neutral variety of English.
-    # Setting locale to US will correct the British spelling of 'colour' to 'color'.
-    locale: US
-  nakedret:
-    # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
-    max-func-lines: 30
-  prealloc:
-    # XXX: we don't recommend using this linter before doing performance profiling.
-    # For most programs usage of prealloc will be a premature optimization.
-
-    # Report preallocation suggestions only on simple loops that have no returns/breaks/continues/gotos in them.
-    # True by default.
-    simple: true
-    range-loops: true # Report preallocation suggestions on range loops, true by default
-    for-loops: false # Report preallocation suggestions on for loops, false by default
-  unparam:
-    # Inspect exported functions, default is false. Set to true if no external program/library imports your code.
-    # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
-    # if it's called for subdir of a project it can't find external interfaces. All text editor integrations
-    # with golangci-lint call it on a directory with the changed file.
-    check-exported: false
-  whitespace:
-    multi-if: false # Enforces newlines (or comments) after every multi-line if statement
-    multi-func: false # Enforces newlines (or comments) after every multi-line function signature
-  wsl:
-    # If true append is only allowed to be cuddled if appending value is
-    # matching variables, fields or types on line above. Default is true.
-    strict-append: true
-    # Allow calls and assignments to be cuddled as long as the lines have any
-    # matching variables, fields or types. Default is true.
-    allow-assign-and-call: true
-    # Allow multiline assignments to be cuddled. Default is true.
-    allow-multiline-assign: true
-    # Allow declarations (var) to be cuddled.
-    allow-cuddle-declarations: true
-    # Allow trailing comments in ending of blocks
-    allow-trailing-comment: false
-    # Force newlines in end of case at this limit (0 = never).
-    force-case-trailing-whitespace: 0
 
 linters:
-  enable-all: true
+  default: all
   disable:
     - prealloc
     - errchkjson
@@ -195,7 +64,123 @@ linters:
     - inamedparam
     - interfacebloat
     - unparam
-  fast: false
+
+  # all available settings of specific linters
+  settings:
+    dogsled:
+      # checks assignments with too many blank identifiers; default is 2
+      max-blank-identifiers: 2
+    dupl:
+      # tokens count to trigger issue, 150 by default
+      threshold: 100
+    errcheck:
+      # report about not checking of errors in type assertions: `a := b.(MyStruct)`;
+      # default is false: such cases aren't reported by default.
+      check-type-assertions: false
+
+      # report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`;
+      # default is false: such cases aren't reported by default.
+      check-blank: false
+
+    funlen:
+      lines: 60
+      statements: 40
+    gocognit:
+      # minimal code complexity to report, 30 by default (but we recommend 10-20)
+      min-complexity: 20
+    goconst:
+      # minimal length of string constant, 3 by default
+      min-len: 3
+      # minimal occurrences count to trigger, 3 by default
+      min-occurrences: 3
+    gocritic:
+      # Which checks should be enabled; can't be combined with 'disabled-checks';
+      # See https://go-critic.github.io/overview#checks-overview
+      # To check which checks are enabled run `GL_DEBUG=gocritic golangci-lint run`
+      # By default list of stable checks is used.
+      enabled-checks: []
+
+      # Enable multiple checks by tags, run `GL_DEBUG=gocritic golangci-lint run` to see all tags and checks.
+      # Empty list by default. See https://github.com/go-critic/go-critic#usage -> section "Tags".
+      enabled-tags:
+        - performance
+
+      settings: # settings passed to gocritic
+        captLocal: # must be valid enabled check name
+          paramsOnly: true
+        rangeValCopy:
+          sizeThreshold: 32
+    gocyclo:
+      # minimal code complexity to report, 30 by default (but we recommend 10-20)
+      min-complexity: 10
+    godox:
+      # report any comments starting with keywords, this is useful for TODO or FIXME comments that
+      # might be left in the code accidentally and should be resolved before merging
+      keywords: [] # default keywords are TODO, BUG, and FIXME, these can be overwritten by this setting
+    govet:
+      # settings per analyzer
+      settings:
+        printf: # analyzer name, run `go tool vet help` to see all analyzers
+          funcs: # run `go tool vet help printf` to see available settings for `printf` analyzer
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
+
+      # enable or disable analyzers by name
+      enable:
+        - atomicalign
+      disable:
+        - shadow
+      disable-all: false
+
+    lll:
+      # max line length, lines longer will be reported. Default is 120.
+      # '\t' is counted as 1 character by default, and can be changed with the tab-width option
+      line-length: 180
+      # tab width in spaces. Default to 1.
+      tab-width: 1
+    misspell:
+      # Correct spellings using locale preferences for US or UK.
+      # Default is to use a neutral variety of English.
+      # Setting locale to US will correct the British spelling of 'colour' to 'color'.
+      locale: US
+    nakedret:
+      # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
+      max-func-lines: 30
+    prealloc:
+      # XXX: we don't recommend using this linter before doing performance profiling.
+      # For most programs usage of prealloc will be a premature optimization.
+
+      # Report preallocation suggestions only on simple loops that have no returns/breaks/continues/gotos in them.
+      # True by default.
+      simple: true
+      range-loops: true # Report preallocation suggestions on range loops, true by default
+      for-loops: false # Report preallocation suggestions on for loops, false by default
+    unparam:
+      # Inspect exported functions, default is false. Set to true if no external program/library imports your code.
+      # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
+      # if it's called for subdir of a project it can't find external interfaces. All text editor integrations
+      # with golangci-lint call it on a directory with the changed file.
+      check-exported: false
+    whitespace:
+      multi-if: false # Enforces newlines (or comments) after every multi-line if statement
+      multi-func: false # Enforces newlines (or comments) after every multi-line function signature
+    wsl:
+      # If true append is only allowed to be cuddled if appending value is
+      # matching variables, fields or types on line above. Default is true.
+      strict-append: true
+      # Allow calls and assignments to be cuddled as long as the lines have any
+      # matching variables, fields or types. Default is true.
+      allow-assign-and-call: true
+      # Allow multiline assignments to be cuddled. Default is true.
+      allow-multiline-assign: true
+      # Allow declarations (var) to be cuddled.
+      allow-cuddle-declarations: true
+      # Allow trailing comments in ending of blocks
+      allow-trailing-comment: false
+      # Force newlines in end of case at this limit (0 = never).
+      force-case-trailing-whitespace: 0
 
   exclusions:
     # Excluding configuration per-path, per-linter, per-text and per-source
@@ -276,23 +261,20 @@ linters:
           - lll
         source: "^//go:generate "
 
+formatters:
+  # Enable specific formatter.
+  # Default: [] (uses standard Go formatting)
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
+
 issues:
   # make issues output unique by line, default is true
   uniq-by-line: true
 
-  # List of regexps of issue texts to exclude, empty list by default.
-  # But independently from this option we use default exclude patterns,
-  # it can be disabled by `exclude-use-default: false`. To list all
-  # excluded by default patterns execute `golangci-lint run --help`
-  exclude: []
-
-  # Independently from option `exclude` we use default exclude patterns,
-  # it can be disabled by this option. To list all
-  # excluded by default patterns execute `golangci-lint run --help`.
-  # Default value for this option is true.
-  exclude-use-default: true
-
-  # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
   max-issues-per-linter: 0
 
   # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
@@ -308,6 +290,3 @@ issues:
 
   # Auto-fix enabled issues. Default is false.
   fix: true
-
-  exclude-dirs:
-    - .*example.*

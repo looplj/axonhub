@@ -19,8 +19,7 @@ func WithAPIKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 // WithAPIKeyConfig 中间件用于验证 API key，支持自定义配置
 func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 从多个可能的 headers 中获取 API key
-		apiKeyValue, err := ExtractAPIKeyFromRequest(c.Request, config)
+		key, err := ExtractAPIKeyFromRequest(c.Request, config)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": err.Error(),
@@ -30,7 +29,7 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 		}
 
 		// 查询数据库验证 API key 是否存在
-		apiKeyEntity, err := auth.ValidateAPIKey(c.Request.Context(), apiKeyValue)
+		apiKey, err := auth.ValidateAPIKey(c.Request.Context(), key)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				c.JSON(http.StatusUnauthorized, gin.H{
@@ -46,7 +45,8 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 		}
 
 		// 将 API key entity 保存到 context 中
-		ctx := contexts.WithAPIKey(c.Request.Context(), apiKeyEntity)
+		ctx := contexts.WithAPIKey(c.Request.Context(), apiKey)
+		ctx = contexts.WithUser(ctx, apiKey.Edges.User)
 		c.Request = c.Request.WithContext(ctx)
 
 		// 继续处理请求

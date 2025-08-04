@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/chat"
 )
 
 type AiSdkResponseError struct {
@@ -48,13 +49,13 @@ type AiSdkHandlersParams struct {
 }
 
 type AiSDKHandlers struct {
-	ChatCompletionProcessor *biz.ChatCompletionProcessor
+	ChatCompletionProcessor *chat.ChatCompletionProcessor
 	ErrorHandler            *AiSdkErrorHandler
 }
 
 func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 	return &AiSDKHandlers{
-		ChatCompletionProcessor: biz.NewChatCompletionProcessor(
+		ChatCompletionProcessor: chat.NewChatCompletionProcessor(
 			params.ChannelService,
 			params.RequestService,
 			params.HttpClient,

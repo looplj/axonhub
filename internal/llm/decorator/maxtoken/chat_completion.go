@@ -15,14 +15,14 @@ type ChatCompletionDecoratorImpl struct {
 }
 
 // NewChatCompletionDecoratorImpl creates a new ChatCompletionDecoratorImpl
-func NewChatCompletionDecoratorImpl(name string) decorator.ChatCompletionDecorator {
+func NewChatCompletionDecoratorImpl(name string) decorator.Decorator {
 	return &ChatCompletionDecoratorImpl{
 		name: name,
 	}
 }
 
 // NewChatCompletionDecorator creates a new ChatCompletionDecoratorImpl (alias for compatibility)
-func NewChatCompletionDecorator(name string) decorator.ChatCompletionDecorator {
+func NewChatCompletionDecorator(name string) decorator.Decorator {
 	return NewChatCompletionDecoratorImpl(name)
 }
 

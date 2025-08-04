@@ -7,6 +7,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/chat"
 )
 
 type OpenAIResponseError struct {
@@ -57,7 +58,7 @@ type OpenAIHandlers struct {
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 	return &OpenAIHandlers{
 		ChatCompletionHandlers: &ChatCompletionSSEHandlers{
-			ChatCompletionProcessor: biz.NewChatCompletionProcessor(
+			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
 				params.ChannelService,
 				params.RequestService,
 				params.HttpClient,

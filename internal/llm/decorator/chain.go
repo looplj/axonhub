@@ -10,13 +10,13 @@ import (
 // Chain implements DecoratorChain interface
 type Chain struct {
 	mu         sync.RWMutex
-	decorators []ChatCompletionDecorator
+	decorators []Decorator
 }
 
 // NewChain creates a new decorator chain
 func NewChain() DecoratorChain {
 	return &Chain{
-		decorators: make([]ChatCompletionDecorator, 0),
+		decorators: make([]Decorator, 0),
 	}
 }
 
@@ -26,7 +26,7 @@ func NewDecoratorChain() DecoratorChain {
 }
 
 // Add adds a decorator to the chain
-func (c *Chain) Add(decorator ChatCompletionDecorator) {
+func (c *Chain) Add(decorator Decorator) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.decorators = append(c.decorators, decorator)
@@ -66,12 +66,12 @@ func (c *Chain) Execute(ctx context.Context, request *llm.Request) (*llm.Request
 }
 
 // List returns all decorators in the chain
-func (c *Chain) List() []ChatCompletionDecorator {
+func (c *Chain) List() []Decorator {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	// Return a copy to prevent external modification
-	result := make([]ChatCompletionDecorator, len(c.decorators))
+	result := make([]Decorator, len(c.decorators))
 	copy(result, c.decorators)
 	return result
 }
