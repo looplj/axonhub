@@ -8,10 +8,8 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
-
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/objects"
-
 	scopes2 "github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -38,7 +36,10 @@ func (Request) Indexes() []ent.Index {
 func (Request) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("user_id").Immutable(),
-		field.Int("api_key_id").Optional().Immutable().Comment("API Key ID of the request, null for the request from the Admin."),
+		field.Int("api_key_id").
+			Optional().
+			Immutable().
+			Comment("API Key ID of the request, null for the request from the Admin."),
 		field.String("model_id").Immutable(),
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable(),
 		field.JSON("response_body", objects.JSONRawMessage{}).Optional(),
@@ -48,7 +49,12 @@ func (Request) Fields() []ent.Field {
 
 func (Request) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("user", User.Type).Ref("requests").Field("user_id").Required().Immutable().Unique(),
+		edge.From("user", User.Type).
+			Ref("requests").
+			Field("user_id").
+			Required().
+			Immutable().
+			Unique(),
 		edge.From("api_key", APIKey.Type).Ref("requests").Field("api_key_id").Immutable().Unique(),
 		edge.To("executions", RequestExecution.Type).
 			Annotations(
@@ -66,7 +72,7 @@ func (Request) Annotations() []schema.Annotation {
 	}
 }
 
-// Policy 定义 Request 的权限策略
+// Policy 定义 Request 的权限策略.
 func (Request) Policy() ent.Policy {
 	return privacy.Policy{
 		Query: privacy.QueryPolicy{

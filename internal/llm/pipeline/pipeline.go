@@ -13,16 +13,16 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
-// ChannelRetryable interface for transformers that support channel switching
+// ChannelRetryable interface for transformers that support channel switching.
 type ChannelRetryable interface {
 	NextChannel(ctx context.Context) error
 	HasMoreChannels() bool
 }
 
-// Option defines a pipeline configuration option
+// Option defines a pipeline configuration option.
 type Option func(*pipeline)
 
-// WithRetry configures retry behavior for the pipeline
+// WithRetry configures retry behavior for the pipeline.
 func WithRetry(maxRetries int, retryDelay time.Duration, retryableErrors ...string) Option {
 	return func(p *pipeline) {
 		p.maxRetries = maxRetries
@@ -31,27 +31,31 @@ func WithRetry(maxRetries int, retryDelay time.Duration, retryableErrors ...stri
 	}
 }
 
-// WithDecorators configures decorators for the pipeline
+// WithDecorators configures decorators for the pipeline.
 func WithDecorators(decorators ...decorator.Decorator) Option {
 	return func(p *pipeline) {
 		p.decorators = append(p.decorators, decorators...)
 	}
 }
 
-// Factory creates pipeline instances
+// Factory creates pipeline instances.
 type Factory struct {
 	HttpClient httpclient.HttpClient
 }
 
-// NewFactory creates a new pipeline factory
+// NewFactory creates a new pipeline factory.
 func NewFactory(httpClient httpclient.HttpClient) *Factory {
 	return &Factory{
 		HttpClient: httpClient,
 	}
 }
 
-// Pipeline creates a new pipeline with options
-func (f *Factory) Pipeline(inbound transformer.Inbound, outbound transformer.Outbound, opts ...Option) *pipeline {
+// Pipeline creates a new pipeline with options.
+func (f *Factory) Pipeline(
+	inbound transformer.Inbound,
+	outbound transformer.Outbound,
+	opts ...Option,
+) *pipeline {
 	p := &pipeline{
 		HttpClient: f.HttpClient,
 		Inbound:    inbound,
@@ -66,7 +70,7 @@ func (f *Factory) Pipeline(inbound transformer.Inbound, outbound transformer.Out
 	return p
 }
 
-// pipeline implements the main pipeline logic with retry capabilities
+// pipeline implements the main pipeline logic with retry capabilities.
 type pipeline struct {
 	HttpClient      httpclient.HttpClient
 	Inbound         transformer.Inbound
@@ -98,7 +102,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 	var lastErr error
 	maxAttempts := p.maxRetries + 1 // maxRetries + initial attempt
 
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for attempt := range maxAttempts {
 		if attempt > 0 {
 			log.Debug(ctx, "retrying pipeline process", log.Any("attempt", attempt))
 
@@ -168,7 +172,7 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 	return result, nil
 }
 
-// isRetryableError checks if an error is retryable based on configuration
+// isRetryableError checks if an error is retryable based on configuration.
 func (p *pipeline) isRetryableError(err error) bool {
 	if len(p.retryableErrors) == 0 {
 		return true // If no specific errors configured, retry all errors

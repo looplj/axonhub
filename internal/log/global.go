@@ -44,10 +44,13 @@ var (
 )
 
 func init() {
-	err := zap.RegisterEncoder("console_json", func(config zapcore.EncoderConfig) (zapcore.Encoder, error) {
-		enc := NewConsoleJSONEncoder(config)
-		return enc, nil
-	})
+	err := zap.RegisterEncoder(
+		"console_json",
+		func(config zapcore.EncoderConfig) (zapcore.Encoder, error) {
+			enc := NewConsoleJSONEncoder(config)
+			return enc, nil
+		},
+	)
 	if err != nil {
 		panic(err)
 	}

@@ -31,7 +31,6 @@ func main() {
 	}
 
 	err = api.Generate(cfg)
-
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(3)

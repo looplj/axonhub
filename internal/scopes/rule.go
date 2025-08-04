@@ -4,18 +4,16 @@ import (
 	"context"
 
 	"entgo.io/ent/dialect/sql"
-
 	"entgo.io/ent/privacy"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
-
-	"github.com/looplj/axonhub/internal/contexts"
 )
 
-// OwnerRule 允许 owner 用户访问所有功能
+// OwnerRule 允许 owner 用户访问所有功能.
 func OwnerRule() privacy.QueryMutationRule {
 	return privacy.ContextQueryMutationRule(func(ctx context.Context) error {
 		user, ok := contexts.GetUser(ctx)
@@ -32,7 +30,7 @@ func OwnerRule() privacy.QueryMutationRule {
 	})
 }
 
-// ScopeRule 检查用户是否拥有指定的 scope 权限
+// ScopeRule 检查用户是否拥有指定的 scope 权限.
 func ScopeRule(requiredScope Scope) privacy.QueryMutationRule {
 	return privacy.ContextQueryMutationRule(func(ctx context.Context) error {
 		user, ok := contexts.GetUser(ctx)
@@ -59,7 +57,7 @@ func ScopeRule(requiredScope Scope) privacy.QueryMutationRule {
 	})
 }
 
-// scopeQueryRule 自定义 QueryRule 实现
+// scopeQueryRule 自定义 QueryRule 实现.
 type scopeQueryRule struct {
 	requiredScope Scope
 }
@@ -88,12 +86,12 @@ func (r scopeQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
 	return privacy.Denyf("user does not have required read scope: %s", r.requiredScope)
 }
 
-// ReadScopeRule 检查读取权限
+// ReadScopeRule 检查读取权限.
 func ReadScopeRule(readScope Scope) privacy.QueryRule {
 	return scopeQueryRule{requiredScope: readScope}
 }
 
-// WriteScopeRule 检查写入权限
+// WriteScopeRule 检查写入权限.
 func WriteScopeRule(writeScope Scope) privacy.MutationRule {
 	return privacy.MutationRuleFunc(func(ctx context.Context, m ent.Mutation) error {
 		user, ok := contexts.GetUser(ctx)
@@ -120,7 +118,7 @@ func WriteScopeRule(writeScope Scope) privacy.MutationRule {
 	})
 }
 
-// userOwnedQueryRule 自定义 QueryRule 实现用于用户拥有的资源
+// userOwnedQueryRule 自定义 QueryRule 实现用于用户拥有的资源.
 type userOwnedQueryRule struct{}
 
 func (r userOwnedQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
@@ -152,12 +150,12 @@ func (r userOwnedQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
 	return privacy.Skip
 }
 
-// UserOwnedQueryRule 检查用户是否拥有资源（用于用户拥有的资源如 API Key）
+// UserOwnedQueryRule 检查用户是否拥有资源（用于用户拥有的资源如 API Key）.
 func UserOwnedQueryRule() privacy.QueryRule {
 	return userOwnedQueryRule{}
 }
 
-// UserOwnedMutationRule 检查用户是否可以修改自己的资源
+// UserOwnedMutationRule 检查用户是否可以修改自己的资源.
 func UserOwnedMutationRule() privacy.MutationRule {
 	return privacy.MutationRuleFunc(func(ctx context.Context, m ent.Mutation) error {
 		user, ok := contexts.GetUser(ctx)
@@ -188,12 +186,12 @@ func UserOwnedMutationRule() privacy.MutationRule {
 	})
 }
 
-// AdminScopeRule 检查管理员权限
+// AdminScopeRule 检查管理员权限.
 func AdminScopeRule() privacy.QueryMutationRule {
 	return ScopeRule(ScopeAdmin)
 }
 
-// DenyIfNoUser 如果没有用户上下文则拒绝访问
+// DenyIfNoUser 如果没有用户上下文则拒绝访问.
 func DenyIfNoUser() privacy.QueryMutationRule {
 	return privacy.ContextQueryMutationRule(func(ctx context.Context) error {
 		user, ok := contexts.GetUser(ctx)
@@ -204,7 +202,7 @@ func DenyIfNoUser() privacy.QueryMutationRule {
 	})
 }
 
-// hasScope 检查用户是否拥有指定的 scope
+// hasScope 检查用户是否拥有指定的 scope.
 func hasScope(userScopes []string, requiredScope string) bool {
 	for _, scope := range userScopes {
 		if scope == requiredScope {
@@ -214,7 +212,7 @@ func hasScope(userScopes []string, requiredScope string) bool {
 	return false
 }
 
-// hasRoleScope 检查用户的角色是否拥有指定的 scope
+// hasRoleScope 检查用户的角色是否拥有指定的 scope.
 func hasRoleScope(ctx context.Context, user *ent.User, requiredScope Scope) bool {
 	// 这里需要查询用户的角色，但为了避免循环依赖，我们需要在调用时确保角色已经加载
 	// 或者使用一个专门的服务来处理这个逻辑
@@ -231,7 +229,7 @@ func hasRoleScope(ctx context.Context, user *ent.User, requiredScope Scope) bool
 	return false
 }
 
-// GetUserScopes 获取用户的所有有效 scopes（包括角色的 scopes）
+// GetUserScopes 获取用户的所有有效 scopes（包括角色的 scopes）.
 func GetUserScopes(ctx context.Context, user *ent.User) []string {
 	if user.IsOwner {
 		return AllScopesAsStrings()
@@ -262,7 +260,7 @@ func GetUserScopes(ctx context.Context, user *ent.User) []string {
 	return scopes
 }
 
-// HasScope 检查用户是否拥有指定的 scope
+// HasScope 检查用户是否拥有指定的 scope.
 func HasScope(ctx context.Context, user *ent.User, requiredScope Scope) bool {
 	if user.IsOwner {
 		return true

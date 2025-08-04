@@ -8,10 +8,9 @@ import (
 	"entgo.io/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/log"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-
-	"github.com/looplj/axonhub/internal/log"
 )
 
 const (
@@ -53,7 +52,7 @@ type InitializeSystemArgs struct {
 	OwnerPassword string
 }
 
-// Initialize initializes the system with a secret key and sets the initialized flag
+// Initialize initializes the system with a secret key and sets the initialized flag.
 func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemArgs) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	// Check if system is already initialized
@@ -123,7 +122,7 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	return nil
 }
 
-// GetSecretKey retrieves the JWT secret key from system settings
+// GetSecretKey retrieves the JWT secret key from system settings.
 func (s *SystemService) GetSecretKey(ctx context.Context) (string, error) {
 	sys, err := s.Ent.System.Query().Where(system.KeyEQ(SystemKeySecretKey)).Only(ctx)
 	if err != nil {
@@ -135,13 +134,17 @@ func (s *SystemService) GetSecretKey(ctx context.Context) (string, error) {
 	return sys.Value, nil
 }
 
-// SetSecretKey sets a new JWT secret key
+// SetSecretKey sets a new JWT secret key.
 func (s *SystemService) SetSecretKey(ctx context.Context, secretKey string) error {
 	return s.setSystemValue(ctx, s.Ent.System, SystemKeySecretKey, secretKey)
 }
 
-// setSystemValue sets or updates a system key-value pair
-func (s *SystemService) setSystemValue(ctx context.Context, client interface{}, key, value string) error {
+// setSystemValue sets or updates a system key-value pair.
+func (s *SystemService) setSystemValue(
+	ctx context.Context,
+	client interface{},
+	key, value string,
+) error {
 	switch c := client.(type) {
 	case *ent.SystemClient:
 		// Check if record exists

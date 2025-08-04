@@ -12,16 +12,19 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
-// InboundTransformer implements transformer.Inbound for OpenAI format
+// InboundTransformer implements transformer.Inbound for OpenAI format.
 type InboundTransformer struct{}
 
-// NewInboundTransformer creates a new OpenAI InboundTransformer
+// NewInboundTransformer creates a new OpenAI InboundTransformer.
 func NewInboundTransformer() transformer.Inbound {
 	return &InboundTransformer{}
 }
 
-// TransformRequest transforms HTTP request to ChatCompletionRequest
-func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
+// TransformRequest transforms HTTP request to ChatCompletionRequest.
+func (t *InboundTransformer) TransformRequest(
+	ctx context.Context,
+	httpReq *httpclient.Request,
+) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("http request is nil")
 	}
@@ -33,7 +36,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 	// Check content type
 	contentType := httpReq.Headers.Get("Content-Type")
 	if contentType == "" {
-		contentType = httpReq.Headers.Get("content-type")
+		contentType = httpReq.Headers.Get("Content-Type")
 	}
 
 	if !strings.Contains(strings.ToLower(contentType), "application/json") {
@@ -57,8 +60,11 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 	return &chatReq, nil
 }
 
-// TransformResponse transforms ChatCompletionResponse to Response
-func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.Response) (*httpclient.Response, error) {
+// TransformResponse transforms ChatCompletionResponse to Response.
+func (t *InboundTransformer) TransformResponse(
+	ctx context.Context,
+	chatResp *llm.Response,
+) (*httpclient.Response, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
@@ -79,8 +85,11 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 	}, nil
 }
 
-// TransformStreamChunk transforms ChatCompletionResponse to StreamEvent
-func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp *llm.Response) (*httpclient.StreamEvent, error) {
+// TransformStreamChunk transforms ChatCompletionResponse to StreamEvent.
+func (t *InboundTransformer) TransformStreamChunk(
+	ctx context.Context,
+	chatResp *llm.Response,
+) (*httpclient.StreamEvent, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}

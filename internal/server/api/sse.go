@@ -4,7 +4,6 @@ import (
 	"io"
 
 	"github.com/gin-gonic/gin"
-
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/chat"
@@ -18,15 +17,15 @@ type ChatCompletionErrorHandler interface {
 	HandleStreamError(c *gin.Context, err error)
 }
 
+type ChatCompletionSSEHandlers struct {
+	ChatCompletionProcessor *chat.ChatCompletionProcessor
+	ErrorHandler            ChatCompletionErrorHandler
+}
+
 func NewChatCompletionHandlers(processor *chat.ChatCompletionProcessor) *ChatCompletionSSEHandlers {
 	return &ChatCompletionSSEHandlers{
 		ChatCompletionProcessor: processor,
 	}
-}
-
-type ChatCompletionSSEHandlers struct {
-	ChatCompletionProcessor *chat.ChatCompletionProcessor
-	ErrorHandler            ChatCompletionErrorHandler
 }
 
 func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {

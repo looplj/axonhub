@@ -1,14 +1,12 @@
 package openai
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -151,7 +149,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.TransformRequest(context.Background(), tt.request)
+			result, err := transformer.TransformRequest(t.Context(), tt.request)
 
 			if tt.wantErr {
 				if err == nil {
@@ -159,7 +157,11 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					return
 				}
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("TransformRequest() error = %v, want error containing %v", err, tt.errContains)
+					t.Errorf(
+						"TransformRequest() error = %v, want error containing %v",
+						err,
+						tt.errContains,
+					)
 				}
 				return
 			}
@@ -288,7 +290,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.TransformStreamChunk(context.Background(), tt.response)
+			result, err := transformer.TransformStreamChunk(t.Context(), tt.response)
 
 			if tt.wantErr {
 				if err == nil {
@@ -296,7 +298,11 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 					return
 				}
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("TransformStreamChunk() error = %v, want error containing %v", err, tt.errContains)
+					t.Errorf(
+						"TransformStreamChunk() error = %v, want error containing %v",
+						err,
+						tt.errContains,
+					)
 				}
 				return
 			}
@@ -379,7 +385,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.TransformResponse(context.Background(), tt.response)
+			result, err := transformer.TransformResponse(t.Context(), tt.response)
 
 			if tt.wantErr {
 				if err == nil {
@@ -387,7 +393,11 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 					return
 				}
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("TransformResponse() error = %v, want error containing %v", err, tt.errContains)
+					t.Errorf(
+						"TransformResponse() error = %v, want error containing %v",
+						err,
+						tt.errContains,
+					)
 				}
 				return
 			}
@@ -409,7 +419,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
-// Helper functions
+// Helper functions.
 func mustMarshal(v interface{}) []byte {
 	data, err := json.Marshal(v)
 	if err != nil {

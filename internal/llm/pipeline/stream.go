@@ -10,8 +10,11 @@ import (
 )
 
 // Process executes the streaming LLM pipeline
-// Steps: apply decorators -> outbound transform -> HTTP stream -> outbound stream transform -> inbound stream transform
-func (p *pipeline) stream(ctx context.Context, request *llm.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+// Steps: apply decorators -> outbound transform -> HTTP stream -> outbound stream transform -> inbound stream transform.
+func (p *pipeline) stream(
+	ctx context.Context,
+	request *llm.Request,
+) (streams.Stream[*httpclient.StreamEvent], error) {
 	// Step 1: Apply decorators to the request
 	if len(p.decorators) > 0 {
 		for _, dec := range p.decorators {
@@ -39,23 +42,26 @@ func (p *pipeline) stream(ctx context.Context, request *llm.Request) (streams.St
 	}
 
 	// Step 4: Transform the HTTP stream through the complete pipeline
-	finalStream := streams.MapErr(httpStream, func(src *httpclient.StreamEvent) (*httpclient.StreamEvent, error) {
-		// Transform HTTP stream event to LLM response using outbound transformer
-		llmResp, err := p.Outbound.TransformStreamChunk(ctx, src)
-		if err != nil {
-			return nil, err
-		}
-		log.Debug(ctx, "LLM stream response", log.Any("response", llmResp))
+	finalStream := streams.MapErr(
+		httpStream,
+		func(src *httpclient.StreamEvent) (*httpclient.StreamEvent, error) {
+			// Transform HTTP stream event to LLM response using outbound transformer
+			llmResp, err := p.Outbound.TransformStreamChunk(ctx, src)
+			if err != nil {
+				return nil, err
+			}
+			log.Debug(ctx, "LLM stream response", log.Any("response", llmResp))
 
-		// Transform LLM response to final HTTP stream event using inbound transformer
-		event, err := p.Inbound.TransformStreamChunk(ctx, llmResp)
-		if err != nil {
-			return nil, err
-		}
-		log.Debug(ctx, "Final stream event", log.Any("event", event))
+			// Transform LLM response to final HTTP stream event using inbound transformer
+			event, err := p.Inbound.TransformStreamChunk(ctx, llmResp)
+			if err != nil {
+				return nil, err
+			}
+			log.Debug(ctx, "Final stream event", log.Any("event", event))
 
-		return event, nil
-	})
+			return event, nil
+		},
+	)
 
 	return finalStream, nil
 }

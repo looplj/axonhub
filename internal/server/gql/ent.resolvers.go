@@ -61,7 +61,15 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []*objects.GUID) ([]ent.N
 }
 
 // APIKeys is the resolver for the apiKeys field.
-func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) (*ent.APIKeyConnection, error) {
+func (r *queryResolver) APIKeys(
+	ctx context.Context,
+	after *entgql.Cursor[int],
+	first *int,
+	before *entgql.Cursor[int],
+	last *int,
+	orderBy *ent.APIKeyOrder,
+	where *ent.APIKeyWhereInput,
+) (*ent.APIKeyConnection, error) {
 	return r.client.APIKey.Query().Paginate(ctx, after, first, before, last,
 		ent.WithAPIKeyOrder(orderBy),
 		ent.WithAPIKeyFilter(where.Filter),
@@ -69,7 +77,15 @@ func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], 
 }
 
 // Channels is the resolver for the channels field.
-func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) (*ent.ChannelConnection, error) {
+func (r *queryResolver) Channels(
+	ctx context.Context,
+	after *entgql.Cursor[int],
+	first *int,
+	before *entgql.Cursor[int],
+	last *int,
+	orderBy *ent.ChannelOrder,
+	where *ent.ChannelWhereInput,
+) (*ent.ChannelConnection, error) {
 	return r.client.Channel.Query().Paginate(ctx, after, first, before, last,
 		ent.WithChannelOrder(orderBy),
 		ent.WithChannelFilter(where.Filter),
@@ -77,7 +93,15 @@ func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int],
 }
 
 // Requests is the resolver for the requests field.
-func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) (*ent.RequestConnection, error) {
+func (r *queryResolver) Requests(
+	ctx context.Context,
+	after *entgql.Cursor[int],
+	first *int,
+	before *entgql.Cursor[int],
+	last *int,
+	orderBy *ent.RequestOrder,
+	where *ent.RequestWhereInput,
+) (*ent.RequestConnection, error) {
 	return r.client.Request.Query().Paginate(ctx, after, first, before, last,
 		ent.WithRequestOrder(orderBy),
 		ent.WithRequestFilter(where.Filter),
@@ -85,7 +109,15 @@ func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int],
 }
 
 // Roles is the resolver for the roles field.
-func (r *queryResolver) Roles(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) (*ent.RoleConnection, error) {
+func (r *queryResolver) Roles(
+	ctx context.Context,
+	after *entgql.Cursor[int],
+	first *int,
+	before *entgql.Cursor[int],
+	last *int,
+	orderBy *ent.RoleOrder,
+	where *ent.RoleWhereInput,
+) (*ent.RoleConnection, error) {
 	return r.client.Role.Query().Paginate(ctx, after, first, before, last,
 		ent.WithRoleOrder(orderBy),
 		ent.WithRoleFilter(where.Filter),
@@ -93,12 +125,28 @@ func (r *queryResolver) Roles(ctx context.Context, after *entgql.Cursor[int], fi
 }
 
 // Systems is the resolver for the systems field.
-func (r *queryResolver) Systems(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) (*ent.SystemConnection, error) {
+func (r *queryResolver) Systems(
+	ctx context.Context,
+	after *entgql.Cursor[int],
+	first *int,
+	before *entgql.Cursor[int],
+	last *int,
+	orderBy *ent.SystemOrder,
+	where *ent.SystemWhereInput,
+) (*ent.SystemConnection, error) {
 	panic(fmt.Errorf("not implemented: Systems - systems"))
 }
 
 // Users is the resolver for the users field.
-func (r *queryResolver) Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error) {
+func (r *queryResolver) Users(
+	ctx context.Context,
+	after *entgql.Cursor[int],
+	first *int,
+	before *entgql.Cursor[int],
+	last *int,
+	orderBy *ent.UserOrder,
+	where *ent.UserWhereInput,
+) (*ent.UserConnection, error) {
 	return r.client.User.Query().Paginate(ctx, after, first, before, last,
 		ent.WithUserOrder(orderBy),
 		ent.WithUserFilter(where.Filter),
@@ -130,7 +178,10 @@ func (r *requestResolver) APIKeyID(ctx context.Context, obj *ent.Request) (*obje
 }
 
 // ID is the resolver for the id field.
-func (r *requestExecutionResolver) ID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error) {
+func (r *requestExecutionResolver) ID(
+	ctx context.Context,
+	obj *ent.RequestExecution,
+) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: "RequestExecution",
 		ID:   obj.ID,
@@ -138,7 +189,10 @@ func (r *requestExecutionResolver) ID(ctx context.Context, obj *ent.RequestExecu
 }
 
 // RequestID is the resolver for the requestID field.
-func (r *requestExecutionResolver) RequestID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error) {
+func (r *requestExecutionResolver) RequestID(
+	ctx context.Context,
+	obj *ent.RequestExecution,
+) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: "Request",
 		ID:   obj.RequestID,
@@ -146,8 +200,14 @@ func (r *requestExecutionResolver) RequestID(ctx context.Context, obj *ent.Reque
 }
 
 // ChannelID is the resolver for the channelID field.
-func (r *requestExecutionResolver) ChannelID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ChannelID - channelID"))
+func (r *requestExecutionResolver) ChannelID(
+	ctx context.Context,
+	obj *ent.RequestExecution,
+) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: "Channel",
+		ID:   obj.ChannelID,
+	}, nil
 }
 
 // ID is the resolver for the id field.
@@ -160,7 +220,10 @@ func (r *roleResolver) ID(ctx context.Context, obj *ent.Role) (*objects.GUID, er
 
 // ID is the resolver for the id field.
 func (r *systemResolver) ID(ctx context.Context, obj *ent.System) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return &objects.GUID{
+		Type: "System",
+		ID:   obj.ID,
+	}, nil
 }
 
 // ID is the resolver for the id field.
@@ -198,12 +261,14 @@ func (r *Resolver) System() SystemResolver { return &systemResolver{r} }
 // User returns UserResolver implementation.
 func (r *Resolver) User() UserResolver { return &userResolver{r} }
 
-type aPIKeyResolver struct{ *Resolver }
-type channelResolver struct{ *Resolver }
-type jobResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
-type requestResolver struct{ *Resolver }
-type requestExecutionResolver struct{ *Resolver }
-type roleResolver struct{ *Resolver }
-type systemResolver struct{ *Resolver }
-type userResolver struct{ *Resolver }
+type (
+	aPIKeyResolver           struct{ *Resolver }
+	channelResolver          struct{ *Resolver }
+	jobResolver              struct{ *Resolver }
+	queryResolver            struct{ *Resolver }
+	requestResolver          struct{ *Resolver }
+	requestExecutionResolver struct{ *Resolver }
+	roleResolver             struct{ *Resolver }
+	systemResolver           struct{ *Resolver }
+	userResolver             struct{ *Resolver }
+)

@@ -17,7 +17,8 @@ func ForceEnabledLevelFromContext(ctx context.Context) (Level, bool) {
 	if value == nil {
 		return FatalLevel, false
 	}
-	return value.(Level), true
+	lvl, ok := value.(Level)
+	return lvl, ok
 }
 
 const (

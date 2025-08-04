@@ -3,19 +3,17 @@ package chat
 import (
 	"context"
 
+	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/llm/decorator"
+	"github.com/looplj/axonhub/internal/llm/pipeline"
+	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/biz"
-
-	"github.com/looplj/axonhub/internal/llm/decorator"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
-	"github.com/looplj/axonhub/internal/llm/transformer"
-
-	"github.com/looplj/axonhub/internal/contexts"
 )
 
-// NewChatCompletionProcessor creates a new ChatCompletionProcessor
+// NewChatCompletionProcessor creates a new ChatCompletionProcessor.
 func NewChatCompletionProcessor(
 	channelService *biz.ChannelService,
 	requestService *biz.RequestService,
@@ -45,7 +43,10 @@ type ChatCompletionResult struct {
 	ChatCompletionStream streams.Stream[*httpclient.StreamEvent]
 }
 
-func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
+func (processor *ChatCompletionProcessor) Process(
+	ctx context.Context,
+	request *httpclient.Request,
+) (ChatCompletionResult, error) {
 	apiKey, ok := contexts.GetAPIKey(ctx)
 	if !ok {
 		log.Warn(ctx, "api key not found")
@@ -66,8 +67,16 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		return ChatCompletionResult{}, err
 	}
 
-	pipeline := processor.PipelineFactory.Pipeline(inbound, outbound,
-		pipeline.WithRetry(3, 0, "connection timeout", "rate limit exceeded", "temporary unavailable"),
+	pipeline := processor.PipelineFactory.Pipeline(
+		inbound,
+		outbound,
+		pipeline.WithRetry(
+			3,
+			0,
+			"connection timeout",
+			"rate limit exceeded",
+			"temporary unavailable",
+		),
 	)
 
 	result, err := pipeline.Process(ctx, request)

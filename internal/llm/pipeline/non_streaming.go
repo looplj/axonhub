@@ -9,8 +9,11 @@ import (
 )
 
 // Process executes the non-streaming LLM pipeline
-// Steps: apply decorators -> outbound transform -> HTTP request -> outbound response transform -> inbound response transform
-func (p *pipeline) notStream(ctx context.Context, request *llm.Request) (*httpclient.Response, error) {
+// Steps: apply decorators -> outbound transform -> HTTP request -> outbound response transform -> inbound response transform.
+func (p *pipeline) notStream(
+	ctx context.Context,
+	request *llm.Request,
+) (*httpclient.Response, error) {
 	// Step 1: Apply decorators to the request
 	if len(p.decorators) > 0 {
 		for _, dec := range p.decorators {

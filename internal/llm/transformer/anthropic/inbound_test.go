@@ -1,14 +1,12 @@
 package anthropic
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -270,7 +268,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.TransformRequest(context.Background(), tt.httpReq)
+			result, err := transformer.TransformRequest(t.Context(), tt.httpReq)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -370,7 +368,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.TransformResponse(context.Background(), tt.chatResp)
+			result, err := transformer.TransformResponse(t.Context(), tt.chatResp)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -428,7 +426,9 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 					Headers: http.Header{
 						"Content-Type": []string{"text/plain"},
 					},
-					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": []}`),
+					Body: []byte(
+						`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": []}`,
+					),
 				},
 				expectError: true,
 				errorMsg:    "unsupported content type",
@@ -437,7 +437,9 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 				name: "no content type header",
 				httpReq: &httpclient.Request{
 					Headers: http.Header{},
-					Body:    []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": []}`),
+					Body: []byte(
+						`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": []}`,
+					),
 				},
 				expectError: true,
 				errorMsg:    "unsupported content type",
@@ -459,7 +461,9 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 					Headers: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
-					Body: []byte(`{"max_tokens": 1024, "messages": [{"role": "user", "content": "Hello"}]}`),
+					Body: []byte(
+						`{"max_tokens": 1024, "messages": [{"role": "user", "content": "Hello"}]}`,
+					),
 				},
 				expectError: true,
 				errorMsg:    "model is required",
@@ -470,7 +474,9 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 					Headers: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
-					Body: []byte(`{"model": "", "max_tokens": 1024, "messages": [{"role": "user", "content": "Hello"}]}`),
+					Body: []byte(
+						`{"model": "", "max_tokens": 1024, "messages": [{"role": "user", "content": "Hello"}]}`,
+					),
 				},
 				expectError: true,
 				errorMsg:    "model is required",
@@ -492,7 +498,9 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 					Headers: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
-					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": []}`),
+					Body: []byte(
+						`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": []}`,
+					),
 				},
 				expectError: true,
 				errorMsg:    "messages are required",
@@ -503,7 +511,9 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 					Headers: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
-					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": -1, "messages": [{"role": "user", "content": "Hello"}]}`),
+					Body: []byte(
+						`{"model": "claude-3-sonnet-20240229", "max_tokens": -1, "messages": [{"role": "user", "content": "Hello"}]}`,
+					),
 				},
 				expectError: true,
 				errorMsg:    "max_tokens is required and must be positive",
@@ -514,7 +524,9 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 					Headers: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
-					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 0, "messages": [{"role": "user", "content": "Hello"}]}`),
+					Body: []byte(
+						`{"model": "claude-3-sonnet-20240229", "max_tokens": 0, "messages": [{"role": "user", "content": "Hello"}]}`,
+					),
 				},
 				expectError: true,
 				errorMsg:    "max_tokens is required and must be positive",
@@ -525,7 +537,9 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 					Headers: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
-					Body: []byte(`{"model": "claude-3-sonnet-20240229", "messages": [{"role": "user", "content": "Hello"}]}`),
+					Body: []byte(
+						`{"model": "claude-3-sonnet-20240229", "messages": [{"role": "user", "content": "Hello"}]}`,
+					),
 				},
 				expectError: true,
 				errorMsg:    "max_tokens is required and must be positive",
@@ -534,7 +548,7 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				_, err := transformer.TransformRequest(context.Background(), tt.httpReq)
+				_, err := transformer.TransformRequest(t.Context(), tt.httpReq)
 				if tt.expectError {
 					require.Error(t, err)
 					require.Contains(t, err.Error(), tt.errorMsg)
@@ -562,7 +576,7 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				_, err := transformer.TransformResponse(context.Background(), tt.chatResp)
+				_, err := transformer.TransformResponse(t.Context(), tt.chatResp)
 				if tt.expectError {
 					require.Error(t, err)
 					require.Contains(t, err.Error(), tt.errorMsg)
@@ -590,7 +604,7 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				_, err := transformer.TransformStreamChunk(context.Background(), tt.chatResp)
+				_, err := transformer.TransformStreamChunk(t.Context(), tt.chatResp)
 				if tt.expectError {
 					require.Error(t, err)
 					require.Contains(t, err.Error(), tt.errorMsg)
@@ -617,7 +631,9 @@ func TestInboundTransformer_ValidationEdgeCases(t *testing.T) {
 					Headers: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
-					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": [{"role": "user", "content": null}]}`),
+					Body: []byte(
+						`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": [{"role": "user", "content": null}]}`,
+					),
 				},
 				expectError: true, // Should error on null content
 			},
@@ -627,7 +643,9 @@ func TestInboundTransformer_ValidationEdgeCases(t *testing.T) {
 					Headers: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
-					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": [{"role": "user", "content": 123}]}`),
+					Body: []byte(
+						`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "messages": [{"role": "user", "content": 123}]}`,
+					),
 				},
 				expectError: true, // Should error on invalid content type
 			},
@@ -637,7 +655,9 @@ func TestInboundTransformer_ValidationEdgeCases(t *testing.T) {
 					Headers: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
-					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "system": 123, "messages": [{"role": "user", "content": "Hello"}]}`),
+					Body: []byte(
+						`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "system": 123, "messages": [{"role": "user", "content": "Hello"}]}`,
+					),
 				},
 				expectError: true, // Should error on invalid system type
 			},
@@ -647,7 +667,9 @@ func TestInboundTransformer_ValidationEdgeCases(t *testing.T) {
 					Headers: http.Header{
 						"Content-Type": []string{"application/json"},
 					},
-					Body: []byte(`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "system": [{"type": "invalid"}], "messages": [{"role": "user", "content": "Hello"}]}`),
+					Body: []byte(
+						`{"model": "claude-3-sonnet-20240229", "max_tokens": 1024, "system": [{"type": "invalid"}], "messages": [{"role": "user", "content": "Hello"}]}`,
+					),
 				},
 				expectError: true, // Should error on invalid system prompt array
 			},
@@ -655,7 +677,7 @@ func TestInboundTransformer_ValidationEdgeCases(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				_, err := transformer.TransformRequest(context.Background(), tt.httpReq)
+				_, err := transformer.TransformRequest(t.Context(), tt.httpReq)
 				if tt.expectError {
 					require.Error(t, err)
 				} else {
@@ -734,6 +756,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			expectError: false,
 			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
+				t.Helper()
 				require.Equal(t, "message_start", event.Type)
 
 				// Unmarshal the data to check the event
@@ -761,6 +784,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			expectError: false,
 			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
+				t.Helper()
 				require.Equal(t, "content_block_start", event.Type)
 
 				// Unmarshal the data to check the event
@@ -793,6 +817,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			expectError: false,
 			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
+				t.Helper()
 				require.Equal(t, "content_block_delta", event.Type)
 
 				// Unmarshal the data to check the event
@@ -815,6 +840,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			expectError: false,
 			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
+				t.Helper()
 				require.Equal(t, "content_block_stop", event.Type)
 
 				// Unmarshal the data to check the event
@@ -845,6 +871,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			expectError: false,
 			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
+				t.Helper()
 				require.Equal(t, "message_delta", event.Type)
 
 				// Unmarshal the data to check the event
@@ -876,6 +903,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			expectError: false,
 			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
+				t.Helper()
 				require.Equal(t, "message_delta", event.Type)
 
 				// Unmarshal the data to check the event
@@ -904,6 +932,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			expectError: false,
 			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
+				t.Helper()
 				require.Equal(t, "message_delta", event.Type)
 
 				// Unmarshal the data to check the event
@@ -926,6 +955,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			expectError: false,
 			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
+				t.Helper()
 				require.Equal(t, "message_stop", event.Type)
 
 				// Unmarshal the data to check the event
@@ -956,6 +986,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			expectError: false,
 			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
+				t.Helper()
 				require.Empty(t, event.Type)
 				// Unmarshal the data to check the event
 				var streamEvent StreamEvent
@@ -978,6 +1009,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 			expectError: false, // Should not error, just create empty event
 			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
+				t.Helper()
 				require.Equal(t, "content_block_delta", event.Type)
 
 				// Unmarshal the data to check the event
@@ -999,7 +1031,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.TransformStreamChunk(context.Background(), tt.chatResp)
+			result, err := transformer.TransformStreamChunk(t.Context(), tt.chatResp)
 
 			if tt.expectError {
 				require.Error(t, err)

@@ -13,13 +13,13 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
-// OutboundTransformer implements transformer.Outbound for OpenAI format
+// OutboundTransformer implements transformer.Outbound for OpenAI format.
 type OutboundTransformer struct {
 	baseURL string
 	apiKey  string
 }
 
-// NewOutboundTransformer creates a new OpenAI OutboundTransformer
+// NewOutboundTransformer creates a new OpenAI OutboundTransformer.
 func NewOutboundTransformer(baseURL, apiKey string) transformer.Outbound {
 	if baseURL == "" {
 		baseURL = "https://api.openai.com/v1"
@@ -31,8 +31,11 @@ func NewOutboundTransformer(baseURL, apiKey string) transformer.Outbound {
 	}
 }
 
-// TransformRequest transforms ChatCompletionRequest to Request
-func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm.Request) (*httpclient.Request, error) {
+// TransformRequest transforms ChatCompletionRequest to Request.
+func (t *OutboundTransformer) TransformRequest(
+	ctx context.Context,
+	chatReq *llm.Request,
+) (*httpclient.Request, error) {
 	if chatReq == nil {
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
@@ -79,8 +82,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 	}, nil
 }
 
-// TransformResponse transforms Response to ChatCompletionResponse
-func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
+// TransformResponse transforms Response to ChatCompletionResponse.
+func (t *OutboundTransformer) TransformResponse(
+	ctx context.Context,
+	httpResp *httpclient.Response,
+) (*llm.Response, error) {
 	if httpResp == nil {
 		return nil, fmt.Errorf("http response is nil")
 	}
@@ -105,7 +111,10 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	return &chatResp, nil
 }
 
-func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error) {
+func (t *OutboundTransformer) TransformStreamChunk(
+	ctx context.Context,
+	event *httpclient.StreamEvent,
+) (*llm.Response, error) {
 	if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
 		return &llm.Response{
 			Object: "[DONE]",
@@ -119,7 +128,7 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 	return t.TransformResponse(ctx, httpResp)
 }
 
-// SupportsModel checks if the transformer supports a specific model
+// SupportsModel checks if the transformer supports a specific model.
 func (t *OutboundTransformer) SupportsModel(model string) bool {
 	// OpenAI transformer supports OpenAI models
 	openaiModels := []string{
@@ -137,18 +146,21 @@ func (t *OutboundTransformer) SupportsModel(model string) bool {
 	return false
 }
 
-// SetAPIKey updates the API key
+// SetAPIKey updates the API key.
 func (t *OutboundTransformer) SetAPIKey(apiKey string) {
 	t.apiKey = apiKey
 }
 
-// SetBaseURL updates the base URL
+// SetBaseURL updates the base URL.
 func (t *OutboundTransformer) SetBaseURL(baseURL string) {
 	t.baseURL = baseURL
 }
 
-// AggregateStreamChunks aggregates OpenAI streaming response chunks into a complete response
-func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks [][]byte) (*llm.Response, error) {
+// AggregateStreamChunks aggregates OpenAI streaming response chunks into a complete response.
+func (t *OutboundTransformer) AggregateStreamChunks(
+	ctx context.Context,
+	chunks [][]byte,
+) (*llm.Response, error) {
 	if len(chunks) == 0 {
 		return &llm.Response{}, nil
 	}
@@ -166,7 +178,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 		// }
 
 		var chunkData map[string]any
-		if err := json.Unmarshal([]byte(chunk), &chunkData); err != nil {
+		if err := json.Unmarshal(chunk, &chunkData); err != nil {
 			continue // Skip invalid chunks
 		}
 

@@ -1,14 +1,11 @@
 package anthropic
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -154,31 +151,31 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.TransformRequest(context.Background(), tt.chatReq)
+			result, err := transformer.TransformRequest(t.Context(), tt.chatReq)
 
 			if tt.expectError {
-				assert.Error(t, err)
-				assert.Nil(t, result)
+				require.Error(t, err)
+				require.Nil(t, result)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, result)
-				assert.Equal(t, http.MethodPost, result.Method)
-				assert.Equal(t, "https://api.anthropic.com/v1/messages", result.URL)
-				assert.Equal(t, "application/json", result.Headers.Get("Content-Type"))
-				assert.Equal(t, "2023-06-01", result.Headers.Get("anthropic-version"))
-				assert.NotEmpty(t, result.Body)
+				require.Equal(t, http.MethodPost, result.Method)
+				require.Equal(t, "https://api.anthropic.com/v1/messages", result.URL)
+				require.Equal(t, "application/json", result.Headers.Get("Content-Type"))
+				require.Equal(t, "2023-06-01", result.Headers.Get("Anthropic-Version"))
+				require.NotEmpty(t, result.Body)
 
 				// Verify the request can be unmarshaled to AnthropicRequest
 				var anthropicReq MessageRequest
 				err := json.Unmarshal(result.Body, &anthropicReq)
 				require.NoError(t, err)
-				assert.Equal(t, tt.chatReq.Model, anthropicReq.Model)
-				assert.Greater(t, anthropicReq.MaxTokens, int64(0))
+				require.Equal(t, tt.chatReq.Model, anthropicReq.Model)
+				require.Greater(t, anthropicReq.MaxTokens, int64(0))
 
 				// Verify auth
 				if result.Auth != nil {
-					assert.Equal(t, "api_key", result.Auth.Type)
-					assert.Equal(t, "test-api-key", result.Auth.APIKey)
+					require.Equal(t, "api_key", result.Auth.Type)
+					require.Equal(t, "test-api-key", result.Auth.APIKey)
 				}
 			}
 		})
@@ -277,19 +274,19 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.TransformResponse(context.Background(), tt.httpResp)
+			result, err := transformer.TransformResponse(t.Context(), tt.httpResp)
 
 			if tt.expectError {
-				assert.Error(t, err)
-				assert.Nil(t, result)
+				require.Error(t, err)
+				require.Nil(t, result)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, result)
-				assert.Equal(t, "chat.completion", result.Object)
-				assert.NotEmpty(t, result.ID)
-				assert.NotEmpty(t, result.Model)
-				assert.NotEmpty(t, result.Choices)
-				assert.Equal(t, "assistant", result.Choices[0].Message.Role)
+				require.Equal(t, "chat.completion", result.Object)
+				require.NotEmpty(t, result.ID)
+				require.NotEmpty(t, result.Model)
+				require.NotEmpty(t, result.Choices)
+				require.Equal(t, "assistant", result.Choices[0].Message.Role)
 			}
 		})
 	}
@@ -384,16 +381,16 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.AggregateStreamChunks(context.Background(), tt.chunks)
+			result, err := transformer.AggregateStreamChunks(t.Context(), tt.chunks)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 
 			if tt.expected == "" {
-				assert.Empty(t, result.Choices)
+				require.Empty(t, result.Choices)
 			} else {
 				require.NotEmpty(t, result.Choices)
-				assert.Equal(t, tt.expected, *result.Choices[0].Message.Content.Content)
-				assert.Equal(t, "assistant", result.Choices[0].Message.Role)
+				require.Equal(t, tt.expected, *result.Choices[0].Message.Content.Content)
+				require.Equal(t, "assistant", result.Choices[0].Message.Role)
 			}
 		})
 	}
@@ -415,8 +412,9 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				chunks:      nil,
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
-					assert.NotNil(t, result)
-					assert.Empty(t, result.Choices)
+					t.Helper()
+					require.NotNil(t, result)
+					require.Empty(t, result.Choices)
 				},
 			},
 			{
@@ -450,9 +448,10 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
-					assert.NotNil(t, result)
-					assert.NotEmpty(t, result.Choices)
-					assert.Equal(t, "Hello", *result.Choices[0].Message.Content.Content)
+					t.Helper()
+					require.NotNil(t, result)
+					require.NotEmpty(t, result.Choices)
+					require.Equal(t, "Hello", *result.Choices[0].Message.Content.Content)
 				},
 			},
 			{
@@ -483,9 +482,10 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
-					assert.NotNil(t, result)
-					assert.NotEmpty(t, result.Choices)
-					assert.Equal(t, "Hello", *result.Choices[0].Message.Content.Content)
+					t.Helper()
+					require.NotNil(t, result)
+					require.NotEmpty(t, result.Choices)
+					require.Equal(t, "Hello", *result.Choices[0].Message.Content.Content)
 				},
 			},
 			{
@@ -508,7 +508,8 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
-					assert.NotNil(t, result)
+					t.Helper()
+					require.NotNil(t, result)
 					// Should handle gracefully, might have empty fields
 				},
 			},
@@ -559,14 +560,15 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
-					assert.NotNil(t, result)
-					assert.NotEmpty(t, result.Choices)
-					assert.Equal(t, "Complete", *result.Choices[0].Message.Content.Content)
-					assert.Equal(t, "msg_complete", result.ID)
-					assert.Equal(t, "stop", *result.Choices[0].FinishReason)
-					assert.NotNil(t, result.Usage)
-					assert.Equal(t, 5, result.Usage.PromptTokens)
-					assert.Equal(t, 8, result.Usage.CompletionTokens)
+					t.Helper()
+					require.NotNil(t, result)
+					require.NotEmpty(t, result.Choices)
+					require.Equal(t, "Complete", *result.Choices[0].Message.Content.Content)
+					require.Equal(t, "msg_complete", result.ID)
+					require.Equal(t, "stop", *result.Choices[0].FinishReason)
+					require.NotNil(t, result.Usage)
+					require.Equal(t, 5, result.Usage.PromptTokens)
+					require.Equal(t, 8, result.Usage.CompletionTokens)
 				},
 			},
 			{
@@ -623,11 +625,12 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
-					assert.NotNil(t, result)
-					assert.NotEmpty(t, result.Choices)
+					t.Helper()
+					require.NotNil(t, result)
+					require.NotEmpty(t, result.Choices)
 					// Should contain both thinking and text content
-					assert.NotNil(t, result.Choices[0].Message.Content.MultipleContent)
-					assert.Len(t, result.Choices[0].Message.Content.MultipleContent, 2)
+					require.NotNil(t, result.Choices[0].Message.Content.MultipleContent)
+					require.Len(t, result.Choices[0].Message.Content.MultipleContent, 2)
 				},
 			},
 			{
@@ -678,12 +681,13 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
-					assert.NotNil(t, result)
-					assert.NotEmpty(t, result.Choices)
-					assert.Equal(t, "tool_calls", *result.Choices[0].FinishReason)
-					assert.NotNil(t, result.Choices[0].Message.ToolCalls)
-					assert.Len(t, result.Choices[0].Message.ToolCalls, 1)
-					assert.Equal(t, "tool_123", result.Choices[0].Message.ToolCalls[0].ID)
+					t.Helper()
+					require.NotNil(t, result)
+					require.NotEmpty(t, result.Choices)
+					require.Equal(t, "tool_calls", *result.Choices[0].FinishReason)
+					require.NotNil(t, result.Choices[0].Message.ToolCalls)
+					require.Len(t, result.Choices[0].Message.ToolCalls, 1)
+					require.Equal(t, "tool_123", result.Choices[0].Message.ToolCalls[0].ID)
 				},
 			},
 			{
@@ -733,13 +737,18 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
-					assert.NotNil(t, result)
-					assert.NotEmpty(t, result.Choices)
-					assert.Equal(t, "tool_calls", *result.Choices[0].FinishReason)
-					assert.NotNil(t, result.Choices[0].Message.ToolCalls)
-					assert.Len(t, result.Choices[0].Message.ToolCalls, 1)
-					assert.Equal(t, "tool_456", result.Choices[0].Message.ToolCalls[0].ID)
-					assert.Equal(t, `{"key":"value"}`, result.Choices[0].Message.ToolCalls[0].Function.Arguments)
+					t.Helper()
+					require.NotNil(t, result)
+					require.NotEmpty(t, result.Choices)
+					require.Equal(t, "tool_calls", *result.Choices[0].FinishReason)
+					require.NotNil(t, result.Choices[0].Message.ToolCalls)
+					require.Len(t, result.Choices[0].Message.ToolCalls, 1)
+					require.Equal(t, "tool_456", result.Choices[0].Message.ToolCalls[0].ID)
+					require.Equal(
+						t,
+						`{"key":"value"}`,
+						result.Choices[0].Message.ToolCalls[0].Function.Arguments,
+					)
 				},
 			},
 			{
@@ -775,9 +784,10 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
-					assert.NotNil(t, result)
-					assert.NotEmpty(t, result.Choices)
-					assert.Equal(t, "After ping", *result.Choices[0].Message.Content.Content)
+					t.Helper()
+					require.NotNil(t, result)
+					require.NotEmpty(t, result.Choices)
+					require.Equal(t, "After ping", *result.Choices[0].Message.Content.Content)
 				},
 			},
 			{
@@ -826,10 +836,11 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
-					assert.NotNil(t, result)
-					assert.NotEmpty(t, result.Choices)
+					t.Helper()
+					require.NotNil(t, result)
+					require.NotEmpty(t, result.Choices)
 					// Should handle signature delta gracefully
-					assert.NotNil(t, result.Choices[0].Message.Content.MultipleContent)
+					require.NotNil(t, result.Choices[0].Message.Content.MultipleContent)
 				},
 			},
 			{
@@ -862,23 +873,24 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
-					assert.NotNil(t, result)
-					assert.NotEmpty(t, result.Choices)
-					assert.Equal(t, "length", *result.Choices[0].FinishReason)
+					t.Helper()
+					require.NotNil(t, result)
+					require.NotEmpty(t, result.Choices)
+					require.Equal(t, "length", *result.Choices[0].FinishReason)
 				},
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := transformer.AggregateStreamChunks(context.Background(), tt.chunks)
+				result, err := transformer.AggregateStreamChunks(t.Context(), tt.chunks)
 				if tt.expectError {
-					assert.Error(t, err)
+					require.Error(t, err)
 					if tt.errorMsg != "" {
-						assert.Contains(t, err.Error(), tt.errorMsg)
+						require.Contains(t, err.Error(), tt.errorMsg)
 					}
 				} else {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					tt.validate(t, result)
 				}
 			})
@@ -891,7 +903,7 @@ func TestOutboundTransformer_SetAPIKey(t *testing.T) {
 
 	newAPIKey := "new-api-key"
 	transformer.SetAPIKey(newAPIKey)
-	assert.Equal(t, newAPIKey, transformer.apiKey)
+	require.Equal(t, newAPIKey, transformer.apiKey)
 }
 
 func TestOutboundTransformer_SetBaseURL(t *testing.T) {
@@ -899,7 +911,7 @@ func TestOutboundTransformer_SetBaseURL(t *testing.T) {
 
 	newBaseURL := "https://custom.api.com"
 	transformer.SetBaseURL(newBaseURL)
-	assert.Equal(t, newBaseURL, transformer.baseURL)
+	require.Equal(t, newBaseURL, transformer.baseURL)
 }
 
 func TestOutboundTransformer_ErrorHandling(t *testing.T) {
@@ -983,12 +995,12 @@ func TestOutboundTransformer_ErrorHandling(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				_, err := transformer.TransformRequest(context.Background(), tt.chatReq)
+				_, err := transformer.TransformRequest(t.Context(), tt.chatReq)
 				if tt.expectError {
-					assert.Error(t, err)
-					assert.Contains(t, err.Error(), tt.errorMsg)
+					require.Error(t, err)
+					require.Contains(t, err.Error(), tt.errorMsg)
 				} else {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				}
 			})
 		}
@@ -1060,12 +1072,12 @@ func TestOutboundTransformer_ErrorHandling(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				_, err := transformer.TransformResponse(context.Background(), tt.httpResp)
+				_, err := transformer.TransformResponse(t.Context(), tt.httpResp)
 				if tt.expectError {
-					assert.Error(t, err)
-					assert.Contains(t, err.Error(), tt.errorMsg)
+					require.Error(t, err)
+					require.Contains(t, err.Error(), tt.errorMsg)
 				} else {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				}
 			})
 		}
@@ -1115,12 +1127,12 @@ func TestOutboundTransformer_ErrorHandling(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				_, err := transformer.TransformStreamChunk(context.Background(), tt.event)
+				_, err := transformer.TransformStreamChunk(t.Context(), tt.event)
 				if tt.expectError {
-					assert.Error(t, err)
-					assert.Contains(t, err.Error(), tt.errorMsg)
+					require.Error(t, err)
+					require.Contains(t, err.Error(), tt.errorMsg)
 				} else {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				}
 			})
 		}
@@ -1156,34 +1168,41 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 							Function: llm.Function{
 								Name:        "get_weather",
 								Description: "Get the current weather for a location",
-								Parameters:  json.RawMessage(`{"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}`),
+								Parameters: json.RawMessage(
+									`{"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}`,
+								),
 							},
 						},
 					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *httpclient.Request) {
+					t.Helper()
 					var anthropicReq MessageRequest
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
-					assert.NotNil(t, anthropicReq.Tools)
-					assert.Len(t, anthropicReq.Tools, 1)
-					assert.Equal(t, "get_weather", anthropicReq.Tools[0].Name)
-					assert.Equal(t, "Get the current weather for a location", anthropicReq.Tools[0].Description)
+					require.NotNil(t, anthropicReq.Tools)
+					require.Len(t, anthropicReq.Tools, 1)
+					require.Equal(t, "get_weather", anthropicReq.Tools[0].Name)
+					require.Equal(
+						t,
+						"Get the current weather for a location",
+						anthropicReq.Tools[0].Description,
+					)
 					// Compare JSON content flexibly (ignore whitespace differences)
-	expectedSchema := map[string]interface{}{
-		"type": "object",
-		"properties": map[string]interface{}{
-			"location": map[string]interface{}{
-				"type": "string",
-			},
-		},
-		"required": []interface{}{"location"},
-	}
-	var actualSchema map[string]interface{}
-	unmarshalErr := json.Unmarshal(anthropicReq.Tools[0].InputSchema, &actualSchema)
-	require.NoError(t, unmarshalErr)
-	assert.Equal(t, expectedSchema, actualSchema)
+					expectedSchema := map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"location": map[string]interface{}{
+								"type": "string",
+							},
+						},
+						"required": []interface{}{"location"},
+					}
+					var actualSchema map[string]interface{}
+					unmarshalErr := json.Unmarshal(anthropicReq.Tools[0].InputSchema, &actualSchema)
+					require.NoError(t, unmarshalErr)
+					require.Equal(t, expectedSchema, actualSchema)
 				},
 			},
 			{
@@ -1205,7 +1224,9 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 							Function: llm.Function{
 								Name:        "calculator",
 								Description: "Perform mathematical calculations",
-								Parameters:  json.RawMessage(`{"type": "object", "properties": {"expression": {"type": "string"}}, "required": ["expression"]}`),
+								Parameters: json.RawMessage(
+									`{"type": "object", "properties": {"expression": {"type": "string"}}, "required": ["expression"]}`,
+								),
 							},
 						},
 						{
@@ -1213,26 +1234,37 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 							Function: llm.Function{
 								Name:        "get_weather",
 								Description: "Get the current weather for a location",
-								Parameters:  json.RawMessage(`{"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}`),
+								Parameters: json.RawMessage(
+									`{"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}`,
+								),
 							},
 						},
 					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *httpclient.Request) {
+					t.Helper()
 					var anthropicReq MessageRequest
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
-					assert.NotNil(t, anthropicReq.Tools)
-					assert.Len(t, anthropicReq.Tools, 2)
+					require.NotNil(t, anthropicReq.Tools)
+					require.Len(t, anthropicReq.Tools, 2)
 
 					// Check first tool
-					assert.Equal(t, "calculator", anthropicReq.Tools[0].Name)
-					assert.Equal(t, "Perform mathematical calculations", anthropicReq.Tools[0].Description)
+					require.Equal(t, "calculator", anthropicReq.Tools[0].Name)
+					require.Equal(
+						t,
+						"Perform mathematical calculations",
+						anthropicReq.Tools[0].Description,
+					)
 
 					// Check second tool
-					assert.Equal(t, "get_weather", anthropicReq.Tools[1].Name)
-					assert.Equal(t, "Get the current weather for a location", anthropicReq.Tools[1].Description)
+					require.Equal(t, "get_weather", anthropicReq.Tools[1].Name)
+					require.Equal(
+						t,
+						"Get the current weather for a location",
+						anthropicReq.Tools[1].Description,
+					)
 				},
 			},
 			{
@@ -1269,12 +1301,17 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *httpclient.Request) {
+					t.Helper()
 					var anthropicReq MessageRequest
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
-					assert.NotNil(t, anthropicReq.Tools)
-					assert.Len(t, anthropicReq.Tools, 1) // Only the function tool should be included
-					assert.Equal(t, "valid_function", anthropicReq.Tools[0].Name)
+					require.NotNil(t, anthropicReq.Tools)
+					require.Len(
+						t,
+						anthropicReq.Tools,
+						1,
+					) // Only the function tool should be included
+					require.Equal(t, "valid_function", anthropicReq.Tools[0].Name)
 				},
 			},
 			{
@@ -1294,10 +1331,11 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *httpclient.Request) {
+					t.Helper()
 					var anthropicReq MessageRequest
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
-					assert.Nil(t, anthropicReq.Tools) // Should not include tools field if empty
+					require.Nil(t, anthropicReq.Tools) // Should not include tools field if empty
 				},
 			},
 			{
@@ -1319,7 +1357,9 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 							Function: llm.Function{
 								Name:        "calculator",
 								Description: "Perform calculations",
-								Parameters:  json.RawMessage(`{"type": "object", "properties": {"expression": {"type": "string"}}, "required": ["expression"]}`),
+								Parameters: json.RawMessage(
+									`{"type": "object", "properties": {"expression": {"type": "string"}}, "required": ["expression"]}`,
+								),
 							},
 						},
 					},
@@ -1334,24 +1374,25 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *httpclient.Request) {
+					t.Helper()
 					var anthropicReq MessageRequest
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
 					// Note: Tool choice is not directly supported in current implementation
 					// but should not cause errors
-					assert.NotNil(t, anthropicReq.Tools)
-					assert.Len(t, anthropicReq.Tools, 1)
+					require.NotNil(t, anthropicReq.Tools)
+					require.Len(t, anthropicReq.Tools, 1)
 				},
 			},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := transformer.TransformRequest(context.Background(), tt.chatReq)
+				result, err := transformer.TransformRequest(t.Context(), tt.chatReq)
 				if tt.expectError {
-					assert.Error(t, err)
+					require.Error(t, err)
 				} else {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					tt.validate(t, result)
 				}
 			})
@@ -1425,11 +1466,11 @@ func TestOutboundTransformer_ValidationEdgeCases(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				_, err := transformer.TransformRequest(context.Background(), tt.chatReq)
+				_, err := transformer.TransformRequest(t.Context(), tt.chatReq)
 				if tt.expectError {
-					assert.Error(t, err)
+					require.Error(t, err)
 				} else {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				}
 			})
 		}
@@ -1494,7 +1535,9 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 			expected: &MessageRequest{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: 1024,
-				System:    &SystemPrompt{Prompt: func() *string { s := "You are helpful."; return &s }()},
+				System: &SystemPrompt{
+					Prompt: func() *string { s := "You are helpful."; return &s }(),
+				},
 				Messages: []MessageParam{
 					{
 						Role: "user",
@@ -1510,10 +1553,10 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := transformer.convertToAnthropicRequest(tt.chatReq)
-			assert.Equal(t, tt.expected.Model, result.Model)
-			assert.Equal(t, tt.expected.MaxTokens, result.MaxTokens)
-			assert.Equal(t, tt.expected.System, result.System)
-			assert.Equal(t, len(tt.expected.Messages), len(result.Messages))
+			require.Equal(t, tt.expected.Model, result.Model)
+			require.Equal(t, tt.expected.MaxTokens, result.MaxTokens)
+			require.Equal(t, tt.expected.System, result.System)
+			require.Equal(t, len(tt.expected.Messages), len(result.Messages))
 		})
 	}
 }
@@ -1541,16 +1584,16 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 
 	result := transformer.convertToChatCompletionResponse(anthropicResp)
 
-	assert.Equal(t, "msg_123", result.ID)
-	assert.Equal(t, "chat.completion", result.Object)
-	assert.Equal(t, "claude-3-sonnet-20240229", result.Model)
-	assert.Equal(t, 1, len(result.Choices))
-	assert.Equal(t, "assistant", result.Choices[0].Message.Role)
-	assert.Equal(t, "Hello! How can I help?", *result.Choices[0].Message.Content.Content)
-	assert.Equal(t, "stop", *result.Choices[0].FinishReason)
-	assert.Equal(t, 10, result.Usage.PromptTokens)
-	assert.Equal(t, 20, result.Usage.CompletionTokens)
-	assert.Equal(t, 30, result.Usage.TotalTokens)
+	require.Equal(t, "msg_123", result.ID)
+	require.Equal(t, "chat.completion", result.Object)
+	require.Equal(t, "claude-3-sonnet-20240229", result.Model)
+	require.Equal(t, 1, len(result.Choices))
+	require.Equal(t, "assistant", result.Choices[0].Message.Role)
+	require.Equal(t, "Hello! How can I help?", *result.Choices[0].Message.Content.Content)
+	require.Equal(t, "stop", *result.Choices[0].FinishReason)
+	require.Equal(t, 10, result.Usage.PromptTokens)
+	require.Equal(t, 20, result.Usage.CompletionTokens)
+	require.Equal(t, 30, result.Usage.TotalTokens)
 }
 
 func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
@@ -1565,10 +1608,11 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 			name:  "nil response",
 			input: nil,
 			validate: func(t *testing.T, result *llm.Response) {
+				t.Helper()
 				// Should handle nil gracefully or panic appropriately
 				if result != nil {
-					assert.Empty(t, result.ID)
-					assert.Empty(t, result.Choices)
+					require.Empty(t, result.ID)
+					require.Empty(t, result.Choices)
 				}
 			},
 		},
@@ -1582,12 +1626,13 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				Model:   "claude-3-sonnet-20240229",
 			},
 			validate: func(t *testing.T, result *llm.Response) {
-				assert.Equal(t, "msg_empty", result.ID)
-				assert.Equal(t, "chat.completion", result.Object)
-				assert.NotNil(t, result.Choices)
+				t.Helper()
+				require.Equal(t, "msg_empty", result.ID)
+				require.Equal(t, "chat.completion", result.Object)
+				require.NotNil(t, result.Choices)
 				if len(result.Choices) > 0 {
-					assert.Nil(t, result.Choices[0].Message.Content.Content)
-					assert.Empty(t, result.Choices[0].Message.Content.MultipleContent)
+					require.Nil(t, result.Choices[0].Message.Content.Content)
+					require.Empty(t, result.Choices[0].Message.Content.MultipleContent)
 				}
 			},
 		},
@@ -1605,9 +1650,14 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				Model: "claude-3-sonnet-20240229",
 			},
 			validate: func(t *testing.T, result *llm.Response) {
-				assert.Equal(t, "msg_multi", result.ID)
-				assert.NotNil(t, result.Choices[0].Message.Content.Content)
-				assert.Equal(t, "Hello world! How are you?", *result.Choices[0].Message.Content.Content)
+				t.Helper()
+				require.Equal(t, "msg_multi", result.ID)
+				require.NotNil(t, result.Choices[0].Message.Content.Content)
+				require.Equal(
+					t,
+					"Hello world! How are you?",
+					*result.Choices[0].Message.Content.Content,
+				)
 			},
 		},
 		{
@@ -1628,9 +1678,13 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				Model: "claude-3-sonnet-20240229",
 			},
 			validate: func(t *testing.T, result *llm.Response) {
-				assert.Equal(t, "msg_mixed", result.ID)
-				assert.Nil(t, result.Choices[0].Message.Content.Content) // Should use MultipleContent for mixed types
-				assert.Len(t, result.Choices[0].Message.Content.MultipleContent, 3)
+				t.Helper()
+				require.Equal(t, "msg_mixed", result.ID)
+				require.Nil(
+					t,
+					result.Choices[0].Message.Content.Content,
+				) // Should use MultipleContent for mixed types
+				require.Len(t, result.Choices[0].Message.Content.MultipleContent, 3)
 			},
 		},
 		{
@@ -1654,12 +1708,17 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				Model: "claude-3-sonnet-20240229",
 			},
 			validate: func(t *testing.T, result *llm.Response) {
-				assert.Equal(t, "msg_tool", result.ID)
-				assert.NotNil(t, result.Choices[0].Message.ToolCalls)
-				assert.Len(t, result.Choices[0].Message.ToolCalls, 1)
-				assert.Equal(t, "tool_123", result.Choices[0].Message.ToolCalls[0].ID)
-				assert.Equal(t, "calculator", result.Choices[0].Message.ToolCalls[0].Function.Name)
-				assert.Equal(t, `{"expression": "2+2"}`, result.Choices[0].Message.ToolCalls[0].Function.Arguments)
+				t.Helper()
+				require.Equal(t, "msg_tool", result.ID)
+				require.NotNil(t, result.Choices[0].Message.ToolCalls)
+				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
+				require.Equal(t, "tool_123", result.Choices[0].Message.ToolCalls[0].ID)
+				require.Equal(t, "calculator", result.Choices[0].Message.ToolCalls[0].Function.Name)
+				require.Equal(
+					t,
+					`{"expression": "2+2"}`,
+					result.Choices[0].Message.ToolCalls[0].Function.Arguments,
+				)
 			},
 		},
 		{
@@ -1674,6 +1733,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				}
 			}(),
 			validate: func(t *testing.T, result *llm.Response) {
+				t.Helper()
 				// Test each stop reason
 				stopReasons := map[string]string{
 					"end_turn":      "stop",
@@ -1696,9 +1756,9 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 
 					result := transformer.convertToChatCompletionResponse(msg)
 					if expectedReason == "stop" {
-						assert.Equal(t, expectedReason, *result.Choices[0].FinishReason)
+						require.Equal(t, expectedReason, *result.Choices[0].FinishReason)
 					} else {
-						assert.Equal(t, expectedReason, *result.Choices[0].FinishReason)
+						require.Equal(t, expectedReason, *result.Choices[0].FinishReason)
 					}
 				}
 			},
@@ -1722,10 +1782,11 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				},
 			},
 			validate: func(t *testing.T, result *llm.Response) {
-				assert.Equal(t, "msg_cache", result.ID)
-				assert.Equal(t, 100, result.Usage.PromptTokens)
-				assert.Equal(t, 50, result.Usage.CompletionTokens)
-				assert.Equal(t, 150, result.Usage.TotalTokens)
+				t.Helper()
+				require.Equal(t, "msg_cache", result.ID)
+				require.Equal(t, 100, result.Usage.PromptTokens)
+				require.Equal(t, 50, result.Usage.CompletionTokens)
+				require.Equal(t, 150, result.Usage.TotalTokens)
 				// Cache tokens should be included in input tokens
 			},
 		},
@@ -1740,8 +1801,9 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				Usage:   nil,
 			},
 			validate: func(t *testing.T, result *llm.Response) {
-				assert.Equal(t, "msg_nusage", result.ID)
-				assert.Nil(t, result.Usage)
+				t.Helper()
+				require.Equal(t, "msg_nusage", result.ID)
+				require.Nil(t, result.Usage)
 			},
 		},
 	}

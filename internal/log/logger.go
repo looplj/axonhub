@@ -3,10 +3,9 @@ package log
 import (
 	"context"
 
+	"dario.cat/mergo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-
-	"dario.cat/mergo"
 )
 
 // Config ...

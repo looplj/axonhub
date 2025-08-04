@@ -5,11 +5,11 @@ import (
 	"fmt"
 )
 
-// MessageRequest represents the Anthropic Messages API request format
+// MessageRequest represents the Anthropic Messages API request format.
 type MessageRequest struct {
 	MaxTokens int64          `json:"max_tokens" validate:"required,gte=1"`
-	Messages  []MessageParam `json:"messages" validate:"required"`
-	Model     string         `json:"model" validate:"required"`
+	Messages  []MessageParam `json:"messages"   validate:"required"`
+	Model     string         `json:"model"      validate:"required"`
 
 	// Amount of randomness injected into the response.
 	//
@@ -118,7 +118,7 @@ type SystemPromptPart struct {
 }
 
 type Thinking struct {
-	Type         string `json:"type" validate:"required,oneof=enabled disabled"`
+	Type         string `json:"type"          validate:"required,oneof=enabled disabled"`
 	BudgetTokens int64  `json:"budget_tokens" validate:"required_if=Type enabled"`
 }
 
@@ -132,7 +132,7 @@ type ToolChoice struct {
 	Name *string `json:"name,omitempty" validate:"required_if=Type tool"`
 }
 
-// Tool represents a tool definition for Anthropic API
+// Tool represents a tool definition for Anthropic API.
 type Tool struct {
 	Type         string          `json:"type"`
 	Name         string          `json:"name"`
@@ -145,20 +145,20 @@ type CacheControl struct {
 	Type string `json:"type" validate:"required,oneof=ephemeral"`
 }
 
-// InputSchema represents the JSON schema for tool input
+// InputSchema represents the JSON schema for tool input.
 type InputSchema struct {
 	Type       string                 `json:"type"`
 	Properties map[string]interface{} `json:"properties,omitempty"`
 	Required   []string               `json:"required,omitempty"`
 }
 
-// MessageParam represents a message in Anthropic format
+// MessageParam represents a message in Anthropic format.
 type MessageParam struct {
 	Role    string         `json:"role"`
 	Content MessageContent `json:"content"`
 }
 
-// MessageContent supports both string and array formats
+// MessageContent supports both string and array formats.
 type MessageContent struct {
 	Content         *string        `json:"content,omitempty"`
 	MultipleContent []ContentBlock `json:"multiple_content,omitempty"`
@@ -190,7 +190,7 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("invalid content type")
 }
 
-// ContentBlock represents different types of content blocks
+// ContentBlock represents different types of content blocks.
 type ContentBlock struct {
 	// Any of "text", "image", "thinking", "redacted_thinking", "tool_use", "server_tool_use".
 	Type string `json:"type"`
@@ -234,7 +234,7 @@ type ToolResultContent struct {
 	Source *ImageSource `json:"source,omitempty"`
 }
 
-// ImageSource represents image source for Anthropic
+// ImageSource represents image source for Anthropic.
 type ImageSource struct {
 	// Type is the type of image source.
 	// Available values: base64, url
@@ -252,7 +252,7 @@ type ImageSource struct {
 	URL *string `json:"url,omitempty"`
 }
 
-// StreamEvent represents events in Anthropic streaming response
+// StreamEvent represents events in Anthropic streaming response.
 type StreamEvent struct {
 	// Any of "message_start", "message_delta", "message_stop", "content_block_start",
 	// "content_block_delta", "content_block_stop".
@@ -273,7 +273,7 @@ type StreamEvent struct {
 	Usage *Usage `json:"usage,omitempty"`
 }
 
-// StreamDelta represents delta in streaming response
+// StreamDelta represents delta in streaming response.
 type StreamDelta struct {
 	// Type is the type of delta.
 	// Any of "text_delta", "input_json_delta", "citations_delta", "thinking_delta",
@@ -301,7 +301,7 @@ type StreamDelta struct {
 	StopSequence *string `json:"stop_sequence,omitempty"`
 }
 
-// StreamMessage represents the message part of a stream event
+// StreamMessage represents the message part of a stream event.
 type StreamMessage struct {
 	ID      string         `json:"id"`
 	Type    string         `json:"type"`
@@ -311,7 +311,7 @@ type StreamMessage struct {
 	Usage   *Usage         `json:"usage,omitempty"`
 }
 
-// Message represents the Anthropic Messages API response format
+// Message represents the Anthropic Messages API response format.
 type Message struct {
 	ID      string         `json:"id"`
 	Type    string         `json:"type"`
@@ -329,7 +329,7 @@ type Message struct {
 	Usage        *Usage  `json:"usage,omitempty"`
 }
 
-// Usage represents usage information in Anthropic format
+// Usage represents usage information in Anthropic format.
 type Usage struct {
 	InputTokens              int64  `json:"input_tokens"`
 	OutputTokens             int64  `json:"output_tokens"`

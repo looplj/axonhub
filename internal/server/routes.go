@@ -1,14 +1,13 @@
 package server
 
 import (
-	"go.uber.org/fx"
-
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/looplj/axonhub/internal/server/api"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gql"
 	"github.com/looplj/axonhub/internal/server/middleware"
+	"go.uber.org/fx"
 )
 
 type Handlers struct {

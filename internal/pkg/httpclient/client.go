@@ -3,24 +3,23 @@ package httpclient
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/tmaxmax/go-sse"
-
 	"github.com/looplj/axonhub/internal/log"
-
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
-// HttpClientImpl implements the HttpClient interface
+// HttpClientImpl implements the HttpClient interface.
 type HttpClientImpl struct {
 	client *http.Client
 }
 
-// NewHttpClient creates a new HTTP client
+// NewHttpClient creates a new HTTP client.
 func NewHttpClient() HttpClient {
 	return &HttpClientImpl{
 		client: &http.Client{
@@ -29,7 +28,7 @@ func NewHttpClient() HttpClient {
 	}
 }
 
-// Do executes the HTTP request
+// Do executes the HTTP request.
 func (hc *HttpClientImpl) Do(ctx context.Context, request *Request) (*Response, error) {
 	log.Debug(ctx, "execute http request", log.Any("request", request))
 	rawReq, err := hc.buildHttpRequest(ctx, request)
@@ -75,8 +74,11 @@ func (hc *HttpClientImpl) Do(ctx context.Context, request *Request) (*Response, 
 	return response, nil
 }
 
-// DoStream executes a streaming HTTP request using Server-Sent Events
-func (hc *HttpClientImpl) DoStream(ctx context.Context, request *Request) (streams.Stream[*StreamEvent], error) {
+// DoStream executes a streaming HTTP request using Server-Sent Events.
+func (hc *HttpClientImpl) DoStream(
+	ctx context.Context,
+	request *Request,
+) (streams.Stream[*StreamEvent], error) {
 	log.Debug(ctx, "execute stream request", log.Any("request", request))
 
 	rawReq, err := hc.buildHttpRequest(ctx, request)
@@ -131,7 +133,9 @@ func (hc *HttpClientImpl) DoStream(ctx context.Context, request *Request) (strea
 	return stream, nil
 }
 
-// sseStreamWrapper implements streams.Stream for Server-Sent Events using go-sse Stream
+// sseStreamWrapper implements streams.Stream for Server-Sent Events using go-sse Stream.
+//
+//nolint:containedctx // Checked.
 type sseStreamWrapper struct {
 	ctx       context.Context
 	sseStream *sse.Stream
@@ -139,7 +143,7 @@ type sseStreamWrapper struct {
 	err       error
 }
 
-// Next advances to the next event in the stream
+// Next advances to the next event in the stream.
 func (s *sseStreamWrapper) Next() bool {
 	if s.err != nil {
 		return false
@@ -157,7 +161,7 @@ func (s *sseStreamWrapper) Next() bool {
 	// Receive next event from go-sse Stream
 	event, err := s.sseStream.Recv()
 	if err != nil {
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			// End of stream
 			_ = s.Close()
 			return false
@@ -179,17 +183,17 @@ func (s *sseStreamWrapper) Next() bool {
 	return true
 }
 
-// Current returns the current event data
+// Current returns the current event data.
 func (s *sseStreamWrapper) Current() *StreamEvent {
 	return s.current
 }
 
-// Err returns any error that occurred during streaming
+// Err returns any error that occurred during streaming.
 func (s *sseStreamWrapper) Err() error {
 	return s.err
 }
 
-// Close closes the stream and releases resources
+// Close closes the stream and releases resources.
 func (s *sseStreamWrapper) Close() error {
 	if s.sseStream != nil {
 		err := s.sseStream.Close()
@@ -199,8 +203,11 @@ func (s *sseStreamWrapper) Close() error {
 	return nil
 }
 
-// buildHttpRequest builds an HTTP request from Request
-func (hc *HttpClientImpl) buildHttpRequest(ctx context.Context, request *Request) (*http.Request, error) {
+// buildHttpRequest builds an HTTP request from Request.
+func (hc *HttpClientImpl) buildHttpRequest(
+	ctx context.Context,
+	request *Request,
+) (*http.Request, error) {
 	var body io.Reader
 	if len(request.Body) > 0 {
 		body = bytes.NewReader(request.Body)
@@ -228,7 +235,7 @@ func (hc *HttpClientImpl) buildHttpRequest(ctx context.Context, request *Request
 	return httpReq, nil
 }
 
-// applyAuth applies authentication to the HTTP request
+// applyAuth applies authentication to the HTTP request.
 func (hc *HttpClientImpl) applyAuth(req *http.Request, auth *AuthConfig) error {
 	switch auth.Type {
 	case "bearer":
@@ -247,7 +254,7 @@ func (hc *HttpClientImpl) applyAuth(req *http.Request, auth *AuthConfig) error {
 	return nil
 }
 
-// extractHeaders extracts headers from HTTP response
+// extractHeaders extracts headers from HTTP response.
 func (hc *HttpClientImpl) extractHeaders(headers http.Header) map[string]string {
 	result := make(map[string]string)
 	for key, values := range headers {

@@ -9,7 +9,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
-
 	scopes2 "github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -65,7 +64,7 @@ func (APIKey) Annotations() []schema.Annotation {
 	}
 }
 
-// Policy 定义 APIKey 的权限策略
+// Policy 定义 APIKey 的权限策略.
 func (APIKey) Policy() ent.Policy {
 	return privacy.Policy{
 		Query: privacy.QueryPolicy{

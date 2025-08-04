@@ -5,17 +5,15 @@ import (
 	"slices"
 
 	"entgo.io/ent/privacy"
-	"github.com/zhenzou/executors"
-	"go.uber.org/fx"
-
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/pkg/xerrors"
-
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/zhenzou/executors"
+	"go.uber.org/fx"
 )
 
 type Channel struct {
@@ -37,7 +35,12 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 	}
 
 	xerrors.NoErr(svc.loadChannels(context.Background()))
-	xerrors.NoErr2(params.Executor.ScheduleFuncAtCronRate(svc.loadChannelsPeriodic, executors.CRONRule{Expr: "*/1 * * * *"}))
+	xerrors.NoErr2(
+		params.Executor.ScheduleFuncAtCronRate(
+			svc.loadChannelsPeriodic,
+			executors.CRONRule{Expr: "*/1 * * * *"},
+		),
+	)
 	return svc
 }
 
@@ -62,6 +65,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	}
 	var channels []*Channel
 	for _, c := range entities {
+		//nolint:exhaustive // TODO SUPPORT.
 		switch c.Type {
 		case "openai":
 			transformer := openai.NewOutboundTransformer(c.BaseURL, c.APIKey)
@@ -81,7 +85,10 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	return nil
 }
 
-func (svc *ChannelService) ChooseChannels(ctx context.Context, chatReq *llm.Request) ([]*Channel, error) {
+func (svc *ChannelService) ChooseChannels(
+	ctx context.Context,
+	chatReq *llm.Request,
+) ([]*Channel, error) {
 	var channels []*Channel
 	for _, channel := range svc.Channels {
 		if slices.Contains(channel.SupportedModels, chatReq.Model) {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type tErr struct {
@@ -71,8 +71,8 @@ func TestAs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1 := As[tErr](tt.args.rawErr)
-			assert.Equalf(t, tt.want, got, "As(%v)", tt.args.rawErr)
-			assert.Equalf(t, tt.want1, got1, "As(%v)", tt.args.rawErr)
+			require.Equalf(t, tt.want, got, "As(%v)", tt.args.rawErr)
+			require.Equalf(t, tt.want1, got1, "As(%v)", tt.args.rawErr)
 		})
 	}
 }

@@ -2,7 +2,6 @@ package gql
 
 import (
 	"github.com/99designs/gqlgen/graphql"
-
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -28,7 +27,11 @@ type Resolver struct {
 }
 
 // NewSchema creates a graphql executable schema.
-func NewSchema(client *ent.Client, authService *biz.AuthService, systemService *biz.SystemService) graphql.ExecutableSchema {
+func NewSchema(
+	client *ent.Client,
+	authService *biz.AuthService,
+	systemService *biz.SystemService,
+) graphql.ExecutableSchema {
 	return NewExecutableSchema(Config{
 		Resolvers: &Resolver{
 			client:        client,

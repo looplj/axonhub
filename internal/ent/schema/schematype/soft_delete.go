@@ -9,7 +9,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/mixin"
-
 	gen "github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/hook"
 	"github.com/looplj/axonhub/internal/ent/intercept"

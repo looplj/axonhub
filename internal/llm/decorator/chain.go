@@ -7,32 +7,32 @@ import (
 	"github.com/looplj/axonhub/internal/llm"
 )
 
-// Chain implements DecoratorChain interface
+// Chain implements DecoratorChain interface.
 type Chain struct {
 	mu         sync.RWMutex
 	decorators []Decorator
 }
 
-// NewChain creates a new decorator chain
+// NewChain creates a new decorator chain.
 func NewChain() DecoratorChain {
 	return &Chain{
 		decorators: make([]Decorator, 0),
 	}
 }
 
-// NewDecoratorChain creates a new decorator chain (alias for compatibility)
+// NewDecoratorChain creates a new decorator chain (alias for compatibility).
 func NewDecoratorChain() DecoratorChain {
 	return NewChain()
 }
 
-// Add adds a decorator to the chain
+// Add adds a decorator to the chain.
 func (c *Chain) Add(decorator Decorator) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.decorators = append(c.decorators, decorator)
 }
 
-// Remove removes a decorator from the chain by name
+// Remove removes a decorator from the chain by name.
 func (c *Chain) Remove(name string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -46,7 +46,7 @@ func (c *Chain) Remove(name string) {
 	}
 }
 
-// Execute applies all decorators in the chain to the request
+// Execute applies all decorators in the chain to the request.
 func (c *Chain) Execute(ctx context.Context, request *llm.Request) (*llm.Request, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -65,7 +65,7 @@ func (c *Chain) Execute(ctx context.Context, request *llm.Request) (*llm.Request
 	return currentRequest, nil
 }
 
-// List returns all decorators in the chain
+// List returns all decorators in the chain.
 func (c *Chain) List() []Decorator {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -76,21 +76,21 @@ func (c *Chain) List() []Decorator {
 	return result
 }
 
-// Clear removes all decorators from the chain
+// Clear removes all decorators from the chain.
 func (c *Chain) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.decorators = c.decorators[:0]
 }
 
-// Size returns the number of decorators in the chain
+// Size returns the number of decorators in the chain.
 func (c *Chain) Size() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return len(c.decorators)
 }
 
-// Count returns the number of decorators in the chain (alias for Size)
+// Count returns the number of decorators in the chain (alias for Size).
 func (c *Chain) Count() int {
 	return c.Size()
 }

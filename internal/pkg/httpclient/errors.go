@@ -16,7 +16,7 @@ func (e HttpError) Error() string {
 	return fmt.Sprintf("%s - %s with status %s", e.Method, e.URL, e.Status)
 }
 
-// ResponseError represents an error in the response
+// ResponseError represents an error in the response.
 type ResponseError struct {
 	Code    string `json:"code"`
 	Message string `json:"message,omitempty"`

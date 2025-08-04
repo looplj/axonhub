@@ -5,7 +5,6 @@ import (
 	"entgo.io/ent/privacy"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
-
 	scopes2 "github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -35,7 +34,7 @@ func (Job) Fields() []ent.Field {
 	}
 }
 
-// Policy 定义 Job 的权限策略
+// Policy 定义 Job 的权限策略.
 func (Job) Policy() ent.Policy {
 	return privacy.Policy{
 		Query: privacy.QueryPolicy{

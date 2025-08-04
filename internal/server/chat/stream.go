@@ -4,17 +4,18 @@ import (
 	"context"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/biz"
-
-	"github.com/looplj/axonhub/internal/llm/transformer"
 )
 
 // TrackedStream wraps a stream and tracks all responses for final saving
-// This version works with persistent transformers
+// This version works with persistent transformers.
+//
+//nolint:containedctx // Checked.
 type TrackedStream struct {
 	ctx                 context.Context
 	stream              streams.Stream[*httpclient.StreamEvent]
@@ -26,7 +27,7 @@ type TrackedStream struct {
 	closed              bool
 }
 
-// Ensure TrackedStreamV2 implements Stream interface
+// Ensure TrackedStreamV2 implements Stream interface.
 var _ streams.Stream[*httpclient.StreamEvent] = (*TrackedStream)(nil)
 
 func NewPersistentStream(
@@ -80,7 +81,11 @@ func (ts *TrackedStream) Close() error {
 	if ts.stream.Err() != nil {
 		// Stream had an error
 		if ts.requestExec != nil {
-			err := ts.requestService.UpdateRequestExecutionFailed(ctx, ts.requestExec.ID, ts.stream.Err().Error())
+			err := ts.requestService.UpdateRequestExecutionFailed(
+				ctx,
+				ts.requestExec.ID,
+				ts.stream.Err().Error(),
+			)
 			if err != nil {
 				log.Warn(ctx, "Failed to update request execution status to failed", log.Cause(err))
 			}

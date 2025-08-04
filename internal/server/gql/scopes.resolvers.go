@@ -10,7 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
-// AllScopes returns all available scopes with descriptions
+// AllScopes returns all available scopes with descriptions.
 func (r *queryResolver) AllScopes(ctx context.Context) ([]*ScopeInfo, error) {
 	allScopes := scopes.AllScopes()
 	descriptions := scopes.ScopeDescriptions()

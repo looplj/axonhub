@@ -4,10 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"go.uber.org/fx"
-
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"go.uber.org/fx"
 )
 
 type AuthHandlersParams struct {
@@ -26,19 +25,19 @@ type AuthHandlers struct {
 	AuthService *biz.AuthService
 }
 
-// SignInRequest 登录请求
+// SignInRequest 登录请求.
 type SignInRequest struct {
-	Email    string `json:"email" binding:"required,email"`
+	Email    string `json:"email"    binding:"required,email"`
 	Password string `json:"password" binding:"required"`
 }
 
-// SignInResponse 登录响应
+// SignInResponse 登录响应.
 type SignInResponse struct {
 	User  objects.UserInfo `json:"user"`
 	Token string           `json:"token"`
 }
 
-// SignIn handles user authentication
+// SignIn handles user authentication.
 func (h *AuthHandlers) SignIn(c *gin.Context) {
 	var req SignInRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

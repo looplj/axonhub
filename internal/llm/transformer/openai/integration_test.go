@@ -1,7 +1,6 @@
 package openai
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,14 +11,12 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
-
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
-// TestIntegration_OpenAITransformers tests the complete flow of inbound and outbound transformers
+// TestIntegration_OpenAITransformers tests the complete flow of inbound and outbound transformers.
 func TestIntegration_OpenAITransformers(t *testing.T) {
 	// Create transformers
 	inbound := NewInboundTransformer()
@@ -63,7 +60,9 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 					Message: &llm.Message{
 						Role: "assistant",
 						Content: llm.MessageContent{
-							Content: lo.ToPtr(fmt.Sprintf("Echo: %s", *chatReq.Messages[0].Content.Content)),
+							Content: lo.ToPtr(
+								fmt.Sprintf("Echo: %s", *chatReq.Messages[0].Content.Content),
+							),
 						},
 					},
 					FinishReason: lo.ToPtr("stop"),
@@ -101,7 +100,7 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 	}
 
 	// Step 1: Inbound transformation (HTTP -> ChatCompletionRequest)
-	chatReq, err := inbound.TransformRequest(context.Background(), originalRequest)
+	chatReq, err := inbound.TransformRequest(t.Context(), originalRequest)
 	if err != nil {
 		t.Fatalf("Inbound transformation failed: %v", err)
 	}
@@ -110,12 +109,13 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 		t.Errorf("Expected model gpt-4, got %s", chatReq.Model)
 	}
 
-	if len(chatReq.Messages) != 1 || chatReq.Messages[0].Content.Content == nil || *chatReq.Messages[0].Content.Content != "Hello, world!" {
+	if len(chatReq.Messages) != 1 || chatReq.Messages[0].Content.Content == nil ||
+		*chatReq.Messages[0].Content.Content != "Hello, world!" {
 		t.Errorf("Messages not preserved correctly: %+v", chatReq.Messages)
 	}
 
 	// Step 2: Outbound transformation (ChatCompletionRequest -> HTTP)
-	httpReq, err := outbound.TransformRequest(context.Background(), chatReq)
+	httpReq, err := outbound.TransformRequest(t.Context(), chatReq)
 	if err != nil {
 		t.Fatalf("Outbound transformation failed: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 	}
 
 	// Step 3: Execute HTTP request
-	httpResp, err := httpClient.Do(context.Background(), httpReq)
+	httpResp, err := httpClient.Do(t.Context(), httpReq)
 	if err != nil {
 		t.Fatalf("HTTP request failed: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 	}
 
 	// Step 4: Outbound response transformation (HTTP -> ChatCompletionResponse)
-	chatResp, err := outbound.TransformResponse(context.Background(), httpResp)
+	chatResp, err := outbound.TransformResponse(t.Context(), httpResp)
 	if err != nil {
 		t.Fatalf("Outbound response transformation failed: %v", err)
 	}
@@ -153,12 +153,17 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 	}
 
 	expectedContent := "Echo: Hello, world!"
-	if chatResp.Choices[0].Message.Content.Content == nil || *chatResp.Choices[0].Message.Content.Content != expectedContent {
-		t.Errorf("Expected content %s, got %v", expectedContent, chatResp.Choices[0].Message.Content)
+	if chatResp.Choices[0].Message.Content.Content == nil ||
+		*chatResp.Choices[0].Message.Content.Content != expectedContent {
+		t.Errorf(
+			"Expected content %s, got %v",
+			expectedContent,
+			chatResp.Choices[0].Message.Content,
+		)
 	}
 
 	// Step 5: Inbound response transformation (ChatCompletionResponse -> HTTP)
-	finalResp, err := inbound.TransformResponse(context.Background(), chatResp)
+	finalResp, err := inbound.TransformResponse(t.Context(), chatResp)
 	if err != nil {
 		t.Fatalf("Inbound response transformation failed: %v", err)
 	}
@@ -168,7 +173,10 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 	}
 
 	if finalResp.Headers.Get("Content-Type") != "application/json" {
-		t.Errorf("Expected Content-Type application/json, got %s", finalResp.Headers.Get("Content-Type"))
+		t.Errorf(
+			"Expected Content-Type application/json, got %s",
+			finalResp.Headers.Get("Content-Type"),
+		)
 	}
 
 	// Verify final response body can be unmarshaled back to ChatCompletionResponse
@@ -182,12 +190,12 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 	}
 }
 
-// Helper functions
+// Helper functions.
 func boolPtr(b bool) *bool {
 	return &b
 }
 
-// TestIntegration_StreamingFlow tests the streaming functionality
+// TestIntegration_StreamingFlow tests the streaming functionality.
 func TestIntegration_StreamingFlow(t *testing.T) {
 	// Create HTTP client
 	httpClient := httpclient.NewHttpClient()
@@ -250,7 +258,7 @@ func TestIntegration_StreamingFlow(t *testing.T) {
 	}
 
 	// Execute streaming request
-	stream, err := httpClient.DoStream(context.Background(), streamReq)
+	stream, err := httpClient.DoStream(t.Context(), streamReq)
 	if err != nil {
 		t.Fatalf("Streaming request failed: %v", err)
 	}
@@ -286,7 +294,7 @@ func TestIntegration_StreamingFlow(t *testing.T) {
 	}
 }
 
-// TestIntegration_ErrorHandling tests error scenarios
+// TestIntegration_ErrorHandling tests error scenarios.
 func TestIntegration_ErrorHandling(t *testing.T) {
 	inbound := NewInboundTransformer()
 	outbound := NewOutboundTransformer("", "invalid-key")
@@ -296,7 +304,9 @@ func TestIntegration_ErrorHandling(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": {"message": "Invalid API key", "type": "invalid_request_error"}}`))
+		w.Write(
+			[]byte(`{"error": {"message": "Invalid API key", "type": "invalid_request_error"}}`),
+		)
 	}))
 	defer server.Close()
 
@@ -323,18 +333,18 @@ func TestIntegration_ErrorHandling(t *testing.T) {
 	}
 
 	// Transform request
-	chatReq, err := inbound.TransformRequest(context.Background(), originalRequest)
+	chatReq, err := inbound.TransformRequest(t.Context(), originalRequest)
 	if err != nil {
 		t.Fatalf("Inbound transformation failed: %v", err)
 	}
 
-	httpReq, err := outbound.TransformRequest(context.Background(), chatReq)
+	httpReq, err := outbound.TransformRequest(t.Context(), chatReq)
 	if err != nil {
 		t.Fatalf("Outbound transformation failed: %v", err)
 	}
 
 	// Execute request (should get error response)
-	httpResp, err := httpClient.Do(context.Background(), httpReq)
+	httpResp, err := httpClient.Do(t.Context(), httpReq)
 	require.Error(t, err)
 	require.Nil(t, httpResp)
 

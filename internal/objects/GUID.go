@@ -16,7 +16,7 @@ type GUID struct {
 }
 
 func (guid GUID) MarshalGQL(w io.Writer) {
-	io.WriteString(w, strconv.Quote(fmt.Sprintf("gid://%s/%d", guid.Type, guid.ID)))
+	_, _ = io.WriteString(w, strconv.Quote(fmt.Sprintf("gid://%s/%d", guid.Type, guid.ID)))
 }
 
 func (guid *GUID) UnmarshalGQL(v any) error {

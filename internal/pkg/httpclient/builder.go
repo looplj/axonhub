@@ -5,12 +5,12 @@ import (
 	"net/http"
 )
 
-// RequestBuilder helps build Request
+// RequestBuilder helps build Request.
 type RequestBuilder struct {
 	request *Request
 }
 
-// NewRequestBuilder creates a new request builder
+// NewRequestBuilder creates a new request builder.
 func NewRequestBuilder() *RequestBuilder {
 	return &RequestBuilder{
 		request: &Request{
@@ -20,25 +20,25 @@ func NewRequestBuilder() *RequestBuilder {
 	}
 }
 
-// WithMethod sets the HTTP method
+// WithMethod sets the HTTP method.
 func (rb *RequestBuilder) WithMethod(method string) *RequestBuilder {
 	rb.request.Method = method
 	return rb
 }
 
-// WithURL sets the request URL
+// WithURL sets the request URL.
 func (rb *RequestBuilder) WithURL(url string) *RequestBuilder {
 	rb.request.URL = url
 	return rb
 }
 
-// WithHeader adds a header
+// WithHeader adds a header.
 func (rb *RequestBuilder) WithHeader(key, value string) *RequestBuilder {
 	rb.request.Headers.Set(key, value)
 	return rb
 }
 
-// WithHeaders sets multiple headers
+// WithHeaders sets multiple headers.
 func (rb *RequestBuilder) WithHeaders(headers map[string]string) *RequestBuilder {
 	for k, v := range headers {
 		rb.request.Headers.Set(k, v)
@@ -46,7 +46,7 @@ func (rb *RequestBuilder) WithHeaders(headers map[string]string) *RequestBuilder
 	return rb
 }
 
-// WithBody sets the request body
+// WithBody sets the request body.
 func (rb *RequestBuilder) WithBody(body any) *RequestBuilder {
 	switch v := body.(type) {
 	case []byte:
@@ -63,13 +63,13 @@ func (rb *RequestBuilder) WithBody(body any) *RequestBuilder {
 	return rb
 }
 
-// WithAuth sets authentication
+// WithAuth sets authentication.
 func (rb *RequestBuilder) WithAuth(auth *AuthConfig) *RequestBuilder {
 	rb.request.Auth = auth
 	return rb
 }
 
-// WithBearerToken sets bearer token authentication
+// WithBearerToken sets bearer token authentication.
 func (rb *RequestBuilder) WithBearerToken(token string) *RequestBuilder {
 	rb.request.Auth = &AuthConfig{
 		Type:   "bearer",
@@ -78,7 +78,7 @@ func (rb *RequestBuilder) WithBearerToken(token string) *RequestBuilder {
 	return rb
 }
 
-// WithAPIKey sets API key authentication
+// WithAPIKey sets API key authentication.
 func (rb *RequestBuilder) WithAPIKey(apiKey string) *RequestBuilder {
 	rb.request.Auth = &AuthConfig{
 		Type:      "api_key",
@@ -87,19 +87,19 @@ func (rb *RequestBuilder) WithAPIKey(apiKey string) *RequestBuilder {
 	return rb
 }
 
-// WithRequestID sets the request ID
+// WithRequestID sets the request ID.
 func (rb *RequestBuilder) WithRequestID(requestID string) *RequestBuilder {
 	rb.request.RequestID = requestID
 	return rb
 }
 
-// WithStreaming enables streaming
+// WithStreaming enables streaming.
 func (rb *RequestBuilder) WithStreaming(streaming bool) *RequestBuilder {
 	rb.request.Streaming = streaming
 	return rb
 }
 
-// Build returns the built request
+// Build returns the built request.
 func (rb *RequestBuilder) Build() *Request {
 	return rb.request
 }

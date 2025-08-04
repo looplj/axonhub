@@ -8,22 +8,24 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
-// InboundTransformer implements transformer.Inbound for Anthropic format
+// InboundTransformer implements transformer.Inbound for Anthropic format.
 type InboundTransformer struct{}
 
-// NewInboundTransformer creates a new Anthropic InboundTransformer
+// NewInboundTransformer creates a new Anthropic InboundTransformer.
 func NewInboundTransformer() transformer.Inbound {
 	return &InboundTransformer{}
 }
 
-// TransformRequest transforms Anthropic HTTP request to ChatCompletionRequest
-func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
+// TransformRequest transforms Anthropic HTTP request to ChatCompletionRequest.
+func (t *InboundTransformer) TransformRequest(
+	ctx context.Context,
+	httpReq *httpclient.Request,
+) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("http request is nil")
 	}
@@ -35,7 +37,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 	// Check content type
 	contentType := httpReq.Headers.Get("Content-Type")
 	if contentType == "" {
-		contentType = httpReq.Headers.Get("content-type")
+		contentType = httpReq.Headers.Get("Content-Type")
 	}
 
 	if !strings.Contains(strings.ToLower(contentType), "application/json") {
@@ -66,7 +68,9 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 			// Validate that all system prompts are text type
 			for _, prompt := range anthropicReq.System.MultiplePrompts {
 				if prompt.Type != "text" {
-					return nil, fmt.Errorf("system prompt array must contain only text type elements")
+					return nil, fmt.Errorf(
+						"system prompt array must contain only text type elements",
+					)
 				}
 			}
 		}
@@ -166,8 +170,11 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 	return chatReq, nil
 }
 
-// TransformResponse transforms ChatCompletionResponse to Anthropic HTTP response
-func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.Response) (*httpclient.Response, error) {
+// TransformResponse transforms ChatCompletionResponse to Anthropic HTTP response.
+func (t *InboundTransformer) TransformResponse(
+	ctx context.Context,
+	chatResp *llm.Response,
+) (*httpclient.Response, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
@@ -258,8 +265,11 @@ func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) 
 	return resp
 }
 
-// TransformStreamChunk transforms ChatCompletionResponse to StreamEvent
-func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chatResp *llm.Response) (*httpclient.StreamEvent, error) {
+// TransformStreamChunk transforms ChatCompletionResponse to StreamEvent.
+func (t *InboundTransformer) TransformStreamChunk(
+	ctx context.Context,
+	chatResp *llm.Response,
+) (*httpclient.StreamEvent, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}

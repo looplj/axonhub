@@ -28,7 +28,10 @@ type zapNameFilterCore struct {
 	excludeNamess map[string]bool
 }
 
-func (c *zapNameFilterCore) Check(ent zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+func (c *zapNameFilterCore) Check(
+	ent zapcore.Entry,
+	ce *zapcore.CheckedEntry,
+) *zapcore.CheckedEntry {
 	name := ent.LoggerName
 	excludes := c.excludeNamess
 	includes := c.includeNames

@@ -6,31 +6,34 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
-	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
-
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
-// RequestService handles request and request execution operations
+// RequestService handles request and request execution operations.
 type RequestService struct {
 	EntClient *ent.Client
 }
 
-// NewRequestService creates a new RequestService
+// NewRequestService creates a new RequestService.
 func NewRequestService(entClient *ent.Client) *RequestService {
 	return &RequestService{
 		EntClient: entClient,
 	}
 }
 
-// CreateRequest creates a new request record
-func (s *RequestService) CreateRequest(ctx context.Context, apiKey *ent.APIKey, chatReq *llm.Request, requestBody any) (*ent.Request, error) {
+// CreateRequest creates a new request record.
+func (s *RequestService) CreateRequest(
+	ctx context.Context,
+	apiKey *ent.APIKey,
+	chatReq *llm.Request,
+	requestBody any,
+) (*ent.Request, error) {
 	requestBodyBytes, err := Marshal(requestBody)
 	if err != nil {
 		log.Error(ctx, "Failed to serialize request body", log.Cause(err))
@@ -40,7 +43,7 @@ func (s *RequestService) CreateRequest(ctx context.Context, apiKey *ent.APIKey, 
 	// Create request record
 	req, err := s.EntClient.Request.Create().
 		// SetAPIKey(lo.TernaryF(apiKey != nil, func() *ent.APIKey { return apiKey }, func() *ent.APIKey { return nil })).
-		SetUserID(lo.TernaryF(apiKey != nil, func() int { return int(apiKey.UserID) }, func() int { return 0 })).
+		SetUserID(lo.TernaryF(apiKey != nil, func() int { return apiKey.UserID }, func() int { return 0 })).
 		SetModelID(chatReq.Model).
 		SetStatus(request.StatusProcessing).
 		SetRequestBody(requestBodyBytes).
@@ -53,8 +56,13 @@ func (s *RequestService) CreateRequest(ctx context.Context, apiKey *ent.APIKey, 
 	return req, nil
 }
 
-// CreateRequestExecution creates a new request execution record
-func (s *RequestService) CreateRequestExecution(ctx context.Context, channel *Channel, req *ent.Request, requestBody any) (*ent.RequestExecution, error) {
+// CreateRequestExecution creates a new request execution record.
+func (s *RequestService) CreateRequestExecution(
+	ctx context.Context,
+	channel *Channel,
+	req *ent.Request,
+	requestBody any,
+) (*ent.RequestExecution, error) {
 	requestBodyBytes, err := Marshal(requestBody)
 	if err != nil {
 		log.Error(ctx, "Failed to marshal request body", log.Cause(err))
@@ -76,8 +84,12 @@ func (s *RequestService) CreateRequestExecution(ctx context.Context, channel *Ch
 	return reqExec, nil
 }
 
-// UpdateRequestCompleted updates request status to completed with response body
-func (s *RequestService) UpdateRequestCompleted(ctx context.Context, requestID int, responseBody any) error {
+// UpdateRequestCompleted updates request status to completed with response body.
+func (s *RequestService) UpdateRequestCompleted(
+	ctx context.Context,
+	requestID int,
+	responseBody any,
+) error {
 	responseBodyBytes, err := Marshal(responseBody)
 	if err != nil {
 		log.Error(ctx, "Failed to serialize response body", log.Cause(err))
@@ -96,7 +108,7 @@ func (s *RequestService) UpdateRequestCompleted(ctx context.Context, requestID i
 	return nil
 }
 
-// UpdateRequestFailed updates request status to failed
+// UpdateRequestFailed updates request status to failed.
 func (s *RequestService) UpdateRequestFailed(ctx context.Context, requestID int) error {
 	_, err := s.EntClient.Request.UpdateOneID(requestID).
 		SetStatus(request.StatusFailed).
@@ -109,8 +121,12 @@ func (s *RequestService) UpdateRequestFailed(ctx context.Context, requestID int)
 	return nil
 }
 
-// UpdateRequestExecutionCompleted updates request execution status to completed with response body
-func (s *RequestService) UpdateRequestExecutionCompleted(ctx context.Context, executionID int, responseBody any) error {
+// UpdateRequestExecutionCompleted updates request execution status to completed with response body.
+func (s *RequestService) UpdateRequestExecutionCompleted(
+	ctx context.Context,
+	executionID int,
+	responseBody any,
+) error {
 	responseBodyBytes, err := Marshal(responseBody)
 	if err != nil {
 		return err
@@ -128,8 +144,12 @@ func (s *RequestService) UpdateRequestExecutionCompleted(ctx context.Context, ex
 	return nil
 }
 
-// UpdateRequestExecutionFailed updates request execution status to failed with error message
-func (s *RequestService) UpdateRequestExecutionFailed(ctx context.Context, executionID int, errorMsg string) error {
+// UpdateRequestExecutionFailed updates request execution status to failed with error message.
+func (s *RequestService) UpdateRequestExecutionFailed(
+	ctx context.Context,
+	executionID int,
+	errorMsg string,
+) error {
 	_, err := s.EntClient.RequestExecution.UpdateOneID(executionID).
 		SetStatus(requestexecution.StatusFailed).
 		SetErrorMessage(errorMsg).
@@ -142,8 +162,12 @@ func (s *RequestService) UpdateRequestExecutionFailed(ctx context.Context, execu
 	return nil
 }
 
-// AppendRequestExecutionChunk appends a response chunk to request execution
-func (s *RequestService) AppendRequestExecutionChunk(ctx context.Context, executionID int, chunk any) error {
+// AppendRequestExecutionChunk appends a response chunk to request execution.
+func (s *RequestService) AppendRequestExecutionChunk(
+	ctx context.Context,
+	executionID int,
+	chunk any,
+) error {
 	chunkBytes, err := Marshal(chunk)
 	if err != nil {
 		log.Error(ctx, "Failed to marshal chunk", log.Cause(err))
@@ -161,8 +185,13 @@ func (s *RequestService) AppendRequestExecutionChunk(ctx context.Context, execut
 	return nil
 }
 
-// UpdateRequestExecutionCompletedWithChunks updates request execution status to completed and aggregates chunks into response body
-func (s *RequestService) UpdateRequestExecutionCompletedWithChunks(ctx context.Context, executionID int, chunks []objects.JSONRawMessage, outboundTransformer transformer.Outbound) error {
+// UpdateRequestExecutionCompletedWithChunks updates request execution status to completed and aggregates chunks into response body.
+func (s *RequestService) UpdateRequestExecutionCompletedWithChunks(
+	ctx context.Context,
+	executionID int,
+	chunks []objects.JSONRawMessage,
+	outboundTransformer transformer.Outbound,
+) error {
 	// Convert JSONRawMessage chunks to [][]byte for transformer
 	bytesChunks := make([][]byte, len(chunks))
 	for i, chunk := range chunks {
@@ -195,8 +224,12 @@ func (s *RequestService) UpdateRequestExecutionCompletedWithChunks(ctx context.C
 	return nil
 }
 
-// AggregateChunksToResponseWithTransformer aggregates streaming chunks using the provided outbound transformer
-func (s *RequestService) AggregateChunksToResponseWithTransformer(ctx context.Context, chunks []objects.JSONRawMessage, outboundTransformer transformer.Outbound) (objects.JSONRawMessage, error) {
+// AggregateChunksToResponseWithTransformer aggregates streaming chunks using the provided outbound transformer.
+func (s *RequestService) AggregateChunksToResponseWithTransformer(
+	ctx context.Context,
+	chunks []objects.JSONRawMessage,
+	outboundTransformer transformer.Outbound,
+) (objects.JSONRawMessage, error) {
 	// Convert JSONRawMessage chunks to [][]byte for transformer
 	bytesChunks := make([][]byte, len(chunks))
 	for i, chunk := range chunks {
@@ -214,8 +247,10 @@ func (s *RequestService) AggregateChunksToResponseWithTransformer(ctx context.Co
 }
 
 // AggregateChunksToResponse aggregates streaming chunks into a complete LLM response
-// Deprecated: Use AggregateChunksToResponseWithTransformer instead for better multi-platform support
-func (s *RequestService) AggregateChunksToResponse(chunks []objects.JSONRawMessage) (objects.JSONRawMessage, error) {
+// Deprecated: Use AggregateChunksToResponseWithTransformer instead for better multi-platform support.
+func (s *RequestService) AggregateChunksToResponse(
+	chunks []objects.JSONRawMessage,
+) (objects.JSONRawMessage, error) {
 	if len(chunks) == 0 {
 		return objects.JSONRawMessage("{}"), nil
 	}

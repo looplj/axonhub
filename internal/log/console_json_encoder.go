@@ -28,7 +28,10 @@ func (c *ConsoleJSONEncoder) Clone() zapcore.Encoder {
 	return &ConsoleJSONEncoder{Encoder: c.Encoder.Clone(), cfg: c.cfg}
 }
 
-func (enc *ConsoleJSONEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
+func (enc *ConsoleJSONEncoder) EncodeEntry(
+	ent zapcore.Entry,
+	fields []zapcore.Field,
+) (*buffer.Buffer, error) {
 	line, err := enc.Encoder.EncodeEntry(ent, nil)
 	if err != nil {
 		return line, err

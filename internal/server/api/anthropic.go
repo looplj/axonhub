@@ -2,13 +2,11 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"go.uber.org/fx"
-
+	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/chat"
-
-	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
+	"go.uber.org/fx"
 )
 
 type AnthropicResponseError struct {

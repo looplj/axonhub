@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/looplj/axonhub/internal/ent"
-
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 )
 
-// ExampleUsage 展示如何使用权限控制系统
+// ExampleUsage 展示如何使用权限控制系统.
 func ExampleUsage() {
 	// 这是一个示例，展示如何在实际代码中使用权限控制
 
@@ -64,16 +63,20 @@ func ExampleUsage() {
 	fmt.Printf("Owner 用户拥有的权限: %v\n", ownerScopes)
 }
 
-// ExampleRoleBasedAccess 展示基于角色的权限控制
+// ExampleRoleBasedAccess 展示基于角色的权限控制.
 func ExampleRoleBasedAccess() {
 	ctx := context.Background()
 
 	// 创建一个角色
 	adminRole := &ent.Role{
-		ID:     1,
-		Code:   "admin",
-		Name:   "管理员",
-		Scopes: []string{string(ScopeReadUsers), string(ScopeWriteUsers), string(ScopeReadChannels)},
+		ID:   1,
+		Code: "admin",
+		Name: "管理员",
+		Scopes: []string{
+			string(ScopeReadUsers),
+			string(ScopeWriteUsers),
+			string(ScopeReadChannels),
+		},
 	}
 
 	// 创建一个用户，该用户拥有管理员角色
@@ -103,7 +106,7 @@ func ExampleRoleBasedAccess() {
 	fmt.Printf("用户拥有的所有权限: %v\n", allScopes)
 }
 
-// ExampleMiddleware 展示如何在中间件中使用权限控制
+// ExampleMiddleware 展示如何在中间件中使用权限控制.
 func ExampleMiddleware() {
 	// 这是一个示例中间件，展示如何在 HTTP 请求处理中集成权限控制
 

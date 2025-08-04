@@ -1,22 +1,19 @@
 package aisdk
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 func TestInboundTransformer_TransformRequest(t *testing.T) {
 	transformer := NewInboundTransformer()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name     string
@@ -147,30 +144,30 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			result, err := transformer.TransformRequest(ctx, tt.input)
 
 			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Nil(t, result)
+				require.Error(t, err)
+				require.Nil(t, result)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, result)
 
-				assert.Equal(t, tt.expected.Model, result.Model)
-				assert.Equal(t, len(tt.expected.Messages), len(result.Messages))
+				require.Equal(t, tt.expected.Model, result.Model)
+				require.Equal(t, len(tt.expected.Messages), len(result.Messages))
 
 				if len(tt.expected.Messages) > 0 {
-					assert.Equal(t, tt.expected.Messages[0].Role, result.Messages[0].Role)
+					require.Equal(t, tt.expected.Messages[0].Role, result.Messages[0].Role)
 					if tt.expected.Messages[0].Content.Content != nil {
-						assert.Equal(t, *tt.expected.Messages[0].Content.Content, *result.Messages[0].Content.Content)
+						require.Equal(t, *tt.expected.Messages[0].Content.Content, *result.Messages[0].Content.Content)
 					}
 				}
 
 				if tt.expected.Stream != nil {
-					assert.Equal(t, *tt.expected.Stream, *result.Stream)
+					require.Equal(t, *tt.expected.Stream, *result.Stream)
 				}
 
 				if len(tt.expected.Tools) > 0 {
-					assert.Equal(t, len(tt.expected.Tools), len(result.Tools))
-					assert.Equal(t, tt.expected.Tools[0].Type, result.Tools[0].Type)
-					assert.Equal(t, tt.expected.Tools[0].Function.Name, result.Tools[0].Function.Name)
+					require.Equal(t, len(tt.expected.Tools), len(result.Tools))
+					require.Equal(t, tt.expected.Tools[0].Type, result.Tools[0].Type)
+					require.Equal(t, tt.expected.Tools[0].Function.Name, result.Tools[0].Function.Name)
 				}
 			}
 		})
@@ -179,7 +176,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 
 func TestInboundTransformer_TransformResponse(t *testing.T) {
 	transformer := NewInboundTransformer()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name     string
@@ -221,23 +218,23 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 			result, err := transformer.TransformResponse(ctx, tt.input)
 
 			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Nil(t, result)
+				require.Error(t, err)
+				require.Nil(t, result)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, result)
 
-				assert.Equal(t, http.StatusOK, result.StatusCode)
-				assert.Equal(t, "application/json", result.Headers.Get("Content-Type"))
+				require.Equal(t, http.StatusOK, result.StatusCode)
+				require.Equal(t, "application/json", result.Headers.Get("Content-Type"))
 
 				// Parse response body
 				var responseData map[string]interface{}
-				err := json.Unmarshal([]byte(result.Body), &responseData)
+				err := json.Unmarshal(result.Body, &responseData)
 				require.NoError(t, err)
 
-				assert.Equal(t, tt.input.ID, responseData["id"])
-				assert.Equal(t, tt.input.Object, responseData["object"])
-				assert.Equal(t, tt.input.Model, responseData["model"])
+				require.Equal(t, tt.input.ID, responseData["id"])
+				require.Equal(t, tt.input.Object, responseData["object"])
+				require.Equal(t, tt.input.Model, responseData["model"])
 			}
 		})
 	}
@@ -245,7 +242,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 
 func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 	transformer := NewInboundTransformer()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name     string
@@ -281,15 +278,15 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			result, err := transformer.TransformStreamChunk(ctx, tt.input)
 
 			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Nil(t, result)
+				require.Error(t, err)
+				require.Nil(t, result)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, result)
 
 				// Check that result contains AI SDK stream format
-				assert.Contains(t, string(result.Data), ":")
-				assert.True(t, strings.HasSuffix(string(result.Data), "\n"))
+				require.Contains(t, string(result.Data), ":")
+				require.True(t, strings.HasSuffix(string(result.Data), "\n"))
 			}
 		})
 	}
@@ -317,12 +314,12 @@ func TestAiSDKStreamFormat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			contentBytes, _ := json.Marshal(tt.input)
 			result := "0:" + string(contentBytes) + "\n"
-			assert.Equal(t, tt.expected, result)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-// Helper functions
+// Helper functions.
 func stringPtr(s string) *string {
 	return &s
 }

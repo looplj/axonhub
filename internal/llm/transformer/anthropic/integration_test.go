@@ -1,14 +1,11 @@
 package anthropic
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
@@ -94,32 +91,32 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 				Body: []byte(tt.anthropicRequestJSON),
 			}
 
-			chatReq, err := inboundTransformer.TransformRequest(context.Background(), httpReq)
+			chatReq, err := inboundTransformer.TransformRequest(t.Context(), httpReq)
 			require.NoError(t, err)
 			require.NotNil(t, chatReq)
 
 			// Verify the transformation
-			assert.Equal(t, tt.expectedModel, chatReq.Model)
-			assert.Equal(t, tt.expectedMaxTokens, *chatReq.MaxTokens)
-			assert.NotEmpty(t, chatReq.Messages)
+			require.Equal(t, tt.expectedModel, chatReq.Model)
+			require.Equal(t, tt.expectedMaxTokens, *chatReq.MaxTokens)
+			require.NotEmpty(t, chatReq.Messages)
 
 			// Step 2: Transform ChatCompletionRequest to Anthropic outbound request
-			outboundReq, err := outboundTransformer.TransformRequest(context.Background(), chatReq)
+			outboundReq, err := outboundTransformer.TransformRequest(t.Context(), chatReq)
 			require.NoError(t, err)
 			require.NotNil(t, outboundReq)
 
 			// Verify outbound request
-			assert.Equal(t, http.MethodPost, outboundReq.Method)
-			assert.Equal(t, "https://api.anthropic.com/v1/messages", outboundReq.URL)
-			assert.Equal(t, "application/json", outboundReq.Headers.Get("Content-Type"))
-			assert.Equal(t, "2023-06-01", outboundReq.Headers.Get("anthropic-version"))
+			require.Equal(t, http.MethodPost, outboundReq.Method)
+			require.Equal(t, "https://api.anthropic.com/v1/messages", outboundReq.URL)
+			require.Equal(t, "application/json", outboundReq.Headers.Get("Content-Type"))
+			require.Equal(t, "2023-06-01", outboundReq.Headers.Get("Anthropic-Version"))
 
 			// Verify the outbound request body can be unmarshaled
 			var anthropicReq MessageRequest
 			err = json.Unmarshal(outboundReq.Body, &anthropicReq)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expectedModel, anthropicReq.Model)
-			assert.Equal(t, tt.expectedMaxTokens, anthropicReq.MaxTokens)
+			require.Equal(t, tt.expectedModel, anthropicReq.Model)
+			require.Equal(t, tt.expectedMaxTokens, anthropicReq.MaxTokens)
 
 			// Step 3: Simulate Anthropic response and transform back
 			anthropicResponse := &Message{
@@ -149,35 +146,39 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 			}
 
 			// Step 4: Transform Anthropic response to ChatCompletionResponse
-			chatResp, err := outboundTransformer.TransformResponse(context.Background(), httpResp)
+			chatResp, err := outboundTransformer.TransformResponse(t.Context(), httpResp)
 			require.NoError(t, err)
 			require.NotNil(t, chatResp)
 
 			// Verify chat response
-			assert.Equal(t, "msg_test_123", chatResp.ID)
-			assert.Equal(t, "chat.completion", chatResp.Object)
-			assert.Equal(t, tt.expectedModel, chatResp.Model)
-			assert.Equal(t, 1, len(chatResp.Choices))
-			assert.Equal(t, "assistant", chatResp.Choices[0].Message.Role)
-			assert.Equal(t, "This is a test response from Claude.", *chatResp.Choices[0].Message.Content.Content)
-			assert.Equal(t, "stop", *chatResp.Choices[0].FinishReason)
+			require.Equal(t, "msg_test_123", chatResp.ID)
+			require.Equal(t, "chat.completion", chatResp.Object)
+			require.Equal(t, tt.expectedModel, chatResp.Model)
+			require.Equal(t, 1, len(chatResp.Choices))
+			require.Equal(t, "assistant", chatResp.Choices[0].Message.Role)
+			require.Equal(
+				t,
+				"This is a test response from Claude.",
+				*chatResp.Choices[0].Message.Content.Content,
+			)
+			require.Equal(t, "stop", *chatResp.Choices[0].FinishReason)
 
 			// Step 5: Transform ChatCompletionResponse back to Anthropic format
-			finalHttpResp, err := inboundTransformer.TransformResponse(context.Background(), chatResp)
+			finalHttpResp, err := inboundTransformer.TransformResponse(t.Context(), chatResp)
 			require.NoError(t, err)
 			require.NotNil(t, finalHttpResp)
 
 			// Verify final response
-			assert.Equal(t, http.StatusOK, finalHttpResp.StatusCode)
-			assert.Equal(t, "application/json", finalHttpResp.Headers.Get("Content-Type"))
+			require.Equal(t, http.StatusOK, finalHttpResp.StatusCode)
+			require.Equal(t, "application/json", finalHttpResp.Headers.Get("Content-Type"))
 
 			var finalAnthropicResp Message
 			err = json.Unmarshal(finalHttpResp.Body, &finalAnthropicResp)
 			require.NoError(t, err)
-			assert.Equal(t, "msg_test_123", finalAnthropicResp.ID)
-			assert.Equal(t, "message", finalAnthropicResp.Type)
-			assert.Equal(t, "assistant", finalAnthropicResp.Role)
-			assert.Equal(t, tt.expectedModel, finalAnthropicResp.Model)
+			require.Equal(t, "msg_test_123", finalAnthropicResp.ID)
+			require.Equal(t, "message", finalAnthropicResp.Type)
+			require.Equal(t, "assistant", finalAnthropicResp.Role)
+			require.Equal(t, tt.expectedModel, finalAnthropicResp.Model)
 		})
 	}
 }
@@ -250,23 +251,27 @@ func TestAnthropicTransformers_StreamingIntegration(t *testing.T) {
 	}
 
 	// Aggregate the streaming chunks
-	chatResp, err := outboundTransformer.AggregateStreamChunks(context.Background(), chunks)
+	chatResp, err := outboundTransformer.AggregateStreamChunks(t.Context(), chunks)
 	require.NoError(t, err)
 	require.NotNil(t, chatResp)
 
 	// Verify the aggregated response
-	assert.Equal(t, "msg_stream_123", chatResp.ID)
-	assert.Equal(t, "chat.completion", chatResp.Object)
-	assert.Equal(t, 1, len(chatResp.Choices))
-	assert.Equal(t, "assistant", chatResp.Choices[0].Message.Role)
-	assert.Equal(t, "Hello, this is a streaming response!", *chatResp.Choices[0].Message.Content.Content)
-	assert.Equal(t, "stop", *chatResp.Choices[0].FinishReason)
+	require.Equal(t, "msg_stream_123", chatResp.ID)
+	require.Equal(t, "chat.completion", chatResp.Object)
+	require.Equal(t, 1, len(chatResp.Choices))
+	require.Equal(t, "assistant", chatResp.Choices[0].Message.Role)
+	require.Equal(
+		t,
+		"Hello, this is a streaming response!",
+		*chatResp.Choices[0].Message.Content.Content,
+	)
+	require.Equal(t, "stop", *chatResp.Choices[0].FinishReason)
 
 	// Verify usage
 	require.NotNil(t, chatResp.Usage)
-	assert.Equal(t, 10, chatResp.Usage.PromptTokens)
-	assert.Equal(t, 25, chatResp.Usage.CompletionTokens)
-	assert.Equal(t, 35, chatResp.Usage.TotalTokens)
+	require.Equal(t, 10, chatResp.Usage.PromptTokens)
+	require.Equal(t, 25, chatResp.Usage.CompletionTokens)
+	require.Equal(t, 35, chatResp.Usage.TotalTokens)
 }
 
 func TestAnthropicTransformers_ErrorHandling(t *testing.T) {
@@ -282,25 +287,27 @@ func TestAnthropicTransformers_ErrorHandling(t *testing.T) {
 			Body: []byte(`invalid json`),
 		}
 
-		_, err := inboundTransformer.TransformRequest(context.Background(), httpReq)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to decode anthropic request")
+		_, err := inboundTransformer.TransformRequest(t.Context(), httpReq)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to decode anthropic request")
 	})
 
 	t.Run("outbound error handling", func(t *testing.T) {
 		// Test HTTP error response
 		httpResp := &httpclient.Response{
 			StatusCode: http.StatusBadRequest,
-			Body:       []byte(`{"error": {"message": "Invalid request", "type": "invalid_request_error"}}`),
+			Body: []byte(
+				`{"error": {"message": "Invalid request", "type": "invalid_request_error"}}`,
+			),
 			Error: &httpclient.ResponseError{
 				Message: "Invalid request",
 				Type:    "invalid_request_error",
 			},
 		}
 
-		_, err := outboundTransformer.TransformResponse(context.Background(), httpResp)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "HTTP error 400")
+		_, err := outboundTransformer.TransformResponse(t.Context(), httpResp)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "HTTP error 400")
 	})
 }
 
@@ -358,9 +365,9 @@ func TestAnthropicMessageContent_EdgeCases(t *testing.T) {
 			err := json.Unmarshal([]byte(tt.jsonStr), &content)
 
 			if tt.isValid {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
+				require.Error(t, err)
 			}
 		})
 	}

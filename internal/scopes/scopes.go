@@ -1,46 +1,47 @@
 package scopes
 
-// Scope represents a permission scope
+// Scope represents a permission scope.
 type Scope string
 
-// Available scopes in the system
+// Available scopes in the system.
 const (
-	// Channel scopes
+	// Channel scopes.
 	ScopeReadChannels  Scope = "read_channels"
 	ScopeWriteChannels Scope = "write_channels"
 
-	// User scopes
+	// User scopes.
 	ScopeReadUsers  Scope = "read_users"
 	ScopeWriteUsers Scope = "write_users"
 
-	// Role scopes
+	// Role scopes.
 	ScopeReadRoles  Scope = "read_roles"
 	ScopeWriteRoles Scope = "write_roles"
 
-	// API Key scopes
+	// API Key scopes.
+	//nolint:gosec // This is a scope, not a secret.
 	ScopeReadAPIKeys  Scope = "read_api_keys"
 	ScopeWriteAPIKeys Scope = "write_api_keys"
 
-	// Request scopes
+	// Request scopes.
 	ScopeReadRequests  Scope = "read_requests"
 	ScopeWriteRequests Scope = "write_requests"
 
-	// Job scopes
+	// Job scopes.
 	ScopeReadJobs  Scope = "read_jobs"
 	ScopeWriteJobs Scope = "write_jobs"
 
-	// Dashboard scopes
+	// Dashboard scopes.
 	ScopeReadDashboard Scope = "read_dashboard"
 
-	// Settings scopes
+	// Settings scopes.
 	ScopeReadSettings  Scope = "read_settings"
 	ScopeWriteSettings Scope = "write_settings"
 
-	// Admin scope - full access
+	// Admin scope - full access.
 	ScopeAdmin Scope = "admin"
 )
 
-// AllScopes returns all available scopes
+// AllScopes returns all available scopes.
 func AllScopes() []Scope {
 	return []Scope{
 		ScopeReadChannels,
@@ -62,7 +63,7 @@ func AllScopes() []Scope {
 	}
 }
 
-// AllScopesAsStrings returns all available scopes as strings
+// AllScopesAsStrings returns all available scopes as strings.
 func AllScopesAsStrings() []string {
 	scopes := AllScopes()
 	result := make([]string, len(scopes))
@@ -72,7 +73,7 @@ func AllScopesAsStrings() []string {
 	return result
 }
 
-// ScopeDescriptions returns human-readable descriptions for scopes
+// ScopeDescriptions returns human-readable descriptions for scopes.
 func ScopeDescriptions() map[Scope]string {
 	return map[Scope]string{
 		ScopeReadChannels:  "查看渠道信息",
@@ -94,7 +95,7 @@ func ScopeDescriptions() map[Scope]string {
 	}
 }
 
-// IsValidScope checks if a scope is valid
+// IsValidScope checks if a scope is valid.
 func IsValidScope(scope string) bool {
 	for _, validScope := range AllScopes() {
 		if string(validScope) == scope {

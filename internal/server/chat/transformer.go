@@ -12,7 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// Enhanced PersistenceState holds shared state with channel management and retry capabilities
+// Enhanced PersistenceState holds shared state with channel management and retry capabilities.
 type PersistenceState struct {
 	Request        *ent.Request
 	RequestExec    *ent.RequestExecution
@@ -26,20 +26,20 @@ type PersistenceState struct {
 	RequestBody    any
 }
 
-// PersistentInboundTransformer wraps an inbound transformer with enhanced capabilities
+// PersistentInboundTransformer wraps an inbound transformer with enhanced capabilities.
 type PersistentInboundTransformer struct {
 	wrapped transformer.Inbound
 	state   *PersistenceState
 }
 
-// PersistentOutboundTransformer wraps an outbound transformer with enhanced capabilities
+// PersistentOutboundTransformer wraps an outbound transformer with enhanced capabilities.
 type PersistentOutboundTransformer struct {
 	wrapped transformer.Outbound
 	state   *PersistenceState
 }
 
 // NewPersistentTransformers creates enhanced persistent transformers with channel management
-// It accepts an httpclient.Request and transforms it to llm.Request internally
+// It accepts an httpclient.Request and transforms it to llm.Request internally.
 func NewPersistentTransformers(
 	ctx context.Context,
 	inbound transformer.Inbound,
@@ -74,12 +74,18 @@ func NewPersistentTransformers(
 		}, nil
 }
 
-// Inbound transformer methods for enhanced version
-func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, request *httpclient.Request) (*llm.Request, error) {
+// Inbound transformer methods for enhanced version.
+func (p *PersistentInboundTransformer) TransformRequest(
+	ctx context.Context,
+	request *httpclient.Request,
+) (*llm.Request, error) {
 	return p.wrapped.TransformRequest(ctx, request)
 }
 
-func (p *PersistentInboundTransformer) TransformResponse(ctx context.Context, response *llm.Response) (*httpclient.Response, error) {
+func (p *PersistentInboundTransformer) TransformResponse(
+	ctx context.Context,
+	response *llm.Response,
+) (*httpclient.Response, error) {
 	httpResp, err := p.wrapped.TransformResponse(ctx, response)
 	if err != nil {
 		return nil, err
@@ -95,15 +101,26 @@ func (p *PersistentInboundTransformer) TransformResponse(ctx context.Context, re
 	return httpResp, nil
 }
 
-func (p *PersistentInboundTransformer) TransformStreamChunk(ctx context.Context, response *llm.Response) (*httpclient.StreamEvent, error) {
+func (p *PersistentInboundTransformer) TransformStreamChunk(
+	ctx context.Context,
+	response *llm.Response,
+) (*httpclient.StreamEvent, error) {
 	return p.wrapped.TransformStreamChunk(ctx, response)
 }
 
-// Outbound transformer methods for enhanced version
-func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, request *llm.Request) (*httpclient.Request, error) {
+// Outbound transformer methods for enhanced version.
+func (p *PersistentOutboundTransformer) TransformRequest(
+	ctx context.Context,
+	request *llm.Request,
+) (*httpclient.Request, error) {
 	// Initialize request and channels if not done yet
 	if p.state.Request == nil {
-		req, err := p.state.RequestService.CreateRequest(ctx, p.state.APIKey, p.state.ChatRequest, p.state.RequestBody)
+		req, err := p.state.RequestService.CreateRequest(
+			ctx,
+			p.state.APIKey,
+			p.state.ChatRequest,
+			p.state.RequestBody,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +131,12 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, re
 		if err != nil {
 			return nil, err
 		}
-		log.Debug(ctx, "choose channels", log.Any("channels", channels), log.Any("model", p.state.ChatRequest.Model))
+		log.Debug(
+			ctx,
+			"choose channels",
+			log.Any("channels", channels),
+			log.Any("model", p.state.ChatRequest.Model),
+		)
 		if len(channels) == 0 {
 			return nil, errors.New("no provider available")
 		}
@@ -129,11 +151,21 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, re
 	p.state.CurrentChannel = p.state.Channels[p.state.ChannelIndex]
 	p.wrapped = p.state.CurrentChannel.Outbound
 
-	log.Debug(ctx, "using channel", log.Any("channel", p.state.CurrentChannel.Name), log.Any("model", p.state.ChatRequest.Model))
+	log.Debug(
+		ctx,
+		"using channel",
+		log.Any("channel", p.state.CurrentChannel.Name),
+		log.Any("model", p.state.ChatRequest.Model),
+	)
 
 	// Create request execution record before processing
 	if p.state.RequestExec == nil {
-		requestExec, err := p.state.RequestService.CreateRequestExecution(ctx, p.state.CurrentChannel, p.state.Request, request)
+		requestExec, err := p.state.RequestService.CreateRequestExecution(
+			ctx,
+			p.state.CurrentChannel,
+			p.state.Request,
+			request,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -143,11 +175,18 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, re
 	return p.wrapped.TransformRequest(ctx, request)
 }
 
-func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {
+func (p *PersistentOutboundTransformer) TransformResponse(
+	ctx context.Context,
+	response *httpclient.Response,
+) (*llm.Response, error) {
 	llmResp, err := p.wrapped.TransformResponse(ctx, response)
 	if err != nil {
 		if p.state.RequestExec != nil {
-			err := p.state.RequestService.UpdateRequestExecutionFailed(ctx, p.state.RequestExec.ID, err.Error())
+			err := p.state.RequestService.UpdateRequestExecutionFailed(
+				ctx,
+				p.state.RequestExec.ID,
+				err.Error(),
+			)
 			if err != nil {
 				log.Warn(ctx, "Failed to update request execution status to failed", log.Cause(err))
 			}
@@ -156,7 +195,11 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 	}
 
 	if p.state.RequestExec != nil {
-		err = p.state.RequestService.UpdateRequestExecutionCompleted(ctx, p.state.RequestExec.ID, response.Body)
+		err = p.state.RequestService.UpdateRequestExecutionCompleted(
+			ctx,
+			p.state.RequestExec.ID,
+			response.Body,
+		)
 		if err != nil {
 			log.Warn(ctx, "Failed to update request execution status to completed", log.Cause(err))
 		}
@@ -165,7 +208,10 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 	return llmResp, nil
 }
 
-func (p *PersistentOutboundTransformer) TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error) {
+func (p *PersistentOutboundTransformer) TransformStreamChunk(
+	ctx context.Context,
+	event *httpclient.StreamEvent,
+) (*llm.Response, error) {
 	// Transform the stream chunk first
 	llmResp, err := p.wrapped.TransformStreamChunk(ctx, event)
 	if err != nil {
@@ -173,7 +219,11 @@ func (p *PersistentOutboundTransformer) TransformStreamChunk(ctx context.Context
 	}
 
 	if p.state.RequestExec != nil && event.Data != nil {
-		err = p.state.RequestService.AppendRequestExecutionChunk(ctx, p.state.RequestExec.ID, event.Data)
+		err = p.state.RequestService.AppendRequestExecutionChunk(
+			ctx,
+			p.state.RequestExec.ID,
+			event.Data,
+		)
 		if err != nil {
 			log.Warn(ctx, "Failed to save response chunk", log.Cause(err))
 		}
@@ -182,21 +232,24 @@ func (p *PersistentOutboundTransformer) TransformStreamChunk(ctx context.Context
 	return llmResp, nil
 }
 
-func (p *PersistentOutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks [][]byte) (*llm.Response, error) {
+func (p *PersistentOutboundTransformer) AggregateStreamChunks(
+	ctx context.Context,
+	chunks [][]byte,
+) (*llm.Response, error) {
 	return p.wrapped.AggregateStreamChunks(ctx, chunks)
 }
 
-// GetRequestExecution returns the current request execution
+// GetRequestExecution returns the current request execution.
 func (p *PersistentOutboundTransformer) GetRequestExecution() *ent.RequestExecution {
 	return p.state.RequestExec
 }
 
-// GetRequest returns the current request
+// GetRequest returns the current request.
 func (p *PersistentOutboundTransformer) GetRequest() *ent.Request {
 	return p.state.Request
 }
 
-// GetCurrentChannelOutbound returns the current channel's outbound transformer
+// GetCurrentChannelOutbound returns the current channel's outbound transformer.
 func (p *PersistentOutboundTransformer) GetCurrentChannelOutbound() transformer.Outbound {
 	if p.state.CurrentChannel != nil {
 		return p.state.CurrentChannel.Outbound
@@ -204,7 +257,7 @@ func (p *PersistentOutboundTransformer) GetCurrentChannelOutbound() transformer.
 	return nil
 }
 
-// NextChannel moves to the next available channel for retry
+// NextChannel moves to the next available channel for retry.
 func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	p.state.ChannelIndex++
 	if p.state.ChannelIndex >= len(p.state.Channels) {
@@ -223,7 +276,7 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	return nil
 }
 
-// HasMoreChannels returns true if there are more channels available for retry
+// HasMoreChannels returns true if there are more channels available for retry.
 func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
 	return p.state.ChannelIndex+1 < len(p.state.Channels)
 }

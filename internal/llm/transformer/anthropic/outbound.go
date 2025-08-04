@@ -8,21 +8,20 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
-// OutboundTransformer implements transformer.Outbound for Anthropic format
+// OutboundTransformer implements transformer.Outbound for Anthropic format.
 type OutboundTransformer struct {
 	name    string
 	baseURL string
 	apiKey  string
 }
 
-// NewOutboundTransformer creates a new Anthropic OutboundTransformer
+// NewOutboundTransformer creates a new Anthropic OutboundTransformer.
 func NewOutboundTransformer(baseURL, apiKey string) transformer.Outbound {
 	if baseURL == "" {
 		baseURL = "https://api.anthropic.com"
@@ -35,8 +34,11 @@ func NewOutboundTransformer(baseURL, apiKey string) transformer.Outbound {
 	}
 }
 
-// TransformRequest transforms ChatCompletionRequest to Anthropic HTTP request
-func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm.Request) (*httpclient.Request, error) {
+// TransformRequest transforms ChatCompletionRequest to Anthropic HTTP request.
+func (t *OutboundTransformer) TransformRequest(
+	ctx context.Context,
+	chatReq *llm.Request,
+) (*httpclient.Request, error) {
 	if chatReq == nil {
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
@@ -68,7 +70,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, chatReq *llm
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
-	headers.Set("anthropic-version", "2023-06-01")
+	headers.Set("Anthropic-Version", "2023-06-01")
 
 	// Prepare authentication
 	var auth *httpclient.AuthConfig
@@ -211,8 +213,11 @@ func (t *OutboundTransformer) convertToAnthropicRequest(chatReq *llm.Request) *M
 	return req
 }
 
-// TransformResponse transforms Anthropic HTTP response to ChatCompletionResponse
-func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
+// TransformResponse transforms Anthropic HTTP response to ChatCompletionResponse.
+func (t *OutboundTransformer) TransformResponse(
+	ctx context.Context,
+	httpResp *httpclient.Response,
+) (*llm.Response, error) {
 	if httpResp == nil {
 		return nil, fmt.Errorf("http response is nil")
 	}
@@ -240,8 +245,11 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	return chatResp, nil
 }
 
-// TransformStreamChunk transforms a single Anthropic streaming chunk to ChatCompletionResponse
-func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error) {
+// TransformStreamChunk transforms a single Anthropic streaming chunk to ChatCompletionResponse.
+func (t *OutboundTransformer) TransformStreamChunk(
+	ctx context.Context,
+	event *httpclient.StreamEvent,
+) (*llm.Response, error) {
 	if event == nil {
 		return nil, fmt.Errorf("stream event is nil")
 	}
@@ -271,7 +279,9 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 			resp.Usage = &llm.Usage{
 				PromptTokens:     int(streamEvent.Message.Usage.InputTokens),
 				CompletionTokens: int(streamEvent.Message.Usage.OutputTokens),
-				TotalTokens:      int(streamEvent.Message.Usage.InputTokens + streamEvent.Message.Usage.OutputTokens),
+				TotalTokens: int(
+					streamEvent.Message.Usage.InputTokens + streamEvent.Message.Usage.OutputTokens,
+				),
 			}
 		}
 		// For message_start, we return an empty choice to indicate the start
@@ -373,7 +383,9 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 			resp.Usage = &llm.Usage{
 				PromptTokens:     int(streamEvent.Usage.InputTokens),
 				CompletionTokens: int(streamEvent.Usage.OutputTokens),
-				TotalTokens:      int(streamEvent.Usage.InputTokens + streamEvent.Usage.OutputTokens),
+				TotalTokens: int(
+					streamEvent.Usage.InputTokens + streamEvent.Usage.OutputTokens,
+				),
 			}
 		}
 
@@ -410,7 +422,9 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 	return resp, nil
 }
 
-func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Message) *llm.Response {
+func (t *OutboundTransformer) convertToChatCompletionResponse(
+	anthropicResp *Message,
+) *llm.Response {
 	if anthropicResp == nil {
 		return &llm.Response{
 			ID:      "",
@@ -531,15 +545,20 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(anthropicResp *Mes
 		resp.Usage = &llm.Usage{
 			PromptTokens:     int(anthropicResp.Usage.InputTokens),
 			CompletionTokens: int(anthropicResp.Usage.OutputTokens),
-			TotalTokens:      int(anthropicResp.Usage.InputTokens + anthropicResp.Usage.OutputTokens),
+			TotalTokens: int(
+				anthropicResp.Usage.InputTokens + anthropicResp.Usage.OutputTokens,
+			),
 		}
 	}
 
 	return resp
 }
 
-// AggregateStreamChunks aggregates Anthropic streaming response chunks into a complete response
-func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks [][]byte) (*llm.Response, error) {
+// AggregateStreamChunks aggregates Anthropic streaming response chunks into a complete response.
+func (t *OutboundTransformer) AggregateStreamChunks(
+	ctx context.Context,
+	chunks [][]byte,
+) (*llm.Response, error) {
 	if len(chunks) == 0 {
 		return &llm.Response{}, nil
 	}
@@ -667,12 +686,12 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 	return t.convertToChatCompletionResponse(message), nil
 }
 
-// SetAPIKey updates the API key
+// SetAPIKey updates the API key.
 func (t *OutboundTransformer) SetAPIKey(apiKey string) {
 	t.apiKey = apiKey
 }
 
-// SetBaseURL updates the base URL
+// SetBaseURL updates the base URL.
 func (t *OutboundTransformer) SetBaseURL(baseURL string) {
 	t.baseURL = baseURL
 }

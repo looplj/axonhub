@@ -6,16 +6,15 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
-	"go.uber.org/fx"
-
+	"github.com/gin-gonic/gin"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/api"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/dependencies"
 	"github.com/looplj/axonhub/internal/server/gql"
-
-	"github.com/gin-gonic/gin"
+	"go.uber.org/fx"
 )
 
 func New(config Config) *Server {
@@ -37,11 +36,18 @@ type Server struct {
 }
 
 func (srv *Server) Run() error {
-	log.Info(context.Background(), "run server", log.String("name", srv.config.Name), log.Int("port", srv.config.Port))
+	log.Info(
+		context.Background(),
+		"run server",
+		log.String("name", srv.config.Name),
+		log.Int("port", srv.config.Port),
+	)
 	addr := fmt.Sprintf("0.0.0.0:%d", srv.config.Port)
 	srv.server = &http.Server{
 		Addr:    addr,
 		Handler: srv.Engine,
+		// TODO: set timeout for chat request.
+		ReadTimeout: 10 * time.Minute,
 	}
 	srv.addr = addr
 	err := srv.server.ListenAndServe()

@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// Request represents a generic HTTP request that can be adapted to different providers
+// Request represents a generic HTTP request that can be adapted to different providers.
 type Request struct {
 	// HTTP basics
 	Method  string      `json:"method"`
@@ -26,7 +26,7 @@ type Request struct {
 	RawRequest *http.Request `json:"-"`
 }
 
-// AuthConfig represents authentication configuration
+// AuthConfig represents authentication configuration.
 type AuthConfig struct {
 	// Type represents the type of authentication.
 	// "bearer", "api_key"
@@ -39,7 +39,7 @@ type AuthConfig struct {
 	HeaderKey string `json:"header_key,omitempty"`
 }
 
-// Response represents a generic HTTP response
+// Response represents a generic HTTP response.
 type Response struct {
 	// HTTP response basics
 	StatusCode int `json:"status_code"`

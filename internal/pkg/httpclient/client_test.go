@@ -1,7 +1,6 @@
 package httpclient
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -107,7 +106,7 @@ func TestHttpClientImpl_Do(t *testing.T) {
 			client := NewHttpClient()
 
 			// Execute request
-			result, err := client.Do(context.Background(), tt.request)
+			result, err := client.Do(t.Context(), tt.request)
 
 			if tt.wantErr {
 				if err == nil {
@@ -158,7 +157,10 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 			serverResponse: func(w http.ResponseWriter, r *http.Request) {
 				// Check streaming headers
 				if r.Header.Get("Accept") != "text/event-stream" {
-					t.Errorf("Expected Accept header to be text/event-stream, got %s", r.Header.Get("Accept"))
+					t.Errorf(
+						"Expected Accept header to be text/event-stream, got %s",
+						r.Header.Get("Accept"),
+					)
 				}
 
 				w.Header().Set("Content-Type", "text/event-stream")
@@ -224,7 +226,7 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 			client := NewHttpClient()
 
 			// Execute streaming request
-			result, err := client.DoStream(context.Background(), tt.request)
+			result, err := client.DoStream(t.Context(), tt.request)
 
 			if tt.wantErr {
 				if err == nil {
@@ -316,7 +318,7 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(req *http.Request) bool {
-				return req.Header.Get("X-API-Key") == "test-key"
+				return req.Header.Get("X-Api-Key") == "test-key"
 			},
 		},
 		{
@@ -332,7 +334,7 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := client.buildHttpRequest(context.Background(), tt.request)
+			result, err := client.buildHttpRequest(t.Context(), tt.request)
 
 			if tt.wantErr {
 				if err == nil {
@@ -340,7 +342,11 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 					return
 				}
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("buildHttpRequest() error = %v, want error containing %v", err, tt.errContains)
+					t.Errorf(
+						"buildHttpRequest() error = %v, want error containing %v",
+						err,
+						tt.errContains,
+					)
 				}
 				return
 			}
@@ -392,7 +398,7 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(req *http.Request) bool {
-				return req.Header.Get("X-API-Key") == "test-key"
+				return req.Header.Get("X-Api-Key") == "test-key"
 			},
 		},
 		{
@@ -433,7 +439,11 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 					return
 				}
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("applyAuth() error = %v, want error containing %v", err, tt.errContains)
+					t.Errorf(
+						"applyAuth() error = %v, want error containing %v",
+						err,
+						tt.errContains,
+					)
 				}
 				return
 			}
@@ -480,7 +490,7 @@ func TestHttpClientImpl_extractHeaders(t *testing.T) {
 	}
 }
 
-// Test SSE Stream implementation
+// Test SSE Stream implementation.
 func TestSSEStream(t *testing.T) {
 	// Create a mock response body with SSE data
 	sseData := `data: {"id": "1", "content": "Hello"}
@@ -493,7 +503,7 @@ data: [DONE]
 	body := io.NopCloser(strings.NewReader(sseData))
 
 	stream := &sseStreamWrapper{
-		ctx:       context.Background(),
+		ctx:       t.Context(),
 		sseStream: sse.NewStream(body),
 	}
 

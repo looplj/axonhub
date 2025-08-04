@@ -242,7 +242,7 @@ func TestExtractAPIKeyFromRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// 创建 HTTP 请求
-			req, err := http.NewRequest("GET", "/test", nil)
+			req, err := http.NewRequest(http.MethodGet, "/test", nil)
 			if err != nil {
 				t.Fatalf("failed to create request: %v", err)
 			}
@@ -279,12 +279,12 @@ func TestExtractAPIKeyFromRequest(t *testing.T) {
 }
 
 func TestExtractAPIKeyFromRequestSimple(t *testing.T) {
-	req, err := http.NewRequest("GET", "/test", nil)
+	req, err := http.NewRequest(http.MethodGet, "/test", nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
 
-	req.Header.Set("X-API-Key", "simple-test-key")
+	req.Header.Set("X-Api-Key", "simple-test-key")
 
 	key, err := ExtractAPIKeyFromRequestSimple(req)
 	if err != nil {
@@ -320,7 +320,7 @@ func TestDefaultAPIKeyConfig(t *testing.T) {
 	}
 }
 
-// BenchmarkExtractAPIKeyFromHeader 性能测试
+// BenchmarkExtractAPIKeyFromHeader 性能测试.
 func BenchmarkExtractAPIKeyFromHeader(b *testing.B) {
 	authHeader := "Bearer sk-1234567890abcdef"
 	b.ResetTimer()
@@ -329,9 +329,9 @@ func BenchmarkExtractAPIKeyFromHeader(b *testing.B) {
 	}
 }
 
-// BenchmarkExtractAPIKeyFromRequest 性能测试
+// BenchmarkExtractAPIKeyFromRequest 性能测试.
 func BenchmarkExtractAPIKeyFromRequest(b *testing.B) {
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer sk-1234567890abcdef")
 	config := DefaultAPIKeyConfig()
 

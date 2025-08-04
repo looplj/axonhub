@@ -195,7 +195,10 @@ func (r *queryResolver) RequestsByModel(ctx context.Context) ([]*RequestsByModel
 }
 
 // DailyRequestStats is the resolver for the dailyRequestStats field.
-func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*DailyRequestStats, error) {
+func (r *queryResolver) DailyRequestStats(
+	ctx context.Context,
+	days *int,
+) ([]*DailyRequestStats, error) {
 	daysCount := 30
 	if days != nil {
 		daysCount = *days
@@ -213,7 +216,7 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*Da
 
 	// Group by date
 	dailyStats := make(map[string]*DailyRequestStats)
-	for i := 0; i < daysCount; i++ {
+	for i := range daysCount {
 		date := startDate.AddDate(0, 0, i)
 		dateStr := date.Format("2006-01-02")
 		dailyStats[dateStr] = &DailyRequestStats{
@@ -228,6 +231,7 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*Da
 		dateStr := req.CreatedAt.Format("2006-01-02")
 		if stats, exists := dailyStats[dateStr]; exists {
 			stats.Count++
+			//nolint:exhaustive // Checkd.
 			switch req.Status {
 			case request.StatusCompleted:
 				stats.SuccessCount++
@@ -238,7 +242,7 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*Da
 	}
 
 	var response []*DailyRequestStats
-	for i := 0; i < daysCount; i++ {
+	for i := range daysCount {
 		date := startDate.AddDate(0, 0, i)
 		dateStr := date.Format("2006-01-02")
 		if stats, exists := dailyStats[dateStr]; exists {
@@ -250,7 +254,10 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*Da
 }
 
 // HourlyRequestStats is the resolver for the hourlyRequestStats field.
-func (r *queryResolver) HourlyRequestStats(ctx context.Context, date *string) ([]*HourlyRequestStats, error) {
+func (r *queryResolver) HourlyRequestStats(
+	ctx context.Context,
+	date *string,
+) ([]*HourlyRequestStats, error) {
 	targetDate := time.Now()
 	if date != nil {
 		var err error
@@ -260,7 +267,16 @@ func (r *queryResolver) HourlyRequestStats(ctx context.Context, date *string) ([
 		}
 	}
 
-	startOfDay := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 0, 0, 0, 0, targetDate.Location())
+	startOfDay := time.Date(
+		targetDate.Year(),
+		targetDate.Month(),
+		targetDate.Day(),
+		0,
+		0,
+		0,
+		0,
+		targetDate.Location(),
+	)
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	requests, err := r.client.Request.Query().
@@ -275,7 +291,7 @@ func (r *queryResolver) HourlyRequestStats(ctx context.Context, date *string) ([
 
 	// Initialize hourly stats
 	hourlyStats := make(map[int]int)
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		hourlyStats[i] = 0
 	}
 
@@ -286,7 +302,7 @@ func (r *queryResolver) HourlyRequestStats(ctx context.Context, date *string) ([
 	}
 
 	var response []*HourlyRequestStats
-	for hour := 0; hour < 24; hour++ {
+	for hour := range 24 {
 		response = append(response, &HourlyRequestStats{
 			Hour:  hour,
 			Count: hourlyStats[hour],

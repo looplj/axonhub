@@ -8,20 +8,19 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
-// InboundTransformer implements the Inbound interface for AI SDK
+// InboundTransformer implements the Inbound interface for AI SDK.
 type InboundTransformer struct{}
 
-// NewInboundTransformer creates a new AI SDK inbound transformer
+// NewInboundTransformer creates a new AI SDK inbound transformer.
 func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 
-// AiSDKRequest represents the AI SDK request format
+// AiSDKRequest represents the AI SDK request format.
 type AiSDKRequest struct {
 	Messages []AiSDKMessage `json:"messages"`
 	Model    string         `json:"model,omitempty"`
@@ -29,28 +28,31 @@ type AiSDKRequest struct {
 	Tools    []AiSDKTool    `json:"tools,omitempty"`
 }
 
-// AiSDKMessage represents a message in AI SDK format
+// AiSDKMessage represents a message in AI SDK format.
 type AiSDKMessage struct {
 	Role    string      `json:"role"`
 	Content interface{} `json:"content"` // can be string or array of content parts
 	Name    *string     `json:"name,omitempty"`
 }
 
-// AiSDKTool represents a tool in AI SDK format
+// AiSDKTool represents a tool in AI SDK format.
 type AiSDKTool struct {
 	Type     string            `json:"type"`
 	Function AiSDKToolFunction `json:"function"`
 }
 
-// AiSDKToolFunction represents a tool function in AI SDK format
+// AiSDKToolFunction represents a tool function in AI SDK format.
 type AiSDKToolFunction struct {
 	Name        string      `json:"name"`
 	Description string      `json:"description,omitempty"`
 	Parameters  interface{} `json:"parameters,omitempty"`
 }
 
-// TransformRequest transforms AI SDK request to LLM request
-func (t *InboundTransformer) TransformRequest(ctx context.Context, req *httpclient.Request) (*llm.Request, error) {
+// TransformRequest transforms AI SDK request to LLM request.
+func (t *InboundTransformer) TransformRequest(
+	ctx context.Context,
+	req *httpclient.Request,
+) (*llm.Request, error) {
 	// Parse JSON body
 	var aiSDKReq AiSDKRequest
 	if err := json.Unmarshal(req.Body, &aiSDKReq); err != nil {
@@ -84,19 +86,23 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, req *httpclie
 				if partMap, ok := part.(map[string]interface{}); ok {
 					contentPart := llm.MessageContentPart{}
 					if partType, exists := partMap["type"]; exists {
+						//nolint:forcetypeassert // Will fix.
 						contentPart.Type = partType.(string)
 					}
 					if text, exists := partMap["text"]; exists {
+						//nolint:forcetypeassert // Will fix.
 						textStr := text.(string)
 						contentPart.Text = &textStr
 					}
 					if imageURL, exists := partMap["image_url"]; exists {
 						if imageMap, ok := imageURL.(map[string]interface{}); ok {
 							contentPart.ImageURL = &llm.ImageURL{}
+							//nolint:forcetypeassert // Will fix.
 							if url, exists := imageMap["url"]; exists {
 								contentPart.ImageURL.URL = url.(string)
 							}
 							if detail, exists := imageMap["detail"]; exists {
+								//nolint:forcetypeassert // Will fix.
 								contentPart.ImageURL.Detail = detail.(string)
 							}
 						}
@@ -136,8 +142,11 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, req *httpclie
 	return llmReq, nil
 }
 
-// TransformResponse transforms LLM response to AI SDK response
-func (t *InboundTransformer) TransformResponse(ctx context.Context, resp *llm.Response) (*httpclient.Response, error) {
+// TransformResponse transforms LLM response to AI SDK response.
+func (t *InboundTransformer) TransformResponse(
+	ctx context.Context,
+	resp *llm.Response,
+) (*httpclient.Response, error) {
 	// Convert to AI SDK response format
 	aiSDKResp := map[string]interface{}{
 		"id":      resp.ID,
@@ -168,14 +177,18 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, resp *llm.Re
 	}, nil
 }
 
-// TransformStreamChunk transforms LLM stream chunk to AI SDK stream format
-func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chunk *llm.Response) (*httpclient.StreamEvent, error) {
+// TransformStreamChunk transforms LLM stream chunk to AI SDK stream format.
+func (t *InboundTransformer) TransformStreamChunk(
+	ctx context.Context,
+	chunk *llm.Response,
+) (*httpclient.StreamEvent, error) {
 	var streamData []string
 
 	// Process each choice
 	for _, choice := range chunk.Choices {
 		// Handle text content - Format: 0:"text"\n
-		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
+		if choice.Delta != nil && choice.Delta.Content.Content != nil &&
+			*choice.Delta.Content.Content != "" {
 			textJSON, _ := json.Marshal(*choice.Delta.Content.Content)
 			streamData = append(streamData, fmt.Sprintf("0:%s\n", string(textJSON)))
 		}
@@ -248,7 +261,7 @@ func (t *InboundTransformer) TransformStreamChunk(ctx context.Context, chunk *ll
 	// Create headers for AI SDK data stream
 	headers := make(http.Header)
 	headers.Set("Content-Type", "text/plain; charset=utf-8")
-	headers.Set("x-vercel-ai-data-stream", "v1")
+	headers.Set("X-Vercel-Ai-Data-Stream", "v1")
 
 	return &httpclient.StreamEvent{
 		// Type: "data",

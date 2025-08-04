@@ -238,7 +238,7 @@ func (s *Stop) UnmarshalJSON(data []byte) error {
 	return errors.New("invalid stop type")
 }
 
-// Message represents a message in the conversation
+// Message represents a message in the conversation.
 type Message struct {
 	Role    string         `json:"role"`
 	Content MessageContent `json:"content"` // string or []ContentPart
@@ -299,7 +299,7 @@ type MessageContentPart struct {
 	Audio *Audio `json:"audio,omitempty"`
 }
 
-// ImageURL represents an image URL with optional detail level
+// ImageURL represents an image URL with optional detail level.
 type ImageURL struct {
 	// URL is the URL of the image.
 	URL string `json:"url"`
@@ -321,20 +321,20 @@ type Audio struct {
 	Data string `json:"data"`
 }
 
-// Tool represents a function tool
+// Tool represents a function tool.
 type Tool struct {
 	Type     string   `json:"type"`
 	Function Function `json:"function"`
 }
 
-// FunctionRequest represents a function definition
+// FunctionRequest represents a function definition.
 type Function struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`
 	Parameters  json.RawMessage `json:"parameters"`
 }
 
-// FunctionCall represents a function call (deprecated)
+// FunctionCall represents a function call (deprecated).
 type FunctionCall struct {
 	// The name of the function to call.
 	Name string `json:"name"`
@@ -346,7 +346,7 @@ type FunctionCall struct {
 	Arguments string `json:"arguments"`
 }
 
-// ToolCall represents a tool call in the response
+// ToolCall represents a tool call in the response.
 type ToolCall struct {
 	ID string `json:"id"`
 
@@ -356,7 +356,7 @@ type ToolCall struct {
 	Function FunctionCall `json:"function"`
 }
 
-// ResponseFormat specifies the format of the response
+// ResponseFormat specifies the format of the response.
 type ResponseFormat struct {
 	Type string `json:"type"`
 	// TODO: Schema
@@ -396,7 +396,7 @@ type Response struct {
 	ServiceTier string `json:"service_tier,omitempty"`
 }
 
-// Choice represents a choice in the response
+// Choice represents a choice in the response.
 type Choice struct {
 	// Index is the index of the choice in the list of choices.
 	Index int `json:"index"`
@@ -414,12 +414,12 @@ type Choice struct {
 	Logprobs *LogprobsContent `json:"logprobs,omitempty"`
 }
 
-// LogprobsContent represents logprobs information
+// LogprobsContent represents logprobs information.
 type LogprobsContent struct {
 	Content []TokenLogprob `json:"content"`
 }
 
-// TokenLogprob represents logprob for a token
+// TokenLogprob represents logprob for a token.
 type TokenLogprob struct {
 	Token       string       `json:"token"`
 	Logprob     float64      `json:"logprob"`
@@ -427,26 +427,26 @@ type TokenLogprob struct {
 	TopLogprobs []TopLogprob `json:"top_logprobs,omitempty"`
 }
 
-// TopLogprob represents top alternative tokens
+// TopLogprob represents top alternative tokens.
 type TopLogprob struct {
 	Token   string  `json:"token"`
 	Logprob float64 `json:"logprob"`
 	Bytes   []int   `json:"bytes,omitempty"`
 }
 
-// Usage represents token usage information
+// Usage represents token usage information.
 type Usage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
 }
 
-// ErrorResponse represents an error response
+// ErrorResponse represents an error response.
 type ErrorResponse struct {
 	Error ErrorDetail `json:"error"`
 }
 
-// ErrorDetail represents error details
+// ErrorDetail represents error details.
 type ErrorDetail struct {
 	Message string  `json:"message"`
 	Type    string  `json:"type"`

@@ -1,14 +1,12 @@
 package openai
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -139,7 +137,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := tt.transformer.TransformRequest(context.Background(), tt.request)
+			result, err := tt.transformer.TransformRequest(t.Context(), tt.request)
 
 			if tt.wantErr {
 				if err == nil {
@@ -147,7 +145,11 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					return
 				}
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("TransformRequest() error = %v, want error containing %v", err, tt.errContains)
+					t.Errorf(
+						"TransformRequest() error = %v, want error containing %v",
+						err,
+						tt.errContains,
+					)
 				}
 				return
 			}
@@ -197,9 +199,15 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 		{
 			name: "valid OpenAI streaming chunks",
 			chunks: [][]byte{
-				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"}}]}`),
-				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`),
-				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`),
+				[]byte(
+					`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"}}]}`,
+				),
+				[]byte(
+					`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`,
+				),
+				[]byte(
+					`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
+				),
 			},
 			validate: func(resp *llm.Response) bool {
 				if resp == nil || len(resp.Choices) == 0 {
@@ -219,9 +227,13 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 		{
 			name: "invalid JSON chunk",
 			chunks: [][]byte{
-				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"}}]}`),
+				[]byte(
+					`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"}}]}`,
+				),
 				[]byte(`invalid json`),
-				[]byte(`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`),
+				[]byte(
+					`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`,
+				),
 			},
 			validate: func(resp *llm.Response) bool {
 				if resp == nil || len(resp.Choices) == 0 {
@@ -235,7 +247,7 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := transformer.AggregateStreamChunks(context.Background(), tt.chunks)
+			resp, err := transformer.AggregateStreamChunks(t.Context(), tt.chunks)
 
 			if tt.wantErr {
 				if err == nil {
@@ -243,7 +255,11 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 					return
 				}
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("AggregateStreamChunks() error = %v, want error containing %v", err, tt.errContains)
+					t.Errorf(
+						"AggregateStreamChunks() error = %v, want error containing %v",
+						err,
+						tt.errContains,
+					)
 				}
 				return
 			}
@@ -358,7 +374,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.TransformResponse(context.Background(), tt.response)
+			result, err := transformer.TransformResponse(t.Context(), tt.response)
 
 			if tt.wantErr {
 				if err == nil {
@@ -366,7 +382,11 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 					return
 				}
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("TransformResponse() error = %v, want error containing %v", err, tt.errContains)
+					t.Errorf(
+						"TransformResponse() error = %v, want error containing %v",
+						err,
+						tt.errContains,
+					)
 				}
 				return
 			}
@@ -511,11 +531,19 @@ func TestNewOutboundTransformer(t *testing.T) {
 			transformer := NewOutboundTransformer(tt.baseURL, tt.apiKey).(*OutboundTransformer)
 
 			if transformer.baseURL != tt.wantURL {
-				t.Errorf("NewOutboundTransformer() baseURL = %v, want %v", transformer.baseURL, tt.wantURL)
+				t.Errorf(
+					"NewOutboundTransformer() baseURL = %v, want %v",
+					transformer.baseURL,
+					tt.wantURL,
+				)
 			}
 
 			if transformer.apiKey != tt.apiKey {
-				t.Errorf("NewOutboundTransformer() apiKey = %v, want %v", transformer.apiKey, tt.apiKey)
+				t.Errorf(
+					"NewOutboundTransformer() apiKey = %v, want %v",
+					transformer.apiKey,
+					tt.apiKey,
+				)
 			}
 		})
 	}

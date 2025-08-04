@@ -6,7 +6,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm"
 )
 
-// Decorator modifies chat completion requests before they are sent to the provider
+// Decorator modifies chat completion requests before they are sent to the provider.
 type Decorator interface {
 	// Decorate modifies the request and returns the modified request or an error
 	Decorate(ctx context.Context, request *llm.Request) (*llm.Request, error)
@@ -15,7 +15,7 @@ type Decorator interface {
 	Name() string
 }
 
-// DecoratorChain manages a chain of decorators
+// DecoratorChain manages a chain of decorators.
 type DecoratorChain interface {
 	Add(decorator Decorator)
 	Remove(name string)

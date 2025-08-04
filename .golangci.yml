@@ -64,6 +64,14 @@ linters:
     - inamedparam
     - interfacebloat
     - unparam
+    - mnd
+    - recvcheck
+    - tagliatelle
+    - goconst
+    - gocognit
+    - err113
+    - funcorder
+    - noinlineerr
 
   # all available settings of specific linters
   settings:
@@ -214,6 +222,7 @@ linters:
           - dupword
           - intrange
           - govet
+          - errname
 
       - path: _mock\.go$
         linters:
@@ -286,7 +295,7 @@ issues:
   # large codebase. It's not practical to fix all existing issues at the moment
   # of integration: much better don't allow issues in new code.
   # Default is false.
-  new: true
+  new: false
 
   # Auto-fix enabled issues. Default is false.
   fix: true

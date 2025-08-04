@@ -5,18 +5,17 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/looplj/axonhub/internal/ent"
-
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// WithAPIKeyAuth 中间件用于验证 API key
+// WithAPIKeyAuth 中间件用于验证 API key.
 func WithAPIKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 	return WithAPIKeyConfig(auth, nil)
 }
 
-// WithAPIKeyConfig 中间件用于验证 API key，支持自定义配置
+// WithAPIKeyConfig 中间件用于验证 API key，支持自定义配置.
 func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key, err := ExtractAPIKeyFromRequest(c.Request, config)

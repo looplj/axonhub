@@ -7,7 +7,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
-// Inbound represents a transformer accpet the request from user and respond to use use the transformed response.
+// Inbound represents a transformer accpet the request from user and respond to use the transformed response.
 // e.g: OpenAPI transformer accepts the request from user with OpenAPI format and respond with OpenAI format.
 type Inbound interface {
 	// TransformRequest transforms HTTP request to the unified request format.
@@ -17,7 +17,10 @@ type Inbound interface {
 	TransformResponse(ctx context.Context, response *llm.Response) (*httpclient.Response, error)
 
 	// TransformStreamChunk transforms the unified stream chunk format to HTTP response.
-	TransformStreamChunk(ctx context.Context, response *llm.Response) (*httpclient.StreamEvent, error)
+	TransformStreamChunk(
+		ctx context.Context,
+		response *llm.Response,
+	) (*httpclient.StreamEvent, error)
 }
 
 // Outbound represents a transformer that convert the generic Request to the undering provider format.

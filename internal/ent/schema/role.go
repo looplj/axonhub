@@ -9,7 +9,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
-
 	scopes2 "github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -64,7 +63,7 @@ func (Role) Annotations() []schema.Annotation {
 	}
 }
 
-// Policy 定义 Role 的权限策略
+// Policy 定义 Role 的权限策略.
 func (Role) Policy() ent.Policy {
 	return privacy.Policy{
 		Query: privacy.QueryPolicy{

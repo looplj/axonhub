@@ -8,7 +8,7 @@ import (
 )
 
 func TestWithAPIKey(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	apiKey := &ent.APIKey{
 		ID:     1,
 		UserID: 123,
@@ -45,7 +45,7 @@ func TestWithAPIKey(t *testing.T) {
 }
 
 func TestGetAPIKey(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// 测试从空 context 获取 API key
 	apiKey, ok := GetAPIKey(ctx)
@@ -68,7 +68,7 @@ func TestGetAPIKey(t *testing.T) {
 }
 
 func TestGetAPIKeyString(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	apiKey := &ent.APIKey{
 		ID:     1,
 		UserID: 123,

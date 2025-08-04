@@ -8,10 +8,8 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
-
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/objects"
-
 	scopes2 "github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -36,7 +34,9 @@ func (Channel) Indexes() []ent.Index {
 
 func (Channel) Fields() []ent.Field {
 	return []ent.Field{
-		field.Enum("type").Values("openai", "anthropic", "gemini", "deepseek", "doubao", "kimi").Immutable(),
+		field.Enum("type").
+			Values("openai", "anthropic", "gemini", "deepseek", "doubao", "kimi").
+			Immutable(),
 		field.String("base_url"),
 		field.String("name"),
 		field.String("api_key").Sensitive().NotEmpty(),
@@ -86,7 +86,7 @@ func (Channel) Annotations() []schema.Annotation {
 	}
 }
 
-// Policy 定义 Channel 的权限策略
+// Policy 定义 Channel 的权限策略.
 func (Channel) Policy() ent.Policy {
 	return privacy.Policy{
 		Query: privacy.QueryPolicy{

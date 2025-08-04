@@ -1,9 +1,8 @@
 package conf
 
 import (
-	"go.uber.org/fx"
-
 	"github.com/looplj/axonhub/internal/server"
+	"go.uber.org/fx"
 )
 
 type Config struct {
@@ -26,7 +25,15 @@ func Load() Config {
 					"http://localhost:3000",
 					"http://localhost:5173",
 				},
-				AllowedMethods:     []string{"GET", "POST", "DELETE", "PATCH", "PUT", "OPTIONS", "HEAD"},
+				AllowedMethods: []string{
+					"GET",
+					"POST",
+					"DELETE",
+					"PATCH",
+					"PUT",
+					"OPTIONS",
+					"HEAD",
+				},
 				AllowedHeaders:     []string{"*"},
 				ExposedHeaders:     nil,
 				AllowCredentials:   true,

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// APIKeyConfig 配置 API key 提取的选项
+// APIKeyConfig 配置 API key 提取的选项.
 type APIKeyConfig struct {
 	// Headers 定义要检查的 header 名称列表，按优先级排序
 	Headers []string
@@ -16,7 +16,7 @@ type APIKeyConfig struct {
 	AllowedPrefixes []string
 }
 
-// DefaultAPIKeyConfig 返回默认的 API key 配置
+// DefaultAPIKeyConfig 返回默认的 API key 配置.
 func DefaultAPIKeyConfig() *APIKeyConfig {
 	return &APIKeyConfig{
 		Headers:         []string{"Authorization", "X-API-Key", "X-Api-Key", "API-Key", "Api-Key"},
@@ -26,7 +26,7 @@ func DefaultAPIKeyConfig() *APIKeyConfig {
 }
 
 // ExtractAPIKeyFromHeader 从 Authorization header 中提取 API key（保持向后兼容）
-// 返回提取的 API key 和可能的错误
+// 返回提取的 API key 和可能的错误.
 func ExtractAPIKeyFromHeader(authHeader string) (string, error) {
 	if authHeader == "" {
 		return "", errors.New("Authorization header is required")
@@ -46,7 +46,7 @@ func ExtractAPIKeyFromHeader(authHeader string) (string, error) {
 	return apiKeyValue, nil
 }
 
-// ExtractAPIKeyFromRequest 从 HTTP 请求中提取 API key，支持多个 headers 和前缀
+// ExtractAPIKeyFromRequest 从 HTTP 请求中提取 API key，支持多个 headers 和前缀.
 func ExtractAPIKeyFromRequest(r *http.Request, config *APIKeyConfig) (string, error) {
 	if config == nil {
 		config = DefaultAPIKeyConfig()
@@ -109,7 +109,7 @@ func ExtractAPIKeyFromRequest(r *http.Request, config *APIKeyConfig) (string, er
 	return "", errors.New("API key not found in any of the supported headers")
 }
 
-// ExtractAPIKeyFromRequestSimple 简化版本，使用默认配置
+// ExtractAPIKeyFromRequestSimple 简化版本，使用默认配置.
 func ExtractAPIKeyFromRequestSimple(r *http.Request) (string, error) {
 	return ExtractAPIKeyFromRequest(r, nil)
 }

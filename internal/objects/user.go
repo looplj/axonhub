@@ -1,6 +1,6 @@
 package objects
 
-// UserInfo 用户信息
+// UserInfo 用户信息.
 type UserInfo struct {
 	Email     string   `json:"email"`
 	FirstName string   `json:"firstName"`
@@ -10,7 +10,7 @@ type UserInfo struct {
 	Roles     []Role   `json:"roles"`
 }
 
-// Role 角色信息
+// Role 角色信息.
 type Role struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
