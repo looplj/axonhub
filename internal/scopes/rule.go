@@ -144,6 +144,7 @@ func (r userOwnedQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
 		query.Where(role.HasUsersWith(func(s *sql.Selector) {
 			s.Where(sql.EQ(user.FieldID, ctxUser.ID))
 		}))
+
 		return privacy.Allow
 	}
 
@@ -174,11 +175,13 @@ func UserOwnedMutationRule() privacy.MutationRule {
 			if userID, exists := mutation.UserID(); exists && userID == user.ID {
 				return privacy.Allow
 			}
+
 			return privacy.Denyf("user can only access their own API keys")
 		case *ent.RequestMutation:
 			if userID, exists := mutation.UserID(); exists && userID == user.ID {
 				return privacy.Allow
 			}
+
 			return privacy.Denyf("user can only access their own requests")
 		}
 
@@ -198,6 +201,7 @@ func DenyIfNoUser() privacy.QueryMutationRule {
 		if !ok || user == nil {
 			return privacy.Denyf("no user in context")
 		}
+
 		return privacy.Skip
 	})
 }
@@ -209,6 +213,7 @@ func hasScope(userScopes []string, requiredScope string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 

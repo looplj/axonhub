@@ -90,6 +90,7 @@ func New(config Config) *Logger {
 	if err != nil {
 		panic(err)
 	}
+
 	zapConf := zap.Config{
 		Level:    zap.NewAtomicLevelAt(zapcore.DebugLevel),
 		Encoding: config.Encoding,
@@ -118,14 +119,18 @@ func New(config Config) *Logger {
 	} else {
 		opts = append(opts, zap.AddCallerSkip(defaultConfig.SkipLevel))
 	}
+
 	if len(config.Includes) > 0 || len(config.Excludes) > 0 {
 		opts = append(opts, withNameFilter(config.Includes, config.Excludes))
 	}
+
 	zapLogger, err := zapConf.Build(opts...)
 	if err != nil {
 		panic(err)
 	}
+
 	zapLogger = zapLogger.Named(config.Name)
+
 	return &Logger{
 		config: config,
 		logger: zapLogger,
@@ -140,8 +145,10 @@ func (l *Logger) WithName(name string) *Logger {
 	if l == globalLogger {
 		config.SkipLevel--
 	}
+
 	logger := New(config)
 	logger.hooks = l.hooks
+
 	return logger
 }
 
@@ -149,8 +156,10 @@ func (l *Logger) WithFields(fields ...Field) *Logger {
 	if len(fields) == 0 {
 		return l
 	}
+
 	nl := *l
 	nl.hooks = append(nl.hooks, &fieldsHook{fields: fields})
+
 	return &nl
 }
 
@@ -167,9 +176,11 @@ func (l *Logger) executeHooks(ctx context.Context, msg string, fields ...zap.Fie
 	for _, hook := range globalHooks {
 		fields = hook.Apply(ctx, msg, fields...)
 	}
+
 	for _, hook := range l.hooks {
 		fields = hook.Apply(ctx, msg, fields...)
 	}
+
 	return fields
 }
 
@@ -177,6 +188,7 @@ func (l *Logger) Debug(ctx context.Context, msg string, fields ...zap.Field) {
 	if !l.DebugEnabled(ctx) {
 		return
 	}
+
 	fields = l.executeHooks(ctx, msg, fields...)
 	l.logger.Debug(msg, fields...)
 }
@@ -185,6 +197,7 @@ func (l *Logger) Info(ctx context.Context, msg string, fields ...zap.Field) {
 	if !l.InfoEnabled(ctx) {
 		return
 	}
+
 	fields = l.executeHooks(ctx, msg, fields...)
 	l.logger.Info(msg, fields...)
 }
@@ -193,6 +206,7 @@ func (l *Logger) Warn(ctx context.Context, msg string, fields ...zap.Field) {
 	if !l.WarnEnabled(ctx) {
 		return
 	}
+
 	fields = l.executeHooks(ctx, msg, fields...)
 	l.logger.Warn(msg, fields...)
 }
@@ -201,6 +215,7 @@ func (l *Logger) Error(ctx context.Context, msg string, fields ...zap.Field) {
 	if !l.ErrorEnabled(ctx) {
 		return
 	}
+
 	fields = l.executeHooks(ctx, msg, fields...)
 	l.logger.Error(msg, fields...)
 }
@@ -209,6 +224,7 @@ func (l *Logger) Panic(ctx context.Context, msg string, fields ...zap.Field) {
 	if !l.PanicEnabled(ctx) {
 		return
 	}
+
 	fields = l.executeHooks(ctx, msg, fields...)
 	l.logger.Panic(msg, fields...)
 }

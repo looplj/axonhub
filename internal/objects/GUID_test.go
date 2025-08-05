@@ -10,6 +10,7 @@ func TestGUID_MarshalGQL(t *testing.T) {
 		Type string
 		UUID int
 	}
+
 	tests := []struct {
 		name   string
 		fields fields
@@ -32,6 +33,7 @@ func TestGUID_MarshalGQL(t *testing.T) {
 			}
 			w := &bytes.Buffer{}
 			guid.MarshalGQL(w)
+
 			if gotW := w.String(); gotW != tt.wantW {
 				t.Errorf("GUID.MarshalGQL() = %v, want %v", gotW, tt.wantW)
 			}
@@ -44,9 +46,11 @@ func TestGUID_UnmarshalGQL(t *testing.T) {
 		Type string
 		ID   int
 	}
+
 	type args struct {
 		v any
 	}
+
 	tests := []struct {
 		name    string
 		fields  fields

@@ -31,12 +31,14 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 		if r.Header.Get("Authorization") != "Bearer test-api-key" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(`{"error": {"message": "Invalid API key"}}`))
+
 			return
 		}
 
 		if r.Header.Get("Content-Type") != "application/json" {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(`{"error": {"message": "Invalid content type"}}`))
+
 			return
 		}
 
@@ -45,6 +47,7 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(`{"error": {"message": "Invalid JSON"}}`))
+
 			return
 		}
 
@@ -206,6 +209,7 @@ func TestIntegration_StreamingFlow(t *testing.T) {
 		if r.Header.Get("Accept") != "text/event-stream" {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(`{"error": "Expected text/event-stream"}`))
+
 			return
 		}
 
@@ -266,6 +270,7 @@ func TestIntegration_StreamingFlow(t *testing.T) {
 
 	// Read events from stream
 	eventCount := 0
+
 	for stream.Next() {
 		current := stream.Current()
 		if current == nil {

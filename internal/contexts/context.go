@@ -33,6 +33,7 @@ func GetAPIKeyString(ctx context.Context) (string, bool) {
 	if !ok || apiKey == nil {
 		return "", false
 	}
+
 	return apiKey.Key, true
 }
 

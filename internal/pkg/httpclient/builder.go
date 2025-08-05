@@ -43,6 +43,7 @@ func (rb *RequestBuilder) WithHeaders(headers map[string]string) *RequestBuilder
 	for k, v := range headers {
 		rb.request.Headers.Set(k, v)
 	}
+
 	return rb
 }
 
@@ -58,8 +59,10 @@ func (rb *RequestBuilder) WithBody(body any) *RequestBuilder {
 		if err != nil {
 			panic(err)
 		}
+
 		rb.request.Body = b
 	}
+
 	return rb
 }
 
@@ -75,6 +78,7 @@ func (rb *RequestBuilder) WithBearerToken(token string) *RequestBuilder {
 		Type:   "bearer",
 		APIKey: token,
 	}
+
 	return rb
 }
 
@@ -84,6 +88,7 @@ func (rb *RequestBuilder) WithAPIKey(apiKey string) *RequestBuilder {
 		Type:      "api_key",
 		HeaderKey: apiKey,
 	}
+
 	return rb
 }
 

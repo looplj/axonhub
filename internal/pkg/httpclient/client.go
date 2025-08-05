@@ -31,6 +31,7 @@ func NewHttpClient() HttpClient {
 // Do executes the HTTP request.
 func (hc *HttpClientImpl) Do(ctx context.Context, request *Request) (*Response, error) {
 	log.Debug(ctx, "execute http request", log.Any("request", request))
+
 	rawReq, err := hc.buildHttpRequest(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
@@ -40,6 +41,7 @@ func (hc *HttpClientImpl) Do(ctx context.Context, request *Request) (*Response, 
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
+
 	defer func() {
 		if err := rawResp.Body.Close(); err != nil {
 			log.Warn(ctx, "failed to close HTTP response body", log.Cause(err))
@@ -71,6 +73,7 @@ func (hc *HttpClientImpl) Do(ctx context.Context, request *Request) (*Response, 
 		RawResponse: rawResp,
 		Stream:      nil,
 	}
+
 	return response, nil
 }
 
@@ -154,6 +157,7 @@ func (s *sseStreamWrapper) Next() bool {
 	case <-s.ctx.Done():
 		s.err = s.ctx.Err()
 		_ = s.Close()
+
 		return false
 	default:
 	}
@@ -166,8 +170,10 @@ func (s *sseStreamWrapper) Next() bool {
 			_ = s.Close()
 			return false
 		}
+
 		s.err = err
 		_ = s.Close()
+
 		return false
 	}
 
@@ -198,8 +204,10 @@ func (s *sseStreamWrapper) Close() error {
 	if s.sseStream != nil {
 		err := s.sseStream.Close()
 		log.Debug(s.ctx, "SSE stream closed")
+
 		return err
 	}
+
 	return nil
 }
 
@@ -222,6 +230,7 @@ func (hc *HttpClientImpl) buildHttpRequest(
 	if httpReq.Header == nil {
 		httpReq.Header = make(http.Header)
 	}
+
 	httpReq.Header.Set("User-Agent", "axonhub/1.0")
 
 	// Apply authentication
@@ -242,25 +251,30 @@ func (hc *HttpClientImpl) applyAuth(req *http.Request, auth *AuthConfig) error {
 		if auth.APIKey == "" {
 			return fmt.Errorf("bearer token is required")
 		}
+
 		req.Header.Set("Authorization", "Bearer "+auth.APIKey)
 	case "api_key":
 		if auth.HeaderKey == "" {
 			return fmt.Errorf("header key is required")
 		}
+
 		req.Header.Set(auth.HeaderKey, auth.APIKey)
 	default:
 		return fmt.Errorf("unsupported auth type: %s", auth.Type)
 	}
+
 	return nil
 }
 
 // extractHeaders extracts headers from HTTP response.
 func (hc *HttpClientImpl) extractHeaders(headers http.Header) map[string]string {
 	result := make(map[string]string)
+
 	for key, values := range headers {
 		if len(values) > 0 {
 			result[key] = values[0] // Take the first value
 		}
 	}
+
 	return result
 }

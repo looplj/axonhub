@@ -91,9 +91,11 @@ func (s *SystemPrompt) MarshalJSON() ([]byte, error) {
 	if s.Prompt != nil {
 		return json.Marshal(s.Prompt)
 	}
+
 	if len(s.MultiplePrompts) > 0 {
 		return json.Marshal(s.MultiplePrompts)
 	}
+
 	return []byte("null"), nil
 }
 
@@ -103,11 +105,13 @@ func (s *SystemPrompt) UnmarshalJSON(data []byte) error {
 		s.Prompt = &str
 		return nil
 	}
+
 	var parts []SystemPromptPart
 	if err := json.Unmarshal(data, &parts); err == nil {
 		s.MultiplePrompts = parts
 		return nil
 	}
+
 	return fmt.Errorf("invalid system prompt format")
 }
 
@@ -168,6 +172,7 @@ func (c MessageContent) MarshalJSON() ([]byte, error) {
 	if c.Content != nil {
 		return json.Marshal(c.Content)
 	}
+
 	return json.Marshal(c.MultipleContent)
 }
 
@@ -176,6 +181,7 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
 		return fmt.Errorf("content cannot be null")
 	}
+
 	var blocks []ContentBlock
 	if err := json.Unmarshal(data, &blocks); err == nil {
 		c.MultipleContent = blocks
@@ -187,6 +193,7 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 		c.Content = &str
 		return nil
 	}
+
 	return fmt.Errorf("invalid content type")
 }
 

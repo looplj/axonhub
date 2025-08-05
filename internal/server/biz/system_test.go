@@ -31,7 +31,7 @@ func TestSystemService_Initialize(t *testing.T) {
 
 	// Verify secret key is set
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	secretKey, err := service.GetSecretKey(ctx)
+	secretKey, err := service.SecretKey(ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, secretKey)
 	require.Len(t, secretKey, 64) // Should be 64 hex characters (32 bytes)
@@ -46,7 +46,7 @@ func TestSystemService_Initialize(t *testing.T) {
 	require.NoError(t, err)
 
 	// Secret key should remain the same after second initialization
-	secretKey2, err := service.GetSecretKey(ctx)
+	secretKey2, err := service.SecretKey(ctx)
 	require.NoError(t, err)
 	require.Equal(t, originalKey, secretKey2)
 }
@@ -60,7 +60,7 @@ func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 
 	// Getting secret key before initialization should return error
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	_, err := service.GetSecretKey(ctx)
+	_, err := service.SecretKey(ctx)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "secret key not found")
 }

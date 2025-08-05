@@ -100,6 +100,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 	}
 
 	var lastErr error
+
 	maxAttempts := p.maxRetries + 1 // maxRetries + initial attempt
 
 	for attempt := range maxAttempts {
@@ -154,21 +155,26 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 		result = &Result{
 			Stream: true,
 		}
+
 		stream, err := p.stream(ctx, request)
 		if err != nil {
 			return nil, err
 		}
+
 		result.EventStream = stream
 	} else {
 		result = &Result{
 			Stream: false,
 		}
+
 		response, err := p.notStream(ctx, request)
 		if err != nil {
 			return nil, err
 		}
+
 		result.Response = response
 	}
+
 	return result, nil
 }
 
@@ -184,5 +190,6 @@ func (p *pipeline) isRetryableError(err error) bool {
 			return true
 		}
 	}
+
 	return false
 }

@@ -50,13 +50,16 @@ func (srv *Server) Run() error {
 		ReadTimeout: 10 * time.Minute,
 	}
 	srv.addr = addr
+
 	err := srv.server.ListenAndServe()
 	if err != nil {
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
+
 		return err
 	}
+
 	return nil
 }
 
@@ -66,6 +69,7 @@ func (srv *Server) Shutdown(ctx context.Context) error {
 
 func Run(opts ...fx.Option) {
 	var constructors []any
+
 	constructors = append(constructors, log.New)
 	constructors = append(constructors, gql.NewGraphqlHandlers, New)
 

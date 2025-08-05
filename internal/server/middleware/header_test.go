@@ -77,9 +77,11 @@ func TestExtractAPIKeyFromHeader(t *testing.T) {
 					t.Errorf("expected error '%s', got nil", tt.expectedErr)
 					return
 				}
+
 				if err.Error() != tt.expectedErr {
 					t.Errorf("expected error '%s', got '%s'", tt.expectedErr, err.Error())
 				}
+
 				return
 			}
 
@@ -260,9 +262,11 @@ func TestExtractAPIKeyFromRequest(t *testing.T) {
 					t.Errorf("expected error '%s', got nil", tt.expectedErr)
 					return
 				}
+
 				if err.Error() != tt.expectedErr {
 					t.Errorf("expected error '%s', got '%s'", tt.expectedErr, err.Error())
 				}
+
 				return
 			}
 
@@ -323,7 +327,9 @@ func TestDefaultAPIKeyConfig(t *testing.T) {
 // BenchmarkExtractAPIKeyFromHeader 性能测试.
 func BenchmarkExtractAPIKeyFromHeader(b *testing.B) {
 	authHeader := "Bearer sk-1234567890abcdef"
+
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, _ = ExtractAPIKeyFromHeader(authHeader)
 	}
@@ -333,9 +339,11 @@ func BenchmarkExtractAPIKeyFromHeader(b *testing.B) {
 func BenchmarkExtractAPIKeyFromRequest(b *testing.B) {
 	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer sk-1234567890abcdef")
+
 	config := DefaultAPIKeyConfig()
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, _ = ExtractAPIKeyFromRequest(req, config)
 	}

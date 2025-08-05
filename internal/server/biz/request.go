@@ -13,17 +13,20 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 // RequestService handles request and request execution operations.
 type RequestService struct {
-	EntClient *ent.Client
+	EntClient     *ent.Client
+	SystemService *SystemService
 }
 
 // NewRequestService creates a new RequestService.
-func NewRequestService(entClient *ent.Client) *RequestService {
+func NewRequestService(entClient *ent.Client, systemService *SystemService) *RequestService {
 	return &RequestService{
-		EntClient: entClient,
+		EntClient:     entClient,
+		SystemService: systemService,
 	}
 }
 
@@ -68,6 +71,7 @@ func (s *RequestService) CreateRequestExecution(
 		log.Error(ctx, "Failed to marshal request body", log.Cause(err))
 		return nil, err
 	}
+
 	reqExec, err := s.EntClient.RequestExecution.Create().
 		SetRequestID(req.ID).
 		SetUserID(req.UserID).
@@ -163,11 +167,25 @@ func (s *RequestService) UpdateRequestExecutionFailed(
 }
 
 // AppendRequestExecutionChunk appends a response chunk to request execution.
+// Only stores chunks if the system StoreChunks setting is enabled.
 func (s *RequestService) AppendRequestExecutionChunk(
 	ctx context.Context,
 	executionID int,
 	chunk any,
 ) error {
+	// Check if chunk storage is enabled
+	storeChunks, err := s.SystemService.StoreChunks(ctx)
+	if err != nil {
+		log.Warn(ctx, "Failed to get StoreChunks setting, defaulting to false", log.Cause(err))
+
+		storeChunks = false
+	}
+
+	// Only store chunks if enabled
+	if !storeChunks {
+		return nil
+	}
+
 	chunkBytes, err := Marshal(chunk)
 	if err != nil {
 		log.Error(ctx, "Failed to marshal chunk", log.Cause(err))
@@ -192,14 +210,16 @@ func (s *RequestService) UpdateRequestExecutionCompletedWithChunks(
 	chunks []objects.JSONRawMessage,
 	outboundTransformer transformer.Outbound,
 ) error {
-	// Convert JSONRawMessage chunks to [][]byte for transformer
-	bytesChunks := make([][]byte, len(chunks))
+	// Convert JSONRawMessage chunks to []*httpclient.StreamEvent for transformer
+	streamEvents := make([]*httpclient.StreamEvent, len(chunks))
 	for i, chunk := range chunks {
-		bytesChunks[i] = []byte(chunk)
+		streamEvents[i] = &httpclient.StreamEvent{
+			Data: []byte(chunk),
+		}
 	}
 
 	// Use outbound transformer to aggregate chunks
-	chatResp, err := outboundTransformer.AggregateStreamChunks(ctx, bytesChunks)
+	chatResp, err := outboundTransformer.AggregateStreamChunks(ctx, streamEvents)
 	if err != nil {
 		log.Error(ctx, "Failed to aggregate chunks using transformer", log.Cause(err))
 		return err
@@ -230,14 +250,16 @@ func (s *RequestService) AggregateChunksToResponseWithTransformer(
 	chunks []objects.JSONRawMessage,
 	outboundTransformer transformer.Outbound,
 ) (objects.JSONRawMessage, error) {
-	// Convert JSONRawMessage chunks to [][]byte for transformer
-	bytesChunks := make([][]byte, len(chunks))
+	// Convert JSONRawMessage chunks to []*httpclient.StreamEvent for transformer
+	streamEvents := make([]*httpclient.StreamEvent, len(chunks))
 	for i, chunk := range chunks {
-		bytesChunks[i] = []byte(chunk)
+		streamEvents[i] = &httpclient.StreamEvent{
+			Data: []byte(chunk),
+		}
 	}
 
 	// Use outbound transformer to aggregate chunks
-	chatResp, err := outboundTransformer.AggregateStreamChunks(ctx, bytesChunks)
+	chatResp, err := outboundTransformer.AggregateStreamChunks(ctx, streamEvents)
 	if err != nil {
 		return nil, err
 	}
@@ -257,8 +279,10 @@ func (s *RequestService) AggregateChunksToResponse(
 
 	// For OpenAI-style streaming, we need to aggregate the delta content from chunks
 	// into a complete ChatCompletionResponse
-	var aggregatedContent strings.Builder
-	var lastChunk map[string]interface{}
+	var (
+		aggregatedContent strings.Builder
+		lastChunk         map[string]interface{}
+	)
 
 	for _, chunk := range chunks {
 		var chunkData map[string]interface{}
@@ -319,6 +343,7 @@ func Marshal(v any) (objects.JSONRawMessage, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		return objects.JSONRawMessage(b), nil
 	}
 }

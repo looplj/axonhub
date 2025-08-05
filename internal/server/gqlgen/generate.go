@@ -24,6 +24,7 @@ func init() {
 
 func main() {
 	log.SetOutput(io.Discard)
+
 	cfg, err := config.LoadConfigFromDefaultLocations()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "failed to load config", err.Error())

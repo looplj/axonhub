@@ -24,6 +24,7 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 				"error": err.Error(),
 			})
 			c.Abort()
+
 			return
 		}
 
@@ -39,7 +40,9 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 					"error": "Failed to validate API key",
 				})
 			}
+
 			c.Abort()
+
 			return
 		}
 
@@ -64,6 +67,7 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 				"error": err.Error(),
 			})
 			c.Abort()
+
 			return
 		}
 
@@ -79,9 +83,12 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 					"error": "Failed to validate JWT token",
 				})
 			}
+
 			c.Abort()
+
 			return
 		}
+
 		ctx := contexts.WithUser(c.Request.Context(), user)
 		c.Request = c.Request.WithContext(ctx)
 

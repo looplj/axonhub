@@ -17,10 +17,13 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 		RequestID:  "",
 		RawRequest: rawReq,
 	}
+
 	body, err := io.ReadAll(rawReq.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read request body: %w", err)
 	}
+
 	req.Body = body
+
 	return req, nil
 }

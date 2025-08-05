@@ -14,8 +14,15 @@ import (
 )
 
 const (
+	// SystemKeyInitialized is the key used to store the initialized flag in the system table.
 	SystemKeyInitialized = "initialized"
-	SystemKeySecretKey   = "secret_key"
+	// SystemKeySecretKey is the key used to store the secret key in the system table.
+	SystemKeySecretKey = "secret_key"
+
+	// SystemKeyStoreChunks is the key used to store the store_chunks flag in the system table.
+	// If set to true, the system will store chunks in the database.
+	// Default value is false.
+	SystemKeyStoreChunks = "store_chunks"
 )
 
 type SystemServiceParams struct {
@@ -28,6 +35,7 @@ func NewSystemService(params SystemServiceParams) *SystemService {
 	svc := &SystemService{
 		Ent: params.Ent,
 	}
+
 	return svc
 }
 
@@ -37,13 +45,16 @@ type SystemService struct {
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
 	sys, err := s.Ent.System.Query().Where(system.KeyEQ(SystemKeyInitialized)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return false, nil
 		}
+
 		return false, err
 	}
+
 	return strings.EqualFold(sys.Value, "true"), nil
 }
 
@@ -60,6 +71,7 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	if err != nil {
 		return fmt.Errorf("failed to check initialization status: %w", err)
 	}
+
 	if isInitialized {
 		// System is already initialized, nothing to do
 		return nil
@@ -75,6 +87,7 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
+
 	defer func() {
 		if err != nil {
 			tErr := tx.Rollback()
@@ -119,24 +132,46 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	if err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
 	return nil
 }
 
-// GetSecretKey retrieves the JWT secret key from system settings.
-func (s *SystemService) GetSecretKey(ctx context.Context) (string, error) {
+// SecretKey retrieves the JWT secret key from system settings.
+func (s *SystemService) SecretKey(ctx context.Context) (string, error) {
 	sys, err := s.Ent.System.Query().Where(system.KeyEQ(SystemKeySecretKey)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return "", fmt.Errorf("secret key not found, system may not be initialized")
 		}
+
 		return "", fmt.Errorf("failed to get secret key: %w", err)
 	}
+
 	return sys.Value, nil
 }
 
 // SetSecretKey sets a new JWT secret key.
 func (s *SystemService) SetSecretKey(ctx context.Context, secretKey string) error {
 	return s.setSystemValue(ctx, s.Ent.System, SystemKeySecretKey, secretKey)
+}
+
+// StoreChunks retrieves the store_chunks flag.
+func (s *SystemService) StoreChunks(ctx context.Context) (bool, error) {
+	sys, err := s.Ent.System.Query().Where(system.KeyEQ(SystemKeyStoreChunks)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("failed to get store_chunks flag: %w", err)
+	}
+
+	return sys.Value == "true", nil
+}
+
+// SetStoreChunks sets the store_chunks flag.
+func (s *SystemService) SetStoreChunks(ctx context.Context, storeChunks bool) error {
+	return s.setSystemValue(ctx, s.Ent.System, SystemKeyStoreChunks, fmt.Sprintf("%t", storeChunks))
 }
 
 // setSystemValue sets or updates a system key-value pair.
@@ -159,8 +194,10 @@ func (s *SystemService) setSystemValue(
 				if err != nil {
 					return fmt.Errorf("failed to create system setting: %w", err)
 				}
+
 				return nil
 			}
+
 			return fmt.Errorf("failed to query system setting: %w", err)
 		}
 
@@ -185,8 +222,10 @@ func (s *SystemService) setSystemValue(
 				if err != nil {
 					return fmt.Errorf("failed to create system setting: %w", err)
 				}
+
 				return nil
 			}
+
 			return fmt.Errorf("failed to query system setting: %w", err)
 		}
 

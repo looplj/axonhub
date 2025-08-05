@@ -63,6 +63,7 @@ func SetGlobalConfig(cfg Config) {
 	if err != nil {
 		panic(err)
 	}
+
 	globalLogger = New(cfg)
 }
 

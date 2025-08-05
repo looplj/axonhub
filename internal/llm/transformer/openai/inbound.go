@@ -105,6 +105,7 @@ func (t *InboundTransformer) TransformStreamChunk(
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chat completion response: %w", err)
 	}
+
 	return &httpclient.StreamEvent{
 		Type: "",
 		Data: eventData,

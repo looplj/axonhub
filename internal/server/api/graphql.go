@@ -46,5 +46,6 @@ func NewGraphHandler(es graphql.ExecutableSchema) *handler.Server {
 	srv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](1024),
 	})
+
 	return srv
 }

@@ -10,6 +10,7 @@ func CurDir() string {
 	if !ok {
 		panic("runtime error")
 	}
+
 	return filepath.Dir(file)
 }
 
@@ -18,5 +19,6 @@ func CallerDir() string {
 	if !ok {
 		panic("runtime error")
 	}
+
 	return filepath.Dir(file)
 }

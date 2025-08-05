@@ -19,6 +19,7 @@ func (p *pipeline) stream(
 	if len(p.decorators) > 0 {
 		for _, dec := range p.decorators {
 			var err error
+
 			request, err = dec.Decorate(ctx, request)
 			if err != nil {
 				log.Error(ctx, "Failed to apply decorator", log.Cause(err))
@@ -50,6 +51,7 @@ func (p *pipeline) stream(
 			if err != nil {
 				return nil, err
 			}
+
 			log.Debug(ctx, "LLM stream response", log.Any("response", llmResp))
 
 			// Transform LLM response to final HTTP stream event using inbound transformer
@@ -57,6 +59,7 @@ func (p *pipeline) stream(
 			if err != nil {
 				return nil, err
 			}
+
 			log.Debug(ctx, "Final stream event", log.Any("event", event))
 
 			return event, nil

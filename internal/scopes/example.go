@@ -140,6 +140,5 @@ func ExampleMiddleware() {
 	//     // 返回结果
 	//     json.NewEncoder(w).Encode(channels)
 	// }
-
 	fmt.Println("参考上面的注释代码，了解如何在 HTTP handler 中使用权限控制")
 }

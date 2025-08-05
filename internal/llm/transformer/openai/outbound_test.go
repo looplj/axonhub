@@ -144,6 +144,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					t.Errorf("TransformRequest() expected error but got none")
 					return
 				}
+
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf(
 						"TransformRequest() error = %v, want error containing %v",
@@ -151,6 +152,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 						tt.errContains,
 					)
 				}
+
 				return
 			}
 
@@ -184,30 +186,36 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		chunks      [][]byte
+		chunks      []*httpclient.StreamEvent
 		wantErr     bool
 		errContains string
 		validate    func(*llm.Response) bool
 	}{
 		{
 			name:   "empty chunks",
-			chunks: [][]byte{},
+			chunks: []*httpclient.StreamEvent{},
 			validate: func(resp *llm.Response) bool {
 				return resp != nil
 			},
 		},
 		{
 			name: "valid OpenAI streaming chunks",
-			chunks: [][]byte{
-				[]byte(
-					`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"}}]}`,
-				),
-				[]byte(
-					`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`,
-				),
-				[]byte(
-					`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
-				),
+			chunks: []*httpclient.StreamEvent{
+				{
+					Data: []byte(
+						`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"}}]}`,
+					),
+				},
+				{
+					Data: []byte(
+						`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`,
+					),
+				},
+				{
+					Data: []byte(
+						`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
+					),
+				},
 			},
 			validate: func(resp *llm.Response) bool {
 				if resp == nil || len(resp.Choices) == 0 {
@@ -226,14 +234,20 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 		},
 		{
 			name: "invalid JSON chunk",
-			chunks: [][]byte{
-				[]byte(
-					`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"}}]}`,
-				),
-				[]byte(`invalid json`),
-				[]byte(
-					`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`,
-				),
+			chunks: []*httpclient.StreamEvent{
+				{
+					Data: []byte(
+						`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":"Hello"}}]}`,
+					),
+				},
+				{
+					Data: []byte(`invalid json`),
+				},
+				{
+					Data: []byte(
+						`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo","choices":[{"index":0,"delta":{"content":" world"}}]}`,
+					),
+				},
 			},
 			validate: func(resp *llm.Response) bool {
 				if resp == nil || len(resp.Choices) == 0 {
@@ -254,6 +268,7 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 					t.Errorf("AggregateStreamChunks() expected error, got nil")
 					return
 				}
+
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf(
 						"AggregateStreamChunks() error = %v, want error containing %v",
@@ -261,6 +276,7 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 						tt.errContains,
 					)
 				}
+
 				return
 			}
 
@@ -381,6 +397,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 					t.Errorf("TransformResponse() expected error but got none")
 					return
 				}
+
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf(
 						"TransformResponse() error = %v, want error containing %v",
@@ -388,6 +405,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 						tt.errContains,
 					)
 				}
+
 				return
 			}
 

@@ -41,6 +41,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](1024),
 	})
+
 	return &GraphqlHandler{
 		Graphql:    gqlSrv,
 		Playground: playground.Handler("AxonHub", "/admin/graphql"),

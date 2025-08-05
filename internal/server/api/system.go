@@ -50,6 +50,7 @@ func (h *SystemHandlers) GetSystemStatus(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
 			Error: "Failed to check system status",
 		})
+
 		return
 	}
 
@@ -66,6 +67,7 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 			Success: false,
 			Message: "Invalid request format",
 		})
+
 		return
 	}
 
@@ -76,6 +78,7 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 			Success: false,
 			Message: "Failed to check initialization status",
 		})
+
 		return
 	}
 
@@ -84,6 +87,7 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 			Success: false,
 			Message: "System is already initialized",
 		})
+
 		return
 	}
 
@@ -97,6 +101,7 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 			Success: false,
 			Message: fmt.Sprintf("Failed to initialize system: %v", err),
 		})
+
 		return
 	}
 

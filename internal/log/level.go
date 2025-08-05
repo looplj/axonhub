@@ -17,7 +17,9 @@ func ForceEnabledLevelFromContext(ctx context.Context) (Level, bool) {
 	if value == nil {
 		return FatalLevel, false
 	}
+
 	lvl, ok := value.(Level)
+
 	return lvl, ok
 }
 
@@ -44,6 +46,7 @@ func (l *Logger) DebugEnabled(ctx context.Context) bool {
 	if enabled {
 		return true
 	}
+
 	return l.levelEnabledFromContext(ctx, DebugLevel)
 }
 
@@ -51,10 +54,12 @@ func (l *Logger) levelEnabledFromContext(ctx context.Context, expect Level) bool
 	if ctx == nil {
 		return false
 	}
+
 	level, ok := ForceEnabledLevelFromContext(ctx)
 	if !ok {
 		return false
 	}
+
 	return level.Enabled(expect)
 }
 
@@ -63,6 +68,7 @@ func (l *Logger) InfoEnabled(ctx context.Context) bool {
 	if enabled {
 		return true
 	}
+
 	return l.levelEnabledFromContext(ctx, InfoLevel)
 }
 
@@ -71,6 +77,7 @@ func (l *Logger) WarnEnabled(ctx context.Context) bool {
 	if enabled {
 		return true
 	}
+
 	return l.levelEnabledFromContext(ctx, WarnLevel)
 }
 
@@ -79,6 +86,7 @@ func (l *Logger) ErrorEnabled(ctx context.Context) bool {
 	if enabled {
 		return true
 	}
+
 	return l.levelEnabledFromContext(ctx, ErrorLevel)
 }
 
@@ -87,6 +95,7 @@ func (l *Logger) PanicEnabled(ctx context.Context) bool {
 	if enabled {
 		return true
 	}
+
 	return l.levelEnabledFromContext(ctx, PanicLevel)
 }
 
@@ -95,5 +104,6 @@ func (l *Logger) FataEnabled(ctx context.Context) bool {
 	if enabled {
 		return true
 	}
+
 	return l.levelEnabledFromContext(ctx, FatalLevel)
 }

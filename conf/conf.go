@@ -7,6 +7,7 @@ import (
 
 type Config struct {
 	fx.Out
+
 	APIServer server.Config
 }
 

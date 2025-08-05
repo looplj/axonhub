@@ -382,6 +382,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 
 				// Verify the response can be unmarshaled to AnthropicResponse
 				var anthropicResp Message
+
 				err := json.Unmarshal(result.Body, &anthropicResp)
 				require.NoError(t, err)
 				require.Equal(t, tt.chatResp.ID, anthropicResp.ID)
@@ -724,6 +725,7 @@ func TestAnthropicMessageContent_MarshalUnmarshal(t *testing.T) {
 
 			// Test Unmarshal
 			var content MessageContent
+
 			err = json.Unmarshal([]byte(tt.jsonStr), &content)
 			require.NoError(t, err)
 			require.Equal(t, tt.content.Content, content.Content)

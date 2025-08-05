@@ -46,11 +46,14 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 
 	if result.ChatCompletion != nil {
 		resp := result.ChatCompletion
+
 		contentType := "application/json"
 		if ct := resp.Headers.Get("Content-Type"); ct != "" {
 			contentType = ct
 		}
+
 		c.Data(resp.StatusCode, contentType, resp.Body)
+
 		return
 	}
 
@@ -73,6 +76,7 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 				cur := result.ChatCompletionStream.Current()
 				log.Debug(ctx, "stream event", log.Any("event", cur))
 				c.SSEvent(cur.Type, cur.Data)
+
 				return true
 			}
 
@@ -86,6 +90,7 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 		err := result.ChatCompletionStream.Err()
 		if err != nil {
 			log.Error(ctx, "Error in stream", log.Cause(err))
+
 			if !disconnected {
 				handlers.ErrorHandler.HandleStreamError(c, err)
 			}

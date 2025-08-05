@@ -13,6 +13,7 @@ func (m JSONRawMessage) MarshalJSON() ([]byte, error) {
 	if m == nil {
 		return []byte("null"), nil
 	}
+
 	return m, nil
 }
 
@@ -21,7 +22,9 @@ func (m *JSONRawMessage) UnmarshalJSON(data []byte) error {
 	if m == nil {
 		return errors.New("json.RawMessage: UnmarshalJSON on nil pointer")
 	}
+
 	*m = append((*m)[0:0], data...)
+
 	return nil
 }
 
@@ -31,6 +34,7 @@ func (m JSONRawMessage) MarshalGQL(w io.Writer) {
 		_, _ = w.Write([]byte("null"))
 		return
 	}
+
 	_, _ = w.Write(m)
 }
 
@@ -39,6 +43,7 @@ func (m *JSONRawMessage) UnmarshalGQL(v any) error {
 	if m == nil {
 		return errors.New("json.RawMessage: UnmarshalGQL on nil pointer")
 	}
+
 	switch v := v.(type) {
 	case *JSONRawMessage:
 		*m = append((*m)[0:0], *v...)
@@ -52,5 +57,6 @@ func (m *JSONRawMessage) UnmarshalGQL(v any) error {
 	case *map[string]any:
 		return json.Unmarshal(*m, v)
 	}
+
 	return nil
 }

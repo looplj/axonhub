@@ -27,5 +27,6 @@ func NewEntClient() *ent.Client {
 	); err != nil {
 		panic(err)
 	}
+
 	return client
 }

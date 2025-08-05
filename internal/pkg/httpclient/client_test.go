@@ -113,9 +113,11 @@ func TestHttpClientImpl_Do(t *testing.T) {
 					t.Errorf("Do() expected error but got none")
 					return
 				}
+
 				if tt.errReg != nil && !tt.errReg.MatchString(err.Error()) {
 					t.Errorf("Do() error = %v, want error containing %v", err, tt.errReg)
 				}
+
 				return
 			}
 
@@ -233,9 +235,11 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 					t.Errorf("DoStream() expected error but got none")
 					return
 				}
+
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("DoStream() error = %v, want error containing %v", err, tt.errContains)
 				}
+
 				return
 			}
 
@@ -341,6 +345,7 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 					t.Errorf("buildHttpRequest() expected error but got none")
 					return
 				}
+
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf(
 						"buildHttpRequest() error = %v, want error containing %v",
@@ -348,6 +353,7 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 						tt.errContains,
 					)
 				}
+
 				return
 			}
 
@@ -438,6 +444,7 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 					t.Errorf("applyAuth() expected error but got none")
 					return
 				}
+
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf(
 						"applyAuth() error = %v, want error containing %v",
@@ -445,6 +452,7 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 						tt.errContains,
 					)
 				}
+
 				return
 			}
 

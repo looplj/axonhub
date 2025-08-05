@@ -46,7 +46,9 @@ func (d SoftDeleteMixin) Interceptors() []ent.Interceptor {
 			if skip, _ := ctx.Value(softDeleteKey{}).(bool); skip {
 				return nil
 			}
+
 			d.P(q)
+
 			return nil
 		}),
 	}
@@ -62,6 +64,7 @@ func (d SoftDeleteMixin) Hooks() []ent.Hook {
 					if skip, _ := ctx.Value(softDeleteKey{}).(bool); skip {
 						return next.Mutate(ctx, m)
 					}
+
 					mx, ok := m.(interface {
 						SetOp(ent.Op)
 						Client() *gen.Client
@@ -71,9 +74,11 @@ func (d SoftDeleteMixin) Hooks() []ent.Hook {
 					if !ok {
 						return nil, fmt.Errorf("unexpected mutation type %T", m)
 					}
+
 					d.P(mx)
 					mx.SetOp(ent.OpUpdate)
 					mx.SetDeletedAt(time.Now())
+
 					return mx.Client().Mutate(ctx, m)
 				})
 			},

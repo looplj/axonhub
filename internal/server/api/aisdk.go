@@ -82,11 +82,14 @@ func (handlers *AiSDKHandlers) ChatCompletion(c *gin.Context) {
 
 	if result.ChatCompletion != nil {
 		resp := result.ChatCompletion
+
 		contentType := "application/json"
 		if ct := resp.Headers.Get("Content-Type"); ct != "" {
 			contentType = ct
 		}
+
 		c.Data(resp.StatusCode, contentType, resp.Body)
+
 		return
 	}
 
@@ -116,6 +119,7 @@ func (handlers *AiSDKHandlers) ChatCompletion(c *gin.Context) {
 					_, _ = w.Write(cur.Data)
 					// _, _ = w.Write([]byte("\n\n"))
 				}
+
 				return true
 			}
 
@@ -129,6 +133,7 @@ func (handlers *AiSDKHandlers) ChatCompletion(c *gin.Context) {
 		err := result.ChatCompletionStream.Err()
 		if err != nil {
 			log.Error(ctx, "Error in stream", log.Cause(err))
+
 			if !disconnected {
 				handlers.ErrorHandler.HandleStreamError(c, err)
 			}

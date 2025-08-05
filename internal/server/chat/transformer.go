@@ -54,6 +54,7 @@ func NewPersistentTransformers(
 	if err != nil {
 		return nil, nil, err
 	}
+
 	log.Debug(ctx, "receive chat request", log.Any("request", chatReq))
 
 	state := &PersistenceState{
@@ -124,6 +125,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(
 		if err != nil {
 			return nil, err
 		}
+
 		p.state.Request = req
 
 		// Choose channels
@@ -131,15 +133,18 @@ func (p *PersistentOutboundTransformer) TransformRequest(
 		if err != nil {
 			return nil, err
 		}
+
 		log.Debug(
 			ctx,
 			"choose channels",
 			log.Any("channels", channels),
 			log.Any("model", p.state.ChatRequest.Model),
 		)
+
 		if len(channels) == 0 {
 			return nil, errors.New("no provider available")
 		}
+
 		p.state.Channels = channels
 	}
 
@@ -169,6 +174,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(
 		if err != nil {
 			return nil, err
 		}
+
 		p.state.RequestExec = requestExec
 	}
 
@@ -191,6 +197,7 @@ func (p *PersistentOutboundTransformer) TransformResponse(
 				log.Warn(ctx, "Failed to update request execution status to failed", log.Cause(err))
 			}
 		}
+
 		return nil, err
 	}
 
@@ -234,7 +241,7 @@ func (p *PersistentOutboundTransformer) TransformStreamChunk(
 
 func (p *PersistentOutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
-	chunks [][]byte,
+	chunks []*httpclient.StreamEvent,
 ) (*llm.Response, error) {
 	return p.wrapped.AggregateStreamChunks(ctx, chunks)
 }
@@ -254,6 +261,7 @@ func (p *PersistentOutboundTransformer) GetCurrentChannelOutbound() transformer.
 	if p.state.CurrentChannel != nil {
 		return p.state.CurrentChannel.Outbound
 	}
+
 	return nil
 }
 

@@ -18,6 +18,7 @@ func (p *pipeline) notStream(
 	if len(p.decorators) > 0 {
 		for _, dec := range p.decorators {
 			var err error
+
 			request, err = dec.Decorate(ctx, request)
 			if err != nil {
 				log.Error(ctx, "Failed to apply decorator", log.Cause(err))

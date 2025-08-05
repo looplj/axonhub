@@ -181,6 +181,7 @@ func (t ToolChoice) MarshalJSON() ([]byte, error) {
 	if t.ToolChoice != nil {
 		return json.Marshal(t.ToolChoice)
 	}
+
 	return json.Marshal(t.NamedToolChoice)
 }
 
@@ -196,6 +197,7 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 		t.NamedToolChoice = &named
 		return nil
 	}
+
 	return errors.New("invalid tool choice type")
 }
 
@@ -216,9 +218,11 @@ func (s Stop) MarshalJSON() ([]byte, error) {
 	if s.Stop != nil {
 		return json.Marshal(s.Stop)
 	}
+
 	if len(s.MultipleStop) > 0 {
 		return json.Marshal(s.MultipleStop)
 	}
+
 	return []byte("[]"), nil
 }
 
@@ -266,6 +270,7 @@ func (c MessageContent) MarshalJSON() ([]byte, error) {
 	if c.Content != nil {
 		return json.Marshal(c.Content)
 	}
+
 	return json.Marshal(c.MultipleContent)
 }
 
@@ -281,6 +286,7 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 		c.MultipleContent = parts
 		return nil
 	}
+
 	return errors.New("invalid content type")
 }
 

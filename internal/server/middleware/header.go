@@ -67,22 +67,27 @@ func ExtractAPIKeyFromRequest(r *http.Request, config *APIKeyConfig) (string, er
 				lastError = errors.New("Authorization header must start with 'Bearer '")
 				continue
 			}
+
 			apiKey := strings.TrimPrefix(headerValue, "Bearer ")
 			if apiKey == "" {
 				lastError = errors.New("API key is required")
 				continue
 			}
+
 			return apiKey, nil
 		}
 
 		// 尝试匹配允许的前缀
-		var apiKey string
-		var foundPrefix bool
+		var (
+			apiKey      string
+			foundPrefix bool
+		)
 
 		for _, prefix := range config.AllowedPrefixes {
 			if strings.HasPrefix(headerValue, prefix) {
 				apiKey = strings.TrimPrefix(headerValue, prefix)
 				foundPrefix = true
+
 				break
 			}
 		}

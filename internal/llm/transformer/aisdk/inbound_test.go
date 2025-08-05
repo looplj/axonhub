@@ -155,6 +155,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 
 				if len(tt.expected.Messages) > 0 {
 					require.Equal(t, tt.expected.Messages[0].Role, result.Messages[0].Role)
+
 					if tt.expected.Messages[0].Content.Content != nil {
 						require.Equal(t, *tt.expected.Messages[0].Content.Content, *result.Messages[0].Content.Content)
 					}
@@ -229,6 +230,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 
 				// Parse response body
 				var responseData map[string]interface{}
+
 				err := json.Unmarshal(result.Body, &responseData)
 				require.NoError(t, err)
 

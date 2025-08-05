@@ -113,6 +113,7 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 
 			// Verify the outbound request body can be unmarshaled
 			var anthropicReq MessageRequest
+
 			err = json.Unmarshal(outboundReq.Body, &anthropicReq)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedModel, anthropicReq.Model)
@@ -173,6 +174,7 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 			require.Equal(t, "application/json", finalHttpResp.Headers.Get("Content-Type"))
 
 			var finalAnthropicResp Message
+
 			err = json.Unmarshal(finalHttpResp.Body, &finalAnthropicResp)
 			require.NoError(t, err)
 			require.Equal(t, "msg_test_123", finalAnthropicResp.ID)
@@ -187,67 +189,83 @@ func TestAnthropicTransformers_StreamingIntegration(t *testing.T) {
 	outboundTransformer := NewOutboundTransformer("", "")
 
 	// Simulate streaming chunks from Anthropic
-	chunks := [][]byte{
-		[]byte(`{
-			"type": "message_start",
-			"message": {
-				"id": "msg_stream_123",
-				"type": "message",
-				"role": "assistant",
-				"content": [],
-				"model": "claude-3-sonnet-20240229",
-				"stop_reason": null,
-				"stop_sequence": null,
-				"usage": {"input_tokens": 10, "output_tokens": 0}
-			}
-		}`),
-		[]byte(`{
-			"type": "content_block_start",
-			"index": 0,
-			"content_block": {
-				"type": "text",
-				"text": ""
-			}
-		}`),
-		[]byte(`{
-			"type": "content_block_delta",
-			"index": 0,
-			"delta": {
-				"type": "text_delta",
-				"text": "Hello"
-			}
-		}`),
-		[]byte(`{
-			"type": "content_block_delta",
-			"index": 0,
-			"delta": {
-				"type": "text_delta",
-				"text": ", this is"
-			}
-		}`),
-		[]byte(`{
-			"type": "content_block_delta",
-			"index": 0,
-			"delta": {
-				"type": "text_delta",
-				"text": " a streaming response!"
-			}
-		}`),
-		[]byte(`{
-			"type": "content_block_stop",
-			"index": 0
-		}`),
-		[]byte(`{
-			"type": "message_delta",
-			"delta": {
-				"stop_reason": "end_turn",
-				"stop_sequence": null
-			},
-			"usage": {"input_tokens": 10, "output_tokens": 25}
-		}`),
-		[]byte(`{
-			"type": "message_stop"
-		}`),
+	chunks := []*httpclient.StreamEvent{
+		{
+			Data: []byte(`{
+				"type": "message_start",
+				"message": {
+					"id": "msg_stream_123",
+					"type": "message",
+					"role": "assistant",
+					"content": [],
+					"model": "claude-3-sonnet-20240229",
+					"stop_reason": null,
+					"stop_sequence": null,
+					"usage": {"input_tokens": 10, "output_tokens": 0}
+				}
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "content_block_start",
+				"index": 0,
+				"content_block": {
+					"type": "text",
+					"text": ""
+				}
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "content_block_delta",
+				"index": 0,
+				"delta": {
+					"type": "text_delta",
+					"text": "Hello"
+				}
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "content_block_delta",
+				"index": 0,
+				"delta": {
+					"type": "text_delta",
+					"text": ", this is"
+				}
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "content_block_delta",
+				"index": 0,
+				"delta": {
+					"type": "text_delta",
+					"text": " a streaming response!"
+				}
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "content_block_stop",
+				"index": 0
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "message_delta",
+				"delta": {
+					"stop_reason": "end_turn",
+					"stop_sequence": null
+				},
+				"usage": {"input_tokens": 10, "output_tokens": 25}
+			}`),
+		},
+		{
+			Data: []byte(`{
+				"type": "message_stop"
+			}`),
+		},
 	}
 
 	// Aggregate the streaming chunks
@@ -362,6 +380,7 @@ func TestAnthropicMessageContent_EdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var content MessageContent
+
 			err := json.Unmarshal([]byte(tt.jsonStr), &content)
 
 			if tt.isValid {

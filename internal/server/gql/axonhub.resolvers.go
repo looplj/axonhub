@@ -31,6 +31,7 @@ func (r *mutationResolver) CreateChannel(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create channel: %w", err)
 	}
+
 	return channel, nil
 }
 
@@ -49,13 +50,16 @@ func (r *mutationResolver) UpdateChannel(
 	if input.SupportedModels != nil {
 		mut.SetSupportedModels(input.SupportedModels)
 	}
+
 	if input.Settings != nil {
 		mut.SetSettings(input.Settings)
 	}
+
 	channel, err := mut.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update channel: %w", err)
 	}
+
 	return channel, nil
 }
 
@@ -72,6 +76,7 @@ func (r *mutationResolver) CreateAPIKey(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API key: %w", err)
 	}
+
 	return apiKey, nil
 }
 
@@ -101,6 +106,7 @@ func (r *mutationResolver) CreateUser(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
+
 	return user, nil
 }
 
@@ -121,15 +127,18 @@ func (r *mutationResolver) UpdateUser(
 		if err != nil {
 			return nil, err
 		}
+
 		mut.SetPassword(hashedPassword)
 	}
 
 	if input.Scopes != nil {
 		mut.SetScopes(input.Scopes)
 	}
+
 	if input.AppendScopes != nil {
 		mut.AppendScopes(input.AppendScopes)
 	}
+
 	if input.ClearScopes {
 		mut.ClearScopes()
 	}
@@ -137,9 +146,11 @@ func (r *mutationResolver) UpdateUser(
 	if input.AddRoleIDs != nil {
 		mut.AddRoleIDs(input.AddRoleIDs...)
 	}
+
 	if input.RemoveRoleIDs != nil {
 		mut.RemoveRoleIDs(input.RemoveRoleIDs...)
 	}
+
 	if input.ClearRoles {
 		mut.ClearRoles()
 	}
@@ -148,6 +159,7 @@ func (r *mutationResolver) UpdateUser(
 	if err != nil {
 		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
+
 	return user, nil
 }
 
@@ -157,6 +169,7 @@ func (r *mutationResolver) DeleteUser(ctx context.Context, id objects.GUID) (boo
 	if err != nil {
 		return false, fmt.Errorf("failed to delete user: %w", err)
 	}
+
 	return true, nil
 }
 
@@ -173,6 +186,7 @@ func (r *mutationResolver) CreateRole(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create role: %w", err)
 	}
+
 	return role, nil
 }
 
@@ -187,10 +201,12 @@ func (r *mutationResolver) UpdateRole(
 	if input.Scopes != nil {
 		mut.SetScopes(input.Scopes)
 	}
+
 	role, err := mut.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update role: %w", err)
 	}
+
 	return role, nil
 }
 

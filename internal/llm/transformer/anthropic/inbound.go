@@ -99,8 +99,10 @@ func (t *InboundTransformer) TransformRequest(
 			for _, prompt := range anthropicReq.System.MultiplePrompts {
 				systemText += prompt.Text + "\n"
 			}
+
 			systemContent = &systemText
 		}
+
 		if systemContent != nil {
 			messages = append(messages, llm.Message{
 				Role: "system",
@@ -144,6 +146,7 @@ func (t *InboundTransformer) TransformRequest(
 					}
 				}
 			}
+
 			chatMsg.Content = llm.MessageContent{
 				MultipleContent: contentParts,
 			}
@@ -208,6 +211,7 @@ func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) 
 	// Convert choices to content blocks
 	if len(chatResp.Choices) > 0 {
 		choice := chatResp.Choices[0]
+
 		var message *llm.Message
 
 		if choice.Message != nil {
@@ -235,6 +239,7 @@ func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) 
 						})
 					}
 				}
+
 				resp.Content = content
 			}
 		}
@@ -289,6 +294,7 @@ func (t *InboundTransformer) TransformStreamChunk(
 			usage.InputTokens = int64(chatResp.Usage.PromptTokens)
 			usage.OutputTokens = int64(chatResp.Usage.CompletionTokens)
 		}
+
 		streamEvent = StreamEvent{
 			Type: "message_start",
 			Message: &StreamMessage{
@@ -348,6 +354,7 @@ func (t *InboundTransformer) TransformStreamChunk(
 			if choice.FinishReason != nil {
 				// Convert finish reason to Anthropic format
 				var stopReason *string
+
 				switch *choice.FinishReason {
 				case "stop":
 					reason := "end_turn"
@@ -390,6 +397,7 @@ func (t *InboundTransformer) TransformStreamChunk(
 		// Try to extract content from choices if available
 		if len(chatResp.Choices) > 0 {
 			choice := chatResp.Choices[0]
+
 			var message *llm.Message
 
 			if choice.Message != nil {

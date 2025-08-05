@@ -156,6 +156,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					t.Errorf("TransformRequest() error = nil, wantErr %v", tt.wantErr)
 					return
 				}
+
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf(
 						"TransformRequest() error = %v, want error containing %v",
@@ -163,6 +164,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 						tt.errContains,
 					)
 				}
+
 				return
 			}
 
@@ -297,6 +299,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 					t.Errorf("TransformStreamChunk() error = nil, wantErr %v", tt.wantErr)
 					return
 				}
+
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf(
 						"TransformStreamChunk() error = %v, want error containing %v",
@@ -304,6 +307,7 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 						tt.errContains,
 					)
 				}
+
 				return
 			}
 
@@ -392,6 +396,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 					t.Errorf("TransformResponse() error = nil, wantErr %v", tt.wantErr)
 					return
 				}
+
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf(
 						"TransformResponse() error = %v, want error containing %v",
@@ -399,6 +404,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 						tt.errContains,
 					)
 				}
+
 				return
 			}
 
@@ -425,5 +431,6 @@ func mustMarshal(v interface{}) []byte {
 	if err != nil {
 		panic(err)
 	}
+
 	return data
 }

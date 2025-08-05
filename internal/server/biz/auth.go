@@ -41,6 +41,7 @@ func HashPassword(password string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to hash password: %w", err)
 	}
+
 	return string(hashedPassword), nil
 }
 
@@ -55,13 +56,15 @@ func GenerateSecretKey() (string, error) {
 	if _, err := rand.Read(bytes); err != nil {
 		return "", fmt.Errorf("failed to generate random bytes: %w", err)
 	}
+
 	return hex.EncodeToString(bytes), nil
 }
 
 // GenerateJWTToken generates a JWT token for a user.
 func (s *AuthService) GenerateJWTToken(ctx context.Context, user *ent.User) (string, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	secretKey, err := s.SystemService.GetSecretKey(ctx)
+
+	secretKey, err := s.SystemService.SecretKey(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get secret key: %w", err)
 	}
@@ -85,6 +88,7 @@ func (s *AuthService) AuthenticateUser(
 	email, password string,
 ) (*ent.User, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
 	user, err := s.Ent.User.Query().
 		Where(user.EmailEQ(email)).
 		WithRoles().
@@ -105,7 +109,8 @@ func (s *AuthService) AuthenticateUser(
 // ValidateJWTToken validates a JWT token and returns the user.
 func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) (*ent.User, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	secretKey, err := s.SystemService.GetSecretKey(ctx)
+
+	secretKey, err := s.SystemService.SecretKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret key: %w", err)
 	}
@@ -114,6 +119,7 @@ func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) 
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
+
 		return []byte(secretKey), nil
 	})
 	if err != nil {
@@ -134,6 +140,7 @@ func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
+
 	return user, nil
 }
 
@@ -147,5 +154,6 @@ func (s *AuthService) ValidateAPIKey(ctx context.Context, key string) (*ent.APIK
 	if err != nil {
 		return nil, fmt.Errorf("failed to get api key: %w", err)
 	}
+
 	return apiKey, nil
 }

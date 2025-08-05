@@ -13,6 +13,7 @@ func withNameFilter(includeNames, excludeNames []string) zap.Option {
 	excludesMap := lo.SliceToMap(excludeNames, func(item string) (string, bool) {
 		return item, true
 	})
+
 	return zap.WrapCore(func(base zapcore.Core) zapcore.Core {
 		return &zapNameFilterCore{
 			Core:          base,
@@ -24,6 +25,7 @@ func withNameFilter(includeNames, excludeNames []string) zap.Option {
 
 type zapNameFilterCore struct {
 	zapcore.Core
+
 	includeNames  map[string]bool
 	excludeNamess map[string]bool
 }
@@ -45,5 +47,6 @@ func (c *zapNameFilterCore) Check(
 			return ce
 		}
 	}
+
 	return c.Core.Check(ent, ce)
 }

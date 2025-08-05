@@ -104,6 +104,7 @@ func (r *queryResolver) RequestsByStatus(ctx context.Context) ([]*RequestsByStat
 	}
 
 	var results []statusCount
+
 	err := r.client.Request.Query().
 		GroupBy(request.FieldStatus).
 		Aggregate(ent.Count()).
@@ -154,6 +155,7 @@ func (r *queryResolver) RequestsByChannel(ctx context.Context) ([]*RequestsByCha
 	}
 
 	var response []*RequestsByChannel
+
 	for channelID, count := range channelCounts {
 		if ch, exists := channelMap[channelID]; exists {
 			response = append(response, &RequestsByChannel{
@@ -175,6 +177,7 @@ func (r *queryResolver) RequestsByModel(ctx context.Context) ([]*RequestsByModel
 	}
 
 	var results []modelCount
+
 	err := r.client.RequestExecution.Query().
 		GroupBy(requestexecution.FieldModelID).
 		Aggregate(ent.Count()).
@@ -216,6 +219,7 @@ func (r *queryResolver) DailyRequestStats(
 
 	// Group by date
 	dailyStats := make(map[string]*DailyRequestStats)
+
 	for i := range daysCount {
 		date := startDate.AddDate(0, 0, i)
 		dateStr := date.Format("2006-01-02")
@@ -242,8 +246,10 @@ func (r *queryResolver) DailyRequestStats(
 	}
 
 	var response []*DailyRequestStats
+
 	for i := range daysCount {
 		date := startDate.AddDate(0, 0, i)
+
 		dateStr := date.Format("2006-01-02")
 		if stats, exists := dailyStats[dateStr]; exists {
 			response = append(response, stats)
@@ -259,8 +265,10 @@ func (r *queryResolver) HourlyRequestStats(
 	date *string,
 ) ([]*HourlyRequestStats, error) {
 	targetDate := time.Now()
+
 	if date != nil {
 		var err error
+
 		targetDate, err = time.Parse("2006-01-02", *date)
 		if err != nil {
 			return nil, fmt.Errorf("invalid date format: %w", err)
@@ -325,6 +333,7 @@ func (r *queryResolver) TopUsers(ctx context.Context, limit *int) ([]*TopUsers, 
 	}
 
 	var results []userRequestCount
+
 	err := r.client.Request.Query().
 		GroupBy(request.FieldUserID).
 		Aggregate(ent.As(ent.Count(), "request_count")).
@@ -349,12 +358,14 @@ func (r *queryResolver) TopUsers(ctx context.Context, limit *int) ([]*TopUsers, 
 
 	// Combine data and sort by request count
 	var response []*TopUsers
+
 	for _, result := range results {
 		if user, exists := userMap[result.UserID]; exists {
 			fullName := user.FirstName
 			if user.LastName != "" {
 				fullName = fullName + " " + user.LastName
 			}
+
 			response = append(response, &TopUsers{
 				UserID: objects.GUID{
 					Type: "User",

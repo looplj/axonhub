@@ -44,6 +44,7 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
 			Error: "Invalid request format",
 		})
+
 		return
 	}
 
@@ -53,6 +54,7 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, objects.ErrorResponse{
 			Error: "Invalid email or password",
 		})
+
 		return
 	}
 
@@ -62,6 +64,7 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
 			Error: "Failed to generate token",
 		})
+
 		return
 	}
 

@@ -24,24 +24,32 @@ func (guid *GUID) UnmarshalGQL(v any) error {
 	if !ok {
 		return fmt.Errorf("enum %T must be a string", v)
 	}
+
 	if str == "" {
 		return errors.New("guid is empty")
 	}
+
 	if !strings.HasPrefix(str, "gid://") {
 		return errors.New("guid must start with gid://")
 	}
+
 	str = str[6:]
+
 	idx := strings.Index(str, "/")
 	if idx == -1 {
 		return errors.New("guid must contain type and id")
 	}
+
 	typ := str[:idx]
+
 	id, err := strconv.Atoi(str[idx+1:])
 	if err != nil {
 		return err
 	}
+
 	guid.Type = typ
 	guid.ID = id
+
 	return nil
 }
 
@@ -50,6 +58,7 @@ func ParseGUID(str string) (GUID, error) {
 	if err := guid.UnmarshalGQL(str); err != nil {
 		return GUID{}, err
 	}
+
 	return guid, nil
 }
 

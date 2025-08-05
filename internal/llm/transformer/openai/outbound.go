@@ -96,6 +96,7 @@ func (t *OutboundTransformer) TransformResponse(
 		if httpResp.Error != nil {
 			return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, httpResp.Error.Message)
 		}
+
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
 	}
 
@@ -125,6 +126,7 @@ func (t *OutboundTransformer) TransformStreamChunk(
 	httpResp := &httpclient.Response{
 		Body: event.Data,
 	}
+
 	return t.TransformResponse(ctx, httpResp)
 }
 
@@ -159,7 +161,7 @@ func (t *OutboundTransformer) SetBaseURL(baseURL string) {
 // AggregateStreamChunks aggregates OpenAI streaming response chunks into a complete response.
 func (t *OutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
-	chunks [][]byte,
+	chunks []*httpclient.StreamEvent,
 ) (*llm.Response, error) {
 	if len(chunks) == 0 {
 		return &llm.Response{}, nil
@@ -167,18 +169,19 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 
 	// For OpenAI-style streaming, we need to aggregate the delta content from chunks
 	// into a complete ChatCompletionResponse
-	var aggregatedContent strings.Builder
-	var lastChunk map[string]any
+	var (
+		aggregatedContent strings.Builder
+		lastChunk         map[string]any
+	)
 
 	for _, chunk := range chunks {
-		// var event sse.Event
-		// err := json.Unmarshal(chunk, &event)
-		// if err != nil {
-		// 	continue // Skip invalid chunks
-		// }
+		// Skip [DONE] events
+		if bytes.HasPrefix(chunk.Data, []byte("[DONE]")) {
+			continue
+		}
 
 		var chunkData map[string]any
-		if err := json.Unmarshal(chunk, &chunkData); err != nil {
+		if err := json.Unmarshal(chunk.Data, &chunkData); err != nil {
 			continue // Skip invalid chunks
 		}
 

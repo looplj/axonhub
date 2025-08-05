@@ -29,6 +29,7 @@ func NewDecoratorChain() DecoratorChain {
 func (c *Chain) Add(decorator Decorator) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	c.decorators = append(c.decorators, decorator)
 }
 
@@ -52,6 +53,7 @@ func (c *Chain) Execute(ctx context.Context, request *llm.Request) (*llm.Request
 	defer c.mu.RUnlock()
 
 	currentRequest := request
+
 	var err error
 
 	// Apply each decorator in sequence
@@ -73,6 +75,7 @@ func (c *Chain) List() []Decorator {
 	// Return a copy to prevent external modification
 	result := make([]Decorator, len(c.decorators))
 	copy(result, c.decorators)
+
 	return result
 }
 
@@ -80,6 +83,7 @@ func (c *Chain) List() []Decorator {
 func (c *Chain) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	c.decorators = c.decorators[:0]
 }
 
@@ -87,6 +91,7 @@ func (c *Chain) Clear() {
 func (c *Chain) Size() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	return len(c.decorators)
 }
 

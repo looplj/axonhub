@@ -18,6 +18,7 @@ import (
 
 type Channel struct {
 	*ent.Channel
+
 	Outbound transformer.Outbound
 }
 
@@ -41,6 +42,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 			executors.CRONRule{Expr: "*/1 * * * *"},
 		),
 	)
+
 	return svc
 }
 
@@ -59,11 +61,14 @@ func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {
 
 func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
 	entities, err := svc.Ent.Channel.Query().All(ctx)
 	if err != nil {
 		return err
 	}
+
 	var channels []*Channel
+
 	for _, c := range entities {
 		//nolint:exhaustive // TODO SUPPORT.
 		switch c.Type {
@@ -81,7 +86,9 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 			})
 		}
 	}
+
 	svc.Channels = channels
+
 	return nil
 }
 
@@ -90,10 +97,12 @@ func (svc *ChannelService) ChooseChannels(
 	chatReq *llm.Request,
 ) ([]*Channel, error) {
 	var channels []*Channel
+
 	for _, channel := range svc.Channels {
 		if slices.Contains(channel.SupportedModels, chatReq.Model) {
 			channels = append(channels, channel)
 		}
 	}
+
 	return channels, nil
 }

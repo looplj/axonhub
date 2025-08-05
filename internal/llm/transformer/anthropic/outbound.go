@@ -126,6 +126,7 @@ func (t *OutboundTransformer) convertToAnthropicRequest(chatReq *llm.Request) *M
 				tools = append(tools, anthropicTool)
 			}
 		}
+
 		req.Tools = tools
 	}
 
@@ -140,6 +141,7 @@ func (t *OutboundTransformer) convertToAnthropicRequest(chatReq *llm.Request) *M
 					Prompt: msg.Content.Content,
 				}
 			}
+
 			continue
 		}
 
@@ -188,6 +190,7 @@ func (t *OutboundTransformer) convertToAnthropicRequest(chatReq *llm.Request) *M
 					}
 				}
 			}
+
 			anthropicMsg.Content = MessageContent{
 				MultipleContent: blocks,
 			}
@@ -227,6 +230,7 @@ func (t *OutboundTransformer) TransformResponse(
 		if httpResp.Error != nil {
 			return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, httpResp.Error.Message)
 		}
+
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
 	}
 
@@ -347,6 +351,7 @@ func (t *OutboundTransformer) TransformStreamChunk(
 		if streamEvent.Delta != nil && streamEvent.Delta.StopReason != nil {
 			// Determine finish reason
 			var finishReason *string
+
 			switch *streamEvent.Delta.StopReason {
 			case "end_turn":
 				reason := "stop"
@@ -442,9 +447,11 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(
 	}
 
 	// Convert content to message
-	var content llm.MessageContent
-	var toolCalls []llm.ToolCall
-	var textParts []string
+	var (
+		content   llm.MessageContent
+		toolCalls []llm.ToolCall
+		textParts []string
+	)
 
 	for _, block := range anthropicResp.Content {
 		switch block.Type {
@@ -500,6 +507,7 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(
 		for _, text := range textParts {
 			allText += text
 		}
+
 		content.Content = &allText
 		// Clear MultipleContent since we're using the simple string format
 		content.MultipleContent = nil
@@ -513,6 +521,7 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(
 
 	// Convert finish reason
 	var finishReason *string
+
 	if anthropicResp.StopReason != nil {
 		switch *anthropicResp.StopReason {
 		case "end_turn":
@@ -557,20 +566,22 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(
 // AggregateStreamChunks aggregates Anthropic streaming response chunks into a complete response.
 func (t *OutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
-	chunks [][]byte,
+	chunks []*httpclient.StreamEvent,
 ) (*llm.Response, error) {
 	if len(chunks) == 0 {
 		return &llm.Response{}, nil
 	}
 
-	var messageStart *StreamEvent
-	var contentBlocks []ContentBlock
-	var usage *Usage
-	var stopReason *string
+	var (
+		messageStart  *StreamEvent
+		contentBlocks []ContentBlock
+		usage         *Usage
+		stopReason    *string
+	)
 
 	for _, chunk := range chunks {
 		var event StreamEvent
-		if err := json.Unmarshal(chunk, &event); err != nil {
+		if err := json.Unmarshal(chunk.Data, &event); err != nil {
 			continue // Skip invalid chunks
 		}
 
@@ -597,6 +608,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 							contentBlocks[index].Text += *event.Delta.Text
 						}
 					}
+
 					if event.Delta.Thinking != nil {
 						if contentBlocks[index].Type == "thinking" {
 							contentBlocks[index].Thinking += *event.Delta.Thinking
@@ -606,6 +618,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 							contentBlocks[index].Thinking = *event.Delta.Thinking
 						}
 					}
+
 					if event.Delta.Signature != nil {
 						// Handle signature delta - append to thinking block signature
 						if contentBlocks[index].Type == "thinking" {
@@ -616,6 +629,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 							contentBlocks[index].Signature = *event.Delta.Signature
 						}
 					}
+
 					if event.Delta.PartialJSON != nil {
 						switch contentBlocks[index].Type {
 						case "tool_use":
@@ -636,6 +650,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 					stopReason = event.Delta.StopReason
 				}
 			}
+
 			if event.Usage != nil {
 				usage = event.Usage
 			}
@@ -646,6 +661,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 
 	// If no message_start event, create a default message
 	var message *Message
+
 	if messageStart != nil {
 		// Ensure we have at least one content block
 		if len(contentBlocks) == 0 {

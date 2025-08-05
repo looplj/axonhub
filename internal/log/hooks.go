@@ -26,11 +26,14 @@ func DefaultPreHook(ctx context.Context, msg string, fields ...Field) []Field {
 	if ctx == nil {
 		return nil
 	}
+
 	if ctx.Err() != nil {
 		fields = append(fields, NamedError("context_error", ctx.Err()))
 	}
+
 	if ts, ok := ctx.Deadline(); ok {
 		fields = append(fields, Time("context_deadline", ts))
 	}
+
 	return fields
 }

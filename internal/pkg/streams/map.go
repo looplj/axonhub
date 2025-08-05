@@ -49,9 +49,12 @@ func (s *mapErrStream[T, R]) Next() bool {
 			s.err = err
 			return false
 		}
+
 		s.current = cur
+
 		return true
 	}
+
 	return false
 }
 
@@ -63,6 +66,7 @@ func (s *mapErrStream[T, R]) Err() error {
 	if s.err != nil {
 		return s.err
 	}
+
 	return s.stream.Err()
 }
 

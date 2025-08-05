@@ -12,6 +12,7 @@ func As[T error](rawErr error) (T, bool) {
 func As0[T error](rawErr error) bool {
 	err := new(T)
 	ok := errors.As(rawErr, err)
+
 	return ok
 }
 
@@ -33,5 +34,6 @@ func NoErr2[T any](val T, err error) T {
 	if err != nil {
 		panic(err)
 	}
+
 	return val
 }

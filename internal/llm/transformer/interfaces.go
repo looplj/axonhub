@@ -37,5 +37,8 @@ type Outbound interface {
 
 	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
 	// This method handles provider-specific streaming formats and converts them to a unified response.
-	AggregateStreamChunks(ctx context.Context, chunks [][]byte) (*llm.Response, error)
+	AggregateStreamChunks(
+		ctx context.Context,
+		chunks []*httpclient.StreamEvent,
+	) (*llm.Response, error)
 }

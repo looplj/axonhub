@@ -167,6 +167,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 
 				// Verify the request can be unmarshaled to AnthropicRequest
 				var anthropicReq MessageRequest
+
 				err := json.Unmarshal(result.Body, &anthropicReq)
 				require.NoError(t, err)
 				require.Equal(t, tt.chatReq.Model, anthropicReq.Model)
@@ -297,83 +298,97 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		chunks   [][]byte
+		chunks   []*httpclient.StreamEvent
 		expected string
 	}{
 		{
 			name:     "empty chunks",
-			chunks:   [][]byte{},
+			chunks:   []*httpclient.StreamEvent{},
 			expected: "",
 		},
 		{
 			name: "single chunk",
-			chunks: [][]byte{
-				[]byte(`{
-					"type": "message_start",
-					"message": {
-						"id": "msg_123",
-						"type": "message",
-						"role": "assistant",
-						"content": [],
-						"model": "claude-3-sonnet-20240229"
-					}
-				}`),
-				[]byte(`{
-					"type": "content_block_delta",
-					"index": 0,
-					"delta": {
-						"type": "text_delta",
-						"text": "Hello!"
-					}
-				}`),
-				[]byte(`{
-					"type": "message_delta",
-					"delta": {
-						"stop_reason": "end_turn"
-					},
-					"usage": {
-						"input_tokens": 10,
-						"output_tokens": 5
-					}
-				}`),
+			chunks: []*httpclient.StreamEvent{
+				{
+					Data: []byte(`{
+						"type": "message_start",
+						"message": {
+							"id": "msg_123",
+							"type": "message",
+							"role": "assistant",
+							"content": [],
+							"model": "claude-3-sonnet-20240229"
+						}
+					}`),
+				},
+				{
+					Data: []byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "text_delta",
+							"text": "Hello!"
+						}
+					}`),
+				},
+				{
+					Data: []byte(`{
+						"type": "message_delta",
+						"delta": {
+							"stop_reason": "end_turn"
+						},
+						"usage": {
+							"input_tokens": 10,
+							"output_tokens": 5
+						}
+					}`),
+				},
 			},
 			expected: "Hello!",
 		},
 		{
 			name: "multiple content chunks",
-			chunks: [][]byte{
-				[]byte(`{
-					"type": "message_start",
-					"message": {
-						"id": "msg_456",
-						"type": "message",
-						"role": "assistant",
-						"content": [],
-						"model": "claude-3-sonnet-20240229"
-					}
-				}`),
-				[]byte(`{
-					"type": "content_block_delta",
-					"index": 0,
-					"delta": {
-						"type": "text_delta",
-						"text": "Hello"
-					}
-				}`),
-				[]byte(`{
-					"type": "content_block_delta",
-					"index": 0,
-					"delta": {
-						"type": "text_delta",
-						"text": ", world!"
-					}
-				}`),
-				[]byte(`{
-					"type": "message_delta",
-					"delta": {
-						"stop_reason": "end_turn"
-					}
-				}`),
+			chunks: []*httpclient.StreamEvent{
+				{
+					Data: []byte(`{
+						"type": "message_start",
+						"message": {
+							"id": "msg_456",
+							"type": "message",
+							"role": "assistant",
+							"content": [],
+							"model": "claude-3-sonnet-20240229"
+						}
+					}`),
+				},
+				{
+					Data: []byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "text_delta",
+							"text": "Hello"
+						}
+					}`),
+				},
+				{
+					Data: []byte(`{
+						"type": "content_block_delta",
+						"index": 0,
+						"delta": {
+							"type": "text_delta",
+							"text": ", world!"
+						}
+					}`),
+				},
+				{
+					Data: []byte(`{
+						"type": "message_delta",
+						"delta": {
+							"stop_reason": "end_turn"
+						}
+					}`),
+				},
 			},
 			expected: "Hello, world!",
 		},
@@ -402,7 +417,7 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 	t.Run("Streaming edge cases", func(t *testing.T) {
 		tests := []struct {
 			name        string
-			chunks      [][]byte
+			chunks      []*httpclient.StreamEvent
 			expectError bool
 			validate    func(t *testing.T, result *llm.Response)
 			errorMsg    string
@@ -419,32 +434,40 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 			},
 			{
 				name: "chunks with invalid JSON",
-				chunks: [][]byte{
-					[]byte(`{
-						"type": "message_start",
-						"message": {
-							"id": "msg_123",
-							"type": "message",
-							"role": "assistant",
-							"content": [],
-							"model": "claude-3-sonnet-20240229"
-						}
-					}`),
-					[]byte(`{invalid json}`), // This should be skipped
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "text_delta",
-							"text": "Hello"
-						}
-					}`),
-					[]byte(`{
-						"type": "message_delta",
-						"delta": {
-							"stop_reason": "end_turn"
-						}
-					}`),
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(`{
+							"type": "message_start",
+							"message": {
+								"id": "msg_123",
+								"type": "message",
+								"role": "assistant",
+								"content": [],
+								"model": "claude-3-sonnet-20240229"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{invalid json}`), // This should be skipped
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "text_delta",
+								"text": "Hello"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "message_delta",
+							"delta": {
+								"stop_reason": "end_turn"
+							}
+						}`),
+					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
@@ -456,29 +479,35 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 			},
 			{
 				name: "chunks with unknown event types",
-				chunks: [][]byte{
-					[]byte(`{
-						"type": "message_start",
-						"message": {
-							"id": "msg_123",
-							"type": "message",
-							"role": "assistant",
-							"content": [],
-							"model": "claude-3-sonnet-20240229"
-						}
-					}`),
-					[]byte(`{
-						"type": "unknown_event",
-						"some_field": "value"
-					}`), // Should be skipped
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "text_delta",
-							"text": "Hello"
-						}
-					}`),
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(`{
+							"type": "message_start",
+							"message": {
+								"id": "msg_123",
+								"type": "message",
+								"role": "assistant",
+								"content": [],
+								"model": "claude-3-sonnet-20240229"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "unknown_event",
+							"some_field": "value"
+						}`), // Should be skipped
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "text_delta",
+								"text": "Hello"
+							}
+						}`),
+					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
@@ -490,21 +519,25 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 			},
 			{
 				name: "chunks missing message_start",
-				chunks: [][]byte{
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "text_delta",
-							"text": "Hello"
-						}
-					}`),
-					[]byte(`{
-						"type": "message_delta",
-						"delta": {
-							"stop_reason": "end_turn"
-						}
-					}`),
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "text_delta",
+								"text": "Hello"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "message_delta",
+							"delta": {
+								"stop_reason": "end_turn"
+							}
+						}`),
+					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
@@ -515,48 +548,60 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 			},
 			{
 				name: "chunks with all event types",
-				chunks: [][]byte{
-					[]byte(`{
-						"type": "message_start",
-						"message": {
-							"id": "msg_complete",
-							"type": "message",
-							"role": "assistant",
-							"content": [],
-							"model": "claude-3-sonnet-20240229",
-							"usage": {"input_tokens": 5, "output_tokens": 0}
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_start",
-						"index": 0,
-						"content_block": {
-							"type": "text",
-							"text": ""
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "text_delta",
-							"text": "Complete"
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_stop",
-						"index": 0
-					}`),
-					[]byte(`{
-						"type": "message_delta",
-						"delta": {
-							"stop_reason": "end_turn"
-						},
-						"usage": {"input_tokens": 5, "output_tokens": 8}
-					}`),
-					[]byte(`{
-						"type": "message_stop"
-					}`),
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(`{
+							"type": "message_start",
+							"message": {
+								"id": "msg_complete",
+								"type": "message",
+								"role": "assistant",
+								"content": [],
+								"model": "claude-3-sonnet-20240229",
+								"usage": {"input_tokens": 5, "output_tokens": 0}
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_start",
+							"index": 0,
+							"content_block": {
+								"type": "text",
+								"text": ""
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "text_delta",
+								"text": "Complete"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_stop",
+							"index": 0
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "message_delta",
+							"delta": {
+								"stop_reason": "end_turn"
+							},
+							"usage": {"input_tokens": 5, "output_tokens": 8}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "message_stop"
+						}`),
+					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
@@ -573,55 +618,67 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 			},
 			{
 				name: "chunks with thinking blocks",
-				chunks: [][]byte{
-					[]byte(`{
-						"type": "message_start",
-						"message": {
-							"id": "msg_thinking",
-							"type": "message",
-							"role": "assistant",
-							"content": [],
-							"model": "claude-3-sonnet-20240229"
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_start",
-						"index": 0,
-						"content_block": {
-							"type": "thinking",
-							"thinking": "Let me think about this..."
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "thinking_delta",
-							"thinking": " some more"
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_start",
-						"index": 1,
-						"content_block": {
-							"type": "text",
-							"text": ""
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 1,
-						"delta": {
-							"type": "text_delta",
-							"text": "Final answer"
-						}
-					}`),
-					[]byte(`{
-						"type": "message_delta",
-						"delta": {
-							"stop_reason": "end_turn"
-						}
-					}`),
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(`{
+							"type": "message_start",
+							"message": {
+								"id": "msg_thinking",
+								"type": "message",
+								"role": "assistant",
+								"content": [],
+								"model": "claude-3-sonnet-20240229"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_start",
+							"index": 0,
+							"content_block": {
+								"type": "thinking",
+								"thinking": "Let me think about this..."
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "thinking_delta",
+								"thinking": " some more"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_start",
+							"index": 1,
+							"content_block": {
+								"type": "text",
+								"text": ""
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 1,
+							"delta": {
+								"type": "text_delta",
+								"text": "Final answer"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "message_delta",
+							"delta": {
+								"stop_reason": "end_turn"
+							}
+						}`),
+					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
@@ -635,49 +692,59 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 			},
 			{
 				name: "chunks with tool use",
-				chunks: [][]byte{
-					[]byte(`{
-						"type": "message_start",
-						"message": {
-							"id": "msg_tool",
-							"type": "message",
-							"role": "assistant",
-							"content": [],
-							"model": "claude-3-sonnet-20240229"
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_start",
-						"index": 0,
-						"content_block": {
-							"type": "text",
-							"text": ""
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "text_delta",
-							"text": "I'll use a tool"
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_start",
-						"index": 1,
-						"content_block": {
-							"type": "tool_use",
-							"id": "tool_123",
-							"name": "calculator",
-							"input": "{\"expression\": \"2+2\"}"
-						}
-					}`),
-					[]byte(`{
-						"type": "message_delta",
-						"delta": {
-							"stop_reason": "tool_use"
-						}
-					}`),
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(`{
+							"type": "message_start",
+							"message": {
+								"id": "msg_tool",
+								"type": "message",
+								"role": "assistant",
+								"content": [],
+								"model": "claude-3-sonnet-20240229"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_start",
+							"index": 0,
+							"content_block": {
+								"type": "text",
+								"text": ""
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "text_delta",
+								"text": "I'll use a tool"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_start",
+							"index": 1,
+							"content_block": {
+								"type": "tool_use",
+								"id": "tool_123",
+								"name": "calculator",
+								"input": "{\"expression\": \"2+2\"}"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "message_delta",
+							"delta": {
+								"stop_reason": "tool_use"
+							}
+						}`),
+					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
@@ -692,48 +759,58 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 			},
 			{
 				name: "chunks with partial JSON",
-				chunks: [][]byte{
-					[]byte(`{
-						"type": "message_start",
-						"message": {
-							"id": "msg_partial",
-							"type": "message",
-							"role": "assistant",
-							"content": [],
-							"model": "claude-3-sonnet-20240229"
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_start",
-						"index": 0,
-						"content_block": {
-							"type": "tool_use",
-							"id": "tool_456",
-							"name": "json_tool"
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "input_json_delta",
-							"partial_json": "{\"key\":"
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "input_json_delta",
-							"partial_json": "\"value\"}"
-						}
-					}`),
-					[]byte(`{
-						"type": "message_delta",
-						"delta": {
-							"stop_reason": "tool_use"
-						}
-					}`),
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(`{
+							"type": "message_start",
+							"message": {
+								"id": "msg_partial",
+								"type": "message",
+								"role": "assistant",
+								"content": [],
+								"model": "claude-3-sonnet-20240229"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_start",
+							"index": 0,
+							"content_block": {
+								"type": "tool_use",
+								"id": "tool_456",
+								"name": "json_tool"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "input_json_delta",
+								"partial_json": "{\"key\":"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "input_json_delta",
+								"partial_json": "\"value\"}"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "message_delta",
+							"delta": {
+								"stop_reason": "tool_use"
+							}
+						}`),
+					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
@@ -753,34 +830,42 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 			},
 			{
 				name: "chunks with ping events",
-				chunks: [][]byte{
-					[]byte(`{
-						"type": "message_start",
-						"message": {
-							"id": "msg_ping",
-							"type": "message",
-							"role": "assistant",
-							"content": [],
-							"model": "claude-3-sonnet-20240229"
-						}
-					}`),
-					[]byte(`{
-						"type": "ping"
-					}`), // Should be ignored
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "text_delta",
-							"text": "After ping"
-						}
-					}`),
-					[]byte(`{
-						"type": "message_delta",
-						"delta": {
-							"stop_reason": "end_turn"
-						}
-					}`),
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(`{
+							"type": "message_start",
+							"message": {
+								"id": "msg_ping",
+								"type": "message",
+								"role": "assistant",
+								"content": [],
+								"model": "claude-3-sonnet-20240229"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "ping"
+						}`), // Should be ignored
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "text_delta",
+								"text": "After ping"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "message_delta",
+							"delta": {
+								"stop_reason": "end_turn"
+							}
+						}`),
+					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
@@ -792,47 +877,57 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 			},
 			{
 				name: "chunks with signature delta",
-				chunks: [][]byte{
-					[]byte(`{
-						"type": "message_start",
-						"message": {
-							"id": "msg_sig",
-							"type": "message",
-							"role": "assistant",
-							"content": [],
-							"model": "claude-3-sonnet-20240229"
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_start",
-						"index": 0,
-						"content_block": {
-							"type": "thinking",
-							"thinking": ""
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "thinking_delta",
-							"thinking": "Thinking..."
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "signature_delta",
-							"signature": "abc123"
-						}
-					}`),
-					[]byte(`{
-						"type": "message_delta",
-						"delta": {
-							"stop_reason": "end_turn"
-						}
-					}`),
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(`{
+							"type": "message_start",
+							"message": {
+								"id": "msg_sig",
+								"type": "message",
+								"role": "assistant",
+								"content": [],
+								"model": "claude-3-sonnet-20240229"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_start",
+							"index": 0,
+							"content_block": {
+								"type": "thinking",
+								"thinking": ""
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "thinking_delta",
+								"thinking": "Thinking..."
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "signature_delta",
+								"signature": "abc123"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "message_delta",
+							"delta": {
+								"stop_reason": "end_turn"
+							}
+						}`),
+					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
@@ -845,31 +940,37 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 			},
 			{
 				name: "chunks with multiple stop reasons",
-				chunks: [][]byte{
-					[]byte(`{
-						"type": "message_start",
-						"message": {
-							"id": "msg_multi_stop",
-							"type": "message",
-							"role": "assistant",
-							"content": [],
-							"model": "claude-3-sonnet-20240229"
-						}
-					}`),
-					[]byte(`{
-						"type": "content_block_delta",
-						"index": 0,
-						"delta": {
-							"type": "text_delta",
-							"text": "Test"
-						}
-					}`),
-					[]byte(`{
-						"type": "message_delta",
-						"delta": {
-							"stop_reason": "max_tokens"
-						}
-					}`),
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(`{
+							"type": "message_start",
+							"message": {
+								"id": "msg_multi_stop",
+								"type": "message",
+								"role": "assistant",
+								"content": [],
+								"model": "claude-3-sonnet-20240229"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "content_block_delta",
+							"index": 0,
+							"delta": {
+								"type": "text_delta",
+								"text": "Test"
+							}
+						}`),
+					},
+					{
+						Data: []byte(`{
+							"type": "message_delta",
+							"delta": {
+								"stop_reason": "max_tokens"
+							}
+						}`),
+					},
 				},
 				expectError: false,
 				validate: func(t *testing.T, result *llm.Response) {
@@ -886,6 +987,7 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				result, err := transformer.AggregateStreamChunks(t.Context(), tt.chunks)
 				if tt.expectError {
 					require.Error(t, err)
+
 					if tt.errorMsg != "" {
 						require.Contains(t, err.Error(), tt.errorMsg)
 					}
@@ -1571,7 +1673,7 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 		Content: []ContentBlock{
 			{
 				Type: "text",
-				Text: "Hello! How can I help?",
+				Text: "Hello! How can I help you?",
 			},
 		},
 		Model:      "claude-3-sonnet-20240229",
@@ -1589,7 +1691,7 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 	require.Equal(t, "claude-3-sonnet-20240229", result.Model)
 	require.Equal(t, 1, len(result.Choices))
 	require.Equal(t, "assistant", result.Choices[0].Message.Role)
-	require.Equal(t, "Hello! How can I help?", *result.Choices[0].Message.Content.Content)
+	require.Equal(t, "Hello! How can I help you?", *result.Choices[0].Message.Content.Content)
 	require.Equal(t, "stop", *result.Choices[0].FinishReason)
 	require.Equal(t, 10, result.Usage.PromptTokens)
 	require.Equal(t, 20, result.Usage.CompletionTokens)

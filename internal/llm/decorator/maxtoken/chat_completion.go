@@ -40,6 +40,7 @@ func (d *ChatCompletionDecoratorImpl) Decorate(
 	if request.MaxTokens == nil {
 		request.MaxTokens = d.defaultMaxTokens
 	}
+
 	return request, nil
 }
 

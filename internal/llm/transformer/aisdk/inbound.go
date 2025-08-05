@@ -89,11 +89,13 @@ func (t *InboundTransformer) TransformRequest(
 						//nolint:forcetypeassert // Will fix.
 						contentPart.Type = partType.(string)
 					}
+
 					if text, exists := partMap["text"]; exists {
 						//nolint:forcetypeassert // Will fix.
 						textStr := text.(string)
 						contentPart.Text = &textStr
 					}
+
 					if imageURL, exists := partMap["image_url"]; exists {
 						if imageMap, ok := imageURL.(map[string]interface{}); ok {
 							contentPart.ImageURL = &llm.ImageURL{}
@@ -101,15 +103,18 @@ func (t *InboundTransformer) TransformRequest(
 							if url, exists := imageMap["url"]; exists {
 								contentPart.ImageURL.URL = url.(string)
 							}
+
 							if detail, exists := imageMap["detail"]; exists {
 								//nolint:forcetypeassert // Will fix.
 								contentPart.ImageURL.Detail = detail.(string)
 							}
 						}
 					}
+
 					parts[j] = contentPart
 				}
 			}
+
 			llmMsg.Content = llm.MessageContent{
 				MultipleContent: parts,
 			}
@@ -234,10 +239,12 @@ func (t *InboundTransformer) TransformStreamChunk(
 					"toolName":   toolCall.Function.Name,
 					"args":       args,
 				}
+
 				toolCallJSON, err := json.Marshal(toolCallComplete)
 				if err != nil {
 					return nil, fmt.Errorf("failed to marshal tool call complete: %w", err)
 				}
+
 				streamData = append(streamData, fmt.Sprintf("9:%s\n", string(toolCallJSON)))
 			}
 		}
@@ -250,6 +257,7 @@ func (t *InboundTransformer) TransformStreamChunk(
 			if chunk.Usage != nil {
 				finishData["usage"] = chunk.Usage
 			}
+
 			finishJSON, _ := json.Marshal(finishData)
 			streamData = append(streamData, fmt.Sprintf("e:%s\n", string(finishJSON)))
 		}

@@ -9,6 +9,7 @@ import (
 
 type ConsoleJSONEncoder struct {
 	zapcore.Encoder
+
 	cfg zapcore.EncoderConfig
 }
 
@@ -17,7 +18,9 @@ func NewConsoleJSONEncoder(cfg zapcore.EncoderConfig) zapcore.Encoder {
 		// Use a default delimiter of '\t' for backwards compatibility
 		cfg.ConsoleSeparator = "\t"
 	}
+
 	encoder := zapcore.NewConsoleEncoder(cfg)
+
 	return &ConsoleJSONEncoder{
 		Encoder: encoder,
 		cfg:     cfg,
@@ -36,21 +39,27 @@ func (enc *ConsoleJSONEncoder) EncodeEntry(
 	if err != nil {
 		return line, err
 	}
+
 	if len(fields) == 0 {
 		return line, nil
 	}
+
 	encoder := zapcore.NewMapObjectEncoder()
 	addFields(encoder, fields)
+
 	context, err := json.MarshalIndent(encoder.Fields, "", "  ")
 	if err != nil {
 		return line, err
 	}
+
 	line.AppendString(string(context))
+
 	if enc.cfg.LineEnding != "" {
 		line.AppendString(enc.cfg.LineEnding)
 	} else {
 		line.AppendString(zapcore.DefaultLineEnding)
 	}
+
 	return line, nil
 }
 

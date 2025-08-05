@@ -66,10 +66,12 @@ func AllScopes() []Scope {
 // AllScopesAsStrings returns all available scopes as strings.
 func AllScopesAsStrings() []string {
 	scopes := AllScopes()
+
 	result := make([]string, len(scopes))
 	for i, scope := range scopes {
 		result[i] = string(scope)
 	}
+
 	return result
 }
 
@@ -102,5 +104,6 @@ func IsValidScope(scope string) bool {
 			return true
 		}
 	}
+
 	return false
 }
