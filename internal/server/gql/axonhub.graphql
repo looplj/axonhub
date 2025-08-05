@@ -45,6 +45,10 @@ type SystemStatus {
   isInitialized: Boolean!
 }
 
+type SystemSettings {
+  storeChunks: Boolean!
+}
+
 type UserInfo {
   email: String!
   firstName: String!
@@ -59,8 +63,13 @@ type RoleInfo {
   name: String!
 }
 
+input UpdateSystemSettingsInput {
+  storeChunks: Boolean
+}
+
 extend type Query {
     systemStatus: SystemStatus!
+    systemSettings: SystemSettings!
     me: UserInfo!
 }
 
@@ -76,6 +85,8 @@ type Mutation {
 
     createRole(input: CreateRoleInput!): Role!
     updateRole(id: ID!, input: UpdateRoleInput!): Role!
+
+    updateSystemSettings(input: UpdateSystemSettingsInput!): SystemSettings!
 
     signIn(input: SignInInput!): SignInPayload!
     initializeSystem(input: InitializeSystemInput!): InitializeSystemPayload!

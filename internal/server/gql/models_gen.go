@@ -80,6 +80,10 @@ type SignInPayload struct {
 	Token string    `json:"token"`
 }
 
+type SystemSettings struct {
+	StoreChunks bool `json:"storeChunks"`
+}
+
 type SystemStatus struct {
 	IsInitialized bool `json:"isInitialized"`
 }
@@ -89,6 +93,10 @@ type TopUsers struct {
 	UserName     string       `json:"userName"`
 	UserEmail    string       `json:"userEmail"`
 	RequestCount int          `json:"requestCount"`
+}
+
+type UpdateSystemSettingsInput struct {
+	StoreChunks *bool `json:"storeChunks,omitempty"`
 }
 
 type UserInfo struct {

@@ -76,6 +76,11 @@ export function useSidebarData(): SidebarData {
           icon: IconShield,
         } as NavLink,
         {
+          title: 'System',
+          url: '/system',
+          icon: IconSettings,
+        } as NavLink,
+        {
           title: 'Channels',
           url: '/channels',
           icon: IconChecklist,

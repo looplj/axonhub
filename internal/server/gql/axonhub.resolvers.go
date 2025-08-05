@@ -210,6 +210,29 @@ func (r *mutationResolver) UpdateRole(
 	return role, nil
 }
 
+// UpdateSystemSettings is the resolver for the updateSystemSettings field.
+func (r *mutationResolver) UpdateSystemSettings(
+	ctx context.Context,
+	input UpdateSystemSettingsInput,
+) (*SystemSettings, error) {
+	if input.StoreChunks != nil {
+		err := r.systemService.SetStoreChunks(ctx, *input.StoreChunks)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update store chunks setting: %w", err)
+		}
+	}
+
+	// Return current settings
+	storeChunks, err := r.systemService.StoreChunks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get store chunks setting: %w", err)
+	}
+
+	return &SystemSettings{
+		StoreChunks: storeChunks,
+	}, nil
+}
+
 // SignIn is the resolver for the signIn field.
 func (r *mutationResolver) SignIn(ctx context.Context, input SignInInput) (*SignInPayload, error) {
 	// Authenticate user
@@ -291,6 +314,18 @@ func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error)
 
 	return &SystemStatus{
 		IsInitialized: isInitialized,
+	}, nil
+}
+
+// SystemSettings is the resolver for the systemSettings field.
+func (r *queryResolver) SystemSettings(ctx context.Context) (*SystemSettings, error) {
+	storeChunks, err := r.systemService.StoreChunks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get store chunks setting: %w", err)
+	}
+
+	return &SystemSettings{
+		StoreChunks: storeChunks,
 	}, nil
 }
 

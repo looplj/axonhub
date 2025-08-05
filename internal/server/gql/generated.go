@@ -159,16 +159,17 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateAPIKey     func(childComplexity int, input ent.CreateAPIKeyInput) int
-		CreateChannel    func(childComplexity int, input ent.CreateChannelInput) int
-		CreateRole       func(childComplexity int, input ent.CreateRoleInput) int
-		CreateUser       func(childComplexity int, input ent.CreateUserInput) int
-		DeleteUser       func(childComplexity int, id objects.GUID) int
-		InitializeSystem func(childComplexity int, input InitializeSystemInput) int
-		SignIn           func(childComplexity int, input SignInInput) int
-		UpdateChannel    func(childComplexity int, id objects.GUID, input ent.UpdateChannelInput) int
-		UpdateRole       func(childComplexity int, id objects.GUID, input ent.UpdateRoleInput) int
-		UpdateUser       func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
+		CreateAPIKey         func(childComplexity int, input ent.CreateAPIKeyInput) int
+		CreateChannel        func(childComplexity int, input ent.CreateChannelInput) int
+		CreateRole           func(childComplexity int, input ent.CreateRoleInput) int
+		CreateUser           func(childComplexity int, input ent.CreateUserInput) int
+		DeleteUser           func(childComplexity int, id objects.GUID) int
+		InitializeSystem     func(childComplexity int, input InitializeSystemInput) int
+		SignIn               func(childComplexity int, input SignInInput) int
+		UpdateChannel        func(childComplexity int, id objects.GUID, input ent.UpdateChannelInput) int
+		UpdateRole           func(childComplexity int, id objects.GUID, input ent.UpdateRoleInput) int
+		UpdateSystemSettings func(childComplexity int, input UpdateSystemSettingsInput) int
+		UpdateUser           func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
 	}
 
 	PageInfo struct {
@@ -193,6 +194,7 @@ type ComplexityRoot struct {
 		RequestsByModel    func(childComplexity int) int
 		RequestsByStatus   func(childComplexity int) int
 		Roles              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) int
+		SystemSettings     func(childComplexity int) int
 		SystemStatus       func(childComplexity int) int
 		Systems            func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
 		TopUsers           func(childComplexity int, limit *int) int
@@ -327,6 +329,10 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
+	SystemSettings struct {
+		StoreChunks func(childComplexity int) int
+	}
+
 	SystemStatus struct {
 		IsInitialized func(childComplexity int) int
 	}
@@ -394,6 +400,7 @@ type MutationResolver interface {
 	DeleteUser(ctx context.Context, id objects.GUID) (bool, error)
 	CreateRole(ctx context.Context, input ent.CreateRoleInput) (*ent.Role, error)
 	UpdateRole(ctx context.Context, id objects.GUID, input ent.UpdateRoleInput) (*ent.Role, error)
+	UpdateSystemSettings(ctx context.Context, input UpdateSystemSettingsInput) (*SystemSettings, error)
 	SignIn(ctx context.Context, input SignInInput) (*SignInPayload, error)
 	InitializeSystem(ctx context.Context, input InitializeSystemInput) (*InitializeSystemPayload, error)
 }
@@ -407,6 +414,7 @@ type QueryResolver interface {
 	Systems(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) (*ent.SystemConnection, error)
 	Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error)
 	SystemStatus(ctx context.Context) (*SystemStatus, error)
+	SystemSettings(ctx context.Context) (*SystemSettings, error)
 	Me(ctx context.Context) (*UserInfo, error)
 	DashboardStats(ctx context.Context) (*DashboardStats, error)
 	RequestsByStatus(ctx context.Context) ([]*RequestsByStatus, error)
@@ -987,6 +995,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.UpdateRole(childComplexity, args["id"].(objects.GUID), args["input"].(ent.UpdateRoleInput)), true
 
+	case "Mutation.updateSystemSettings":
+		if e.complexity.Mutation.UpdateSystemSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateSystemSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateSystemSettings(childComplexity, args["input"].(UpdateSystemSettingsInput)), true
+
 	case "Mutation.updateUser":
 		if e.complexity.Mutation.UpdateUser == nil {
 			break
@@ -1164,6 +1184,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Roles(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.RoleOrder), args["where"].(*ent.RoleWhereInput)), true
+
+	case "Query.systemSettings":
+		if e.complexity.Query.SystemSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.SystemSettings(childComplexity), true
 
 	case "Query.systemStatus":
 		if e.complexity.Query.SystemStatus == nil {
@@ -1736,6 +1763,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SystemEdge.Node(childComplexity), true
 
+	case "SystemSettings.storeChunks":
+		if e.complexity.SystemSettings.StoreChunks == nil {
+			break
+		}
+
+		return e.complexity.SystemSettings.StoreChunks(childComplexity), true
+
 	case "SystemStatus.isInitialized":
 		if e.complexity.SystemStatus.IsInitialized == nil {
 			break
@@ -1983,6 +2017,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateRequestInput,
 		ec.unmarshalInputUpdateRoleInput,
 		ec.unmarshalInputUpdateSystemInput,
+		ec.unmarshalInputUpdateSystemSettingsInput,
 		ec.unmarshalInputUpdateUserInput,
 		ec.unmarshalInputUserOrder,
 		ec.unmarshalInputUserWhereInput,
@@ -2829,6 +2864,34 @@ func (ec *executionContext) field_Mutation_updateRole_argsInput(
 	}
 
 	var zeroVal ent.UpdateRoleInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateSystemSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_updateSystemSettings_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_updateSystemSettings_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (UpdateSystemSettingsInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal UpdateSystemSettingsInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNUpdateSystemSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateSystemSettingsInput(ctx, tmp)
+	}
+
+	var zeroVal UpdateSystemSettingsInput
 	return zeroVal, nil
 }
 
@@ -8066,6 +8129,65 @@ func (ec *executionContext) fieldContext_Mutation_updateRole(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateSystemSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateSystemSettings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateSystemSettings(rctx, fc.Args["input"].(UpdateSystemSettingsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*SystemSettings)
+	fc.Result = res
+	return ec.marshalNSystemSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSystemSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateSystemSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "storeChunks":
+				return ec.fieldContext_SystemSettings_storeChunks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SystemSettings", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateSystemSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_signIn(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_signIn(ctx, field)
 	if err != nil {
@@ -8890,6 +9012,54 @@ func (ec *executionContext) fieldContext_Query_systemStatus(_ context.Context, f
 				return ec.fieldContext_SystemStatus_isInitialized(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SystemStatus", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_systemSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_systemSettings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().SystemSettings(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*SystemSettings)
+	fc.Result = res
+	return ec.marshalNSystemSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSystemSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_systemSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "storeChunks":
+				return ec.fieldContext_SystemSettings_storeChunks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SystemSettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -13067,6 +13237,50 @@ func (ec *executionContext) fieldContext_SystemEdge_cursor(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SystemSettings_storeChunks(ctx context.Context, field graphql.CollectedField, obj *SystemSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SystemSettings_storeChunks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StoreChunks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SystemSettings_storeChunks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21222,6 +21436,33 @@ func (ec *executionContext) unmarshalInputUpdateSystemInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateSystemSettingsInput(ctx context.Context, obj any) (UpdateSystemSettingsInput, error) {
+	var it UpdateSystemSettingsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"storeChunks"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "storeChunks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storeChunks"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StoreChunks = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateUserInput(ctx context.Context, obj any) (ent.UpdateUserInput, error) {
 	var it ent.UpdateUserInput
 	asMap := map[string]any{}
@@ -23090,6 +23331,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateSystemSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateSystemSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "signIn":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_signIn(ctx, field)
@@ -23377,6 +23625,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_systemStatus(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "systemSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_systemSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -24963,6 +25233,45 @@ func (ec *executionContext) _SystemEdge(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._SystemEdge_node(ctx, field, obj)
 		case "cursor":
 			out.Values[i] = ec._SystemEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var systemSettingsImplementors = []string{"SystemSettings"}
+
+func (ec *executionContext) _SystemSettings(ctx context.Context, sel ast.SelectionSet, obj *SystemSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, systemSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SystemSettings")
+		case "storeChunks":
+			out.Values[i] = ec._SystemSettings_storeChunks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -26758,6 +27067,20 @@ func (ec *executionContext) marshalNSystemOrderField2ᚖgithubᚗcomᚋloopljᚋ
 	return v
 }
 
+func (ec *executionContext) marshalNSystemSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSystemSettings(ctx context.Context, sel ast.SelectionSet, v SystemSettings) graphql.Marshaler {
+	return ec._SystemSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSystemSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSystemSettings(ctx context.Context, sel ast.SelectionSet, v *SystemSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SystemSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNSystemStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSystemStatus(ctx context.Context, sel ast.SelectionSet, v SystemStatus) graphql.Marshaler {
 	return ec._SystemStatus(ctx, sel, &v)
 }
@@ -26854,6 +27177,11 @@ func (ec *executionContext) unmarshalNUpdateChannelInput2githubᚗcomᚋlooplj�
 
 func (ec *executionContext) unmarshalNUpdateRoleInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdateRoleInput(ctx context.Context, v any) (ent.UpdateRoleInput, error) {
 	res, err := ec.unmarshalInputUpdateRoleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateSystemSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateSystemSettingsInput(ctx context.Context, v any) (UpdateSystemSettingsInput, error) {
+	res, err := ec.unmarshalInputUpdateSystemSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
