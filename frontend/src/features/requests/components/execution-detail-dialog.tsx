@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { Copy, Clock, User, Key, Database, X, Hash } from 'lucide-react'
+import { Copy, Clock, Key, Database } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -45,7 +45,7 @@ export function ExecutionDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-h-[100vh] max-w-6xl'>
+      <DialogContent className='w-[90vw] h-[90vh] max-w-none -mx-12 p-4 min-w-2xl'>
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <Database className='h-5 w-5' />
@@ -117,8 +117,8 @@ export function ExecutionDetailDialog({
                   复制
                 </Button>
               </div>
-              <ScrollArea className='h-64 w-full rounded-xs border p-4'>
-                <pre className='text-xs whitespace-pre-wrap font-mono'>
+              <ScrollArea className='h-128 w-full rounded-xs border p-4'>
+                <pre className='text-xs whitespace-pre-wrap font-mono min-w-full'>
                   {formatJson(execution.requestBody)}
                 </pre>
               </ScrollArea>
@@ -140,8 +140,8 @@ export function ExecutionDetailDialog({
                   复制
                 </Button>
               </div>
-              <ScrollArea className='h-64 w-full rounded-xs border p-4'>
-                <pre className='text-xs whitespace-pre-wrap font-mono'>
+              <ScrollArea className='h-128 w-full rounded-xs border p-4'>
+                <pre className='text-xs whitespace-pre-wrap font-mono min-w-full'>
                   {execution.responseBody
                     ? formatJson(execution.responseBody)
                     : '暂无响应'}
@@ -156,7 +156,7 @@ export function ExecutionDetailDialog({
               <Separator />
               <div className='space-y-3'>
                 <h4 className='text-sm font-medium text-red-600'>错误信息</h4>
-                <ScrollArea className='h-32 w-full rounded-xs border bg-red-50 p-4'>
+                <ScrollArea className='h-64 w-full rounded-xs border bg-red-50 p-4'>
                   <pre className='text-xs whitespace-pre-wrap text-red-800'>
                     {execution.errorMessage}
                   </pre>

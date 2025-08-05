@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { Copy, Clock, User, Key, Database } from 'lucide-react'
@@ -11,11 +10,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useRequestsContext } from '../context'
 import { useRequest, useRequestExecutions } from '../data'
-import { Request, RequestExecution } from '../data/schema'
 import { getStatusColor } from './help'
 
 interface RequestDetailDialogProps {

@@ -87,19 +87,9 @@ func (processor *ChatCompletionProcessor) Process(
 
 	// Return result based on stream type
 	if result.Stream {
-		// Wrap the stream with final persistence tracking for stream completion
-		trackedStream := NewPersistentStream(
-			ctx,
-			result.EventStream,
-			outbound.GetRequest(),
-			outbound.GetRequestExecution(),
-			processor.RequestService,
-			outbound.GetCurrentChannelOutbound(),
-		)
-
 		return ChatCompletionResult{
 			ChatCompletion:       nil,
-			ChatCompletionStream: trackedStream,
+			ChatCompletionStream: result.EventStream,
 		}, nil
 	}
 

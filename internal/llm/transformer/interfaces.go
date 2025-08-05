@@ -5,6 +5,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
 // Inbound represents a transformer accpet the request from user and respond to use the transformed response.
@@ -16,13 +17,19 @@ type Inbound interface {
 	// TransformResponse transforms the unified response format to HTTP response.
 	TransformResponse(ctx context.Context, response *llm.Response) (*httpclient.Response, error)
 
+	// TransformStream transforms the unified stream response format to HTTP response.
+	TransformStream(
+		ctx context.Context,
+		stream streams.Stream[*llm.Response],
+	) (streams.Stream[*httpclient.StreamEvent], error)
+
 	// TransformStreamChunk transforms the unified stream chunk format to HTTP response.
 	TransformStreamChunk(ctx context.Context, chunk *llm.Response) (*httpclient.StreamEvent, error)
 
 	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
 	// This method handles unified-specific streaming formats and converts the chunks to a the user request format complete response.
 	// e.g: the user request with OpenAI format, but the provider response with Claude format, the chunks is the unified response format, the AggregateStreamChunks will convert the chunks to the OpenAI response format.
-	AggregateStreamChunks(ctx context.Context, chunks []*llm.Response) ([]byte, error)
+	AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, error)
 }
 
 // Outbound represents a transformer that convert the generic Request to the undering provider format.
@@ -34,7 +41,13 @@ type Outbound interface {
 	// TransformResponse transforms the HTTP response to the unified response format.
 	TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error)
 
-	// TransformStreamChunks transforms generic stream event to the unified response format.
+	// TransformStream transforms the HTTP stream response to the unified response format.
+	TransformStream(
+		ctx context.Context,
+		stream streams.Stream[*httpclient.StreamEvent],
+	) (streams.Stream[*llm.Response], error)
+
+	// TransformStreamChunk transforms the HTTP stream chunk to the unified response format.
 	TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error)
 
 	// AggregateStreamChunks aggregates streaming response chunks into a complete response.

@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	"entgo.io/ent/privacy"
@@ -11,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
@@ -20,6 +22,20 @@ type Channel struct {
 	*ent.Channel
 
 	Outbound transformer.Outbound
+}
+
+func (c Channel) ChooseModel(model string) (string, error) {
+	if slices.Contains(c.SupportedModels, model) {
+		return model, nil
+	}
+
+	for _, mapping := range c.Settings.ModelMappings {
+		if mapping.From == model {
+			return mapping.To, nil
+		}
+	}
+
+	return "", fmt.Errorf("model %s not supported in channel %s", model, c.Name)
 }
 
 type ChannelServiceParams struct {
@@ -100,6 +116,16 @@ func (svc *ChannelService) ChooseChannels(
 
 	for _, channel := range svc.Channels {
 		if slices.Contains(channel.SupportedModels, chatReq.Model) {
+			channels = append(channels, channel)
+			continue
+		}
+
+		if slices.ContainsFunc(
+			channel.Settings.ModelMappings,
+			func(model objects.ModelMapping) bool {
+				return model.From == chatReq.Model
+			},
+		) {
 			channels = append(channels, channel)
 		}
 	}

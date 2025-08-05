@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -297,14 +298,18 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 	transformer := NewOutboundTransformer("", "")
 
 	tests := []struct {
-		name     string
-		chunks   []*httpclient.StreamEvent
-		expected string
+		name      string
+		chunks    []*httpclient.StreamEvent
+		expected  string
+		assertErr assert.ErrorAssertionFunc
 	}{
 		{
 			name:     "empty chunks",
 			chunks:   []*httpclient.StreamEvent{},
 			expected: "",
+			assertErr: func(t assert.TestingT, err error, args ...interface{}) bool {
+				return assert.ErrorContains(t, err, "empty stream chunks")
+			},
 		},
 		{
 			name: "single chunk",
@@ -345,6 +350,9 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 				},
 			},
 			expected: "Hello!",
+			assertErr: func(t assert.TestingT, err error, args ...interface{}) bool {
+				return assert.NoError(t, err)
+			},
 		},
 		{
 			name: "multiple content chunks",
@@ -391,24 +399,32 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 				},
 			},
 			expected: "Hello, world!",
+			assertErr: func(t assert.TestingT, err error, args ...interface{}) bool {
+				return assert.NoError(t, err)
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resultBytes, err := transformer.AggregateStreamChunks(t.Context(), tt.chunks)
-			require.NoError(t, err)
-			require.NotNil(t, resultBytes)
-
-			// Parse the response
-			var result llm.Response
-
-			err = json.Unmarshal(resultBytes, &result)
-			require.NoError(t, err)
+			tt.assertErr(t, err)
 
 			if tt.expected == "" {
-				require.Empty(t, result.Choices)
+				if err == nil {
+					var result llm.Response
+
+					err := json.Unmarshal(resultBytes, &result)
+					require.NoError(t, err)
+					require.Empty(t, result.Choices)
+				}
 			} else {
+				require.NotNil(t, resultBytes)
+
+				var result llm.Response
+
+				err := json.Unmarshal(resultBytes, &result)
+				require.NoError(t, err)
 				require.NotEmpty(t, result.Choices)
 				require.Equal(t, tt.expected, *result.Choices[0].Message.Content.Content)
 				require.Equal(t, "assistant", result.Choices[0].Message.Role)
@@ -431,12 +447,8 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 			{
 				name:        "nil chunks",
 				chunks:      nil,
-				expectError: false,
-				validate: func(t *testing.T, result *llm.Response) {
-					t.Helper()
-					require.NotNil(t, result)
-					require.Empty(t, result.Choices)
-				},
+				expectError: true,
+				errorMsg:    "empty stream chunks",
 			},
 			{
 				name: "chunks with invalid JSON",

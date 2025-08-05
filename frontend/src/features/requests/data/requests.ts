@@ -43,8 +43,6 @@ const REQUESTS_QUERY = `
                 id
                 createdAt
                 updatedAt
-                userID
-                requestID
                 channel {
                   id
                   name
@@ -87,8 +85,15 @@ const REQUEST_DETAIL_QUERY = `
         id
         createdAt
         updatedAt
-        userID
-        apiKeyID
+        user {
+            id
+            firstName
+            lastName
+          }
+          apiKey {
+            id
+            name
+          }
         requestBody
         responseBody
         status
@@ -100,7 +105,10 @@ const REQUEST_DETAIL_QUERY = `
               updatedAt
               userID
               requestID
-              channelID
+              channel {
+                id
+                name
+              }
               modelID
               requestBody
               responseBody
@@ -141,7 +149,10 @@ const REQUEST_EXECUTIONS_QUERY = `
               updatedAt
               userID
               requestID
-              channelID
+              channel {
+                  id
+                  name
+              }
               modelID
               requestBody
               responseBody

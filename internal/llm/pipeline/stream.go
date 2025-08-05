@@ -36,35 +36,50 @@ func (p *pipeline) stream(
 	}
 
 	// Step 3: Execute streaming HTTP request
-	httpStream, err := p.HttpClient.DoStream(ctx, httpReq)
+	outboundStream, err := p.HttpClient.DoStream(ctx, httpReq)
 	if err != nil {
 		log.Error(ctx, "HTTP streaming request failed", log.Cause(err))
 		return nil, err
 	}
 
-	// Step 4: Transform the HTTP stream through the complete pipeline
-	finalStream := streams.MapErr(
-		httpStream,
-		func(src *httpclient.StreamEvent) (*httpclient.StreamEvent, error) {
-			// Transform HTTP stream event to LLM response using outbound transformer
-			llmResp, err := p.Outbound.TransformStreamChunk(ctx, src)
-			if err != nil {
-				return nil, err
-			}
+	if log.DebugEnabled(ctx) {
+		outboundStream = streams.Map(
+			outboundStream,
+			func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
+				log.Debug(ctx, "Outbound stream event", log.Any("event", event))
+				return event
+			},
+		)
+	}
 
-			log.Debug(ctx, "LLM stream response", log.Any("response", llmResp))
+	llmStream, err := p.Outbound.TransformStream(ctx, outboundStream)
+	if err != nil {
+		log.Error(ctx, "Failed to transform streaming request", log.Cause(err))
+		return nil, err
+	}
 
-			// Transform LLM response to final HTTP stream event using inbound transformer
-			event, err := p.Inbound.TransformStreamChunk(ctx, llmResp)
-			if err != nil {
-				return nil, err
-			}
+	if log.DebugEnabled(ctx) {
+		llmStream = streams.Map(llmStream, func(event *llm.Response) *llm.Response {
+			log.Debug(ctx, "LLM stream event", log.Any("event", event))
+			return event
+		})
+	}
 
-			log.Debug(ctx, "Final stream event", log.Any("event", event))
+	inboundStream, err := p.Inbound.TransformStream(ctx, llmStream)
+	if err != nil {
+		log.Error(ctx, "Failed to transform streaming request", log.Cause(err))
+		return nil, err
+	}
 
-			return event, nil
-		},
-	)
+	if log.DebugEnabled(ctx) {
+		inboundStream = streams.Map(
+			inboundStream,
+			func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
+				log.Debug(ctx, "Inbound stream event", log.Any("event", event))
+				return event
+			},
+		)
+	}
 
-	return finalStream, nil
+	return inboundStream, nil
 }

@@ -76,6 +76,7 @@ extend type Query {
 type Mutation {
     createChannel(input: CreateChannelInput!): Channel!
     updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
+    deleteChannel(id: ID!): Boolean!
 
     createAPIKey(input: CreateAPIKeyInput!): APIKey!
 

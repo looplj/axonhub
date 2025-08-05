@@ -63,6 +63,16 @@ func (r *mutationResolver) UpdateChannel(
 	return channel, nil
 }
 
+// DeleteChannel is the resolver for the deleteChannel field.
+func (r *mutationResolver) DeleteChannel(ctx context.Context, id objects.GUID) (bool, error) {
+	err := r.client.Channel.DeleteOneID(id.ID).Exec(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete channel: %w", err)
+	}
+
+	return true, nil
+}
+
 // CreateAPIKey is the resolver for the createAPIKey field.
 func (r *mutationResolver) CreateAPIKey(
 	ctx context.Context,
