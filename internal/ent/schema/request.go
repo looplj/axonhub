@@ -41,7 +41,11 @@ func (Request) Fields() []ent.Field {
 			Immutable().
 			Comment("API Key ID of the request, null for the request from the Admin."),
 		field.String("model_id").Immutable(),
+		// The original request from the user.
+		// e.g: the user request via OpenAI request format, but the actual request to the provider with Claude format, the request_body is the OpenAI request format.
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable(),
+		// The final response to the user.
+		// e.g: the provider response with Claude format, but the user expects the response with OpenAI format, the response_body is the OpenAI response format.
 		field.JSON("response_body", objects.JSONRawMessage{}).Optional(),
 		field.Enum("status").Values("pending", "processing", "completed", "failed"),
 	}

@@ -34,8 +34,14 @@ func (RequestExecution) Fields() []ent.Field {
 		field.Int("request_id").Immutable(),
 		field.Int("channel_id").Immutable(),
 		field.String("model_id").Immutable(),
+		// The original request to the provider.
+		// e.g: the user request via OpenAI request format, but the actual request to the provider with Claude format, the request_body is the Claude request format.
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable(),
+		// The final response from the provider.
+		// e.g: the provider response with Claude format, and the user expects the response with OpenAI format, the response_body is the Claude response format.
 		field.JSON("response_body", objects.JSONRawMessage{}).Optional(),
+		// The streaming response chunks from the provider.
+		// e.g: the provider response with Claude format, and the user expects the response with OpenAI format, the response_chunks is the Claude response format.
 		field.JSON("response_chunks", []objects.JSONRawMessage{}).Optional(),
 		field.String("error_message").Optional(),
 		field.Enum("status").Values("pending", "processing", "completed", "failed"),

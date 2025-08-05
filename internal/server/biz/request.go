@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
 // RequestService handles request and request execution operations.
@@ -37,7 +38,7 @@ func (s *RequestService) CreateRequest(
 	chatReq *llm.Request,
 	requestBody any,
 ) (*ent.Request, error) {
-	requestBodyBytes, err := Marshal(requestBody)
+	requestBodyBytes, err := xjson.Marshal(requestBody)
 	if err != nil {
 		log.Error(ctx, "Failed to serialize request body", log.Cause(err))
 		return nil, err
@@ -66,7 +67,7 @@ func (s *RequestService) CreateRequestExecution(
 	req *ent.Request,
 	requestBody any,
 ) (*ent.RequestExecution, error) {
-	requestBodyBytes, err := Marshal(requestBody)
+	requestBodyBytes, err := xjson.Marshal(requestBody)
 	if err != nil {
 		log.Error(ctx, "Failed to marshal request body", log.Cause(err))
 		return nil, err
@@ -94,7 +95,7 @@ func (s *RequestService) UpdateRequestCompleted(
 	requestID int,
 	responseBody any,
 ) error {
-	responseBodyBytes, err := Marshal(responseBody)
+	responseBodyBytes, err := xjson.Marshal(responseBody)
 	if err != nil {
 		log.Error(ctx, "Failed to serialize response body", log.Cause(err))
 		return err
@@ -131,7 +132,7 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 	executionID int,
 	responseBody any,
 ) error {
-	responseBodyBytes, err := Marshal(responseBody)
+	responseBodyBytes, err := xjson.Marshal(responseBody)
 	if err != nil {
 		return err
 	}
@@ -186,7 +187,7 @@ func (s *RequestService) AppendRequestExecutionChunk(
 		return nil
 	}
 
-	chunkBytes, err := Marshal(chunk)
+	chunkBytes, err := xjson.Marshal(chunk)
 	if err != nil {
 		log.Error(ctx, "Failed to marshal chunk", log.Cause(err))
 		return err
@@ -207,28 +208,12 @@ func (s *RequestService) AppendRequestExecutionChunk(
 func (s *RequestService) UpdateRequestExecutionCompletedWithChunks(
 	ctx context.Context,
 	executionID int,
-	chunks []objects.JSONRawMessage,
+	chunks []*httpclient.StreamEvent,
 	outboundTransformer transformer.Outbound,
 ) error {
-	// Convert JSONRawMessage chunks to []*httpclient.StreamEvent for transformer
-	streamEvents := make([]*httpclient.StreamEvent, len(chunks))
-	for i, chunk := range chunks {
-		streamEvents[i] = &httpclient.StreamEvent{
-			Data: []byte(chunk),
-		}
-	}
-
-	// Use outbound transformer to aggregate chunks
-	chatResp, err := outboundTransformer.AggregateStreamChunks(ctx, streamEvents)
+	aggregatedResponse, err := outboundTransformer.AggregateStreamChunks(ctx, chunks)
 	if err != nil {
 		log.Error(ctx, "Failed to aggregate chunks using transformer", log.Cause(err))
-		return err
-	}
-
-	// Marshal the aggregated response
-	aggregatedResponse, err := Marshal(chatResp)
-	if err != nil {
-		log.Error(ctx, "Failed to marshal aggregated response", log.Cause(err))
 		return err
 	}
 
@@ -247,25 +232,17 @@ func (s *RequestService) UpdateRequestExecutionCompletedWithChunks(
 // AggregateChunksToResponseWithTransformer aggregates streaming chunks using the provided outbound transformer.
 func (s *RequestService) AggregateChunksToResponseWithTransformer(
 	ctx context.Context,
-	chunks []objects.JSONRawMessage,
+	chunks []*httpclient.StreamEvent,
 	outboundTransformer transformer.Outbound,
 ) (objects.JSONRawMessage, error) {
-	// Convert JSONRawMessage chunks to []*httpclient.StreamEvent for transformer
-	streamEvents := make([]*httpclient.StreamEvent, len(chunks))
-	for i, chunk := range chunks {
-		streamEvents[i] = &httpclient.StreamEvent{
-			Data: []byte(chunk),
-		}
-	}
-
 	// Use outbound transformer to aggregate chunks
-	chatResp, err := outboundTransformer.AggregateStreamChunks(ctx, streamEvents)
+	aggregatedResponse, err := outboundTransformer.AggregateStreamChunks(ctx, chunks)
 	if err != nil {
 		return nil, err
 	}
 
-	// Marshal the aggregated response
-	return Marshal(chatResp)
+	// Return the aggregated response directly as it's already in []byte format
+	return objects.JSONRawMessage(aggregatedResponse), nil
 }
 
 // AggregateChunksToResponse aggregates streaming chunks into a complete LLM response
@@ -330,20 +307,4 @@ func (s *RequestService) AggregateChunksToResponse(
 	}
 
 	return objects.JSONRawMessage(responseBytes), nil
-}
-
-func Marshal(v any) (objects.JSONRawMessage, error) {
-	switch v := v.(type) {
-	case string:
-		return objects.JSONRawMessage(v), nil
-	case []byte:
-		return objects.JSONRawMessage(v), nil
-	default:
-		b, err := json.Marshal(v)
-		if err != nil {
-			return nil, err
-		}
-
-		return objects.JSONRawMessage(b), nil
-	}
 }

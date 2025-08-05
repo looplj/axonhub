@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
@@ -269,9 +270,15 @@ func TestAnthropicTransformers_StreamingIntegration(t *testing.T) {
 	}
 
 	// Aggregate the streaming chunks
-	chatResp, err := outboundTransformer.AggregateStreamChunks(t.Context(), chunks)
+	chatRespBytes, err := outboundTransformer.AggregateStreamChunks(t.Context(), chunks)
 	require.NoError(t, err)
-	require.NotNil(t, chatResp)
+	require.NotNil(t, chatRespBytes)
+
+	// Parse the response
+	var chatResp llm.Response
+
+	err = json.Unmarshal(chatRespBytes, &chatResp)
+	require.NoError(t, err)
 
 	// Verify the aggregated response
 	require.Equal(t, "msg_stream_123", chatResp.ID)

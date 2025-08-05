@@ -396,9 +396,15 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.AggregateStreamChunks(t.Context(), tt.chunks)
+			resultBytes, err := transformer.AggregateStreamChunks(t.Context(), tt.chunks)
 			require.NoError(t, err)
-			require.NotNil(t, result)
+			require.NotNil(t, resultBytes)
+
+			// Parse the response
+			var result llm.Response
+
+			err = json.Unmarshal(resultBytes, &result)
+			require.NoError(t, err)
 
 			if tt.expected == "" {
 				require.Empty(t, result.Choices)
@@ -984,7 +990,7 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := transformer.AggregateStreamChunks(t.Context(), tt.chunks)
+				resultBytes, err := transformer.AggregateStreamChunks(t.Context(), tt.chunks)
 				if tt.expectError {
 					require.Error(t, err)
 
@@ -993,7 +999,12 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 					}
 				} else {
 					require.NoError(t, err)
-					tt.validate(t, result)
+					// Parse the response
+					var result llm.Response
+
+					err = json.Unmarshal(resultBytes, &result)
+					require.NoError(t, err)
+					tt.validate(t, &result)
 				}
 			})
 		}

@@ -109,6 +109,13 @@ func (p *PersistentInboundTransformer) TransformStreamChunk(
 	return p.wrapped.TransformStreamChunk(ctx, response)
 }
 
+func (p *PersistentInboundTransformer) AggregateStreamChunks(
+	ctx context.Context,
+	chunks []*llm.Response,
+) ([]byte, error) {
+	return p.wrapped.AggregateStreamChunks(ctx, chunks)
+}
+
 // Outbound transformer methods for enhanced version.
 func (p *PersistentOutboundTransformer) TransformRequest(
 	ctx context.Context,
@@ -242,7 +249,7 @@ func (p *PersistentOutboundTransformer) TransformStreamChunk(
 func (p *PersistentOutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
-) (*llm.Response, error) {
+) ([]byte, error) {
 	return p.wrapped.AggregateStreamChunks(ctx, chunks)
 }
 

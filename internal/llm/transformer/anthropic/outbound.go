@@ -567,9 +567,10 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(
 func (t *OutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
-) (*llm.Response, error) {
+) ([]byte, error) {
 	if len(chunks) == 0 {
-		return &llm.Response{}, nil
+		emptyResp := &llm.Response{}
+		return json.Marshal(emptyResp)
 	}
 
 	var (
@@ -699,7 +700,9 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 		}
 	}
 
-	return t.convertToChatCompletionResponse(message), nil
+	response := t.convertToChatCompletionResponse(message)
+
+	return json.Marshal(response)
 }
 
 // SetAPIKey updates the API key.

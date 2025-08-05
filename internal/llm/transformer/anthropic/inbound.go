@@ -426,3 +426,74 @@ func (t *InboundTransformer) TransformStreamChunk(
 		Data: eventData,
 	}, nil
 }
+
+// AggregateStreamChunks aggregates streaming response chunks into a complete response.
+func (t *InboundTransformer) AggregateStreamChunks(
+	ctx context.Context,
+	chunks []*llm.Response,
+) ([]byte, error) {
+	if len(chunks) == 0 {
+		return json.Marshal(&Message{})
+	}
+
+	// For Anthropic inbound, we aggregate the unified response chunks into a complete Anthropic response
+	var (
+		aggregatedContent strings.Builder
+		lastChunk         *llm.Response
+	)
+
+	for _, chunk := range chunks {
+		if chunk == nil {
+			continue
+		}
+
+		// Extract content from the chunk
+		if len(chunk.Choices) > 0 && chunk.Choices[0].Message != nil {
+			if chunk.Choices[0].Message.Content.Content != nil {
+				aggregatedContent.WriteString(*chunk.Choices[0].Message.Content.Content)
+			}
+		} else if len(chunk.Choices) > 0 && chunk.Choices[0].Delta != nil {
+			if chunk.Choices[0].Delta.Content.Content != nil {
+				aggregatedContent.WriteString(*chunk.Choices[0].Delta.Content.Content)
+			}
+		}
+
+		// Keep the last chunk for metadata
+		lastChunk = chunk
+	}
+
+	// Create a complete Anthropic response based on the last chunk
+	if lastChunk == nil {
+		return json.Marshal(&Message{})
+	}
+
+	// Build the final Anthropic response
+	finalResponse := &Message{
+		ID:    lastChunk.ID,
+		Type:  "message",
+		Role:  "assistant",
+		Model: lastChunk.Model,
+		Content: []ContentBlock{
+			{
+				Type: "text",
+				Text: aggregatedContent.String(),
+			},
+		},
+		StopReason:   lo.ToPtr("end_turn"),
+		StopSequence: nil,
+		Usage: &Usage{
+			InputTokens:  0,
+			OutputTokens: 0,
+		},
+	}
+
+	// Copy usage information if available
+	if lastChunk.Usage != nil {
+		finalResponse.Usage = &Usage{
+			InputTokens:  int64(lastChunk.Usage.PromptTokens),
+			OutputTokens: int64(lastChunk.Usage.CompletionTokens),
+		}
+	}
+
+	return json.Marshal(finalResponse)
+}

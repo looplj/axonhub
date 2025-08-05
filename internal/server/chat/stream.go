@@ -6,17 +6,15 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// TrackedStream wraps a stream and tracks all responses for final saving
-// This version works with persistent transformers.
+// PersistentStream wraps a stream and tracks all responses for final saving to database.
 //
 //nolint:containedctx // Checked.
-type TrackedStream struct {
+type PersistentStream struct {
 	ctx                 context.Context
 	stream              streams.Stream[*httpclient.StreamEvent]
 	request             *ent.Request
@@ -27,8 +25,7 @@ type TrackedStream struct {
 	closed              bool
 }
 
-// Ensure TrackedStreamV2 implements Stream interface.
-var _ streams.Stream[*httpclient.StreamEvent] = (*TrackedStream)(nil)
+var _ streams.Stream[*httpclient.StreamEvent] = (*PersistentStream)(nil)
 
 func NewPersistentStream(
 	ctx context.Context,
@@ -37,8 +34,8 @@ func NewPersistentStream(
 	requestExec *ent.RequestExecution,
 	requestService *biz.RequestService,
 	outboundTransformer transformer.Outbound,
-) *TrackedStream {
-	return &TrackedStream{
+) *PersistentStream {
+	return &PersistentStream{
 		ctx:                 ctx,
 		stream:              stream,
 		request:             request,
@@ -50,11 +47,11 @@ func NewPersistentStream(
 	}
 }
 
-func (ts *TrackedStream) Next() bool {
+func (ts *PersistentStream) Next() bool {
 	return ts.stream.Next()
 }
 
-func (ts *TrackedStream) Current() *httpclient.StreamEvent {
+func (ts *PersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil && event.Data != nil {
 		// Collect chunks for final aggregation (chunks are already saved by persistent transformer)
@@ -64,11 +61,11 @@ func (ts *TrackedStream) Current() *httpclient.StreamEvent {
 	return event
 }
 
-func (ts *TrackedStream) Err() error {
+func (ts *PersistentStream) Err() error {
 	return ts.stream.Err()
 }
 
-func (ts *TrackedStream) Close() error {
+func (ts *PersistentStream) Close() error {
 	if ts.closed {
 		return nil
 	}
@@ -79,13 +76,13 @@ func (ts *TrackedStream) Close() error {
 	ctx := ts.ctx
 
 	// Update request execution
-	if ts.stream.Err() != nil {
+	if streamErr := ts.stream.Err(); streamErr != nil {
 		// Stream had an error
 		if ts.requestExec != nil {
 			err := ts.requestService.UpdateRequestExecutionFailed(
 				ctx,
 				ts.requestExec.ID,
-				ts.stream.Err().Error(),
+				streamErr.Error(),
 			)
 			if err != nil {
 				log.Warn(ctx, "Failed to update request execution status to failed", log.Cause(err))
@@ -99,30 +96,35 @@ func (ts *TrackedStream) Close() error {
 				log.Warn(ctx, "Failed to update request status to failed", log.Cause(err))
 			}
 		}
-	} else {
-		// Stream completed successfully, aggregate chunks and update status
-		if ts.requestExec != nil && len(ts.responseChunks) > 0 {
-			// Convert StreamEvents to JSONRawMessage for existing service methods
-			jsonChunks := make([]objects.JSONRawMessage, len(ts.responseChunks))
-			for i, event := range ts.responseChunks {
-				jsonChunks[i] = objects.JSONRawMessage(event.Data)
-			}
 
-			err := ts.requestService.UpdateRequestExecutionCompletedWithChunks(ctx, ts.requestExec.ID, jsonChunks, ts.outboundTransformer)
+		return ts.stream.Close()
+	}
+
+	// Stream completed successfully, aggregate chunks and update status
+	if ts.requestExec != nil && len(ts.responseChunks) > 0 {
+		err := ts.requestService.UpdateRequestExecutionCompletedWithChunks(
+			ctx,
+			ts.requestExec.ID,
+			ts.responseChunks,
+			ts.outboundTransformer,
+		)
+		if err != nil {
+			log.Warn(ctx, "Failed to update request execution status to completed", log.Cause(err))
+		}
+
+		// Aggregate chunks for main request
+		if ts.request != nil {
+			aggregatedResponse, err := ts.requestService.AggregateChunksToResponseWithTransformer(
+				ctx,
+				ts.responseChunks,
+				ts.outboundTransformer,
+			)
 			if err != nil {
-				log.Warn(ctx, "Failed to update request execution status to completed", log.Cause(err))
-			}
-
-			// Aggregate chunks for main request
-			if ts.request != nil {
-				aggregatedResponse, err := ts.requestService.AggregateChunksToResponseWithTransformer(ctx, jsonChunks, ts.outboundTransformer)
+				log.Warn(ctx, "Failed to aggregate chunks for main request", log.Cause(err))
+			} else {
+				err = ts.requestService.UpdateRequestCompleted(ctx, ts.request.ID, aggregatedResponse)
 				if err != nil {
-					log.Warn(ctx, "Failed to aggregate chunks for main request", log.Cause(err))
-				} else {
-					err = ts.requestService.UpdateRequestCompleted(ctx, ts.request.ID, aggregatedResponse)
-					if err != nil {
-						log.Warn(ctx, "Failed to update request status to completed", log.Cause(err))
-					}
+					log.Warn(ctx, "Failed to update request status to completed", log.Cause(err))
 				}
 			}
 		}

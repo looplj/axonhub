@@ -162,9 +162,10 @@ func (t *OutboundTransformer) SetBaseURL(baseURL string) {
 func (t *OutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
-) (*llm.Response, error) {
+) ([]byte, error) {
 	if len(chunks) == 0 {
-		return &llm.Response{}, nil
+		emptyResp := &llm.Response{}
+		return json.Marshal(emptyResp)
 	}
 
 	// For OpenAI-style streaming, we need to aggregate the delta content from chunks
@@ -202,7 +203,8 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 
 	// Create a complete ChatCompletionResponse based on the last chunk structure
 	if lastChunk == nil {
-		return &llm.Response{}, nil
+		emptyResp := &llm.Response{}
+		return json.Marshal(emptyResp)
 	}
 
 	// Build the final response
@@ -229,16 +231,11 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 		},
 	}
 
-	// Marshal and unmarshal to convert to ChatCompletionResponse
+	// Marshal the final response directly
 	finalJSON, err := json.Marshal(finalResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal final response: %w", err)
 	}
 
-	var chatResp llm.Response
-	if err := json.Unmarshal(finalJSON, &chatResp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal to ChatCompletionResponse: %w", err)
-	}
-
-	return &chatResp, nil
+	return finalJSON, nil
 }

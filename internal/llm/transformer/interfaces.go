@@ -17,10 +17,12 @@ type Inbound interface {
 	TransformResponse(ctx context.Context, response *llm.Response) (*httpclient.Response, error)
 
 	// TransformStreamChunk transforms the unified stream chunk format to HTTP response.
-	TransformStreamChunk(
-		ctx context.Context,
-		response *llm.Response,
-	) (*httpclient.StreamEvent, error)
+	TransformStreamChunk(ctx context.Context, chunk *llm.Response) (*httpclient.StreamEvent, error)
+
+	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
+	// This method handles unified-specific streaming formats and converts the chunks to a the user request format complete response.
+	// e.g: the user request with OpenAI format, but the provider response with Claude format, the chunks is the unified response format, the AggregateStreamChunks will convert the chunks to the OpenAI response format.
+	AggregateStreamChunks(ctx context.Context, chunks []*llm.Response) ([]byte, error)
 }
 
 // Outbound represents a transformer that convert the generic Request to the undering provider format.
@@ -36,9 +38,7 @@ type Outbound interface {
 	TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error)
 
 	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
-	// This method handles provider-specific streaming formats and converts them to a unified response.
-	AggregateStreamChunks(
-		ctx context.Context,
-		chunks []*httpclient.StreamEvent,
-	) (*llm.Response, error)
+	// This method handles provider-specific streaming formats and converts the chunks to a original provider format complete response.
+	// e.g: the user request with OpenAI format, but the provider response with Claude format, the chunks is the Claude response format, the AggregateStreamChunks will convert the chunks to the Claude response format.
+	AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, error)
 }

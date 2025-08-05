@@ -189,13 +189,15 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 		chunks      []*httpclient.StreamEvent
 		wantErr     bool
 		errContains string
-		validate    func(*llm.Response) bool
+		validate    func([]byte) bool
 	}{
 		{
 			name:   "empty chunks",
 			chunks: []*httpclient.StreamEvent{},
-			validate: func(resp *llm.Response) bool {
-				return resp != nil
+			validate: func(respBytes []byte) bool {
+				var resp llm.Response
+				err := json.Unmarshal(respBytes, &resp)
+				return err == nil
 			},
 		},
 		{
@@ -217,8 +219,13 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 					),
 				},
 			},
-			validate: func(resp *llm.Response) bool {
-				if resp == nil || len(resp.Choices) == 0 {
+			validate: func(respBytes []byte) bool {
+				var resp llm.Response
+				err := json.Unmarshal(respBytes, &resp)
+				if err != nil {
+					return false
+				}
+				if len(resp.Choices) == 0 {
 					return false
 				}
 				// Check if content is aggregated correctly
@@ -249,8 +256,13 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 					),
 				},
 			},
-			validate: func(resp *llm.Response) bool {
-				if resp == nil || len(resp.Choices) == 0 {
+			validate: func(respBytes []byte) bool {
+				var resp llm.Response
+				err := json.Unmarshal(respBytes, &resp)
+				if err != nil {
+					return false
+				}
+				if len(resp.Choices) == 0 {
 					return false
 				}
 				// Should still aggregate valid chunks, skipping invalid ones

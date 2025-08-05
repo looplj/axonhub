@@ -734,6 +734,145 @@ func TestAnthropicMessageContent_MarshalUnmarshal(t *testing.T) {
 	}
 }
 
+func TestInboundTransformer_AggregateStreamChunks(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	tests := []struct {
+		name     string
+		chunks   []*llm.Response
+		wantErr  bool
+		validate func([]byte) bool
+	}{
+		{
+			name:    "empty chunks",
+			chunks:  []*llm.Response{},
+			wantErr: false,
+			validate: func(data []byte) bool {
+				var resp Message
+				err := json.Unmarshal(data, &resp)
+				return err == nil
+			},
+		},
+		{
+			name: "single chunk with content",
+			chunks: []*llm.Response{
+				{
+					ID:      "msg_123",
+					Object:  "chat.completion.chunk",
+					Created: 1677652288,
+					Model:   "claude-3-sonnet-20240229",
+					Choices: []llm.Choice{
+						{
+							Index: 0,
+							Delta: &llm.Message{
+								Role: "assistant",
+								Content: llm.MessageContent{
+									Content: lo.ToPtr("Hello, world!"),
+								},
+							},
+						},
+					},
+					Usage: &llm.Usage{
+						PromptTokens:     10,
+						CompletionTokens: 5,
+						TotalTokens:      15,
+					},
+				},
+			},
+			wantErr: false,
+			validate: func(data []byte) bool {
+				var resp Message
+				err := json.Unmarshal(data, &resp)
+				if err != nil {
+					return false
+				}
+				return resp.Type == "message" &&
+					resp.Role == "assistant" &&
+					len(resp.Content) == 1 &&
+					resp.Content[0].Type == "text" &&
+					resp.Content[0].Text == "Hello, world!" &&
+					resp.Usage != nil &&
+					resp.Usage.InputTokens == 10 &&
+					resp.Usage.OutputTokens == 5
+			},
+		},
+		{
+			name: "multiple chunks with content",
+			chunks: []*llm.Response{
+				{
+					ID:      "msg_123",
+					Object:  "chat.completion.chunk",
+					Created: 1677652288,
+					Model:   "claude-3-sonnet-20240229",
+					Choices: []llm.Choice{
+						{
+							Index: 0,
+							Delta: &llm.Message{
+								Role: "assistant",
+								Content: llm.MessageContent{
+									Content: lo.ToPtr("Hello, "),
+								},
+							},
+						},
+					},
+				},
+				{
+					ID:      "msg_123",
+					Object:  "chat.completion.chunk",
+					Created: 1677652288,
+					Model:   "claude-3-sonnet-20240229",
+					Choices: []llm.Choice{
+						{
+							Index: 0,
+							Delta: &llm.Message{
+								Role: "assistant",
+								Content: llm.MessageContent{
+									Content: lo.ToPtr("world!"),
+								},
+							},
+						},
+					},
+					Usage: &llm.Usage{
+						PromptTokens:     10,
+						CompletionTokens: 5,
+						TotalTokens:      15,
+					},
+				},
+			},
+			wantErr: false,
+			validate: func(data []byte) bool {
+				var resp Message
+				err := json.Unmarshal(data, &resp)
+				if err != nil {
+					return false
+				}
+				return resp.Type == "message" &&
+					resp.Role == "assistant" &&
+					len(resp.Content) == 1 &&
+					resp.Content[0].Type == "text" &&
+					resp.Content[0].Text == "Hello, world!" &&
+					resp.Usage != nil &&
+					resp.Usage.InputTokens == 10 &&
+					resp.Usage.OutputTokens == 5
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := transformer.AggregateStreamChunks(nil, tt.chunks)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AggregateStreamChunks() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr && !tt.validate(result) {
+				t.Errorf("AggregateStreamChunks() validation failed")
+			}
+		})
+	}
+}
+
 func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 	transformer := NewInboundTransformer()
 
