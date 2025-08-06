@@ -635,6 +635,94 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 				},
 			},
 			{
+				name: "chunks with detailed usage information",
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(
+							`{"type": "message_start", "message": {"id": "msg_detailed_usage", "type": "message", "role": "assistant", "content": [], "model": "claude-3-sonnet-20240229", "usage": {"input_tokens": 100, "output_tokens": 0, "cache_creation_input_tokens": 20, "cache_read_input_tokens": 50}}}`,
+						),
+					},
+					{
+						Data: []byte(
+							`{"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}`,
+						),
+					},
+					{
+						Data: []byte(
+							`{"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Response with detailed usage"}}`,
+						),
+					},
+					{
+						Data: []byte(
+							`{"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"input_tokens": 100, "output_tokens": 25, "cache_creation_input_tokens": 20, "cache_read_input_tokens": 50}}`,
+						),
+					},
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					t.Helper()
+					require.NotNil(t, result)
+					require.NotEmpty(t, result.Choices)
+					require.Equal(
+						t,
+						"Response with detailed usage",
+						*result.Choices[0].Message.Content.Content,
+					)
+					require.Equal(t, "msg_detailed_usage", result.ID)
+					require.Equal(t, "stop", *result.Choices[0].FinishReason)
+					require.NotNil(t, result.Usage)
+					require.Equal(t, 100, result.Usage.PromptTokens)
+					require.Equal(t, 25, result.Usage.CompletionTokens)
+					require.Equal(t, 125, result.Usage.TotalTokens)
+					// Verify detailed token information
+					require.NotNil(t, result.Usage.PromptTokensDetails)
+					require.Equal(t, 50, result.Usage.PromptTokensDetails.CachedTokens)
+					require.NotNil(t, result.Usage.CompletionTokensDetails)
+					require.Equal(t, 0, result.Usage.CompletionTokensDetails.ReasoningTokens)
+				},
+			},
+			{
+				name: "chunks with usage but no cache tokens",
+				chunks: []*httpclient.StreamEvent{
+					{
+						Data: []byte(
+							`{"type": "message_start", "message": {"id": "msg_no_cache_stream", "type": "message", "role": "assistant", "content": [], "model": "claude-3-sonnet-20240229"}}`,
+						),
+					},
+					{
+						Data: []byte(
+							`{"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "No cache response"}}`,
+						),
+					},
+					{
+						Data: []byte(
+							`{"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"input_tokens": 80, "output_tokens": 40, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}`,
+						),
+					},
+				},
+				expectError: false,
+				validate: func(t *testing.T, result *llm.Response) {
+					t.Helper()
+					require.NotNil(t, result)
+					require.NotEmpty(t, result.Choices)
+					require.Equal(
+						t,
+						"No cache response",
+						*result.Choices[0].Message.Content.Content,
+					)
+					require.Equal(t, "msg_no_cache_stream", result.ID)
+					require.Equal(t, "stop", *result.Choices[0].FinishReason)
+					require.NotNil(t, result.Usage)
+					require.Equal(t, 80, result.Usage.PromptTokens)
+					require.Equal(t, 40, result.Usage.CompletionTokens)
+					require.Equal(t, 120, result.Usage.TotalTokens)
+					// Verify no detailed token information when cache tokens are 0
+					require.Nil(t, result.Usage.PromptTokensDetails)
+					require.NotNil(t, result.Usage.CompletionTokensDetails)
+					require.Equal(t, 0, result.Usage.CompletionTokensDetails.ReasoningTokens)
+				},
+			},
+			{
 				name: "chunks with thinking blocks",
 				chunks: []*httpclient.StreamEvent{
 					{
@@ -1912,7 +2000,73 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				require.Equal(t, 100, result.Usage.PromptTokens)
 				require.Equal(t, 50, result.Usage.CompletionTokens)
 				require.Equal(t, 150, result.Usage.TotalTokens)
-				// Cache tokens should be included in input tokens
+				// Verify detailed token information
+				require.NotNil(t, result.Usage.PromptTokensDetails)
+				require.Equal(t, 30, result.Usage.PromptTokensDetails.CachedTokens)
+				require.NotNil(t, result.Usage.CompletionTokensDetails)
+				require.Equal(t, 0, result.Usage.CompletionTokensDetails.ReasoningTokens)
+			},
+		},
+		{
+			name: "usage with detailed token breakdown",
+			input: &Message{
+				ID:   "msg_detailed",
+				Type: "message",
+				Role: "assistant",
+				Content: []ContentBlock{
+					{Type: "text", Text: "Detailed response"},
+				},
+				Model: "claude-3-sonnet-20240229",
+				Usage: &Usage{
+					InputTokens:              200,
+					OutputTokens:             75,
+					CacheCreationInputTokens: 50,
+					CacheReadInputTokens:     100,
+					ServiceTier:              "premium",
+				},
+			},
+			validate: func(t *testing.T, result *llm.Response) {
+				t.Helper()
+				require.Equal(t, "msg_detailed", result.ID)
+				require.Equal(t, 200, result.Usage.PromptTokens)
+				require.Equal(t, 75, result.Usage.CompletionTokens)
+				require.Equal(t, 275, result.Usage.TotalTokens)
+				// Verify detailed prompt token information
+				require.NotNil(t, result.Usage.PromptTokensDetails)
+				require.Equal(t, 100, result.Usage.PromptTokensDetails.CachedTokens)
+				// Verify detailed completion token information
+				require.NotNil(t, result.Usage.CompletionTokensDetails)
+				require.Equal(t, 0, result.Usage.CompletionTokensDetails.ReasoningTokens)
+			},
+		},
+		{
+			name: "usage without cache tokens",
+			input: &Message{
+				ID:   "msg_no_cache",
+				Type: "message",
+				Role: "assistant",
+				Content: []ContentBlock{
+					{Type: "text", Text: "No cache response"},
+				},
+				Model: "claude-3-sonnet-20240229",
+				Usage: &Usage{
+					InputTokens:              80,
+					OutputTokens:             40,
+					CacheCreationInputTokens: 0,
+					CacheReadInputTokens:     0,
+					ServiceTier:              "standard",
+				},
+			},
+			validate: func(t *testing.T, result *llm.Response) {
+				t.Helper()
+				require.Equal(t, "msg_no_cache", result.ID)
+				require.Equal(t, 80, result.Usage.PromptTokens)
+				require.Equal(t, 40, result.Usage.CompletionTokens)
+				require.Equal(t, 120, result.Usage.TotalTokens)
+				// Verify no detailed token information when cache tokens are 0
+				require.Nil(t, result.Usage.PromptTokensDetails)
+				require.NotNil(t, result.Usage.CompletionTokensDetails)
+				require.Equal(t, 0, result.Usage.CompletionTokensDetails.ReasoningTokens)
 			},
 		},
 		{

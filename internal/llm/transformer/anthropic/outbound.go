@@ -394,13 +394,26 @@ func (t *OutboundTransformer) TransformStreamChunk(
 
 		// Add usage if available
 		if streamEvent.Usage != nil {
-			resp.Usage = &llm.Usage{
+			usage := &llm.Usage{
 				PromptTokens:     int(streamEvent.Usage.InputTokens),
 				CompletionTokens: int(streamEvent.Usage.OutputTokens),
 				TotalTokens: int(
 					streamEvent.Usage.InputTokens + streamEvent.Usage.OutputTokens,
 				),
 			}
+
+			// Map detailed token information from Anthropic format to unified model
+			if streamEvent.Usage.CacheReadInputTokens > 0 {
+				usage.PromptTokensDetails = &llm.PromptTokensDetails{
+					CachedTokens: int(streamEvent.Usage.CacheReadInputTokens),
+				}
+			}
+
+			usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
+				ReasoningTokens: 0, // Anthropic doesn't provide this yet
+			}
+
+			resp.Usage = usage
 		}
 
 	case "message_stop":
@@ -560,13 +573,28 @@ func (t *OutboundTransformer) convertToChatCompletionResponse(
 
 	// Convert usage
 	if anthropicResp.Usage != nil {
-		resp.Usage = &llm.Usage{
+		usage := &llm.Usage{
 			PromptTokens:     int(anthropicResp.Usage.InputTokens),
 			CompletionTokens: int(anthropicResp.Usage.OutputTokens),
 			TotalTokens: int(
 				anthropicResp.Usage.InputTokens + anthropicResp.Usage.OutputTokens,
 			),
 		}
+
+		// Map detailed token information from Anthropic format to unified model
+		if anthropicResp.Usage.CacheReadInputTokens > 0 {
+			usage.PromptTokensDetails = &llm.PromptTokensDetails{
+				CachedTokens: int(anthropicResp.Usage.CacheReadInputTokens),
+			}
+		}
+
+		// Note: Anthropic doesn't currently provide reasoning tokens breakdown
+		// but we can add it in the future if they support it
+		usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
+			ReasoningTokens: 0, // Anthropic doesn't provide this yet
+		}
+
+		resp.Usage = usage
 	}
 
 	return resp
