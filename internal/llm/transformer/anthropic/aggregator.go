@@ -144,8 +144,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	}
 
 	// Convert the Anthropic message to ChatCompletion format
-	transformer := &OutboundTransformer{}
-	chatResp := transformer.convertToChatCompletionResponse(message)
+	chatResp := convertToChatCompletionResponse(message)
 
 	return json.Marshal(chatResp)
 }

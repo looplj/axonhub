@@ -15,7 +15,6 @@ import (
 
 // OutboundTransformer implements transformer.Outbound for Anthropic format.
 type OutboundTransformer struct {
-	name    string
 	baseURL string
 	apiKey  string
 }
@@ -27,7 +26,6 @@ func NewOutboundTransformer(baseURL, apiKey string) *OutboundTransformer {
 	}
 
 	return &OutboundTransformer{
-		name:    "anthropic-outbound",
 		baseURL: baseURL,
 		apiKey:  apiKey,
 	}
@@ -95,124 +93,7 @@ func (t *OutboundTransformer) TransformRequest(
 }
 
 func (t *OutboundTransformer) convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
-	req := &MessageRequest{
-		Model:       chatReq.Model,
-		Temperature: chatReq.Temperature,
-		TopP:        chatReq.TopP,
-		Stream:      chatReq.Stream,
-	}
-
-	// Set max_tokens (required for Anthropic)
-	if chatReq.MaxTokens != nil {
-		req.MaxTokens = *chatReq.MaxTokens
-	} else if chatReq.MaxCompletionTokens != nil {
-		req.MaxTokens = *chatReq.MaxCompletionTokens
-	} else {
-		// Default max_tokens if not specified
-		req.MaxTokens = 4096
-	}
-
-	// Convert tools if present
-	if len(chatReq.Tools) > 0 {
-		tools := make([]Tool, 0, len(chatReq.Tools))
-		for _, tool := range chatReq.Tools {
-			if tool.Type == "function" {
-				anthropicTool := Tool{
-					Name:        tool.Function.Name,
-					Description: tool.Function.Description,
-					InputSchema: tool.Function.Parameters,
-				}
-				tools = append(tools, anthropicTool)
-			}
-		}
-
-		req.Tools = tools
-	}
-
-	// Convert messages
-	messages := make([]MessageParam, 0, len(chatReq.Messages))
-
-	for _, msg := range chatReq.Messages {
-		// Handle system messages separately
-		if msg.Role == "system" {
-			if msg.Content.Content != nil {
-				req.System = &SystemPrompt{
-					Prompt: msg.Content.Content,
-				}
-			}
-
-			continue
-		}
-
-		anthropicMsg := MessageParam{
-			Role: msg.Role,
-		}
-
-		// Convert content
-		if msg.Content.Content != nil {
-			anthropicMsg.Content = MessageContent{
-				Content: msg.Content.Content,
-			}
-		} else if len(msg.Content.MultipleContent) > 0 {
-			blocks := make([]ContentBlock, 0, len(msg.Content.MultipleContent))
-			for _, part := range msg.Content.MultipleContent {
-				switch part.Type {
-				case "text":
-					if part.Text != nil {
-						blocks = append(blocks, ContentBlock{
-							Type: "text",
-							Text: *part.Text,
-						})
-					}
-				case "image_url":
-					if part.ImageURL != nil {
-						// Convert OpenAI image format to Anthropic format
-						// Extract media type and data from data URL
-						url := part.ImageURL.URL
-						if strings.HasPrefix(url, "data:") {
-							parts := strings.SplitN(url, ",", 2)
-							if len(parts) == 2 {
-								headerParts := strings.Split(parts[0], ";")
-								if len(headerParts) >= 2 {
-									mediaType := strings.TrimPrefix(headerParts[0], "data:")
-									blocks = append(blocks, ContentBlock{
-										Type: "image",
-										Source: &ImageSource{
-											Type:      "base64",
-											MediaType: mediaType,
-											Data:      parts[1],
-										},
-									})
-								}
-							}
-						}
-					}
-				}
-			}
-
-			anthropicMsg.Content = MessageContent{
-				MultipleContent: blocks,
-			}
-		}
-
-		messages = append(messages, anthropicMsg)
-	}
-
-	req.Messages = messages
-
-	// Convert stop sequences
-	if chatReq.Stop != nil {
-		if chatReq.Stop.Stop != nil {
-			req.StopSequences = []string{*chatReq.Stop.Stop}
-		} else if len(chatReq.Stop.MultipleStop) > 0 {
-			req.StopSequences = chatReq.Stop.MultipleStop
-		}
-	}
-
-	// Note: Anthropic doesn't support top_k parameter directly
-	// It's handled through their model's internal sampling
-
-	return req
+	return convertToAnthropicRequest(chatReq)
 }
 
 // TransformResponse transforms Anthropic HTTP response to ChatCompletionResponse.
@@ -245,7 +126,7 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// Convert to ChatCompletionResponse
-	chatResp := t.convertToChatCompletionResponse(&anthropicResp)
+	chatResp := convertToChatCompletionResponse(&anthropicResp)
 
 	return chatResp, nil
 }
@@ -254,14 +135,94 @@ func (t *OutboundTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*httpclient.StreamEvent],
 ) (streams.Stream[*llm.Response], error) {
-	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
-		return t.TransformStreamChunk(ctx, event)
-	}), nil
+	// Filter out unnecessary stream events to optimize performance
+	filteredStream := streams.Filter(stream, filterStreamEvent)
+
+	doneEvent := lo.ToPtr(llm.DoneStreamEvent)
+	// Append the DONE event to the filtered stream
+	streamWithDone := streams.AppendStream(filteredStream, doneEvent)
+
+	return newOutboundStream(streamWithDone), nil
 }
 
-// TransformStreamChunk transforms a single Anthropic streaming chunk to ChatCompletionResponse.
-func (t *OutboundTransformer) TransformStreamChunk(
+// filterStreamEvent determines if a stream event should be processed
+// Filters out unnecessary events like ping, content_block_start, and content_block_stop.
+func filterStreamEvent(event *httpclient.StreamEvent) bool {
+	if event == nil || len(event.Data) == 0 {
+		return false
+	}
+
+	// Only process events that contribute to the OpenAI response format
+	switch event.Type {
+	case "message_start", "content_block_delta", "message_delta", "message_stop":
+		return true
+	case "ping", "content_block_start", "content_block_stop":
+		return false // Skip these events as they're not needed for OpenAI format
+	default:
+		return false // Skip unknown event types
+	}
+}
+
+// AggregateStreamChunks aggregates Anthropic streaming response chunks into a complete response.
+func (t *OutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
+	chunks []*httpclient.StreamEvent,
+) ([]byte, error) {
+	return AggregateStreamChunks(ctx, chunks)
+}
+
+// SetAPIKey updates the API key.
+func (t *OutboundTransformer) SetAPIKey(apiKey string) {
+	t.apiKey = apiKey
+}
+
+// SetBaseURL updates the base URL.
+func (t *OutboundTransformer) SetBaseURL(baseURL string) {
+	t.baseURL = baseURL
+}
+
+// streamState holds the state for a streaming session.
+type streamState struct {
+	streamID    string
+	streamModel string
+	streamUsage *llm.Usage
+}
+
+// outboundStream wraps a stream and maintains state during processing.
+type outboundStream struct {
+	stream  streams.Stream[*httpclient.StreamEvent]
+	state   *streamState
+	current *llm.Response
+	err     error
+}
+
+func newOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *outboundStream {
+	return &outboundStream{
+		stream: stream,
+		state:  &streamState{},
+	}
+}
+
+func (s *outboundStream) Next() bool {
+	if s.stream.Next() {
+		event := s.stream.Current()
+
+		resp, err := s.transformStreamChunk(event)
+		if err != nil {
+			s.err = err
+			return false
+		}
+
+		s.current = resp
+
+		return true
+	}
+
+	return false
+}
+
+// transformStreamChunk transforms a single Anthropic streaming chunk to ChatCompletionResponse with state.
+func (s *outboundStream) transformStreamChunk(
 	event *httpclient.StreamEvent,
 ) (*llm.Response, error) {
 	if event == nil {
@@ -271,6 +232,13 @@ func (t *OutboundTransformer) TransformStreamChunk(
 	if len(event.Data) == 0 {
 		return nil, fmt.Errorf("event data is empty")
 	}
+
+	// Handle DONE event specially
+	if string(event.Data) == "[DONE]" {
+		return llm.DoneResponse, nil
+	}
+
+	state := s.state
 
 	// Parse the streaming event
 	var streamEvent StreamEvent
@@ -282,22 +250,30 @@ func (t *OutboundTransformer) TransformStreamChunk(
 
 	// Convert the stream event to ChatCompletionResponse
 	resp := &llm.Response{
-		Object: streamEvent.Type,
+		Object: "chat.completion.chunk",
+		ID:     state.streamID,    // Use stored ID from message_start
+		Model:  state.streamModel, // Use stored model from message_start
 	}
 
 	switch streamEvent.Type {
 	case "message_start":
 		if streamEvent.Message != nil {
-			resp.ID = streamEvent.Message.ID
-			resp.Model = streamEvent.Message.Model
+			// Store ID, model, and usage for subsequent events
+			state.streamID = streamEvent.Message.ID
+			state.streamModel = streamEvent.Message.Model
+
+			// Update response with stored values
+			resp.ID = state.streamID
+			resp.Model = state.streamModel
+
+			if streamEvent.Message.Usage != nil {
+				state.streamUsage = lo.ToPtr(convertUsage(*streamEvent.Message.Usage))
+				resp.Usage = state.streamUsage
+			}
+
 			resp.Created = 0
-			resp.ServiceTier = streamEvent.Message.Usage.ServiceTier
-			resp.Usage = &llm.Usage{
-				PromptTokens:     int(streamEvent.Message.Usage.InputTokens),
-				CompletionTokens: int(streamEvent.Message.Usage.OutputTokens),
-				TotalTokens: int(
-					streamEvent.Message.Usage.InputTokens + streamEvent.Message.Usage.OutputTokens,
-				),
+			if streamEvent.Message.Usage != nil {
+				resp.ServiceTier = streamEvent.Message.Usage.ServiceTier
 			}
 		}
 		// For message_start, we return an empty choice to indicate the start
@@ -306,31 +282,12 @@ func (t *OutboundTransformer) TransformStreamChunk(
 				Index: 0,
 				Delta: &llm.Message{
 					Role: "assistant",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr(""),
-					},
 				},
 			},
 		}
-
-	case "content_block_start":
-		// Initialize content block
-		resp.Choices = []llm.Choice{
-			{
-				Index: 0,
-				Delta: &llm.Message{
-					Role: "assistant",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr(""),
-					},
-				},
-			},
-		}
-
-	case "ping":
-		// Ping event - return empty response to indicate connection is alive
 
 	case "content_block_delta":
+		resp.Usage = state.streamUsage
 		if streamEvent.Delta != nil && streamEvent.Delta.Text != nil {
 			resp.Choices = []llm.Choice{
 				{
@@ -345,21 +302,24 @@ func (t *OutboundTransformer) TransformStreamChunk(
 			}
 		}
 
-	case "content_block_stop":
-		// Content block finished
-		resp.Choices = []llm.Choice{
-			{
-				Index: 0,
-				Delta: &llm.Message{
-					Role: "assistant",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr(""),
-					},
-				},
-			},
+	case "message_delta":
+		// Update stored usage if available (final usage information)
+		if streamEvent.Usage != nil {
+			usage := convertUsage(*streamEvent.Usage)
+			if state.streamUsage != nil {
+				usage.PromptTokens = state.streamUsage.PromptTokens
+				if state.streamUsage.PromptTokensDetails != nil {
+					usage.PromptTokensDetails = state.streamUsage.PromptTokensDetails
+				}
+				// Recalculate total tokens
+				usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
+			}
+
+			state.streamUsage = &usage
 		}
 
-	case "message_delta":
+		resp.Usage = state.streamUsage
+
 		if streamEvent.Delta != nil && streamEvent.Delta.StopReason != nil {
 			// Determine finish reason
 			var finishReason *string
@@ -385,238 +345,38 @@ func (t *OutboundTransformer) TransformStreamChunk(
 				{
 					Index:        0,
 					FinishReason: finishReason,
-					Delta: &llm.Message{
-						Role: "assistant",
-						Content: llm.MessageContent{
-							Content: func() *string { s := ""; return &s }(),
-						},
-					},
 				},
 			}
-		}
-
-		// Add usage if available
-		if streamEvent.Usage != nil {
-			usage := &llm.Usage{
-				PromptTokens:     int(streamEvent.Usage.InputTokens),
-				CompletionTokens: int(streamEvent.Usage.OutputTokens),
-				TotalTokens: int(
-					streamEvent.Usage.InputTokens + streamEvent.Usage.OutputTokens,
-				),
-			}
-
-			// Map detailed token information from Anthropic format to unified model
-			if streamEvent.Usage.CacheReadInputTokens > 0 {
-				usage.PromptTokensDetails = &llm.PromptTokensDetails{
-					CachedTokens: int(streamEvent.Usage.CacheReadInputTokens),
-				}
-			}
-
-			usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
-				ReasoningTokens: 0, // Anthropic doesn't provide this yet
-			}
-
-			resp.Usage = usage
 		}
 
 	case "message_stop":
 		// Final event - return empty response to indicate completion
-		resp.Choices = []llm.Choice{
-			{
-				Index: 0,
-				Delta: &llm.Message{
-					Role: "assistant",
-					Content: llm.MessageContent{
-						Content: func() *string { s := ""; return &s }(),
-					},
-				},
-				FinishReason: func() *string { s := "stop"; return &s }(),
-			},
+		resp.Choices = []llm.Choice{}
+		// Include final usage information
+		if state.streamUsage != nil {
+			resp.Usage = state.streamUsage
 		}
 
 	default:
-		// Unknown event type, return empty response
-		resp.Choices = []llm.Choice{
-			{
-				Index: 0,
-				Delta: &llm.Message{
-					Role: "assistant",
-					Content: llm.MessageContent{
-						Content: func() *string { s := ""; return &s }(),
-					},
-				},
-			},
-		}
+		// This should not happen due to filtering, but handle gracefully
+		return nil, fmt.Errorf("unexpected stream event type: %s", streamEvent.Type)
 	}
 
 	return resp, nil
 }
 
-func (t *OutboundTransformer) convertToChatCompletionResponse(
-	anthropicResp *Message,
-) *llm.Response {
-	if anthropicResp == nil {
-		return &llm.Response{
-			ID:      "",
-			Object:  "chat.completion",
-			Model:   "",
-			Created: 0,
-		}
-	}
-
-	resp := &llm.Response{
-		ID:      anthropicResp.ID,
-		Object:  "chat.completion",
-		Model:   anthropicResp.Model,
-		Created: 0, // Anthropic doesn't provide created timestamp
-	}
-
-	// Convert content to message
-	var (
-		content   llm.MessageContent
-		toolCalls []llm.ToolCall
-		textParts []string
-	)
-
-	for _, block := range anthropicResp.Content {
-		switch block.Type {
-		case "text":
-			if block.Text != "" {
-				textParts = append(textParts, block.Text)
-				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
-					Type:     "text",
-					Text:     &block.Text,
-					ImageURL: &llm.ImageURL{},
-				})
-			}
-		case "image":
-			if block.Source != nil {
-				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
-					Type: "image",
-					ImageURL: &llm.ImageURL{
-						URL:    block.Source.Data,
-						Detail: "",
-					},
-				})
-			}
-		case "tool_use":
-			if block.ID != "" && block.Name != nil {
-				toolCall := llm.ToolCall{
-					ID:   block.ID,
-					Type: "function",
-					Function: llm.FunctionCall{
-						Name:      *block.Name,
-						Arguments: string(block.Input),
-					},
-				}
-				toolCalls = append(toolCalls, toolCall)
-			}
-		case "thinking":
-			if block.Thinking != "" {
-				// Add thinking content as a text part but don't include in textParts
-				// to preserve it as a separate content block
-				thinkingText := block.Thinking
-				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
-					Type:     "text",
-					Text:     &thinkingText,
-					ImageURL: &llm.ImageURL{},
-				})
-			}
-		}
-	}
-
-	// If we only have text content and no other types, set Content.Content
-	if len(textParts) > 0 && len(content.MultipleContent) == len(textParts) {
-		// Join all text parts
-		var allText string
-		for _, text := range textParts {
-			allText += text
-		}
-
-		content.Content = &allText
-		// Clear MultipleContent since we're using the simple string format
-		content.MultipleContent = nil
-	}
-
-	message := &llm.Message{
-		Role:      anthropicResp.Role,
-		Content:   content,
-		ToolCalls: toolCalls,
-	}
-
-	// Convert finish reason
-	var finishReason *string
-
-	if anthropicResp.StopReason != nil {
-		switch *anthropicResp.StopReason {
-		case "end_turn":
-			reason := "stop"
-			finishReason = &reason
-		case "max_tokens":
-			reason := "length"
-			finishReason = &reason
-		case "stop_sequence":
-			reason := "stop"
-			finishReason = &reason
-		case "tool_use":
-			reason := "tool_calls"
-			finishReason = &reason
-		default:
-			finishReason = anthropicResp.StopReason
-		}
-	}
-
-	choice := llm.Choice{
-		Index:        0,
-		Message:      message,
-		FinishReason: finishReason,
-	}
-
-	resp.Choices = []llm.Choice{choice}
-
-	// Convert usage
-	if anthropicResp.Usage != nil {
-		usage := &llm.Usage{
-			PromptTokens:     int(anthropicResp.Usage.InputTokens),
-			CompletionTokens: int(anthropicResp.Usage.OutputTokens),
-			TotalTokens: int(
-				anthropicResp.Usage.InputTokens + anthropicResp.Usage.OutputTokens,
-			),
-		}
-
-		// Map detailed token information from Anthropic format to unified model
-		if anthropicResp.Usage.CacheReadInputTokens > 0 {
-			usage.PromptTokensDetails = &llm.PromptTokensDetails{
-				CachedTokens: int(anthropicResp.Usage.CacheReadInputTokens),
-			}
-		}
-
-		// Note: Anthropic doesn't currently provide reasoning tokens breakdown
-		// but we can add it in the future if they support it
-		usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
-			ReasoningTokens: 0, // Anthropic doesn't provide this yet
-		}
-
-		resp.Usage = usage
-	}
-
-	return resp
+func (s *outboundStream) Current() *llm.Response {
+	return s.current
 }
 
-// AggregateStreamChunks aggregates Anthropic streaming response chunks into a complete response.
-func (t *OutboundTransformer) AggregateStreamChunks(
-	ctx context.Context,
-	chunks []*httpclient.StreamEvent,
-) ([]byte, error) {
-	return AggregateStreamChunks(ctx, chunks)
+func (s *outboundStream) Err() error {
+	if s.err != nil {
+		return s.err
+	}
+
+	return s.stream.Err()
 }
 
-// SetAPIKey updates the API key.
-func (t *OutboundTransformer) SetAPIKey(apiKey string) {
-	t.apiKey = apiKey
-}
-
-// SetBaseURL updates the base URL.
-func (t *OutboundTransformer) SetBaseURL(baseURL string) {
-	t.baseURL = baseURL
+func (s *outboundStream) Close() error {
+	return s.stream.Close()
 }

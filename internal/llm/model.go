@@ -3,6 +3,18 @@ package llm
 import (
 	"encoding/json"
 	"errors"
+
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
+)
+
+var (
+	DoneStreamEvent = httpclient.StreamEvent{
+		Data: []byte("[DONE]"),
+	}
+
+	DoneResponse = &Response{
+		Object: "[DONE]",
+	}
 )
 
 // Request is the unified llm request model for AxonHub, to keep compatibility with major app and framework.
@@ -381,6 +393,9 @@ type ResponseFormat struct {
 }
 
 // Response is the unified response model.
+// To reduce the work of converting the response, we use the OpenAI response format.
+// And other llm provider should convert the response to this format.
+// NOTE: the OpenAI stream and non-stream response reuse same struct.
 type Response struct {
 	ID string `json:"id"`
 
@@ -389,7 +404,7 @@ type Response struct {
 	Choices []Choice `json:"choices"`
 
 	// Object is the type of the response.
-	// e.g. "chat.completion"
+	// e.g. "chat.completion", "chat.completion.chunk"
 	Object string `json:"object"`
 
 	// Created is the timestamp of when the response was created.

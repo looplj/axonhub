@@ -142,24 +142,6 @@ func (t *OutboundTransformer) TransformStreamChunk(
 	return t.TransformResponse(ctx, httpResp)
 }
 
-// SupportsModel checks if the transformer supports a specific model.
-func (t *OutboundTransformer) SupportsModel(model string) bool {
-	// OpenAI transformer supports OpenAI models
-	openaiModels := []string{
-		"gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-4o-mini",
-		"gpt-3.5-turbo", "gpt-3.5-turbo-16k",
-		"text-davinci-003", "text-davinci-002",
-	}
-
-	for _, supportedModel := range openaiModels {
-		if strings.HasPrefix(model, supportedModel) {
-			return true
-		}
-	}
-
-	return false
-}
-
 // SetAPIKey updates the API key.
 func (t *OutboundTransformer) SetAPIKey(apiKey string) {
 	t.apiKey = apiKey

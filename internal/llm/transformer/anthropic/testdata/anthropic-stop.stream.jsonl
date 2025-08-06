@@ -1,0 +1,10 @@
+{"LastEventID":"","Type":"message_start","Data":"{\"type\":\"message_start\",\"message\":{\"id\":\"msg_bdrk_01Fbg5HKuVfmtT6mAMxQoCSn\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-3-7-sonnet-20250219\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":21,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":1}}}"}
+{"LastEventID":"","Type":"content_block_start","Data":"{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"1 2 3 4 \"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"5\\n6 7 8\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" 9 10\\n11 12 \"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"13 14 15\\n16 \"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"17 18 19 20\"}}"}
+{"LastEventID":"","Type":"content_block_stop","Data":"{\"type\":\"content_block_stop\",\"index\":0}"}
+{"LastEventID":"","Type":"message_delta","Data":"{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":43}}"}
+{"LastEventID":"","Type":"message_stop","Data":"{\"type\":\"message_stop\"}"}

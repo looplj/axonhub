@@ -3,6 +3,8 @@ package anthropic
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -1295,61 +1297,6 @@ func TestOutboundTransformer_ErrorHandling(t *testing.T) {
 			})
 		}
 	})
-
-	t.Run("TransformStreamChunk error cases", func(t *testing.T) {
-		tests := []struct {
-			name        string
-			event       *httpclient.StreamEvent
-			expectError bool
-			errorMsg    string
-		}{
-			{
-				name:        "nil event",
-				event:       nil,
-				expectError: true,
-				errorMsg:    "stream event is nil",
-			},
-			{
-				name: "empty event data",
-				event: &httpclient.StreamEvent{
-					Type: "message_start",
-					Data: []byte{},
-				},
-				expectError: true,
-				errorMsg:    "event data is empty",
-			},
-			{
-				name: "invalid JSON in event data",
-				event: &httpclient.StreamEvent{
-					Type: "message_start",
-					Data: []byte(`{invalid json}`),
-				},
-				expectError: true,
-				errorMsg:    "failed to unmarshal anthropic stream event",
-			},
-			{
-				name: "malformed stream event structure",
-				event: &httpclient.StreamEvent{
-					Type: "message_start",
-					Data: []byte(`{"message": {"id": 123}}`), // ID should be string
-				},
-				expectError: true,
-				errorMsg:    "failed to unmarshal anthropic stream event",
-			},
-		}
-
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				_, err := transformer.TransformStreamChunk(t.Context(), tt.event)
-				if tt.expectError {
-					require.Error(t, err)
-					require.Contains(t, err.Error(), tt.errorMsg)
-				} else {
-					require.NoError(t, err)
-				}
-			})
-		}
-	})
 }
 
 func TestOutboundTransformer_ToolUse(t *testing.T) {
@@ -1774,323 +1721,178 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 	}
 }
 
-func TestConvertToChatCompletionResponse(t *testing.T) {
+func TestOutboundTransformer_StreamTransformation_WithTestData_Stop(t *testing.T) {
 	transformer := NewOutboundTransformer("", "")
 
-	anthropicResp := &Message{
-		ID:   "msg_123",
-		Type: "message",
-		Role: "assistant",
-		Content: []ContentBlock{
-			{
-				Type: "text",
-				Text: "Hello! How can I help you?",
-			},
-		},
-		Model:      "claude-3-sonnet-20240229",
-		StopReason: func() *string { s := "end_turn"; return &s }(),
-		Usage: &Usage{
-			InputTokens:  10,
-			OutputTokens: 20,
-		},
+	// Load test data from files
+	anthropicData, err := os.ReadFile("testdata/anthropic-stop.stream.jsonl")
+	require.NoError(t, err)
+
+	expectedData, err := os.ReadFile("testdata/response-stop.stream.jsonl")
+	require.NoError(t, err)
+
+	// Parse anthropic stream events
+	anthropicLines := strings.Split(strings.TrimSpace(string(anthropicData)), "\n")
+
+	var streamEvents []*httpclient.StreamEvent
+
+	for _, line := range anthropicLines {
+		if line != "" {
+			var event struct {
+				Type string `json:"Type"`
+				Data string `json:"Data"`
+			}
+
+			err := json.Unmarshal([]byte(line), &event)
+			require.NoError(t, err)
+
+			streamEvents = append(streamEvents, &httpclient.StreamEvent{
+				Type: event.Type,
+				Data: []byte(event.Data),
+			})
+		}
 	}
 
-	result := transformer.convertToChatCompletionResponse(anthropicResp)
+	// Parse expected responses
+	expectedLines := strings.Split(strings.TrimSpace(string(expectedData)), "\n")
 
-	require.Equal(t, "msg_123", result.ID)
-	require.Equal(t, "chat.completion", result.Object)
-	require.Equal(t, "claude-3-sonnet-20240229", result.Model)
-	require.Equal(t, 1, len(result.Choices))
-	require.Equal(t, "assistant", result.Choices[0].Message.Role)
-	require.Equal(t, "Hello! How can I help you?", *result.Choices[0].Message.Content.Content)
-	require.Equal(t, "stop", *result.Choices[0].FinishReason)
-	require.Equal(t, 10, result.Usage.PromptTokens)
-	require.Equal(t, 20, result.Usage.CompletionTokens)
-	require.Equal(t, 30, result.Usage.TotalTokens)
+	var expectedResponses []*llm.Response
+
+	for _, line := range expectedLines {
+		if line != "" {
+			// Check if this is a DONE event
+			if strings.Contains(line, `"Data":"[DONE]"`) {
+				// This is a DONE event, add the DoneResponse
+				expectedResponses = append(expectedResponses, llm.DoneResponse)
+			} else {
+				// Parse the StreamEvent to get the Data field
+				var event struct {
+					Type string `json:"Type"`
+					Data string `json:"Data"`
+				}
+
+				err := json.Unmarshal([]byte(line), &event)
+				require.NoError(t, err)
+
+				// Parse the Data field as llm.Response
+				var resp llm.Response
+
+				err = json.Unmarshal([]byte(event.Data), &resp)
+				require.NoError(t, err)
+
+				expectedResponses = append(expectedResponses, &resp)
+			}
+		}
+	}
+
+	// Create a mock stream
+	mockStream := &mockStreamEvent{
+		events: streamEvents,
+		index:  0,
+	}
+
+	// Transform the stream
+	transformedStream, err := transformer.TransformStream(t.Context(), mockStream)
+	require.NoError(t, err)
+
+	// Collect all transformed responses
+	var actualResponses []*llm.Response
+
+	for transformedStream.Next() {
+		resp := transformedStream.Current()
+		actualResponses = append(actualResponses, resp)
+	}
+
+	require.NoError(t, transformedStream.Err())
+
+	// Verify the number of responses matches
+	require.Equal(t, len(expectedResponses), len(actualResponses), "Number of responses should match")
+
+	// Verify each response
+	for i, expected := range expectedResponses {
+		actual := actualResponses[i]
+
+		// Verify basic fields
+		assert.Equal(t, expected.ID, actual.ID, "Response %d: ID should match", i)
+		assert.Equal(t, expected.Object, actual.Object, "Response %d: Object should match", i)
+		assert.Equal(t, expected.Model, actual.Model, "Response %d: Model should match", i)
+		assert.Equal(t, expected.Created, actual.Created, "Response %d: Created should match", i)
+
+		// Verify choices
+		assert.Equal(t, len(expected.Choices), len(actual.Choices), "Response %d: Number of choices should match", i)
+
+		if len(expected.Choices) > 0 && len(actual.Choices) > 0 {
+			expectedChoice := expected.Choices[0]
+			actualChoice := actual.Choices[0]
+
+			assert.Equal(t, expectedChoice.Index, actualChoice.Index, "Response %d: Choice index should match", i)
+			assert.Equal(t, expectedChoice.FinishReason, actualChoice.FinishReason, "Response %d: Finish reason should match", i)
+
+			// Verify delta content
+			if expectedChoice.Delta != nil && actualChoice.Delta != nil {
+				assert.Equal(t, expectedChoice.Delta.Role, actualChoice.Delta.Role, "Response %d: Delta role should match", i)
+
+				if expectedChoice.Delta.Content.Content != nil && actualChoice.Delta.Content.Content != nil {
+					assert.Equal(t, *expectedChoice.Delta.Content.Content, *actualChoice.Delta.Content.Content, "Response %d: Delta content should match", i)
+				}
+			}
+		}
+
+		// Verify usage information
+		if expected.Usage != nil && actual.Usage != nil {
+			assert.Equal(t, expected.Usage.PromptTokens, actual.Usage.PromptTokens, "Response %d: Prompt tokens should match", i)
+			assert.Equal(t, expected.Usage.CompletionTokens, actual.Usage.CompletionTokens, "Response %d: Completion tokens should match", i)
+			assert.Equal(t, expected.Usage.TotalTokens, actual.Usage.TotalTokens, "Response %d: Total tokens should match", i)
+		}
+	}
+
+	// Test aggregation as well
+	aggregatedBytes, err := transformer.AggregateStreamChunks(t.Context(), streamEvents)
+	require.NoError(t, err)
+
+	var aggregatedResp llm.Response
+
+	err = json.Unmarshal(aggregatedBytes, &aggregatedResp)
+	require.NoError(t, err)
+
+	// Verify aggregated response
+	assert.Equal(t, "msg_bdrk_01Fbg5HKuVfmtT6mAMxQoCSn", aggregatedResp.ID)
+	assert.Equal(t, "chat.completion", aggregatedResp.Object)
+	assert.Equal(t, "claude-3-7-sonnet-20250219", aggregatedResp.Model)
+	assert.NotEmpty(t, aggregatedResp.Choices)
+	assert.Equal(t, "assistant", aggregatedResp.Choices[0].Message.Role)
+
+	// Verify the complete content
+	expectedContent := "1 2 3 4 5\n6 7 8 9 10\n11 12 13 14 15\n16 17 18 19 20"
+	assert.Equal(t, expectedContent, *aggregatedResp.Choices[0].Message.Content.Content)
 }
 
-func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
-	transformer := NewOutboundTransformer("", "")
+// mockStreamEvent implements streams.Stream[*httpclient.StreamEvent] for testing.
+type mockStreamEvent struct {
+	events []*httpclient.StreamEvent
+	index  int
+	err    error
+}
 
-	tests := []struct {
-		name     string
-		input    *Message
-		validate func(t *testing.T, result *llm.Response)
-	}{
-		{
-			name:  "nil response",
-			input: nil,
-			validate: func(t *testing.T, result *llm.Response) {
-				t.Helper()
-				// Should handle nil gracefully or panic appropriately
-				if result != nil {
-					require.Empty(t, result.ID)
-					require.Empty(t, result.Choices)
-				}
-			},
-		},
-		{
-			name: "empty content blocks",
-			input: &Message{
-				ID:      "msg_empty",
-				Type:    "message",
-				Role:    "assistant",
-				Content: []ContentBlock{},
-				Model:   "claude-3-sonnet-20240229",
-			},
-			validate: func(t *testing.T, result *llm.Response) {
-				t.Helper()
-				require.Equal(t, "msg_empty", result.ID)
-				require.Equal(t, "chat.completion", result.Object)
-				require.NotNil(t, result.Choices)
-				if len(result.Choices) > 0 {
-					require.Nil(t, result.Choices[0].Message.Content.Content)
-					require.Empty(t, result.Choices[0].Message.Content.MultipleContent)
-				}
-			},
-		},
-		{
-			name: "multiple text content blocks",
-			input: &Message{
-				ID:   "msg_multi",
-				Type: "message",
-				Role: "assistant",
-				Content: []ContentBlock{
-					{Type: "text", Text: "Hello"},
-					{Type: "text", Text: " world!"},
-					{Type: "text", Text: " How are you?"},
-				},
-				Model: "claude-3-sonnet-20240229",
-			},
-			validate: func(t *testing.T, result *llm.Response) {
-				t.Helper()
-				require.Equal(t, "msg_multi", result.ID)
-				require.NotNil(t, result.Choices[0].Message.Content.Content)
-				require.Equal(
-					t,
-					"Hello world! How are you?",
-					*result.Choices[0].Message.Content.Content,
-				)
-			},
-		},
-		{
-			name: "mixed content types",
-			input: &Message{
-				ID:   "msg_mixed",
-				Type: "message",
-				Role: "assistant",
-				Content: []ContentBlock{
-					{Type: "text", Text: "Check this image: "},
-					{Type: "image", Source: &ImageSource{
-						Type:      "base64",
-						MediaType: "image/jpeg",
-						Data:      "/9j/4AAQSkZJRg==",
-					}},
-					{Type: "text", Text: " and this text"},
-				},
-				Model: "claude-3-sonnet-20240229",
-			},
-			validate: func(t *testing.T, result *llm.Response) {
-				t.Helper()
-				require.Equal(t, "msg_mixed", result.ID)
-				require.Nil(
-					t,
-					result.Choices[0].Message.Content.Content,
-				) // Should use MultipleContent for mixed types
-				require.Len(t, result.Choices[0].Message.Content.MultipleContent, 3)
-			},
-		},
-		{
-			name: "tool use content",
-			input: &Message{
-				ID:   "msg_tool",
-				Type: "message",
-				Role: "assistant",
-				Content: []ContentBlock{
-					{
-						Type: "text",
-						Text: "I'll help you with that calculation.",
-					},
-					{
-						Type:  "tool_use",
-						ID:    "tool_123",
-						Name:  func() *string { s := "calculator"; return &s }(),
-						Input: json.RawMessage(`{"expression": "2+2"}`),
-					},
-				},
-				Model: "claude-3-sonnet-20240229",
-			},
-			validate: func(t *testing.T, result *llm.Response) {
-				t.Helper()
-				require.Equal(t, "msg_tool", result.ID)
-				require.NotNil(t, result.Choices[0].Message.ToolCalls)
-				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
-				require.Equal(t, "tool_123", result.Choices[0].Message.ToolCalls[0].ID)
-				require.Equal(t, "calculator", result.Choices[0].Message.ToolCalls[0].Function.Name)
-				require.Equal(
-					t,
-					`{"expression": "2+2"}`,
-					result.Choices[0].Message.ToolCalls[0].Function.Arguments,
-				)
-			},
-		},
-		{
-			name: "all stop reasons",
-			input: func() *Message {
-				return &Message{
-					ID:      "msg_stop",
-					Type:    "message",
-					Role:    "assistant",
-					Content: []ContentBlock{{Type: "text", Text: "Test"}},
-					Model:   "claude-3-sonnet-20240229",
-				}
-			}(),
-			validate: func(t *testing.T, result *llm.Response) {
-				t.Helper()
-				// Test each stop reason
-				stopReasons := map[string]string{
-					"end_turn":      "stop",
-					"max_tokens":    "length",
-					"stop_sequence": "stop",
-					"tool_use":      "tool_calls",
-					"pause_turn":    "pause_turn",
-					"refusal":       "refusal",
-				}
+func (m *mockStreamEvent) Next() bool {
+	return m.index < len(m.events)
+}
 
-				for anthropicReason, expectedReason := range stopReasons {
-					msg := &Message{
-						ID:         "msg_stop",
-						Type:       "message",
-						Role:       "assistant",
-						Content:    []ContentBlock{{Type: "text", Text: "Test"}},
-						Model:      "claude-3-sonnet-20240229",
-						StopReason: func() *string { s := anthropicReason; return &s }(),
-					}
+func (m *mockStreamEvent) Current() *httpclient.StreamEvent {
+	if m.index < len(m.events) {
+		event := m.events[m.index]
+		m.index++
 
-					result := transformer.convertToChatCompletionResponse(msg)
-					if expectedReason == "stop" {
-						require.Equal(t, expectedReason, *result.Choices[0].FinishReason)
-					} else {
-						require.Equal(t, expectedReason, *result.Choices[0].FinishReason)
-					}
-				}
-			},
-		},
-		{
-			name: "usage with cache tokens",
-			input: &Message{
-				ID:   "msg_cache",
-				Type: "message",
-				Role: "assistant",
-				Content: []ContentBlock{
-					{Type: "text", Text: "Cached response"},
-				},
-				Model: "claude-3-sonnet-20240229",
-				Usage: &Usage{
-					InputTokens:              100,
-					OutputTokens:             50,
-					CacheCreationInputTokens: 20,
-					CacheReadInputTokens:     30,
-					ServiceTier:              "standard",
-				},
-			},
-			validate: func(t *testing.T, result *llm.Response) {
-				t.Helper()
-				require.Equal(t, "msg_cache", result.ID)
-				require.Equal(t, 100, result.Usage.PromptTokens)
-				require.Equal(t, 50, result.Usage.CompletionTokens)
-				require.Equal(t, 150, result.Usage.TotalTokens)
-				// Verify detailed token information
-				require.NotNil(t, result.Usage.PromptTokensDetails)
-				require.Equal(t, 30, result.Usage.PromptTokensDetails.CachedTokens)
-				require.NotNil(t, result.Usage.CompletionTokensDetails)
-				require.Equal(t, 0, result.Usage.CompletionTokensDetails.ReasoningTokens)
-			},
-		},
-		{
-			name: "usage with detailed token breakdown",
-			input: &Message{
-				ID:   "msg_detailed",
-				Type: "message",
-				Role: "assistant",
-				Content: []ContentBlock{
-					{Type: "text", Text: "Detailed response"},
-				},
-				Model: "claude-3-sonnet-20240229",
-				Usage: &Usage{
-					InputTokens:              200,
-					OutputTokens:             75,
-					CacheCreationInputTokens: 50,
-					CacheReadInputTokens:     100,
-					ServiceTier:              "premium",
-				},
-			},
-			validate: func(t *testing.T, result *llm.Response) {
-				t.Helper()
-				require.Equal(t, "msg_detailed", result.ID)
-				require.Equal(t, 200, result.Usage.PromptTokens)
-				require.Equal(t, 75, result.Usage.CompletionTokens)
-				require.Equal(t, 275, result.Usage.TotalTokens)
-				// Verify detailed prompt token information
-				require.NotNil(t, result.Usage.PromptTokensDetails)
-				require.Equal(t, 100, result.Usage.PromptTokensDetails.CachedTokens)
-				// Verify detailed completion token information
-				require.NotNil(t, result.Usage.CompletionTokensDetails)
-				require.Equal(t, 0, result.Usage.CompletionTokensDetails.ReasoningTokens)
-			},
-		},
-		{
-			name: "usage without cache tokens",
-			input: &Message{
-				ID:   "msg_no_cache",
-				Type: "message",
-				Role: "assistant",
-				Content: []ContentBlock{
-					{Type: "text", Text: "No cache response"},
-				},
-				Model: "claude-3-sonnet-20240229",
-				Usage: &Usage{
-					InputTokens:              80,
-					OutputTokens:             40,
-					CacheCreationInputTokens: 0,
-					CacheReadInputTokens:     0,
-					ServiceTier:              "standard",
-				},
-			},
-			validate: func(t *testing.T, result *llm.Response) {
-				t.Helper()
-				require.Equal(t, "msg_no_cache", result.ID)
-				require.Equal(t, 80, result.Usage.PromptTokens)
-				require.Equal(t, 40, result.Usage.CompletionTokens)
-				require.Equal(t, 120, result.Usage.TotalTokens)
-				// Verify no detailed token information when cache tokens are 0
-				require.Nil(t, result.Usage.PromptTokensDetails)
-				require.NotNil(t, result.Usage.CompletionTokensDetails)
-				require.Equal(t, 0, result.Usage.CompletionTokensDetails.ReasoningTokens)
-			},
-		},
-		{
-			name: "nil usage",
-			input: &Message{
-				ID:      "msg_nusage",
-				Type:    "message",
-				Role:    "assistant",
-				Content: []ContentBlock{{Type: "text", Text: "No usage"}},
-				Model:   "claude-3-sonnet-20240229",
-				Usage:   nil,
-			},
-			validate: func(t *testing.T, result *llm.Response) {
-				t.Helper()
-				require.Equal(t, "msg_nusage", result.ID)
-				require.Nil(t, result.Usage)
-			},
-		},
+		return event
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := transformer.convertToChatCompletionResponse(tt.input)
-			tt.validate(t, result)
-		})
-	}
+	return nil
+}
+
+func (m *mockStreamEvent) Err() error {
+	return m.err
+}
+
+func (m *mockStreamEvent) Close() error {
+	return nil
 }
