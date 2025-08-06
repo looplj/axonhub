@@ -260,13 +260,6 @@ func (p *PersistentOutboundTransformer) TransformStream(
 	return p.wrapped.TransformStream(ctx, persistentStream)
 }
 
-func (p *PersistentOutboundTransformer) TransformStreamChunk(
-	ctx context.Context,
-	event *httpclient.StreamEvent,
-) (*llm.Response, error) {
-	return p.wrapped.TransformStreamChunk(ctx, event)
-}
-
 func (p *PersistentOutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,

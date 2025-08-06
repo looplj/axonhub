@@ -9,7 +9,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
@@ -22,7 +21,7 @@ type OutboundTransformer struct {
 }
 
 // NewOutboundTransformer creates a new Anthropic OutboundTransformer.
-func NewOutboundTransformer(baseURL, apiKey string) transformer.Outbound {
+func NewOutboundTransformer(baseURL, apiKey string) *OutboundTransformer {
 	if baseURL == "" {
 		baseURL = "https://api.anthropic.com"
 	}

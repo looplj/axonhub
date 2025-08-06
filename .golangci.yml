@@ -279,6 +279,22 @@ formatters:
     - gofumpt
     - goimports
     - golines
+  settings:
+    golines:
+      # Target maximum line length.
+      # Default: 100
+      max-len: 180
+      # Length of a tabulation.
+      # Default: 4
+      tab-len: 8
+      # Shorten single-line comments.
+      # Default: false
+      shorten-comments: true
+      # Default: true
+      reformat-tags: false
+      # Split chained methods on the dots as opposed to the arguments.
+      # Default: true
+      chain-split-dots: false
 
 issues:
   # make issues output unique by line, default is true

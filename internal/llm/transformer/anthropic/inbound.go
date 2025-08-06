@@ -9,7 +9,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
@@ -18,7 +17,7 @@ import (
 type InboundTransformer struct{}
 
 // NewInboundTransformer creates a new Anthropic InboundTransformer.
-func NewInboundTransformer() transformer.Inbound {
+func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 

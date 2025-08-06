@@ -23,9 +23,6 @@ type Inbound interface {
 		stream streams.Stream[*llm.Response],
 	) (streams.Stream[*httpclient.StreamEvent], error)
 
-	// TransformStreamChunk transforms the unified stream chunk format to HTTP response.
-	TransformStreamChunk(ctx context.Context, chunk *llm.Response) (*httpclient.StreamEvent, error)
-
 	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
 	// This method handles unified-specific streaming formats and converts the chunks to a the user request format complete response.
 	// e.g: the user request with OpenAI format, but the provider response with Claude format, the chunks is the unified response format, the AggregateStreamChunks will convert the chunks to the OpenAI response format.
@@ -46,9 +43,6 @@ type Outbound interface {
 		ctx context.Context,
 		stream streams.Stream[*httpclient.StreamEvent],
 	) (streams.Stream[*llm.Response], error)
-
-	// TransformStreamChunk transforms the HTTP stream chunk to the unified response format.
-	TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error)
 
 	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
 	// This method handles provider-specific streaming formats and converts the chunks to a original provider format complete response.

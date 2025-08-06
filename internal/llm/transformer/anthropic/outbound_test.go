@@ -1112,7 +1112,7 @@ func TestOutboundTransformer_AggregateStreamChunks_EdgeCases(t *testing.T) {
 }
 
 func TestOutboundTransformer_SetAPIKey(t *testing.T) {
-	transformer := NewOutboundTransformer("", "").(*OutboundTransformer)
+	transformer := NewOutboundTransformer("", "")
 
 	newAPIKey := "new-api-key"
 	transformer.SetAPIKey(newAPIKey)
@@ -1120,7 +1120,7 @@ func TestOutboundTransformer_SetAPIKey(t *testing.T) {
 }
 
 func TestOutboundTransformer_SetBaseURL(t *testing.T) {
-	transformer := NewOutboundTransformer("", "").(*OutboundTransformer)
+	transformer := NewOutboundTransformer("", "")
 
 	newBaseURL := "https://custom.api.com"
 	transformer.SetBaseURL(newBaseURL)
@@ -1691,7 +1691,7 @@ func TestOutboundTransformer_ValidationEdgeCases(t *testing.T) {
 }
 
 func TestConvertToAnthropicRequest(t *testing.T) {
-	transformer := NewOutboundTransformer("", "").(*OutboundTransformer)
+	transformer := NewOutboundTransformer("", "")
 
 	tests := []struct {
 		name     string
@@ -1775,7 +1775,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 }
 
 func TestConvertToChatCompletionResponse(t *testing.T) {
-	transformer := NewOutboundTransformer("", "").(*OutboundTransformer)
+	transformer := NewOutboundTransformer("", "")
 
 	anthropicResp := &Message{
 		ID:   "msg_123",
@@ -1810,7 +1810,7 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 }
 
 func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
-	transformer := NewOutboundTransformer("", "").(*OutboundTransformer)
+	transformer := NewOutboundTransformer("", "")
 
 	tests := []struct {
 		name     string
