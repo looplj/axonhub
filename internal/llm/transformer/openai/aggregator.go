@@ -35,7 +35,9 @@ func AggregateStreamChunks(
 		}
 
 		var chunkData map[string]any
-		if err := json.Unmarshal(chunk.Data, &chunkData); err != nil {
+
+		err := json.Unmarshal(chunk.Data, &chunkData)
+		if err != nil {
 			continue // Skip invalid chunks
 		}
 

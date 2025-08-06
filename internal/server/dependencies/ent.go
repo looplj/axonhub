@@ -20,11 +20,12 @@ func NewEntClient() *ent.Client {
 		panic(err)
 	}
 
-	if err := client.Schema.Create(
+	err = client.Schema.Create(
 		context.Background(),
 		migrate.WithGlobalUniqueID(false),
 		migrate.WithForeignKeys(false),
-	); err != nil {
+	)
+	if err != nil {
 		panic(err)
 	}
 

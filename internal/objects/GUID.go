@@ -55,7 +55,9 @@ func (guid *GUID) UnmarshalGQL(v any) error {
 
 func ParseGUID(str string) (GUID, error) {
 	var guid GUID
-	if err := guid.UnmarshalGQL(str); err != nil {
+
+	err := guid.UnmarshalGQL(str)
+	if err != nil {
 		return GUID{}, err
 	}
 

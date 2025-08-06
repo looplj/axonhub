@@ -173,7 +173,9 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			// Validate that body can be unmarshaled back to original request
 			if len(result.Body) > 0 {
 				var unmarshaled llm.Request
-				if err := json.Unmarshal(result.Body, &unmarshaled); err != nil {
+
+				err := json.Unmarshal(result.Body, &unmarshaled)
+				if err != nil {
 					t.Errorf("TransformRequest() body is not valid JSON: %v", err)
 				}
 			}

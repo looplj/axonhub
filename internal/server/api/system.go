@@ -62,7 +62,9 @@ func (h *SystemHandlers) GetSystemStatus(c *gin.Context) {
 // InitializeSystem initializes the system with owner credentials.
 func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 	var req InitializeSystemRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, InitializeSystemResponse{
 			Success: false,
 			Message: "Invalid request format",

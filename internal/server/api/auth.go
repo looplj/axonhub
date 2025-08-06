@@ -40,7 +40,9 @@ type SignInResponse struct {
 // SignIn handles user authentication.
 func (h *AuthHandlers) SignIn(c *gin.Context) {
 	var req SignInRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
 			Error: "Invalid request format",
 		})

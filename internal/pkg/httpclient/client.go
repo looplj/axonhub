@@ -43,7 +43,8 @@ func (hc *HttpClientImpl) Do(ctx context.Context, request *Request) (*Response, 
 	}
 
 	defer func() {
-		if err := rawResp.Body.Close(); err != nil {
+		err := rawResp.Body.Close()
+		if err != nil {
 			log.Warn(ctx, "failed to close HTTP response body", log.Cause(err))
 		}
 	}()
@@ -103,7 +104,8 @@ func (hc *HttpClientImpl) DoStream(
 	// Check for HTTP errors before creating stream
 	if rawResp.StatusCode >= 400 {
 		defer func() {
-			if err := rawResp.Body.Close(); err != nil {
+			err := rawResp.Body.Close()
+			if err != nil {
 				log.Warn(ctx, "failed to close HTTP response body", log.Cause(err))
 			}
 		}()

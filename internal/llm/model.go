@@ -187,13 +187,17 @@ func (t ToolChoice) MarshalJSON() ([]byte, error) {
 
 func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 	var str string
-	if err := json.Unmarshal(data, &str); err == nil {
+
+	err := json.Unmarshal(data, &str)
+	if err == nil {
 		t.ToolChoice = &str
 		return nil
 	}
 
 	var named NamedToolChoice
-	if err := json.Unmarshal(data, &named); err == nil {
+
+	err = json.Unmarshal(data, &named)
+	if err == nil {
 		t.NamedToolChoice = &named
 		return nil
 	}
@@ -228,13 +232,17 @@ func (s Stop) MarshalJSON() ([]byte, error) {
 
 func (s *Stop) UnmarshalJSON(data []byte) error {
 	var str string
-	if err := json.Unmarshal(data, &str); err == nil {
+
+	err := json.Unmarshal(data, &str)
+	if err == nil {
 		s.Stop = &str
 		return nil
 	}
 
 	var strs []string
-	if err := json.Unmarshal(data, &strs); err == nil {
+
+	err = json.Unmarshal(data, &strs)
+	if err == nil {
 		s.MultipleStop = strs
 		return nil
 	}
@@ -276,13 +284,17 @@ func (c MessageContent) MarshalJSON() ([]byte, error) {
 
 func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	var str string
-	if err := json.Unmarshal(data, &str); err == nil {
+
+	err := json.Unmarshal(data, &str)
+	if err == nil {
 		c.Content = &str
 		return nil
 	}
 
 	var parts []MessageContentPart
-	if err := json.Unmarshal(data, &parts); err == nil {
+
+	err = json.Unmarshal(data, &parts)
+	if err == nil {
 		c.MultipleContent = parts
 		return nil
 	}

@@ -44,7 +44,9 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 
 		// Parse request body
 		var chatReq llm.Request
-		if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil {
+
+		err := json.NewDecoder(r.Body).Decode(&chatReq)
+		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(`{"error": {"message": "Invalid JSON"}}`))
 
@@ -184,7 +186,9 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 
 	// Verify final response body can be unmarshaled back to ChatCompletionResponse
 	var finalChatResp llm.Response
-	if err := json.Unmarshal(finalResp.Body, &finalChatResp); err != nil {
+
+	err = json.Unmarshal(finalResp.Body, &finalChatResp)
+	if err != nil {
 		t.Fatalf("Failed to unmarshal final response: %v", err)
 	}
 

@@ -106,7 +106,9 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	var chatResp llm.Response
-	if err := json.Unmarshal(httpResp.Body, &chatResp); err != nil {
+
+	err := json.Unmarshal(httpResp.Body, &chatResp)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
 	}
 

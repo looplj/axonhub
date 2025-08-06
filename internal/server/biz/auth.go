@@ -53,7 +53,9 @@ func VerifyPassword(hashedPassword, password string) error {
 // GenerateSecretKey generates a random secret key for JWT.
 func GenerateSecretKey() (string, error) {
 	bytes := make([]byte, 32) // 256 bits
-	if _, err := rand.Read(bytes); err != nil {
+
+	_, err := rand.Read(bytes)
+	if err != nil {
 		return "", fmt.Errorf("failed to generate random bytes: %w", err)
 	}
 

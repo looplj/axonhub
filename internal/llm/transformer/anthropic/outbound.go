@@ -238,7 +238,9 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	var anthropicResp Message
-	if err := json.Unmarshal(httpResp.Body, &anthropicResp); err != nil {
+
+	err := json.Unmarshal(httpResp.Body, &anthropicResp)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal anthropic response: %w", err)
 	}
 
@@ -272,7 +274,9 @@ func (t *OutboundTransformer) TransformStreamChunk(
 
 	// Parse the streaming event
 	var streamEvent StreamEvent
-	if err := json.Unmarshal(event.Data, &streamEvent); err != nil {
+
+	err := json.Unmarshal(event.Data, &streamEvent)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal anthropic stream event: %w", err)
 	}
 

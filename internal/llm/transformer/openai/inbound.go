@@ -44,7 +44,9 @@ func (t *InboundTransformer) TransformRequest(
 	}
 
 	var chatReq llm.Request
-	if err := json.Unmarshal(httpReq.Body, &chatReq); err != nil {
+
+	err := json.Unmarshal(httpReq.Body, &chatReq)
+	if err != nil {
 		return nil, fmt.Errorf("failed to decode openai request: %w", err)
 	}
 

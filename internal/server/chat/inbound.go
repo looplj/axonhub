@@ -78,7 +78,8 @@ func (ts *InboundPersistentStream) Close() error {
 
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)))
 
-	if streamErr := ts.stream.Err(); streamErr != nil {
+	streamErr := ts.stream.Err()
+	if streamErr != nil {
 		// Stream had an error - update both request execution and main request
 		log.Warn(ctx, "Stream completed with error", log.Cause(streamErr))
 

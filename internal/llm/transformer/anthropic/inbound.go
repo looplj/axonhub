@@ -45,7 +45,9 @@ func (t *InboundTransformer) TransformRequest(
 	}
 
 	var anthropicReq MessageRequest
-	if err := json.Unmarshal(httpReq.Body, &anthropicReq); err != nil {
+
+	err := json.Unmarshal(httpReq.Body, &anthropicReq)
+	if err != nil {
 		return nil, fmt.Errorf("failed to decode anthropic request: %w", err)
 	}
 

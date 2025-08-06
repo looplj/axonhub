@@ -101,13 +101,17 @@ func (s *SystemPrompt) MarshalJSON() ([]byte, error) {
 
 func (s *SystemPrompt) UnmarshalJSON(data []byte) error {
 	var str string
-	if err := json.Unmarshal(data, &str); err == nil {
+
+	err := json.Unmarshal(data, &str)
+	if err == nil {
 		s.Prompt = &str
 		return nil
 	}
 
 	var parts []SystemPromptPart
-	if err := json.Unmarshal(data, &parts); err == nil {
+
+	err = json.Unmarshal(data, &parts)
+	if err == nil {
 		s.MultiplePrompts = parts
 		return nil
 	}
@@ -183,13 +187,17 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	}
 
 	var blocks []ContentBlock
-	if err := json.Unmarshal(data, &blocks); err == nil {
+
+	err := json.Unmarshal(data, &blocks)
+	if err == nil {
 		c.MultipleContent = blocks
 		return nil
 	}
 
 	var str string
-	if err := json.Unmarshal(data, &str); err == nil {
+
+	err = json.Unmarshal(data, &str)
+	if err == nil {
 		c.Content = &str
 		return nil
 	}

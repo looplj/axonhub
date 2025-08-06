@@ -56,7 +56,9 @@ func (t *InboundTransformer) TransformRequest(
 ) (*llm.Request, error) {
 	// Parse JSON body
 	var aiSDKReq AiSDKRequest
-	if err := json.Unmarshal(req.Body, &aiSDKReq); err != nil {
+
+	err := json.Unmarshal(req.Body, &aiSDKReq)
+	if err != nil {
 		return nil, fmt.Errorf("failed to parse AI SDK request: %w", err)
 	}
 
@@ -138,7 +140,8 @@ func (t *InboundTransformer) TransformRequest(
 
 			// Handle parameters
 			if tool.Function.Parameters != nil {
-				if paramsBytes, err := json.Marshal(tool.Function.Parameters); err == nil {
+				paramsBytes, err := json.Marshal(tool.Function.Parameters)
+				if err == nil {
 					llmReq.Tools[i].Function.Parameters = json.RawMessage(paramsBytes)
 				}
 			}

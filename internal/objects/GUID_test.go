@@ -107,7 +107,9 @@ func TestGUID_UnmarshalGQL(t *testing.T) {
 				Type: tt.fields.Type,
 				ID:   tt.fields.ID,
 			}
-			if err := guid.UnmarshalGQL(tt.args.v); (err != nil) != tt.wantErr {
+
+			err := guid.UnmarshalGQL(tt.args.v)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("GUID.UnmarshalGQL() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

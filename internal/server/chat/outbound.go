@@ -87,7 +87,8 @@ func (ts *OutboundPersistentStream) Close() error {
 
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)))
 
-	if streamErr := ts.stream.Err(); streamErr != nil {
+	streamErr := ts.stream.Err()
+	if streamErr != nil {
 		if ts.requestExec != nil {
 			err := ts.requestService.UpdateRequestExecutionFailed(
 				ctx,

@@ -222,7 +222,8 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 
 				// Unmarshal the data to verify it's a valid ChatCompletionResponse
 				var chatResp llm.Response
-				if err := json.Unmarshal(event.Data, &chatResp); err != nil {
+				err := json.Unmarshal(event.Data, &chatResp)
+				if err != nil {
 					return false
 				}
 
@@ -258,7 +259,8 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 
 				// Unmarshal the data to verify it's a valid ChatCompletionResponse
 				var chatResp llm.Response
-				if err := json.Unmarshal(event.Data, &chatResp); err != nil {
+				err := json.Unmarshal(event.Data, &chatResp)
+				if err != nil {
 					return false
 				}
 
@@ -372,7 +374,8 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 
 				// Try to unmarshal the response body
 				var chatResp llm.Response
-				if err := json.Unmarshal(resp.Body, &chatResp); err != nil {
+				err := json.Unmarshal(resp.Body, &chatResp)
+				if err != nil {
 					return false
 				}
 

@@ -23,7 +23,9 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 	for _, chunk := range chunks {
 		var event StreamEvent
-		if err := json.Unmarshal(chunk.Data, &event); err != nil {
+
+		err := json.Unmarshal(chunk.Data, &event)
+		if err != nil {
 			continue // Skip invalid chunks
 		}
 
