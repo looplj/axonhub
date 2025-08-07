@@ -290,183 +290,282 @@ func (t *InboundTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*llm.Response],
 ) (streams.Stream[*httpclient.StreamEvent], error) {
-	return streams.MapErr(stream, func(chunk *llm.Response) (*httpclient.StreamEvent, error) {
-		return t.TransformStreamChunk(ctx, chunk)
-	}), nil
+	// Create a custom stream that handles the stateful transformation
+	return &anthropicInboundStream{
+		source: stream,
+		ctx:    ctx,
+	}, nil
 }
 
-// TransformStreamChunk transforms ChatCompletionResponse to StreamEvent.
-func (t *InboundTransformer) TransformStreamChunk(
-	ctx context.Context,
-	chatResp *llm.Response,
-) (*httpclient.StreamEvent, error) {
-	if chatResp == nil {
-		return nil, fmt.Errorf("chat completion response is nil")
+// anthropicInboundStream implements the stateful stream transformation.
+//
+//nolint:containedctx // Checked.
+type anthropicInboundStream struct {
+	source                streams.Stream[*llm.Response]
+	ctx                   context.Context
+	hasStarted            bool
+	hasTextContentStarted bool
+	hasFinished           bool
+	messageID             string
+	model                 string
+	contentIndex          int64
+	eventQueue            []*httpclient.StreamEvent
+	queueIndex            int
+	err                   error
+	stopReason            *string
+}
+
+//nolint:maintidx // It is complex, and hard to split.
+func (s *anthropicInboundStream) Next() bool {
+	// If we have events in the queue, return them first
+	if s.queueIndex < len(s.eventQueue) {
+		return true
 	}
 
-	// Use the object field to determine the event type, similar to OutboundTransformer
-	eventType := chatResp.Object
+	// Clear the queue and reset index for new events
+	s.eventQueue = nil
+	s.queueIndex = 0
 
-	// Convert ChatCompletionResponse to Anthropic StreamEvent based on the object type
-	var streamEvent StreamEvent
+	// Try to get the next chunk from source
+	if !s.source.Next() {
+		return false
+	}
 
-	switch eventType {
-	case "message_start":
+	chunk := s.source.Current()
+	if chunk == nil {
+		return s.Next() // Try next chunk
+	}
+
+	// Handle [DONE] marker
+	if chunk.Object == "[DONE]" {
+		return s.Next() // Try next chunk
+	}
+
+	// Initialize message ID and model from first chunk
+	if s.messageID == "" && chunk.ID != "" {
+		s.messageID = chunk.ID
+	}
+
+	if s.model == "" && chunk.Model != "" {
+		s.model = chunk.Model
+	}
+
+	// Set defaults if still empty
+	if s.messageID == "" {
+		s.messageID = "msg_unknown"
+	}
+
+	if s.model == "" {
+		s.model = "claude-3-sonnet-20240229"
+	}
+
+	// Generate message_start event if this is the first chunk
+	if !s.hasStarted {
+		s.hasStarted = true
+
+		// For message_start, set input_tokens to 1 as default since we don't have usage yet
 		usage := &Usage{
-			ServiceTier: chatResp.ServiceTier,
-		}
-		if chatResp.Usage != nil {
-			usage.InputTokens = int64(chatResp.Usage.PromptTokens)
-			usage.OutputTokens = int64(chatResp.Usage.CompletionTokens)
-
-			// Map detailed token information
-			if chatResp.Usage.PromptTokensDetails != nil {
-				usage.CacheReadInputTokens = int64(chatResp.Usage.PromptTokensDetails.CachedTokens)
-			}
+			InputTokens:  1,
+			OutputTokens: 1,
 		}
 
-		streamEvent = StreamEvent{
+		streamEvent := StreamEvent{
 			Type: "message_start",
 			Message: &StreamMessage{
-				ID:      chatResp.ID,
+				ID:      s.messageID,
 				Type:    "message",
 				Role:    "assistant",
-				Model:   chatResp.Model,
+				Model:   s.model,
 				Content: []ContentBlock{},
 				Usage:   usage,
 			},
 		}
-	case "ping":
-		streamEvent = StreamEvent{
-			Type: "ping",
-		}
-	case "content_block_start":
-		streamEvent = StreamEvent{
-			Type:  "content_block_start",
-			Index: func() *int64 { i := int64(0); return &i }(),
-			ContentBlock: &ContentBlock{
-				Type: "text",
-				Text: "",
-			},
+
+		eventData, err := json.Marshal(streamEvent)
+		if err != nil {
+			s.err = fmt.Errorf("failed to marshal message_start event: %w", err)
+			return false
 		}
 
-	case "content_block_delta":
-		streamEvent = StreamEvent{
-			Type:  "content_block_delta",
-			Index: func() *int64 { i := int64(0); return &i }(),
-		}
+		s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
+			Type: "message_start",
+			Data: eventData,
+		})
+	}
 
-		// Extract content from choices
-		if len(chatResp.Choices) > 0 && chatResp.Choices[0].Delta != nil {
-			choice := chatResp.Choices[0]
-			if choice.Delta.Content.Content != nil {
-				streamEvent.Delta = &StreamDelta{
+	// Process the current chunk
+	if len(chunk.Choices) > 0 {
+		choice := chunk.Choices[0]
+
+		// Handle content delta
+		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
+			// Generate content_block_start if this is the first content
+			if !s.hasTextContentStarted {
+				s.hasTextContentStarted = true
+
+				streamEvent := StreamEvent{
+					Type:  "content_block_start",
+					Index: &s.contentIndex,
+					ContentBlock: &ContentBlock{
+						Type: "text",
+						Text: "",
+					},
+				}
+
+				eventData, err := json.Marshal(streamEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to marshal content_block_start event: %w", err)
+					return false
+				}
+
+				s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
+					Type: "content_block_start",
+					Data: eventData,
+				})
+			}
+
+			// Generate content_block_delta
+			streamEvent := StreamEvent{
+				Type:  "content_block_delta",
+				Index: &s.contentIndex,
+				Delta: &StreamDelta{
 					Type: lo.ToPtr("text_delta"),
 					Text: choice.Delta.Content.Content,
-				}
+				},
 			}
+
+			eventData, err := json.Marshal(streamEvent)
+			if err != nil {
+				s.err = fmt.Errorf("failed to marshal content_block_delta event: %w", err)
+				return false
+			}
+
+			s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
+				Type: "content_block_delta",
+				Data: eventData,
+			})
 		}
 
-	case "content_block_stop":
-		streamEvent = StreamEvent{
-			Type:  "content_block_stop",
-			Index: lo.ToPtr(int64(0)),
-		}
+		// Handle finish reason
+		if choice.FinishReason != nil && !s.hasFinished {
+			s.hasFinished = true
 
-	case "message_delta":
-		streamEvent = StreamEvent{
+			// Generate content_block_stop if we had content
+			if s.hasTextContentStarted {
+				streamEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				eventData, err := json.Marshal(streamEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to marshal content_block_stop event: %w", err)
+					return false
+				}
+
+				s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
+					Type: "content_block_stop",
+					Data: eventData,
+				})
+			}
+
+			// Convert finish reason to Anthropic format
+			var stopReason string
+
+			switch *choice.FinishReason {
+			case "stop":
+				stopReason = "end_turn"
+			case "length":
+				stopReason = "max_tokens"
+			case "tool_calls":
+				stopReason = "tool_use"
+			default:
+				stopReason = "end_turn"
+			}
+
+			// Store the stop reason, but don't generate message_delta yet
+			// We'll wait for the usage chunk to combine them
+			s.stopReason = &stopReason
+		}
+	} else if chunk.Usage != nil && s.hasFinished {
+		// Usage-only chunk after finish_reason - generate message_delta with both stop reason and usage
+		streamEvent := StreamEvent{
 			Type: "message_delta",
 		}
 
-		// Extract finish reason and usage from choices
-		if len(chatResp.Choices) > 0 {
-			choice := chatResp.Choices[0]
-			if choice.FinishReason != nil {
-				// Convert finish reason to Anthropic format
-				var stopReason *string
-
-				switch *choice.FinishReason {
-				case "stop":
-					reason := "end_turn"
-					stopReason = &reason
-				case "length":
-					reason := "max_tokens"
-					stopReason = &reason
-				case "tool_calls":
-					reason := "tool_use"
-					stopReason = &reason
-				default:
-					stopReason = choice.FinishReason
-				}
-
-				streamEvent.Delta = &StreamDelta{
-					StopReason: stopReason,
-				}
+		if s.stopReason != nil {
+			streamEvent.Delta = &StreamDelta{
+				StopReason: s.stopReason,
 			}
 		}
 
-		// Add usage if available
-		if chatResp.Usage != nil {
-			usage := &Usage{
-				InputTokens:  int64(chatResp.Usage.PromptTokens),
-				OutputTokens: int64(chatResp.Usage.CompletionTokens),
-			}
-
-			// Map detailed token information
-			if chatResp.Usage.PromptTokensDetails != nil {
-				usage.CacheReadInputTokens = int64(chatResp.Usage.PromptTokensDetails.CachedTokens)
-			}
-
-			streamEvent.Usage = usage
+		usage := &Usage{
+			InputTokens:  int64(chunk.Usage.PromptTokens),
+			OutputTokens: int64(chunk.Usage.CompletionTokens),
 		}
 
-	case "message_stop":
-		streamEvent = StreamEvent{
+		// Map detailed token information
+		if chunk.Usage.PromptTokensDetails != nil {
+			usage.CacheReadInputTokens = int64(chunk.Usage.PromptTokensDetails.CachedTokens)
+		}
+
+		streamEvent.Usage = usage
+
+		eventData, err := json.Marshal(streamEvent)
+		if err != nil {
+			s.err = fmt.Errorf("failed to marshal message_delta event: %w", err)
+			return false
+		}
+
+		s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
+			Type: "message_delta",
+			Data: eventData,
+		})
+
+		// Generate message_stop
+		stopEvent := StreamEvent{
 			Type: "message_stop",
 		}
 
-	default:
-		// For unknown types or "data", create a generic event
-		streamEvent = StreamEvent{
-			Type: eventType,
+		stopEventData, err := json.Marshal(stopEvent)
+		if err != nil {
+			s.err = fmt.Errorf("failed to marshal message_stop event: %w", err)
+			return false
 		}
 
-		// Try to extract content from choices if available
-		if len(chatResp.Choices) > 0 {
-			choice := chatResp.Choices[0]
-
-			var message *llm.Message
-
-			if choice.Message != nil {
-				message = choice.Message
-			} else if choice.Delta != nil {
-				message = choice.Delta
-			}
-
-			if message != nil && message.Content.Content != nil {
-				streamEvent.Delta = &StreamDelta{
-					Type: lo.ToPtr("text"),
-					Text: message.Content.Content,
-				}
-			}
-		}
+		s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
+			Type: "message_stop",
+			Data: stopEventData,
+		})
 	}
 
-	// Marshal the stream event to JSON
-	eventData, err := json.Marshal(streamEvent)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal stream event: %w", err)
-	}
-
-	return &httpclient.StreamEvent{
-		Type: eventType,
-		Data: eventData,
-	}, nil
+	// If we have events in the queue, return true
+	return len(s.eventQueue) > 0
 }
 
-func (t *InboundTransformer) AggregateStreamChunks(
-	ctx context.Context,
-	chunks []*httpclient.StreamEvent,
-) ([]byte, error) {
+func (s *anthropicInboundStream) Current() *httpclient.StreamEvent {
+	if s.queueIndex < len(s.eventQueue) {
+		event := s.eventQueue[s.queueIndex]
+		s.queueIndex++
+
+		return event
+	}
+
+	return nil
+}
+
+func (s *anthropicInboundStream) Err() error {
+	if s.err != nil {
+		return s.err
+	}
+
+	return s.source.Err()
+}
+
+func (s *anthropicInboundStream) Close() error {
+	return s.source.Close()
+}
+
+func (t *InboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, error) {
 	return AggregateStreamChunks(ctx, chunks)
 }

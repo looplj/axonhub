@@ -346,9 +346,9 @@ type Message struct {
 
 // Usage represents usage information in Anthropic format.
 type Usage struct {
-	InputTokens              int64  `json:"input_tokens"`
-	OutputTokens             int64  `json:"output_tokens"`
-	CacheCreationInputTokens int64  `json:"cache_creation_input_tokens"`
-	CacheReadInputTokens     int64  `json:"cache_read_input_tokens"`
-	ServiceTier              string `json:"service_tier"`
+	InputTokens              int64  `json:"input_tokens,omitempty"`
+	OutputTokens             int64  `json:"output_tokens,omitempty"`
+	CacheCreationInputTokens int64  `json:"cache_creation_input_tokens,omitempty"`
+	CacheReadInputTokens     int64  `json:"cache_read_input_tokens,omitempty"`
+	ServiceTier              string `json:"service_tier,omitempty"`
 }

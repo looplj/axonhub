@@ -34,6 +34,9 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		switch event.Type {
 		case "message_start":
 			messageStart = &event
+			if event.Message != nil && event.Message.Usage != nil {
+				usage = event.Message.Usage
+			}
 		case "content_block_start":
 			if event.ContentBlock != nil {
 				contentBlocks = append(contentBlocks, *event.ContentBlock)
@@ -96,9 +99,23 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			}
 
 			if event.Usage != nil {
-				usage = event.Usage
-				if messageStart != nil && messageStart.Message != nil && messageStart.Message.Usage != nil {
-					usage.InputTokens = messageStart.Message.Usage.InputTokens
+				if usage == nil {
+					usage = event.Usage
+				} else {
+					// Merge usage information from message_delta with message_start
+					// Keep input tokens from message_start, update output tokens from message_delta
+					usage.OutputTokens = event.Usage.OutputTokens
+					if event.Usage.InputTokens > 0 {
+						usage.InputTokens = event.Usage.InputTokens
+					}
+
+					if event.Usage.CacheCreationInputTokens > 0 {
+						usage.CacheCreationInputTokens = event.Usage.CacheCreationInputTokens
+					}
+
+					if event.Usage.CacheReadInputTokens > 0 {
+						usage.CacheReadInputTokens = event.Usage.CacheReadInputTokens
+					}
 				}
 			}
 		case "message_stop":

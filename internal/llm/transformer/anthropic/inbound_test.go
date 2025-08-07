@@ -3,12 +3,15 @@ package anthropic
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
 	"testing"
 
-	"github.com/samber/lo"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
 func TestInboundTransformer_TransformRequest(t *testing.T) {
@@ -587,34 +590,6 @@ func TestInboundTransformer_ErrorHandling(t *testing.T) {
 			})
 		}
 	})
-
-	t.Run("TransformStreamChunk error cases", func(t *testing.T) {
-		tests := []struct {
-			name        string
-			chatResp    *llm.Response
-			expectError bool
-			errorMsg    string
-		}{
-			{
-				name:        "nil response",
-				chatResp:    nil,
-				expectError: true,
-				errorMsg:    "chat completion response is nil",
-			},
-		}
-
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				_, err := transformer.TransformStreamChunk(t.Context(), tt.chatResp)
-				if tt.expectError {
-					require.Error(t, err)
-					require.Contains(t, err.Error(), tt.errorMsg)
-				} else {
-					require.NoError(t, err)
-				}
-			})
-		}
-	})
 }
 
 func TestInboundTransformer_ValidationEdgeCases(t *testing.T) {
@@ -734,319 +709,184 @@ func TestAnthropicMessageContent_MarshalUnmarshal(t *testing.T) {
 	}
 }
 
-func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
+func TestInboundTransformer_StreamTransformation_WithTestData_Stop(t *testing.T) {
 	transformer := NewInboundTransformer()
 
-	tests := []struct {
-		name        string
-		chatResp    *llm.Response
-		expectError bool
-		checkEvent  func(t *testing.T, event *httpclient.StreamEvent)
-	}{
-		{
-			name: "message_start event",
-			chatResp: &llm.Response{
-				ID:      "msg_123",
-				Object:  "message_start",
-				Model:   "claude-3-sonnet-20240229",
-				Created: 1234567890,
-				Usage: &llm.Usage{
-					PromptTokens:     10,
-					CompletionTokens: 20,
-					TotalTokens:      30,
-				},
-			},
-			expectError: false,
-			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
-				t.Helper()
-				require.Equal(t, "message_start", event.Type)
+	// Load test data from files
+	// The response-stop.stream.jsonl contains OpenAI format responses
+	openaiData, err := os.ReadFile("testdata/response-stop.stream.jsonl")
+	require.NoError(t, err)
 
-				// Unmarshal the data to check the event
-				var streamEvent StreamEvent
-				err := json.Unmarshal(event.Data, &streamEvent)
-				require.NoError(t, err)
+	// The anthropic-stop.stream.jsonl contains expected Anthropic format events
+	expectedData, err := os.ReadFile("testdata/anthropic-stop.stream.jsonl")
+	require.NoError(t, err)
 
-				require.Equal(t, "message_start", streamEvent.Type)
-				require.NotNil(t, streamEvent.Message)
-				require.Equal(t, "msg_123", streamEvent.Message.ID)
-				require.Equal(t, "assistant", streamEvent.Message.Role)
-				require.Equal(t, "claude-3-sonnet-20240229", streamEvent.Message.Model)
+	// Parse OpenAI stream responses
+	openaiLines := strings.Split(strings.TrimSpace(string(openaiData)), "\n")
 
-				require.NotNil(t, streamEvent.Message.Usage)
-				require.Equal(t, int64(10), streamEvent.Message.Usage.InputTokens)
-				require.Equal(t, int64(20), streamEvent.Message.Usage.OutputTokens)
-			},
-		},
-		{
-			name: "content_block_start event",
-			chatResp: &llm.Response{
-				ID:     "msg_123",
-				Object: "content_block_start",
-				Model:  "claude-3-sonnet-20240229",
-			},
-			expectError: false,
-			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
-				t.Helper()
-				require.Equal(t, "content_block_start", event.Type)
+	var openaiResponses []*llm.Response
 
-				// Unmarshal the data to check the event
-				var streamEvent StreamEvent
-				err := json.Unmarshal(event.Data, &streamEvent)
-				require.NoError(t, err)
-
-				require.Equal(t, "content_block_start", streamEvent.Type)
-				require.NotNil(t, streamEvent.ContentBlock)
-				require.Equal(t, "text", streamEvent.ContentBlock.Type)
-			},
-		},
-		{
-			name: "content_block_delta event",
-			chatResp: &llm.Response{
-				ID:     "msg_123",
-				Object: "content_block_delta",
-				Model:  "claude-3-sonnet-20240229",
-				Choices: []llm.Choice{
-					{
-						Index: 0,
-						Delta: &llm.Message{
-							Role: "assistant",
-							Content: llm.MessageContent{
-								Content: func() *string { s := "Hello"; return &s }(),
-							},
-						},
-					},
-				},
-			},
-			expectError: false,
-			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
-				t.Helper()
-				require.Equal(t, "content_block_delta", event.Type)
-
-				// Unmarshal the data to check the event
-				var streamEvent StreamEvent
-				err := json.Unmarshal(event.Data, &streamEvent)
-				require.NoError(t, err)
-
-				require.Equal(t, "content_block_delta", streamEvent.Type)
-				require.NotNil(t, streamEvent.Delta)
-				require.NotNil(t, streamEvent.Delta.Text)
-				require.Equal(t, "Hello", *streamEvent.Delta.Text)
-			},
-		},
-		{
-			name: "content_block_stop event",
-			chatResp: &llm.Response{
-				ID:     "msg_123",
-				Object: "content_block_stop",
-				Model:  "claude-3-sonnet-20240229",
-			},
-			expectError: false,
-			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
-				t.Helper()
-				require.Equal(t, "content_block_stop", event.Type)
-
-				// Unmarshal the data to check the event
-				var streamEvent StreamEvent
-				err := json.Unmarshal(event.Data, &streamEvent)
-				require.NoError(t, err)
-
-				require.Equal(t, "content_block_stop", streamEvent.Type)
-			},
-		},
-		{
-			name: "message_delta event with stop reason",
-			chatResp: &llm.Response{
-				ID:     "msg_123",
-				Object: "message_delta",
-				Model:  "claude-3-sonnet-20240229",
-				Choices: []llm.Choice{
-					{
-						Index:        0,
-						FinishReason: func() *string { s := "stop"; return &s }(),
-					},
-				},
-				Usage: &llm.Usage{
-					PromptTokens:     10,
-					CompletionTokens: 20,
-					TotalTokens:      30,
-				},
-			},
-			expectError: false,
-			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
-				t.Helper()
-				require.Equal(t, "message_delta", event.Type)
-
-				// Unmarshal the data to check the event
-				var streamEvent StreamEvent
-				err := json.Unmarshal(event.Data, &streamEvent)
-				require.NoError(t, err)
-
-				require.Equal(t, "message_delta", streamEvent.Type)
-				require.NotNil(t, streamEvent.Delta)
-				require.NotNil(t, streamEvent.Delta.StopReason)
-				require.Equal(t, "end_turn", *streamEvent.Delta.StopReason)
-				require.NotNil(t, streamEvent.Usage)
-				require.Equal(t, int64(10), streamEvent.Usage.InputTokens)
-				require.Equal(t, int64(20), streamEvent.Usage.OutputTokens)
-			},
-		},
-		{
-			name: "message_delta event with length reason",
-			chatResp: &llm.Response{
-				ID:     "msg_123",
-				Object: "message_delta",
-				Model:  "claude-3-sonnet-20240229",
-				Choices: []llm.Choice{
-					{
-						Index:        0,
-						FinishReason: func() *string { s := "length"; return &s }(),
-					},
-				},
-			},
-			expectError: false,
-			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
-				t.Helper()
-				require.Equal(t, "message_delta", event.Type)
-
-				// Unmarshal the data to check the event
-				var streamEvent StreamEvent
-				err := json.Unmarshal(event.Data, &streamEvent)
-				require.NoError(t, err)
-
-				require.Equal(t, "message_delta", streamEvent.Type)
-				require.NotNil(t, streamEvent.Delta)
-				require.NotNil(t, streamEvent.Delta.StopReason)
-				require.Equal(t, "max_tokens", *streamEvent.Delta.StopReason)
-			},
-		},
-		{
-			name: "message_delta event with tool_calls reason",
-			chatResp: &llm.Response{
-				ID:     "msg_123",
-				Object: "message_delta",
-				Model:  "claude-3-sonnet-20240229",
-				Choices: []llm.Choice{
-					{
-						Index:        0,
-						FinishReason: func() *string { s := "tool_calls"; return &s }(),
-					},
-				},
-			},
-			expectError: false,
-			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
-				t.Helper()
-				require.Equal(t, "message_delta", event.Type)
-
-				// Unmarshal the data to check the event
-				var streamEvent StreamEvent
-				err := json.Unmarshal(event.Data, &streamEvent)
-				require.NoError(t, err)
-
-				require.Equal(t, "message_delta", streamEvent.Type)
-				require.NotNil(t, streamEvent.Delta)
-				require.NotNil(t, streamEvent.Delta.StopReason)
-				require.Equal(t, "tool_use", *streamEvent.Delta.StopReason)
-			},
-		},
-		{
-			name: "message_stop event",
-			chatResp: &llm.Response{
-				ID:     "msg_123",
-				Object: "message_stop",
-				Model:  "claude-3-sonnet-20240229",
-			},
-			expectError: false,
-			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
-				t.Helper()
-				require.Equal(t, "message_stop", event.Type)
-
-				// Unmarshal the data to check the event
-				var streamEvent StreamEvent
-				err := json.Unmarshal(event.Data, &streamEvent)
-				require.NoError(t, err)
-
-				require.Equal(t, "message_stop", streamEvent.Type)
-			},
-		},
-		{
-			name: "default/data event with content",
-			chatResp: &llm.Response{
-				ID:     "msg_123",
-				Object: "", // Empty object defaults to "data"
-				Model:  "claude-3-sonnet-20240229",
-				Choices: []llm.Choice{
-					{
-						Index: 0,
-						Delta: &llm.Message{
-							Role: "assistant",
-							Content: llm.MessageContent{
-								Content: lo.ToPtr("Hello world"),
-							},
-						},
-					},
-				},
-			},
-			expectError: false,
-			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
-				t.Helper()
-				require.Empty(t, event.Type)
-				// Unmarshal the data to check the event
-				var streamEvent StreamEvent
-				err := json.Unmarshal(event.Data, &streamEvent)
-				require.NoError(t, err)
-
-				require.Empty(t, streamEvent.Type)
-				require.NotNil(t, streamEvent.Delta)
-				require.NotNil(t, streamEvent.Delta.Text)
-				require.Equal(t, "Hello world", *streamEvent.Delta.Text)
-			},
-		},
-		{
-			name: "empty choices",
-			chatResp: &llm.Response{
-				ID:      "msg_123",
-				Object:  "content_block_delta",
-				Model:   "claude-3-sonnet-20240229",
-				Choices: []llm.Choice{},
-			},
-			expectError: false, // Should not error, just create empty event
-			checkEvent: func(t *testing.T, event *httpclient.StreamEvent) {
-				t.Helper()
-				require.Equal(t, "content_block_delta", event.Type)
-
-				// Unmarshal the data to check the event
-				var streamEvent StreamEvent
-				err := json.Unmarshal(event.Data, &streamEvent)
-				require.NoError(t, err)
-
-				require.Equal(t, "content_block_delta", streamEvent.Type)
-				// Delta should be nil since no choices
-				require.Nil(t, streamEvent.Delta)
-			},
-		},
-		{
-			name:        "nil response",
-			chatResp:    nil,
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := transformer.TransformStreamChunk(t.Context(), tt.chatResp)
-
-			if tt.expectError {
-				require.Error(t, err)
-				require.Nil(t, result)
+	for _, line := range openaiLines {
+		if line != "" {
+			// Check if this is a DONE event
+			if strings.Contains(line, `"Data":"[DONE]"`) {
+				// This is a DONE event, add the DoneResponse
+				openaiResponses = append(openaiResponses, llm.DoneResponse)
 			} else {
-				require.NoError(t, err)
-				require.NotNil(t, result)
-				require.NotNil(t, result.Data)
-
-				if tt.checkEvent != nil {
-					tt.checkEvent(t, result)
+				// Parse the StreamEvent to get the Data field
+				var event struct {
+					Type string `json:"Type"`
+					Data string `json:"Data"`
 				}
+
+				err := json.Unmarshal([]byte(line), &event)
+				require.NoError(t, err)
+
+				// Parse the Data field as llm.Response
+				var resp llm.Response
+
+				err = json.Unmarshal([]byte(event.Data), &resp)
+				require.NoError(t, err)
+
+				openaiResponses = append(openaiResponses, &resp)
 			}
-		})
+		}
 	}
+
+	// Parse expected Anthropic stream events
+	expectedLines := strings.Split(strings.TrimSpace(string(expectedData)), "\n")
+
+	var expectedEvents []*httpclient.StreamEvent
+
+	for _, line := range expectedLines {
+		if line != "" {
+			var event struct {
+				Type string `json:"Type"`
+				Data string `json:"Data"`
+			}
+
+			err := json.Unmarshal([]byte(line), &event)
+			require.NoError(t, err)
+
+			expectedEvents = append(expectedEvents, &httpclient.StreamEvent{
+				Type: event.Type,
+				Data: []byte(event.Data),
+			})
+		}
+	}
+
+	// Create a mock stream from OpenAI responses
+	mockStream := streams.SliceStream(openaiResponses)
+
+	// Transform the stream (OpenAI -> Anthropic)
+	transformedStream, err := transformer.TransformStream(t.Context(), mockStream)
+	require.NoError(t, err)
+
+	// Collect all transformed events
+	var actualEvents []*httpclient.StreamEvent
+
+	for transformedStream.Next() {
+		event := transformedStream.Current()
+		actualEvents = append(actualEvents, event)
+	}
+
+	require.NoError(t, transformedStream.Err())
+
+	// Verify the number of events matches
+	require.Equal(t, len(expectedEvents), len(actualEvents), "Number of events should match")
+
+	// Verify each event
+	for i, expected := range expectedEvents {
+		actual := actualEvents[i]
+
+		// Verify event type
+		assert.Equal(t, expected.Type, actual.Type, "Event %d: Type should match", i)
+
+		// Parse and compare event data
+		var expectedStreamEvent StreamEvent
+
+		err := json.Unmarshal(expected.Data, &expectedStreamEvent)
+		require.NoError(t, err)
+
+		var actualStreamEvent StreamEvent
+
+		err = json.Unmarshal(actual.Data, &actualStreamEvent)
+		require.NoError(t, err)
+
+		// Verify stream event type
+		assert.Equal(t, expectedStreamEvent.Type, actualStreamEvent.Type, "Event %d: Stream event type should match", i)
+
+		// Verify specific fields based on event type
+		switch expectedStreamEvent.Type {
+		case "message_start":
+			require.NotNil(t, expectedStreamEvent.Message)
+			require.NotNil(t, actualStreamEvent.Message)
+			assert.Equal(t, expectedStreamEvent.Message.ID, actualStreamEvent.Message.ID, "Event %d: Message ID should match", i)
+			assert.Equal(t, expectedStreamEvent.Message.Model, actualStreamEvent.Message.Model, "Event %d: Model should match", i)
+			assert.Equal(t, expectedStreamEvent.Message.Role, actualStreamEvent.Message.Role, "Event %d: Role should match", i)
+
+			if expectedStreamEvent.Message.Usage != nil && actualStreamEvent.Message.Usage != nil {
+				assert.Equal(t, int64(1), actualStreamEvent.Message.Usage.InputTokens, "Event %d: Input tokens should match", i)
+				assert.Equal(
+					t,
+					expectedStreamEvent.Message.Usage.OutputTokens,
+					actualStreamEvent.Message.Usage.OutputTokens,
+					"Event %d: Output tokens should match",
+					i,
+				)
+			}
+
+		case "content_block_start":
+			require.NotNil(t, expectedStreamEvent.ContentBlock)
+			require.NotNil(t, actualStreamEvent.ContentBlock)
+			assert.Equal(t, expectedStreamEvent.ContentBlock.Type, actualStreamEvent.ContentBlock.Type, "Event %d: Content block type should match", i)
+
+		case "content_block_delta":
+			require.NotNil(t, expectedStreamEvent.Delta)
+			require.NotNil(t, actualStreamEvent.Delta)
+
+			if expectedStreamEvent.Delta.Text != nil && actualStreamEvent.Delta.Text != nil {
+				assert.Equal(t, *expectedStreamEvent.Delta.Text, *actualStreamEvent.Delta.Text, "Event %d: Delta text should match", i)
+			}
+
+		case "content_block_stop":
+			assert.Equal(t, expectedStreamEvent.Index, actualStreamEvent.Index, "Event %d: Index should match", i)
+
+		case "message_delta":
+			require.NotNil(t, expectedStreamEvent.Delta)
+			require.NotNil(t, actualStreamEvent.Delta)
+
+			if expectedStreamEvent.Delta.StopReason != nil && actualStreamEvent.Delta.StopReason != nil {
+				assert.Equal(t, *expectedStreamEvent.Delta.StopReason, *actualStreamEvent.Delta.StopReason, "Event %d: Stop reason should match", i)
+			}
+
+			if expectedStreamEvent.Usage != nil && actualStreamEvent.Usage != nil {
+				// Aggregate input tokens from the message_start event.
+				assert.Equal(t, int64(21), actualStreamEvent.Usage.InputTokens, "Event %d: Usage input tokens should match", i)
+				assert.Equal(t, expectedStreamEvent.Usage.OutputTokens, actualStreamEvent.Usage.OutputTokens, "Event %d: Usage output tokens should match", i)
+			}
+
+		case "message_stop":
+			// No specific fields to verify for message_stop
+		}
+	}
+
+	aggregatedBytes, err := transformer.AggregateStreamChunks(t.Context(), actualEvents)
+	require.NoError(t, err)
+
+	var aggregatedResp Message
+
+	err = json.Unmarshal(aggregatedBytes, &aggregatedResp)
+	require.NoError(t, err)
+
+	// Verify aggregated response
+	assert.Equal(t, "msg_bdrk_01Fbg5HKuVfmtT6mAMxQoCSn", aggregatedResp.ID)
+	assert.Equal(t, "message", aggregatedResp.Type)
+	assert.Equal(t, "claude-3-7-sonnet-20250219", aggregatedResp.Model)
+	assert.NotEmpty(t, aggregatedResp.Content)
+	assert.Equal(t, "assistant", aggregatedResp.Role)
+
+	// Verify the complete content
+	expectedContent := "1 2 3 4 5\n6 7 8 9 10\n11 12 13 14 15\n16 17 18 19 20"
+	assert.Equal(t, expectedContent, aggregatedResp.Content[0].Text)
 }
