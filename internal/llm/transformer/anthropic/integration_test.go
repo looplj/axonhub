@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
@@ -275,28 +274,28 @@ func TestAnthropicTransformers_StreamingIntegration(t *testing.T) {
 	require.NotNil(t, chatRespBytes)
 
 	// Parse the response
-	var chatResp llm.Response
+	var chatResp Message
 
 	err = json.Unmarshal(chatRespBytes, &chatResp)
 	require.NoError(t, err)
 
 	// Verify the aggregated response
 	require.Equal(t, "msg_stream_123", chatResp.ID)
-	require.Equal(t, "chat.completion", chatResp.Object)
-	require.Equal(t, 1, len(chatResp.Choices))
-	require.Equal(t, "assistant", chatResp.Choices[0].Message.Role)
+	require.Equal(t, "message", chatResp.Type)
+	require.Equal(t, 1, len(chatResp.Content))
+	require.Equal(t, "assistant", chatResp.Role)
 	require.Equal(
 		t,
 		"Hello, this is a streaming response!",
-		*chatResp.Choices[0].Message.Content.Content,
+		chatResp.Content[0].Text,
 	)
-	require.Equal(t, "stop", *chatResp.Choices[0].FinishReason)
+	require.NotNil(t, chatResp.StopReason)
+	require.Equal(t, "end_turn", *chatResp.StopReason)
 
 	// Verify usage
 	require.NotNil(t, chatResp.Usage)
-	require.Equal(t, 10, chatResp.Usage.PromptTokens)
-	require.Equal(t, 25, chatResp.Usage.CompletionTokens)
-	require.Equal(t, 35, chatResp.Usage.TotalTokens)
+	require.Equal(t, int64(10), chatResp.Usage.InputTokens)
+	require.Equal(t, int64(25), chatResp.Usage.OutputTokens)
 }
 
 func TestAnthropicTransformers_ErrorHandling(t *testing.T) {

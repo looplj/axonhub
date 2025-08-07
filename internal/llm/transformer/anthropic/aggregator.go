@@ -97,6 +97,9 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 			if event.Usage != nil {
 				usage = event.Usage
+				if messageStart != nil && messageStart.Message != nil && messageStart.Message.Usage != nil {
+					usage.InputTokens = messageStart.Message.Usage.InputTokens
+				}
 			}
 		case "message_stop":
 			// Final event, no additional processing needed
@@ -143,8 +146,6 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		}
 	}
 
-	// Convert the Anthropic message to ChatCompletion format
-	chatResp := convertToChatCompletionResponse(message)
-
-	return json.Marshal(chatResp)
+	// Return the message directly in Anthropic format
+	return json.Marshal(message)
 }
