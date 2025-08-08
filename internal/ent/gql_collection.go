@@ -792,6 +792,11 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldModelID)
 				fieldSeen[request.FieldModelID] = struct{}{}
 			}
+		case "format":
+			if _, ok := fieldSeen[request.FieldFormat]; !ok {
+				selectedFields = append(selectedFields, request.FieldFormat)
+				fieldSeen[request.FieldFormat] = struct{}{}
+			}
 		case "requestBody":
 			if _, ok := fieldSeen[request.FieldRequestBody]; !ok {
 				selectedFields = append(selectedFields, request.FieldRequestBody)
@@ -801,6 +806,11 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			if _, ok := fieldSeen[request.FieldResponseBody]; !ok {
 				selectedFields = append(selectedFields, request.FieldResponseBody)
 				fieldSeen[request.FieldResponseBody] = struct{}{}
+			}
+		case "responseChunks":
+			if _, ok := fieldSeen[request.FieldResponseChunks]; !ok {
+				selectedFields = append(selectedFields, request.FieldResponseChunks)
+				fieldSeen[request.FieldResponseChunks] = struct{}{}
 			}
 		case "status":
 			if _, ok := fieldSeen[request.FieldStatus]; !ok {
@@ -950,6 +960,11 @@ func (req *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool
 			if _, ok := fieldSeen[requestexecution.FieldModelID]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldModelID)
 				fieldSeen[requestexecution.FieldModelID] = struct{}{}
+			}
+		case "format":
+			if _, ok := fieldSeen[requestexecution.FieldFormat]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldFormat)
+				fieldSeen[requestexecution.FieldFormat] = struct{}{}
 			}
 		case "requestBody":
 			if _, ok := fieldSeen[requestexecution.FieldRequestBody]; !ok {

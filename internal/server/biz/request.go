@@ -33,10 +33,11 @@ func NewRequestService(entClient *ent.Client, systemService *SystemService) *Req
 func (s *RequestService) CreateRequest(
 	ctx context.Context,
 	apiKey *ent.APIKey,
-	chatReq *llm.Request,
-	requestBody any,
+	llmRequest *llm.Request,
+	httpRequest *httpclient.Request,
+	format string,
 ) (*ent.Request, error) {
-	requestBodyBytes, err := xjson.Marshal(requestBody)
+	requestBodyBytes, err := xjson.Marshal(httpRequest.Body)
 	if err != nil {
 		log.Error(ctx, "Failed to serialize request body", log.Cause(err))
 		return nil, err
@@ -46,7 +47,8 @@ func (s *RequestService) CreateRequest(
 	req, err := s.EntClient.Request.Create().
 		SetAPIKey(lo.TernaryF(apiKey != nil, func() *ent.APIKey { return apiKey }, func() *ent.APIKey { return nil })).
 		SetUserID(lo.TernaryF(apiKey != nil, func() int { return apiKey.UserID }, func() int { return 0 })).
-		SetModelID(chatReq.Model).
+		SetModelID(llmRequest.Model).
+		SetFormat(format).
 		SetStatus(request.StatusProcessing).
 		SetRequestBody(requestBodyBytes).
 		Save(ctx)
@@ -62,35 +64,26 @@ func (s *RequestService) CreateRequest(
 func (s *RequestService) CreateRequestExecution(
 	ctx context.Context,
 	channel *Channel,
-	req *ent.Request,
-	requestBody any,
+	modelID string,
+	request *ent.Request,
+	channelRequest httpclient.Request,
+	format string,
 ) (*ent.RequestExecution, error) {
-	requestBodyBytes, err := xjson.Marshal(requestBody)
+	requestBodyBytes, err := xjson.Marshal(channelRequest.Body)
 	if err != nil {
 		log.Error(ctx, "Failed to marshal request body", log.Cause(err))
 		return nil, err
 	}
 
-	model, err := channel.ChooseModel(req.ModelID)
-	if err != nil {
-		log.Error(ctx, "Failed to choose model", log.Cause(err))
-		return nil, err
-	}
-
-	reqExec, err := s.EntClient.RequestExecution.Create().
-		SetRequestID(req.ID).
-		SetUserID(req.UserID).
+	return s.EntClient.RequestExecution.Create().
+		SetFormat(format).
+		SetRequestID(request.ID).
+		SetUserID(request.UserID).
 		SetChannelID(channel.ID).
-		SetModelID(model).
+		SetModelID(modelID).
 		SetRequestBody(requestBodyBytes).
 		SetStatus(requestexecution.StatusProcessing).
 		Save(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to create request execution", log.Cause(err))
-		return nil, err
-	}
-
-	return reqExec, nil
 }
 
 // UpdateRequestCompleted updates request status to completed with response body.
@@ -208,6 +201,45 @@ func (s *RequestService) AppendRequestExecutionChunk(
 	}
 
 	_, err = s.EntClient.RequestExecution.UpdateOneID(executionID).
+		AppendResponseChunks([]objects.JSONRawMessage{chunkBytes}).
+		Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to append response chunk", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
+func (s *RequestService) AppendRequestChunk(
+	ctx context.Context,
+	requestID int,
+	chunk *httpclient.StreamEvent,
+) error {
+	// Check if chunk storage is enabled
+	storeChunks, err := s.SystemService.StoreChunks(ctx)
+	if err != nil {
+		log.Warn(ctx, "Failed to get StoreChunks setting, defaulting to false", log.Cause(err))
+
+		storeChunks = false
+	}
+
+	// Only store chunks if enabled
+	if !storeChunks {
+		return nil
+	}
+
+	chunkBytes, err := xjson.Marshal(jsonStreamEvent{
+		LastEventID: chunk.LastEventID,
+		Type:        chunk.Type,
+		Data:        chunk.Data,
+	})
+	if err != nil {
+		log.Error(ctx, "Failed to marshal chunk", log.Cause(err))
+		return err
+	}
+
+	_, err = s.EntClient.Request.UpdateOneID(requestID).
 		AppendResponseChunks([]objects.JSONRawMessage{chunkBytes}).
 		Save(ctx)
 	if err != nil {

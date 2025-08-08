@@ -76,6 +76,24 @@ func (ru *RequestUpdate) ClearResponseBody() *RequestUpdate {
 	return ru
 }
 
+// SetResponseChunks sets the "response_chunks" field.
+func (ru *RequestUpdate) SetResponseChunks(orm []objects.JSONRawMessage) *RequestUpdate {
+	ru.mutation.SetResponseChunks(orm)
+	return ru
+}
+
+// AppendResponseChunks appends orm to the "response_chunks" field.
+func (ru *RequestUpdate) AppendResponseChunks(orm []objects.JSONRawMessage) *RequestUpdate {
+	ru.mutation.AppendResponseChunks(orm)
+	return ru
+}
+
+// ClearResponseChunks clears the value of the "response_chunks" field.
+func (ru *RequestUpdate) ClearResponseChunks() *RequestUpdate {
+	ru.mutation.ClearResponseChunks()
+	return ru
+}
+
 // SetStatus sets the "status" field.
 func (ru *RequestUpdate) SetStatus(r request.Status) *RequestUpdate {
 	ru.mutation.SetStatus(r)
@@ -218,6 +236,17 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if ru.mutation.ResponseBodyCleared() {
 		_spec.ClearField(request.FieldResponseBody, field.TypeJSON)
 	}
+	if value, ok := ru.mutation.ResponseChunks(); ok {
+		_spec.SetField(request.FieldResponseChunks, field.TypeJSON, value)
+	}
+	if value, ok := ru.mutation.AppendedResponseChunks(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, request.FieldResponseChunks, value)
+		})
+	}
+	if ru.mutation.ResponseChunksCleared() {
+		_spec.ClearField(request.FieldResponseChunks, field.TypeJSON)
+	}
 	if value, ok := ru.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 	}
@@ -328,6 +357,24 @@ func (ruo *RequestUpdateOne) AppendResponseBody(orm objects.JSONRawMessage) *Req
 // ClearResponseBody clears the value of the "response_body" field.
 func (ruo *RequestUpdateOne) ClearResponseBody() *RequestUpdateOne {
 	ruo.mutation.ClearResponseBody()
+	return ruo
+}
+
+// SetResponseChunks sets the "response_chunks" field.
+func (ruo *RequestUpdateOne) SetResponseChunks(orm []objects.JSONRawMessage) *RequestUpdateOne {
+	ruo.mutation.SetResponseChunks(orm)
+	return ruo
+}
+
+// AppendResponseChunks appends orm to the "response_chunks" field.
+func (ruo *RequestUpdateOne) AppendResponseChunks(orm []objects.JSONRawMessage) *RequestUpdateOne {
+	ruo.mutation.AppendResponseChunks(orm)
+	return ruo
+}
+
+// ClearResponseChunks clears the value of the "response_chunks" field.
+func (ruo *RequestUpdateOne) ClearResponseChunks() *RequestUpdateOne {
+	ruo.mutation.ClearResponseChunks()
 	return ruo
 }
 
@@ -502,6 +549,17 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 	}
 	if ruo.mutation.ResponseBodyCleared() {
 		_spec.ClearField(request.FieldResponseBody, field.TypeJSON)
+	}
+	if value, ok := ruo.mutation.ResponseChunks(); ok {
+		_spec.SetField(request.FieldResponseChunks, field.TypeJSON, value)
+	}
+	if value, ok := ruo.mutation.AppendedResponseChunks(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, request.FieldResponseChunks, value)
+		})
+	}
+	if ruo.mutation.ResponseChunksCleared() {
+		_spec.ClearField(request.FieldResponseChunks, field.TypeJSON)
 	}
 	if value, ok := ruo.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)

@@ -180,15 +180,17 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 
 // CreateRequestInput represents a mutation input for creating requests.
 type CreateRequestInput struct {
-	CreatedAt    *time.Time
-	UpdatedAt    *time.Time
-	DeletedAt    *int
-	ModelID      string
-	RequestBody  objects.JSONRawMessage
-	ResponseBody objects.JSONRawMessage
-	Status       request.Status
-	UserID       int
-	APIKeyID     *int
+	CreatedAt      *time.Time
+	UpdatedAt      *time.Time
+	DeletedAt      *int
+	ModelID        string
+	Format         *string
+	RequestBody    objects.JSONRawMessage
+	ResponseBody   objects.JSONRawMessage
+	ResponseChunks []objects.JSONRawMessage
+	Status         request.Status
+	UserID         int
+	APIKeyID       *int
 }
 
 // Mutate applies the CreateRequestInput on the RequestMutation builder.
@@ -203,11 +205,17 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 		m.SetDeletedAt(*v)
 	}
 	m.SetModelID(i.ModelID)
+	if v := i.Format; v != nil {
+		m.SetFormat(*v)
+	}
 	if v := i.RequestBody; v != nil {
 		m.SetRequestBody(v)
 	}
 	if v := i.ResponseBody; v != nil {
 		m.SetResponseBody(v)
+	}
+	if v := i.ResponseChunks; v != nil {
+		m.SetResponseChunks(v)
 	}
 	m.SetStatus(i.Status)
 	m.SetUserID(i.UserID)
@@ -224,12 +232,15 @@ func (c *RequestCreate) SetInput(i CreateRequestInput) *RequestCreate {
 
 // UpdateRequestInput represents a mutation input for updating requests.
 type UpdateRequestInput struct {
-	UpdatedAt          *time.Time
-	DeletedAt          *int
-	ClearResponseBody  bool
-	ResponseBody       objects.JSONRawMessage
-	AppendResponseBody objects.JSONRawMessage
-	Status             *request.Status
+	UpdatedAt            *time.Time
+	DeletedAt            *int
+	ClearResponseBody    bool
+	ResponseBody         objects.JSONRawMessage
+	AppendResponseBody   objects.JSONRawMessage
+	ClearResponseChunks  bool
+	ResponseChunks       []objects.JSONRawMessage
+	AppendResponseChunks []objects.JSONRawMessage
+	Status               *request.Status
 }
 
 // Mutate applies the UpdateRequestInput on the RequestMutation builder.
@@ -248,6 +259,15 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if i.AppendResponseBody != nil {
 		m.AppendResponseBody(i.ResponseBody)
+	}
+	if i.ClearResponseChunks {
+		m.ClearResponseChunks()
+	}
+	if v := i.ResponseChunks; v != nil {
+		m.SetResponseChunks(v)
+	}
+	if i.AppendResponseChunks != nil {
+		m.AppendResponseChunks(i.ResponseChunks)
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)

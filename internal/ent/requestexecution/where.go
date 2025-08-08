@@ -85,6 +85,11 @@ func ModelID(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldModelID, v))
 }
 
+// Format applies equality check predicate on the "format" field. It's identical to FormatEQ.
+func Format(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldFormat, v))
+}
+
 // ErrorMessage applies equality check predicate on the "error_message" field. It's identical to ErrorMessageEQ.
 func ErrorMessage(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldErrorMessage, v))
@@ -313,6 +318,71 @@ func ModelIDEqualFold(v string) predicate.RequestExecution {
 // ModelIDContainsFold applies the ContainsFold predicate on the "model_id" field.
 func ModelIDContainsFold(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldContainsFold(FieldModelID, v))
+}
+
+// FormatEQ applies the EQ predicate on the "format" field.
+func FormatEQ(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldFormat, v))
+}
+
+// FormatNEQ applies the NEQ predicate on the "format" field.
+func FormatNEQ(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldFormat, v))
+}
+
+// FormatIn applies the In predicate on the "format" field.
+func FormatIn(vs ...string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldFormat, vs...))
+}
+
+// FormatNotIn applies the NotIn predicate on the "format" field.
+func FormatNotIn(vs ...string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldFormat, vs...))
+}
+
+// FormatGT applies the GT predicate on the "format" field.
+func FormatGT(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldFormat, v))
+}
+
+// FormatGTE applies the GTE predicate on the "format" field.
+func FormatGTE(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldFormat, v))
+}
+
+// FormatLT applies the LT predicate on the "format" field.
+func FormatLT(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldFormat, v))
+}
+
+// FormatLTE applies the LTE predicate on the "format" field.
+func FormatLTE(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldFormat, v))
+}
+
+// FormatContains applies the Contains predicate on the "format" field.
+func FormatContains(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldContains(FieldFormat, v))
+}
+
+// FormatHasPrefix applies the HasPrefix predicate on the "format" field.
+func FormatHasPrefix(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldHasPrefix(FieldFormat, v))
+}
+
+// FormatHasSuffix applies the HasSuffix predicate on the "format" field.
+func FormatHasSuffix(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldHasSuffix(FieldFormat, v))
+}
+
+// FormatEqualFold applies the EqualFold predicate on the "format" field.
+func FormatEqualFold(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEqualFold(FieldFormat, v))
+}
+
+// FormatContainsFold applies the ContainsFold predicate on the "format" field.
+func FormatContainsFold(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldContainsFold(FieldFormat, v))
 }
 
 // ResponseBodyIsNil applies the IsNil predicate on the "response_body" field.

@@ -2348,30 +2348,33 @@ func (m *JobMutation) ResetEdge(name string) error {
 // RequestMutation represents an operation that mutates the Request nodes in the graph.
 type RequestMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *int
-	created_at          *time.Time
-	updated_at          *time.Time
-	deleted_at          *int
-	adddeleted_at       *int
-	model_id            *string
-	request_body        *objects.JSONRawMessage
-	appendrequest_body  objects.JSONRawMessage
-	response_body       *objects.JSONRawMessage
-	appendresponse_body objects.JSONRawMessage
-	status              *request.Status
-	clearedFields       map[string]struct{}
-	user                *int
-	cleareduser         bool
-	api_key             *int
-	clearedapi_key      bool
-	executions          map[int]struct{}
-	removedexecutions   map[int]struct{}
-	clearedexecutions   bool
-	done                bool
-	oldValue            func(context.Context) (*Request, error)
-	predicates          []predicate.Request
+	op                    Op
+	typ                   string
+	id                    *int
+	created_at            *time.Time
+	updated_at            *time.Time
+	deleted_at            *int
+	adddeleted_at         *int
+	model_id              *string
+	format                *string
+	request_body          *objects.JSONRawMessage
+	appendrequest_body    objects.JSONRawMessage
+	response_body         *objects.JSONRawMessage
+	appendresponse_body   objects.JSONRawMessage
+	response_chunks       *[]objects.JSONRawMessage
+	appendresponse_chunks []objects.JSONRawMessage
+	status                *request.Status
+	clearedFields         map[string]struct{}
+	user                  *int
+	cleareduser           bool
+	api_key               *int
+	clearedapi_key        bool
+	executions            map[int]struct{}
+	removedexecutions     map[int]struct{}
+	clearedexecutions     bool
+	done                  bool
+	oldValue              func(context.Context) (*Request, error)
+	predicates            []predicate.Request
 }
 
 var _ ent.Mutation = (*RequestMutation)(nil)
@@ -2721,6 +2724,42 @@ func (m *RequestMutation) ResetModelID() {
 	m.model_id = nil
 }
 
+// SetFormat sets the "format" field.
+func (m *RequestMutation) SetFormat(s string) {
+	m.format = &s
+}
+
+// Format returns the value of the "format" field in the mutation.
+func (m *RequestMutation) Format() (r string, exists bool) {
+	v := m.format
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFormat returns the old "format" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldFormat(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFormat is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFormat requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFormat: %w", err)
+	}
+	return oldValue.Format, nil
+}
+
+// ResetFormat resets all changes to the "format" field.
+func (m *RequestMutation) ResetFormat() {
+	m.format = nil
+}
+
 // SetRequestBody sets the "request_body" field.
 func (m *RequestMutation) SetRequestBody(orm objects.JSONRawMessage) {
 	m.request_body = &orm
@@ -2835,6 +2874,71 @@ func (m *RequestMutation) ResetResponseBody() {
 	m.response_body = nil
 	m.appendresponse_body = nil
 	delete(m.clearedFields, request.FieldResponseBody)
+}
+
+// SetResponseChunks sets the "response_chunks" field.
+func (m *RequestMutation) SetResponseChunks(orm []objects.JSONRawMessage) {
+	m.response_chunks = &orm
+	m.appendresponse_chunks = nil
+}
+
+// ResponseChunks returns the value of the "response_chunks" field in the mutation.
+func (m *RequestMutation) ResponseChunks() (r []objects.JSONRawMessage, exists bool) {
+	v := m.response_chunks
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldResponseChunks returns the old "response_chunks" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldResponseChunks(ctx context.Context) (v []objects.JSONRawMessage, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldResponseChunks is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldResponseChunks requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldResponseChunks: %w", err)
+	}
+	return oldValue.ResponseChunks, nil
+}
+
+// AppendResponseChunks adds orm to the "response_chunks" field.
+func (m *RequestMutation) AppendResponseChunks(orm []objects.JSONRawMessage) {
+	m.appendresponse_chunks = append(m.appendresponse_chunks, orm...)
+}
+
+// AppendedResponseChunks returns the list of values that were appended to the "response_chunks" field in this mutation.
+func (m *RequestMutation) AppendedResponseChunks() ([]objects.JSONRawMessage, bool) {
+	if len(m.appendresponse_chunks) == 0 {
+		return nil, false
+	}
+	return m.appendresponse_chunks, true
+}
+
+// ClearResponseChunks clears the value of the "response_chunks" field.
+func (m *RequestMutation) ClearResponseChunks() {
+	m.response_chunks = nil
+	m.appendresponse_chunks = nil
+	m.clearedFields[request.FieldResponseChunks] = struct{}{}
+}
+
+// ResponseChunksCleared returns if the "response_chunks" field was cleared in this mutation.
+func (m *RequestMutation) ResponseChunksCleared() bool {
+	_, ok := m.clearedFields[request.FieldResponseChunks]
+	return ok
+}
+
+// ResetResponseChunks resets all changes to the "response_chunks" field.
+func (m *RequestMutation) ResetResponseChunks() {
+	m.response_chunks = nil
+	m.appendresponse_chunks = nil
+	delete(m.clearedFields, request.FieldResponseChunks)
 }
 
 // SetStatus sets the "status" field.
@@ -3015,7 +3119,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 11)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -3034,11 +3138,17 @@ func (m *RequestMutation) Fields() []string {
 	if m.model_id != nil {
 		fields = append(fields, request.FieldModelID)
 	}
+	if m.format != nil {
+		fields = append(fields, request.FieldFormat)
+	}
 	if m.request_body != nil {
 		fields = append(fields, request.FieldRequestBody)
 	}
 	if m.response_body != nil {
 		fields = append(fields, request.FieldResponseBody)
+	}
+	if m.response_chunks != nil {
+		fields = append(fields, request.FieldResponseChunks)
 	}
 	if m.status != nil {
 		fields = append(fields, request.FieldStatus)
@@ -3063,10 +3173,14 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.APIKeyID()
 	case request.FieldModelID:
 		return m.ModelID()
+	case request.FieldFormat:
+		return m.Format()
 	case request.FieldRequestBody:
 		return m.RequestBody()
 	case request.FieldResponseBody:
 		return m.ResponseBody()
+	case request.FieldResponseChunks:
+		return m.ResponseChunks()
 	case request.FieldStatus:
 		return m.Status()
 	}
@@ -3090,10 +3204,14 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldAPIKeyID(ctx)
 	case request.FieldModelID:
 		return m.OldModelID(ctx)
+	case request.FieldFormat:
+		return m.OldFormat(ctx)
 	case request.FieldRequestBody:
 		return m.OldRequestBody(ctx)
 	case request.FieldResponseBody:
 		return m.OldResponseBody(ctx)
+	case request.FieldResponseChunks:
+		return m.OldResponseChunks(ctx)
 	case request.FieldStatus:
 		return m.OldStatus(ctx)
 	}
@@ -3147,6 +3265,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetModelID(v)
 		return nil
+	case request.FieldFormat:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFormat(v)
+		return nil
 	case request.FieldRequestBody:
 		v, ok := value.(objects.JSONRawMessage)
 		if !ok {
@@ -3160,6 +3285,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetResponseBody(v)
+		return nil
+	case request.FieldResponseChunks:
+		v, ok := value.([]objects.JSONRawMessage)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetResponseChunks(v)
 		return nil
 	case request.FieldStatus:
 		v, ok := value.(request.Status)
@@ -3219,6 +3351,9 @@ func (m *RequestMutation) ClearedFields() []string {
 	if m.FieldCleared(request.FieldResponseBody) {
 		fields = append(fields, request.FieldResponseBody)
 	}
+	if m.FieldCleared(request.FieldResponseChunks) {
+		fields = append(fields, request.FieldResponseChunks)
+	}
 	return fields
 }
 
@@ -3238,6 +3373,9 @@ func (m *RequestMutation) ClearField(name string) error {
 		return nil
 	case request.FieldResponseBody:
 		m.ClearResponseBody()
+		return nil
+	case request.FieldResponseChunks:
+		m.ClearResponseChunks()
 		return nil
 	}
 	return fmt.Errorf("unknown Request nullable field %s", name)
@@ -3265,11 +3403,17 @@ func (m *RequestMutation) ResetField(name string) error {
 	case request.FieldModelID:
 		m.ResetModelID()
 		return nil
+	case request.FieldFormat:
+		m.ResetFormat()
+		return nil
 	case request.FieldRequestBody:
 		m.ResetRequestBody()
 		return nil
 	case request.FieldResponseBody:
 		m.ResetResponseBody()
+		return nil
+	case request.FieldResponseChunks:
+		m.ResetResponseChunks()
 		return nil
 	case request.FieldStatus:
 		m.ResetStatus()
@@ -3409,6 +3553,7 @@ type RequestExecutionMutation struct {
 	user_id               *int
 	adduser_id            *int
 	model_id              *string
+	format                *string
 	request_body          *objects.JSONRawMessage
 	appendrequest_body    objects.JSONRawMessage
 	response_body         *objects.JSONRawMessage
@@ -3759,6 +3904,42 @@ func (m *RequestExecutionMutation) OldModelID(ctx context.Context) (v string, er
 // ResetModelID resets all changes to the "model_id" field.
 func (m *RequestExecutionMutation) ResetModelID() {
 	m.model_id = nil
+}
+
+// SetFormat sets the "format" field.
+func (m *RequestExecutionMutation) SetFormat(s string) {
+	m.format = &s
+}
+
+// Format returns the value of the "format" field in the mutation.
+func (m *RequestExecutionMutation) Format() (r string, exists bool) {
+	v := m.format
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFormat returns the old "format" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldFormat(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFormat is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFormat requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFormat: %w", err)
+	}
+	return oldValue.Format, nil
+}
+
+// ResetFormat resets all changes to the "format" field.
+func (m *RequestExecutionMutation) ResetFormat() {
+	m.format = nil
 }
 
 // SetRequestBody sets the "request_body" field.
@@ -4115,7 +4296,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -4133,6 +4314,9 @@ func (m *RequestExecutionMutation) Fields() []string {
 	}
 	if m.model_id != nil {
 		fields = append(fields, requestexecution.FieldModelID)
+	}
+	if m.format != nil {
+		fields = append(fields, requestexecution.FieldFormat)
 	}
 	if m.request_body != nil {
 		fields = append(fields, requestexecution.FieldRequestBody)
@@ -4169,6 +4353,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.ChannelID()
 	case requestexecution.FieldModelID:
 		return m.ModelID()
+	case requestexecution.FieldFormat:
+		return m.Format()
 	case requestexecution.FieldRequestBody:
 		return m.RequestBody()
 	case requestexecution.FieldResponseBody:
@@ -4200,6 +4386,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldChannelID(ctx)
 	case requestexecution.FieldModelID:
 		return m.OldModelID(ctx)
+	case requestexecution.FieldFormat:
+		return m.OldFormat(ctx)
 	case requestexecution.FieldRequestBody:
 		return m.OldRequestBody(ctx)
 	case requestexecution.FieldResponseBody:
@@ -4260,6 +4448,13 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetModelID(v)
+		return nil
+	case requestexecution.FieldFormat:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFormat(v)
 		return nil
 	case requestexecution.FieldRequestBody:
 		v, ok := value.(objects.JSONRawMessage)
@@ -4398,6 +4593,9 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldModelID:
 		m.ResetModelID()
+		return nil
+	case requestexecution.FieldFormat:
+		m.ResetFormat()
 		return nil
 	case requestexecution.FieldRequestBody:
 		m.ResetRequestBody()

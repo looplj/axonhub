@@ -203,19 +203,21 @@ type ComplexityRoot struct {
 	}
 
 	Request struct {
-		APIKey       func(childComplexity int) int
-		APIKeyID     func(childComplexity int) int
-		CreatedAt    func(childComplexity int) int
-		DeletedAt    func(childComplexity int) int
-		Executions   func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestExecutionOrder, where *ent.RequestExecutionWhereInput) int
-		ID           func(childComplexity int) int
-		ModelID      func(childComplexity int) int
-		RequestBody  func(childComplexity int) int
-		ResponseBody func(childComplexity int) int
-		Status       func(childComplexity int) int
-		UpdatedAt    func(childComplexity int) int
-		User         func(childComplexity int) int
-		UserID       func(childComplexity int) int
+		APIKey         func(childComplexity int) int
+		APIKeyID       func(childComplexity int) int
+		CreatedAt      func(childComplexity int) int
+		DeletedAt      func(childComplexity int) int
+		Executions     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestExecutionOrder, where *ent.RequestExecutionWhereInput) int
+		Format         func(childComplexity int) int
+		ID             func(childComplexity int) int
+		ModelID        func(childComplexity int) int
+		RequestBody    func(childComplexity int) int
+		ResponseBody   func(childComplexity int) int
+		ResponseChunks func(childComplexity int) int
+		Status         func(childComplexity int) int
+		UpdatedAt      func(childComplexity int) int
+		User           func(childComplexity int) int
+		UserID         func(childComplexity int) int
 	}
 
 	RequestConnection struct {
@@ -234,6 +236,7 @@ type ComplexityRoot struct {
 		ChannelID      func(childComplexity int) int
 		CreatedAt      func(childComplexity int) int
 		ErrorMessage   func(childComplexity int) int
+		Format         func(childComplexity int) int
 		ID             func(childComplexity int) int
 		ModelID        func(childComplexity int) int
 		Request        func(childComplexity int) int
@@ -1289,6 +1292,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Request.Executions(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.RequestExecutionOrder), args["where"].(*ent.RequestExecutionWhereInput)), true
 
+	case "Request.format":
+		if e.complexity.Request.Format == nil {
+			break
+		}
+
+		return e.complexity.Request.Format(childComplexity), true
+
 	case "Request.id":
 		if e.complexity.Request.ID == nil {
 			break
@@ -1316,6 +1326,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.ResponseBody(childComplexity), true
+
+	case "Request.responseChunks":
+		if e.complexity.Request.ResponseChunks == nil {
+			break
+		}
+
+		return e.complexity.Request.ResponseChunks(childComplexity), true
 
 	case "Request.status":
 		if e.complexity.Request.Status == nil {
@@ -1407,6 +1424,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestExecution.ErrorMessage(childComplexity), true
+
+	case "RequestExecution.format":
+		if e.complexity.RequestExecution.Format == nil {
+			break
+		}
+
+		return e.complexity.RequestExecution.Format(childComplexity), true
 
 	case "RequestExecution.id":
 		if e.complexity.RequestExecution.ID == nil {
@@ -10115,6 +10139,50 @@ func (ec *executionContext) fieldContext_Request_modelID(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Request_format(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Request_format(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Format, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Request_format(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Request_requestBody(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Request_requestBody(ctx, field)
 	if err != nil {
@@ -10188,6 +10256,47 @@ func (ec *executionContext) _Request_responseBody(ctx context.Context, field gra
 }
 
 func (ec *executionContext) fieldContext_Request_responseBody(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Request_responseChunks(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Request_responseChunks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResponseChunks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]objects.JSONRawMessage)
+	fc.Result = res
+	return ec.marshalOJSONRawMessage2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Request_responseChunks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Request",
 		Field:      field,
@@ -10633,10 +10742,14 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_apiKeyID(ctx, field)
 			case "modelID":
 				return ec.fieldContext_Request_modelID(ctx, field)
+			case "format":
+				return ec.fieldContext_Request_format(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_Request_requestBody(ctx, field)
 			case "responseBody":
 				return ec.fieldContext_Request_responseBody(ctx, field)
+			case "responseChunks":
+				return ec.fieldContext_Request_responseChunks(ctx, field)
 			case "status":
 				return ec.fieldContext_Request_status(ctx, field)
 			case "user":
@@ -11004,6 +11117,50 @@ func (ec *executionContext) fieldContext_RequestExecution_modelID(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _RequestExecution_format(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestExecution_format(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Format, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestExecution_format(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RequestExecution_requestBody(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RequestExecution_requestBody(ctx, field)
 	if err != nil {
@@ -11268,10 +11425,14 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_apiKeyID(ctx, field)
 			case "modelID":
 				return ec.fieldContext_Request_modelID(ctx, field)
+			case "format":
+				return ec.fieldContext_Request_format(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_Request_requestBody(ctx, field)
 			case "responseBody":
 				return ec.fieldContext_Request_responseBody(ctx, field)
+			case "responseChunks":
+				return ec.fieldContext_Request_responseChunks(ctx, field)
 			case "status":
 				return ec.fieldContext_Request_status(ctx, field)
 			case "user":
@@ -11552,6 +11713,8 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_node(_ context.Con
 				return ec.fieldContext_RequestExecution_channelID(ctx, field)
 			case "modelID":
 				return ec.fieldContext_RequestExecution_modelID(ctx, field)
+			case "format":
+				return ec.fieldContext_RequestExecution_format(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_RequestExecution_requestBody(ctx, field)
 			case "responseBody":
@@ -18105,7 +18268,7 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"createdAt", "updatedAt", "deletedAt", "modelID", "requestBody", "responseBody", "status", "userID", "apiKeyID"}
+	fieldsInOrder := [...]string{"createdAt", "updatedAt", "deletedAt", "modelID", "format", "requestBody", "responseBody", "responseChunks", "status", "userID", "apiKeyID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18140,6 +18303,13 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.ModelID = data
+		case "format":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("format"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Format = data
 		case "requestBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBody"))
 			data, err := ec.unmarshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
@@ -18154,6 +18324,13 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.ResponseBody = data
+		case "responseChunks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseChunks"))
+			data, err := ec.unmarshalOJSONRawMessageInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessageᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResponseChunks = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalNRequestStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋrequestᚐStatus(ctx, v)
@@ -18891,7 +19068,7 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDGT", "userIDGTE", "userIDLT", "userIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDGT", "userIDGTE", "userIDLT", "userIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -19354,6 +19531,97 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 				return it, err
 			}
 			it.ModelIDContainsFold = data
+		case "format":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("format"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Format = data
+		case "formatNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatNEQ = data
+		case "formatIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatIn = data
+		case "formatNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatNotIn = data
+		case "formatGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatGT = data
+		case "formatGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatGTE = data
+		case "formatLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatLT = data
+		case "formatLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatLTE = data
+		case "formatContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatContains = data
+		case "formatHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatHasPrefix = data
+		case "formatHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatHasSuffix = data
+		case "formatEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatEqualFold = data
+		case "formatContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatContainsFold = data
 		case "errorMessage":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessage"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -19566,7 +19834,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasAPIKey", "hasAPIKeyWith", "hasExecutions", "hasExecutionsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasAPIKey", "hasAPIKeyWith", "hasExecutions", "hasExecutionsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -20043,6 +20311,97 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.ModelIDContainsFold = data
+		case "format":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("format"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Format = data
+		case "formatNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatNEQ = data
+		case "formatIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatIn = data
+		case "formatNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatNotIn = data
+		case "formatGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatGT = data
+		case "formatGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatGTE = data
+		case "formatLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatLT = data
+		case "formatLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatLTE = data
+		case "formatContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatContains = data
+		case "formatHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatHasPrefix = data
+		case "formatHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatHasSuffix = data
+		case "formatEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatEqualFold = data
+		case "formatContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("formatContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FormatContainsFold = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalORequestStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋrequestᚐStatus(ctx, v)
@@ -21339,7 +21698,7 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"updatedAt", "deletedAt", "responseBody", "appendResponseBody", "clearResponseBody", "status"}
+	fieldsInOrder := [...]string{"updatedAt", "deletedAt", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "status"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -21381,6 +21740,27 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.ClearResponseBody = data
+		case "responseChunks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseChunks"))
+			data, err := ec.unmarshalOJSONRawMessageInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessageᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResponseChunks = data
+		case "appendResponseChunks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendResponseChunks"))
+			data, err := ec.unmarshalOJSONRawMessageInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessageᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AppendResponseChunks = data
+		case "clearResponseChunks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearResponseChunks"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearResponseChunks = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalORequestStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋrequestᚐStatus(ctx, v)
@@ -24128,6 +24508,11 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "format":
+			out.Values[i] = ec._Request_format(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "requestBody":
 			out.Values[i] = ec._Request_requestBody(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -24135,6 +24520,8 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "responseBody":
 			out.Values[i] = ec._Request_responseBody(ctx, field, obj)
+		case "responseChunks":
+			out.Values[i] = ec._Request_responseChunks(ctx, field, obj)
 		case "status":
 			out.Values[i] = ec._Request_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -24491,6 +24878,11 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "modelID":
 			out.Values[i] = ec._RequestExecution_modelID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "format":
+			out.Values[i] = ec._RequestExecution_format(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -28119,6 +28511,42 @@ func (ec *executionContext) marshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋ
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalOJSONRawMessageInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessageᚄ(ctx context.Context, v any) ([]objects.JSONRawMessage, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.JSONRawMessage, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOJSONRawMessageInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.JSONRawMessage) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOJobWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐJobWhereInputᚄ(ctx context.Context, v any) ([]*ent.JobWhereInput, error) {

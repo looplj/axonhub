@@ -31,6 +31,11 @@ func NewOutboundTransformer(baseURL, apiKey string) *OutboundTransformer {
 	}
 }
 
+// Name returns the name of the transformer.
+func (t *OutboundTransformer) Name() string {
+	return "claude/messages"
+}
+
 // TransformRequest transforms ChatCompletionRequest to Anthropic HTTP request.
 func (t *OutboundTransformer) TransformRequest(
 	ctx context.Context,

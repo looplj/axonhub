@@ -30,10 +30,14 @@ const (
 	FieldAPIKeyID = "api_key_id"
 	// FieldModelID holds the string denoting the model_id field in the database.
 	FieldModelID = "model_id"
+	// FieldFormat holds the string denoting the format field in the database.
+	FieldFormat = "format"
 	// FieldRequestBody holds the string denoting the request_body field in the database.
 	FieldRequestBody = "request_body"
 	// FieldResponseBody holds the string denoting the response_body field in the database.
 	FieldResponseBody = "response_body"
+	// FieldResponseChunks holds the string denoting the response_chunks field in the database.
+	FieldResponseChunks = "response_chunks"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// EdgeUser holds the string denoting the user edge name in mutations.
@@ -76,8 +80,10 @@ var Columns = []string{
 	FieldUserID,
 	FieldAPIKeyID,
 	FieldModelID,
+	FieldFormat,
 	FieldRequestBody,
 	FieldResponseBody,
+	FieldResponseChunks,
 	FieldStatus,
 }
 
@@ -119,6 +125,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
+	// DefaultFormat holds the default value on creation for the "format" field.
+	DefaultFormat string
 )
 
 // Status defines the type for the "status" enum field.
@@ -182,6 +190,11 @@ func ByAPIKeyID(opts ...sql.OrderTermOption) OrderOption {
 // ByModelID orders the results by the model_id field.
 func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModelID, opts...).ToFunc()
+}
+
+// ByFormat orders the results by the format field.
+func ByFormat(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFormat, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

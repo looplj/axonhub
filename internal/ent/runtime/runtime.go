@@ -147,6 +147,10 @@ func init() {
 	requestDescDeletedAt := requestMixinFields1[0].Descriptor()
 	// request.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	request.DefaultDeletedAt = requestDescDeletedAt.Default.(int)
+	// requestDescFormat is the schema descriptor for format field.
+	requestDescFormat := requestFields[3].Descriptor()
+	// request.DefaultFormat holds the default value on creation for the format field.
+	request.DefaultFormat = requestDescFormat.Default.(string)
 	requestexecutionMixin := schema.RequestExecution{}.Mixin()
 	requestexecutionMixinFields0 := requestexecutionMixin[0].Fields()
 	_ = requestexecutionMixinFields0
@@ -162,6 +166,10 @@ func init() {
 	requestexecution.DefaultUpdatedAt = requestexecutionDescUpdatedAt.Default.(func() time.Time)
 	// requestexecution.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	requestexecution.UpdateDefaultUpdatedAt = requestexecutionDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// requestexecutionDescFormat is the schema descriptor for format field.
+	requestexecutionDescFormat := requestexecutionFields[4].Descriptor()
+	// requestexecution.DefaultFormat holds the default value on creation for the format field.
+	requestexecution.DefaultFormat = requestexecutionDescFormat.Default.(string)
 	roleMixin := schema.Role{}.Mixin()
 	role.Policy = privacy.NewPolicies(schema.Role{})
 	role.Hooks[0] = func(next ent.Mutator) ent.Mutator {

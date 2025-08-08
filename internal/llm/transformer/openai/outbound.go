@@ -32,6 +32,11 @@ func NewOutboundTransformer(baseURL, apiKey string) transformer.Outbound {
 	}
 }
 
+// Name returns the name of the transformer.
+func (t *OutboundTransformer) Name() string {
+	return "openai/chat_completions"
+}
+
 // TransformRequest transforms ChatCompletionRequest to Request.
 func (t *OutboundTransformer) TransformRequest(
 	ctx context.Context,

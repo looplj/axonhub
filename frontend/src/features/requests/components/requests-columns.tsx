@@ -56,9 +56,7 @@ export const requestsColumns: ColumnDef<Request>[] = [
     enableSorting: false,
     cell: ({ row }) => {
       const request = row.original
-      // 从 executions 中获取第一个 execution 的 modelID
-      const modelId = request.executions?.edges?.[0]?.node?.modelID
-      return <div className='font-mono text-xs'>{modelId || '未知'}</div>
+      return <div className='font-mono text-xs'>{request.modelID || '未知'}</div>
     },
   },
   {

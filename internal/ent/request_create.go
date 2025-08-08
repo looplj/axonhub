@@ -94,6 +94,20 @@ func (rc *RequestCreate) SetModelID(s string) *RequestCreate {
 	return rc
 }
 
+// SetFormat sets the "format" field.
+func (rc *RequestCreate) SetFormat(s string) *RequestCreate {
+	rc.mutation.SetFormat(s)
+	return rc
+}
+
+// SetNillableFormat sets the "format" field if the given value is not nil.
+func (rc *RequestCreate) SetNillableFormat(s *string) *RequestCreate {
+	if s != nil {
+		rc.SetFormat(*s)
+	}
+	return rc
+}
+
 // SetRequestBody sets the "request_body" field.
 func (rc *RequestCreate) SetRequestBody(orm objects.JSONRawMessage) *RequestCreate {
 	rc.mutation.SetRequestBody(orm)
@@ -103,6 +117,12 @@ func (rc *RequestCreate) SetRequestBody(orm objects.JSONRawMessage) *RequestCrea
 // SetResponseBody sets the "response_body" field.
 func (rc *RequestCreate) SetResponseBody(orm objects.JSONRawMessage) *RequestCreate {
 	rc.mutation.SetResponseBody(orm)
+	return rc
+}
+
+// SetResponseChunks sets the "response_chunks" field.
+func (rc *RequestCreate) SetResponseChunks(orm []objects.JSONRawMessage) *RequestCreate {
+	rc.mutation.SetResponseChunks(orm)
 	return rc
 }
 
@@ -192,6 +212,10 @@ func (rc *RequestCreate) defaults() error {
 		v := request.DefaultDeletedAt
 		rc.mutation.SetDeletedAt(v)
 	}
+	if _, ok := rc.mutation.Format(); !ok {
+		v := request.DefaultFormat
+		rc.mutation.SetFormat(v)
+	}
 	return nil
 }
 
@@ -211,6 +235,9 @@ func (rc *RequestCreate) check() error {
 	}
 	if _, ok := rc.mutation.ModelID(); !ok {
 		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "Request.model_id"`)}
+	}
+	if _, ok := rc.mutation.Format(); !ok {
+		return &ValidationError{Name: "format", err: errors.New(`ent: missing required field "Request.format"`)}
 	}
 	if _, ok := rc.mutation.RequestBody(); !ok {
 		return &ValidationError{Name: "request_body", err: errors.New(`ent: missing required field "Request.request_body"`)}
@@ -269,6 +296,10 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_spec.SetField(request.FieldModelID, field.TypeString, value)
 		_node.ModelID = value
 	}
+	if value, ok := rc.mutation.Format(); ok {
+		_spec.SetField(request.FieldFormat, field.TypeString, value)
+		_node.Format = value
+	}
 	if value, ok := rc.mutation.RequestBody(); ok {
 		_spec.SetField(request.FieldRequestBody, field.TypeJSON, value)
 		_node.RequestBody = value
@@ -276,6 +307,10 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := rc.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
 		_node.ResponseBody = value
+	}
+	if value, ok := rc.mutation.ResponseChunks(); ok {
+		_spec.SetField(request.FieldResponseChunks, field.TypeJSON, value)
+		_node.ResponseChunks = value
 	}
 	if value, ok := rc.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
@@ -431,6 +466,24 @@ func (u *RequestUpsert) ClearResponseBody() *RequestUpsert {
 	return u
 }
 
+// SetResponseChunks sets the "response_chunks" field.
+func (u *RequestUpsert) SetResponseChunks(v []objects.JSONRawMessage) *RequestUpsert {
+	u.Set(request.FieldResponseChunks, v)
+	return u
+}
+
+// UpdateResponseChunks sets the "response_chunks" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateResponseChunks() *RequestUpsert {
+	u.SetExcluded(request.FieldResponseChunks)
+	return u
+}
+
+// ClearResponseChunks clears the value of the "response_chunks" field.
+func (u *RequestUpsert) ClearResponseChunks() *RequestUpsert {
+	u.SetNull(request.FieldResponseChunks)
+	return u
+}
+
 // SetStatus sets the "status" field.
 func (u *RequestUpsert) SetStatus(v request.Status) *RequestUpsert {
 	u.Set(request.FieldStatus, v)
@@ -465,6 +518,9 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 		}
 		if _, exists := u.create.mutation.ModelID(); exists {
 			s.SetIgnore(request.FieldModelID)
+		}
+		if _, exists := u.create.mutation.Format(); exists {
+			s.SetIgnore(request.FieldFormat)
 		}
 		if _, exists := u.create.mutation.RequestBody(); exists {
 			s.SetIgnore(request.FieldRequestBody)
@@ -553,6 +609,27 @@ func (u *RequestUpsertOne) UpdateResponseBody() *RequestUpsertOne {
 func (u *RequestUpsertOne) ClearResponseBody() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearResponseBody()
+	})
+}
+
+// SetResponseChunks sets the "response_chunks" field.
+func (u *RequestUpsertOne) SetResponseChunks(v []objects.JSONRawMessage) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetResponseChunks(v)
+	})
+}
+
+// UpdateResponseChunks sets the "response_chunks" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateResponseChunks() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateResponseChunks()
+	})
+}
+
+// ClearResponseChunks clears the value of the "response_chunks" field.
+func (u *RequestUpsertOne) ClearResponseChunks() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearResponseChunks()
 	})
 }
 
@@ -758,6 +835,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 			if _, exists := b.mutation.ModelID(); exists {
 				s.SetIgnore(request.FieldModelID)
 			}
+			if _, exists := b.mutation.Format(); exists {
+				s.SetIgnore(request.FieldFormat)
+			}
 			if _, exists := b.mutation.RequestBody(); exists {
 				s.SetIgnore(request.FieldRequestBody)
 			}
@@ -846,6 +926,27 @@ func (u *RequestUpsertBulk) UpdateResponseBody() *RequestUpsertBulk {
 func (u *RequestUpsertBulk) ClearResponseBody() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearResponseBody()
+	})
+}
+
+// SetResponseChunks sets the "response_chunks" field.
+func (u *RequestUpsertBulk) SetResponseChunks(v []objects.JSONRawMessage) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetResponseChunks(v)
+	})
+}
+
+// UpdateResponseChunks sets the "response_chunks" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateResponseChunks() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateResponseChunks()
+	})
+}
+
+// ClearResponseChunks clears the value of the "response_chunks" field.
+func (u *RequestUpsertBulk) ClearResponseChunks() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearResponseChunks()
 	})
 }
 

@@ -198,10 +198,7 @@ func (r *queryResolver) RequestsByModel(ctx context.Context) ([]*RequestsByModel
 }
 
 // DailyRequestStats is the resolver for the dailyRequestStats field.
-func (r *queryResolver) DailyRequestStats(
-	ctx context.Context,
-	days *int,
-) ([]*DailyRequestStats, error) {
+func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*DailyRequestStats, error) {
 	daysCount := 30
 	if days != nil {
 		daysCount = *days
@@ -260,10 +257,7 @@ func (r *queryResolver) DailyRequestStats(
 }
 
 // HourlyRequestStats is the resolver for the hourlyRequestStats field.
-func (r *queryResolver) HourlyRequestStats(
-	ctx context.Context,
-	date *string,
-) ([]*HourlyRequestStats, error) {
+func (r *queryResolver) HourlyRequestStats(ctx context.Context, date *string) ([]*HourlyRequestStats, error) {
 	targetDate := time.Now()
 
 	if date != nil {

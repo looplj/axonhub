@@ -481,8 +481,10 @@ input CreateRequestInput {
   updatedAt: Time
   deletedAt: Int
   modelID: String!
+  format: String
   requestBody: JSONRawMessageInput!
   responseBody: JSONRawMessageInput
+  responseChunks: [JSONRawMessageInput!]
   status: RequestStatus!
   userID: ID!
   apiKeyID: ID
@@ -869,8 +871,10 @@ type Request implements Node {
   """
   apiKeyID: ID
   modelID: String!
+  format: String!
   requestBody: JSONRawMessage!
   responseBody: JSONRawMessage
+  responseChunks: [JSONRawMessage!]
   status: RequestStatus!
   user: User!
   apiKey: APIKey
@@ -944,6 +948,7 @@ type RequestExecution implements Node {
   requestID: ID!
   channelID: ID!
   modelID: String!
+  format: String!
   requestBody: JSONRawMessage!
   responseBody: JSONRawMessage
   responseChunks: [JSONRawMessage!]
@@ -1093,6 +1098,22 @@ input RequestExecutionWhereInput {
   modelIDEqualFold: String
   modelIDContainsFold: String
   """
+  format field predicates
+  """
+  format: String
+  formatNEQ: String
+  formatIn: [String!]
+  formatNotIn: [String!]
+  formatGT: String
+  formatGTE: String
+  formatLT: String
+  formatLTE: String
+  formatContains: String
+  formatHasPrefix: String
+  formatHasSuffix: String
+  formatEqualFold: String
+  formatContainsFold: String
+  """
   error_message field predicates
   """
   errorMessage: String
@@ -1240,6 +1261,22 @@ input RequestWhereInput {
   modelIDHasSuffix: String
   modelIDEqualFold: String
   modelIDContainsFold: String
+  """
+  format field predicates
+  """
+  format: String
+  formatNEQ: String
+  formatIn: [String!]
+  formatNotIn: [String!]
+  formatGT: String
+  formatGTE: String
+  formatLT: String
+  formatLTE: String
+  formatContains: String
+  formatHasPrefix: String
+  formatHasSuffix: String
+  formatEqualFold: String
+  formatContainsFold: String
   """
   status field predicates
   """
@@ -1626,6 +1663,9 @@ input UpdateRequestInput {
   responseBody: JSONRawMessageInput
   appendResponseBody: JSONRawMessageInput
   clearResponseBody: Boolean
+  responseChunks: [JSONRawMessageInput!]
+  appendResponseChunks: [JSONRawMessageInput!]
+  clearResponseChunks: Boolean
   status: RequestStatus
 }
 """

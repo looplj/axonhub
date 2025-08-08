@@ -178,10 +178,7 @@ func (r *requestResolver) APIKeyID(ctx context.Context, obj *ent.Request) (*obje
 }
 
 // ID is the resolver for the id field.
-func (r *requestExecutionResolver) ID(
-	ctx context.Context,
-	obj *ent.RequestExecution,
-) (*objects.GUID, error) {
+func (r *requestExecutionResolver) ID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: "RequestExecution",
 		ID:   obj.ID,
@@ -189,10 +186,7 @@ func (r *requestExecutionResolver) ID(
 }
 
 // RequestID is the resolver for the requestID field.
-func (r *requestExecutionResolver) RequestID(
-	ctx context.Context,
-	obj *ent.RequestExecution,
-) (*objects.GUID, error) {
+func (r *requestExecutionResolver) RequestID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: "Request",
 		ID:   obj.RequestID,
@@ -200,10 +194,7 @@ func (r *requestExecutionResolver) RequestID(
 }
 
 // ChannelID is the resolver for the channelID field.
-func (r *requestExecutionResolver) ChannelID(
-	ctx context.Context,
-	obj *ent.RequestExecution,
-) (*objects.GUID, error) {
+func (r *requestExecutionResolver) ChannelID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: "Channel",
 		ID:   obj.ChannelID,

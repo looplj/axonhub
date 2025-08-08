@@ -15,10 +15,7 @@ import (
 )
 
 // CreateChannel is the resolver for the createChannel field.
-func (r *mutationResolver) CreateChannel(
-	ctx context.Context,
-	input ent.CreateChannelInput,
-) (*ent.Channel, error) {
+func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
 	channel, err := r.client.Channel.Create().
 		SetType(input.Type).
 		SetBaseURL(input.BaseURL).
@@ -36,11 +33,7 @@ func (r *mutationResolver) CreateChannel(
 }
 
 // UpdateChannel is the resolver for the updateChannel field.
-func (r *mutationResolver) UpdateChannel(
-	ctx context.Context,
-	id objects.GUID,
-	input ent.UpdateChannelInput,
-) (*ent.Channel, error) {
+func (r *mutationResolver) UpdateChannel(ctx context.Context, id objects.GUID, input ent.UpdateChannelInput) (*ent.Channel, error) {
 	mut := r.client.Channel.UpdateOneID(id.ID).
 		SetNillableBaseURL(input.BaseURL).
 		SetNillableName(input.Name).
@@ -74,10 +67,7 @@ func (r *mutationResolver) DeleteChannel(ctx context.Context, id objects.GUID) (
 }
 
 // CreateAPIKey is the resolver for the createAPIKey field.
-func (r *mutationResolver) CreateAPIKey(
-	ctx context.Context,
-	input ent.CreateAPIKeyInput,
-) (*ent.APIKey, error) {
+func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error) {
 	apiKey, err := r.client.APIKey.Create().
 		SetName(input.Name).
 		SetKey(input.Key).
@@ -91,10 +81,7 @@ func (r *mutationResolver) CreateAPIKey(
 }
 
 // CreateUser is the resolver for the createUser field.
-func (r *mutationResolver) CreateUser(
-	ctx context.Context,
-	input ent.CreateUserInput,
-) (*ent.User, error) {
+func (r *mutationResolver) CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error) {
 	// Hash the password using our auth service
 	hashedPassword, err := biz.HashPassword(input.Password)
 	if err != nil {
@@ -121,11 +108,7 @@ func (r *mutationResolver) CreateUser(
 }
 
 // UpdateUser is the resolver for the updateUser field.
-func (r *mutationResolver) UpdateUser(
-	ctx context.Context,
-	id objects.GUID,
-	input ent.UpdateUserInput,
-) (*ent.User, error) {
+func (r *mutationResolver) UpdateUser(ctx context.Context, id objects.GUID, input ent.UpdateUserInput) (*ent.User, error) {
 	mut := r.client.User.UpdateOneID(id.ID).
 		SetNillableEmail(input.Email).
 		SetNillableFirstName(input.FirstName).
@@ -184,10 +167,7 @@ func (r *mutationResolver) DeleteUser(ctx context.Context, id objects.GUID) (boo
 }
 
 // CreateRole is the resolver for the createRole field.
-func (r *mutationResolver) CreateRole(
-	ctx context.Context,
-	input ent.CreateRoleInput,
-) (*ent.Role, error) {
+func (r *mutationResolver) CreateRole(ctx context.Context, input ent.CreateRoleInput) (*ent.Role, error) {
 	role, err := r.client.Role.Create().
 		SetCode(input.Code).
 		SetName(input.Name).
@@ -201,11 +181,7 @@ func (r *mutationResolver) CreateRole(
 }
 
 // UpdateRole is the resolver for the updateRole field.
-func (r *mutationResolver) UpdateRole(
-	ctx context.Context,
-	id objects.GUID,
-	input ent.UpdateRoleInput,
-) (*ent.Role, error) {
+func (r *mutationResolver) UpdateRole(ctx context.Context, id objects.GUID, input ent.UpdateRoleInput) (*ent.Role, error) {
 	mut := r.client.Role.UpdateOneID(id.ID).
 		SetNillableName(input.Name)
 	if input.Scopes != nil {
@@ -221,10 +197,7 @@ func (r *mutationResolver) UpdateRole(
 }
 
 // UpdateSystemSettings is the resolver for the updateSystemSettings field.
-func (r *mutationResolver) UpdateSystemSettings(
-	ctx context.Context,
-	input UpdateSystemSettingsInput,
-) (*SystemSettings, error) {
+func (r *mutationResolver) UpdateSystemSettings(ctx context.Context, input UpdateSystemSettingsInput) (*SystemSettings, error) {
 	if input.StoreChunks != nil {
 		err := r.systemService.SetStoreChunks(ctx, *input.StoreChunks)
 		if err != nil {
@@ -264,10 +237,7 @@ func (r *mutationResolver) SignIn(ctx context.Context, input SignInInput) (*Sign
 }
 
 // InitializeSystem is the resolver for the initializeSystem field.
-func (r *mutationResolver) InitializeSystem(
-	ctx context.Context,
-	input InitializeSystemInput,
-) (*InitializeSystemPayload, error) {
+func (r *mutationResolver) InitializeSystem(ctx context.Context, input InitializeSystemInput) (*InitializeSystemPayload, error) {
 	// Check if system is already initialized
 	isInitialized, err := r.systemService.IsInitialized(ctx)
 	if err != nil {

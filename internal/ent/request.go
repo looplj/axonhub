@@ -33,10 +33,14 @@ type Request struct {
 	APIKeyID int `json:"api_key_id,omitempty"`
 	// ModelID holds the value of the "model_id" field.
 	ModelID string `json:"model_id,omitempty"`
+	// Format holds the value of the "format" field.
+	Format string `json:"format,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
 	RequestBody objects.JSONRawMessage `json:"request_body,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
 	ResponseBody objects.JSONRawMessage `json:"response_body,omitempty"`
+	// ResponseChunks holds the value of the "response_chunks" field.
+	ResponseChunks []objects.JSONRawMessage `json:"response_chunks,omitempty"`
 	// Status holds the value of the "status" field.
 	Status request.Status `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -99,11 +103,11 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case request.FieldRequestBody, request.FieldResponseBody:
+		case request.FieldRequestBody, request.FieldResponseBody, request.FieldResponseChunks:
 			values[i] = new([]byte)
 		case request.FieldID, request.FieldDeletedAt, request.FieldUserID, request.FieldAPIKeyID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldModelID, request.FieldStatus:
+		case request.FieldModelID, request.FieldFormat, request.FieldStatus:
 			values[i] = new(sql.NullString)
 		case request.FieldCreatedAt, request.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -166,6 +170,12 @@ func (r *Request) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				r.ModelID = value.String
 			}
+		case request.FieldFormat:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field format", values[i])
+			} else if value.Valid {
+				r.Format = value.String
+			}
 		case request.FieldRequestBody:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field request_body", values[i])
@@ -180,6 +190,14 @@ func (r *Request) assignValues(columns []string, values []any) error {
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &r.ResponseBody); err != nil {
 					return fmt.Errorf("unmarshal field response_body: %w", err)
+				}
+			}
+		case request.FieldResponseChunks:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field response_chunks", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &r.ResponseChunks); err != nil {
+					return fmt.Errorf("unmarshal field response_chunks: %w", err)
 				}
 			}
 		case request.FieldStatus:
@@ -264,11 +282,17 @@ func (r *Request) String() string {
 	builder.WriteString("model_id=")
 	builder.WriteString(r.ModelID)
 	builder.WriteString(", ")
+	builder.WriteString("format=")
+	builder.WriteString(r.Format)
+	builder.WriteString(", ")
 	builder.WriteString("request_body=")
 	builder.WriteString(fmt.Sprintf("%v", r.RequestBody))
 	builder.WriteString(", ")
 	builder.WriteString("response_body=")
 	builder.WriteString(fmt.Sprintf("%v", r.ResponseBody))
+	builder.WriteString(", ")
+	builder.WriteString("response_chunks=")
+	builder.WriteString(fmt.Sprintf("%v", r.ResponseChunks))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", r.Status))

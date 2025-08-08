@@ -56,9 +56,16 @@ func (ts *InboundPersistentStream) Next() bool {
 func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
-		// Collect chunks for final aggregation
-		// Note: Individual chunks are also saved by TransformStreamChunk in the transformer
 		ts.responseChunks = append(ts.responseChunks, event)
+
+		err := ts.requestService.AppendRequestChunk(
+			ts.ctx,
+			ts.request.ID,
+			event,
+		)
+		if err != nil {
+			log.Warn(ts.ctx, "Failed to append request chunk", log.Cause(err))
+		}
 	}
 
 	return event
@@ -118,18 +125,37 @@ type PersistentInboundTransformer struct {
 	state   *PersistenceState
 }
 
-// Inbound transformer methods for enhanced version.
-func (p *PersistentInboundTransformer) TransformRequest(
-	ctx context.Context,
-	request *httpclient.Request,
-) (*llm.Request, error) {
-	return p.wrapped.TransformRequest(ctx, request)
+// Name returns the name of the transformer.
+func (p *PersistentInboundTransformer) Name() string {
+	return p.wrapped.Name()
 }
 
-func (p *PersistentInboundTransformer) TransformResponse(
-	ctx context.Context,
-	response *llm.Response,
-) (*httpclient.Response, error) {
+// Inbound transformer methods for enhanced version.
+func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, request *httpclient.Request) (*llm.Request, error) {
+	llmRequest, err := p.wrapped.TransformRequest(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	if p.state.Request == nil {
+		request, err := p.state.RequestService.CreateRequest(
+			ctx,
+			p.state.APIKey,
+			llmRequest,
+			request,
+			p.Name(),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		p.state.Request = request
+	}
+
+	return llmRequest, nil
+}
+
+func (p *PersistentInboundTransformer) TransformResponse(ctx context.Context, response *llm.Response) (*httpclient.Response, error) {
 	finalResp, err := p.wrapped.TransformResponse(ctx, response)
 	if err != nil {
 		return nil, err
@@ -145,18 +171,15 @@ func (p *PersistentInboundTransformer) TransformResponse(
 	return finalResp, nil
 }
 
-func (p *PersistentInboundTransformer) TransformStream(
-	ctx context.Context,
-	stream streams.Stream[*llm.Response],
-) (streams.Stream[*httpclient.StreamEvent], error) {
-	finalStream, err := p.wrapped.TransformStream(ctx, stream)
+func (p *PersistentInboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*httpclient.StreamEvent], error) {
+	channelStream, err := p.wrapped.TransformStream(ctx, stream)
 	if err != nil {
 		return nil, err
 	}
 
 	persistentStream := NewInboundPersistentStream(
 		ctx,
-		finalStream,
+		channelStream,
 		p.state.Request,
 		p.state.RequestExec,
 		p.state.RequestService,
@@ -166,9 +189,6 @@ func (p *PersistentInboundTransformer) TransformStream(
 	return persistentStream, nil
 }
 
-func (p *PersistentInboundTransformer) AggregateStreamChunks(
-	ctx context.Context,
-	chunks []*httpclient.StreamEvent,
-) ([]byte, error) {
+func (p *PersistentInboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, error) {
 	return p.wrapped.AggregateStreamChunks(ctx, chunks)
 }

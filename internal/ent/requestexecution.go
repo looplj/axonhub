@@ -33,6 +33,8 @@ type RequestExecution struct {
 	ChannelID int `json:"channel_id,omitempty"`
 	// ModelID holds the value of the "model_id" field.
 	ModelID string `json:"model_id,omitempty"`
+	// Format holds the value of the "format" field.
+	Format string `json:"format,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
 	RequestBody objects.JSONRawMessage `json:"request_body,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
@@ -93,7 +95,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case requestexecution.FieldID, requestexecution.FieldUserID, requestexecution.FieldRequestID, requestexecution.FieldChannelID:
 			values[i] = new(sql.NullInt64)
-		case requestexecution.FieldModelID, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
+		case requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
 			values[i] = new(sql.NullString)
 		case requestexecution.FieldCreatedAt, requestexecution.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -153,6 +155,12 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field model_id", values[i])
 			} else if value.Valid {
 				re.ModelID = value.String
+			}
+		case requestexecution.FieldFormat:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field format", values[i])
+			} else if value.Valid {
+				re.Format = value.String
 			}
 		case requestexecution.FieldRequestBody:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -253,6 +261,9 @@ func (re *RequestExecution) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("model_id=")
 	builder.WriteString(re.ModelID)
+	builder.WriteString(", ")
+	builder.WriteString("format=")
+	builder.WriteString(re.Format)
 	builder.WriteString(", ")
 	builder.WriteString("request_body=")
 	builder.WriteString(fmt.Sprintf("%v", re.RequestBody))

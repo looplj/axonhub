@@ -4,7 +4,6 @@ import { useErrorHandler } from '@/hooks/use-error-handler'
 import {
   Request,
   RequestConnection,
-  RequestExecution,
   RequestExecutionConnection,
   requestConnectionSchema,
   requestExecutionConnectionSchema,
@@ -34,6 +33,7 @@ const REQUESTS_QUERY = `
             id
             name
           }
+          modelID
           requestBody
           responseBody
           status
@@ -93,7 +93,8 @@ const REQUEST_DETAIL_QUERY = `
           apiKey {
             id
             name
-          }
+        }
+        modelID
         requestBody
         responseBody
         status

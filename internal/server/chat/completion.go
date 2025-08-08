@@ -43,43 +43,27 @@ type ChatCompletionResult struct {
 	ChatCompletionStream streams.Stream[*httpclient.StreamEvent]
 }
 
-func (processor *ChatCompletionProcessor) Process(
-	ctx context.Context,
-	request *httpclient.Request,
-) (ChatCompletionResult, error) {
-	apiKey, ok := contexts.GetAPIKey(ctx)
-	if !ok {
-		log.Warn(ctx, "api key not found")
-	}
+func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
+	apiKey, _ := contexts.GetAPIKey(ctx)
 
-	// Create enhanced persistent transformers with channel management and request creation
-	// This now handles the inbound transformation internally
-	inbound, outbound, err := NewPersistentTransformers(
+	log.Debug(ctx, "request received", log.String("request_body", string(request.Body)))
+
+	inbound, outbound := NewPersistentTransformers(
 		ctx,
 		processor.Inbound,
 		processor.ChannelService,
 		processor.RequestService,
 		apiKey,
 		request,
-		request.Body,
 	)
-	if err != nil {
-		return ChatCompletionResult{}, err
-	}
 
-	pipeline := processor.PipelineFactory.Pipeline(
+	pipe := processor.PipelineFactory.Pipeline(
 		inbound,
 		outbound,
-		pipeline.WithRetry(
-			3,
-			0,
-			"connection timeout",
-			"rate limit exceeded",
-			"temporary unavailable",
-		),
+		pipeline.WithRetry(3, 0),
 	)
 
-	result, err := pipeline.Process(ctx, request)
+	result, err := pipe.Process(ctx, request)
 	if err != nil {
 		log.Error(ctx, "Pipeline processing failed", log.Cause(err))
 		return ChatCompletionResult{}, err

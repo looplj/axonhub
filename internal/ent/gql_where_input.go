@@ -1260,6 +1260,21 @@ type RequestWhereInput struct {
 	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
 	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
 
+	// "format" field predicates.
+	Format             *string  `json:"format,omitempty"`
+	FormatNEQ          *string  `json:"formatNEQ,omitempty"`
+	FormatIn           []string `json:"formatIn,omitempty"`
+	FormatNotIn        []string `json:"formatNotIn,omitempty"`
+	FormatGT           *string  `json:"formatGT,omitempty"`
+	FormatGTE          *string  `json:"formatGTE,omitempty"`
+	FormatLT           *string  `json:"formatLT,omitempty"`
+	FormatLTE          *string  `json:"formatLTE,omitempty"`
+	FormatContains     *string  `json:"formatContains,omitempty"`
+	FormatHasPrefix    *string  `json:"formatHasPrefix,omitempty"`
+	FormatHasSuffix    *string  `json:"formatHasSuffix,omitempty"`
+	FormatEqualFold    *string  `json:"formatEqualFold,omitempty"`
+	FormatContainsFold *string  `json:"formatContainsFold,omitempty"`
+
 	// "status" field predicates.
 	Status      *request.Status  `json:"status,omitempty"`
 	StatusNEQ   *request.Status  `json:"statusNEQ,omitempty"`
@@ -1515,6 +1530,45 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	if i.ModelIDContainsFold != nil {
 		predicates = append(predicates, request.ModelIDContainsFold(*i.ModelIDContainsFold))
 	}
+	if i.Format != nil {
+		predicates = append(predicates, request.FormatEQ(*i.Format))
+	}
+	if i.FormatNEQ != nil {
+		predicates = append(predicates, request.FormatNEQ(*i.FormatNEQ))
+	}
+	if len(i.FormatIn) > 0 {
+		predicates = append(predicates, request.FormatIn(i.FormatIn...))
+	}
+	if len(i.FormatNotIn) > 0 {
+		predicates = append(predicates, request.FormatNotIn(i.FormatNotIn...))
+	}
+	if i.FormatGT != nil {
+		predicates = append(predicates, request.FormatGT(*i.FormatGT))
+	}
+	if i.FormatGTE != nil {
+		predicates = append(predicates, request.FormatGTE(*i.FormatGTE))
+	}
+	if i.FormatLT != nil {
+		predicates = append(predicates, request.FormatLT(*i.FormatLT))
+	}
+	if i.FormatLTE != nil {
+		predicates = append(predicates, request.FormatLTE(*i.FormatLTE))
+	}
+	if i.FormatContains != nil {
+		predicates = append(predicates, request.FormatContains(*i.FormatContains))
+	}
+	if i.FormatHasPrefix != nil {
+		predicates = append(predicates, request.FormatHasPrefix(*i.FormatHasPrefix))
+	}
+	if i.FormatHasSuffix != nil {
+		predicates = append(predicates, request.FormatHasSuffix(*i.FormatHasSuffix))
+	}
+	if i.FormatEqualFold != nil {
+		predicates = append(predicates, request.FormatEqualFold(*i.FormatEqualFold))
+	}
+	if i.FormatContainsFold != nil {
+		predicates = append(predicates, request.FormatContainsFold(*i.FormatContainsFold))
+	}
 	if i.Status != nil {
 		predicates = append(predicates, request.StatusEQ(*i.Status))
 	}
@@ -1665,6 +1719,21 @@ type RequestExecutionWhereInput struct {
 	ModelIDHasSuffix    *string  `json:"modelIDHasSuffix,omitempty"`
 	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
 	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
+
+	// "format" field predicates.
+	Format             *string  `json:"format,omitempty"`
+	FormatNEQ          *string  `json:"formatNEQ,omitempty"`
+	FormatIn           []string `json:"formatIn,omitempty"`
+	FormatNotIn        []string `json:"formatNotIn,omitempty"`
+	FormatGT           *string  `json:"formatGT,omitempty"`
+	FormatGTE          *string  `json:"formatGTE,omitempty"`
+	FormatLT           *string  `json:"formatLT,omitempty"`
+	FormatLTE          *string  `json:"formatLTE,omitempty"`
+	FormatContains     *string  `json:"formatContains,omitempty"`
+	FormatHasPrefix    *string  `json:"formatHasPrefix,omitempty"`
+	FormatHasSuffix    *string  `json:"formatHasSuffix,omitempty"`
+	FormatEqualFold    *string  `json:"formatEqualFold,omitempty"`
+	FormatContainsFold *string  `json:"formatContainsFold,omitempty"`
 
 	// "error_message" field predicates.
 	ErrorMessage             *string  `json:"errorMessage,omitempty"`
@@ -1927,6 +1996,45 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.ModelIDContainsFold != nil {
 		predicates = append(predicates, requestexecution.ModelIDContainsFold(*i.ModelIDContainsFold))
+	}
+	if i.Format != nil {
+		predicates = append(predicates, requestexecution.FormatEQ(*i.Format))
+	}
+	if i.FormatNEQ != nil {
+		predicates = append(predicates, requestexecution.FormatNEQ(*i.FormatNEQ))
+	}
+	if len(i.FormatIn) > 0 {
+		predicates = append(predicates, requestexecution.FormatIn(i.FormatIn...))
+	}
+	if len(i.FormatNotIn) > 0 {
+		predicates = append(predicates, requestexecution.FormatNotIn(i.FormatNotIn...))
+	}
+	if i.FormatGT != nil {
+		predicates = append(predicates, requestexecution.FormatGT(*i.FormatGT))
+	}
+	if i.FormatGTE != nil {
+		predicates = append(predicates, requestexecution.FormatGTE(*i.FormatGTE))
+	}
+	if i.FormatLT != nil {
+		predicates = append(predicates, requestexecution.FormatLT(*i.FormatLT))
+	}
+	if i.FormatLTE != nil {
+		predicates = append(predicates, requestexecution.FormatLTE(*i.FormatLTE))
+	}
+	if i.FormatContains != nil {
+		predicates = append(predicates, requestexecution.FormatContains(*i.FormatContains))
+	}
+	if i.FormatHasPrefix != nil {
+		predicates = append(predicates, requestexecution.FormatHasPrefix(*i.FormatHasPrefix))
+	}
+	if i.FormatHasSuffix != nil {
+		predicates = append(predicates, requestexecution.FormatHasSuffix(*i.FormatHasSuffix))
+	}
+	if i.FormatEqualFold != nil {
+		predicates = append(predicates, requestexecution.FormatEqualFold(*i.FormatEqualFold))
+	}
+	if i.FormatContainsFold != nil {
+		predicates = append(predicates, requestexecution.FormatContainsFold(*i.FormatContainsFold))
 	}
 	if i.ErrorMessage != nil {
 		predicates = append(predicates, requestexecution.ErrorMessageEQ(*i.ErrorMessage))

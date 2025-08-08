@@ -137,36 +137,25 @@ type PersistentOutboundTransformer struct {
 	state   *PersistenceState
 }
 
+// Name returns the name of the transformer.
+func (p *PersistentOutboundTransformer) Name() string {
+	return p.wrapped.Name()
+}
+
 // Outbound transformer methods for enhanced version.
-func (p *PersistentOutboundTransformer) TransformRequest(
-	ctx context.Context,
-	request *llm.Request,
-) (*httpclient.Request, error) {
+func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
 	// TODO fix the privacy context
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	// Initialize request and channels if not done yet
-	if p.state.Request == nil {
-		req, err := p.state.RequestService.CreateRequest(
-			ctx,
-			p.state.APIKey,
-			p.state.ChatRequest,
-			p.state.RequestBody,
-		)
+	if len(p.state.Channels) == 0 {
+		channels, err := p.state.ChannelService.ChooseChannels(ctx, llmRequest)
 		if err != nil {
 			return nil, err
 		}
 
-		p.state.Request = req
-
-		// Choose channels
-		channels, err := p.state.ChannelService.ChooseChannels(ctx, p.state.ChatRequest)
-		if err != nil {
-			return nil, err
-		}
-
-		log.Debug(ctx, "choose channels", log.Any("channels", channels),
-			log.Any("model", p.state.ChatRequest.Model),
+		log.Debug(ctx, "choosed channels",
+			log.Any("channels", channels),
+			log.Any("model", llmRequest.Model),
 		)
 
 		if len(channels) == 0 {
@@ -188,43 +177,51 @@ func (p *PersistentOutboundTransformer) TransformRequest(
 		ctx,
 		"using channel",
 		log.Any("channel", p.state.CurrentChannel.Name),
-		log.Any("model", p.state.ChatRequest.Model),
+		log.Any("model", llmRequest.Model),
 	)
+
+	channelRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create request execution record before processing
 	if p.state.RequestExec == nil {
+		model, err := p.state.CurrentChannel.ChooseModel(llmRequest.Model)
+		if err != nil {
+			log.Error(ctx, "Failed to choose model", log.Cause(err))
+			return nil, err
+		}
+
 		requestExec, err := p.state.RequestService.CreateRequestExecution(
 			ctx,
 			p.state.CurrentChannel,
+			model,
 			p.state.Request,
-			request,
+			*channelRequest,
+			p.Name(),
 		)
 		if err != nil {
 			return nil, err
 		}
 
 		p.state.RequestExec = requestExec
-
-		request.Model = requestExec.ModelID
 	}
 
-	return p.wrapped.TransformRequest(ctx, request)
+	return channelRequest, nil
 }
 
-func (p *PersistentOutboundTransformer) TransformResponse(
-	ctx context.Context,
-	response *httpclient.Response,
-) (*llm.Response, error) {
+func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {
 	llmResp, err := p.wrapped.TransformResponse(ctx, response)
 	if err != nil {
 		if p.state.RequestExec != nil {
-			err := p.state.RequestService.UpdateRequestExecutionFailed(
+			innerErr := p.state.RequestService.UpdateRequestExecutionFailed(
 				ctx,
 				p.state.RequestExec.ID,
 				err.Error(),
 			)
-			if err != nil {
-				log.Warn(ctx, "Failed to update request execution status to failed", log.Cause(err))
+			if innerErr != nil {
+				log.Warn(ctx, "Failed to update request execution status to failed", log.Cause(innerErr))
 			}
 		}
 
@@ -245,10 +242,7 @@ func (p *PersistentOutboundTransformer) TransformResponse(
 	return llmResp, nil
 }
 
-func (p *PersistentOutboundTransformer) TransformStream(
-	ctx context.Context,
-	stream streams.Stream[*httpclient.StreamEvent],
-) (streams.Stream[*llm.Response], error) {
+func (p *PersistentOutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	persistentStream := NewOutboundPersistentStream(
 		ctx,
 		stream,

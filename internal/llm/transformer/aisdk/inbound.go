@@ -21,6 +21,11 @@ func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 
+// Name returns the name of the transformer.
+func (t *InboundTransformer) Name() string {
+	return "vercel/aisdk"
+}
+
 // AiSDKRequest represents the AI SDK request format.
 type AiSDKRequest struct {
 	Messages []AiSDKMessage `json:"messages"`

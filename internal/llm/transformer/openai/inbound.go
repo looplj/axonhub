@@ -20,6 +20,11 @@ func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 
+// Name returns the name of the transformer.
+func (t *InboundTransformer) Name() string {
+	return "openai/chat_completions"
+}
+
 // TransformRequest transforms HTTP request to ChatCompletionRequest.
 func (t *InboundTransformer) TransformRequest(
 	ctx context.Context,
@@ -128,67 +133,3 @@ func (t *InboundTransformer) AggregateStreamChunks(
 ) ([]byte, error) {
 	return AggregateStreamChunks(ctx, chunks)
 }
-
-// // AggregateStreamChunks aggregates streaming response chunks into a complete response.
-// func (t *InboundTransformer) AggregateStreamChunks(
-// 	ctx context.Context,
-// 	chunks []*llm.Response,
-// ) ([]byte, error) {
-// 	if len(chunks) == 0 {
-// 		return json.Marshal(&llm.Response{})
-// 	}
-
-// 	// For OpenAI inbound, we aggregate the unified response chunks into a complete OpenAI response
-// 	var (
-// 		aggregatedContent strings.Builder
-// 		lastChunk         *llm.Response
-// 	)
-
-// 	for _, chunk := range chunks {
-// 		if chunk == nil {
-// 			continue
-// 		}
-
-// 		// Extract content from the chunk
-// 		if len(chunk.Choices) > 0 && chunk.Choices[0].Message != nil {
-// 			if chunk.Choices[0].Message.Content.Content != nil {
-// 				aggregatedContent.WriteString(*chunk.Choices[0].Message.Content.Content)
-// 			}
-// 		} else if len(chunk.Choices) > 0 && chunk.Choices[0].Delta != nil {
-// 			if chunk.Choices[0].Delta.Content.Content != nil {
-// 				aggregatedContent.WriteString(*chunk.Choices[0].Delta.Content.Content)
-// 			}
-// 		}
-
-// 		// Keep the last chunk for metadata
-// 		lastChunk = chunk
-// 	}
-
-// 	// Create a complete response based on the last chunk
-// 	if lastChunk == nil {
-// 		return json.Marshal(&llm.Response{})
-// 	}
-
-// 	// Build the final response
-// 	finalResponse := &llm.Response{
-// 		ID:      lastChunk.ID,
-// 		Object:  "chat.completion", // Change from "chat.completion.chunk" to "chat.completion"
-// 		Created: lastChunk.Created,
-// 		Model:   lastChunk.Model,
-// 		Usage:   lastChunk.Usage,
-// 		Choices: []llm.Choice{
-// 			{
-// 				Index: 0,
-// 				Message: &llm.Message{
-// 					Role: "assistant",
-// 					Content: llm.MessageContent{
-// 						Content: lo.ToPtr(aggregatedContent.String()),
-// 					},
-// 				},
-// 				FinishReason: lastChunk.Choices[0].FinishReason,
-// 			},
-// 		},
-// 	}
-
-// 	return json.Marshal(finalResponse)
-// }

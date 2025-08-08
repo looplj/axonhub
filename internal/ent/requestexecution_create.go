@@ -77,6 +77,20 @@ func (rec *RequestExecutionCreate) SetModelID(s string) *RequestExecutionCreate 
 	return rec
 }
 
+// SetFormat sets the "format" field.
+func (rec *RequestExecutionCreate) SetFormat(s string) *RequestExecutionCreate {
+	rec.mutation.SetFormat(s)
+	return rec
+}
+
+// SetNillableFormat sets the "format" field if the given value is not nil.
+func (rec *RequestExecutionCreate) SetNillableFormat(s *string) *RequestExecutionCreate {
+	if s != nil {
+		rec.SetFormat(*s)
+	}
+	return rec
+}
+
 // SetRequestBody sets the "request_body" field.
 func (rec *RequestExecutionCreate) SetRequestBody(orm objects.JSONRawMessage) *RequestExecutionCreate {
 	rec.mutation.SetRequestBody(orm)
@@ -168,6 +182,10 @@ func (rec *RequestExecutionCreate) defaults() {
 		v := requestexecution.DefaultUpdatedAt()
 		rec.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := rec.mutation.Format(); !ok {
+		v := requestexecution.DefaultFormat
+		rec.mutation.SetFormat(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -189,6 +207,9 @@ func (rec *RequestExecutionCreate) check() error {
 	}
 	if _, ok := rec.mutation.ModelID(); !ok {
 		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "RequestExecution.model_id"`)}
+	}
+	if _, ok := rec.mutation.Format(); !ok {
+		return &ValidationError{Name: "format", err: errors.New(`ent: missing required field "RequestExecution.format"`)}
 	}
 	if _, ok := rec.mutation.RequestBody(); !ok {
 		return &ValidationError{Name: "request_body", err: errors.New(`ent: missing required field "RequestExecution.request_body"`)}
@@ -249,6 +270,10 @@ func (rec *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cr
 	if value, ok := rec.mutation.ModelID(); ok {
 		_spec.SetField(requestexecution.FieldModelID, field.TypeString, value)
 		_node.ModelID = value
+	}
+	if value, ok := rec.mutation.Format(); ok {
+		_spec.SetField(requestexecution.FieldFormat, field.TypeString, value)
+		_node.Format = value
 	}
 	if value, ok := rec.mutation.RequestBody(); ok {
 		_spec.SetField(requestexecution.FieldRequestBody, field.TypeJSON, value)
@@ -459,6 +484,9 @@ func (u *RequestExecutionUpsertOne) UpdateNewValues() *RequestExecutionUpsertOne
 		}
 		if _, exists := u.create.mutation.ModelID(); exists {
 			s.SetIgnore(requestexecution.FieldModelID)
+		}
+		if _, exists := u.create.mutation.Format(); exists {
+			s.SetIgnore(requestexecution.FieldFormat)
 		}
 		if _, exists := u.create.mutation.RequestBody(); exists {
 			s.SetIgnore(requestexecution.FieldRequestBody)
@@ -775,6 +803,9 @@ func (u *RequestExecutionUpsertBulk) UpdateNewValues() *RequestExecutionUpsertBu
 			}
 			if _, exists := b.mutation.ModelID(); exists {
 				s.SetIgnore(requestexecution.FieldModelID)
+			}
+			if _, exists := b.mutation.Format(); exists {
+				s.SetIgnore(requestexecution.FieldFormat)
 			}
 			if _, exists := b.mutation.RequestBody(); exists {
 				s.SetIgnore(requestexecution.FieldRequestBody)
