@@ -197,11 +197,6 @@ func TestIntegration_OpenAITransformers(t *testing.T) {
 	}
 }
 
-// Helper functions.
-func boolPtr(b bool) *bool {
-	return &b
-}
-
 // TestIntegration_StreamingFlow tests the streaming functionality.
 func TestIntegration_StreamingFlow(t *testing.T) {
 	// Create HTTP client
@@ -253,7 +248,7 @@ func TestIntegration_StreamingFlow(t *testing.T) {
 		},
 		Body: mustMarshal(llm.Request{
 			Model:  "gpt-4",
-			Stream: boolPtr(true),
+			Stream: lo.ToPtr(true),
 			Messages: []llm.Message{
 				{
 					Role: "user",

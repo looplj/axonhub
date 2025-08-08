@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -12,20 +11,18 @@ import (
 )
 
 // AggregateStreamChunks aggregates OpenAI streaming response chunks into a complete response.
-func AggregateStreamChunks(
-	ctx context.Context,
-	chunks []*httpclient.StreamEvent,
-) ([]byte, error) {
+func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, error) {
 	if len(chunks) == 0 {
-		emptyResp := &llm.Response{}
-		return json.Marshal(emptyResp)
+		return json.Marshal(&llm.Response{})
 	}
 
 	// For OpenAI-style streaming, we need to aggregate the delta content from chunks
 	// into a complete ChatCompletionResponse
 	var (
 		aggregatedContent strings.Builder
-		lastChunk         map[string]any
+		lastChunkResponse *llm.Response
+		usage             *llm.Usage
+		systemFingerprint string
 	)
 
 	for _, chunk := range chunks {
@@ -34,63 +31,60 @@ func AggregateStreamChunks(
 			continue
 		}
 
-		var chunkData map[string]any
+		var chunkResponse llm.Response
 
-		err := json.Unmarshal(chunk.Data, &chunkData)
+		err := json.Unmarshal(chunk.Data, &chunkResponse)
 		if err != nil {
 			continue // Skip invalid chunks
 		}
 
 		// Extract content from choices[0].delta.content if it exists
-		if choices, ok := chunkData["choices"].([]any); ok && len(choices) > 0 {
-			if choice, ok := choices[0].(map[string]any); ok {
-				if delta, ok := choice["delta"].(map[string]any); ok {
-					if content, ok := delta["content"].(string); ok {
-						aggregatedContent.WriteString(content)
-					}
-				}
+		if len(chunkResponse.Choices) > 0 {
+			if chunkResponse.Choices[0].Delta != nil && chunkResponse.Choices[0].Delta.Content.Content != nil {
+				aggregatedContent.WriteString(*chunkResponse.Choices[0].Delta.Content.Content)
 			}
 		}
 
+		// Extract usage information if present
+		if chunkResponse.Usage != nil {
+			usage = chunkResponse.Usage
+		}
+
+		// Keep the first non-empty system fingerprint
+		if systemFingerprint == "" && chunkResponse.SystemFingerprint != "" {
+			systemFingerprint = chunkResponse.SystemFingerprint
+		}
+
 		// Keep the last chunk for metadata
-		lastChunk = chunkData
+		lastChunkResponse = &chunkResponse
 	}
 
 	// Create a complete ChatCompletionResponse based on the last chunk structure
-	if lastChunk == nil {
-		emptyResp := &llm.Response{}
-		return json.Marshal(emptyResp)
+	if lastChunkResponse == nil {
+		return json.Marshal(&llm.Response{})
 	}
 
-	// Build the final response
-	finalResponse := map[string]interface{}{
-		"object": "chat.completion", // Change from "chat.completion.chunk" to "chat.completion"
-	}
-
-	// Copy metadata from the last chunk
-	for key, value := range lastChunk {
-		if key != "choices" && key != "object" {
-			finalResponse[key] = value
-		}
-	}
-
-	// Create the final choices with aggregated content
-	finalResponse["choices"] = []map[string]interface{}{
-		{
-			"index": 0,
-			"message": map[string]interface{}{
-				"role":    "assistant",
-				"content": aggregatedContent.String(),
+	// Build the final response using llm.Response struct
+	response := &llm.Response{
+		ID:                lastChunkResponse.ID,
+		Model:             lastChunkResponse.Model,
+		Object:            "chat.completion", // Change from "chat.completion.chunk" to "chat.completion"
+		Created:           lastChunkResponse.Created,
+		SystemFingerprint: systemFingerprint,
+		Choices: []llm.Choice{
+			{
+				Index: 0,
+				Message: &llm.Message{
+					Role: "assistant",
+					Content: llm.MessageContent{
+						Content: &[]string{aggregatedContent.String()}[0],
+					},
+				},
+				FinishReason: &[]string{"stop"}[0],
 			},
-			"finish_reason": "stop",
 		},
+		Usage: usage,
 	}
 
-	// Marshal the final response directly
-	finalJSON, err := json.Marshal(finalResponse)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal final response: %w", err)
-	}
-
-	return finalJSON, nil
+	return json.Marshal(response)
 }

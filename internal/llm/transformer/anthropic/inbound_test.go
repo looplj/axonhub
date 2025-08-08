@@ -714,7 +714,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData_Stop(t *testing.T)
 
 	// Load test data from files
 	// The response-stop.stream.jsonl contains OpenAI format responses
-	openaiData, err := os.ReadFile("testdata/response-stop.stream.jsonl")
+	openaiData, err := os.ReadFile("testdata/llm-stop.stream.jsonl")
 	require.NoError(t, err)
 
 	// The anthropic-stop.stream.jsonl contains expected Anthropic format events

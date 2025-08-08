@@ -1,0 +1,19 @@
+{
+  "id": "msg_bdrk_01Fbg5HKuVfmtT6mAMxQoCSn",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "1 2 3 4 5\n6 7 8 9 10\n11 12 13 14 15\n16 17 18 19 20"
+    }
+  ],
+  "model": "claude-3-7-sonnet-20250219",
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 21,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 43
+  }
+}

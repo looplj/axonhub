@@ -912,7 +912,7 @@ func TestOutboundTransformer_StreamTransformation_WithTestData_Stop(t *testing.T
 	anthropicData, err := os.ReadFile("testdata/anthropic-stop.stream.jsonl")
 	require.NoError(t, err)
 
-	expectedData, err := os.ReadFile("testdata/response-stop.stream.jsonl")
+	expectedData, err := os.ReadFile("testdata/llm-stop.stream.jsonl")
 	require.NoError(t, err)
 
 	// Parse anthropic stream events
