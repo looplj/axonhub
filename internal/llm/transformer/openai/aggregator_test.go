@@ -1,62 +1,54 @@
 package openai
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
-	"os"
-	"strings"
 	"testing"
 
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xtest"
 )
 
 func TestAggregateStreamChunks(t *testing.T) {
 	tests := []struct {
-		name     string
-		filename string
-		want     *llm.Response
+		name         string
+		streamFile   string
+		responseFile string
 	}{
 		{
-			name:     "openai stream chunks",
-			filename: "openai-1.stream.jsonl",
-			want: &llm.Response{
-				ID:                "gen-1754577344-bfGaoVZhBY3iT78Psu02",
-				Model:             "gpt-4o-mini",
-				Object:            "chat.completion",
-				Created:           1754577344,
-				SystemFingerprint: "fp_efad92c60b",
-				Choices: []llm.Choice{
-					{
-						Index: 0,
-						Message: &llm.Message{
-							Role: "assistant",
-							Content: llm.MessageContent{
-								Content: lo.ToPtr(
-									"Sure! Here’s the output from 1 to 20, with 5 numbers on each line:\n\n```\n1 2 3 4 5\n6 7 8 9 10\n11 12 13 14 15\n16 17 18 19 20\n```",
-								),
-							},
-						},
-						FinishReason: lo.ToPtr("stop"),
-					},
-				},
-				Usage: &llm.Usage{
-					PromptTokens:     19,
-					CompletionTokens: 65,
-					TotalTokens:      84,
-				},
-			},
+			name:         "openai stream chunks with stop finish reason",
+			streamFile:   "openai-stop.stream.jsonl",
+			responseFile: "openai-stop.response.json",
+		},
+		{
+			name:         "openai stream chunks with tool calls",
+			streamFile:   "openai-tool.stream.jsonl",
+			responseFile: "openai-tool.response.json",
+		},
+		{
+			name:         "openai stream chunks with parallel multiple tool calls",
+			streamFile:   "openai-parallel_multiple_tool.stream.jsonl",
+			responseFile: "openai-parallel_multiple_tool.response.json",
+		},
+		{
+			name:         "openai stream chunks with tool calls (tool_2)",
+			streamFile:   "openai-tool_2.stream.jsonl",
+			responseFile: "openai-tool_2.response.json",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Load test data
-			chunks, err := loadStreamChunks(tt.filename)
+			chunks, err := xtest.LoadStreamChunks(tt.streamFile)
+			require.NoError(t, err)
+
+			// Load expected response
+			var want llm.Response
+
+			err = xtest.LoadTestData(tt.responseFile, &want)
 			require.NoError(t, err)
 
 			// Test the function
@@ -70,25 +62,52 @@ func TestAggregateStreamChunks(t *testing.T) {
 			require.NoError(t, err)
 
 			// Assert the result
-			assert.Equal(t, tt.want.ID, got.ID)
-			assert.Equal(t, tt.want.Model, got.Model)
-			assert.Equal(t, tt.want.Object, got.Object)
-			assert.Equal(t, tt.want.Created, got.Created)
-			assert.Equal(t, tt.want.SystemFingerprint, got.SystemFingerprint)
-			assert.Len(t, got.Choices, len(tt.want.Choices))
+			assert.Equal(t, want.ID, got.ID)
+			assert.Equal(t, want.Model, got.Model)
+			assert.Equal(t, want.Object, got.Object)
+			assert.Equal(t, want.Created, got.Created)
+			assert.Equal(t, want.SystemFingerprint, got.SystemFingerprint)
+			assert.Len(t, got.Choices, len(want.Choices))
 
-			if len(got.Choices) > 0 {
-				assert.Equal(t, tt.want.Choices[0].Index, got.Choices[0].Index)
-				assert.Equal(t, tt.want.Choices[0].Message.Role, got.Choices[0].Message.Role)
-				assert.Equal(t, *tt.want.Choices[0].Message.Content.Content, *got.Choices[0].Message.Content.Content)
-				assert.Equal(t, *tt.want.Choices[0].FinishReason, *got.Choices[0].FinishReason)
+			if len(got.Choices) > 0 && len(want.Choices) > 0 {
+				gotChoice := got.Choices[0]
+				wantChoice := want.Choices[0]
+
+				assert.Equal(t, wantChoice.Index, gotChoice.Index)
+				assert.Equal(t, wantChoice.Message.Role, gotChoice.Message.Role)
+
+				// Check content
+				if wantChoice.Message.Content.Content != nil {
+					require.NotNil(t, gotChoice.Message.Content.Content)
+					assert.Equal(t, *wantChoice.Message.Content.Content, *gotChoice.Message.Content.Content)
+				}
+
+				// Check tool calls
+				if len(wantChoice.Message.ToolCalls) > 0 {
+					require.Len(t, gotChoice.Message.ToolCalls, len(wantChoice.Message.ToolCalls))
+
+					for i, wantToolCall := range wantChoice.Message.ToolCalls {
+						gotToolCall := gotChoice.Message.ToolCalls[i]
+						assert.Equal(t, wantToolCall.ID, gotToolCall.ID)
+						assert.Equal(t, wantToolCall.Type, gotToolCall.Type)
+						assert.Equal(t, wantToolCall.Function.Name, gotToolCall.Function.Name)
+						assert.Equal(t, wantToolCall.Function.Arguments, gotToolCall.Function.Arguments)
+					}
+				}
+
+				// Check finish reason
+				if wantChoice.FinishReason != nil {
+					require.NotNil(t, gotChoice.FinishReason)
+					assert.Equal(t, *wantChoice.FinishReason, *gotChoice.FinishReason)
+				}
 			}
 
-			if tt.want.Usage != nil {
+			// Check usage
+			if want.Usage != nil {
 				require.NotNil(t, got.Usage)
-				assert.Equal(t, tt.want.Usage.PromptTokens, got.Usage.PromptTokens)
-				assert.Equal(t, tt.want.Usage.CompletionTokens, got.Usage.CompletionTokens)
-				assert.Equal(t, tt.want.Usage.TotalTokens, got.Usage.TotalTokens)
+				assert.Equal(t, want.Usage.PromptTokens, got.Usage.PromptTokens)
+				assert.Equal(t, want.Usage.CompletionTokens, got.Usage.CompletionTokens)
+				assert.Equal(t, want.Usage.TotalTokens, got.Usage.TotalTokens)
 			}
 		})
 	}
@@ -104,45 +123,4 @@ func TestAggregateStreamChunks_EmptyChunks(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, llm.Response{}, got)
-}
-
-// loadStreamChunks loads stream chunks from a JSONL file in testdata directory.
-func loadStreamChunks(filename string) ([]*httpclient.StreamEvent, error) {
-	file, err := os.Open("testdata/" + filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var chunks []*httpclient.StreamEvent
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-
-		// Parse the line as a temporary struct to handle the Data field correctly
-		var temp struct {
-			LastEventID string `json:"LastEventID"`
-			Type        string `json:"Type"`
-			Data        string `json:"Data"` // Data is a JSON string in the test file
-		}
-
-		if err := json.Unmarshal([]byte(line), &temp); err != nil {
-			return nil, err
-		}
-
-		// Create the StreamEvent with Data as []byte
-		streamEvent := &httpclient.StreamEvent{
-			LastEventID: temp.LastEventID,
-			Type:        temp.Type,
-			Data:        []byte(temp.Data), // Convert string to []byte
-		}
-
-		chunks = append(chunks, streamEvent)
-	}
-
-	return chunks, scanner.Err()
 }

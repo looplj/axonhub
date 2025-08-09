@@ -1,0 +1,61 @@
+{
+  "messages": [
+    {
+      "content": "What is the weather in my city in my language? My user id is 123.",
+      "role": "user"
+    }
+  ],
+  "model": "gpt-4o",
+  "seed": 0,
+  "parallel_tool_calls": true,
+  "tools": [
+    {
+      "function": {
+        "name": "get_weather",
+        "description": "Get weather at the given location",
+        "parameters": {
+          "properties": {
+            "location": {
+              "type": "string"
+            }
+          },
+          "required": ["location"],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "name": "get_user_city",
+        "description": "Get location of user",
+        "parameters": {
+          "properties": {
+            "user_id": {
+              "type": "string"
+            }
+          },
+          "required": ["user_id"],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    },
+    {
+      "function": {
+        "name": "get_user_language",
+        "description": "Get language of user",
+        "parameters": {
+          "properties": {
+            "user_id": {
+              "type": "string"
+            }
+          },
+          "required": ["user_id"],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    }
+  ]
+}

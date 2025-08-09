@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -23,6 +24,8 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		lastChunkResponse *llm.Response
 		usage             *llm.Usage
 		systemFingerprint string
+		toolCalls         = make(map[int]*llm.ToolCall) // Map to track tool calls by index
+		finishReason      *string
 	)
 
 	for _, chunk := range chunks {
@@ -38,10 +41,60 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			continue // Skip invalid chunks
 		}
 
-		// Extract content from choices[0].delta.content if it exists
+		// Extract content and tool calls from choices[0].delta if it exists
 		if len(chunkResponse.Choices) > 0 {
-			if chunkResponse.Choices[0].Delta != nil && chunkResponse.Choices[0].Delta.Content.Content != nil {
-				aggregatedContent.WriteString(*chunkResponse.Choices[0].Delta.Content.Content)
+			choice := chunkResponse.Choices[0]
+
+			if choice.Delta != nil {
+				// Handle content
+				if choice.Delta.Content.Content != nil {
+					aggregatedContent.WriteString(*choice.Delta.Content.Content)
+				}
+
+				// Handle tool calls
+				if len(choice.Delta.ToolCalls) > 0 {
+					for _, deltaToolCall := range choice.Delta.ToolCalls {
+						// Use the index from the OpenAI delta tool call
+						index := deltaToolCall.Index
+
+						// Initialize tool call if it doesn't exist
+						if _, ok := toolCalls[index]; !ok {
+							toolCalls[index] = &llm.ToolCall{
+								Index: index,
+								ID:    deltaToolCall.ID,
+								Type:  deltaToolCall.Type,
+								Function: llm.FunctionCall{
+									Name:      deltaToolCall.Function.Name,
+									Arguments: "",
+								},
+							}
+						}
+
+						// Aggregate function arguments
+						if deltaToolCall.Function.Arguments != "" {
+							toolCalls[index].Function.Arguments += deltaToolCall.Function.Arguments
+						}
+
+						// Update function name if provided
+						if deltaToolCall.Function.Name != "" {
+							toolCalls[index].Function.Name = deltaToolCall.Function.Name
+						}
+
+						// Update ID and type if provided
+						if deltaToolCall.ID != "" {
+							toolCalls[index].ID = deltaToolCall.ID
+						}
+
+						if deltaToolCall.Type != "" {
+							toolCalls[index].Type = deltaToolCall.Type
+						}
+					}
+				}
+			}
+
+			// Capture finish reason
+			if choice.FinishReason != nil {
+				finishReason = choice.FinishReason
 			}
 		}
 
@@ -64,6 +117,35 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		return json.Marshal(&llm.Response{})
 	}
 
+	finalToolCalls := make([]llm.ToolCall, len(toolCalls))
+	for i := range finalToolCalls {
+		finalToolCalls[i] = *toolCalls[i]
+	}
+
+	// Build the message
+	message := &llm.Message{
+		Role: "assistant",
+	}
+
+	// Set content or tool calls
+	if len(finalToolCalls) > 0 {
+		message.ToolCalls = finalToolCalls
+		// For tool calls, content should be null
+		message.Content = llm.MessageContent{Content: nil}
+	} else {
+		content := aggregatedContent.String()
+		message.Content = llm.MessageContent{Content: &content}
+	}
+
+	// Determine finish reason
+	if finishReason == nil {
+		if len(finalToolCalls) > 0 {
+			finishReason = lo.ToPtr("tool_calls")
+		} else {
+			finishReason = lo.ToPtr("stop")
+		}
+	}
+
 	// Build the final response using llm.Response struct
 	response := &llm.Response{
 		ID:                lastChunkResponse.ID,
@@ -73,14 +155,9 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		SystemFingerprint: systemFingerprint,
 		Choices: []llm.Choice{
 			{
-				Index: 0,
-				Message: &llm.Message{
-					Role: "assistant",
-					Content: llm.MessageContent{
-						Content: &[]string{aggregatedContent.String()}[0],
-					},
-				},
-				FinishReason: &[]string{"stop"}[0],
+				Index:        0,
+				Message:      message,
+				FinishReason: finishReason,
 			},
 		},
 		Usage: usage,

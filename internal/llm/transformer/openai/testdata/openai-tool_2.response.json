@@ -1,0 +1,42 @@
+{
+  "id": "chatcmpl-C2W6446YQfJg7YrSTSPbxFlnlM14H",
+  "model": "gpt-4o-2024-11-20",
+  "object": "chat.completion",
+  "created": 1754716072,
+  "system_fingerprint": "fp_ee1d74bde0",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_Tci9A82g30Ltcx93rvdvT59t",
+            "type": "function",
+            "function": {
+              "name": "get_user_city",
+              "arguments": "{\"user_id\":\"123\"}"
+            }
+          }
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 80,
+    "completion_tokens": 17,
+    "total_tokens": 97,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": 0,
+      "audio_tokens": 0,
+      "reasoning_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  }
+}

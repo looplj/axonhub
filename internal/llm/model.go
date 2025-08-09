@@ -186,7 +186,7 @@ type ToolChoice struct {
 
 type NamedToolChoice struct {
 	Type     string       `json:"type"`
-	Function ToolFunction `json:"function,omitempty"`
+	Function ToolFunction `json:"function"`
 }
 
 func (t ToolChoice) MarshalJSON() ([]byte, error) {
@@ -378,12 +378,15 @@ type FunctionCall struct {
 
 // ToolCall represents a tool call in the response.
 type ToolCall struct {
-	ID string `json:"id"`
+	ID string `json:"id,omitempty"`
 
 	// The type of the tool. Currently, only `function` is supported.
-	Type string `json:"type"`
+	Type string `json:"type,omitempty"`
 
-	Function FunctionCall `json:"function"`
+	Function FunctionCall `json:"function,omitempty"`
+
+	// The index of the tool call in the list of tool calls.
+	Index int `json:"index,omitempty"`
 }
 
 // ResponseFormat specifies the format of the response.
@@ -429,6 +432,7 @@ type Response struct {
 	ServiceTier string `json:"service_tier,omitempty"`
 }
 
+// Choice represents a choice in the response.
 // Choice represents a choice in the response.
 type Choice struct {
 	// Index is the index of the choice in the list of choices.

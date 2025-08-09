@@ -1,0 +1,22 @@
+{
+  "messages": [
+    { "content": "What is the weather in New York City?", "role": "user" }
+  ],
+  "model": "gpt-4o",
+  "stream": true,
+  "seed": 0,
+  "tools": [
+    {
+      "function": {
+        "name": "get_weather",
+        "description": "Get weather at the given location",
+        "parameters": {
+          "properties": { "location": { "type": "string" } },
+          "required": ["location"],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    }
+  ]
+}

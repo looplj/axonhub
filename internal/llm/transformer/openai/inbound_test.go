@@ -271,6 +271,55 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 		},
 		{
+			name: "streaming chunk with tool calls",
+			response: &llm.Response{
+				ID:      "chatcmpl-123",
+				Object:  "chat.completion.chunk",
+				Created: 1677652288,
+				Model:   "gpt-4",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Delta: &llm.Message{
+							Role: "assistant",
+							ToolCalls: []llm.ToolCall{
+								{
+									ID:   "call_123",
+									Type: "function",
+									Function: llm.FunctionCall{
+										Name:      "get_user_city",
+										Arguments: `{"user_id":"123"}`,
+									},
+								},
+							},
+						},
+						FinishReason: lo.ToPtr("tool_calls"),
+					},
+				},
+			},
+			wantErr: false,
+			validate: func(event *httpclient.StreamEvent) bool {
+				if event.Type != "" {
+					return false
+				}
+
+				// Unmarshal the data to verify it's a valid ChatCompletionResponse
+				var chatResp llm.Response
+				err := json.Unmarshal(event.Data, &chatResp)
+				if err != nil {
+					return false
+				}
+
+				return chatResp.ID == "chatcmpl-123" &&
+					len(chatResp.Choices) > 0 &&
+					chatResp.Choices[0].Delta != nil &&
+					len(chatResp.Choices[0].Delta.ToolCalls) > 0 &&
+					chatResp.Choices[0].Delta.ToolCalls[0].Function.Name == "get_user_city" &&
+					chatResp.Choices[0].FinishReason != nil &&
+					*chatResp.Choices[0].FinishReason == "tool_calls"
+			},
+		},
+		{
 			name: "empty choices",
 			response: &llm.Response{
 				ID:      "chatcmpl-123",
@@ -427,129 +476,6 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 		})
 	}
 }
-
-// func TestInboundTransformer_AggregateStreamChunks(t *testing.T) {
-// 	transformer := NewInboundTransformer()
-
-// 	tests := []struct {
-// 		name     string
-// 		chunks   []*llm.Response
-// 		wantErr  bool
-// 		validate func([]byte) bool
-// 	}{
-// 		{
-// 			name:    "empty chunks",
-// 			chunks:  []*llm.Response{},
-// 			wantErr: false,
-// 			validate: func(data []byte) bool {
-// 				var resp llm.Response
-// 				err := json.Unmarshal(data, &resp)
-// 				return err == nil
-// 			},
-// 		},
-// 		{
-// 			name: "single chunk with content",
-// 			chunks: []*llm.Response{
-// 				{
-// 					ID:      "chatcmpl-123",
-// 					Object:  "chat.completion.chunk",
-// 					Created: 1677652288,
-// 					Model:   "gpt-4",
-// 					Choices: []llm.Choice{
-// 						{
-// 							Index: 0,
-// 							Delta: &llm.Message{
-// 								Role: "assistant",
-// 								Content: llm.MessageContent{
-// 									Content: lo.ToPtr("Hello, world!"),
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			wantErr: false,
-// 			validate: func(data []byte) bool {
-// 				var resp llm.Response
-// 				err := json.Unmarshal(data, &resp)
-// 				if err != nil {
-// 					return false
-// 				}
-// 				return resp.Object == "chat.completion" &&
-// 					len(resp.Choices) == 1 &&
-// 					resp.Choices[0].Message != nil &&
-// 					resp.Choices[0].Message.Content.Content != nil &&
-// 					*resp.Choices[0].Message.Content.Content == "Hello, world!"
-// 			},
-// 		},
-// 		{
-// 			name: "multiple chunks with content",
-// 			chunks: []*llm.Response{
-// 				{
-// 					ID:      "chatcmpl-123",
-// 					Object:  "chat.completion.chunk",
-// 					Created: 1677652288,
-// 					Model:   "gpt-4",
-// 					Choices: []llm.Choice{
-// 						{
-// 							Index: 0,
-// 							Delta: &llm.Message{
-// 								Role: "assistant",
-// 								Content: llm.MessageContent{
-// 									Content: lo.ToPtr("Hello, "),
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 				{
-// 					ID:      "chatcmpl-123",
-// 					Object:  "chat.completion.chunk",
-// 					Created: 1677652288,
-// 					Model:   "gpt-4",
-// 					Choices: []llm.Choice{
-// 						{
-// 							Index: 0,
-// 							Delta: &llm.Message{
-// 								Role: "assistant",
-// 								Content: llm.MessageContent{
-// 									Content: lo.ToPtr("world!"),
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			wantErr: false,
-// 			validate: func(data []byte) bool {
-// 				var resp llm.Response
-// 				err := json.Unmarshal(data, &resp)
-// 				if err != nil {
-// 					return false
-// 				}
-// 				return resp.Object == "chat.completion" &&
-// 					len(resp.Choices) == 1 &&
-// 					resp.Choices[0].Message != nil &&
-// 					resp.Choices[0].Message.Content.Content != nil &&
-// 					*resp.Choices[0].Message.Content.Content == "Hello, world!"
-// 			},
-// 		},
-// 	}
-
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			result, err := transformer.AggregateStreamChunks(nil, tt.chunks)
-// 			if (err != nil) != tt.wantErr {
-// 				t.Errorf("AggregateStreamChunks() error = %v, wantErr %v", err, tt.wantErr)
-// 				return
-// 			}
-
-// 			if !tt.wantErr && !tt.validate(result) {
-// 				t.Errorf("AggregateStreamChunks() validation failed")
-// 			}
-// 		})
-// 	}
-// }
 
 func mustMarshal(v interface{}) []byte {
 	data, err := json.Marshal(v)

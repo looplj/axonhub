@@ -1,0 +1,28 @@
+{
+  "id": "gen-1754577344-bfGaoVZhBY3iT78Psu02",
+  "model": "gpt-4o-mini",
+  "object": "chat.completion",
+  "created": 1754577344,
+  "system_fingerprint": "fp_efad92c60b",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Sure! Here’s the output from 1 to 20, with 5 numbers on each line:\n\n```\n1 2 3 4 5\n6 7 8 9 10\n11 12 13 14 15\n16 17 18 19 20\n```"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 19,
+    "completion_tokens": 65,
+    "total_tokens": 84,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  }
+}
