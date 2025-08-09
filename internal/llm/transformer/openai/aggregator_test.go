@@ -37,6 +37,21 @@ func TestAggregateStreamChunks(t *testing.T) {
 			streamFile:   "openai-tool_2.stream.jsonl",
 			responseFile: "openai-tool_2.response.json",
 		},
+		{
+			name:         "openai stream chunks with multiple choice tool calls",
+			streamFile:   "openai-multiple_choice_tool.stream.jsonl",
+			responseFile: "openai-multiple_choice_tool.response.json",
+		},
+		{
+			name:         "openai stream chunks with multiple choice tool calls (tool_2)",
+			streamFile:   "openai-multiple_choice_tool_2.stream.jsonl",
+			responseFile: "openai-multiple_choice_tool_2.response.json",
+		},
+		{
+			name:         "openai stream chunks with multiple choice tool calls (tool_3)",
+			streamFile:   "openai-multiple_choice_tool_3.stream.jsonl",
+			responseFile: "openai-multiple_choice_tool_3.response.json",
+		},
 	}
 
 	for _, tt := range tests {
@@ -69,9 +84,10 @@ func TestAggregateStreamChunks(t *testing.T) {
 			assert.Equal(t, want.SystemFingerprint, got.SystemFingerprint)
 			assert.Len(t, got.Choices, len(want.Choices))
 
-			if len(got.Choices) > 0 && len(want.Choices) > 0 {
-				gotChoice := got.Choices[0]
-				wantChoice := want.Choices[0]
+			// Check all choices
+			for i, wantChoice := range want.Choices {
+				require.Less(t, i, len(got.Choices), "Missing choice at index %d", i)
+				gotChoice := got.Choices[i]
 
 				assert.Equal(t, wantChoice.Index, gotChoice.Index)
 				assert.Equal(t, wantChoice.Message.Role, gotChoice.Message.Role)
@@ -86,8 +102,8 @@ func TestAggregateStreamChunks(t *testing.T) {
 				if len(wantChoice.Message.ToolCalls) > 0 {
 					require.Len(t, gotChoice.Message.ToolCalls, len(wantChoice.Message.ToolCalls))
 
-					for i, wantToolCall := range wantChoice.Message.ToolCalls {
-						gotToolCall := gotChoice.Message.ToolCalls[i]
+					for j, wantToolCall := range wantChoice.Message.ToolCalls {
+						gotToolCall := gotChoice.Message.ToolCalls[j]
 						assert.Equal(t, wantToolCall.ID, gotToolCall.ID)
 						assert.Equal(t, wantToolCall.Type, gotToolCall.Type)
 						assert.Equal(t, wantToolCall.Function.Name, gotToolCall.Function.Name)

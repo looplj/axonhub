@@ -9,7 +9,17 @@ import (
 	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
+
+// choiceAggregator is a helper struct to aggregate data for each choice.
+type choiceAggregator struct {
+	index        int
+	content      strings.Builder
+	toolCalls    map[int]*llm.ToolCall // Map to track tool calls by their index within the choice
+	finishReason *string
+	role         string
+}
 
 // AggregateStreamChunks aggregates OpenAI streaming response chunks into a complete response.
 func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, error) {
@@ -17,15 +27,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		return json.Marshal(&llm.Response{})
 	}
 
-	// For OpenAI-style streaming, we need to aggregate the delta content from chunks
-	// into a complete ChatCompletionResponse
 	var (
-		aggregatedContent strings.Builder
 		lastChunkResponse *llm.Response
 		usage             *llm.Usage
 		systemFingerprint string
-		toolCalls         = make(map[int]*llm.ToolCall) // Map to track tool calls by index
-		finishReason      *string
+		// Map to track choices by their index
+		choicesAggs = make(map[int]*choiceAggregator)
 	)
 
 	for _, chunk := range chunks {
@@ -34,33 +41,47 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			continue
 		}
 
-		var chunkResponse llm.Response
-
-		err := json.Unmarshal(chunk.Data, &chunkResponse)
+		chunk, err := xjson.To[llm.Response](chunk.Data)
 		if err != nil {
 			continue // Skip invalid chunks
 		}
 
-		// Extract content and tool calls from choices[0].delta if it exists
-		if len(chunkResponse.Choices) > 0 {
-			choice := chunkResponse.Choices[0]
+		// Process each choice in the chunk
+		for _, choice := range chunk.Choices {
+			choiceIndex := choice.Index
+
+			// Initialize choice aggregator if it doesn't exist
+			if _, ok := choicesAggs[choiceIndex]; !ok {
+				choicesAggs[choiceIndex] = &choiceAggregator{
+					index:     choiceIndex,
+					toolCalls: make(map[int]*llm.ToolCall),
+					role:      "assistant",
+				}
+			}
+
+			choiceAgg := choicesAggs[choiceIndex]
 
 			if choice.Delta != nil {
+				// Handle role
+				if choice.Delta.Role != "" {
+					choiceAgg.role = choice.Delta.Role
+				}
+
 				// Handle content
 				if choice.Delta.Content.Content != nil {
-					aggregatedContent.WriteString(*choice.Delta.Content.Content)
+					choiceAgg.content.WriteString(*choice.Delta.Content.Content)
 				}
 
 				// Handle tool calls
 				if len(choice.Delta.ToolCalls) > 0 {
 					for _, deltaToolCall := range choice.Delta.ToolCalls {
 						// Use the index from the OpenAI delta tool call
-						index := deltaToolCall.Index
+						toolCallIndex := deltaToolCall.Index
 
 						// Initialize tool call if it doesn't exist
-						if _, ok := toolCalls[index]; !ok {
-							toolCalls[index] = &llm.ToolCall{
-								Index: index,
+						if _, ok := choiceAgg.toolCalls[toolCallIndex]; !ok {
+							choiceAgg.toolCalls[toolCallIndex] = &llm.ToolCall{
+								Index: toolCallIndex,
 								ID:    deltaToolCall.ID,
 								Type:  deltaToolCall.Type,
 								Function: llm.FunctionCall{
@@ -72,21 +93,21 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 						// Aggregate function arguments
 						if deltaToolCall.Function.Arguments != "" {
-							toolCalls[index].Function.Arguments += deltaToolCall.Function.Arguments
+							choiceAgg.toolCalls[toolCallIndex].Function.Arguments += deltaToolCall.Function.Arguments
 						}
 
 						// Update function name if provided
 						if deltaToolCall.Function.Name != "" {
-							toolCalls[index].Function.Name = deltaToolCall.Function.Name
+							choiceAgg.toolCalls[toolCallIndex].Function.Name = deltaToolCall.Function.Name
 						}
 
 						// Update ID and type if provided
 						if deltaToolCall.ID != "" {
-							toolCalls[index].ID = deltaToolCall.ID
+							choiceAgg.toolCalls[toolCallIndex].ID = deltaToolCall.ID
 						}
 
 						if deltaToolCall.Type != "" {
-							toolCalls[index].Type = deltaToolCall.Type
+							choiceAgg.toolCalls[toolCallIndex].Type = deltaToolCall.Type
 						}
 					}
 				}
@@ -94,22 +115,22 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 			// Capture finish reason
 			if choice.FinishReason != nil {
-				finishReason = choice.FinishReason
+				choiceAgg.finishReason = choice.FinishReason
 			}
 		}
 
 		// Extract usage information if present
-		if chunkResponse.Usage != nil {
-			usage = chunkResponse.Usage
+		if chunk.Usage != nil {
+			usage = chunk.Usage
 		}
 
 		// Keep the first non-empty system fingerprint
-		if systemFingerprint == "" && chunkResponse.SystemFingerprint != "" {
-			systemFingerprint = chunkResponse.SystemFingerprint
+		if systemFingerprint == "" && chunk.SystemFingerprint != "" {
+			systemFingerprint = chunk.SystemFingerprint
 		}
 
 		// Keep the last chunk for metadata
-		lastChunkResponse = &chunkResponse
+		lastChunkResponse = &chunk
 	}
 
 	// Create a complete ChatCompletionResponse based on the last chunk structure
@@ -117,32 +138,48 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		return json.Marshal(&llm.Response{})
 	}
 
-	finalToolCalls := make([]llm.ToolCall, len(toolCalls))
-	for i := range finalToolCalls {
-		finalToolCalls[i] = *toolCalls[i]
-	}
+	choices := make([]llm.Choice, len(choicesAggs))
 
-	// Build the message
-	message := &llm.Message{
-		Role: "assistant",
-	}
+	for choiceIndex := range choices {
+		choiceAgg := choicesAggs[choiceIndex]
 
-	// Set content or tool calls
-	if len(finalToolCalls) > 0 {
-		message.ToolCalls = finalToolCalls
-		// For tool calls, content should be null
-		message.Content = llm.MessageContent{Content: nil}
-	} else {
-		content := aggregatedContent.String()
-		message.Content = llm.MessageContent{Content: &content}
-	}
+		var finalToolCalls []llm.ToolCall
+		if len(choiceAgg.toolCalls) > 0 {
+			finalToolCalls = make([]llm.ToolCall, len(choiceAgg.toolCalls))
+			for index := range finalToolCalls {
+				finalToolCalls[index] = *choiceAgg.toolCalls[index]
+			}
+		}
 
-	// Determine finish reason
-	if finishReason == nil {
+		// Build the message
+		message := &llm.Message{
+			Role: choiceAgg.role,
+		}
+
+		// Set content or tool calls
 		if len(finalToolCalls) > 0 {
-			finishReason = lo.ToPtr("tool_calls")
+			message.ToolCalls = finalToolCalls
+			// For tool calls, content should be null
+			message.Content = llm.MessageContent{Content: nil}
 		} else {
-			finishReason = lo.ToPtr("stop")
+			content := choiceAgg.content.String()
+			message.Content = llm.MessageContent{Content: &content}
+		}
+
+		// Determine finish reason
+		finishReason := choiceAgg.finishReason
+		if finishReason == nil {
+			if len(finalToolCalls) > 0 {
+				finishReason = lo.ToPtr("tool_calls")
+			} else {
+				finishReason = lo.ToPtr("stop")
+			}
+		}
+
+		choices[choiceIndex] = llm.Choice{
+			Index:        choiceIndex,
+			Message:      message,
+			FinishReason: finishReason,
 		}
 	}
 
@@ -153,14 +190,8 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		Object:            "chat.completion", // Change from "chat.completion.chunk" to "chat.completion"
 		Created:           lastChunkResponse.Created,
 		SystemFingerprint: systemFingerprint,
-		Choices: []llm.Choice{
-			{
-				Index:        0,
-				Message:      message,
-				FinishReason: finishReason,
-			},
-		},
-		Usage: usage,
+		Choices:           choices,
+		Usage:             usage,
 	}
 
 	return json.Marshal(response)
