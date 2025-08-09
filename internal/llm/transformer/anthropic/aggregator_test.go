@@ -2,14 +2,12 @@ package anthropic
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xtest"
 )
 
 func TestAggregateStreamChunks(t *testing.T) {
@@ -839,104 +837,90 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 }
 
 func TestAggregateStreamChunks_WithTestData(t *testing.T) {
-	t.Run("anthropic-stop stream data", func(t *testing.T) {
-		// Load the stream data
-		streamData, err := loadStreamTestData("testdata/anthropic-stop.stream.jsonl")
-		require.NoError(t, err)
-		require.NotEmpty(t, streamData)
-
-		// Load the expected aggregated result
-		expectedData, err := loadExpectedResult("testdata/llm-stop.aggregator.json")
-		require.NoError(t, err)
-
-		// Run the aggregation
-		resultBytes, err := AggregateStreamChunks(t.Context(), streamData)
-		require.NoError(t, err)
-		require.NotNil(t, resultBytes)
-
-		// Parse the result
-		var result Message
-
-		err = json.Unmarshal(resultBytes, &result)
-		require.NoError(t, err)
-
-		// Compare with expected result
-		require.Equal(t, expectedData.ID, result.ID)
-		require.Equal(t, expectedData.Type, result.Type)
-		require.Equal(t, expectedData.Role, result.Role)
-		require.Equal(t, expectedData.Model, result.Model)
-		require.Equal(t, expectedData.StopReason, result.StopReason)
-
-		// Compare content
-		require.Len(t, result.Content, len(expectedData.Content))
-
-		for i, expectedContent := range expectedData.Content {
-			require.Equal(t, expectedContent.Type, result.Content[i].Type)
-			require.Equal(t, expectedContent.Text, result.Content[i].Text)
-		}
-
-		// Compare usage
-		if expectedData.Usage != nil {
-			require.NotNil(t, result.Usage)
-			require.Equal(t, expectedData.Usage.InputTokens, result.Usage.InputTokens)
-			require.Equal(t, expectedData.Usage.OutputTokens, result.Usage.OutputTokens)
-			require.Equal(t, expectedData.Usage.CacheCreationInputTokens, result.Usage.CacheCreationInputTokens)
-			require.Equal(t, expectedData.Usage.CacheReadInputTokens, result.Usage.CacheReadInputTokens)
-		}
-	})
-}
-
-// Helper function to load stream test data from JSONL file.
-func loadStreamTestData(filename string) ([]*httpclient.StreamEvent, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
+	tests := []struct {
+		name         string
+		streamFile   string
+		responseFile string
+	}{
+		{
+			name:         "anthropic stream chunks with stop finish reason",
+			streamFile:   "anthropic-stop.stream.jsonl",
+			responseFile: "anthropic-stop.response.json",
+		},
+		{
+			name:         "anthropic stream chunks with tool calls",
+			streamFile:   "anthropic-tool.stream.jsonl",
+			responseFile: "anthropic-tool.response.json",
+		},
 	}
 
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Load the stream data
+			streamData, err := xtest.LoadStreamChunks(tt.streamFile)
+			require.NoError(t, err)
+			require.NotEmpty(t, streamData)
 
-	var events []*httpclient.StreamEvent
+			var expectedData Message
+			// Load the expected aggregated result
+			err = xtest.LoadTestData(tt.responseFile, &expectedData)
+			require.NoError(t, err)
 
-	for _, line := range lines {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
+			// Run the aggregation
+			resultBytes, err := AggregateStreamChunks(t.Context(), streamData)
+			require.NoError(t, err)
+			require.NotNil(t, resultBytes)
 
-		// Parse the line as a temporary struct to handle the Data field correctly
-		var temp struct {
-			LastEventID string `json:"LastEventID"`
-			Type        string `json:"Type"`
-			Data        string `json:"Data"` // Data is a JSON string in the test file
-		}
+			// Parse the result
+			var result Message
 
-		if err := json.Unmarshal([]byte(line), &temp); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal line %q: %w", line, err)
-		}
+			err = json.Unmarshal(resultBytes, &result)
+			require.NoError(t, err)
 
-		// Create the StreamEvent with Data as []byte
-		streamEvent := &httpclient.StreamEvent{
-			LastEventID: temp.LastEventID,
-			Type:        temp.Type,
-			Data:        []byte(temp.Data), // Convert string to []byte
-		}
+			// Compare with expected result
+			require.Equal(t, expectedData.ID, result.ID)
+			require.Equal(t, expectedData.Type, result.Type)
+			require.Equal(t, expectedData.Role, result.Role)
+			require.Equal(t, expectedData.Model, result.Model)
+			require.Equal(t, expectedData.StopReason, result.StopReason)
 
-		events = append(events, streamEvent)
+			// Compare content
+			require.Len(t, result.Content, len(expectedData.Content))
+
+			for i, expectedContent := range expectedData.Content {
+				require.Equal(t, expectedContent.Type, result.Content[i].Type)
+
+				// Compare text content
+				if expectedContent.Type == "text" {
+					require.Equal(t, expectedContent.Text, result.Content[i].Text)
+				}
+
+				// Compare tool use content
+				if expectedContent.Type == "tool_use" {
+					require.Equal(t, expectedContent.ID, result.Content[i].ID)
+					require.Equal(t, expectedContent.Name, result.Content[i].Name)
+
+					// Compare tool input JSON
+					if expectedContent.Input != nil && result.Content[i].Input != nil {
+						var expectedInput, resultInput map[string]interface{}
+
+						err := json.Unmarshal(expectedContent.Input, &expectedInput)
+						require.NoError(t, err)
+						err = json.Unmarshal(result.Content[i].Input, &resultInput)
+						require.NoError(t, err)
+						require.Equal(t, expectedInput, resultInput)
+					}
+				}
+			}
+
+			// Compare usage
+			if expectedData.Usage != nil {
+				require.NotNil(t, result.Usage)
+				require.Equal(t, expectedData.Usage.InputTokens, result.Usage.InputTokens)
+				require.Equal(t, expectedData.Usage.OutputTokens, result.Usage.OutputTokens)
+				require.Equal(t, expectedData.Usage.CacheCreationInputTokens, result.Usage.CacheCreationInputTokens)
+				require.Equal(t, expectedData.Usage.CacheReadInputTokens, result.Usage.CacheReadInputTokens)
+			}
+		})
 	}
-
-	return events, nil
-}
-
-// Helper function to load expected result from JSON file.
-func loadExpectedResult(filename string) (*Message, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	var message Message
-	if err := json.Unmarshal(data, &message); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal expected result: %w", err)
-	}
-
-	return &message, nil
 }

@@ -39,7 +39,13 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			}
 		case "content_block_start":
 			if event.ContentBlock != nil {
-				contentBlocks = append(contentBlocks, *event.ContentBlock)
+				block := *event.ContentBlock
+				// For tool_use blocks, initialize Input as nil to be built from deltas
+				if block.Type == "tool_use" {
+					block.Input = nil
+				}
+
+				contentBlocks = append(contentBlocks, block)
 			}
 		case "content_block_delta":
 			if event.Index != nil {
@@ -163,6 +169,5 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		}
 	}
 
-	// Return the message directly in Anthropic format
 	return json.Marshal(message)
 }

@@ -27,10 +27,7 @@ func (t *InboundTransformer) Name() string {
 }
 
 // TransformRequest transforms Anthropic HTTP request to ChatCompletionRequest.
-func (t *InboundTransformer) TransformRequest(
-	ctx context.Context,
-	httpReq *httpclient.Request,
-) (*llm.Request, error) {
+func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("http request is nil")
 	}
@@ -297,8 +294,9 @@ func (t *InboundTransformer) TransformStream(
 ) (streams.Stream[*httpclient.StreamEvent], error) {
 	// Create a custom stream that handles the stateful transformation
 	return &anthropicInboundStream{
-		source: stream,
-		ctx:    ctx,
+		source:    stream,
+		ctx:       ctx,
+		toolCalls: make(map[int]*llm.ToolCall),
 	}, nil
 }
 
@@ -310,6 +308,7 @@ type anthropicInboundStream struct {
 	ctx                   context.Context
 	hasStarted            bool
 	hasTextContentStarted bool
+	hasToolContentStarted bool
 	hasFinished           bool
 	messageID             string
 	model                 string
@@ -318,6 +317,22 @@ type anthropicInboundStream struct {
 	queueIndex            int
 	err                   error
 	stopReason            *string
+	// Tool call tracking
+	toolCalls map[int]*llm.ToolCall // Track tool calls by index
+}
+
+func (s *anthropicInboundStream) enqueEvent(ev *StreamEvent) error {
+	eventData, err := json.Marshal(ev)
+	if err != nil {
+		return err
+	}
+
+	s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
+		Type: ev.Type,
+		Data: eventData,
+	})
+
+	return nil
 }
 
 //nolint:maintidx // It is complex, and hard to split.
@@ -386,16 +401,11 @@ func (s *anthropicInboundStream) Next() bool {
 			},
 		}
 
-		eventData, err := json.Marshal(streamEvent)
+		err := s.enqueEvent(&streamEvent)
 		if err != nil {
-			s.err = fmt.Errorf("failed to marshal message_start event: %w", err)
+			s.err = fmt.Errorf("failed to enqueue message_start event: %w", err)
 			return false
 		}
-
-		s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
-			Type: "message_start",
-			Data: eventData,
-		})
 	}
 
 	// Process the current chunk
@@ -404,6 +414,24 @@ func (s *anthropicInboundStream) Next() bool {
 
 		// Handle content delta
 		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
+			// If the tool content has started before the content block, we need to stop it
+			if s.hasToolContentStarted {
+				s.hasToolContentStarted = false
+
+				streamEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				err := s.enqueEvent(&streamEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+			}
+
 			// Generate content_block_start if this is the first content
 			if !s.hasTextContentStarted {
 				s.hasTextContentStarted = true
@@ -417,16 +445,11 @@ func (s *anthropicInboundStream) Next() bool {
 					},
 				}
 
-				eventData, err := json.Marshal(streamEvent)
+				err := s.enqueEvent(&streamEvent)
 				if err != nil {
-					s.err = fmt.Errorf("failed to marshal content_block_start event: %w", err)
+					s.err = fmt.Errorf("failed to enqueue content_block_start event: %w", err)
 					return false
 				}
-
-				s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
-					Type: "content_block_start",
-					Data: eventData,
-				})
 			}
 
 			// Generate content_block_delta
@@ -439,39 +462,123 @@ func (s *anthropicInboundStream) Next() bool {
 				},
 			}
 
-			eventData, err := json.Marshal(streamEvent)
+			err := s.enqueEvent(&streamEvent)
 			if err != nil {
-				s.err = fmt.Errorf("failed to marshal content_block_delta event: %w", err)
+				s.err = fmt.Errorf("failed to enqueue content_block_delta event: %w", err)
 				return false
 			}
+		}
 
-			s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
-				Type: "content_block_delta",
-				Data: eventData,
-			})
+		// Handle tool calls
+		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
+			// If the text content has started before the tool content, we need to stop it
+			if s.hasTextContentStarted {
+				s.hasTextContentStarted = false
+
+				streamEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				err := s.enqueEvent(&streamEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+			}
+
+			for _, deltaToolCall := range choice.Delta.ToolCalls {
+				toolCallIndex := deltaToolCall.Index
+
+				// Initialize tool call if it doesn't exist
+				if _, ok := s.toolCalls[toolCallIndex]; !ok {
+					// Start a new tool use block, we should stop the previous tool use block
+					if toolCallIndex > 0 {
+						streamEvent := StreamEvent{
+							Type:  "content_block_stop",
+							Index: &s.contentIndex,
+						}
+
+						err := s.enqueEvent(&streamEvent)
+						if err != nil {
+							s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+							return false
+						}
+
+						s.contentIndex += 1
+					}
+
+					s.toolCalls[toolCallIndex] = &llm.ToolCall{
+						Index: toolCallIndex,
+						ID:    deltaToolCall.ID,
+						Type:  deltaToolCall.Type,
+						Function: llm.FunctionCall{
+							Name:      deltaToolCall.Function.Name,
+							Arguments: "",
+						},
+					}
+
+					streamEvent := StreamEvent{
+						Type:  "content_block_start",
+						Index: &s.contentIndex,
+						ContentBlock: &ContentBlock{
+							Type:  "tool_use",
+							ID:    deltaToolCall.ID,
+							Name:  &deltaToolCall.Function.Name,
+							Input: json.RawMessage("{}"),
+						},
+					}
+
+					err := s.enqueEvent(&streamEvent)
+					if err != nil {
+						s.err = fmt.Errorf("failed to enqueue content_block_start event: %w", err)
+						return false
+					}
+				}
+
+				// Accumulate arguments
+				if deltaToolCall.Function.Arguments != "" {
+					s.toolCalls[toolCallIndex].Function.Arguments += deltaToolCall.Function.Arguments
+
+					// Generate content_block_delta for input_json_delta
+					contentBlockIndex := int64(toolCallIndex)
+					if s.hasTextContentStarted {
+						contentBlockIndex = s.contentIndex + 1 + int64(toolCallIndex)
+					}
+
+					streamEvent := StreamEvent{
+						Type:  "content_block_delta",
+						Index: &contentBlockIndex,
+						Delta: &StreamDelta{
+							Type:        lo.ToPtr("input_json_delta"),
+							PartialJSON: &deltaToolCall.Function.Arguments,
+						},
+					}
+
+					err := s.enqueEvent(&streamEvent)
+					if err != nil {
+						s.err = fmt.Errorf("failed to enqueue content_block_delta event: %w", err)
+						return false
+					}
+				}
+			}
 		}
 
 		// Handle finish reason
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
 
-			// Generate content_block_stop if we had content
-			if s.hasTextContentStarted {
-				streamEvent := StreamEvent{
-					Type:  "content_block_stop",
-					Index: &s.contentIndex,
-				}
+			streamEvent := StreamEvent{
+				Type:  "content_block_stop",
+				Index: &s.contentIndex,
+			}
 
-				eventData, err := json.Marshal(streamEvent)
-				if err != nil {
-					s.err = fmt.Errorf("failed to marshal content_block_stop event: %w", err)
-					return false
-				}
-
-				s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
-					Type: "content_block_stop",
-					Data: eventData,
-				})
+			err := s.enqueEvent(&streamEvent)
+			if err != nil {
+				s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+				return false
 			}
 
 			// Convert finish reason to Anthropic format
@@ -516,32 +623,22 @@ func (s *anthropicInboundStream) Next() bool {
 
 		streamEvent.Usage = usage
 
-		eventData, err := json.Marshal(streamEvent)
+		err := s.enqueEvent(&streamEvent)
 		if err != nil {
-			s.err = fmt.Errorf("failed to marshal message_delta event: %w", err)
+			s.err = fmt.Errorf("failed to enqueue message_delta event: %w", err)
 			return false
 		}
-
-		s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
-			Type: "message_delta",
-			Data: eventData,
-		})
 
 		// Generate message_stop
 		stopEvent := StreamEvent{
 			Type: "message_stop",
 		}
 
-		stopEventData, err := json.Marshal(stopEvent)
+		err = s.enqueEvent(&stopEvent)
 		if err != nil {
-			s.err = fmt.Errorf("failed to marshal message_stop event: %w", err)
+			s.err = fmt.Errorf("failed to enqueue message_stop event: %w", err)
 			return false
 		}
-
-		s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
-			Type: "message_stop",
-			Data: stopEventData,
-		})
 	}
 
 	// If we have events in the queue, return true

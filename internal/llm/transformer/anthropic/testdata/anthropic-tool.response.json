@@ -1,0 +1,35 @@
+{
+  "id": "msg_bdrk_01UJYyE5HVJvdHL9cSvFeFg2",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "I'll help you get the weather information for San Francisco, CA. Let me start by getting the coordinates for San Francisco and determining the appropriate temperature unit for the US."
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_bdrk_01VgWYZ7xdnDed93nNyPoWLw",
+      "name": "get_coordinates",
+      "input": {
+        "location": "San Francisco, CA"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_bdrk_01QTLkdPvBL9baLLZG5KwBHQ",
+      "name": "get_temperature_unit",
+      "input": {
+        "country": "United States"
+      }
+    }
+  ],
+  "model": "claude-sonnet-4-20250514",
+  "stop_reason": "tool_use",
+  "usage": {
+    "input_tokens": 558,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 130
+  }
+}
