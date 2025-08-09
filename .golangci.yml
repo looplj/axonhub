@@ -224,6 +224,7 @@ linters:
           - govet
           - errname
           - noinlineerr
+          - nilnil
 
       - path: _mock\.go$
         linters:

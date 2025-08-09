@@ -13,7 +13,6 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 		Headers:    rawReq.Header,
 		Body:       []byte{},
 		Auth:       &AuthConfig{},
-		Streaming:  false,
 		RequestID:  "",
 		RawRequest: rawReq,
 	}

@@ -80,7 +80,7 @@ func (t *OutboundTransformer) TransformRequest(
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",
 			APIKey:    t.apiKey,
-			HeaderKey: "x-api-key",
+			HeaderKey: "X-API-Key",
 		}
 	}
 

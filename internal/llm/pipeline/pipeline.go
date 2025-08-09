@@ -40,11 +40,11 @@ func WithDecorators(decorators ...decorator.Decorator) Option {
 
 // Factory creates pipeline instances.
 type Factory struct {
-	HttpClient httpclient.HttpClient
+	HttpClient Executor
 }
 
 // NewFactory creates a new pipeline factory.
-func NewFactory(httpClient httpclient.HttpClient) *Factory {
+func NewFactory(httpClient Executor) *Factory {
 	return &Factory{
 		HttpClient: httpClient,
 	}
@@ -72,7 +72,7 @@ func (f *Factory) Pipeline(
 
 // pipeline implements the main pipeline logic with retry capabilities.
 type pipeline struct {
-	HttpClient      httpclient.HttpClient
+	HttpClient      Executor
 	Inbound         transformer.Inbound
 	Outbound        transformer.Outbound
 	decorators      []decorator.Decorator

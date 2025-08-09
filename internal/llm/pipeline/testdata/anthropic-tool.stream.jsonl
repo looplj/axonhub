@@ -1,0 +1,39 @@
+{"LastEventID":"","Type":"message_start","Data":"{\"type\":\"message_start\",\"message\":{\"id\":\"msg_bdrk_01UJYyE5HVJvdHL9cSvFeFg2\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-4-20250514\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":558,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":1}}}"}
+{"LastEventID":"","Type":"content_block_start","Data":"{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"I\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"'ll\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" help\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" you get\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" the weather information for\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" San Francisco, CA\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\". Let\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" me\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" start\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" by getting\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" the coordinates\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" for San Francisco an\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"d determining\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" the appropriate\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" temperature\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" unit for\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" the\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" US\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\".\"}}"}
+{"LastEventID":"","Type":"content_block_stop","Data":"{\"type\":\"content_block_stop\",\"index\":0}"}
+{"LastEventID":"","Type":"content_block_start","Data":"{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_bdrk_01VgWYZ7xdnDed93nNyPoWLw\",\"name\":\"get_coordinates\",\"input\":{}}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"locatio\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"n\\\": \\\"S\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"an Francisco\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\", C\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"A\\\"}\"}}"}
+{"LastEventID":"","Type":"content_block_stop","Data":"{\"type\":\"content_block_stop\",\"index\":1}"}
+{"LastEventID":"","Type":"content_block_start","Data":"{\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_bdrk_01QTLkdPvBL9baLLZG5KwBHQ\",\"name\":\"get_temperature_unit\",\"input\":{}}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"country\\\": \"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"United S\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"tate\"}}"}
+{"LastEventID":"","Type":"content_block_delta","Data":"{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"s\\\"}\"}}"}
+{"LastEventID":"","Type":"content_block_stop","Data":"{\"type\":\"content_block_stop\",\"index\":2}"}
+{"LastEventID":"","Type":"message_delta","Data":"{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":130}}"}
+{"LastEventID":"","Type":"message_stop","Data":"{\"type\":\"message_stop\"}"}

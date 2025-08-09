@@ -98,12 +98,6 @@ func (rb *RequestBuilder) WithRequestID(requestID string) *RequestBuilder {
 	return rb
 }
 
-// WithStreaming enables streaming.
-func (rb *RequestBuilder) WithStreaming(streaming bool) *RequestBuilder {
-	rb.request.Streaming = streaming
-	return rb
-}
-
 // Build returns the built request.
 func (rb *RequestBuilder) Build() *Request {
 	return rb.request

@@ -16,9 +16,6 @@ type Request struct {
 	// Authentication
 	Auth *AuthConfig `json:"auth,omitempty"`
 
-	// Streaming support
-	Streaming bool `json:"streaming"`
-
 	// Request tracking
 	RequestID string `json:"request_id"`
 

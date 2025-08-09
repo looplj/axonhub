@@ -14,14 +14,14 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
-// HttpClientImpl implements the HttpClient interface.
-type HttpClientImpl struct {
+// HttpClient implements the HttpClient interface.
+type HttpClient struct {
 	client *http.Client
 }
 
 // NewHttpClient creates a new HTTP client.
-func NewHttpClient() HttpClient {
-	return &HttpClientImpl{
+func NewHttpClient() *HttpClient {
+	return &HttpClient{
 		client: &http.Client{
 			Timeout: 5 * time.Minute,
 		},
@@ -29,7 +29,7 @@ func NewHttpClient() HttpClient {
 }
 
 // Do executes the HTTP request.
-func (hc *HttpClientImpl) Do(ctx context.Context, request *Request) (*Response, error) {
+func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, error) {
 	log.Debug(ctx, "execute http request", log.Any("request", request))
 
 	rawReq, err := hc.buildHttpRequest(ctx, request)
@@ -79,10 +79,7 @@ func (hc *HttpClientImpl) Do(ctx context.Context, request *Request) (*Response, 
 }
 
 // DoStream executes a streaming HTTP request using Server-Sent Events.
-func (hc *HttpClientImpl) DoStream(
-	ctx context.Context,
-	request *Request,
-) (streams.Stream[*StreamEvent], error) {
+func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.Stream[*StreamEvent], error) {
 	log.Debug(ctx, "execute stream request", log.Any("request", request))
 
 	rawReq, err := hc.buildHttpRequest(ctx, request)
@@ -214,7 +211,7 @@ func (s *sseStreamWrapper) Close() error {
 }
 
 // buildHttpRequest builds an HTTP request from Request.
-func (hc *HttpClientImpl) buildHttpRequest(
+func (hc *HttpClient) buildHttpRequest(
 	ctx context.Context,
 	request *Request,
 ) (*http.Request, error) {
@@ -247,7 +244,7 @@ func (hc *HttpClientImpl) buildHttpRequest(
 }
 
 // applyAuth applies authentication to the HTTP request.
-func (hc *HttpClientImpl) applyAuth(req *http.Request, auth *AuthConfig) error {
+func (hc *HttpClient) applyAuth(req *http.Request, auth *AuthConfig) error {
 	switch auth.Type {
 	case "bearer":
 		if auth.APIKey == "" {
@@ -269,7 +266,7 @@ func (hc *HttpClientImpl) applyAuth(req *http.Request, auth *AuthConfig) error {
 }
 
 // extractHeaders extracts headers from HTTP response.
-func (hc *HttpClientImpl) extractHeaders(headers http.Header) map[string]string {
+func (hc *HttpClient) extractHeaders(headers http.Header) map[string]string {
 	result := make(map[string]string)
 
 	for key, values := range headers {

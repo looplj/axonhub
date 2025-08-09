@@ -17,14 +17,13 @@ import (
 func NewChatCompletionProcessor(
 	channelService *biz.ChannelService,
 	requestService *biz.RequestService,
-	httpClient httpclient.HttpClient,
+	httpClient *httpclient.HttpClient,
 	inbound transformer.Inbound,
 ) *ChatCompletionProcessor {
 	return &ChatCompletionProcessor{
 		ChannelService:  channelService,
 		Inbound:         inbound,
 		RequestService:  requestService,
-		HttpClient:      httpClient,
 		PipelineFactory: pipeline.NewFactory(httpClient),
 	}
 }
@@ -33,7 +32,6 @@ type ChatCompletionProcessor struct {
 	ChannelService  *biz.ChannelService
 	Inbound         transformer.Inbound
 	RequestService  *biz.RequestService
-	HttpClient      httpclient.HttpClient
 	DecoratorChain  decorator.DecoratorChain
 	PipelineFactory *pipeline.Factory
 }

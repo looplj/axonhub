@@ -1,0 +1,58 @@
+{
+  "max_tokens": 1024,
+  "messages": [
+    {
+      "content": [
+        { "text": "What is the weather in San Francisco, CA?", "type": "text" }
+      ],
+      "role": "user"
+    }
+  ],
+  "model": "claude-sonnet-4-20250514",
+  "tools": [
+    {
+      "input_schema": {
+        "properties": {
+          "location": {
+            "description": "The location to look up.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "get_coordinates",
+      "description": "Accepts a place as an address, then returns the latitude and longitude coordinates."
+    },
+    {
+      "input_schema": {
+        "properties": {
+          "country": { "description": "The country", "type": "string" }
+        },
+        "type": "object"
+      },
+      "name": "get_temperature_unit"
+    },
+    {
+      "input_schema": {
+        "properties": {
+          "lat": {
+            "description": "The lattitude of the location to check weather.",
+            "type": "number"
+          },
+          "long": {
+            "description": "The longitude of the location to check weather.",
+            "type": "number"
+          },
+          "unit": {
+            "description": "Unit for the output",
+            "enum": ["celsius", "fahrenheit"],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "get_weather",
+      "description": "Get the weather at a specific location"
+    }
+  ]
+}

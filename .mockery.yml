@@ -1,0 +1,17 @@
+all: false
+dir: '{{.InterfaceDir}}'
+filename: '{{.InterfaceName|snakecase}}.mock.gen.go'
+force-file-write: true
+formatter: goimports
+log-level: info
+structname: '{{.Mock}}{{.InterfaceName}}'
+pkgname: '{{.SrcPackageName}}'
+recursive: false
+require-template-schema-exists: true
+template: testify
+template-schema: '{{.Template}}.schema.json'
+packages:
+  github.com/looplj/axonhub/internal/llm/pipeline:
+    config:
+    interfaces:
+      Executor:

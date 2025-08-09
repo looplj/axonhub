@@ -44,7 +44,7 @@ type AiSdkHandlersParams struct {
 
 	ChannelService *biz.ChannelService
 	RequestService *biz.RequestService
-	HttpClient     httpclient.HttpClient
+	HttpClient     *httpclient.HttpClient
 }
 
 type AiSDKHandlers struct {

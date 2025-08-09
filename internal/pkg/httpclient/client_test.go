@@ -266,7 +266,7 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 }
 
 func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
-	client := &HttpClientImpl{
+	client := &HttpClient{
 		client: &http.Client{Timeout: 5 * time.Second},
 	}
 
@@ -375,7 +375,7 @@ func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 }
 
 func TestHttpClientImpl_applyAuth(t *testing.T) {
-	client := &HttpClientImpl{}
+	client := &HttpClient{}
 
 	tests := []struct {
 		name        string
@@ -469,7 +469,7 @@ func TestHttpClientImpl_applyAuth(t *testing.T) {
 }
 
 func TestHttpClientImpl_extractHeaders(t *testing.T) {
-	client := &HttpClientImpl{}
+	client := &HttpClient{}
 
 	headers := http.Header{
 		"Content-Type":  []string{"application/json"},
