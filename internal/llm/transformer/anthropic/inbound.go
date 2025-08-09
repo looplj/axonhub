@@ -671,3 +671,35 @@ func (s *anthropicInboundStream) Close() error {
 func (t *InboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, error) {
 	return AggregateStreamChunks(ctx, chunks)
 }
+
+// TransformError transforms LLM error response to HTTP error response in Anthropic format.
+func (t *InboundTransformer) TransformError(ctx context.Context, rawErr *llm.ResponseError) *httpclient.Error {
+	if rawErr == nil {
+		return &httpclient.Error{
+			StatusCode: http.StatusInternalServerError,
+			Status:     http.StatusText(http.StatusInternalServerError),
+			Body:       []byte(`{"message":"internal server error","request_id":""}`),
+		}
+	}
+
+	aErr := &AnthropicErr{
+		StatusCode: rawErr.StatusCode,
+		Message:    rawErr.Detail.Message,
+		RequestID:  rawErr.Detail.RequestID,
+	}
+
+	body, err := json.Marshal(aErr)
+	if err != nil {
+		return &httpclient.Error{
+			StatusCode: http.StatusInternalServerError,
+			Status:     http.StatusText(http.StatusInternalServerError),
+			Body:       []byte(`{"message":"internal server error","type":"internal_server_error"}`),
+		}
+	}
+
+	return &httpclient.Error{
+		StatusCode: lo.Ternary(rawErr.StatusCode != 0, rawErr.StatusCode, http.StatusInternalServerError),
+		Status:     http.StatusText(rawErr.StatusCode),
+		Body:       body,
+	}
+}

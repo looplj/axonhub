@@ -10,10 +10,8 @@ import (
 	"time"
 
 	"github.com/samber/lo"
-	"github.com/stretchr/testify/require"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 // TestIntegration_OpenAITransformers tests the complete flow of inbound and outbound transformers.
@@ -295,68 +293,5 @@ func TestIntegration_StreamingFlow(t *testing.T) {
 
 	if eventCount == 0 {
 		t.Error("No events received from stream")
-	}
-}
-
-// TestIntegration_ErrorHandling tests error scenarios.
-func TestIntegration_ErrorHandling(t *testing.T) {
-	inbound := NewInboundTransformer()
-	outbound := NewOutboundTransformer("", "invalid-key")
-	httpClient := httpclient.NewHttpClient()
-
-	// Mock server that returns errors
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write(
-			[]byte(`{"error": {"message": "Invalid API key", "type": "invalid_request_error"}}`),
-		)
-	}))
-	defer server.Close()
-
-	outbound.(*OutboundTransformer).SetBaseURL(server.URL)
-
-	// Create request
-	originalRequest := &httpclient.Request{
-		Method: http.MethodPost,
-		URL:    "/v1/chat/completions",
-		Headers: http.Header{
-			"Content-Type": []string{"application/json"},
-		},
-		Body: mustMarshal(llm.Request{
-			Model: "gpt-4",
-			Messages: []llm.Message{
-				{
-					Role: "user",
-					Content: llm.MessageContent{
-						Content: lo.ToPtr("Hello, world!"),
-					},
-				},
-			},
-		}),
-	}
-
-	// Transform request
-	chatReq, err := inbound.TransformRequest(t.Context(), originalRequest)
-	if err != nil {
-		t.Fatalf("Inbound transformation failed: %v", err)
-	}
-
-	httpReq, err := outbound.TransformRequest(t.Context(), chatReq)
-	if err != nil {
-		t.Fatalf("Outbound transformation failed: %v", err)
-	}
-
-	// Execute request (should get error response)
-	httpResp, err := httpClient.Do(t.Context(), httpReq)
-	require.Error(t, err)
-	require.Nil(t, httpResp)
-
-	rawErr, ok := xerrors.As[httpclient.HttpError](err)
-	require.True(t, ok)
-
-	// Should have error in response
-	if rawErr.StatusCode != http.StatusUnauthorized {
-		t.Errorf("Expected status 401, got %d", rawErr.StatusCode)
 	}
 }

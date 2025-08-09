@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/tidwall/gjson"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -97,15 +98,12 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("http response is nil")
 	}
 
-	// Check for HTTP errors
+	// Check for HTTP error status codes
 	if httpResp.StatusCode >= 400 {
-		if httpResp.Error != nil {
-			return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, httpResp.Error.Message)
-		}
-
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
 	}
 
+	// Check for empty response body
 	if len(httpResp.Body) == 0 {
 		return nil, fmt.Errorf("response body is empty")
 	}
@@ -134,9 +132,16 @@ func (t *OutboundTransformer) TransformStreamChunk(
 	event *httpclient.StreamEvent,
 ) (*llm.Response, error) {
 	if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
-		return &llm.Response{
-			Object: "[DONE]",
-		}, nil
+		return llm.DoneResponse, nil
+	}
+
+	ep := gjson.GetBytes(event.Data, "error")
+	if ep.Exists() {
+		return nil, &llm.ResponseError{
+			Detail: llm.ErrorDetail{
+				Message: ep.String(),
+			},
+		}
 	}
 
 	// Create a synthetic HTTP response for compatibility with existing logic
@@ -162,4 +167,39 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, error) {
 	return AggregateStreamChunks(ctx, chunks)
+}
+
+// TransformError transforms HTTP error response to unified error response.
+func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
+	if rawErr == nil {
+		return &llm.ResponseError{
+			StatusCode: http.StatusInternalServerError,
+			Detail: llm.ErrorDetail{
+				Message: "http error is nil",
+				Type:    "",
+			},
+		}
+	}
+
+	// Try to parse as OpenAI error format first
+	var openaiError struct {
+		Error llm.ErrorDetail `json:"error"`
+	}
+
+	err := json.Unmarshal(rawErr.Body, &openaiError)
+	if err == nil && openaiError.Error.Message != "" {
+		return &llm.ResponseError{
+			StatusCode: rawErr.StatusCode,
+			Detail:     openaiError.Error,
+		}
+	}
+
+	// If JSON parsing fails, return the JSON error message
+	return &llm.ResponseError{
+		StatusCode: rawErr.StatusCode,
+		Detail: llm.ErrorDetail{
+			Message: err.Error(),
+			Type:    "api_error",
+		},
+	}
 }

@@ -39,8 +39,7 @@ func TestHttpClientImpl_Do(t *testing.T) {
 			wantErr: false,
 			validate: func(resp *Response) bool {
 				return resp.StatusCode == http.StatusOK &&
-					string(resp.Body) == `{"response": "success"}` &&
-					resp.Error == nil
+					string(resp.Body) == `{"response": "success"}`
 			},
 		},
 		{

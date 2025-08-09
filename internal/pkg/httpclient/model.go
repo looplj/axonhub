@@ -47,9 +47,6 @@ type Response struct {
 	// Response body, for the non-streaming response.
 	Body []byte `json:"body,omitempty"`
 
-	// Error information
-	Error *ResponseError `json:"error,omitempty"`
-
 	// Streaming support
 	Stream io.ReadCloser `json:"-"`
 

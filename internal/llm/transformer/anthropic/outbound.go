@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
 // OutboundTransformer implements transformer.Outbound for Anthropic format.
@@ -110,15 +111,12 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("http response is nil")
 	}
 
-	// Check for HTTP errors
+	// Check for HTTP error status
 	if httpResp.StatusCode >= 400 {
-		if httpResp.Error != nil {
-			return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, httpResp.Error.Message)
-		}
-
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
 	}
 
+	// Check for empty response body
 	if len(httpResp.Body) == 0 {
 		return nil, fmt.Errorf("response body is empty")
 	}
@@ -227,9 +225,7 @@ func (s *outboundStream) Next() bool {
 }
 
 // transformStreamChunk transforms a single Anthropic streaming chunk to ChatCompletionResponse with state.
-func (s *outboundStream) transformStreamChunk(
-	event *httpclient.StreamEvent,
-) (*llm.Response, error) {
+func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*llm.Response, error) {
 	if event == nil {
 		return nil, fmt.Errorf("stream event is nil")
 	}
@@ -241,6 +237,14 @@ func (s *outboundStream) transformStreamChunk(
 	// Handle DONE event specially
 	if string(event.Data) == "[DONE]" {
 		return llm.DoneResponse, nil
+	}
+
+	if event.Type == "error" {
+		return nil, &llm.ResponseError{
+			Detail: llm.ErrorDetail{
+				Message: fmt.Sprintf("received error while streaming: %s", string(event.Data)),
+			},
+		}
 	}
 
 	state := s.state
@@ -384,4 +388,40 @@ func (s *outboundStream) Err() error {
 
 func (s *outboundStream) Close() error {
 	return s.stream.Close()
+}
+
+// TransformError transforms HTTP error response to unified error response for Anthropic.
+func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
+	if rawErr == nil {
+		return &llm.ResponseError{
+			StatusCode: http.StatusInternalServerError,
+			Detail: llm.ErrorDetail{
+				Message: "Request failed.",
+				Type:    "api_error",
+			},
+		}
+	}
+
+	aErr, err := xjson.To[AnthropicErr](rawErr.Body)
+	if err == nil && aErr.RequestID != "" {
+		// Successfully parsed as Anthropic error format
+		return &llm.ResponseError{
+			StatusCode: rawErr.StatusCode,
+			Detail: llm.ErrorDetail{
+				Type:    "api_error",
+				Message: fmt.Sprintf("Request failed. Request_id: %s", aErr.RequestID),
+			},
+		}
+	}
+
+	return &llm.ResponseError{
+		StatusCode: rawErr.StatusCode,
+		Detail: llm.ErrorDetail{
+			Message:   fmt.Sprintf("Request failed. Status_code: %d, body: %s", rawErr.StatusCode, string(rawErr.Body)),
+			Type:      "api_error",
+			Code:      "",
+			Param:     "",
+			RequestID: aErr.RequestID,
+		},
+	}
 }

@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -249,17 +250,6 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "HTTP error response",
-			httpResp: &httpclient.Response{
-				StatusCode: http.StatusBadRequest,
-				Body:       []byte(`{"error": {"message": "Invalid request"}}`),
-				Error: &httpclient.ResponseError{
-					Message: "Invalid request",
-				},
-			},
-			expectError: true,
-		},
-		{
 			name: "empty body",
 			httpResp: &httpclient.Response{
 				StatusCode: http.StatusOK,
@@ -426,19 +416,6 @@ func TestOutboundTransformer_ErrorHandling(t *testing.T) {
 				},
 				expectError: true,
 				errorMsg:    "HTTP error 400",
-			},
-			{
-				name: "HTTP error with error object",
-				httpResp: &httpclient.Response{
-					StatusCode: http.StatusTooManyRequests,
-					Body:       []byte(`{"error": {"message": "Rate limit exceeded"}}`),
-					Error: &httpclient.ResponseError{
-						Message: "Rate limit exceeded",
-						Type:    "rate_limit_error",
-					},
-				},
-				expectError: true,
-				errorMsg:    "HTTP error 429",
 			},
 			{
 				name: "empty response body",
@@ -1046,4 +1023,60 @@ func TestOutboundTransformer_StreamTransformation_WithTestData_Stop(t *testing.T
 	// Verify the complete content
 	expectedContent := "1 2 3 4 5\n6 7 8 9 10\n11 12 13 14 15\n16 17 18 19 20"
 	assert.Equal(t, expectedContent, aggregatedResp.Content[0].Text)
+}
+
+func TestOutboundTransformer_TransformError(t *testing.T) {
+	transformer := NewOutboundTransformer("", "")
+
+	tests := []struct {
+		name     string
+		httpErr  *httpclient.Error
+		expected *llm.ResponseError
+	}{
+		{
+			name: "http error with json body",
+			httpErr: &httpclient.Error{
+				StatusCode: http.StatusBadRequest,
+				Body:       []byte(`{"type": "api_error", "message": "bad request", "request_id": "req_123"}`),
+			},
+			expected: &llm.ResponseError{
+				Detail: llm.ErrorDetail{
+					Type:    "api_error",
+					Message: "Request failed. Request_id: req_123",
+				},
+			},
+		},
+		{
+			name: "http error with non-json body",
+			httpErr: &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Body:       []byte("internal server error"),
+			},
+			expected: &llm.ResponseError{
+				Detail: llm.ErrorDetail{
+					Type:    "api_error",
+					Message: "Request failed. Status_code: 500, body: internal server error",
+				},
+			},
+		},
+		{
+			name:    "nil error",
+			httpErr: nil,
+			expected: &llm.ResponseError{
+				Detail: llm.ErrorDetail{
+					Type:    "api_error",
+					Message: "Request failed.",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := transformer.TransformError(context.Background(), tt.httpErr)
+			require.NotNil(t, result)
+			require.Equal(t, tt.expected.Detail.Type, result.Detail.Type)
+			require.Equal(t, tt.expected.Detail.Message, result.Detail.Message)
+		})
+	}
 }

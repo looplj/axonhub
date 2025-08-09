@@ -3,6 +3,7 @@ package llm
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -430,6 +431,9 @@ type Response struct {
 	// ServiceTier is the service tier of the response.
 	// e.g. "free", "standard", "premium"
 	ServiceTier string `json:"service_tier,omitempty"`
+
+	// Error is the error information, will present if request to llm service failed with status >= 400.
+	Error *ResponseError `json:"error,omitempty"`
 }
 
 // Choice represents a choice in the response.
@@ -494,15 +498,21 @@ type PromptTokensDetails struct {
 	CachedTokens int `json:"cached_tokens"`
 }
 
-// ErrorResponse represents an error response.
-type ErrorResponse struct {
-	Error ErrorDetail `json:"error"`
+// ResponseError represents an error response.
+type ResponseError struct {
+	StatusCode int         `json:"-"`
+	Detail     ErrorDetail `json:"error"`
+}
+
+func (e *ResponseError) Error() string {
+	return fmt.Sprintf("error: %s, code: %s, type: %s, param: %s, request_id: %s", e.Detail.Message, e.Detail.Code, e.Detail.Type, e.Detail.Param, e.Detail.RequestID)
 }
 
 // ErrorDetail represents error details.
 type ErrorDetail struct {
-	Message string  `json:"message"`
-	Type    string  `json:"type"`
-	Param   *string `json:"param,omitempty"`
-	Code    *string `json:"code,omitempty"`
+	Code      string `json:"code,omitempty"`
+	Message   string `json:"message"`
+	Type      string `json:"type"`
+	Param     string `json:"param,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
 }

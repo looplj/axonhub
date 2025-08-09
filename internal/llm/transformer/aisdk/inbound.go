@@ -301,6 +301,10 @@ func (t *InboundTransformer) AggregateStreamChunks(
 	panic("unimplemented")
 }
 
+func (t *InboundTransformer) TransformError(ctx context.Context, rawErr *llm.ResponseError) *httpclient.Error {
+	panic("unimplemented")
+}
+
 // // AggregateStreamChunks aggregates streaming response chunks into a complete response.
 // func (t *InboundTransformer) AggregateStreamChunks(
 // 	ctx context.Context,

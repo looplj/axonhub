@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -663,6 +664,50 @@ func TestInboundTransformer_ValidationEdgeCases(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestInboundTransformer_TransformError(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	tests := []struct {
+		name     string
+		llmErr   *llm.ResponseError
+		expected *httpclient.Error
+	}{
+		{
+			name: "generic error",
+			llmErr: &llm.ResponseError{
+				Detail: llm.ErrorDetail{
+					Message:   "some error",
+					Type:      "test_error",
+					RequestID: "123456",
+				},
+			},
+			expected: &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Status:     "Internal Server Error",
+				Body:       []byte(`{"message":"some error","request_id":"123456"}`),
+			},
+		},
+		{
+			name:   "nil error",
+			llmErr: nil,
+			expected: &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Status:     "Internal Server Error",
+				Body:       []byte(`{"message":"internal server error","request_id":""}`),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := transformer.TransformError(context.Background(), tt.llmErr)
+			require.NotNil(t, result)
+			require.Equal(t, tt.expected.StatusCode, result.StatusCode)
+			require.JSONEq(t, string(tt.expected.Body), string(result.Body))
+		})
+	}
 }
 
 func TestAnthropicMessageContent_MarshalUnmarshal(t *testing.T) {

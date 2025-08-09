@@ -1,8 +1,6 @@
 package api
 
 import (
-	"io"
-
 	"github.com/gin-gonic/gin"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -12,9 +10,6 @@ import (
 type ChatCompletionErrorHandler interface {
 	// HandlerError handles error in non-stream response, should return the proper error format to client.
 	HandlerError(c *gin.Context, err error)
-
-	// HandleStreamError handles error in stream response, should return the proper error format to client.
-	HandleStreamError(c *gin.Context, err error)
 }
 
 type ChatCompletionSSEHandlers struct {
@@ -59,6 +54,8 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 
 	if result.ChatCompletionStream != nil {
 		defer func() {
+			log.Debug(ctx, "Close chat stream")
+
 			err := result.ChatCompletionStream.Close()
 			if err != nil {
 				logger.Error(ctx, "Error closing stream", log.Cause(err))
@@ -71,28 +68,34 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 		c.Header("Connection", "keep-alive")
 		c.Header("Access-Control-Allow-Origin", "*")
 
-		disconnected := c.Stream(func(w io.Writer) bool {
-			if result.ChatCompletionStream.Next() {
-				cur := result.ChatCompletionStream.Current()
-				log.Debug(ctx, "stream event", log.Any("event", cur))
-				c.SSEvent(cur.Type, cur.Data)
+		clientGone := c.Writer.CloseNotify()
 
-				return true
+		clientDisconnected := false
+
+		defer func() {
+			if clientDisconnected {
+				log.Warn(ctx, "Client disconnected")
 			}
+		}()
 
-			return false
-		})
+		for {
+			select {
+			case <-clientGone:
+				clientDisconnected = true
+				// continue to read the rest of the stream to collect stream.
+			default:
+				if result.ChatCompletionStream.Next() {
+					cur := result.ChatCompletionStream.Current()
+					log.Debug(ctx, "stream event", log.Any("event", cur))
+					c.SSEvent(cur.Type, cur.Data)
+				} else {
+					if result.ChatCompletionStream.Err() != nil {
+						log.Error(ctx, "Error in stream", log.Cause(result.ChatCompletionStream.Err()))
+						c.SSEvent("error", result.ChatCompletionStream.Err())
+					}
 
-		if disconnected {
-			log.Warn(ctx, "Client disconnected")
-		}
-
-		err := result.ChatCompletionStream.Err()
-		if err != nil {
-			log.Error(ctx, "Error in stream", log.Cause(err))
-
-			if !disconnected {
-				handlers.ErrorHandler.HandleStreamError(c, err)
+					return
+				}
 			}
 		}
 	}

@@ -298,43 +298,6 @@ func TestAnthropicTransformers_StreamingIntegration(t *testing.T) {
 	require.Equal(t, int64(25), chatResp.Usage.OutputTokens)
 }
 
-func TestAnthropicTransformers_ErrorHandling(t *testing.T) {
-	inboundTransformer := NewInboundTransformer()
-	outboundTransformer := NewOutboundTransformer("", "")
-
-	t.Run("inbound error handling", func(t *testing.T) {
-		// Test invalid JSON
-		httpReq := &httpclient.Request{
-			Headers: http.Header{
-				"Content-Type": []string{"application/json"},
-			},
-			Body: []byte(`invalid json`),
-		}
-
-		_, err := inboundTransformer.TransformRequest(t.Context(), httpReq)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to decode anthropic request")
-	})
-
-	t.Run("outbound error handling", func(t *testing.T) {
-		// Test HTTP error response
-		httpResp := &httpclient.Response{
-			StatusCode: http.StatusBadRequest,
-			Body: []byte(
-				`{"error": {"message": "Invalid request", "type": "invalid_request_error"}}`,
-			),
-			Error: &httpclient.ResponseError{
-				Message: "Invalid request",
-				Type:    "invalid_request_error",
-			},
-		}
-
-		_, err := outboundTransformer.TransformResponse(t.Context(), httpResp)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "HTTP error 400")
-	})
-}
-
 func TestAnthropicMessageContent_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name    string

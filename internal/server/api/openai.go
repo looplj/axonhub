@@ -2,42 +2,27 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/chat"
 	"go.uber.org/fx"
 )
 
-type OpenAIResponseError struct {
-	Error struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
 type OpenAIErrorHandler struct{}
 
 func (e *OpenAIErrorHandler) HandlerError(c *gin.Context, err error) {
-	c.JSON(500, &OpenAIResponseError{
-		Error: struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-		}{
-			Code:    "internal_error",
-			Message: err.Error(),
-		},
-	})
-}
+	if aErr, ok := xerrors.As[*llm.ResponseError](err); ok {
+		c.JSON(aErr.StatusCode, aErr)
+		return
+	}
 
-func (e *OpenAIErrorHandler) HandleStreamError(c *gin.Context, err error) {
-	c.SSEvent("", &OpenAIResponseError{
-		Error: struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-		}{
-			Code:    "internal_error",
-			Message: err.Error(),
+	c.JSON(500, llm.ResponseError{
+		StatusCode: 0,
+		Detail: llm.ErrorDetail{
+			Message: "Internal server error",
 		},
 	})
 }

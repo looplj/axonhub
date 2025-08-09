@@ -23,6 +23,9 @@ type Inbound interface {
 	// TransformStream transforms the unified stream response format to HTTP response.
 	TransformStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*httpclient.StreamEvent], error)
 
+	// TransformError transforms the unified error response to HTTP error response.
+	TransformError(ctx context.Context, err *llm.ResponseError) *httpclient.Error
+
 	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
 	// This method handles unified-specific streaming formats and converts the chunks to a the user request format complete response.
 	// e.g: the user request with OpenAI format, but the provider response with Claude format, the chunks is the unified response format, the AggregateStreamChunks will convert
@@ -36,6 +39,9 @@ type Outbound interface {
 	// Name returns the name of the transformer.
 	// e.g: openai/chat_completions, claude/messages, google/palm.
 	Name() string
+
+	// TransformError transforms the HTTP error response to the unified error response.
+	TransformError(ctx context.Context, err *httpclient.Error) *llm.ResponseError
 
 	// TransformRequest transforms the generic request to HTTP request.
 	TransformRequest(ctx context.Context, request *llm.Request) (*httpclient.Request, error)

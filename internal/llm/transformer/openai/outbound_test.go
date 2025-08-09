@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -178,6 +179,68 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				if err != nil {
 					t.Errorf("TransformRequest() body is not valid JSON: %v", err)
 				}
+			}
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformError(t *testing.T) {
+	transformer := NewOutboundTransformer("", "test-key")
+
+	tests := []struct {
+		name               string
+		httpErr            *httpclient.Error
+		expectedErrMessage string
+		expectedErrType    string
+	}{
+		{
+			name: "http error with json body",
+			httpErr: &httpclient.Error{
+				StatusCode: http.StatusBadRequest,
+				Body:       []byte(`{"error":{"message":"Invalid request","type":"invalid_request_error","code":"invalid_request"}}`),
+			},
+			expectedErrMessage: "Invalid request",
+			expectedErrType:    "invalid_request_error",
+		},
+		{
+			name: "http error with non-json body",
+			httpErr: &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Body:       []byte("Internal server error"),
+			},
+			expectedErrMessage: "invalid character 'I' looking for beginning of value",
+			expectedErrType:    "api_error",
+		},
+		{
+			name:               "nil error",
+			httpErr:            nil,
+			expectedErrMessage: "http error is nil",
+			expectedErrType:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			llmErr := transformer.TransformError(context.Background(), tt.httpErr)
+
+			if tt.httpErr == nil {
+				if llmErr.Detail.Message != tt.expectedErrMessage {
+					t.Errorf("Expected error message '%s', got '%s'", tt.expectedErrMessage, llmErr.Detail.Message)
+				}
+
+				return
+			}
+
+			if llmErr.StatusCode != tt.httpErr.StatusCode {
+				t.Errorf("Expected status code %d, got %d", tt.httpErr.StatusCode, llmErr.StatusCode)
+			}
+
+			if llmErr.Detail.Message != tt.expectedErrMessage {
+				t.Errorf("Expected error message '%s', got '%s'", tt.expectedErrMessage, llmErr.Detail.Message)
+			}
+
+			if llmErr.Detail.Type != tt.expectedErrType {
+				t.Errorf("Expected error type '%s', got '%s'", tt.expectedErrType, llmErr.Detail.Type)
 			}
 		})
 	}
@@ -364,21 +427,6 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 			},
 			wantErr:     true,
 			errContains: "HTTP error 400",
-		},
-		{
-			name: "HTTP error with error object",
-			response: &httpclient.Response{
-				StatusCode: http.StatusUnauthorized,
-				Headers:    http.Header{"Content-Type": []string{"application/json"}},
-				Body:       []byte(`{"error": "Unauthorized"}`),
-				Error: &httpclient.ResponseError{
-					Code:    "HTTP_401",
-					Message: "Unauthorized access",
-					Type:    "http_error",
-				},
-			},
-			wantErr:     true,
-			errContains: "Unauthorized access",
 		},
 		{
 			name: "empty response body",

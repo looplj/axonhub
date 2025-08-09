@@ -2,43 +2,27 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/chat"
 	"go.uber.org/fx"
 )
 
-type AnthropicResponseError struct {
-	Error struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
 type AnthropicErrorHandler struct{}
 
 func (e *AnthropicErrorHandler) HandlerError(c *gin.Context, err error) {
-	c.JSON(500, &AnthropicResponseError{
-		Error: struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-		}{
-			Code:    "internal_error",
-			Message: err.Error(),
-		},
-	})
-}
+	if aErr, ok := xerrors.As[*llm.ResponseError](err); ok {
+		c.JSON(aErr.StatusCode, aErr)
+		return
+	}
 
-func (e *AnthropicErrorHandler) HandleStreamError(c *gin.Context, err error) {
-	c.SSEvent("", &AnthropicResponseError{
-		Error: struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-		}{
-			Code:    "internal_error",
-			Message: err.Error(),
-		},
+	c.JSON(500, anthropic.AnthropicErr{
+		StatusCode: 0,
+		RequestID:  "",
+		Message:    "Internal server error",
 	})
 }
 

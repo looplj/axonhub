@@ -352,3 +352,9 @@ type Usage struct {
 	CacheReadInputTokens     int64  `json:"cache_read_input_tokens,omitempty"`
 	ServiceTier              string `json:"service_tier,omitempty"`
 }
+
+type AnthropicErr struct {
+	StatusCode int    `json:"-"`
+	RequestID  string `json:"request_id"`
+	Message    string `json:"message"`
+}

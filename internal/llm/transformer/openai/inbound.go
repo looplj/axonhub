@@ -133,3 +133,29 @@ func (t *InboundTransformer) AggregateStreamChunks(
 ) ([]byte, error) {
 	return AggregateStreamChunks(ctx, chunks)
 }
+
+// TransformError transforms LLM error response to HTTP error response.
+func (t *InboundTransformer) TransformError(ctx context.Context, rawErr *llm.ResponseError) *httpclient.Error {
+	if rawErr == nil {
+		return &httpclient.Error{
+			StatusCode: http.StatusInternalServerError,
+			Status:     http.StatusText(http.StatusInternalServerError),
+			Body:       []byte(`{"error":{"message":"An unexpected error occurred","type":"unexpected_error"}}`),
+		}
+	}
+
+	body, err := json.Marshal(rawErr)
+	if err != nil {
+		return &httpclient.Error{
+			StatusCode: http.StatusInternalServerError,
+			Status:     http.StatusText(http.StatusInternalServerError),
+			Body:       []byte(`{"error":{"message":"internal server error","type":"internal_server_error"}}`),
+		}
+	}
+
+	return &httpclient.Error{
+		StatusCode: rawErr.StatusCode,
+		Status:     http.StatusText(rawErr.StatusCode),
+		Body:       body,
+	}
+}

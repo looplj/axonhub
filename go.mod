@@ -26,6 +26,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/samber/lo v1.51.0
 	github.com/stretchr/testify v1.10.0
+	github.com/tidwall/gjson v1.18.0
 	github.com/tmaxmax/go-sse v0.11.0
 	github.com/vektah/gqlparser/v2 v2.5.30
 	github.com/zhenzou/executors v0.2.0
@@ -79,6 +80,8 @@ require (
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect

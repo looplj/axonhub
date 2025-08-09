@@ -142,6 +142,10 @@ func (p *PersistentOutboundTransformer) Name() string {
 	return p.wrapped.Name()
 }
 
+func (p *PersistentOutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
+	return p.wrapped.TransformError(ctx, rawErr)
+}
+
 // Outbound transformer methods for enhanced version.
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
 	// TODO fix the privacy context

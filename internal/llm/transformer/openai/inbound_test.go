@@ -1,12 +1,14 @@
 package openai
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -484,4 +486,50 @@ func mustMarshal(v interface{}) []byte {
 	}
 
 	return data
+}
+
+func TestInboundTransformer_TransformError(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	tests := []struct {
+		name          string
+		err           *llm.ResponseError
+		expectedError *httpclient.Error
+	}{
+		{
+			name: "generic error",
+			err: &llm.ResponseError{
+				StatusCode: http.StatusInternalServerError,
+				Detail: llm.ErrorDetail{
+					Message: "Internal server error",
+					Type:    "internal_error",
+					Code:    "internal_server_error",
+				},
+			},
+			expectedError: &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Body:       []byte(`{"error":{"code":"internal_server_error","message":"Internal server error","type":"internal_error"}}`),
+			},
+		},
+		{
+			name: "nil error",
+			err:  nil,
+			expectedError: &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Body:       []byte(`{"error":{"message":"An unexpected error occurred","type":"unexpected_error"}}`),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpErr := transformer.TransformError(context.Background(), tt.err)
+
+			if httpErr.StatusCode != tt.expectedError.StatusCode {
+				t.Errorf("Expected status code %d, got %d", tt.expectedError.StatusCode, httpErr.StatusCode)
+			}
+
+			require.JSONEq(t, string(tt.expectedError.Body), string(httpErr.Body))
+		})
+	}
 }

@@ -2,10 +2,12 @@ package pipeline
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 // Process executes the non-streaming LLM pipeline
@@ -38,7 +40,21 @@ func (p *pipeline) notStream(
 	httpResp, err := p.HttpClient.Do(ctx, httpReq)
 	if err != nil {
 		log.Error(ctx, "HTTP request failed", log.Cause(err))
-		return nil, err
+
+		var responseErr *llm.ResponseError
+		if httpErr, ok := xerrors.As[*httpclient.Error](err); ok {
+			responseErr = p.Outbound.TransformError(ctx, httpErr)
+		} else {
+			responseErr = &llm.ResponseError{
+				StatusCode: http.StatusInternalServerError,
+				Detail: llm.ErrorDetail{
+					Message: err.Error(),
+					Type:    "",
+				},
+			}
+		}
+
+		return nil, p.Inbound.TransformError(ctx, responseErr)
 	}
 
 	// Step 4: Transform HTTP response to unified LLM response using outbound transformer

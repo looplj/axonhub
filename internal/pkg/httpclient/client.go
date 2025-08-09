@@ -49,15 +49,13 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		}
 	}()
 
-	// Read response body
 	body, err := io.ReadAll(rawResp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// Check for HTTP errors
 	if rawResp.StatusCode >= 400 {
-		return nil, HttpError{
+		return nil, &Error{
 			Method:     rawReq.Method,
 			URL:        rawReq.URL.String(),
 			StatusCode: rawResp.StatusCode,
@@ -113,7 +111,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 			return nil, err
 		}
 
-		return nil, HttpError{
+		return nil, &Error{
 			Method:     rawReq.Method,
 			URL:        rawReq.URL.String(),
 			StatusCode: rawResp.StatusCode,
