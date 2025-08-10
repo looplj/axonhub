@@ -2,8 +2,9 @@
 
 import { format } from 'date-fns'
 import { ColumnDef } from '@tanstack/react-table'
-import { zhCN } from 'date-fns/locale'
+import { zhCN, enUS } from 'date-fns/locale'
 import { Eye, MoreHorizontal, FileText } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { extractNumberID } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,18 +28,15 @@ const statusColors: Record<RequestStatus, string> = {
   failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
 }
 
-const statusLabels: Record<RequestStatus, string> = {
-  pending: '等待中',
-  processing: '处理中',
-  completed: '已完成',
-  failed: '失败',
-}
+export function useRequestsColumns(): ColumnDef<Request>[] {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'zh' ? zhCN : enUS
 
-export const requestsColumns: ColumnDef<Request>[] = [
+  return [
   {
     accessorKey: 'id',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='ID' />
+      <DataTableColumnHeader column={column} title={t('requests.columns.id')} />
     ),
     cell: ({ row }) => (
       <div className='font-mono text-xs'>
@@ -51,23 +49,23 @@ export const requestsColumns: ColumnDef<Request>[] = [
   {
     id: 'modelId',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='模型ID' />
+      <DataTableColumnHeader column={column} title={t('requests.columns.modelId')} />
     ),
     enableSorting: false,
     cell: ({ row }) => {
       const request = row.original
-      return <div className='font-mono text-xs'>{request.modelID || '未知'}</div>
+      return <div className='font-mono text-xs'>{request.modelID || t('requests.columns.unknown')}</div>
     },
   },
   {
     accessorKey: 'status',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='状态' />
+      <DataTableColumnHeader column={column} title={t('requests.columns.status')} />
     ),
     enableSorting: false,
     cell: ({ row }) => {
       const status = row.getValue('status') as string
-      return <Badge className={getStatusColor(status)}>{status}</Badge>
+      return <Badge className={getStatusColor(status)}>{t(`requests.status.${status}`)}</Badge>
     },
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id))
@@ -76,12 +74,12 @@ export const requestsColumns: ColumnDef<Request>[] = [
   {
     id: 'user',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='用户' />
+      <DataTableColumnHeader column={column} title={t('requests.columns.user')} />
     ),
     enableSorting: false,
     cell: ({ row }) => {
       const user = row.original.user
-      const displayName = user ? `${user.firstName} ${user.lastName}` : '未知'
+      const displayName = user ? `${user.firstName} ${user.lastName}` : t('requests.columns.unknown')
       return (
         <div className='font-mono text-xs'>
           {displayName}
@@ -92,26 +90,26 @@ export const requestsColumns: ColumnDef<Request>[] = [
   {
     accessorKey: 'apiKey',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='API密钥' />
+      <DataTableColumnHeader column={column} title={t('requests.columns.apiKey')} />
     ),
     enableSorting: false,
     cell: ({ row }) => (
       <div className='font-mono text-xs'>
-        {row.original.apiKey?.name || '未知'}
+        {row.original.apiKey?.name || t('requests.columns.unknown')}
       </div>
     ),
   },
   {
     id: 'requestBody',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='请求体' />
+      <DataTableColumnHeader column={column} title={t('requests.columns.requestBody')} />
     ),
     cell: ({ row }) => {
       const { setJsonViewerOpen, setJsonViewerData } = useRequestsContext()
 
       const handleViewRequestBody = () => {
         setJsonViewerData({
-          title: '请求体',
+          title: t('requests.dialog.jsonViewer.requestBody'),
           data: row.original.requestBody,
         })
         setJsonViewerOpen(true)
@@ -120,7 +118,7 @@ export const requestsColumns: ColumnDef<Request>[] = [
       return (
         <Button variant='outline' size='sm' onClick={handleViewRequestBody}>
           <FileText className='mr-2 h-4 w-4' />
-          查看请求
+          {t('requests.actions.viewRequest')}
         </Button>
       )
     },
@@ -128,14 +126,14 @@ export const requestsColumns: ColumnDef<Request>[] = [
   {
     id: 'responseBody',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='响应体' />
+      <DataTableColumnHeader column={column} title={t('requests.columns.responseBody')} />
     ),
     cell: ({ row }) => {
       const { setJsonViewerOpen, setJsonViewerData } = useRequestsContext()
 
       const handleViewResponseBody = () => {
         setJsonViewerData({
-          title: '响应体',
+          title: t('requests.dialog.jsonViewer.responseBody'),
           data: row.original.responseBody,
         })
         setJsonViewerOpen(true)
@@ -149,7 +147,7 @@ export const requestsColumns: ColumnDef<Request>[] = [
           disabled={!row.original.responseBody}
         >
           <FileText className='mr-2 h-4 w-4' />
-          查看响应
+          {t('requests.actions.viewResponse')}
         </Button>
       )
     },
@@ -157,13 +155,13 @@ export const requestsColumns: ColumnDef<Request>[] = [
   {
     accessorKey: 'createdAt',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='创建时间' />
+      <DataTableColumnHeader column={column} title={t('requests.columns.createdAt')} />
     ),
     cell: ({ row }) => {
       const date = new Date(row.getValue('createdAt'))
       return (
         <div className='text-xs'>
-          {format(date, 'yyyy-MM-dd HH:mm:ss', { locale: zhCN })}
+          {format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}
         </div>
       )
     },
@@ -203,18 +201,19 @@ export const requestsColumns: ColumnDef<Request>[] = [
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant='ghost' className='h-8 w-8 p-0'>
-              <span className='sr-only'>打开菜单</span>
+              <span className='sr-only'>{t('requests.actions.openMenu')}</span>
               <MoreHorizontal className='h-4 w-4' />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end'>
             <DropdownMenuItem onClick={handleViewDetails}>
               <Eye className='mr-2 h-4 w-4' />
-              查看详情
+              {t('requests.actions.viewDetails')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )
     },
   },
-]
+  ]
+}

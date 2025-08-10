@@ -13,6 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { useTranslation } from 'react-i18next'
 import {
   Table,
   TableBody,
@@ -53,6 +54,7 @@ export function ApiKeysTable({
   onPreviousPage,
   onPageSizeChange
 }: DataTableProps) {
+  const { t } = useTranslation()
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -134,7 +136,7 @@ export function ApiKeysTable({
                   colSpan={columns.length}
                   className='h-24 text-center'
                 >
-                  暂无数据
+                  {t('apikeys.noData')}
                 </TableCell>
               </TableRow>
             )}

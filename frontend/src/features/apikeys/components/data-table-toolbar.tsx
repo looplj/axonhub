@@ -1,63 +1,54 @@
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { Table } from '@tanstack/react-table'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTableViewOptions } from './data-table-view-options'
 import { DataTableFacetedFilter } from './data-table-faceted-filter'
-import { ChannelType } from '../data/schema'
+import { ApiKeyStatus } from '../data/schema'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
 }
 
-const channelTypes = [
+const statusOptions = [
   {
-    value: 'openai' as ChannelType,
-    label: 'OpenAI',
+    value: 'enabled' as ApiKeyStatus,
+    label: 'Enabled',
   },
   {
-    value: 'anthropic' as ChannelType,
-    label: 'Anthropic',
-  },
-  {
-    value: 'gemini' as ChannelType,
-    label: 'Gemini',
-  },
-  {
-    value: 'deepseek' as ChannelType,
-    label: 'DeepSeek',
-  },
-  {
-    value: 'doubao' as ChannelType,
-    label: 'Doubao',
-  },
-  {
-    value: 'kimi' as ChannelType,
-    label: 'Kimi',
+    value: 'disabled' as ApiKeyStatus,
+    label: 'Disabled',
   },
 ]
 
 export function DataTableToolbar<TData>({
   table,
 }: DataTableToolbarProps<TData>) {
+  const { t } = useTranslation()
   const isFiltered = table.getState().columnFilters.length > 0
+
+  const translatedStatusOptions = statusOptions.map(option => ({
+    ...option,
+    label: t(`apikeys.status.${option.value}`)
+  }))
 
   return (
     <div className='flex items-center justify-between'>
       <div className='flex flex-1 items-center space-x-2'>
         <Input
-          placeholder='按名称筛选...'
+          placeholder={t('apikeys.filterApiKeys')}
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={(event) =>
             table.getColumn('name')?.setFilterValue(event.target.value)
           }
           className='h-8 w-[150px] lg:w-[250px]'
         />
-        {table.getColumn('type') && (
+        {table.getColumn('status') && (
           <DataTableFacetedFilter
-            column={table.getColumn('type')}
-            title='类型'
-            options={channelTypes}
+            column={table.getColumn('status')}
+            title={t('apikeys.filters.status')}
+            options={translatedStatusOptions}
           />
         )}
         {isFiltered && (
@@ -66,7 +57,7 @@ export function DataTableToolbar<TData>({
             onClick={() => table.resetColumnFilters()}
             className='h-8 px-2 lg:px-3'
           >
-            重置
+            {t('apikeys.filters.reset')}
             <Cross2Icon className='ml-2 h-4 w-4' />
           </Button>
         )}

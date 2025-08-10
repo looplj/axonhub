@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslation } from 'react-i18next'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 import { useRequestsByChannel } from '../data/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -7,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
 
 export function RequestsByChannelChart() {
+  const { t } = useTranslation()
   const { data: channelData, isLoading, error } = useRequestsByChannel()
 
   if (isLoading) {
@@ -21,7 +23,7 @@ export function RequestsByChannelChart() {
     return (
       <div className="h-[300px] flex items-center justify-center">
         <div className="text-red-500 text-sm">
-          Error loading channel data: {error.message}
+          {t('dashboard.charts.errorLoadingChannelData')} {error.message}
         </div>
       </div>
     )
@@ -31,7 +33,7 @@ export function RequestsByChannelChart() {
     return (
       <div className="h-[300px] flex items-center justify-center">
         <div className="text-muted-foreground text-sm">
-          No channel data available
+          {t('dashboard.charts.noChannelData')}
         </div>
       </div>
     )

@@ -1,10 +1,12 @@
 'use client'
 
+import { useTranslation } from 'react-i18next'
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { useDailyRequestStats } from '../data/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function Overview() {
+  const { t } = useTranslation()
   const { data: dailyStats, isLoading, error } = useDailyRequestStats(30)
 
   if (isLoading) {
@@ -18,7 +20,7 @@ export function Overview() {
   if (error) {
     return (
       <div className="h-[350px] flex items-center justify-center text-red-500">
-        Error loading chart data: {error.message}
+        {t('dashboard.charts.errorLoadingChart')} {error.message}
       </div>
     )
   }

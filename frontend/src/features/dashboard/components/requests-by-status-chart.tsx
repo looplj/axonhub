@@ -1,10 +1,12 @@
 'use client'
 
+import { useTranslation } from 'react-i18next'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useRequestsByStatus } from '../data/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function RequestsByStatusChart() {
+  const { t } = useTranslation()
   const { data: statusData, isLoading, error } = useRequestsByStatus()
 
   if (isLoading) {
@@ -19,7 +21,7 @@ export function RequestsByStatusChart() {
     return (
       <div className="h-[300px] flex items-center justify-center">
         <div className="text-red-500 text-sm">
-          Error loading status data: {error.message}
+          {t('dashboard.charts.errorLoadingStatusData')} {error.message}
         </div>
       </div>
     )
@@ -29,7 +31,7 @@ export function RequestsByStatusChart() {
     return (
       <div className="h-[300px] flex items-center justify-center">
         <div className="text-muted-foreground text-sm">
-          No status data available
+          {t('dashboard.charts.noStatusData')}
         </div>
       </div>
     )

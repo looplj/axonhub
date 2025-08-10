@@ -1,6 +1,7 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { IconUserOff, IconUserCheck } from '@tabler/icons-react'
 import { Row } from '@tanstack/react-table'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ interface DataTableRowActionsProps {
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
+  const { t } = useTranslation()
   const { openDialog } = useApiKeysContext()
   const apiKey = row.original
 
@@ -33,20 +35,26 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[160px]'>
-        <DropdownMenuItem onClick={() => openDialog('edit', apiKey)}>
-          编辑
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => openDialog('status', apiKey)}
-          className={apiKey.status === 'enabled' ? 'text-red-500!' : 'text-green-500!'}
-        >
-          {apiKey.status === 'enabled' ? '停用' : '激活'}
-          <DropdownMenuShortcut>
-            {apiKey.status === 'enabled' ? <IconUserOff size={16} /> : <IconUserCheck size={16} />}
-          </DropdownMenuShortcut>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
+          <DropdownMenuItem onClick={() => handleEdit(apiKey)}>
+            {t('apikeys.actions.edit')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => handleStatusChange(apiKey)}
+            className={apiKey.status === 'enabled' ? 'text-orange-600' : 'text-green-600'}
+          >
+            {apiKey.status === 'enabled' ? (
+              <>
+                <IconUserOff className='mr-2 h-4 w-4' />
+                {t('apikeys.actions.disable')}
+              </>
+            ) : (
+              <>
+                <IconUserCheck className='mr-2 h-4 w-4' />
+                {t('apikeys.actions.enable')}
+              </>
+            )}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
     </DropdownMenu>
   )
 }

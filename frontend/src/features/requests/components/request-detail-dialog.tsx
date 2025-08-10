@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
+import { zhCN, enUS } from 'date-fns/locale'
+import { useTranslation } from 'react-i18next'
 import { Copy, Clock, User, Key, Database } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,8 @@ export function RequestDetailDialog({
   onOpenChange,
   requestId,
 }: RequestDetailDialogProps) {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'zh' ? zhCN : enUS
   const { data: request, isLoading: requestLoading } = useRequest(requestId!)
 
   const { data: executionsData, isLoading: executionsLoading } =
@@ -54,7 +57,7 @@ export function RequestDetailDialog({
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <Database className='h-5 w-5' />
-            请求详情 - {requestId}
+            {t('requests.dialog.requestDetail.title')} - {requestId}
           </DialogTitle>
         </DialogHeader>
 
@@ -62,16 +65,16 @@ export function RequestDetailDialog({
           <div className='flex h-64 items-center justify-center'>
             <div className='text-center'>
               <div className='mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900'></div>
-              <p className='text-muted-foreground text-sm'>加载中...</p>
+              <p className='text-muted-foreground text-sm'>{t('loading')}</p>
             </div>
           </div>
         ) : request ? (
           <Tabs defaultValue='overview' className='w-full'>
             <TabsList className='grid w-full grid-cols-4'>
-              <TabsTrigger value='overview'>概览</TabsTrigger>
-              <TabsTrigger value='request'>请求</TabsTrigger>
-              <TabsTrigger value='response'>响应</TabsTrigger>
-              <TabsTrigger value='executions'>执行记录</TabsTrigger>
+              <TabsTrigger value='overview'>{t('requests.dialog.requestDetail.tabs.overview')}</TabsTrigger>
+              <TabsTrigger value='request'>{t('requests.dialog.requestDetail.tabs.request')}</TabsTrigger>
+              <TabsTrigger value='response'>{t('requests.dialog.requestDetail.tabs.response')}</TabsTrigger>
+              <TabsTrigger value='executions'>{t('requests.dialog.requestDetail.tabs.executions')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value='overview' className='space-y-4'>
@@ -79,38 +82,38 @@ export function RequestDetailDialog({
                 <div className='space-y-2'>
                   <div className='flex items-center gap-2'>
                     <User className='text-muted-foreground h-4 w-4' />
-                    <span className='text-sm font-medium'>用户ID</span>
+                    <span className='text-sm font-medium'>{t('requests.dialog.requestDetail.fields.userId')}</span>
                   </div>
                   <p className='text-muted-foreground text-sm'>
-                    {request.user?.id || '未知'}
+                    {request.user?.id || t('requests.columns.unknown')}
                   </p>
                 </div>
                 <div className='space-y-2'>
                   <div className='flex items-center gap-2'>
                     <Key className='text-muted-foreground h-4 w-4' />
-                    <span className='text-sm font-medium'>API密钥ID</span>
+                    <span className='text-sm font-medium'>{t('requests.dialog.requestDetail.fields.apiKeyId')}</span>
                   </div>
                   <p className='text-muted-foreground text-sm'>
-                    {request.apiKey?.id || '未知'}
+                    {request.apiKey?.id || t('requests.columns.unknown')}
                   </p>
                 </div>
                 <div className='space-y-2'>
                   <div className='flex items-center gap-2'>
                     <Clock className='text-muted-foreground h-4 w-4' />
-                    <span className='text-sm font-medium'>创建时间</span>
+                    <span className='text-sm font-medium'>{t('requests.columns.createdAt')}</span>
                   </div>
                   <p className='text-muted-foreground text-sm'>
                     {format(
                       new Date(request.createdAt),
                       'yyyy-MM-dd HH:mm:ss',
-                      { locale: zhCN }
+                      { locale }
                     )}
                   </p>
                 </div>
                 <div className='space-y-2'>
-                  <span className='text-sm font-medium'>状态</span>
+                  <span className='text-sm font-medium'>{t('requests.columns.status')}</span>
                   <Badge className={getStatusColor(request.status)}>
-                    {request.status}
+                    {t(`requests.status.${request.status}`)}
                   </Badge>
                 </div>
               </div>
@@ -119,7 +122,7 @@ export function RequestDetailDialog({
             <TabsContent value='request' className='space-y-4'>
               <div className='space-y-2'>
                 <div className='flex items-center justify-between'>
-                  <h4 className='text-sm font-medium'>请求体</h4>
+                  <h4 className='text-sm font-medium'>{t('requests.columns.requestBody')}</h4>
                   <Button
                     variant='outline'
                     size='sm'
@@ -128,7 +131,7 @@ export function RequestDetailDialog({
                     }
                   >
                     <Copy className='mr-2 h-4 w-4' />
-                    复制
+                    {t('requests.dialog.jsonViewer.copy')}
                   </Button>
                 </div>
                 <ScrollArea className='h-64 w-full rounded-md border p-4'>
@@ -142,7 +145,7 @@ export function RequestDetailDialog({
             <TabsContent value='response' className='space-y-4'>
               <div className='space-y-2'>
                 <div className='flex items-center justify-between'>
-                  <h4 className='text-sm font-medium'>响应体</h4>
+                  <h4 className='text-sm font-medium'>{t('requests.columns.responseBody')}</h4>
                   <Button
                     variant='outline'
                     size='sm'
@@ -152,14 +155,14 @@ export function RequestDetailDialog({
                     disabled={!request.responseBody}
                   >
                     <Copy className='mr-2 h-4 w-4' />
-                    复制
+                    {t('requests.dialog.jsonViewer.copy')}
                   </Button>
                 </div>
                 <ScrollArea className='h-64 w-full rounded-md border p-4'>
                   <pre className='text-xs whitespace-pre-wrap'>
                     {request.responseBody
                       ? formatJson(request.responseBody)
-                      : '暂无响应'}
+                      : t('requests.dialog.executionDetail.noResponse')}
                   </pre>
                 </ScrollArea>
               </div>
@@ -179,28 +182,28 @@ export function RequestDetailDialog({
                     >
                       <div className='flex items-center justify-between'>
                         <h5 className='text-sm font-medium'>
-                          执行 #{index + 1}
+                          {t('requests.dialog.requestDetail.execution', { index: index + 1 })}
                         </h5>
                         <Badge className={getStatusColor(execution.status)}>
-                          {execution.status}
+                          {t(`requests.status.${execution.status}`)}
                         </Badge>
                       </div>
 
                       <div className='grid grid-cols-2 gap-4 text-xs'>
                         <div>
-                          <span className='font-medium'>开始时间:</span>
+                          <span className='font-medium'>{t('requests.dialog.requestDetail.fields.startTime')}:</span>
                           <p className='text-muted-foreground'>
                             {execution.createdAt
                               ? format(
                                   new Date(execution.createdAt),
                                   'yyyy-MM-dd HH:mm:ss',
-                                  { locale: zhCN }
+                                  { locale }
                                 )
-                              : '未开始'}
+                              : t('requests.dialog.requestDetail.fields.notStarted')}
                           </p>
                         </div>
                         <div>
-                          <span className='font-medium'>结束时间:</span>
+                          <span className='font-medium'>{t('requests.dialog.requestDetail.fields.endTime')}:</span>
                           {/* <p className='text-muted-foreground'>
                             {execution.finishedAt
                               ? format(
@@ -216,7 +219,7 @@ export function RequestDetailDialog({
                       {execution.errorMessage && (
                         <div className='space-y-1'>
                           <span className='text-xs font-medium text-red-600'>
-                            错误信息:
+                            {t('requests.dialog.executionDetail.errorMessage')}:
                           </span>
                           <ScrollArea className='h-20 w-full rounded border bg-red-50 p-2'>
                             <pre className='text-xs whitespace-pre-wrap text-red-800'>
@@ -252,14 +255,14 @@ export function RequestDetailDialog({
                 </div>
               ) : (
                 <div className='py-8 text-center'>
-                  <p className='text-muted-foreground text-sm'>暂无执行记录</p>
+                  <p className='text-muted-foreground text-sm'>{t('requests.dialog.requestDetail.noExecutions')}</p>
                 </div>
               )}
             </TabsContent>
           </Tabs>
         ) : (
           <div className='py-8 text-center'>
-            <p className='text-muted-foreground text-sm'>请求不存在</p>
+            <p className='text-muted-foreground text-sm'>{t('requests.dialog.requestDetail.notFound')}</p>
           </div>
         )}
       </DialogContent>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,19 +22,18 @@ import {
 import { Input } from '@/components/ui/input'
 import { useApiKeysContext } from '../context/apikeys-context'
 import { useUpdateApiKey } from '../data/apikeys'
-import { UpdateApiKeyInput, updateApiKeyInputSchema } from '../data/schema'
+import { UpdateApiKeyInput, updateApiKeyInputSchemaFactory } from '../data/schema'
 
 export function ApiKeysEditDialog() {
+  const { t } = useTranslation()
   const { isDialogOpen, closeDialog, selectedApiKey } = useApiKeysContext()
   const updateApiKey = useUpdateApiKey()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<UpdateApiKeyInput>({
-    resolver: zodResolver(updateApiKeyInputSchema),
+    resolver: zodResolver(updateApiKeyInputSchemaFactory(t)),
     defaultValues: {
       name: '',
-      userID: '',
-      key: '',
     },
   })
 
@@ -41,8 +41,6 @@ export function ApiKeysEditDialog() {
     if (selectedApiKey && isDialogOpen.edit) {
       form.reset({
         name: selectedApiKey.name,
-        userID: selectedApiKey.userID,
-        key: selectedApiKey.key,
       })
     }
   }, [selectedApiKey, isDialogOpen.edit, form])
@@ -73,9 +71,9 @@ export function ApiKeysEditDialog() {
     <Dialog open={isDialogOpen.edit} onOpenChange={handleClose}>
       <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
-          <DialogTitle>编辑 API Key</DialogTitle>
+          <DialogTitle>{t('apikeys.dialog.edit.title')}</DialogTitle>
           <DialogDescription>
-            修改 API Key 的信息。
+            {t('apikeys.dialog.edit.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -85,40 +83,28 @@ export function ApiKeysEditDialog() {
               name='name'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>名称</FormLabel>
+                  <FormLabel>{t('apikeys.dialog.fields.name.label')}</FormLabel>
                   <FormControl>
-                    <Input placeholder='输入 API Key 名称' {...field} />
+                    <Input placeholder={t('apikeys.dialog.fields.name.placeholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name='userID'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>用户ID</FormLabel>
-                  <FormControl>
-                    <Input placeholder='输入用户ID' {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name='key'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>API Key</FormLabel>
-                  <FormControl>
-                    <Input placeholder='输入 API Key' {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className='space-y-4'>
+              <div>
+                <label className='text-sm font-medium text-muted-foreground'>
+                  {t('apikeys.dialog.fields.userId.label')}
+                </label>
+                <p className='text-sm text-foreground mt-1'>{selectedApiKey?.user?.email || selectedApiKey?.user?.id}</p>
+              </div>
+              <div>
+                <label className='text-sm font-medium text-muted-foreground'>
+                  {t('apikeys.dialog.fields.key.label')}
+                </label>
+                <p className='text-sm text-foreground mt-1 font-mono'>{selectedApiKey?.key}</p>
+              </div>
+            </div>
             <DialogFooter>
               <Button
                 type='button'
@@ -126,10 +112,10 @@ export function ApiKeysEditDialog() {
                 onClick={handleClose}
                 disabled={isSubmitting}
               >
-                取消
+                {t('apikeys.dialog.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={isSubmitting}>
-                {isSubmitting ? '保存中...' : '保存'}
+                {isSubmitting ? t('apikeys.dialog.buttons.saving') : t('apikeys.dialog.buttons.save')}
               </Button>
             </DialogFooter>
           </form>

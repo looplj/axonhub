@@ -1,6 +1,7 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { Row } from '@tanstack/react-table'
 import { IconEdit, IconToggleLeft, IconToggleRight, IconSettings } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ interface DataTableRowActionsProps {
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
+  const { t } = useTranslation()
   const { setOpen, setCurrentRow } = useChannels()
   return (
     <>
@@ -28,7 +30,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             className='data-[state=open]:bg-muted flex h-8 w-8 p-0'
           >
             <DotsHorizontalIcon className='h-4 w-4' />
-            <span className='sr-only'>打开菜单</span>
+            <span className='sr-only'>{t('channels.actions.openMenu')}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end' className='w-[160px]'>
@@ -38,7 +40,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               setOpen('edit')
             }}
           >
-            编辑
+            {t('channels.actions.edit')}
             <DropdownMenuShortcut>
               <IconEdit size={16} />
             </DropdownMenuShortcut>
@@ -49,7 +51,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               setOpen('settings')
             }}
           >
-            设置
+            {t('channels.actions.settings')}
             <DropdownMenuShortcut>
               <IconSettings size={16} />
             </DropdownMenuShortcut>
@@ -62,7 +64,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             }}
             className={row.original.status === 'enabled' ? 'text-red-500!' : 'text-green-500!'}
           >
-            {row.original.status === 'enabled' ? '禁用' : '启用'}
+            {row.original.status === 'enabled' ? t('channels.actions.disable') : t('channels.actions.enable')}
             <DropdownMenuShortcut>
               {row.original.status === 'enabled' ? <IconToggleLeft size={16} /> : <IconToggleRight size={16} />}
             </DropdownMenuShortcut>

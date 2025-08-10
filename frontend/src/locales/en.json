@@ -1,4 +1,26 @@
 {
+  "sidebar": {
+    "groups": {
+      "admin": "Admin",
+      "general": "General",
+      "settings": "Settings"
+    },
+    "items": {
+      "dashboard": "Dashboard",
+      "channels": "Channels",
+      "users": "Users",
+      "roles": "Roles",
+      "system": "System",
+      "requests": "Requests",
+      "apiKeys": "API Keys",
+      "playground": "Playground",
+      "profile": "Profile"
+    },
+    "team": {
+      "name": "AxonHub Admin",
+      "plan": "AI + Unified"
+    }
+  },
   "users": {
     "title": "User Management",
     "description": "Manage system users and permission configurations.",
@@ -33,7 +55,7 @@
     "badges": {
       "owner": "Owner",
       "user": "User",
-      "noRoles":"No roles"
+      "noRoles": "No roles"
     },
     "filters": {
       "status": "Status",
@@ -47,5 +69,574 @@
       "activate": "Activate",
       "deactivate": "Deactivate"
     }
+  },
+  "apikeys": {
+    "title": "API Key Management",
+    "description": "Manage system API keys and access permissions.",
+    "loading": "Loading...",
+    "loadError": "Load failed:",
+    "noResults": "No results.",
+    "createApiKey": "Create API Key",
+    "filterApiKeys": "Filter API keys...",
+    "columns": {
+      "name": "Name",
+      "key": "API Key",
+      "user": "User",
+      "status": "Status",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row"
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "actions": {
+      "openMenu": "Open menu",
+      "edit": "Edit",
+      "enable": "Enable",
+      "disable": "Disable",
+      "delete": "Delete",
+      "copy": "Copy",
+      "show": "Show",
+      "hide": "Hide"
+    },
+    "filters": {
+      "status": "Status",
+      "reset": "Reset"
+    },
+    "dialog": {
+      "create": {
+        "title": "Create API Key",
+        "description": "Create a new API Key for system access."
+      },
+      "edit": {
+        "title": "Edit API Key",
+        "description": "Modify API Key information."
+      },
+      "delete": {
+        "title": "Delete API Key",
+        "description": "Are you sure you want to delete API Key \"{{name}}\"? This action cannot be undone."
+      },
+      "status": {
+        "title": "Change Status",
+        "description": "Are you sure you want to change the status of this API Key?"
+      },
+      "fields": {
+        "name": {
+          "label": "Name",
+          "placeholder": "Enter API Key name",
+          "description": "Set an easily recognizable name for this API Key"
+        },
+        "userID": {
+          "label": "User ID",
+          "placeholder": "Enter User ID",
+          "description": "The user ID associated with this API Key"
+        },
+        "key": {
+          "label": "API Key",
+          "placeholder": "Enter API Key",
+          "description": "The API Key value"
+        }
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "create": "Create",
+        "creating": "Creating...",
+        "update": "Update",
+        "updating": "Updating...",
+        "delete": "Delete",
+        "deleting": "Deleting...",
+        "enable": "Enable",
+        "enabling": "Enabling...",
+        "disable": "Disable",
+        "disabling": "Disabling..."
+      }
+    },
+    "messages": {
+      "copied": "API Key copied to clipboard",
+      "createSuccess": "API Key created successfully",
+      "updateSuccess": "API Key updated successfully",
+      "deleteSuccess": "API Key deleted successfully",
+      "statusUpdateSuccess": "API Key status updated successfully"
+    }
+  },
+  "roles": {
+    "title": "Role Management",
+    "description": "Manage system roles and permission configurations.",
+    "loading": "Loading...",
+    "loadError": "Load failed:",
+    "noResults": "No results.",
+    "createRole": "Create Role",
+    "searchRoles": "Search role names...",
+    "columns": {
+      "code": "Role Code",
+      "name": "Role Name",
+      "scopes": "Scopes",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "moreScopes": "more"
+    },
+    "actions": {
+      "openMenu": "Open menu",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "filters": {
+      "reset": "Reset"
+    },
+    "dialog": {
+      "create": {
+        "title": "Create Role",
+        "description": "Create a new role and configure its permission scopes."
+      },
+      "edit": {
+        "title": "Edit Role",
+        "description": "Modify role information and permission configuration."
+      },
+      "delete": {
+        "title": "Delete Role",
+        "description": "Are you sure you want to delete this role? This action cannot be undone."
+      },
+      "fields": {
+        "code": {
+          "label": "Role Code",
+          "placeholder": "admin",
+          "description": "Unique identifier, can only contain letters, numbers and underscores"
+        },
+        "name": {
+          "label": "Role Name",
+          "placeholder": "Administrator",
+          "description": "User-friendly role name"
+        },
+        "scopes": {
+          "label": "Permission Scopes",
+          "description": "Select the permissions this role has"
+        }
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "create": "Create Role",
+        "creating": "Creating...",
+        "update": "Update Role",
+        "updating": "Updating...",
+        "delete": "Delete",
+        "deleting": "Deleting..."
+      }
+    }
+  },
+  "channels": {
+    "title": "Channel Management",
+    "description": "Manage your AI model channels and configurations.",
+    "loading": "Loading...",
+    "loadError": "Load failed:",
+    "noResults": "No results.",
+    "addChannel": "Add Channel",
+    "settings": "Settings",
+    "filterChannels": "Filter channels...",
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "status": "Status",
+      "baseURL": "Base URL",
+      "supportedModels": "Supported Models",
+      "defaultTestModel": "Default Test Model",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row"
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "types": {
+      "openai": "OpenAI",
+      "anthropic": "Anthropic",
+      "gemini": "Gemini",
+      "deepseek": "DeepSeek",
+      "doubao": "Doubao",
+      "kimi": "Kimi"
+    },
+    "actions": {
+      "openMenu": "Open menu",
+      "edit": "Edit",
+      "delete": "Delete",
+      "enable": "Enable",
+      "disable": "Disable",
+      "test": "Test",
+      "settings": "Settings"
+    },
+    "filters": {
+      "type": "Type",
+      "status": "Status",
+      "reset": "Reset",
+      "filterByName": "Search by name"
+    },
+    "dialog": {
+      "create": {
+        "title": "Add Channel",
+        "description": "Create a new AI model channel."
+      },
+      "edit": {
+        "title": "Edit Channel",
+        "description": "Modify channel configuration."
+      },
+      "delete": {
+        "title": "Delete Channel",
+        "description": "Are you sure you want to delete this channel? This action cannot be undone."
+      },
+      "settings": {
+        "title": "Channel Settings",
+        "description": "Configure global channel settings."
+      },
+      "status": {
+        "title": "Change Status",
+        "description": "Are you sure you want to change the status of this channel?"
+      },
+      "fields": {
+        "name": {
+          "label": "Channel Name",
+          "placeholder": "My OpenAI Channel",
+          "description": "Set an easily recognizable name for this channel"
+        },
+        "type": {
+          "label": "Channel Type",
+          "description": "Select the AI model provider type"
+        },
+        "baseURL": {
+          "label": "Base URL",
+          "placeholder": "https://api.openai.com/v1",
+          "description": "The base URL address for the API"
+        },
+        "apiKey": {
+          "label": "API Key",
+          "placeholder": "sk-...",
+          "description": "API key for authentication"
+        },
+        "supportedModels": {
+          "label": "Supported Models",
+          "description": "List of models supported by this channel"
+        },
+        "defaultTestModel": {
+          "label": "Default Test Model",
+          "description": "Default model for testing connections"
+        },
+        "modelName": {
+          "label": "Model Name",
+          "placeholder": "Enter model name"
+        }
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "create": "Create Channel",
+        "creating": "Creating...",
+        "update": "Update Channel",
+        "updating": "Updating...",
+        "delete": "Delete",
+        "deleting": "Deleting...",
+        "enable": "Enable",
+        "enabling": "Enabling...",
+        "disable": "Disable",
+        "disabling": "Disabling...",
+        "test": "Test Connection",
+        "testing": "Testing...",
+        "save": "Save",
+        "saving": "Saving...",
+        "add": "Add"
+      },
+      "messages": {
+        "addAtLeastOneModel": "Please add at least one supported model",
+        "createDescription": "Create a new Channel here.",
+        "editDescription": "Update Channel information here.",
+        "completeAndSave": "Click save when complete."
+      },
+      "status": {
+        "enable": {
+          "title": "Enable Channel",
+          "description": "Are you sure you want to enable channel \"{{name}}\"? The channel will be available for use after enabling.",
+          "confirmText": "Enable"
+        },
+        "disable": {
+          "title": "Disable Channel",
+          "description": "Are you sure you want to disable channel \"{{name}}\"? The channel will be unavailable after disabling.",
+          "confirmText": "Disable"
+        }
+      },
+      "settings": {
+        "title": "Channel Settings",
+        "description": "Configure advanced settings for {{name}}.",
+        "basicInfo": {
+          "title": "Basic Information",
+          "description": "Basic configuration information for the Channel"
+        },
+        "modelMapping": {
+          "title": "Model Mapping",
+          "description": "Configure model name mapping to map model names in requests to actual model names",
+          "originalModel": "Original Model Name",
+          "targetModel": "Target Model Name",
+          "noMappings": "No model mapping configuration"
+        }
+      }
+    }
+  },
+  "system": {
+    "title": "System Management",
+    "description": "Manage system configurations and options.",
+    "loading": "Loading system settings...",
+    "storage": {
+      "title": "Storage Settings",
+      "description": "Configure how the system handles and stores response data",
+      "storeChunks": {
+        "label": "Store Response Chunks",
+        "description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing"
+      }
+    },
+    "other": {
+      "title": "Other Settings",
+      "description": "More system configuration options will be added here",
+      "comingSoon": "More configuration options coming soon..."
+    },
+    "buttons": {
+      "save": "Save Settings",
+      "saving": "Saving..."
+    }
+  },
+  "requests": {
+    "title": "Request Logs",
+    "description": "View and manage LLM call request logs",
+    "loading": "Loading...",
+    "loadError": "Load failed:",
+    "noResults": "No data",
+    "refresh": "Refresh",
+    "columns": {
+      "id": "ID",
+      "modelId": "Model ID",
+      "status": "Status",
+      "user": "User",
+      "apiKey": "API Key",
+      "requestBody": "Request Body",
+      "responseBody": "Response Body",
+      "createdAt": "Created At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "unknown": "Unknown"
+    },
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "actions": {
+      "openMenu": "Open menu",
+      "viewDetails": "View Details",
+      "viewRequest": "View Request",
+      "viewResponse": "View Response",
+      "copy": "Copy"
+    },
+    "filters": {
+      "filterId": "Filter by ID...",
+      "status": "Status",
+      "reset": "Reset"
+    },
+
+    "dialog": {
+      "jsonViewer": {
+        "requestBody": "Request Body",
+        "responseBody": "Response Body",
+        "copy": "Copy",
+        "copied": "Copied"
+      },
+      "executionDetail": {
+        "title": "Execution Details",
+        "channel": "Channel",
+        "modelId": "Model ID",
+        "status": "Status",
+        "createdAt": "Created At",
+        "requestBody": "Request Body",
+        "responseBody": "Response Body",
+        "errorMessage": "Error Message",
+        "noResponse": "No Response",
+        "unknown": "Unknown"
+      },
+      "requestDetail": {
+        "title": "Request Details",
+        "tabs": {
+          "overview": "Overview",
+          "request": "Request",
+          "response": "Response",
+          "executions": "Executions"
+        },
+        "fields": {
+          "userId": "User ID",
+          "apiKeyId": "API Key ID",
+          "startTime": "Start Time",
+          "endTime": "End Time",
+          "notStarted": "Not Started"
+        },
+        "execution": "Execution #{{index}}",
+        "noExecutions": "No executions",
+        "notFound": "Request not found"
+      },
+      "executionsDrawer": {
+        "title": "Execution List",
+        "noExecutions": "No execution records"
+      }
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "System overview and statistics.",
+    "loading": "Loading...",
+    "loadError": "Error loading dashboard:",
+    "noData": "No data available",
+    "cards": {
+      "totalUsers": "Total Users",
+      "totalChannels": "Total Channels",
+      "totalRequests": "Total Requests",
+      "requestsToday": "Requests Today"
+    },
+    "charts": {
+      "dailyRequestOverview": "Daily Request Overview",
+      "topUsers": "Top Users",
+      "requestsByChannel": "Requests by Channel",
+      "requestsByStatus": "Requests by Status",
+      "errorLoadingChart": "Error loading chart data:",
+      "errorLoadingTopUsers": "Error loading top users:",
+      "errorLoadingChannelData": "Error loading channel data:",
+      "errorLoadingStatusData": "Error loading status data:",
+      "noUserData": "No user data available",
+      "noChannelData": "No channel data available",
+      "noStatusData": "No status data available",
+      "requestsByChannelDescription": "Distribution of requests across different channels.",
+      "requestsByStatusDescription": "Breakdown of request statuses."
+    },
+    "stats": {
+      "fromLastMonth": "from last month",
+      "sinceYesterday": "since yesterday",
+      "usersWithMostRequests": "Users with the most requests this month.",
+      "requests": "requests"
+    }
+  },
+  "playground": {
+    "title": "Playground",
+    "description": "Test and experiment with AI models in an interactive environment.",
+    "settings": {
+      "model": "Model",
+      "modelPlaceholder": "Select a model",
+      "selectModel": "Select a model",
+      "temperature": "Temperature",
+      "maxTokens": "Max Tokens",
+      "systemPrompt": "System Prompt",
+      "defaultSystemPrompt": "You are a helpful assistant."
+    },
+    "actions": {
+      "copy": "Copy",
+      "regenerate": "Regenerate",
+      "readAloud": "Read Aloud"
+    },
+    "chat": {
+      "generating": "Generating...",
+      "retry": "Retry Last Response",
+      "clear": "Clear Chat",
+      "noMessages": "No messages to retry"
+    },
+    "loading": "Loading",
+    "errors": {
+      "noChannelsAvailable": "No models available"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "This is how others will see you on the site.",
+    "loading": "Loading...",
+    "form": {
+      "fields": {
+        "firstName": {
+          "label": "First Name",
+          "placeholder": "Enter your first name",
+          "description": "Your first name as it will appear to other users.",
+          "required": "First name is required.",
+          "maxLength": "First name must not be longer than 50 characters."
+        },
+        "lastName": {
+          "label": "Last Name",
+          "placeholder": "Enter your last name",
+          "description": "Your last name as it will appear to other users.",
+          "required": "Last name is required.",
+          "maxLength": "Last name must not be longer than 50 characters."
+        },
+        "email": {
+          "label": "Email",
+          "placeholder": "Enter your email address",
+          "description": "Your email address for account notifications and login.",
+          "required": "Email is required.",
+          "invalid": "Please enter a valid email address."
+        },
+        "preferLanguage": {
+          "label": "Preferred Language",
+          "placeholder": "Select your preferred language",
+          "description": "Choose your preferred language for the interface.",
+          "required": "Please select a preferred language.",
+          "options": {
+            "en": "English",
+            "zh": "中文"
+          }
+        }
+      },
+      "validation": {
+        "firstNameRequired": "First name is required.",
+        "firstNameTooLong": "First name must not be longer than 50 characters.",
+        "lastNameRequired": "Last name is required.",
+        "lastNameTooLong": "Last name must not be longer than 50 characters.",
+        "emailRequired": "Email is required.",
+        "emailInvalid": "Please enter a valid email address.",
+        "languageRequired": "Please select a preferred language."
+      },
+      "buttons": {
+        "update": "Save Changes",
+        "updating": "Saving...",
+        "cancel": "Cancel"
+      },
+      "messages": {
+        "updateSuccess": "Profile updated successfully!",
+        "updateError": "Failed to update profile: {{error}}"
+      }
+    },
+    "languages": {
+      "en": "English",
+      "zh": "中文"
+    },
+    "buttons": {
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "cancel": "Cancel"
+    },
+    "messages": {
+      "updateSuccess": "Profile updated successfully!",
+      "updateError": "Failed to update profile: {{message}}"
+    }
+  },
+  "pagination": {
+    "selectedRows": "{{selected}} of {{total}} row(s) selected",
+    "selectedInfo": "{{selectedRows}} of {{dataLength}} row(s) selected",
+    "selectedInfoWithTotal": "{{selectedRows}} of {{dataLength}} row(s) selected / Total {{totalCount}} row(s)",
+    "totalRows": "Total {{total}} row(s)",
+    "rowsPerPage": "Rows per page",
+    "currentPage": "Page {{current}} of {{total}}",
+    "firstPage": "First page",
+    "lastPage": "Last page",
+    "previousPage": "Go to previous page",
+    "nextPage": "Go to next page",
+    "hasPrevious": "Has previous",
+    "hasNext": "Has next"
   }
 }

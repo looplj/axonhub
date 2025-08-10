@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useTopUsers } from '../data/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function RecentSales() {
+  const { t } = useTranslation()
   const { data: topUsers, isLoading, error } = useTopUsers(5)
 
   if (isLoading) {
@@ -25,7 +27,7 @@ export function RecentSales() {
   if (error) {
     return (
       <div className="text-red-500 text-sm">
-        Error loading top users: {error.message}
+        {t('dashboard.charts.errorLoadingTopUsers')} {error.message}
       </div>
     )
   }
@@ -33,7 +35,7 @@ export function RecentSales() {
   if (!topUsers || topUsers.length === 0) {
     return (
       <div className="text-muted-foreground text-sm">
-        No user data available
+        {t('dashboard.charts.noUserData')}
       </div>
     )
   }
@@ -60,7 +62,7 @@ export function RecentSales() {
             </p>
           </div>
           <div className="ml-auto font-medium">
-            {user.requestCount} requests
+            {user.requestCount} {t('dashboard.stats.requests')}
           </div>
         </div>
       ))}

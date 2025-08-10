@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,15 +22,16 @@ import {
 import { Input } from '@/components/ui/input'
 import { useApiKeysContext } from '../context/apikeys-context'
 import { useCreateApiKey } from '../data/apikeys'
-import { CreateApiKeyInput, createApiKeyInputSchema } from '../data/schema'
+import { CreateApiKeyInput, createApiKeyInputSchemaFactory } from '../data/schema'
 
 export function ApiKeysCreateDialog() {
+  const { t } = useTranslation()
   const { isDialogOpen, closeDialog } = useApiKeysContext()
   const createApiKey = useCreateApiKey()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<CreateApiKeyInput>({
-    resolver: zodResolver(createApiKeyInputSchema),
+    resolver: zodResolver(createApiKeyInputSchemaFactory(t)),
     defaultValues: {
       name: '',
       userID: '',
@@ -59,9 +61,9 @@ export function ApiKeysCreateDialog() {
     <Dialog open={isDialogOpen.create} onOpenChange={handleClose}>
       <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
-          <DialogTitle>创建 API Key</DialogTitle>
+          <DialogTitle>{t('apikeys.dialog.create.title')}</DialogTitle>
           <DialogDescription>
-            创建一个新的 API Key 用于访问系统。
+            {t('apikeys.dialog.create.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -71,9 +73,9 @@ export function ApiKeysCreateDialog() {
               name='name'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>名称</FormLabel>
+                  <FormLabel>{t('apikeys.dialog.fields.name.label')}</FormLabel>
                   <FormControl>
-                    <Input placeholder='输入 API Key 名称' {...field} />
+                    <Input placeholder={t('apikeys.dialog.fields.name.placeholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -84,9 +86,9 @@ export function ApiKeysCreateDialog() {
               name='userID'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>用户ID</FormLabel>
+                  <FormLabel>{t('apikeys.dialog.fields.userId.label')}</FormLabel>
                   <FormControl>
-                    <Input placeholder='输入用户ID' {...field} />
+                    <Input placeholder={t('apikeys.dialog.fields.userId.placeholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -97,9 +99,9 @@ export function ApiKeysCreateDialog() {
               name='key'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>API Key</FormLabel>
+                  <FormLabel>{t('apikeys.dialog.fields.key.label')}</FormLabel>
                   <FormControl>
-                    <Input placeholder='输入 API Key' {...field} />
+                    <Input placeholder={t('apikeys.dialog.fields.key.placeholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -112,10 +114,10 @@ export function ApiKeysCreateDialog() {
                 onClick={handleClose}
                 disabled={isSubmitting}
               >
-                取消
+                {t('apikeys.dialog.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={isSubmitting}>
-                {isSubmitting ? '创建中...' : '创建'}
+                {isSubmitting ? t('apikeys.dialog.buttons.creating') : t('apikeys.dialog.buttons.create')}
               </Button>
             </DialogFooter>
           </form>

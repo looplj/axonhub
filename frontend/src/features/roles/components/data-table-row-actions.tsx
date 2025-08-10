@@ -1,5 +1,6 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { Row } from '@tanstack/react-table'
+import { useTranslation } from 'react-i18next'
 import { IconEdit, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,6 +18,7 @@ interface DataTableRowActionsProps {
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
+  const { t } = useTranslation()
   const role = row.original
   const { setEditingRole, setDeletingRole } = useRolesContext()
 
@@ -28,13 +30,13 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           className='flex h-8 w-8 p-0 data-[state=open]:bg-muted'
         >
           <DotsHorizontalIcon className='h-4 w-4' />
-          <span className='sr-only'>打开菜单</span>
+          <span className='sr-only'>{t('roles.actions.openMenu')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[160px]'>
         <DropdownMenuItem onClick={() => setEditingRole(role)}>
           <IconEdit className='mr-2 h-4 w-4' />
-          编辑
+          {t('roles.actions.edit')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -42,7 +44,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           className='text-destructive focus:text-destructive'
         >
           <IconTrash className='mr-2 h-4 w-4' />
-          删除
+          {t('roles.actions.delete')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

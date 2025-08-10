@@ -1,12 +1,14 @@
-import { Copy } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useState } from 'react'
+import { Copy, Check } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useTranslation } from 'react-i18next'
 
 interface JsonViewerDialogProps {
   open: boolean
@@ -21,6 +23,9 @@ export function JsonViewerDialog({
   title,
   jsonData,
 }: JsonViewerDialogProps) {
+  const { t } = useTranslation()
+  const [copied, setCopied] = useState(false)
+
   const formatJson = (data: any) => {
     try {
       if (typeof data === 'string') {
@@ -34,6 +39,8 @@ export function JsonViewerDialog({
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const formattedJson = formatJson(jsonData)
@@ -50,8 +57,12 @@ export function JsonViewerDialog({
               size='sm'
               onClick={() => copyToClipboard(formattedJson)}
             >
-              <Copy className='mr-2 h-4 w-4' />
-              复制
+              {copied ? (
+                <Check className='mr-2 h-4 w-4' />
+              ) : (
+                <Copy className='mr-2 h-4 w-4' />
+              )}
+              {copied ? t('requests.dialog.jsonViewer.copied') : t('requests.dialog.jsonViewer.copy')}
             </Button>
           </DialogTitle>
         </DialogHeader>

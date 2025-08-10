@@ -71,7 +71,7 @@ export default function UsersManagement() {
   return (
     <UsersProvider>
       <Header fixed>
-        <Search />
+        {/* <Search /> */}
         <div className='ml-auto flex items-center space-x-4'>
           <LanguageSwitch />
           <ThemeSwitch />

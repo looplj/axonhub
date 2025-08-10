@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props) {
+  const { t } = useTranslation()
   const updateChannel = useUpdateChannel()
   const [modelMappings, setModelMappings] = useState(
     currentRow.settings?.modelMappings || []
@@ -96,41 +98,41 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
     >
       <DialogContent className='sm:max-w-2xl'>
         <DialogHeader className='text-left'>
-          <DialogTitle>Channel 设置</DialogTitle>
+          <DialogTitle>{t('channels.settings.title')}</DialogTitle>
           <DialogDescription>
-            配置 {currentRow.name} 的高级设置。
+            {t('channels.settings.description', { name: currentRow.name })}
           </DialogDescription>
         </DialogHeader>
         
         <div className='space-y-6'>
           <Card>
             <CardHeader>
-              <CardTitle className='text-lg'>基本信息</CardTitle>
+              <CardTitle className='text-lg'>{t('channels.settings.basicInfo.title')}</CardTitle>
               <CardDescription>
-                Channel 的基本配置信息
+                {t('channels.settings.basicInfo.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div className='grid grid-cols-2 gap-4'>
                 <div>
-                  <label className='text-sm font-medium'>名称</label>
+                  <label className='text-sm font-medium'>{t('channels.dialog.fields.name.label')}</label>
                   <p className='text-sm text-muted-foreground'>{currentRow.name}</p>
                 </div>
                 <div>
-                  <label className='text-sm font-medium'>类型</label>
+                  <label className='text-sm font-medium'>{t('channels.dialog.fields.type.label')}</label>
                   <p className='text-sm text-muted-foreground'>{currentRow.type}</p>
                 </div>
                 <div>
-                  <label className='text-sm font-medium'>Base URL</label>
+                  <label className='text-sm font-medium'>{t('channels.dialog.fields.baseURL.label')}</label>
                   <p className='text-sm text-muted-foreground'>{currentRow.baseURL}</p>
                 </div>
                 <div>
-                  <label className='text-sm font-medium'>默认测试模型</label>
+                  <label className='text-sm font-medium'>{t('channels.dialog.fields.defaultTestModel.label')}</label>
                   <p className='text-sm text-muted-foreground'>{currentRow.defaultTestModel}</p>
                 </div>
               </div>
               <div>
-                <label className='text-sm font-medium'>支持的模型</label>
+                <label className='text-sm font-medium'>{t('channels.dialog.fields.supportedModels.label')}</label>
                 <div className='flex flex-wrap gap-1 mt-1'>
                   {currentRow.supportedModels.map((model) => (
                     <Badge key={model} variant='outline' className='text-xs'>
@@ -144,22 +146,22 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
 
           <Card>
             <CardHeader>
-              <CardTitle className='text-lg'>模型映射</CardTitle>
+              <CardTitle className='text-lg'>{t('channels.settings.modelMapping.title')}</CardTitle>
               <CardDescription>
-                配置模型名称映射，将请求中的模型名称映射到实际的模型名称
+                {t('channels.settings.modelMapping.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div className='flex gap-2'>
                 <Input
-                  placeholder='原模型名称'
+                  placeholder={t('channels.settings.modelMapping.originalModel')}
                   value={newMapping.from}
                   onChange={(e) => setNewMapping({ ...newMapping, from: e.target.value })}
                   className='flex-1'
                 />
                 <span className='flex items-center text-muted-foreground'>→</span>
                 <Input
-                  placeholder='目标模型名称'
+                  placeholder={t('channels.settings.modelMapping.targetModel')}
                   value={newMapping.to}
                   onChange={(e) => setNewMapping({ ...newMapping, to: e.target.value })}
                   className='flex-1'
@@ -177,7 +179,7 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
               <div className='space-y-2'>
                 {modelMappings.length === 0 ? (
                   <p className='text-sm text-muted-foreground text-center py-4'>
-                    暂无模型映射配置
+                    {t('channels.settings.modelMapping.noMappings')}
                   </p>
                 ) : (
                   modelMappings.map((mapping, index) => (
@@ -213,14 +215,14 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
             variant='outline'
             onClick={() => onOpenChange(false)}
           >
-            取消
+            {t('channels.dialog.buttons.cancel')}
           </Button>
           <Button
             type='button'
             onClick={() => onSubmit({ modelMappings })}
             disabled={updateChannel.isPending}
           >
-            {updateChannel.isPending ? '保存中...' : '保存设置'}
+            {updateChannel.isPending ? t('channels.dialog.buttons.saving') : t('channels.dialog.buttons.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

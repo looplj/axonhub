@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { LanguageSwitch } from '@/components/language-switch'
 import { SystemSettings } from './components/system-settings'
 import SystemProvider from './context/system-context'
 
@@ -18,11 +20,14 @@ function SystemContent() {
 }
 
 export default function SystemManagement() {
+  const { t } = useTranslation()
+  
   return (
     <SystemProvider>
       <Header fixed>
-        <Search />
+        {/* <Search /> */}
         <div className='ml-auto flex items-center space-x-4'>
+          <LanguageSwitch />
           <ThemeSwitch />
           <ProfileDropdown />
         </div>
@@ -31,9 +36,9 @@ export default function SystemManagement() {
       <Main>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>系统管理</h2>
+            <h2 className='text-2xl font-bold tracking-tight'>{t('system.title')}</h2>
             <p className='text-muted-foreground'>
-              管理系统配置和选项。
+              {t('system.description')}
             </p>
           </div>
         </div>

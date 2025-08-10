@@ -1,3 +1,5 @@
+'use client'
+
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -5,6 +7,7 @@ import {
   DoubleArrowRightIcon,
 } from '@radix-ui/react-icons'
 import { Table } from '@tanstack/react-table'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -21,6 +24,7 @@ interface DataTablePaginationProps<TData> {
 export function DataTablePagination<TData>({
   table,
 }: DataTablePaginationProps<TData>) {
+  const { t } = useTranslation()
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
   const selectedRows = table.getFilteredSelectedRowModel().rows.length
@@ -32,11 +36,11 @@ export function DataTablePagination<TData>({
       style={{ overflowClipMargin: 1 }}
     >
       <div className='text-muted-foreground hidden flex-1 text-sm sm:block'>
-        已选择 {selectedRows} 行，共 {totalRows} 行
+        {t('pagination.selectedRows', { selected: selectedRows, total: totalRows })}
       </div>
       <div className='flex items-center sm:space-x-6 lg:space-x-8'>
         <div className='flex items-center space-x-2'>
-          <p className='hidden text-sm font-medium sm:block'>每页行数</p>
+          <p className='hidden text-sm font-medium sm:block'>{t('pagination.rowsPerPage')}</p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {
@@ -57,11 +61,7 @@ export function DataTablePagination<TData>({
         </div>
         <div className='flex items-center justify-center text-sm font-medium'>
           <div className='flex items-center space-x-1'>
-            <span className='text-muted-foreground'>第</span>
-            <span className='font-semibold text-foreground'>{currentPage}</span>
-            <span className='text-muted-foreground'>页，共</span>
-            <span className='font-semibold text-foreground'>{totalPages}</span>
-            <span className='text-muted-foreground'>页</span>
+            {t('pagination.currentPage', { current: currentPage, total: totalPages })}
           </div>
         </div>
         <div className='flex items-center space-x-2'>
@@ -71,7 +71,7 @@ export function DataTablePagination<TData>({
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
-            <span className='sr-only'>跳转到第一页</span>
+            <span className='sr-only'>{t('pagination.firstPage')}</span>
             <DoubleArrowLeftIcon className='h-4 w-4' />
           </Button>
           <Button
@@ -80,7 +80,7 @@ export function DataTablePagination<TData>({
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            <span className='sr-only'>跳转到上一页</span>
+            <span className='sr-only'>{t('pagination.previousPage')}</span>
             <ChevronLeftIcon className='h-4 w-4' />
           </Button>
           <Button
@@ -89,7 +89,7 @@ export function DataTablePagination<TData>({
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            <span className='sr-only'>跳转到下一页</span>
+            <span className='sr-only'>{t('pagination.nextPage')}</span>
             <ChevronRightIcon className='h-4 w-4' />
           </Button>
           <Button
@@ -98,7 +98,7 @@ export function DataTablePagination<TData>({
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
           >
-            <span className='sr-only'>跳转到最后一页</span>
+            <span className='sr-only'>{t('pagination.lastPage')}</span>
             <DoubleArrowRightIcon className='h-4 w-4' />
           </Button>
         </div>

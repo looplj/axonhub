@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { ColumnDef } from '@tanstack/react-table'
 import { Copy, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -13,12 +14,13 @@ import { DataTableRowActions } from './data-table-row-actions'
 
 function ApiKeyCell({ apiKey }: { apiKey: string }) {
   const [isVisible, setIsVisible] = useState(false)
+  const { t } = useTranslation()
 
   const maskedKey = apiKey.replace(/./g, '*').slice(0, -4) + apiKey.slice(-4)
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(apiKey)
-    toast.success('API Key 已复制到剪贴板')
+    toast.success(t('apikeys.messages.copied'))
   }
 
   return (
@@ -50,7 +52,7 @@ function ApiKeyCell({ apiKey }: { apiKey: string }) {
   )
 }
 
-export const columns: ColumnDef<ApiKey>[] = [
+export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<ApiKey>[] => [
   {
     id: 'select',
     header: ({ table }) => (
@@ -60,7 +62,7 @@ export const columns: ColumnDef<ApiKey>[] = [
           (table.getIsSomePageRowsSelected() && 'indeterminate')
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label='Select all'
+        aria-label={t('apikeys.columns.selectAll')}
         className='translate-y-[2px]'
       />
     ),
@@ -74,7 +76,7 @@ export const columns: ColumnDef<ApiKey>[] = [
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label='Select row'
+        aria-label={t('apikeys.columns.selectRow')}
         className='translate-y-[2px]'
       />
     ),
@@ -84,7 +86,7 @@ export const columns: ColumnDef<ApiKey>[] = [
   {
     accessorKey: 'name',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='名称' />
+      <DataTableColumnHeader column={column} title={t('apikeys.columns.name')} />
     ),
     cell: ({ row }) => (
       <LongText className='max-w-36 font-medium'>
@@ -103,7 +105,7 @@ export const columns: ColumnDef<ApiKey>[] = [
   {
     accessorKey: 'key',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='API Key' />
+      <DataTableColumnHeader column={column} title={t('apikeys.columns.key')} />
     ),
     cell: ({ row }) => <ApiKeyCell apiKey={row.getValue('key')} />,
     enableSorting: false,
@@ -111,7 +113,7 @@ export const columns: ColumnDef<ApiKey>[] = [
   {
     accessorKey: 'user',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='用户' />
+      <DataTableColumnHeader column={column} title={t('apikeys.columns.user')} />
     ),
     cell: ({ row }) => {
       const user = row.original.user
@@ -127,13 +129,13 @@ export const columns: ColumnDef<ApiKey>[] = [
   {
     accessorKey: 'status',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='状态' />
+      <DataTableColumnHeader column={column} title={t('apikeys.columns.status')} />
     ),
     cell: ({ row }) => {
       const status = row.getValue('status') as string
       return (
         <div className={`text-sm ${status === 'enabled' ? 'text-green-600' : 'text-red-600'}`}>
-          {status === 'enabled' ? '已激活' : '已停用'}
+          {status === 'enabled' ? t('apikeys.status.enabled') : t('apikeys.status.disabled')}
         </div>
       )
     },
@@ -141,7 +143,7 @@ export const columns: ColumnDef<ApiKey>[] = [
   {
     accessorKey: 'createdAt',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='创建时间' />
+      <DataTableColumnHeader column={column} title={t('apikeys.columns.createdAt')} />
     ),
     cell: ({ row }) => {
       const date = row.getValue('createdAt') as Date
@@ -155,7 +157,7 @@ export const columns: ColumnDef<ApiKey>[] = [
   {
     accessorKey: 'updatedAt',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title='更新时间' />
+      <DataTableColumnHeader column={column} title={t('apikeys.columns.updatedAt')} />
     ),
     cell: ({ row }) => {
       const date = row.getValue('updatedAt') as Date

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -10,6 +11,7 @@ import { useSystemSettings, useUpdateSystemSettings } from '../data/system'
 import { useSystemContext } from '../context/system-context'
 
 export function SystemSettings() {
+  const { t } = useTranslation()
   const { data: settings, isLoading: isLoadingSettings } = useSystemSettings()
   const updateSettings = useUpdateSystemSettings()
   const { isLoading, setIsLoading } = useSystemContext()
@@ -40,7 +42,7 @@ export function SystemSettings() {
     return (
       <div className='flex items-center justify-center h-32'>
         <Loader2 className='h-6 w-6 animate-spin' />
-        <span className='ml-2 text-muted-foreground'>加载系统设置...</span>
+        <span className='ml-2 text-muted-foreground'>{t('system.loading')}</span>
       </div>
     )
   }
@@ -49,17 +51,17 @@ export function SystemSettings() {
     <div className='space-y-6'>
       <Card>
         <CardHeader>
-          <CardTitle>存储设置</CardTitle>
+          <CardTitle>{t('system.storage.title')}</CardTitle>
           <CardDescription>
-            配置系统如何处理和存储响应数据
+            {t('system.storage.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className='space-y-6'>
           <div className='flex items-center justify-between'>
             <div className='space-y-0.5'>
-              <Label htmlFor='store-chunks'>存储响应块</Label>
+              <Label htmlFor='store-chunks'>{t('system.storage.storeChunks.label')}</Label>
               <div className='text-sm text-muted-foreground'>
-                启用后，系统将在数据库中存储响应数据块，便于后续分析和处理
+                {t('system.storage.storeChunks.description')}
               </div>
             </div>
             <Switch
@@ -74,14 +76,14 @@ export function SystemSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>其他设置</CardTitle>
+          <CardTitle>{t('system.other.title')}</CardTitle>
           <CardDescription>
-            更多系统配置选项将在此处添加
+            {t('system.other.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className='text-sm text-muted-foreground'>
-            更多配置选项即将推出...
+            {t('system.other.comingSoon')}
           </div>
         </CardContent>
       </Card>
@@ -96,12 +98,12 @@ export function SystemSettings() {
             {(isLoading || updateSettings.isPending) ? (
               <>
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                保存中...
+                {t('system.buttons.saving')}
               </>
             ) : (
               <>
                 <Save className='mr-2 h-4 w-4' />
-                保存设置
+                {t('system.buttons.save')}
               </>
             )}
           </Button>

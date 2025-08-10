@@ -4,6 +4,7 @@ import React from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -33,6 +34,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 
 // Create Role Dialog
 export function CreateRoleDialog() {
+  const { t } = useTranslation()
   const { isCreateDialogOpen, setIsCreateDialogOpen } = useRolesContext()
   const { data: scopes = [] } = useAllScopes()
   const createRole = useCreateRole()
@@ -65,9 +67,9 @@ export function CreateRoleDialog() {
     <Dialog open={isCreateDialogOpen} onOpenChange={handleClose}>
       <DialogContent className='max-w-2xl'>
         <DialogHeader>
-          <DialogTitle>新建角色</DialogTitle>
+          <DialogTitle>{t('roles.dialog.create.title')}</DialogTitle>
           <DialogDescription>
-            创建一个新的角色并配置其权限范围。
+            {t('roles.dialog.create.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -78,12 +80,12 @@ export function CreateRoleDialog() {
                 name='code'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>角色代码</FormLabel>
+                    <FormLabel>{t('roles.dialog.fields.code.label')}</FormLabel>
                     <FormControl>
-                      <Input placeholder='admin' {...field} />
+                      <Input placeholder={t('roles.dialog.fields.code.placeholder')} {...field} />
                     </FormControl>
                     <FormDescription>
-                      唯一标识符，只能包含字母、数字和下划线
+                      {t('roles.dialog.fields.code.description')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -94,12 +96,12 @@ export function CreateRoleDialog() {
                 name='name'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>角色名称</FormLabel>
+                    <FormLabel>{t('roles.dialog.fields.name.label')}</FormLabel>
                     <FormControl>
-                      <Input placeholder='管理员' {...field} />
+                      <Input placeholder={t('roles.dialog.fields.name.placeholder')} {...field} />
                     </FormControl>
                     <FormDescription>
-                      用户友好的角色名称
+                      {t('roles.dialog.fields.name.description')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -113,9 +115,9 @@ export function CreateRoleDialog() {
               render={() => (
                 <FormItem>
                   <div className='mb-4'>
-                    <FormLabel className='text-base'>权限范围</FormLabel>
+                    <FormLabel className='text-base'>{t('roles.dialog.fields.scopes.label')}</FormLabel>
                     <FormDescription>
-                      选择此角色拥有的权限
+                      {t('roles.dialog.fields.scopes.description')}
                     </FormDescription>
                   </div>
                   <ScrollArea className='h-[300px] w-full rounded-md border p-4'>
@@ -135,10 +137,11 @@ export function CreateRoleDialog() {
                                   <Checkbox
                                     checked={field.value?.includes(scope.scope)}
                                     onCheckedChange={(checked) => {
+                                      const currentValue = field.value || []
                                       return checked
-                                        ? field.onChange([...field.value, scope.scope])
+                                        ? field.onChange([...currentValue, scope.scope])
                                         : field.onChange(
-                                            field.value?.filter(
+                                            currentValue.filter(
                                               (value) => value !== scope.scope
                                             )
                                           )
@@ -167,10 +170,10 @@ export function CreateRoleDialog() {
             
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
-                取消
+                {t('roles.dialog.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={createRole.isPending}>
-                {createRole.isPending ? '创建中...' : '创建角色'}
+                {createRole.isPending ? t('roles.dialog.buttons.creating') : t('roles.dialog.buttons.create')}
               </Button>
             </DialogFooter>
           </form>
@@ -182,6 +185,7 @@ export function CreateRoleDialog() {
 
 // Edit Role Dialog
 export function EditRoleDialog() {
+  const { t } = useTranslation()
   const { editingRole, setEditingRole } = useRolesContext()
   const { data: scopes = [] } = useAllScopes()
   const updateRole = useUpdateRole()
@@ -189,17 +193,16 @@ export function EditRoleDialog() {
   const form = useForm<z.infer<typeof updateRoleInputSchema>>({
     resolver: zodResolver(updateRoleInputSchema),
     defaultValues: {
-      name: editingRole?.name || '',
-      scopes: editingRole?.scopes || [],
+      name: '',
+      scopes: [],
     },
   })
 
-  // Update form when editingRole changes
   React.useEffect(() => {
     if (editingRole) {
       form.reset({
         name: editingRole.name,
-        scopes: editingRole.scopes,
+        scopes: editingRole.scopes?.map((scope: any) => scope.id) || [],
       })
     }
   }, [editingRole, form])
@@ -226,19 +229,23 @@ export function EditRoleDialog() {
     <Dialog open={!!editingRole} onOpenChange={handleClose}>
       <DialogContent className='max-w-2xl'>
         <DialogHeader>
-          <DialogTitle>编辑角色</DialogTitle>
+          <DialogTitle>{t('roles.dialog.edit.title')}</DialogTitle>
           <DialogDescription>
-            修改角色信息和权限配置。
+            {t('roles.dialog.edit.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
             <div className='grid grid-cols-2 gap-4'>
               <div>
-                <FormLabel>角色代码</FormLabel>
-                <Input value={editingRole.code} disabled />
+                <FormLabel>{t('roles.dialog.fields.code.label')}</FormLabel>
+                <Input 
+                  value={editingRole.code} 
+                  disabled 
+                  className='bg-muted'
+                />
                 <FormDescription>
-                  角色代码不可修改
+                  {t('roles.dialog.edit.codeNotEditable')}
                 </FormDescription>
               </div>
               <FormField
@@ -246,12 +253,12 @@ export function EditRoleDialog() {
                 name='name'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>角色名称</FormLabel>
+                    <FormLabel>{t('roles.dialog.fields.name.label')}</FormLabel>
                     <FormControl>
-                      <Input placeholder='管理员' {...field} />
+                      <Input placeholder={t('roles.dialog.fields.name.placeholder')} {...field} />
                     </FormControl>
                     <FormDescription>
-                      用户友好的角色名称
+                      {t('roles.dialog.fields.name.description')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -265,9 +272,9 @@ export function EditRoleDialog() {
               render={() => (
                 <FormItem>
                   <div className='mb-4'>
-                    <FormLabel className='text-base'>权限范围</FormLabel>
+                    <FormLabel className='text-base'>{t('roles.dialog.fields.scopes.label')}</FormLabel>
                     <FormDescription>
-                      选择此角色拥有的权限
+                      {t('roles.dialog.fields.scopes.description')}
                     </FormDescription>
                   </div>
                   <ScrollArea className='h-[300px] w-full rounded-md border p-4'>
@@ -287,10 +294,11 @@ export function EditRoleDialog() {
                                   <Checkbox
                                     checked={field.value?.includes(scope.scope)}
                                     onCheckedChange={(checked) => {
+                                      const currentValue = field.value || []
                                       return checked
-                                        ? field.onChange([...field.value, scope.scope])
+                                        ? field.onChange([...currentValue, scope.scope])
                                         : field.onChange(
-                                            field.value?.filter(
+                                            currentValue.filter(
                                               (value) => value !== scope.scope
                                             )
                                           )
@@ -319,10 +327,10 @@ export function EditRoleDialog() {
             
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
-                取消
+                {t('roles.dialog.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={updateRole.isPending}>
-                {updateRole.isPending ? '保存中...' : '保存更改'}
+                {updateRole.isPending ? t('roles.dialog.buttons.saving') : t('roles.dialog.buttons.save')}
               </Button>
             </DialogFooter>
           </form>
@@ -334,6 +342,7 @@ export function EditRoleDialog() {
 
 // Delete Role Dialog
 export function DeleteRoleDialog() {
+  const { t } = useTranslation()
   const { deletingRole, setDeletingRole } = useRolesContext()
   const deleteRole = useDeleteRole()
 
@@ -352,10 +361,10 @@ export function DeleteRoleDialog() {
     <ConfirmDialog
       open={!!deletingRole}
       onOpenChange={() => setDeletingRole(null)}
-      title='删除角色'
-      desc={`确定要删除角色 "${deletingRole?.name}" 吗？此操作无法撤销。`}
-      confirmText='删除角色'
-      cancelBtnText='取消'
+      title={t('roles.dialog.delete.title')}
+      desc={t('roles.dialog.delete.description', { name: deletingRole?.name })}
+      confirmText={t('roles.dialog.buttons.delete')}
+      cancelBtnText={t('roles.dialog.buttons.cancel')}
       handleConfirm={handleConfirm}
       isLoading={deleteRole.isPending}
       destructive

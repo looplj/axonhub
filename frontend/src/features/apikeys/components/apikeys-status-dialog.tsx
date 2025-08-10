@@ -1,12 +1,14 @@
 'use client'
 
 import { IconAlertTriangle } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ApiKey } from '../data/schema'
 import { useUpdateApiKeyStatus } from '../data/apikeys'
 import { useApiKeysContext } from '../context/apikeys-context'
 
 export function ApiKeysStatusDialog() {
+  const { t } = useTranslation()
   const { isDialogOpen, closeDialog, selectedApiKey } = useApiKeysContext()
   const updateApiKeyStatus = useUpdateApiKeyStatus()
 
@@ -40,16 +42,16 @@ export function ApiKeysStatusDialog() {
             className={`${isDisabling ? 'stroke-destructive' : 'stroke-green-600'} mr-1 inline-block`}
             size={18}
           />
-          {isDisabling ? '停用API密钥' : '激活API密钥'}
+          {isDisabling ? t('apikeys.dialog.status.disableTitle') : t('apikeys.dialog.status.enableTitle')}
         </span>
       }
       desc={
         isDisabling
-          ? `确定要停用API密钥 "${selectedApiKey.name}" 吗？停用后该密钥将无法使用。`
-          : `确定要激活API密钥 "${selectedApiKey.name}" 吗？激活后该密钥将可以正常使用。`
+          ? t('apikeys.dialog.status.disableDescription', { name: selectedApiKey.name })
+          : t('apikeys.dialog.status.enableDescription', { name: selectedApiKey.name })
       }
-      confirmText={isDisabling ? '停用' : '激活'}
-      cancelBtnText='取消'
+      confirmText={isDisabling ? t('apikeys.dialog.buttons.disable') : t('apikeys.dialog.buttons.enable')}
+      cancelBtnText={t('apikeys.dialog.buttons.cancel')}
     />
   )
 }

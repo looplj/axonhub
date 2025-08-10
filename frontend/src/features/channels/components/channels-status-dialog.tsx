@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslation } from 'react-i18next'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Channel } from '../data/schema'
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) {
+  const { t } = useTranslation()
   const updateChannelStatus = useUpdateChannelStatus()
 
   const handleStatusChange = async () => {
@@ -29,6 +31,11 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
   }
 
   const isDisabling = currentRow.status === 'enabled'
+  const title = isDisabling ? t('channels.status.disable.title') : t('channels.status.enable.title')
+  const description = isDisabling 
+    ? t('channels.status.disable.description', { name: currentRow.name })
+    : t('channels.status.enable.description', { name: currentRow.name })
+  const actionText = isDisabling ? t('channels.status.disable.button') : t('channels.status.enable.button')
 
   return (
     <ConfirmDialog
@@ -42,16 +49,12 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
             className={`${isDisabling ? 'stroke-destructive' : 'stroke-green-600'} mr-1 inline-block`}
             size={18}
           />
-          {isDisabling ? '禁用频道' : '启用频道'}
+          {title}
         </span>
       }
-      desc={
-        isDisabling
-          ? `确定要禁用频道 "${currentRow.name}" 吗？禁用后该频道将无法使用。`
-          : `确定要启用频道 "${currentRow.name}" 吗？启用后该频道将可以正常使用。`
-      }
-      confirmText={isDisabling ? '禁用' : '启用'}
-      cancelBtnText='取消'
+      desc={description}
+      confirmText={actionText}
+      cancelBtnText={t('channels.dialog.buttons.cancel')}
     />
   )
 }

@@ -23,7 +23,9 @@ import {
 } from '@/components/ui/table'
 import { Request, RequestConnection } from '../data/schema'
 import { DataTableToolbar } from './data-table-toolbar'
-import { ServerSidePagination } from './server-side-pagination'
+import { ServerSidePagination } from '@/components/server-side-pagination'
+import { useRequestsColumns } from './requests-columns'
+import { useTranslation } from 'react-i18next'
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -32,10 +34,9 @@ declare module '@tanstack/react-table' {
   }
 }
 
-interface DataTableProps {
-  columns: ColumnDef<Request>[]
+interface RequestsTableProps {
   data: Request[]
-  isLoading?: boolean
+  loading?: boolean
   pageInfo?: RequestConnection['pageInfo']
   pageSize: number
   totalCount?: number
@@ -45,24 +46,25 @@ interface DataTableProps {
 }
 
 export function RequestsTable({
-  columns,
   data,
-  isLoading,
+  loading,
   pageInfo,
-  pageSize,
   totalCount,
+  pageSize,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
-}: DataTableProps) {
-  const [rowSelection, setRowSelection] = useState({})
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+}: RequestsTableProps) {
+  const { t } = useTranslation()
+  const requestsColumns = useRequestsColumns()
   const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [rowSelection, setRowSelection] = useState({})
 
   const table = useReactTable({
     data,
-    columns,
+    columns: requestsColumns,
     state: {
       sorting,
       columnVisibility,
@@ -111,13 +113,13 @@ export function RequestsTable({
             ))}
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={requestsColumns.length}
                   className='h-24 text-center'
                 >
-                  加载中...
+                  {t('loading')}
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
@@ -143,10 +145,10 @@ export function RequestsTable({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={requestsColumns.length}
                   className='h-24 text-center'
                 >
-                  暂无数据
+                  {t('noData')}
                 </TableCell>
               </TableRow>
             )}

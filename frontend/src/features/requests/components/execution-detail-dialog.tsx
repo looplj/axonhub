@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
+import { zhCN, enUS } from 'date-fns/locale'
 import { Copy, Clock, Key, Database } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { RequestExecution } from '../data/schema'
+import { useTranslation } from 'react-i18next'
 import { getStatusColor } from './help'
 
 interface ExecutionDetailDialogProps {
@@ -25,6 +26,9 @@ export function ExecutionDetailDialog({
   onOpenChange,
   execution,
 }: ExecutionDetailDialogProps) {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'zh' ? zhCN : enUS
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
   }
@@ -49,7 +53,7 @@ export function ExecutionDetailDialog({
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <Database className='h-5 w-5' />
-            执行详情
+            {t('requests.dialog.executionDetail.title')}
           </DialogTitle>
         </DialogHeader>
 
@@ -59,9 +63,9 @@ export function ExecutionDetailDialog({
             <div className='grid grid-cols-2 gap-4'>
               <div className='space-y-2'>
                 <div className='flex items-center gap-2'>
-                  <span className='text-sm font-medium'>Channel:</span>
+                  <span className='text-sm font-medium'>{t('requests.dialog.executionDetail.channel')}:</span>
                    <p className='text-muted-foreground text-sm'>
-                  {execution.channel?.name || '未知'}
+                  {execution.channel?.name || t('requests.dialog.executionDetail.unknown')}
                 </p>
                 </div>
                
@@ -69,28 +73,28 @@ export function ExecutionDetailDialog({
               <div className='space-y-2'>
                 <div className='flex items-center gap-2'>
                   <Key className='text-muted-foreground h-4 w-4' />
-                  <span className='text-sm font-medium'>模型ID:</span>
+                  <span className='text-sm font-medium'>{t('requests.dialog.executionDetail.modelId')}:</span>
                     <p className='text-muted-foreground text-sm'>
-                  {execution.modelID || '未知'}
+                  {execution.modelID || t('requests.dialog.executionDetail.unknown')}
                 </p>
                 </div>
               
               </div>
               <div className='space-y-2'>
-                <span className='text-sm font-medium'>状态:</span>
+                <span className='text-sm font-medium'>{t('requests.dialog.executionDetail.status')}:</span>
                 <Badge className={getStatusColor(execution.status)}>
-                  {execution.status}
+                  {t(`requests.status.${execution.status}`)}
                 </Badge>
               </div>
               <div className='space-y-2'>
                 <div className='flex items-center gap-2'>
                   <Clock className='text-muted-foreground h-4 w-4' />
-                  <span className='text-sm font-medium'>创建时间:</span>
+                  <span className='text-sm font-medium'>{t('requests.dialog.executionDetail.createdAt')}:</span>
                   <p className='text-muted-foreground text-sm'>
                     {format(
                       new Date(execution.createdAt),
                       'yyyy-MM-dd HH:mm:ss',
-                      { locale: zhCN }
+                      { locale }
                     )}
                   </p>
                 </div>
@@ -105,7 +109,7 @@ export function ExecutionDetailDialog({
             {/* Request Body */}
             <div className='space-y-3'>
               <div className='flex items-center justify-between'>
-                <h4 className='text-sm font-medium'>请求体</h4>
+                <h4 className='text-sm font-medium'>{t('requests.dialog.executionDetail.requestBody')}</h4>
                 <Button
                   variant='outline'
                   size='sm'
@@ -114,7 +118,7 @@ export function ExecutionDetailDialog({
                   }
                 >
                   <Copy className='mr-2 h-4 w-4' />
-                  复制
+                  {t('requests.dialog.jsonViewer.copy')}
                 </Button>
               </div>
               <ScrollArea className='h-128 w-full rounded-xs border p-4'>
@@ -127,7 +131,7 @@ export function ExecutionDetailDialog({
             {/* Response Body */}
             <div className='space-y-3'>
               <div className='flex items-center justify-between'>
-                <h4 className='text-sm font-medium'>响应体</h4>
+                <h4 className='text-sm font-medium'>{t('requests.dialog.executionDetail.responseBody')}</h4>
                 <Button
                   variant='outline'
                   size='sm'
@@ -137,14 +141,14 @@ export function ExecutionDetailDialog({
                   disabled={!execution.responseBody}
                 >
                   <Copy className='mr-2 h-4 w-4' />
-                  复制
+                  {t('requests.dialog.jsonViewer.copy')}
                 </Button>
               </div>
               <ScrollArea className='h-128 w-full rounded-xs border p-4'>
                 <pre className='text-xs whitespace-pre-wrap font-mono min-w-full'>
                   {execution.responseBody
                     ? formatJson(execution.responseBody)
-                    : '暂无响应'}
+                    : t('requests.dialog.executionDetail.noResponse')}
                 </pre>
               </ScrollArea>
             </div>
@@ -155,7 +159,7 @@ export function ExecutionDetailDialog({
             <>
               <Separator />
               <div className='space-y-3'>
-                <h4 className='text-sm font-medium text-red-600'>错误信息</h4>
+                <h4 className='text-sm font-medium text-red-600'>{t('requests.dialog.executionDetail.errorMessage')}</h4>
                 <ScrollArea className='h-64 w-full rounded-xs border bg-red-50 p-4'>
                   <pre className='text-xs whitespace-pre-wrap text-red-800'>
                     {execution.errorMessage}

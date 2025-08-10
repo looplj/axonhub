@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { graphqlRequest } from '@/gql/graphql'
 import { UPDATE_ME_MUTATION } from '@/gql/users'
 import { toast } from 'sonner'
@@ -26,38 +27,44 @@ import {
 } from '@/components/ui/select'
 import { useMe } from '@/features/auth/data/auth'
 
-const profileFormSchema = z.object({
-  firstName: z
-    .string()
-    .min(1, {
-      message: 'First name is required.',
-    })
-    .max(50, {
-      message: 'First name must not be longer than 50 characters.',
-    }),
-  lastName: z
-    .string()
-    .min(1, {
-      message: 'Last name is required.',
-    })
-    .max(50, {
-      message: 'Last name must not be longer than 50 characters.',
-    }),
-  email: z
-    .string({
-      required_error: 'Email is required.',
-    })
-    .email('Please enter a valid email address.'),
-  preferLanguage: z.string().min(1, {
-    message: 'Please select a preferred language.',
-  }),
-})
-
-type ProfileFormValues = z.infer<typeof profileFormSchema>
+type ProfileFormValues = {
+  firstName: string
+  lastName: string
+  email: string
+  preferLanguage: string
+}
 
 export default function ProfileForm() {
+  const { t } = useTranslation()
   const auth = useAuthStore((state) => state.auth)
   const queryClient = useQueryClient()
+
+  const profileFormSchema = z.object({
+    firstName: z
+      .string()
+      .min(1, {
+        message: t('profile.form.validation.firstNameRequired'),
+      })
+      .max(50, {
+        message: t('profile.form.validation.firstNameTooLong'),
+      }),
+    lastName: z
+      .string()
+      .min(1, {
+        message: t('profile.form.validation.lastNameRequired'),
+      })
+      .max(50, {
+        message: t('profile.form.validation.lastNameTooLong'),
+      }),
+    email: z
+      .string({
+        required_error: t('profile.form.validation.emailRequired'),
+      })
+      .email(t('profile.form.validation.emailInvalid')),
+    preferLanguage: z.string().min(1, {
+      message: t('profile.form.validation.languageRequired'),
+    }),
+  })
 
   // Get current user data
   const { data: currentUser, isLoading } = useMe()
@@ -99,10 +106,10 @@ export default function ProfileForm() {
       // Invalidate and refetch user data
       queryClient.invalidateQueries({ queryKey: ['me'] })
 
-      toast.success('Profile updated successfully!')
+      toast.success(t('profile.form.messages.updateSuccess'))
     },
     onError: (error: any) => {
-      toast.error(`Failed to update profile: ${error.message}`)
+      toast.error(t('profile.form.messages.updateError', { error: error.message }))
     },
   })
 
@@ -111,7 +118,7 @@ export default function ProfileForm() {
   }
 
   if (isLoading) {
-    return <div>Loading...</div>
+    return <div>{t('profile.loading')}</div>
   }
 
   return (
@@ -123,12 +130,12 @@ export default function ProfileForm() {
             name='firstName'
             render={({ field }) => (
               <FormItem>
-                <FormLabel>First Name</FormLabel>
+                <FormLabel>{t('profile.form.fields.firstName.label')}</FormLabel>
                 <FormControl>
-                  <Input placeholder='Enter your first name' {...field} />
+                  <Input placeholder={t('profile.form.fields.firstName.placeholder')} {...field} />
                 </FormControl>
                 <FormDescription>
-                  Your first name as it will appear to other users.
+                  {t('profile.form.fields.firstName.description')}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -140,12 +147,12 @@ export default function ProfileForm() {
             name='lastName'
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Last Name</FormLabel>
+                <FormLabel>{t('profile.form.fields.lastName.label')}</FormLabel>
                 <FormControl>
-                  <Input placeholder='Enter your last name' {...field} />
+                  <Input placeholder={t('profile.form.fields.lastName.placeholder')} {...field} />
                 </FormControl>
                 <FormDescription>
-                  Your last name as it will appear to other users.
+                  {t('profile.form.fields.lastName.description')}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -158,16 +165,16 @@ export default function ProfileForm() {
           name='email'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('profile.form.fields.email.label')}</FormLabel>
               <FormControl>
                 <Input
                   type='email'
-                  placeholder='Enter your email address'
+                  placeholder={t('profile.form.fields.email.placeholder')}
                   {...field}
                 />
               </FormControl>
               <FormDescription>
-                Your email address for account notifications and login.
+                {t('profile.form.fields.email.description')}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -179,29 +186,29 @@ export default function ProfileForm() {
           name='preferLanguage'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Preferred Language</FormLabel>
+              <FormLabel>{t('profile.form.fields.preferLanguage.label')}</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder='Select your preferred language' />
+                    <SelectValue placeholder={t('profile.form.fields.preferLanguage.placeholder')} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value='en'>English</SelectItem>
-                  <SelectItem value='zh'>中文</SelectItem>
+                  <SelectItem value='en'>{t('profile.form.fields.preferLanguage.options.en')}</SelectItem>
+                  <SelectItem value='zh'>{t('profile.form.fields.preferLanguage.options.zh')}</SelectItem>
                   {/* <SelectItem value='ja'>日本語</SelectItem> */}
                   {/* <SelectItem value='ko'>한국어</SelectItem> */}
                 </SelectContent>
               </Select>
               <FormDescription>
-                Choose your preferred language for the interface.
+                {t('profile.form.fields.preferLanguage.description')}
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <Button type='submit'>Update Profile</Button>
+        <Button type='submit'>{t('profile.form.buttons.update')}</Button>
       </form>
     </Form>
   )

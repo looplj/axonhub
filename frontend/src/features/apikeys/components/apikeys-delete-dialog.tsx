@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,6 +13,7 @@ import { useApiKeysContext } from '../context/apikeys-context'
 import { useDeleteApiKey } from '../data/apikeys'
 
 export function ApiKeysDeleteDialog() {
+  const { t } = useTranslation()
   const { isDialogOpen, closeDialog, selectedApiKey } = useApiKeysContext()
   const deleteApiKey = useDeleteApiKey()
   const [isDeleting, setIsDeleting] = useState(false)
@@ -38,9 +40,9 @@ export function ApiKeysDeleteDialog() {
     <Dialog open={isDialogOpen.delete} onOpenChange={handleClose}>
       <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
-          <DialogTitle>删除 API Key</DialogTitle>
+          <DialogTitle>{t('apikeys.dialog.delete.title')}</DialogTitle>
           <DialogDescription>
-            确定要删除 API Key "{selectedApiKey?.name}" 吗？此操作无法撤销。
+            {t('apikeys.dialog.delete.description', { name: selectedApiKey?.name })}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -50,7 +52,7 @@ export function ApiKeysDeleteDialog() {
             onClick={handleClose}
             disabled={isDeleting}
           >
-            取消
+            {t('apikeys.dialog.buttons.cancel')}
           </Button>
           <Button
             type='button'
@@ -58,7 +60,7 @@ export function ApiKeysDeleteDialog() {
             onClick={handleDelete}
             disabled={isDeleting}
           >
-            {isDeleting ? '删除中...' : '删除'}
+            {isDeleting ? t('apikeys.dialog.buttons.deleting') : t('apikeys.dialog.buttons.delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

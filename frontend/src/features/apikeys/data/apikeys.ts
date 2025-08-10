@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { graphqlRequest } from '@/gql/graphql'
 import { useErrorHandler } from '@/hooks/use-error-handler'
 import type { ApiKey, ApiKeyConnection, CreateApiKeyInput, UpdateApiKeyInput } from './schema'
@@ -106,6 +107,7 @@ export function useApiKeys(variables?: {
   orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
   where?: Record<string, any>
 }) {
+  const { t } = useTranslation()
   const { handleError } = useErrorHandler()
   
   return useQuery({
@@ -118,7 +120,7 @@ export function useApiKeys(variables?: {
         )
         return apiKeyConnectionSchema.parse(data?.apiKeys)
       } catch (error) {
-        handleError(error, '获取API密钥数据')
+        handleError(error, t('apikeys.errors.fetchData'))
         throw error
       }
     },
@@ -126,6 +128,7 @@ export function useApiKeys(variables?: {
 }
 
 export function useApiKey(id: string) {
+  const { t } = useTranslation()
   const { handleError } = useErrorHandler()
   
   return useQuery({
@@ -135,7 +138,7 @@ export function useApiKey(id: string) {
         const data = await graphqlRequest<{ apiKey: ApiKey }>(APIKEY_QUERY, { id })
         return apiKeySchema.parse(data.apiKey)
       } catch (error) {
-        handleError(error, '获取API密钥详情')
+        handleError(error, t('apikeys.errors.fetchDetails'))
         throw error
       }
     },
@@ -144,6 +147,7 @@ export function useApiKey(id: string) {
 }
 
 export function useCreateApiKey() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   
   return useMutation({
@@ -151,16 +155,17 @@ export function useCreateApiKey() {
       graphqlRequest<{ createApiKey: ApiKey }>(CREATE_APIKEY_MUTATION, { input }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
-      toast.success('API Key created successfully')
+      toast.success(t('apikeys.messages.createSuccess'))
     },
     onError: (error) => {
-      toast.error('Failed to create API Key')
+      toast.error(t('apikeys.messages.createError'))
       console.error('Create API Key error:', error)
     },
   })
 }
 
 export function useUpdateApiKey() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   
   return useMutation({
@@ -169,16 +174,17 @@ export function useUpdateApiKey() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] })
-      toast.success('API Key updated successfully')
+      toast.success(t('apikeys.messages.updateSuccess'))
     },
     onError: (error) => {
-      toast.error('Failed to update API Key')
+      toast.error(t('apikeys.messages.updateError'))
       console.error('Update API Key error:', error)
     },
   })
 }
 
 export function useUpdateApiKeyStatus() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   
   return useMutation({
@@ -187,10 +193,13 @@ export function useUpdateApiKeyStatus() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] })
-      toast.success(`API Key 状态已更新为 ${data.updateAPIKeyStatus.status === 'enabled' ? '启用' : '禁用'}`)
+      const statusText = data.updateAPIKeyStatus.status === 'enabled' 
+        ? t('apikeys.status.enabled') 
+        : t('apikeys.status.disabled')
+      toast.success(t('apikeys.messages.statusUpdateSuccess', { status: statusText }))
     },
     onError: (error) => {
-      toast.error('状态更新失败')
+      toast.error(t('apikeys.messages.statusUpdateError'))
       console.error('Update API Key status error:', error)
     },
   })

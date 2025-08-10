@@ -1,11 +1,14 @@
+'use client'
+
 import { ColumnDef } from '@tanstack/react-table'
+import { useTranslation } from 'react-i18next'
 import { format } from 'date-fns'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Role } from '../data/schema'
 import { DataTableRowActions } from './data-table-row-actions'
 
-export const columns: ColumnDef<Role>[] = [
+export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<Role>[] => [
   {
     id: 'select',
     header: ({ table }) => (
@@ -15,7 +18,7 @@ export const columns: ColumnDef<Role>[] = [
           (table.getIsSomePageRowsSelected() && 'indeterminate')
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label='Select all'
+        aria-label={t('roles.columns.selectAll')}
         className='translate-y-[2px]'
       />
     ),
@@ -23,7 +26,7 @@ export const columns: ColumnDef<Role>[] = [
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label='Select row'
+        aria-label={t('roles.columns.selectRow')}
         className='translate-y-[2px]'
       />
     ),
@@ -32,7 +35,7 @@ export const columns: ColumnDef<Role>[] = [
   },
   {
     accessorKey: 'code',
-    header: '角色代码',
+    header: t('roles.columns.code'),
     cell: ({ row }) => {
       const code = row.getValue('code') as string
       return (
@@ -44,7 +47,7 @@ export const columns: ColumnDef<Role>[] = [
   },
   {
     accessorKey: 'name',
-    header: '角色名称',
+    header: t('roles.columns.name'),
     cell: ({ row }) => {
       const name = row.getValue('name') as string
       return (
@@ -56,7 +59,7 @@ export const columns: ColumnDef<Role>[] = [
   },
   {
     accessorKey: 'scopes',
-    header: '权限范围',
+    header: t('roles.columns.scopes'),
     cell: ({ row }) => {
       const scopes = row.getValue('scopes') as string[]
       return (
@@ -68,7 +71,7 @@ export const columns: ColumnDef<Role>[] = [
           ))}
           {scopes.length > 3 && (
             <Badge variant='outline' className='text-xs'>
-              +{scopes.length - 3} 更多
+              +{scopes.length - 3} {t('roles.columns.moreScopes')}
             </Badge>
           )}
         </div>
@@ -77,7 +80,7 @@ export const columns: ColumnDef<Role>[] = [
   },
   {
     accessorKey: 'createdAt',
-    header: '创建时间',
+    header: t('roles.columns.createdAt'),
     cell: ({ row }) => {
       const date = row.getValue('createdAt') as Date
       return (
@@ -89,7 +92,7 @@ export const columns: ColumnDef<Role>[] = [
   },
   {
     accessorKey: 'updatedAt',
-    header: '更新时间',
+    header: t('roles.columns.updatedAt'),
     cell: ({ row }) => {
       const date = row.getValue('updatedAt') as Date
       return (
@@ -104,5 +107,3 @@ export const columns: ColumnDef<Role>[] = [
     cell: ({ row }) => <DataTableRowActions row={row} />,
   },
 ]
-
-export default columns;

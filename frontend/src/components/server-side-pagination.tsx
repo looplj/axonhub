@@ -1,9 +1,12 @@
+'use client'
+
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from '@radix-ui/react-icons'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -41,18 +44,22 @@ export function ServerSidePagination({
   onPreviousPage,
   onPageSizeChange,
 }: ServerSidePaginationProps) {
+  const { t } = useTranslation()
+  
   return (
     <div
       className='flex items-center justify-between overflow-clip px-2'
       style={{ overflowClipMargin: 1 }}
     >
       <div className='text-muted-foreground hidden flex-1 text-sm sm:block'>
-        已选择 {selectedRows} 行，当前页显示 {dataLength} 行
-        {totalCount !== undefined && ` / 共 ${totalCount} 行`}
+        {totalCount !== undefined 
+          ? t('pagination.selectedInfoWithTotal', { selectedRows, dataLength, totalCount })
+          : t('pagination.selectedInfo', { selectedRows, dataLength })
+        }
       </div>
       <div className='flex items-center sm:space-x-6 lg:space-x-8'>
         <div className='flex items-center space-x-2'>
-          <p className='hidden text-sm font-medium sm:block'>每页行数</p>
+          <p className='hidden text-sm font-medium sm:block'>{t('pagination.rowsPerPage')}</p>
           <Select
             value={`${pageSize}`}
             onValueChange={(value) => {
@@ -74,11 +81,11 @@ export function ServerSidePagination({
         <div className='flex items-center justify-center text-sm font-medium'>
           <div className='flex items-center space-x-1'>
             <span className='text-muted-foreground'>
-              {pageInfo?.hasPreviousPage ? '有上一页' : '第一页'}
+              {pageInfo?.hasPreviousPage ? t('pagination.hasPrevious') : t('pagination.firstPage')}
             </span>
             <span className='text-muted-foreground'>|</span>
             <span className='text-muted-foreground'>
-              {pageInfo?.hasNextPage ? '有下一页' : '最后一页'}
+              {pageInfo?.hasNextPage ? t('pagination.hasNext') : t('pagination.lastPage')}
             </span>
           </div>
         </div>
@@ -89,7 +96,7 @@ export function ServerSidePagination({
             onClick={onPreviousPage}
             disabled={!pageInfo?.hasPreviousPage}
           >
-            <span className='sr-only'>跳转到第一页</span>
+            <span className='sr-only'>{t('pagination.firstPage')}</span>
             <DoubleArrowLeftIcon className='h-4 w-4' />
           </Button>
           <Button
@@ -98,7 +105,7 @@ export function ServerSidePagination({
             onClick={onPreviousPage}
             disabled={!pageInfo?.hasPreviousPage}
           >
-            <span className='sr-only'>跳转到上一页</span>
+            <span className='sr-only'>{t('pagination.previousPage')}</span>
             <ChevronLeftIcon className='h-4 w-4' />
           </Button>
           <Button
@@ -107,7 +114,7 @@ export function ServerSidePagination({
             onClick={onNextPage}
             disabled={!pageInfo?.hasNextPage}
           >
-            <span className='sr-only'>跳转到下一页</span>
+            <span className='sr-only'>{t('pagination.nextPage')}</span>
             <ChevronRightIcon className='h-4 w-4' />
           </Button>
           <Button
@@ -116,7 +123,7 @@ export function ServerSidePagination({
             onClick={onNextPage}
             disabled={!pageInfo?.hasNextPage}
           >
-            <span className='sr-only'>跳转到最后一页</span>
+            <span className='sr-only'>{t('pagination.lastPage')}</span>
             <DoubleArrowRightIcon className='h-4 w-4' />
           </Button>
         </div>

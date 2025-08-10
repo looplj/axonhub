@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -45,6 +46,7 @@ interface Props {
 }
 
 export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) {
+  const { t } = useTranslation()
   const isEdit = !!currentRow
   const createChannel = useCreateChannel()
   const updateChannel = useUpdateChannel()
@@ -52,6 +54,15 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     currentRow?.supportedModels || []
   )
   const [newModel, setNewModel] = useState('')
+
+  const channelTypes = [
+    { value: 'openai', label: t('channels.types.openai') },
+    { value: 'anthropic', label: t('channels.types.anthropic') },
+    { value: 'gemini', label: t('channels.types.gemini') },
+    { value: 'deepseek', label: t('channels.types.deepseek') },
+    { value: 'doubao', label: t('channels.types.doubao') },
+    { value: 'kimi', label: t('channels.types.kimi') },
+  ]
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema
   
@@ -130,10 +141,9 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     >
       <DialogContent className='sm:max-w-lg'>
         <DialogHeader className='text-left'>
-          <DialogTitle>{isEdit ? '编辑 Channel' : '添加新 Channel'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('channels.dialog.edit.title') : t('channels.dialog.create.title')}</DialogTitle>
           <DialogDescription>
-            {isEdit ? '在此更新 Channel 信息。' : '在此创建新的 Channel。'}
-            完成后点击保存。
+            {isEdit ? t('channels.dialog.edit.description') : t('channels.dialog.create.description')}
           </DialogDescription>
         </DialogHeader>
         <div className='-mr-4 h-[28rem] w-full overflow-y-auto py-1 pr-4'>
@@ -150,14 +160,14 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-right'>
-                      类型
+                      {t('channels.dialog.fields.type.label')}
                     </FormLabel>
                     <FormControl>
                       <SelectDropdown
                         defaultValue={field.value}
                         onValueChange={field.onChange}
                         items={channelTypes}
-                        placeholder='选择 Channel 类型'
+                        placeholder={t('channels.dialog.fields.type.description')}
                         className='col-span-4'
                         isControlled={true}
                         disabled={isEdit}
@@ -174,11 +184,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-right'>
-                      名称
+                      {t('channels.dialog.fields.name.label')}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder='输入 Channel 名称'
+                        placeholder={t('channels.dialog.fields.name.placeholder')}
                         className='col-span-4'
                         autoComplete='off'
                         {...field}
@@ -195,11 +205,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-right'>
-                      Base URL
+                      {t('channels.dialog.fields.baseURL.label')}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder='https://api.example.com'
+                        placeholder={t('channels.dialog.fields.baseURL.placeholder')}
                         className='col-span-4'
                         autoComplete='off'
                         {...field}
@@ -217,12 +227,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                   render={({ field }) => (
                     <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                       <FormLabel className='col-span-2 text-right'>
-                        API Key
+                        {t('channels.dialog.fields.apiKey.label')}
                       </FormLabel>
                       <FormControl>
                         <Input
                           type='password'
-                          placeholder='输入 API Key'
+                          placeholder={t('channels.dialog.fields.apiKey.placeholder')}
                           className='col-span-4'
                           autoComplete='off'
                           {...field}
@@ -236,19 +246,19 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
 
               <div className='grid grid-cols-6 items-start space-y-0 gap-x-4 gap-y-1'>
                 <label className='col-span-2 text-right text-sm font-medium'>
-                  支持的模型
+                  {t('channels.dialog.fields.supportedModels.label')}
                 </label>
                 <div className='col-span-4 space-y-2'>
                   <div className='flex gap-2'>
                     <Input
-                      placeholder='输入模型名称'
+                      placeholder={t('channels.dialog.fields.supportedModels.description')}
                       value={newModel}
                       onChange={(e) => setNewModel(e.target.value)}
                       onKeyPress={handleKeyPress}
                       className='flex-1'
                     />
                     <Button type='button' onClick={addModel} size='sm'>
-                      添加
+                      {t('channels.dialog.buttons.add')}
                     </Button>
                   </div>
                   <div className='flex flex-wrap gap-1'>
@@ -267,7 +277,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                   </div>
                   {supportedModels.length === 0 && (
                     <p className='text-sm text-muted-foreground'>
-                      请至少添加一个支持的模型
+                      {t('channels.dialog.fields.supportedModels.required')}
                     </p>
                   )}
                 </div>
@@ -279,14 +289,14 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-right'>
-                      默认测试模型
+                      {t('channels.dialog.fields.defaultTestModel.label')}
                     </FormLabel>
                     <FormControl>
                       <SelectDropdown
                         defaultValue={field.value}
                         onValueChange={field.onChange}
                         items={supportedModels.map(model => ({ value: model, label: model }))}
-                        placeholder='选择默认测试模型'
+                        placeholder={t('channels.dialog.fields.defaultTestModel.description')}
                         className='col-span-4'
                         disabled={supportedModels.length === 0}
                         isControlled={true}
@@ -309,7 +319,10 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
               supportedModels.length === 0
             }
           >
-            {createChannel.isPending || updateChannel.isPending ? '保存中...' : '保存'}
+            {createChannel.isPending || updateChannel.isPending 
+              ? (isEdit ? t('channels.dialog.buttons.updating') : t('channels.dialog.buttons.creating'))
+              : (isEdit ? t('channels.dialog.buttons.update') : t('channels.dialog.buttons.create'))
+            }
           </Button>
         </DialogFooter>
       </DialogContent>

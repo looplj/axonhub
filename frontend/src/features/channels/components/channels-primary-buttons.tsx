@@ -1,8 +1,10 @@
 import { IconPlus, IconSettings } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { useChannels } from '../context/channels-context'
 
 export function ChannelsPrimaryButtons() {
+  const { t } = useTranslation()
   const { setOpen } = useChannels()
   
   return (
@@ -12,10 +14,10 @@ export function ChannelsPrimaryButtons() {
         className='space-x-1'
         onClick={() => setOpen('settings')}
       >
-        <span>设置</span> <IconSettings size={18} />
+        <span>{t('channels.settings')}</span> <IconSettings size={18} />
       </Button>
       <Button className='space-x-1' onClick={() => setOpen('add')}>
-        <span>添加 Channel</span> <IconPlus size={18} />
+        <span>{t('channels.addChannel')}</span> <IconPlus size={18} />
       </Button>
     </div>
   )

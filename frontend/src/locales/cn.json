@@ -1,4 +1,26 @@
 {
+  "sidebar": {
+    "groups": {
+      "admin": "管理",
+      "general": "通用",
+      "settings": "设置"
+    },
+    "items": {
+      "dashboard": "仪表板",
+      "channels": "渠道",
+      "users": "用户",
+      "roles": "角色",
+      "system": "系统",
+      "requests": "请求",
+      "apiKeys": "API 密钥",
+      "playground": "测试场",
+      "profile": "个人资料"
+    },
+    "team": {
+      "name": "AxonHub 管理",
+      "plan": "AI + 统一"
+    }
+  },
   "users": {
     "title": "用户管理",
     "description": "管理系统用户和权限配置。",
@@ -33,7 +55,7 @@
     "badges": {
       "owner": "所有者",
       "user": "用户",
-      "noRoles":"无角色"
+      "noRoles": "无角色"
     },
     "filters": {
       "status": "状态",
@@ -47,5 +69,594 @@
       "activate": "激活",
       "deactivate": "停用"
     }
+  },
+  "apikeys": {
+    "title": "API 密钥管理",
+    "description": "管理系统 API 密钥和访问权限。",
+    "loading": "加载中...",
+    "loadError": "加载失败:",
+    "noResults": "无结果。",
+    "createApiKey": "创建 API Key",
+    "filterApiKeys": "筛选 API 密钥...",
+    "columns": {
+      "name": "名称",
+      "key": "API Key",
+      "user": "用户",
+      "status": "状态",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间",
+      "selectAll": "全选",
+      "selectRow": "选择行"
+    },
+    "status": {
+      "enabled": "已激活",
+      "disabled": "已停用"
+    },
+    "actions": {
+      "openMenu": "打开菜单",
+      "edit": "编辑",
+      "enable": "激活",
+      "disable": "停用",
+      "delete": "删除",
+      "copy": "复制",
+      "show": "显示",
+      "hide": "隐藏"
+    },
+    "dialog": {
+      "create": {
+        "title": "创建 API Key",
+        "description": "创建一个新的 API Key 用于访问系统。"
+      },
+      "edit": {
+        "title": "编辑 API Key",
+        "description": "修改 API Key 信息。"
+      },
+      "delete": {
+        "title": "删除 API Key",
+        "description": "确定要删除 API 密钥 \"{{name}}\" 吗？此操作无法撤销。"
+      },
+      "status": {
+        "disableTitle": "禁用 API Key",
+        "enableTitle": "启用 API Key",
+        "disableDescription": "确定要禁用 API Key \"{{name}}\" 吗？",
+        "enableDescription": "确定要启用 API Key \"{{name}}\" 吗？"
+      },
+      "fields": {
+        "name": {
+          "label": "名称",
+          "placeholder": "输入 API Key 名称",
+          "description": "为此 API Key 设置一个易于识别的名称"
+        },
+        "userID": {
+          "label": "用户ID",
+          "placeholder": "输入用户ID",
+          "description": "与此 API Key 关联的用户ID"
+        },
+        "key": {
+          "label": "API Key",
+          "placeholder": "输入 API Key",
+          "description": "API Key 值"
+        }
+      },
+      "buttons": {
+        "cancel": "取消",
+        "create": "创建",
+        "creating": "创建中...",
+        "update": "更新",
+        "updating": "更新中...",
+        "delete": "删除",
+        "deleting": "删除中...",
+        "enable": "激活",
+        "enabling": "激活中...",
+        "disable": "停用",
+        "disabling": "停用中...",
+        "save": "保存",
+        "saving": "保存中..."
+      }
+    },
+    "messages": {
+      "copied": "API Key 已复制到剪贴板",
+      "createSuccess": "API Key 创建成功",
+      "createError": "创建 API Key 失败",
+      "updateSuccess": "API Key 更新成功",
+      "updateError": "更新 API Key 失败",
+      "deleteSuccess": "API Key 删除成功",
+      "statusUpdateSuccess": "API Key 状态已更新为 {{status}}",
+      "statusUpdateError": "状态更新失败"
+    },
+    "errors": {
+      "fetchData": "获取API密钥数据",
+      "fetchDetails": "获取API密钥详情"
+    },
+    "validation": {
+      "nameRequired": "名称不能为空",
+      "userIdRequired": "用户ID不能为空",
+      "keyRequired": "API Key不能为空"
+    },
+    "filters": {
+      "status": "状态",
+      "reset": "重置",
+      "selectedCount": "已选择 {{count}} 项",
+      "noResults": "没有找到结果",
+      "clearFilter": "清除过滤器"
+    },
+    "view": {
+      "title": "视图",
+      "toggleColumns": "切换列"
+    },
+    "sort": {
+      "ascending": "升序",
+      "descending": "降序",
+      "hide": "隐藏"
+    },
+    "noData": "暂无数据"
+  },
+  "roles": {
+    "title": "角色管理",
+    "description": "管理系统角色和权限配置。",
+    "loading": "加载中...",
+    "loadError": "加载失败:",
+    "noResults": "无结果。",
+    "createRole": "新建角色",
+    "searchRoles": "搜索角色名称...",
+    "columns": {
+      "code": "角色代码",
+      "name": "角色名称",
+      "scopes": "权限范围",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间",
+      "actions": "操作",
+      "selectAll": "全选",
+      "selectRow": "选择行",
+      "moreScopes": "更多"
+    },
+    "actions": {
+      "openMenu": "打开菜单",
+      "edit": "编辑",
+      "delete": "删除"
+    },
+    "filters": {
+      "reset": "重置"
+    },
+    "dialog": {
+      "create": {
+        "title": "新建角色",
+        "description": "创建一个新的角色并配置其权限范围。"
+      },
+      "edit": {
+        "title": "编辑角色",
+        "description": "修改角色信息和权限配置。"
+      },
+      "delete": {
+        "title": "删除角色",
+        "description": "确定要删除这个角色吗？此操作无法撤销。"
+      },
+      "fields": {
+        "code": {
+          "label": "角色代码",
+          "placeholder": "admin",
+          "description": "唯一标识符，只能包含字母、数字和下划线"
+        },
+        "name": {
+          "label": "角色名称",
+          "placeholder": "管理员",
+          "description": "用户友好的角色名称"
+        },
+        "scopes": {
+          "label": "权限范围",
+          "description": "选择此角色拥有的权限"
+        }
+      },
+      "buttons": {
+        "cancel": "取消",
+        "create": "创建角色",
+        "creating": "创建中...",
+        "update": "更新角色",
+        "updating": "更新中...",
+        "delete": "删除",
+        "deleting": "删除中..."
+      }
+    }
+  },
+  "channels": {
+    "title": "Channel 管理",
+    "description": "管理您的 AI 模型 Channel 和配置。",
+    "loading": "加载中...",
+    "loadError": "加载失败:",
+    "noResults": "无结果。",
+    "addChannel": "添加 Channel",
+    "settings": "设置",
+    "filterChannels": "筛选 Channel...",
+    "columns": {
+      "name": "名称",
+      "type": "类型",
+      "status": "状态",
+      "baseURL": "Base URL",
+      "supportedModels": "支持的模型",
+      "defaultTestModel": "默认测试模型",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间",
+      "actions": "操作",
+      "selectAll": "全选",
+      "selectRow": "选择行"
+    },
+    "status": {
+      "enabled": "启用",
+      "disabled": "禁用"
+    },
+    "types": {
+      "openai": "OpenAI",
+      "anthropic": "Anthropic",
+      "gemini": "Gemini",
+      "deepseek": "DeepSeek",
+      "doubao": "Doubao",
+      "kimi": "Kimi"
+    },
+    "actions": {
+      "openMenu": "打开菜单",
+      "edit": "编辑",
+      "delete": "删除",
+      "enable": "启用",
+      "disable": "禁用",
+      "test": "测试",
+      "settings": "设置"
+    },
+    "filters": {
+      "type": "类型",
+      "status": "状态",
+      "reset": "重置",
+      "filterByName": "按名称筛选"
+    },
+    "dialog": {
+      "create": {
+        "title": "添加 Channel",
+        "description": "创建一个新的 AI 模型 Channel。"
+      },
+      "edit": {
+        "title": "编辑 Channel",
+        "description": "修改 Channel 配置信息。"
+      },
+      "delete": {
+        "title": "删除 Channel",
+        "description": "确定要删除这个 Channel 吗？此操作无法撤销。"
+      },
+      "fields": {
+        "name": {
+          "label": "Channel 名称",
+          "placeholder": "我的 OpenAI Channel",
+          "description": "为此 Channel 设置一个易于识别的名称"
+        },
+        "type": {
+          "label": "Channel 类型",
+          "description": "选择 AI 模型提供商类型"
+        },
+        "baseURL": {
+          "label": "Base URL",
+          "placeholder": "https://api.openai.com/v1",
+          "description": "API 的基础 URL 地址"
+        },
+        "apiKey": {
+          "label": "API Key",
+          "placeholder": "sk-...",
+          "description": "用于认证的 API 密钥"
+        },
+        "supportedModels": {
+          "label": "支持的模型",
+          "description": "此 Channel 支持的模型列表"
+        },
+        "defaultTestModel": {
+          "label": "默认测试模型",
+          "description": "用于测试连接的默认模型"
+        },
+        "modelName": {
+          "label": "模型名称",
+          "placeholder": "输入模型名称"
+        }
+      },
+      "buttons": {
+        "cancel": "取消",
+        "create": "创建 Channel",
+        "creating": "创建中...",
+        "update": "更新 Channel",
+        "updating": "更新中...",
+        "delete": "删除",
+        "deleting": "删除中...",
+        "enable": "启用",
+        "enabling": "启用中...",
+        "disable": "禁用",
+        "disabling": "禁用中...",
+        "test": "测试连接",
+        "testing": "测试中...",
+        "save": "保存",
+        "saving": "保存中...",
+        "add": "添加"
+      },
+      "messages": {
+        "addAtLeastOneModel": "请至少添加一个支持的模型",
+        "createDescription": "在此创建新的 Channel。",
+        "editDescription": "在此更新 Channel 信息。",
+        "completeAndSave": "完成后点击保存。"
+      },
+      "status": {
+        "enable": {
+          "title": "启用频道",
+          "description": "确定要启用频道 \"{{name}}\" 吗？启用后该频道将可以正常使用。",
+          "button": "启用"
+        },
+        "disable": {
+          "title": "禁用频道",
+          "description": "确定要禁用频道 \"{{name}}\" 吗？禁用后该频道将无法使用。",
+          "button": "禁用"
+        }
+      },
+      "settings": {
+        "title": "Channel 设置",
+        "description": "配置 {{name}} 的高级设置。",
+        "basicInfo": {
+          "title": "基本信息",
+          "description": "Channel 的基本配置信息"
+        },
+        "modelMapping": {
+          "title": "模型映射",
+          "description": "配置模型名称映射，将请求中的模型名称映射到实际的模型名称",
+          "originalModel": "原模型名称",
+          "targetModel": "目标模型名称",
+          "noMappings": "暂无模型映射配置"
+        }
+      }
+    }
+  },
+  "system": {
+    "title": "系统管理",
+    "description": "管理系统配置和选项。",
+    "loading": "加载系统设置...",
+    "storage": {
+      "title": "存储设置",
+      "description": "配置系统如何处理和存储响应数据",
+      "storeChunks": {
+        "label": "存储响应块",
+        "description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理"
+      }
+    },
+    "other": {
+      "title": "其他设置",
+      "description": "更多系统配置选项将在此处添加",
+      "comingSoon": "更多配置选项即将推出..."
+    },
+    "buttons": {
+      "save": "保存设置",
+      "saving": "保存中..."
+    }
+  },
+  "requests": {
+    "title": "请求日志",
+    "description": "查看和管理 LLM 调用请求日志",
+    "loading": "加载中...",
+    "loadError": "加载失败:",
+    "noResults": "暂无数据",
+    "refresh": "刷新",
+    "columns": {
+      "id": "ID",
+      "modelId": "模型ID",
+      "status": "状态",
+      "user": "用户",
+      "apiKey": "API密钥",
+      "requestBody": "请求体",
+      "responseBody": "响应体",
+      "createdAt": "创建时间",
+      "actions": "操作",
+      "selectAll": "全选",
+      "selectRow": "选择行",
+      "unknown": "未知"
+    },
+    "status": {
+      "pending": "等待中",
+      "processing": "处理中",
+      "completed": "已完成",
+      "failed": "失败"
+    },
+    "actions": {
+      "openMenu": "打开菜单",
+      "viewDetails": "查看详情",
+      "viewRequest": "查看请求",
+      "viewResponse": "查看响应",
+      "copy": "复制"
+    },
+    "filters": {
+      "filterId": "按ID筛选...",
+      "status": "状态",
+      "reset": "重置"
+    },
+
+    "dialog": {
+      "jsonViewer": {
+        "requestBody": "请求体",
+        "responseBody": "响应体",
+        "copy": "复制",
+        "copied": "已复制"
+      },
+      "executionDetail": {
+        "title": "执行详情",
+        "channel": "渠道",
+        "modelId": "模型ID",
+        "status": "状态",
+        "createdAt": "创建时间",
+        "requestBody": "请求体",
+        "responseBody": "响应体",
+        "errorMessage": "错误信息",
+        "noResponse": "暂无响应",
+        "unknown": "未知"
+      },
+      "requestDetail": {
+        "title": "请求详情",
+        "tabs": {
+          "overview": "概览",
+          "request": "请求",
+          "response": "响应",
+          "executions": "执行记录"
+        },
+        "fields": {
+          "userId": "用户ID",
+          "apiKeyId": "API密钥ID",
+          "startTime": "开始时间",
+          "endTime": "结束时间",
+          "notStarted": "未开始"
+        },
+        "execution": "执行 #{{index}}",
+        "noExecutions": "暂无执行记录",
+        "notFound": "请求不存在"
+      },
+      "executionsDrawer": {
+        "title": "执行列表",
+        "noExecutions": "暂无执行记录"
+      }
+    }
+  },
+  "dashboard": {
+    "title": "仪表板",
+    "description": "系统概览和统计信息。",
+    "loading": "加载中...",
+    "loadError": "加载仪表板失败:",
+    "noData": "暂无数据",
+    "cards": {
+      "totalUsers": "总用户数",
+      "totalChannels": "总 Channel 数",
+      "totalRequests": "总请求数",
+      "requestsToday": "今日请求数"
+    },
+    "charts": {
+      "dailyRequestOverview": "每日请求概览",
+      "topUsers": "活跃用户",
+      "requestsByChannel": "按 Channel 分组的请求",
+      "requestsByStatus": "按状态分组的请求",
+      "errorLoadingChart": "加载图表数据失败:",
+      "errorLoadingTopUsers": "加载活跃用户失败:",
+      "errorLoadingChannelData": "加载 Channel 数据失败:",
+      "errorLoadingStatusData": "加载状态数据失败:",
+      "noUserData": "暂无用户数据",
+      "noChannelData": "暂无 Channel 数据",
+      "noStatusData": "暂无状态数据",
+      "requestsByChannelDescription": "不同 Channel 的请求分布情况。",
+      "requestsByStatusDescription": "请求状态的详细分析。"
+    },
+    "stats": {
+      "fromLastMonth": "较上月",
+      "sinceYesterday": "较昨日",
+      "usersWithMostRequests": "本月请求最多的用户。",
+      "requests": "次请求"
+    }
+  },
+  "playground": {
+    "title": "游乐场",
+    "description": "在交互式环境中测试和体验 AI 模型。",
+    "settings": {
+      "model": "模型",
+      "modelPlaceholder": "选择模型",
+      "selectModel": "选择模型",
+      "temperature": "温度",
+      "maxTokens": "最大令牌数",
+      "systemPrompt": "系统提示",
+      "defaultSystemPrompt": "你是一个有用的助手。"
+    },
+    "actions": {
+      "copy": "复制",
+      "regenerate": "重新生成",
+      "readAloud": "朗读"
+    },
+    "chat": {
+      "generating": "生成中...",
+      "retry": "重试上次回复",
+      "clear": "清除聊天",
+      "noMessages": "没有消息可重试"
+    },
+    "loading": "加载中",
+    "errors": {
+      "noChannelsAvailable": "没有可用的模型"
+    }
+  },
+  "profile": {
+    "title": "个人资料",
+    "description": "这是其他人在网站上看到您的方式。",
+    "loading": "加载中...",
+    "form": {
+      "fields": {
+        "firstName": {
+          "label": "名",
+          "placeholder": "输入您的名",
+          "description": "您的名字，将显示给其他用户。",
+          "required": "名字不能为空。",
+          "maxLength": "名字长度不能超过50个字符。"
+        },
+        "lastName": {
+          "label": "姓",
+          "placeholder": "输入您的姓",
+          "description": "您的姓氏，将显示给其他用户。",
+          "required": "姓氏不能为空。",
+          "maxLength": "姓氏长度不能超过50个字符。"
+        },
+        "email": {
+          "label": "邮箱",
+          "placeholder": "输入您的邮箱地址",
+          "description": "用于账户通知和登录的邮箱地址。",
+          "required": "邮箱不能为空。",
+          "invalid": "请输入有效的邮箱地址。"
+        },
+        "preferLanguage": {
+          "label": "首选语言",
+          "placeholder": "选择您的首选语言",
+          "description": "选择界面的首选语言。",
+          "required": "请选择首选语言。",
+          "options": {
+            "en": "English",
+            "zh": "中文"
+          }
+        }
+      },
+      "validation": {
+        "firstNameRequired": "名字不能为空。",
+        "firstNameTooLong": "名字长度不能超过50个字符。",
+        "lastNameRequired": "姓氏不能为空。",
+        "lastNameTooLong": "姓氏长度不能超过50个字符。",
+        "emailRequired": "邮箱不能为空。",
+        "emailInvalid": "请输入有效的邮箱地址。",
+        "languageRequired": "请选择首选语言。"
+      },
+      "buttons": {
+        "update": "保存更改",
+        "updating": "保存中...",
+        "cancel": "取消"
+      },
+      "messages": {
+        "updateSuccess": "个人资料更新成功！",
+        "updateError": "更新个人资料失败：{{error}}"
+      }
+    },
+    "languages": {
+      "en": "English",
+      "zh": "中文"
+    },
+    "buttons": {
+      "save": "保存更改",
+      "saving": "保存中...",
+      "cancel": "取消"
+    },
+    "messages": {
+      "updateSuccess": "个人资料更新成功！",
+      "updateError": "更新个人资料失败：{{message}}"
+    }
+  },
+  "pagination": {
+    "selectedRows": "已选择 {{selected}} / {{total}} 行",
+    "selectedInfo": "已选择 {{selectedRows}} / {{dataLength}} 行",
+    "selectedInfoWithTotal": "已选择 {{selectedRows}} / {{dataLength}} 行 / 总计 {{totalCount}} 行",
+    "totalRows": "总计 {{total}} 行",
+    "rowsPerPage": "每页行数",
+    "currentPage": "第 {{current}} 页，共 {{total}} 页",
+    "firstPage": "首页",
+    "lastPage": "末页",
+    "previousPage": "上一页",
+    "nextPage": "下一页",
+    "hasPrevious": "有上一页",
+    "hasNext": "有下一页"
   }
 }

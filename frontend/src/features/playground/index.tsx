@@ -7,6 +7,7 @@ import {
 } from '@tabler/icons-react'
 import { useChat } from '@ai-sdk/react'
 import { useAuth } from '@clerk/clerk-react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Chat } from '@/components/ui/chat'
@@ -25,39 +26,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useChannels } from '@/features/channels/data/channels'
 
-// Message action buttons configuration
-const messageActions = [
-  {
-    icon: IconCopy,
-    label: 'Copy',
-    action: (content: string) => {
-      navigator.clipboard.writeText(content)
-    },
-  },
-  {
-    icon: IconRefresh,
-    label: 'Regenerate',
-    action: () => {
-      // TODO: Implement regenerate functionality
-      console.log('Regenerate message')
-    },
-  },
-  {
-    icon: IconVolume,
-    label: 'Read aloud',
-    action: () => {
-      // TODO: Implement text-to-speech
-      console.log('Read aloud')
-    },
-  },
-]
-
 export default function Playground() {
+  const { t } = useTranslation()
   const [model, setModel] = useState('gpt-4o')
   const [temperature, setTemperature] = useState(0.7)
   const [maxTokens, setMaxTokens] = useState(1000)
   const [systemPrompt, setSystemPrompt] = useState(
-    'You are a helpful assistant.'
+    t('playground.settings.defaultSystemPrompt')
   )
   const { accessToken } = useAuthStore((state) => state.auth)
   // 获取 channels 数据
@@ -198,6 +173,33 @@ export default function Playground() {
   const groupedModels = getGroupedModels()
   const allModels = getAllModels()
 
+  // Message action buttons configuration
+  const messageActions = [
+    {
+      icon: IconCopy,
+      label: t('playground.actions.copy'),
+      action: (content: string) => {
+        navigator.clipboard.writeText(content)
+      },
+    },
+    {
+      icon: IconRefresh,
+      label: t('playground.actions.regenerate'),
+      action: () => {
+        // TODO: Implement regenerate functionality
+        console.log('Regenerate message')
+      },
+    },
+    {
+      icon: IconVolume,
+      label: t('playground.actions.readAloud'),
+      action: () => {
+        // TODO: Implement text-to-speech
+        console.log('Read aloud')
+      },
+    },
+  ]
+
   // 处理消息评分和重试
   const handleRateResponse = (
     messageId: string,
@@ -218,9 +220,9 @@ export default function Playground() {
         {/* Settings Sidebar */}
         <div className='bg-muted/40 flex w-80 flex-col border-r'>
           <div className='border-b p-6'>
-            <h1 className='text-2xl font-bold tracking-tight'>AI Playground</h1>
+            <h1 className='text-2xl font-bold tracking-tight'>{t('playground.title')}</h1>
             <p className='text-muted-foreground mt-2 text-sm leading-relaxed'>
-              Test and experiment with AI models
+              {t('playground.description')}
             </p>
           </div>
 
@@ -228,7 +230,7 @@ export default function Playground() {
             <div className='space-y-8'>
               <div className='space-y-4'>
                 <Label htmlFor='model' className='text-sm font-semibold'>
-                  Model
+                  {t('playground.settings.model')}
                 </Label>
                 <Select
                   value={model}
@@ -238,7 +240,7 @@ export default function Playground() {
                   <SelectTrigger className='h-10'>
                     <SelectValue
                       placeholder={
-                        channelsLoading ? 'Loading models...' : 'Select model'
+                        channelsLoading ? t('playground.loading') : t('playground.settings.selectModel')
                       }
                     />
                   </SelectTrigger>
@@ -269,14 +271,14 @@ export default function Playground() {
                       ))
                     ) : (
                       <SelectItem value='gpt-4o' disabled>
-                        {channelsLoading ? 'Loading...' : 'No models available'}
+                        {channelsLoading ? t('playground.loading') : t('playground.errors.noChannelsAvailable')}
                       </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
                 {channelsLoading && (
                   <p className='text-muted-foreground text-xs'>
-                    Loading available models from channels...
+                    {t('playground.loading')}...
                   </p>
                 )}
                 {!channelsLoading && allModels.length > 0 && (
@@ -289,7 +291,7 @@ export default function Playground() {
 
               <div className='space-y-4'>
                 <Label htmlFor='temperature' className='text-sm font-semibold'>
-                  Temperature: {temperature}
+                  {t('playground.settings.temperature')}: {temperature}
                 </Label>
                 <div className='px-2'>
                   <Input
@@ -312,7 +314,7 @@ export default function Playground() {
 
               <div className='space-y-4'>
                 <Label htmlFor='maxTokens' className='text-sm font-semibold'>
-                  Max Tokens
+                  {t('playground.settings.maxTokens')}
                 </Label>
                 <Input
                   id='maxTokens'
@@ -327,11 +329,11 @@ export default function Playground() {
 
               <div className='space-y-4'>
                 <Label htmlFor='systemPrompt' className='text-sm font-semibold'>
-                  System Prompt
+                  {t('playground.settings.systemPrompt')}
                 </Label>
                 <Textarea
                   id='systemPrompt'
-                  placeholder='Enter system prompt...'
+                  placeholder={t('playground.settings.defaultSystemPrompt')}
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value)}
                   rows={4}
@@ -354,12 +356,12 @@ export default function Playground() {
             >
               <IconRefresh className='mr-2 h-4 w-4' />
               {isLoading
-                ? 'Generating...'
+                ? t('playground.chat.generating')
                 : messages.length === 0
-                  ? 'No messages to retry'
+                  ? t('playground.chat.noMessages')
                   : messages.every((msg) => msg.role !== 'assistant')
-                    ? 'No AI response to retry'
-                    : 'Retry Last Response'}
+                    ? t('playground.chat.noMessages')
+                    : t('playground.chat.retry')}
             </Button>
 
             <Button
@@ -369,7 +371,7 @@ export default function Playground() {
               disabled={isLoading}
             >
               <IconTrash className='mr-2 h-4 w-4' />
-              Clear Chat
+              {t('playground.chat.clear')}
             </Button>
           </div>
         </div>

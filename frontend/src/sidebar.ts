@@ -13,21 +13,31 @@ import {
   IconSettings,
 } from '@tabler/icons-react'
 import { Command } from 'lucide-react'
-import { type SidebarData, type NavGroup, type NavLink } from './components/layout/types'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
-import { useMe } from '@/features/auth/data/auth'
 import { useRoutePermissions } from '@/hooks/useRoutePermissions'
+import { useMe } from '@/features/auth/data/auth'
+import {
+  type SidebarData,
+  type NavGroup,
+  type NavLink,
+} from './components/layout/types'
 
 export function useSidebarData(): SidebarData {
+  const { t } = useTranslation()
   const { user: authUser } = useAuthStore((state) => state.auth)
   const { data: meData } = useMe()
   const { filterNavGroups } = useRoutePermissions()
-  
+
   // Use data from me query if available, otherwise fall back to auth store
   const user = meData || authUser
-  
+
   // Generate user initials for avatar
-  const getInitials = (firstName?: string, lastName?: string, email?: string) => {
+  const getInitials = (
+    firstName?: string,
+    lastName?: string,
+    email?: string
+  ) => {
     if (firstName && lastName) {
       return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
     }
@@ -39,9 +49,13 @@ export function useSidebarData(): SidebarData {
     }
     return 'U'
   }
-  
+
   // Generate user display name
-  const getDisplayName = (firstName?: string, lastName?: string, email?: string) => {
+  const getDisplayName = (
+    firstName?: string,
+    lastName?: string,
+    email?: string
+  ) => {
     if (firstName && lastName) {
       return `${firstName} ${lastName}`
     }
@@ -58,32 +72,33 @@ export function useSidebarData(): SidebarData {
   // 原始导航组配置
   const rawNavGroups: NavGroup[] = [
     {
-      title: 'Admin',
+      title: t('sidebar.groups.admin'),
       items: [
         {
-          title: 'Dashboard',
+          title: t('sidebar.items.dashboard'),
           url: '/',
           icon: IconLayoutDashboard,
         } as NavLink,
         {
-          title: 'Users',
+          title: t('sidebar.items.channels'),
+          url: '/channels',
+          icon: IconChecklist,
+        } as NavLink,
+        {
+          title: t('sidebar.items.users'),
           url: '/users',
           icon: IconUsers,
         } as NavLink,
         {
-          title: 'Roles',
+          title: t('sidebar.items.roles'),
           url: '/roles',
           icon: IconShield,
         } as NavLink,
+
         {
-          title: 'System',
+          title: t('sidebar.items.system'),
           url: '/system',
           icon: IconSettings,
-        } as NavLink,
-        {
-          title: 'Channels',
-          url: '/channels',
-          icon: IconChecklist,
         } as NavLink,
         // {
         //   title: 'Permission Demo',
@@ -93,30 +108,30 @@ export function useSidebarData(): SidebarData {
       ],
     },
     {
-      title: 'General',
+      title: t('sidebar.groups.general'),
       items: [
         {
-          title: 'Requests',
+          title: t('sidebar.items.requests'),
           url: '/requests',
           icon: IconBrowserCheck,
         } as NavLink,
         {
-          title: 'API Keys',
+          title: t('sidebar.items.apiKeys'),
           url: '/api-keys',
           icon: IconPackages,
         } as NavLink,
         {
-          title: 'Playground',
+          title: t('sidebar.items.playground'),
           url: '/playground',
           icon: IconRobot,
         } as NavLink,
       ],
     },
     {
-      title: 'Settings',
+      title: t('sidebar.groups.settings'),
       items: [
         {
-          title: 'Profile',
+          title: t('sidebar.items.profile'),
           url: '/settings',
           icon: IconUserCog,
         } as NavLink,
@@ -150,9 +165,9 @@ export function useSidebarData(): SidebarData {
     },
     teams: [
       {
-        name: 'AxonHub Admin',
+        name: t('sidebar.team.name'),
         logo: Command,
-        plan: 'AI + Unified',
+        plan: t('sidebar.team.plan'),
       },
     ],
     navGroups: filteredNavGroups,
