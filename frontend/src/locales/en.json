@@ -638,5 +638,9 @@
     "nextPage": "Go to next page",
     "hasPrevious": "Has previous",
     "hasNext": "Has next"
+  },
+  "language": {
+    "changeSuccess": "Language changed to {{language}} successfully",
+    "changeError": "Failed to change language: {{error}}"
   }
 }

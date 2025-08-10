@@ -4,14 +4,14 @@ import LanguageDetector from 'i18next-browser-languagedetector'
 
 // 导入翻译资源
 import en from '../locales/en.json'
-import cn from '../locales/cn.json'
+import zh from '../locales/zh.json'
 
 const resources = {
   en: {
     translation: en
   },
-  cn: {
-    translation: cn
+  zh: {
+    translation: zh
   }
 }
 

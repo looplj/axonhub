@@ -658,5 +658,9 @@
     "nextPage": "下一页",
     "hasPrevious": "有上一页",
     "hasNext": "有下一页"
+  },
+  "language": {
+    "changeSuccess": "语言已成功切换为{{language}}",
+    "changeError": "切换语言失败：{{error}}"
   }
 }

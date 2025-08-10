@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { useRouter } from '@tanstack/react-router'
 import { graphqlRequest } from '@/gql/graphql'
 import { ME_QUERY } from '@/gql/users'
+import i18n from '@/lib/i18n'
 
 export interface SignInInput {
   email: string
@@ -43,18 +44,25 @@ export function useMe() {
   // Update auth store when data changes
   useEffect(() => {
     if (query.data) {
+      const userLanguage = query.data.preferLanguage || 'en'
+      
       setUser({
         email: query.data.email,
         firstName: query.data.firstName,
         lastName: query.data.lastName,
         isOwner: query.data.isOwner,
-        preferLanguage: query.data.preferLanguage || 'en',
+        preferLanguage: userLanguage,
         scopes: query.data.scopes,
         roles: query.data.roles.map(role => ({
           id: role.id,
           name: role.name
         }))
       })
+
+      // Initialize i18n with user's preferred language
+      if (userLanguage !== i18n.language) {
+        i18n.changeLanguage(userLanguage)
+      }
     }
   }, [query.data, setUser])
 
@@ -73,6 +81,8 @@ export function useSignIn() {
       // Store token in localStorage
       setTokenInStorage(data.token)
       
+      const userLanguage = data.user.preferLanguage || 'en'
+      
       // Update auth store
       setAccessToken(data.token)
       setUser({
@@ -80,13 +90,18 @@ export function useSignIn() {
         firstName: data.user.firstName || '',
         lastName: data.user.lastName || '',
         isOwner: data.user.isOwner,
-        preferLanguage: data.user.preferLanguage || 'en',
+        preferLanguage: userLanguage,
         scopes: data.user.scopes,
         roles: data.user.roles.map(role => ({
           id: role.id,
           name: role.name
         }))
       })
+
+      // Initialize i18n with user's preferred language
+      if (userLanguage !== i18n.language) {
+        i18n.changeLanguage(userLanguage)
+      }
       
       toast.success('Successfully signed in!')
       
