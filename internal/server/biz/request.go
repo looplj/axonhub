@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -32,6 +31,7 @@ func NewRequestService(entClient *ent.Client, systemService *SystemService) *Req
 // CreateRequest creates a new request record.
 func (s *RequestService) CreateRequest(
 	ctx context.Context,
+	user *ent.User,
 	apiKey *ent.APIKey,
 	llmRequest *llm.Request,
 	httpRequest *httpclient.Request,
@@ -43,15 +43,18 @@ func (s *RequestService) CreateRequest(
 		return nil, err
 	}
 
-	// Create request record
-	req, err := s.EntClient.Request.Create().
-		SetAPIKey(lo.TernaryF(apiKey != nil, func() *ent.APIKey { return apiKey }, func() *ent.APIKey { return nil })).
-		SetUserID(lo.TernaryF(apiKey != nil, func() int { return apiKey.UserID }, func() int { return 0 })).
+	mut := s.EntClient.Request.Create().
+		SetUser(user).
 		SetModelID(llmRequest.Model).
 		SetFormat(format).
 		SetStatus(request.StatusProcessing).
-		SetRequestBody(requestBodyBytes).
-		Save(ctx)
+		SetRequestBody(requestBodyBytes)
+
+	if apiKey != nil {
+		mut = mut.SetAPIKeyID(apiKey.ID)
+	}
+
+	req, err := mut.Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to create request", log.Cause(err))
 		return nil, err

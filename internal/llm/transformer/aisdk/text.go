@@ -13,17 +13,17 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
-// InboundTransformer implements the Inbound interface for AI SDK.
-type InboundTransformer struct{}
+// TextTransformer implements the Inbound interface for AI SDK.
+type TextTransformer struct{}
 
-// NewInboundTransformer creates a new AI SDK inbound transformer.
-func NewInboundTransformer() *InboundTransformer {
-	return &InboundTransformer{}
+// NewTextTransformer creates a new AI SDK inbound transformer.
+func NewTextTransformer() *TextTransformer {
+	return &TextTransformer{}
 }
 
 // Name returns the name of the transformer.
-func (t *InboundTransformer) Name() string {
-	return "vercel/aisdk"
+func (t *TextTransformer) Name() string {
+	return "aisdk/text"
 }
 
 // AiSDKRequest represents the AI SDK request format.
@@ -55,7 +55,7 @@ type AiSDKToolFunction struct {
 }
 
 // TransformRequest transforms AI SDK request to LLM request.
-func (t *InboundTransformer) TransformRequest(
+func (t *TextTransformer) TransformRequest(
 	ctx context.Context,
 	req *httpclient.Request,
 ) (*llm.Request, error) {
@@ -157,7 +157,7 @@ func (t *InboundTransformer) TransformRequest(
 }
 
 // TransformResponse transforms LLM response to AI SDK response.
-func (t *InboundTransformer) TransformResponse(
+func (t *TextTransformer) TransformResponse(
 	ctx context.Context,
 	resp *llm.Response,
 ) (*httpclient.Response, error) {
@@ -191,7 +191,7 @@ func (t *InboundTransformer) TransformResponse(
 	}, nil
 }
 
-func (t *InboundTransformer) TransformStream(
+func (t *TextTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*llm.Response],
 ) (streams.Stream[*httpclient.StreamEvent], error) {
@@ -200,7 +200,7 @@ func (t *InboundTransformer) TransformStream(
 	}), nil
 }
 
-func (t *InboundTransformer) TransformStreamChunk(
+func (t *TextTransformer) TransformStreamChunk(
 	ctx context.Context,
 	chunk *llm.Response,
 ) (*httpclient.StreamEvent, error) {
@@ -283,26 +283,27 @@ func (t *InboundTransformer) TransformStreamChunk(
 	// Join all stream data
 	eventData := strings.Join(streamData, "")
 
-	// Create headers for AI SDK data stream
-	headers := make(http.Header)
-	headers.Set("Content-Type", "text/plain; charset=utf-8")
-	headers.Set("X-Vercel-Ai-Data-Stream", "v1")
-
 	return &httpclient.StreamEvent{
 		// Type: "data",
 		Data: []byte(eventData),
 	}, nil
 }
 
-func (t *InboundTransformer) AggregateStreamChunks(
+func (t *TextTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, error) {
-	panic("unimplemented")
+	return []byte(`{}`), nil
 }
 
-func (t *InboundTransformer) TransformError(ctx context.Context, rawErr *llm.ResponseError) *httpclient.Error {
-	panic("unimplemented")
+func (t *TextTransformer) TransformError(ctx context.Context, rawErr *llm.ResponseError) *httpclient.Error {
+	body, _ := json.Marshal(rawErr)
+
+	return &httpclient.Error{
+		StatusCode: rawErr.StatusCode,
+		Status:     "",
+		Body:       body,
+	}
 }
 
 // // AggregateStreamChunks aggregates streaming response chunks into a complete response.

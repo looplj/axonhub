@@ -68,8 +68,6 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 		c.Header("Connection", "keep-alive")
 		c.Header("Access-Control-Allow-Origin", "*")
 
-		clientGone := c.Writer.CloseNotify()
-
 		clientDisconnected := false
 
 		defer func() {
@@ -78,16 +76,21 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 			}
 		}()
 
+		clientGone := c.Writer.CloseNotify()
+
 		for {
 			select {
 			case <-clientGone:
 				clientDisconnected = true
+
+				log.Warn(ctx, "Client disconnected")
 				// continue to read the rest of the stream to collect stream.
 			default:
 				if result.ChatCompletionStream.Next() {
 					cur := result.ChatCompletionStream.Current()
-					log.Debug(ctx, "stream event", log.Any("event", cur))
 					c.SSEvent(cur.Type, cur.Data)
+					log.Debug(ctx, "stream event", log.Any("event", cur))
+					c.Writer.Flush()
 				} else {
 					if result.ChatCompletionStream.Err() != nil {
 						log.Error(ctx, "Error in stream", log.Cause(result.ChatCompletionStream.Err()))

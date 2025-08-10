@@ -58,7 +58,7 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 			params.ChannelService,
 			params.RequestService,
 			params.HttpClient,
-			aisdk.NewInboundTransformer(),
+			aisdk.NewTextTransformer(),
 		),
 		ErrorHandler: &AiSdkErrorHandler{},
 	}

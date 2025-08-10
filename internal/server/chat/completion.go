@@ -43,6 +43,7 @@ type ChatCompletionResult struct {
 
 func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
 	apiKey, _ := contexts.GetAPIKey(ctx)
+	user, _ := contexts.GetUser(ctx)
 
 	log.Debug(ctx, "request received", log.String("request_body", string(request.Body)))
 
@@ -52,6 +53,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		processor.ChannelService,
 		processor.RequestService,
 		apiKey,
+		user,
 		request,
 	)
 

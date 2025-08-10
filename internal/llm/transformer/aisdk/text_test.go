@@ -13,7 +13,7 @@ import (
 )
 
 func TestInboundTransformer_TransformRequest(t *testing.T) {
-	transformer := NewInboundTransformer()
+	transformer := NewTextTransformer()
 	ctx := t.Context()
 
 	tests := []struct {
@@ -177,7 +177,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 }
 
 func TestInboundTransformer_TransformResponse(t *testing.T) {
-	transformer := NewInboundTransformer()
+	transformer := NewTextTransformer()
 	ctx := t.Context()
 
 	tests := []struct {
@@ -244,7 +244,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 }
 
 func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
-	transformer := NewInboundTransformer()
+	transformer := NewTextTransformer()
 	ctx := t.Context()
 
 	tests := []struct {

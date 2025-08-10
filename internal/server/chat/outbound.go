@@ -184,19 +184,20 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		log.Any("model", llmRequest.Model),
 	)
 
+	model, err := p.state.CurrentChannel.ChooseModel(llmRequest.Model)
+	if err != nil {
+		log.Error(ctx, "Failed to choose model", log.Cause(err))
+		return nil, err
+	}
+
+	llmRequest.Model = model
+
 	channelRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create request execution record before processing
 	if p.state.RequestExec == nil {
-		model, err := p.state.CurrentChannel.ChooseModel(llmRequest.Model)
-		if err != nil {
-			log.Error(ctx, "Failed to choose model", log.Cause(err))
-			return nil, err
-		}
-
 		requestExec, err := p.state.RequestService.CreateRequestExecution(
 			ctx,
 			p.state.CurrentChannel,

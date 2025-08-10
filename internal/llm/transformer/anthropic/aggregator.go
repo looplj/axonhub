@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
@@ -29,7 +28,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			continue // Skip invalid chunks
 		}
 
-		log.Debug(ctx, "chat stream event", log.Any("event", event))
+		// log.Debug(ctx, "chat stream event", log.Any("event", event))
 
 		switch event.Type {
 		case "message_start":

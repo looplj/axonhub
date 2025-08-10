@@ -6,6 +6,8 @@ import {
   IconVolume,
 } from '@tabler/icons-react'
 import { useChat } from '@ai-sdk/react'
+import { useAuth } from '@clerk/clerk-react'
+import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Chat } from '@/components/ui/chat'
 import { Input } from '@/components/ui/input'
@@ -57,7 +59,7 @@ export default function Playground() {
   const [systemPrompt, setSystemPrompt] = useState(
     'You are a helpful assistant.'
   )
-
+  const { accessToken } = useAuthStore((state) => state.auth)
   // 获取 channels 数据
   const { data: channelsData, isLoading: channelsLoading } = useChannels({
     first: 100,
@@ -79,6 +81,10 @@ export default function Playground() {
     // streamProtocol: 'text',
     api: '/admin/v1/chat',
     initialMessages: [],
+    credentials: 'include',
+    headers: {
+      Authorization: 'Bearer ' + accessToken,
+    },
     body: {
       // stream: true,
       model,

@@ -39,7 +39,7 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService) {
 		cors.New(adminCorsConfig),
 		middleware.WithJWTAuth(auth),
 	)
-	// 管理员路由 - 不需要 API key 认证
+	// 管理员路由 - 使用 JWT 认证
 	{
 		adminGroup.OPTIONS("*any", cors.Default())
 		adminGroup.GET("/playground", func(c *gin.Context) {
@@ -48,7 +48,6 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService) {
 		adminGroup.POST("/graphql", func(c *gin.Context) {
 			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
 		})
-		// OpenAI 兼容 API for admin playground
 		adminGroup.POST("/v1/chat", handlers.AiSDK.ChatCompletion)
 	}
 
