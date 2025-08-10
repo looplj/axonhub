@@ -9,6 +9,7 @@ export const userSchema = z.object({
   updatedAt: z.string(),
   email: z.string(),
   status: userStatusSchema,
+  preferLanguage: z.string(),
   firstName: z.string(),
   lastName: z.string(),
   isOwner: z.boolean(),

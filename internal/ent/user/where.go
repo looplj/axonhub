@@ -75,6 +75,11 @@ func Email(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldEmail, v))
 }
 
+// PreferLanguage applies equality check predicate on the "prefer_language" field. It's identical to PreferLanguageEQ.
+func PreferLanguage(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPreferLanguage, v))
+}
+
 // Password applies equality check predicate on the "password" field. It's identical to PasswordEQ.
 func Password(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldPassword, v))
@@ -298,6 +303,71 @@ func StatusIn(vs ...Status) predicate.User {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.User {
 	return predicate.User(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// PreferLanguageEQ applies the EQ predicate on the "prefer_language" field.
+func PreferLanguageEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPreferLanguage, v))
+}
+
+// PreferLanguageNEQ applies the NEQ predicate on the "prefer_language" field.
+func PreferLanguageNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldPreferLanguage, v))
+}
+
+// PreferLanguageIn applies the In predicate on the "prefer_language" field.
+func PreferLanguageIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldPreferLanguage, vs...))
+}
+
+// PreferLanguageNotIn applies the NotIn predicate on the "prefer_language" field.
+func PreferLanguageNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldPreferLanguage, vs...))
+}
+
+// PreferLanguageGT applies the GT predicate on the "prefer_language" field.
+func PreferLanguageGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldPreferLanguage, v))
+}
+
+// PreferLanguageGTE applies the GTE predicate on the "prefer_language" field.
+func PreferLanguageGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldPreferLanguage, v))
+}
+
+// PreferLanguageLT applies the LT predicate on the "prefer_language" field.
+func PreferLanguageLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldPreferLanguage, v))
+}
+
+// PreferLanguageLTE applies the LTE predicate on the "prefer_language" field.
+func PreferLanguageLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldPreferLanguage, v))
+}
+
+// PreferLanguageContains applies the Contains predicate on the "prefer_language" field.
+func PreferLanguageContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldPreferLanguage, v))
+}
+
+// PreferLanguageHasPrefix applies the HasPrefix predicate on the "prefer_language" field.
+func PreferLanguageHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldPreferLanguage, v))
+}
+
+// PreferLanguageHasSuffix applies the HasSuffix predicate on the "prefer_language" field.
+func PreferLanguageHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldPreferLanguage, v))
+}
+
+// PreferLanguageEqualFold applies the EqualFold predicate on the "prefer_language" field.
+func PreferLanguageEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldPreferLanguage, v))
+}
+
+// PreferLanguageContainsFold applies the ContainsFold predicate on the "prefer_language" field.
+func PreferLanguageContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldPreferLanguage, v))
 }
 
 // PasswordEQ applies the EQ predicate on the "password" field.

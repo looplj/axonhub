@@ -6,6 +6,7 @@ export const ME_QUERY = `
       lastName
       isOwner
       scopes
+      preferLanguage
       roles {
         id
         name
@@ -27,6 +28,7 @@ export const USERS_QUERY = `
           firstName
           lastName
           isOwner
+          preferLanguage
           scopes
           roles {
             edges {
@@ -153,6 +155,7 @@ export const SIGN_IN_MUTATION = `
         firstName
         lastName
         isOwner
+        preferLanguage
         scopes
         roles {
           edges {
@@ -172,6 +175,18 @@ export const SYSTEM_STATUS_QUERY = `
   query SystemStatus {
     systemStatus {
       isInitialized
+    }
+  }
+`;
+
+export const UPDATE_ME_MUTATION = `
+  mutation UpdateMe($input: UpdateMeInput!) {
+    updateMe(input: $input) {
+      email
+      firstName
+      lastName
+      isOwner
+      preferLanguage
     }
   }
 `;

@@ -4,6 +4,7 @@ schema:
   - axonhub.graphql
   - dashboard.graphql
   - scopes.graphql
+  - me.graphql
 
 #exec:
 #  layout: follow-schema

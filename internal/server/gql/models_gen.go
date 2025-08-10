@@ -95,15 +95,23 @@ type TopUsers struct {
 	RequestCount int          `json:"requestCount"`
 }
 
+type UpdateMeInput struct {
+	Email          *string `json:"email,omitempty"`
+	FirstName      *string `json:"firstName,omitempty"`
+	LastName       *string `json:"lastName,omitempty"`
+	PreferLanguage *string `json:"preferLanguage,omitempty"`
+}
+
 type UpdateSystemSettingsInput struct {
 	StoreChunks *bool `json:"storeChunks,omitempty"`
 }
 
 type UserInfo struct {
-	Email     string      `json:"email"`
-	FirstName string      `json:"firstName"`
-	LastName  string      `json:"lastName"`
-	IsOwner   bool        `json:"isOwner"`
-	Scopes    []string    `json:"scopes"`
-	Roles     []*RoleInfo `json:"roles"`
+	Email          string      `json:"email"`
+	FirstName      string      `json:"firstName"`
+	LastName       string      `json:"lastName"`
+	IsOwner        bool        `json:"isOwner"`
+	PreferLanguage string      `json:"preferLanguage"`
+	Scopes         []string    `json:"scopes"`
+	Roles          []*RoleInfo `json:"roles"`
 }

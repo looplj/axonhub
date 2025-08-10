@@ -87,6 +87,20 @@ func (uu *UserUpdate) SetNillableStatus(u *user.Status) *UserUpdate {
 	return uu
 }
 
+// SetPreferLanguage sets the "prefer_language" field.
+func (uu *UserUpdate) SetPreferLanguage(s string) *UserUpdate {
+	uu.mutation.SetPreferLanguage(s)
+	return uu
+}
+
+// SetNillablePreferLanguage sets the "prefer_language" field if the given value is not nil.
+func (uu *UserUpdate) SetNillablePreferLanguage(s *string) *UserUpdate {
+	if s != nil {
+		uu.SetPreferLanguage(*s)
+	}
+	return uu
+}
+
 // SetPassword sets the "password" field.
 func (uu *UserUpdate) SetPassword(s string) *UserUpdate {
 	uu.mutation.SetPassword(s)
@@ -353,6 +367,9 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := uu.mutation.Status(); ok {
 		_spec.SetField(user.FieldStatus, field.TypeEnum, value)
 	}
+	if value, ok := uu.mutation.PreferLanguage(); ok {
+		_spec.SetField(user.FieldPreferLanguage, field.TypeString, value)
+	}
 	if value, ok := uu.mutation.Password(); ok {
 		_spec.SetField(user.FieldPassword, field.TypeString, value)
 	}
@@ -582,6 +599,20 @@ func (uuo *UserUpdateOne) SetStatus(u user.Status) *UserUpdateOne {
 func (uuo *UserUpdateOne) SetNillableStatus(u *user.Status) *UserUpdateOne {
 	if u != nil {
 		uuo.SetStatus(*u)
+	}
+	return uuo
+}
+
+// SetPreferLanguage sets the "prefer_language" field.
+func (uuo *UserUpdateOne) SetPreferLanguage(s string) *UserUpdateOne {
+	uuo.mutation.SetPreferLanguage(s)
+	return uuo
+}
+
+// SetNillablePreferLanguage sets the "prefer_language" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillablePreferLanguage(s *string) *UserUpdateOne {
+	if s != nil {
+		uuo.SetPreferLanguage(*s)
 	}
 	return uuo
 }
@@ -881,6 +912,9 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 	}
 	if value, ok := uuo.mutation.Status(); ok {
 		_spec.SetField(user.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := uuo.mutation.PreferLanguage(); ok {
+		_spec.SetField(user.FieldPreferLanguage, field.TypeString, value)
 	}
 	if value, ok := uuo.mutation.Password(); ok {
 		_spec.SetField(user.FieldPassword, field.TypeString, value)

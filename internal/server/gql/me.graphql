@@ -1,0 +1,15 @@
+
+extend type Query {
+    me: UserInfo!
+}
+
+input UpdateMeInput {
+  email: String
+  firstName: String
+  lastName: String
+  preferLanguage: String
+}
+
+extend type Mutation {
+    updateMe(input: UpdateMeInput!): User!
+}

@@ -1,0 +1,51 @@
+{
+  "users": {
+    "title": "用户管理",
+    "description": "管理系统用户和权限配置。",
+    "loading": "加载中...",
+    "loadError": "加载失败:",
+    "noResults": "无结果。",
+    "inviteUser": "邀请用户",
+    "addUser": "添加用户",
+    "filterUsers": "筛选用户...",
+    "columns": {
+      "firstName": "名",
+      "lastName": "姓",
+      "email": "邮箱",
+      "owner": "所有者",
+      "roles": "角色",
+      "status": "状态",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间",
+      "actions": "操作",
+      "selectAll": "全选",
+      "selectRow": "选择行",
+      "noRoles": "无角色"
+    },
+    "status": {
+      "activated": "已激活",
+      "deactivated": "已停用",
+      "active": "活跃",
+      "inactive": "非活跃",
+      "invited": "已邀请",
+      "suspended": "已暂停"
+    },
+    "badges": {
+      "owner": "所有者",
+      "user": "用户",
+      "noRoles":"无角色"
+    },
+    "filters": {
+      "status": "状态",
+      "role": "角色",
+      "reset": "重置"
+    },
+    "actions": {
+      "openMenu": "打开菜单",
+      "edit": "编辑",
+      "changePassword": "修改密码",
+      "activate": "激活",
+      "deactivate": "停用"
+    }
+  }
+}

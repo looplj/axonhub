@@ -87,6 +87,20 @@ func (uc *UserCreate) SetNillableStatus(u *user.Status) *UserCreate {
 	return uc
 }
 
+// SetPreferLanguage sets the "prefer_language" field.
+func (uc *UserCreate) SetPreferLanguage(s string) *UserCreate {
+	uc.mutation.SetPreferLanguage(s)
+	return uc
+}
+
+// SetNillablePreferLanguage sets the "prefer_language" field if the given value is not nil.
+func (uc *UserCreate) SetNillablePreferLanguage(s *string) *UserCreate {
+	if s != nil {
+		uc.SetPreferLanguage(*s)
+	}
+	return uc
+}
+
 // SetPassword sets the "password" field.
 func (uc *UserCreate) SetPassword(s string) *UserCreate {
 	uc.mutation.SetPassword(s)
@@ -245,6 +259,10 @@ func (uc *UserCreate) defaults() error {
 		v := user.DefaultStatus
 		uc.mutation.SetStatus(v)
 	}
+	if _, ok := uc.mutation.PreferLanguage(); !ok {
+		v := user.DefaultPreferLanguage
+		uc.mutation.SetPreferLanguage(v)
+	}
 	if _, ok := uc.mutation.FirstName(); !ok {
 		v := user.DefaultFirstName
 		uc.mutation.SetFirstName(v)
@@ -285,6 +303,9 @@ func (uc *UserCreate) check() error {
 		if err := user.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "User.status": %w`, err)}
 		}
+	}
+	if _, ok := uc.mutation.PreferLanguage(); !ok {
+		return &ValidationError{Name: "prefer_language", err: errors.New(`ent: missing required field "User.prefer_language"`)}
 	}
 	if _, ok := uc.mutation.Password(); !ok {
 		return &ValidationError{Name: "password", err: errors.New(`ent: missing required field "User.password"`)}
@@ -344,6 +365,10 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := uc.mutation.Status(); ok {
 		_spec.SetField(user.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := uc.mutation.PreferLanguage(); ok {
+		_spec.SetField(user.FieldPreferLanguage, field.TypeString, value)
+		_node.PreferLanguage = value
 	}
 	if value, ok := uc.mutation.Password(); ok {
 		_spec.SetField(user.FieldPassword, field.TypeString, value)
@@ -519,6 +544,18 @@ func (u *UserUpsert) UpdateStatus() *UserUpsert {
 	return u
 }
 
+// SetPreferLanguage sets the "prefer_language" field.
+func (u *UserUpsert) SetPreferLanguage(v string) *UserUpsert {
+	u.Set(user.FieldPreferLanguage, v)
+	return u
+}
+
+// UpdatePreferLanguage sets the "prefer_language" field to the value that was provided on create.
+func (u *UserUpsert) UpdatePreferLanguage() *UserUpsert {
+	u.SetExcluded(user.FieldPreferLanguage)
+	return u
+}
+
 // SetPassword sets the "password" field.
 func (u *UserUpsert) SetPassword(v string) *UserUpsert {
 	u.Set(user.FieldPassword, v)
@@ -690,6 +727,20 @@ func (u *UserUpsertOne) SetStatus(v user.Status) *UserUpsertOne {
 func (u *UserUpsertOne) UpdateStatus() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetPreferLanguage sets the "prefer_language" field.
+func (u *UserUpsertOne) SetPreferLanguage(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetPreferLanguage(v)
+	})
+}
+
+// UpdatePreferLanguage sets the "prefer_language" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdatePreferLanguage() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdatePreferLanguage()
 	})
 }
 
@@ -1041,6 +1092,20 @@ func (u *UserUpsertBulk) SetStatus(v user.Status) *UserUpsertBulk {
 func (u *UserUpsertBulk) UpdateStatus() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetPreferLanguage sets the "prefer_language" field.
+func (u *UserUpsertBulk) SetPreferLanguage(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetPreferLanguage(v)
+	})
+}
+
+// UpdatePreferLanguage sets the "prefer_language" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdatePreferLanguage() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdatePreferLanguage()
 	})
 }
 

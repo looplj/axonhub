@@ -1,13 +1,14 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
+import { useTranslation } from "react-i18next";
 import { Checkbox } from "@/components/ui/checkbox";
 import LongText from "@/components/long-text";
 import { Badge } from "@/components/ui/badge";
 import { User } from "../data/schema";
 import { DataTableRowActions } from "./data-table-row-actions";
 
-export const columns: ColumnDef<User>[] = [
+export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<User>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -32,39 +33,39 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "firstName",
-    header: "First Name",
+    header: t("users.columns.firstName"),
     cell: ({ row }) => <LongText>{row.getValue("firstName")}</LongText>,
   },
   {
     accessorKey: "lastName",
-    header: "Last Name",
+    header: t("users.columns.lastName"),
     cell: ({ row }) => <LongText>{row.getValue("lastName")}</LongText>,
   },
   {
     accessorKey: "email",
-    header: "Email",
+    header: t("users.columns.email"),
     cell: ({ row }) => <LongText>{row.getValue("email")}</LongText>,
   },
   {
     accessorKey: "isOwner",
-    header: "Owner",
+    header: t("users.columns.owner"),
     cell: ({ row }) => {
       const isOwner = row.getValue("isOwner") as boolean;
       return isOwner ? (
-        <Badge variant="default">Owner</Badge>
+        <Badge variant="default">{t("users.badges.owner")}</Badge>
       ) : (
-        <Badge variant="secondary">User</Badge>
+        <Badge variant="secondary">{t("users.badges.user")}</Badge>
       );
     },
   },
   {
     accessorKey: "roles",
-    header: "Roles",
+    header: t("users.columns.roles"),
     cell: ({ row }) => {
       const user = row.original;
       const roles = user.roles?.edges?.map((edge) => edge.node);
       if (!roles || roles.length === 0) {
-        return <span className="text-muted-foreground">No roles</span>;
+        return <span className="text-muted-foreground">{t("users.badges.noRoles")}</span>;
       }
       return (
         <div className="flex flex-wrap gap-1">
@@ -79,19 +80,19 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "status",
-    header: "状态",
+    header: t("users.columns.status"),
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
       return (
         <Badge variant={status === "activated" ? "default" : "secondary"}>
-          {status === "activated" ? "已激活" : "已停用"}
+          {status === "activated" ? t("users.status.activated") : t("users.status.deactivated")}
         </Badge>
       );
     },
   },
   {
     accessorKey: "createdAt",
-    header: "Created At",
+    header: t("users.columns.createdAt"),
     cell: ({ row }) => {
       const date = new Date(row.getValue("createdAt"));
       return date.toLocaleDateString();
@@ -99,7 +100,7 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "updatedAt",
-    header: "Updated At",
+    header: t("users.columns.updatedAt"),
     cell: ({ row }) => {
       const date = new Date(row.getValue("updatedAt"));
       return date.toLocaleDateString();

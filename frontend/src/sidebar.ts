@@ -120,21 +120,21 @@ export function useSidebarData(): SidebarData {
           url: '/settings',
           icon: IconUserCog,
         } as NavLink,
-        {
-          title: 'Account',
-          url: '/settings/account',
-          icon: IconTool,
-        } as NavLink,
-        {
-          title: 'Appearance',
-          url: '/settings/appearance',
-          icon: IconPalette,
-        } as NavLink,
-        {
-          title: 'Notifications',
-          url: '/settings/notifications',
-          icon: IconNotification,
-        } as NavLink,
+        // {
+        //   title: 'Account',
+        //   url: '/settings/account',
+        //   icon: IconTool,
+        // } as NavLink,
+        // {
+        //   title: 'Appearance',
+        //   url: '/settings/appearance',
+        //   icon: IconPalette,
+        // } as NavLink,
+        // {
+        //   title: 'Notifications',
+        //   url: '/settings/notifications',
+        //   icon: IconNotification,
+        // } as NavLink,
       ],
     },
   ]

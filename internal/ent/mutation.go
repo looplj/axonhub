@@ -6170,6 +6170,7 @@ type UserMutation struct {
 	adddeleted_at   *int
 	email           *string
 	status          *user.Status
+	prefer_language *string
 	password        *string
 	first_name      *string
 	last_name       *string
@@ -6487,6 +6488,42 @@ func (m *UserMutation) OldStatus(ctx context.Context) (v user.Status, err error)
 // ResetStatus resets all changes to the "status" field.
 func (m *UserMutation) ResetStatus() {
 	m.status = nil
+}
+
+// SetPreferLanguage sets the "prefer_language" field.
+func (m *UserMutation) SetPreferLanguage(s string) {
+	m.prefer_language = &s
+}
+
+// PreferLanguage returns the value of the "prefer_language" field in the mutation.
+func (m *UserMutation) PreferLanguage() (r string, exists bool) {
+	v := m.prefer_language
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPreferLanguage returns the old "prefer_language" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldPreferLanguage(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPreferLanguage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPreferLanguage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPreferLanguage: %w", err)
+	}
+	return oldValue.PreferLanguage, nil
+}
+
+// ResetPreferLanguage resets all changes to the "prefer_language" field.
+func (m *UserMutation) ResetPreferLanguage() {
+	m.prefer_language = nil
 }
 
 // SetPassword sets the "password" field.
@@ -6894,7 +6931,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.created_at != nil {
 		fields = append(fields, user.FieldCreatedAt)
 	}
@@ -6909,6 +6946,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, user.FieldStatus)
+	}
+	if m.prefer_language != nil {
+		fields = append(fields, user.FieldPreferLanguage)
 	}
 	if m.password != nil {
 		fields = append(fields, user.FieldPassword)
@@ -6943,6 +6983,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Email()
 	case user.FieldStatus:
 		return m.Status()
+	case user.FieldPreferLanguage:
+		return m.PreferLanguage()
 	case user.FieldPassword:
 		return m.Password()
 	case user.FieldFirstName:
@@ -6972,6 +7014,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldEmail(ctx)
 	case user.FieldStatus:
 		return m.OldStatus(ctx)
+	case user.FieldPreferLanguage:
+		return m.OldPreferLanguage(ctx)
 	case user.FieldPassword:
 		return m.OldPassword(ctx)
 	case user.FieldFirstName:
@@ -7025,6 +7069,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case user.FieldPreferLanguage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPreferLanguage(v)
 		return nil
 	case user.FieldPassword:
 		v, ok := value.(string)
@@ -7148,6 +7199,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case user.FieldPreferLanguage:
+		m.ResetPreferLanguage()
 		return nil
 	case user.FieldPassword:
 		m.ResetPassword()

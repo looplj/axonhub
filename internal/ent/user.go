@@ -28,6 +28,8 @@ type User struct {
 	Email string `json:"email,omitempty"`
 	// Status holds the value of the "status" field.
 	Status user.Status `json:"status,omitempty"`
+	// 用户偏好语言
+	PreferLanguage string `json:"prefer_language,omitempty"`
 	// Password holds the value of the "password" field.
 	Password string `json:"-"`
 	// FirstName holds the value of the "first_name" field.
@@ -101,7 +103,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case user.FieldID, user.FieldDeletedAt:
 			values[i] = new(sql.NullInt64)
-		case user.FieldEmail, user.FieldStatus, user.FieldPassword, user.FieldFirstName, user.FieldLastName:
+		case user.FieldEmail, user.FieldStatus, user.FieldPreferLanguage, user.FieldPassword, user.FieldFirstName, user.FieldLastName:
 			values[i] = new(sql.NullString)
 		case user.FieldCreatedAt, user.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -155,6 +157,12 @@ func (u *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				u.Status = user.Status(value.String)
+			}
+		case user.FieldPreferLanguage:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field prefer_language", values[i])
+			} else if value.Valid {
+				u.PreferLanguage = value.String
 			}
 		case user.FieldPassword:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -253,6 +261,9 @@ func (u *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", u.Status))
+	builder.WriteString(", ")
+	builder.WriteString("prefer_language=")
+	builder.WriteString(u.PreferLanguage)
 	builder.WriteString(", ")
 	builder.WriteString("password=<sensitive>")
 	builder.WriteString(", ")

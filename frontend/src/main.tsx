@@ -16,6 +16,8 @@ import { SearchProvider } from './context/search-context'
 import './index.css'
 // Generated Routes
 import { routeTree } from './routeTree.gen'
+// Initialize i18n
+import './lib/i18n'
 
 const queryClient = new QueryClient({
   defaultOptions: {

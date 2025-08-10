@@ -18,6 +18,7 @@ interface MeResponse {
     firstName: string
     lastName: string
     isOwner: boolean
+    preferLanguage: string
     scopes: string[]
     roles: Array<{
       id: string
@@ -47,6 +48,7 @@ export function useMe() {
         firstName: query.data.firstName,
         lastName: query.data.lastName,
         isOwner: query.data.isOwner,
+        preferLanguage: query.data.preferLanguage || 'en',
         scopes: query.data.scopes,
         roles: query.data.roles.map(role => ({
           id: role.id,
@@ -78,6 +80,7 @@ export function useSignIn() {
         firstName: data.user.firstName || '',
         lastName: data.user.lastName || '',
         isOwner: data.user.isOwner,
+        preferLanguage: data.user.preferLanguage || 'en',
         scopes: data.user.scopes,
         roles: data.user.roles.map(role => ({
           id: role.id,

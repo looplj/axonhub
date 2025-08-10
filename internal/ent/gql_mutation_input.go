@@ -466,17 +466,18 @@ func (c *SystemUpdateOne) SetInput(i UpdateSystemInput) *SystemUpdateOne {
 
 // CreateUserInput represents a mutation input for creating users.
 type CreateUserInput struct {
-	CreatedAt *time.Time
-	UpdatedAt *time.Time
-	DeletedAt *int
-	Email     string
-	Status    *user.Status
-	Password  string
-	FirstName *string
-	LastName  *string
-	IsOwner   *bool
-	Scopes    []string
-	RoleIDs   []int
+	CreatedAt      *time.Time
+	UpdatedAt      *time.Time
+	DeletedAt      *int
+	Email          string
+	Status         *user.Status
+	PreferLanguage *string
+	Password       string
+	FirstName      *string
+	LastName       *string
+	IsOwner        *bool
+	Scopes         []string
+	RoleIDs        []int
 }
 
 // Mutate applies the CreateUserInput on the UserMutation builder.
@@ -493,6 +494,9 @@ func (i *CreateUserInput) Mutate(m *UserMutation) {
 	m.SetEmail(i.Email)
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
+	}
+	if v := i.PreferLanguage; v != nil {
+		m.SetPreferLanguage(*v)
 	}
 	m.SetPassword(i.Password)
 	if v := i.FirstName; v != nil {
@@ -520,20 +524,21 @@ func (c *UserCreate) SetInput(i CreateUserInput) *UserCreate {
 
 // UpdateUserInput represents a mutation input for updating users.
 type UpdateUserInput struct {
-	UpdatedAt     *time.Time
-	DeletedAt     *int
-	Email         *string
-	Status        *user.Status
-	Password      *string
-	FirstName     *string
-	LastName      *string
-	IsOwner       *bool
-	ClearScopes   bool
-	Scopes        []string
-	AppendScopes  []string
-	ClearRoles    bool
-	AddRoleIDs    []int
-	RemoveRoleIDs []int
+	UpdatedAt      *time.Time
+	DeletedAt      *int
+	Email          *string
+	Status         *user.Status
+	PreferLanguage *string
+	Password       *string
+	FirstName      *string
+	LastName       *string
+	IsOwner        *bool
+	ClearScopes    bool
+	Scopes         []string
+	AppendScopes   []string
+	ClearRoles     bool
+	AddRoleIDs     []int
+	RemoveRoleIDs  []int
 }
 
 // Mutate applies the UpdateUserInput on the UserMutation builder.
@@ -549,6 +554,9 @@ func (i *UpdateUserInput) Mutate(m *UserMutation) {
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
+	}
+	if v := i.PreferLanguage; v != nil {
+		m.SetPreferLanguage(*v)
 	}
 	if v := i.Password; v != nil {
 		m.SetPassword(*v)

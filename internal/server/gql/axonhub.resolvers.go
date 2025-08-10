@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -215,26 +214,6 @@ func (r *mutationResolver) UpdateRole(ctx context.Context, id objects.GUID, inpu
 	return role, nil
 }
 
-// UpdateSystemSettings is the resolver for the updateSystemSettings field.
-func (r *mutationResolver) UpdateSystemSettings(ctx context.Context, input UpdateSystemSettingsInput) (*SystemSettings, error) {
-	if input.StoreChunks != nil {
-		err := r.systemService.SetStoreChunks(ctx, *input.StoreChunks)
-		if err != nil {
-			return nil, fmt.Errorf("failed to update store chunks setting: %w", err)
-		}
-	}
-
-	// Return current settings
-	storeChunks, err := r.systemService.StoreChunks(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get store chunks setting: %w", err)
-	}
-
-	return &SystemSettings{
-		StoreChunks: storeChunks,
-	}, nil
-}
-
 // SignIn is the resolver for the signIn field.
 func (r *mutationResolver) SignIn(ctx context.Context, input SignInInput) (*SignInPayload, error) {
 	// Authenticate user
@@ -304,6 +283,26 @@ func (r *mutationResolver) InitializeSystem(ctx context.Context, input Initializ
 	}, nil
 }
 
+// UpdateSystemSettings is the resolver for the updateSystemSettings field.
+func (r *mutationResolver) UpdateSystemSettings(ctx context.Context, input UpdateSystemSettingsInput) (*SystemSettings, error) {
+	if input.StoreChunks != nil {
+		err := r.systemService.SetStoreChunks(ctx, *input.StoreChunks)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update store chunks setting: %w", err)
+		}
+	}
+
+	// Return current settings
+	storeChunks, err := r.systemService.StoreChunks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get store chunks setting: %w", err)
+	}
+
+	return &SystemSettings{
+		StoreChunks: storeChunks,
+	}, nil
+}
+
 // SystemStatus is the resolver for the systemStatus field.
 func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error) {
 	isInitialized, err := r.systemService.IsInitialized(ctx)
@@ -328,94 +327,7 @@ func (r *queryResolver) SystemSettings(ctx context.Context) (*SystemSettings, er
 	}, nil
 }
 
-// Me is the resolver for the me field.
-func (r *queryResolver) Me(ctx context.Context) (*UserInfo, error) {
-	// Get current user from context
-	user, ok := contexts.GetUser(ctx)
-	if !ok || user == nil {
-		return nil, fmt.Errorf("user not found in context")
-	}
-
-	roles, err := user.QueryRoles().All(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load user roles: %w", err)
-	}
-
-	// Convert ent.Role to RoleInfo
-	userRoles := make([]*RoleInfo, len(roles))
-	for i, role := range roles {
-		userRoles[i] = &RoleInfo{
-			ID:   fmt.Sprintf("%d", role.ID),
-			Name: role.Name,
-		}
-	}
-
-	// Calculate all scopes (user scopes + role scopes)
-	allScopes := make(map[string]bool)
-
-	// Add user's direct scopes
-	for _, scope := range user.Scopes {
-		allScopes[scope] = true
-	}
-
-	// Add scopes from all roles
-	for _, role := range roles {
-		for _, scope := range role.Scopes {
-			allScopes[scope] = true
-		}
-	}
-
-	// Convert map to slice
-	scopesList := make([]string, 0, len(allScopes))
-	for scope := range allScopes {
-		scopesList = append(scopesList, scope)
-	}
-
-	return &UserInfo{
-		Email:     user.Email,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		IsOwner:   user.IsOwner,
-		Scopes:    scopesList,
-		Roles:     userRoles,
-	}, nil
-}
-
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 type mutationResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *mutationResolver) DeleteChannel(ctx context.Context, id objects.GUID) (bool, error) {
-	err := r.client.Channel.DeleteOneID(id.ID).Exec(ctx)
-	if err != nil {
-		return false, fmt.Errorf("failed to delete channel: %w", err)
-	}
-
-	return true, nil
-}
-func (r *mutationResolver) DisableChannel(ctx context.Context, id objects.GUID) (bool, error) {
-	panic(fmt.Errorf("not implemented: DisableChannel - disableChannel"))
-}
-func (r *mutationResolver) DisableAPIKey(ctx context.Context, id objects.GUID) (bool, error) {
-	panic(fmt.Errorf("not implemented: DisableAPIKey - disableAPIKey"))
-}
-func (r *mutationResolver) DeleteUser(ctx context.Context, id objects.GUID) (bool, error) {
-	err := r.client.User.DeleteOneID(id.ID).Exec(ctx)
-	if err != nil {
-		return false, fmt.Errorf("failed to delete user: %w", err)
-	}
-
-	return true, nil
-}
-func (r *mutationResolver) DeactivateUser(ctx context.Context, id objects.GUID) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeactivateUser - deactivateUser"))
-}
-*/

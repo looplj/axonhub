@@ -13,6 +13,7 @@ interface AuthUser {
   firstName: string
   lastName: string
   isOwner: boolean
+  preferLanguage: string
   scopes: string[]
   roles: Role[]
 }

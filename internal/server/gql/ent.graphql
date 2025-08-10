@@ -558,6 +558,10 @@ input CreateUserInput {
   deletedAt: Int
   email: String!
   status: UserStatus
+  """
+  用户偏好语言
+  """
+  preferLanguage: String
   password: String!
   firstName: String
   lastName: String
@@ -1740,6 +1744,10 @@ input UpdateUserInput {
   deletedAt: Int
   email: String
   status: UserStatus
+  """
+  用户偏好语言
+  """
+  preferLanguage: String
   password: String
   firstName: String
   lastName: String
@@ -1761,6 +1769,10 @@ type User implements Node {
   deletedAt: Int!
   email: String!
   status: UserStatus!
+  """
+  用户偏好语言
+  """
+  preferLanguage: String!
   firstName: String!
   lastName: String!
   isOwner: Boolean!
@@ -1993,6 +2005,22 @@ input UserWhereInput {
   statusNEQ: UserStatus
   statusIn: [UserStatus!]
   statusNotIn: [UserStatus!]
+  """
+  prefer_language field predicates
+  """
+  preferLanguage: String
+  preferLanguageNEQ: String
+  preferLanguageIn: [String!]
+  preferLanguageNotIn: [String!]
+  preferLanguageGT: String
+  preferLanguageGTE: String
+  preferLanguageLT: String
+  preferLanguageLTE: String
+  preferLanguageContains: String
+  preferLanguageHasPrefix: String
+  preferLanguageHasSuffix: String
+  preferLanguageEqualFold: String
+  preferLanguageContainsFold: String
   """
   first_name field predicates
   """

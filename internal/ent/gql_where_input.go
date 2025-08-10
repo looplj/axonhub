@@ -2934,6 +2934,21 @@ type UserWhereInput struct {
 	StatusIn    []user.Status `json:"statusIn,omitempty"`
 	StatusNotIn []user.Status `json:"statusNotIn,omitempty"`
 
+	// "prefer_language" field predicates.
+	PreferLanguage             *string  `json:"preferLanguage,omitempty"`
+	PreferLanguageNEQ          *string  `json:"preferLanguageNEQ,omitempty"`
+	PreferLanguageIn           []string `json:"preferLanguageIn,omitempty"`
+	PreferLanguageNotIn        []string `json:"preferLanguageNotIn,omitempty"`
+	PreferLanguageGT           *string  `json:"preferLanguageGT,omitempty"`
+	PreferLanguageGTE          *string  `json:"preferLanguageGTE,omitempty"`
+	PreferLanguageLT           *string  `json:"preferLanguageLT,omitempty"`
+	PreferLanguageLTE          *string  `json:"preferLanguageLTE,omitempty"`
+	PreferLanguageContains     *string  `json:"preferLanguageContains,omitempty"`
+	PreferLanguageHasPrefix    *string  `json:"preferLanguageHasPrefix,omitempty"`
+	PreferLanguageHasSuffix    *string  `json:"preferLanguageHasSuffix,omitempty"`
+	PreferLanguageEqualFold    *string  `json:"preferLanguageEqualFold,omitempty"`
+	PreferLanguageContainsFold *string  `json:"preferLanguageContainsFold,omitempty"`
+
 	// "password" field predicates.
 	Password             *string  `json:"password,omitempty"`
 	PasswordNEQ          *string  `json:"passwordNEQ,omitempty"`
@@ -3213,6 +3228,45 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, user.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.PreferLanguage != nil {
+		predicates = append(predicates, user.PreferLanguageEQ(*i.PreferLanguage))
+	}
+	if i.PreferLanguageNEQ != nil {
+		predicates = append(predicates, user.PreferLanguageNEQ(*i.PreferLanguageNEQ))
+	}
+	if len(i.PreferLanguageIn) > 0 {
+		predicates = append(predicates, user.PreferLanguageIn(i.PreferLanguageIn...))
+	}
+	if len(i.PreferLanguageNotIn) > 0 {
+		predicates = append(predicates, user.PreferLanguageNotIn(i.PreferLanguageNotIn...))
+	}
+	if i.PreferLanguageGT != nil {
+		predicates = append(predicates, user.PreferLanguageGT(*i.PreferLanguageGT))
+	}
+	if i.PreferLanguageGTE != nil {
+		predicates = append(predicates, user.PreferLanguageGTE(*i.PreferLanguageGTE))
+	}
+	if i.PreferLanguageLT != nil {
+		predicates = append(predicates, user.PreferLanguageLT(*i.PreferLanguageLT))
+	}
+	if i.PreferLanguageLTE != nil {
+		predicates = append(predicates, user.PreferLanguageLTE(*i.PreferLanguageLTE))
+	}
+	if i.PreferLanguageContains != nil {
+		predicates = append(predicates, user.PreferLanguageContains(*i.PreferLanguageContains))
+	}
+	if i.PreferLanguageHasPrefix != nil {
+		predicates = append(predicates, user.PreferLanguageHasPrefix(*i.PreferLanguageHasPrefix))
+	}
+	if i.PreferLanguageHasSuffix != nil {
+		predicates = append(predicates, user.PreferLanguageHasSuffix(*i.PreferLanguageHasSuffix))
+	}
+	if i.PreferLanguageEqualFold != nil {
+		predicates = append(predicates, user.PreferLanguageEqualFold(*i.PreferLanguageEqualFold))
+	}
+	if i.PreferLanguageContainsFold != nil {
+		predicates = append(predicates, user.PreferLanguageContainsFold(*i.PreferLanguageContainsFold))
 	}
 	if i.Password != nil {
 		predicates = append(predicates, user.PasswordEQ(*i.Password))

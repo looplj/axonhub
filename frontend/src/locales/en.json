@@ -1,0 +1,51 @@
+{
+  "users": {
+    "title": "User Management",
+    "description": "Manage system users and permission configurations.",
+    "loading": "Loading...",
+    "loadError": "Load failed:",
+    "noResults": "No results.",
+    "inviteUser": "Invite User",
+    "addUser": "Add User",
+    "filterUsers": "Filter users...",
+    "columns": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "owner": "Owner",
+      "roles": "Roles",
+      "status": "Status",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "noRoles": "No roles"
+    },
+    "status": {
+      "activated": "Activated",
+      "deactivated": "Deactivated",
+      "active": "Active",
+      "inactive": "Inactive",
+      "invited": "Invited",
+      "suspended": "Suspended"
+    },
+    "badges": {
+      "owner": "Owner",
+      "user": "User",
+      "noRoles":"No roles"
+    },
+    "filters": {
+      "status": "Status",
+      "role": "Role",
+      "reset": "Reset"
+    },
+    "actions": {
+      "openMenu": "Open menu",
+      "edit": "Edit",
+      "changePassword": "Change Password",
+      "activate": "Activate",
+      "deactivate": "Deactivate"
+    }
+  }
+}

@@ -54,6 +54,7 @@ type UserInfo {
   firstName: String!
   lastName: String!
   isOwner: Boolean!
+  preferLanguage: String!
   scopes: [String!]!
   roles: [RoleInfo!]!
 }
@@ -70,7 +71,6 @@ input UpdateSystemSettingsInput {
 extend type Query {
     systemStatus: SystemStatus!
     systemSettings: SystemSettings!
-    me: UserInfo!
 }
 
 type Mutation {
@@ -88,8 +88,8 @@ type Mutation {
     createRole(input: CreateRoleInput!): Role!
     updateRole(id: ID!, input: UpdateRoleInput!): Role!
 
-    updateSystemSettings(input: UpdateSystemSettingsInput!): SystemSettings!
-
     signIn(input: SignInInput!): SignInPayload!
+
     initializeSystem(input: InitializeSystemInput!): InitializeSystemPayload!
+    updateSystemSettings(input: UpdateSystemSettingsInput!): SystemSettings!
 }

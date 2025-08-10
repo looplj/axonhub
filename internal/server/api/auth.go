@@ -72,12 +72,13 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 
 	response := SignInResponse{
 		User: objects.UserInfo{
-			Email:     user.Email,
-			FirstName: user.FirstName,
-			LastName:  user.LastName,
-			IsOwner:   user.IsOwner,
-			Scopes:    user.Scopes,
-			Roles:     []objects.Role{}, // TODO: Load user roles
+			Email:          user.Email,
+			FirstName:      user.FirstName,
+			LastName:       user.LastName,
+			IsOwner:        user.IsOwner,
+			PreferLanguage: user.PreferLanguage,
+			Scopes:         user.Scopes,
+			Roles:          []objects.Role{}, // TODO: Load user roles
 		},
 		Token: token,
 	}
