@@ -39,6 +39,7 @@ func (Channel) Fields() []ent.Field {
 			Immutable(),
 		field.String("base_url"),
 		field.String("name"),
+		field.Enum("status").Values("enabled", "disabled").Default("enabled"),
 		field.String("api_key").Sensitive().NotEmpty(),
 		field.Strings("supported_models"),
 		field.String("default_test_model"),

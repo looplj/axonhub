@@ -1,4 +1,5 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
+import { IconUserOff, IconUserCheck } from '@tabler/icons-react'
 import { Row } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
 import {
@@ -6,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ApiKey } from '../data/schema'
@@ -36,10 +38,13 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={() => openDialog('delete', apiKey)}
-          className='text-destructive focus:text-destructive'
+          onClick={() => openDialog('status', apiKey)}
+          className={apiKey.status === 'enabled' ? 'text-red-500!' : 'text-green-500!'}
         >
-          删除
+          {apiKey.status === 'enabled' ? '停用' : '激活'}
+          <DropdownMenuShortcut>
+            {apiKey.status === 'enabled' ? <IconUserOff size={16} /> : <IconUserCheck size={16} />}
+          </DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

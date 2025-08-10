@@ -85,6 +85,20 @@ func (cc *ChannelCreate) SetName(s string) *ChannelCreate {
 	return cc
 }
 
+// SetStatus sets the "status" field.
+func (cc *ChannelCreate) SetStatus(c channel.Status) *ChannelCreate {
+	cc.mutation.SetStatus(c)
+	return cc
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (cc *ChannelCreate) SetNillableStatus(c *channel.Status) *ChannelCreate {
+	if c != nil {
+		cc.SetStatus(*c)
+	}
+	return cc
+}
+
 // SetAPIKey sets the "api_key" field.
 func (cc *ChannelCreate) SetAPIKey(s string) *ChannelCreate {
 	cc.mutation.SetAPIKey(s)
@@ -194,6 +208,10 @@ func (cc *ChannelCreate) defaults() error {
 		v := channel.DefaultDeletedAt
 		cc.mutation.SetDeletedAt(v)
 	}
+	if _, ok := cc.mutation.Status(); !ok {
+		v := channel.DefaultStatus
+		cc.mutation.SetStatus(v)
+	}
 	if _, ok := cc.mutation.Settings(); !ok {
 		v := channel.DefaultSettings
 		cc.mutation.SetSettings(v)
@@ -225,6 +243,14 @@ func (cc *ChannelCreate) check() error {
 	}
 	if _, ok := cc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Channel.name"`)}
+	}
+	if _, ok := cc.mutation.Status(); !ok {
+		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Channel.status"`)}
+	}
+	if v, ok := cc.mutation.Status(); ok {
+		if err := channel.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Channel.status": %w`, err)}
+		}
 	}
 	if _, ok := cc.mutation.APIKey(); !ok {
 		return &ValidationError{Name: "api_key", err: errors.New(`ent: missing required field "Channel.api_key"`)}
@@ -290,6 +316,10 @@ func (cc *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := cc.mutation.Name(); ok {
 		_spec.SetField(channel.FieldName, field.TypeString, value)
 		_node.Name = value
+	}
+	if value, ok := cc.mutation.Status(); ok {
+		_spec.SetField(channel.FieldStatus, field.TypeEnum, value)
+		_node.Status = value
 	}
 	if value, ok := cc.mutation.APIKey(); ok {
 		_spec.SetField(channel.FieldAPIKey, field.TypeString, value)
@@ -442,6 +472,18 @@ func (u *ChannelUpsert) SetName(v string) *ChannelUpsert {
 // UpdateName sets the "name" field to the value that was provided on create.
 func (u *ChannelUpsert) UpdateName() *ChannelUpsert {
 	u.SetExcluded(channel.FieldName)
+	return u
+}
+
+// SetStatus sets the "status" field.
+func (u *ChannelUpsert) SetStatus(v channel.Status) *ChannelUpsert {
+	u.Set(channel.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateStatus() *ChannelUpsert {
+	u.SetExcluded(channel.FieldStatus)
 	return u
 }
 
@@ -607,6 +649,20 @@ func (u *ChannelUpsertOne) SetName(v string) *ChannelUpsertOne {
 func (u *ChannelUpsertOne) UpdateName() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateName()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *ChannelUpsertOne) SetStatus(v channel.Status) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateStatus() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateStatus()
 	})
 }
 
@@ -947,6 +1003,20 @@ func (u *ChannelUpsertBulk) SetName(v string) *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) UpdateName() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateName()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *ChannelUpsertBulk) SetStatus(v channel.Status) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateStatus() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateStatus()
 	})
 }
 

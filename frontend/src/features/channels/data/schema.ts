@@ -11,6 +11,10 @@ export const channelTypeSchema = z.enum([
 ])
 export type ChannelType = z.infer<typeof channelTypeSchema>
 
+// Channel Status
+export const channelStatusSchema = z.enum(['enabled', 'disabled'])
+export type ChannelStatus = z.infer<typeof channelStatusSchema>
+
 // Model Mapping
 export const modelMappingSchema = z.object({
   from: z.string(),
@@ -32,6 +36,7 @@ export const channelSchema = z.object({
   type: channelTypeSchema,
   baseURL: z.string(),
   name: z.string(),
+  status: channelStatusSchema,
   supportedModels: z.array(z.string()),
   defaultTestModel: z.string(),
   settings: channelSettingsSchema,

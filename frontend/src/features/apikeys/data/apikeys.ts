@@ -21,6 +21,7 @@ const APIKEYS_QUERY = `
           }
           key
           name
+          status
         }
         cursor
       }
@@ -48,6 +49,7 @@ const APIKEY_QUERY = `
       }
       key
       name
+      status
     }
   }
 `
@@ -65,6 +67,7 @@ const CREATE_APIKEY_MUTATION = `
       }
       key
       name
+      status
     }
   }
 `
@@ -82,14 +85,16 @@ const UPDATE_APIKEY_MUTATION = `
       }
       key
       name
+      status
     }
   }
 `
 
-const DELETE_APIKEY_MUTATION = `
-  mutation DeleteApiKey($id: ID!) {
-    deleteApiKey(id: $id) {
+const UPDATE_APIKEY_STATUS_MUTATION = `
+  mutation UpdateApiKeyStatus($id: ID!, $status: APIKeyStatus!) {
+    updateAPIKeyStatus(id: $id, status: $status) {
       id
+      status
     }
   }
 `
@@ -173,19 +178,20 @@ export function useUpdateApiKey() {
   })
 }
 
-export function useDeleteApiKey() {
+export function useUpdateApiKeyStatus() {
   const queryClient = useQueryClient()
   
   return useMutation({
-    mutationFn: (id: string) => 
-      graphqlRequest<{ deleteApiKey: { id: string } }>(DELETE_APIKEY_MUTATION, { id }),
-    onSuccess: () => {
+    mutationFn: ({ id, status }: { id: string; status: 'enabled' | 'disabled' }) => 
+      graphqlRequest<{ updateAPIKeyStatus: ApiKey }>(UPDATE_APIKEY_STATUS_MUTATION, { id, status }),
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
-      toast.success('API Key deleted successfully')
+      queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] })
+      toast.success(`API Key 状态已更新为 ${data.updateAPIKeyStatus.status === 'enabled' ? '启用' : '禁用'}`)
     },
     onError: (error) => {
-      toast.error('Failed to delete API Key')
-      console.error('Delete API Key error:', error)
+      toast.error('状态更新失败')
+      console.error('Update API Key status error:', error)
     },
   })
 }

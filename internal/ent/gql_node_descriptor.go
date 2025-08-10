@@ -41,7 +41,7 @@ func (ak *APIKey) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     ak.ID,
 		Type:   "APIKey",
-		Fields: make([]*Field, 6),
+		Fields: make([]*Field, 7),
 		Edges:  make([]*Edge, 2),
 	}
 	var buf []byte
@@ -93,6 +93,14 @@ func (ak *APIKey) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "name",
 		Value: string(buf),
 	}
+	if buf, err = json.Marshal(ak.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "apikey.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
 	node.Edges[0] = &Edge{
 		Type: "User",
 		Name: "user",
@@ -121,7 +129,7 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     c.ID,
 		Type:   "Channel",
-		Fields: make([]*Field, 10),
+		Fields: make([]*Field, 11),
 		Edges:  make([]*Edge, 2),
 	}
 	var buf []byte
@@ -173,10 +181,18 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "name",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(c.APIKey); err != nil {
+	if buf, err = json.Marshal(c.Status); err != nil {
 		return nil, err
 	}
 	node.Fields[6] = &Field{
+		Type:  "channel.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(c.APIKey); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
 		Type:  "string",
 		Name:  "api_key",
 		Value: string(buf),
@@ -184,7 +200,7 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(c.SupportedModels); err != nil {
 		return nil, err
 	}
-	node.Fields[7] = &Field{
+	node.Fields[8] = &Field{
 		Type:  "[]string",
 		Name:  "supported_models",
 		Value: string(buf),
@@ -192,7 +208,7 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(c.DefaultTestModel); err != nil {
 		return nil, err
 	}
-	node.Fields[8] = &Field{
+	node.Fields[9] = &Field{
 		Type:  "string",
 		Name:  "default_test_model",
 		Value: string(buf),
@@ -200,7 +216,7 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(c.Settings); err != nil {
 		return nil, err
 	}
-	node.Fields[9] = &Field{
+	node.Fields[10] = &Field{
 		Type:  "*objects.ChannelSettings",
 		Name:  "settings",
 		Value: string(buf),
@@ -649,7 +665,7 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     u.ID,
 		Type:   "User",
-		Fields: make([]*Field, 9),
+		Fields: make([]*Field, 10),
 		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
@@ -685,10 +701,18 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "email",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(u.Password); err != nil {
+	if buf, err = json.Marshal(u.Status); err != nil {
 		return nil, err
 	}
 	node.Fields[4] = &Field{
+		Type:  "user.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(u.Password); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
 		Type:  "string",
 		Name:  "password",
 		Value: string(buf),
@@ -696,7 +720,7 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(u.FirstName); err != nil {
 		return nil, err
 	}
-	node.Fields[5] = &Field{
+	node.Fields[6] = &Field{
 		Type:  "string",
 		Name:  "first_name",
 		Value: string(buf),
@@ -704,7 +728,7 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(u.LastName); err != nil {
 		return nil, err
 	}
-	node.Fields[6] = &Field{
+	node.Fields[7] = &Field{
 		Type:  "string",
 		Name:  "last_name",
 		Value: string(buf),
@@ -712,7 +736,7 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(u.IsOwner); err != nil {
 		return nil, err
 	}
-	node.Fields[7] = &Field{
+	node.Fields[8] = &Field{
 		Type:  "bool",
 		Name:  "is_owner",
 		Value: string(buf),
@@ -720,7 +744,7 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(u.Scopes); err != nil {
 		return nil, err
 	}
-	node.Fields[8] = &Field{
+	node.Fields[9] = &Field{
 		Type:  "[]string",
 		Name:  "scopes",
 		Value: string(buf),

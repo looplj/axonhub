@@ -54,6 +54,7 @@ type APIKeyMutation struct {
 	adddeleted_at   *int
 	key             *string
 	name            *string
+	status          *apikey.Status
 	clearedFields   map[string]struct{}
 	user            *int
 	cleareduser     bool
@@ -399,6 +400,42 @@ func (m *APIKeyMutation) ResetName() {
 	m.name = nil
 }
 
+// SetStatus sets the "status" field.
+func (m *APIKeyMutation) SetStatus(a apikey.Status) {
+	m.status = &a
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *APIKeyMutation) Status() (r apikey.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldStatus(ctx context.Context) (v apikey.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *APIKeyMutation) ResetStatus() {
+	m.status = nil
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *APIKeyMutation) ClearUser() {
 	m.cleareduser = true
@@ -514,7 +551,7 @@ func (m *APIKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *APIKeyMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
 	if m.created_at != nil {
 		fields = append(fields, apikey.FieldCreatedAt)
 	}
@@ -532,6 +569,9 @@ func (m *APIKeyMutation) Fields() []string {
 	}
 	if m.name != nil {
 		fields = append(fields, apikey.FieldName)
+	}
+	if m.status != nil {
+		fields = append(fields, apikey.FieldStatus)
 	}
 	return fields
 }
@@ -553,6 +593,8 @@ func (m *APIKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.Key()
 	case apikey.FieldName:
 		return m.Name()
+	case apikey.FieldStatus:
+		return m.Status()
 	}
 	return nil, false
 }
@@ -574,6 +616,8 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldKey(ctx)
 	case apikey.FieldName:
 		return m.OldName(ctx)
+	case apikey.FieldStatus:
+		return m.OldStatus(ctx)
 	}
 	return nil, fmt.Errorf("unknown APIKey field %s", name)
 }
@@ -624,6 +668,13 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetName(v)
+		return nil
+	case apikey.FieldStatus:
+		v, ok := value.(apikey.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
 		return nil
 	}
 	return fmt.Errorf("unknown APIKey field %s", name)
@@ -706,6 +757,9 @@ func (m *APIKeyMutation) ResetField(name string) error {
 		return nil
 	case apikey.FieldName:
 		m.ResetName()
+		return nil
+	case apikey.FieldStatus:
+		m.ResetStatus()
 		return nil
 	}
 	return fmt.Errorf("unknown APIKey field %s", name)
@@ -826,6 +880,7 @@ type ChannelMutation struct {
 	_type                  *channel.Type
 	base_url               *string
 	name                   *string
+	status                 *channel.Status
 	api_key                *string
 	supported_models       *[]string
 	appendsupported_models []string
@@ -1177,6 +1232,42 @@ func (m *ChannelMutation) ResetName() {
 	m.name = nil
 }
 
+// SetStatus sets the "status" field.
+func (m *ChannelMutation) SetStatus(c channel.Status) {
+	m.status = &c
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *ChannelMutation) Status() (r channel.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldStatus(ctx context.Context) (v channel.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *ChannelMutation) ResetStatus() {
+	m.status = nil
+}
+
 // SetAPIKey sets the "api_key" field.
 func (m *ChannelMutation) SetAPIKey(s string) {
 	m.api_key = &s
@@ -1491,7 +1582,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -1509,6 +1600,9 @@ func (m *ChannelMutation) Fields() []string {
 	}
 	if m.name != nil {
 		fields = append(fields, channel.FieldName)
+	}
+	if m.status != nil {
+		fields = append(fields, channel.FieldStatus)
 	}
 	if m.api_key != nil {
 		fields = append(fields, channel.FieldAPIKey)
@@ -1542,6 +1636,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.BaseURL()
 	case channel.FieldName:
 		return m.Name()
+	case channel.FieldStatus:
+		return m.Status()
 	case channel.FieldAPIKey:
 		return m.APIKey()
 	case channel.FieldSupportedModels:
@@ -1571,6 +1667,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldBaseURL(ctx)
 	case channel.FieldName:
 		return m.OldName(ctx)
+	case channel.FieldStatus:
+		return m.OldStatus(ctx)
 	case channel.FieldAPIKey:
 		return m.OldAPIKey(ctx)
 	case channel.FieldSupportedModels:
@@ -1629,6 +1727,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetName(v)
+		return nil
+	case channel.FieldStatus:
+		v, ok := value.(channel.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
 		return nil
 	case channel.FieldAPIKey:
 		v, ok := value.(string)
@@ -1748,6 +1853,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldName:
 		m.ResetName()
+		return nil
+	case channel.FieldStatus:
+		m.ResetStatus()
 		return nil
 	case channel.FieldAPIKey:
 		m.ResetAPIKey()
@@ -6061,6 +6169,7 @@ type UserMutation struct {
 	deleted_at      *int
 	adddeleted_at   *int
 	email           *string
+	status          *user.Status
 	password        *string
 	first_name      *string
 	last_name       *string
@@ -6342,6 +6451,42 @@ func (m *UserMutation) OldEmail(ctx context.Context) (v string, err error) {
 // ResetEmail resets all changes to the "email" field.
 func (m *UserMutation) ResetEmail() {
 	m.email = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *UserMutation) SetStatus(u user.Status) {
+	m.status = &u
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *UserMutation) Status() (r user.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldStatus(ctx context.Context) (v user.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *UserMutation) ResetStatus() {
+	m.status = nil
 }
 
 // SetPassword sets the "password" field.
@@ -6749,7 +6894,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.created_at != nil {
 		fields = append(fields, user.FieldCreatedAt)
 	}
@@ -6761,6 +6906,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.email != nil {
 		fields = append(fields, user.FieldEmail)
+	}
+	if m.status != nil {
+		fields = append(fields, user.FieldStatus)
 	}
 	if m.password != nil {
 		fields = append(fields, user.FieldPassword)
@@ -6793,6 +6941,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.DeletedAt()
 	case user.FieldEmail:
 		return m.Email()
+	case user.FieldStatus:
+		return m.Status()
 	case user.FieldPassword:
 		return m.Password()
 	case user.FieldFirstName:
@@ -6820,6 +6970,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldDeletedAt(ctx)
 	case user.FieldEmail:
 		return m.OldEmail(ctx)
+	case user.FieldStatus:
+		return m.OldStatus(ctx)
 	case user.FieldPassword:
 		return m.OldPassword(ctx)
 	case user.FieldFirstName:
@@ -6866,6 +7018,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetEmail(v)
+		return nil
+	case user.FieldStatus:
+		v, ok := value.(user.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
 		return nil
 	case user.FieldPassword:
 		v, ok := value.(string)
@@ -6986,6 +7145,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldEmail:
 		m.ResetEmail()
+		return nil
+	case user.FieldStatus:
+		m.ResetStatus()
 		return nil
 	case user.FieldPassword:
 		m.ResetPassword()

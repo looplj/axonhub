@@ -76,13 +76,14 @@ extend type Query {
 type Mutation {
     createChannel(input: CreateChannelInput!): Channel!
     updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
-    deleteChannel(id: ID!): Boolean!
+    updateChannelStatus(id: ID!, status: ChannelStatus!): Channel!
 
     createAPIKey(input: CreateAPIKeyInput!): APIKey!
+    updateAPIKeyStatus(id: ID!, status: APIKeyStatus!): APIKey!
 
     createUser(input: CreateUserInput!): User!
     updateUser(id: ID!, input: UpdateUserInput!): User!
-    deleteUser(id: ID!): Boolean!
+    updateUserStatus(id: ID!, status: UserStatus!): User!
 
     createRole(input: CreateRoleInput!): Role!
     updateRole(id: ID!, input: UpdateRoleInput!): Role!

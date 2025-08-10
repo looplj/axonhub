@@ -101,6 +101,12 @@ type APIKeyWhereInput struct {
 	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
 	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
 
+	// "status" field predicates.
+	Status      *apikey.Status  `json:"status,omitempty"`
+	StatusNEQ   *apikey.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []apikey.Status `json:"statusIn,omitempty"`
+	StatusNotIn []apikey.Status `json:"statusNotIn,omitempty"`
+
 	// "user" edge predicates.
 	HasUser     *bool             `json:"hasUser,omitempty"`
 	HasUserWith []*UserWhereInput `json:"hasUserWith,omitempty"`
@@ -367,6 +373,18 @@ func (i *APIKeyWhereInput) P() (predicate.APIKey, error) {
 	if i.NameContainsFold != nil {
 		predicates = append(predicates, apikey.NameContainsFold(*i.NameContainsFold))
 	}
+	if i.Status != nil {
+		predicates = append(predicates, apikey.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, apikey.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, apikey.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, apikey.StatusNotIn(i.StatusNotIn...))
+	}
 
 	if i.HasUser != nil {
 		p := apikey.HasUser()
@@ -496,6 +514,12 @@ type ChannelWhereInput struct {
 	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
 	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
 	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+
+	// "status" field predicates.
+	Status      *channel.Status  `json:"status,omitempty"`
+	StatusNEQ   *channel.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []channel.Status `json:"statusIn,omitempty"`
+	StatusNotIn []channel.Status `json:"statusNotIn,omitempty"`
 
 	// "api_key" field predicates.
 	APIKey             *string  `json:"apiKey,omitempty"`
@@ -792,6 +816,18 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 	}
 	if i.NameContainsFold != nil {
 		predicates = append(predicates, channel.NameContainsFold(*i.NameContainsFold))
+	}
+	if i.Status != nil {
+		predicates = append(predicates, channel.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, channel.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, channel.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, channel.StatusNotIn(i.StatusNotIn...))
 	}
 	if i.APIKey != nil {
 		predicates = append(predicates, channel.APIKeyEQ(*i.APIKey))
@@ -2892,6 +2928,12 @@ type UserWhereInput struct {
 	EmailEqualFold    *string  `json:"emailEqualFold,omitempty"`
 	EmailContainsFold *string  `json:"emailContainsFold,omitempty"`
 
+	// "status" field predicates.
+	Status      *user.Status  `json:"status,omitempty"`
+	StatusNEQ   *user.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []user.Status `json:"statusIn,omitempty"`
+	StatusNotIn []user.Status `json:"statusNotIn,omitempty"`
+
 	// "password" field predicates.
 	Password             *string  `json:"password,omitempty"`
 	PasswordNEQ          *string  `json:"passwordNEQ,omitempty"`
@@ -3159,6 +3201,18 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 	}
 	if i.EmailContainsFold != nil {
 		predicates = append(predicates, user.EmailContainsFold(*i.EmailContainsFold))
+	}
+	if i.Status != nil {
+		predicates = append(predicates, user.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, user.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, user.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, user.StatusNotIn(i.StatusNotIn...))
 	}
 	if i.Password != nil {
 		predicates = append(predicates, user.PasswordEQ(*i.Password))

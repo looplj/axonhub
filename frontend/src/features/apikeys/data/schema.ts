@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import { userSchema } from '@/features/users/data/schema'
 
+// API Key Status
+export const apiKeyStatusSchema = z.enum(['enabled', 'disabled'])
+export type ApiKeyStatus = z.infer<typeof apiKeyStatusSchema>
+
 // API Key schema based on GraphQL schema
 export const apiKeySchema = z.object({
   id: z.string(),
@@ -9,6 +13,7 @@ export const apiKeySchema = z.object({
   user: userSchema.partial(),
   key: z.string(),
   name: z.string(),
+  status: apiKeyStatusSchema,
 })
 export type ApiKey = z.infer<typeof apiKeySchema>
 

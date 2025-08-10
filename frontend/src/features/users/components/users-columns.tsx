@@ -78,6 +78,18 @@ export const columns: ColumnDef<User>[] = [
     },
   },
   {
+    accessorKey: "status",
+    header: "状态",
+    cell: ({ row }) => {
+      const status = row.getValue("status") as string;
+      return (
+        <Badge variant={status === "activated" ? "default" : "secondary"}>
+          {status === "activated" ? "已激活" : "已停用"}
+        </Badge>
+      );
+    },
+  },
+  {
     accessorKey: "createdAt",
     header: "Created At",
     cell: ({ row }) => {

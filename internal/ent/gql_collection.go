@@ -175,6 +175,11 @@ func (akq *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, apikey.FieldName)
 				fieldSeen[apikey.FieldName] = struct{}{}
 			}
+		case "status":
+			if _, ok := fieldSeen[apikey.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, apikey.FieldStatus)
+				fieldSeen[apikey.FieldStatus] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:
@@ -466,6 +471,11 @@ func (cq *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			if _, ok := fieldSeen[channel.FieldName]; !ok {
 				selectedFields = append(selectedFields, channel.FieldName)
 				fieldSeen[channel.FieldName] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[channel.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, channel.FieldStatus)
+				fieldSeen[channel.FieldStatus] = struct{}{}
 			}
 		case "supportedModels":
 			if _, ok := fieldSeen[channel.FieldSupportedModels]; !ok {
@@ -1681,6 +1691,11 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 			if _, ok := fieldSeen[user.FieldEmail]; !ok {
 				selectedFields = append(selectedFields, user.FieldEmail)
 				fieldSeen[user.FieldEmail] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[user.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, user.FieldStatus)
+				fieldSeen[user.FieldStatus] = struct{}{}
 			}
 		case "firstName":
 			if _, ok := fieldSeen[user.FieldFirstName]; !ok {

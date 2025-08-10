@@ -28,6 +28,7 @@ func (User) Mixin() []ent.Mixin {
 func (User) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("email").Unique(),
+		field.Enum("status").Values("activated", "deactivated").Default("activated"),
 		field.String("password").Sensitive(),
 		field.String("first_name").Default(""),
 		field.String("last_name").Default(""),

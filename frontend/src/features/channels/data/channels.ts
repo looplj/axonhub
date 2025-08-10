@@ -28,6 +28,7 @@ const CHANNELS_QUERY = `
           type
           baseURL
           name
+          status
           supportedModels
           defaultTestModel
           settings {
@@ -60,6 +61,7 @@ const CREATE_CHANNEL_MUTATION = `
       type
       baseURL
       name
+      status
       supportedModels
       defaultTestModel
       settings {
@@ -81,6 +83,7 @@ const UPDATE_CHANNEL_MUTATION = `
       updatedAt
       baseURL
       name
+      status
       supportedModels
       defaultTestModel
       settings {
@@ -93,9 +96,12 @@ const UPDATE_CHANNEL_MUTATION = `
   }
 `
 
-const DELETE_CHANNEL_MUTATION = `
-  mutation DeleteChannel($id: ID!) {
-    deleteChannel(id: $id)
+const UPDATE_CHANNEL_STATUS_MUTATION = `
+  mutation UpdateChannelStatus($id: ID!, $status: ChannelStatus!) {
+    updateChannelStatus(id: $id, status: $status) {
+      id
+      status
+    }
   }
 `
 
@@ -200,23 +206,24 @@ export function useUpdateChannel() {
   })
 }
 
-export function useDeleteChannel() {
+export function useUpdateChannelStatus() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const data = await graphqlRequest<{ deleteChannel: boolean }>(
-        DELETE_CHANNEL_MUTATION,
-        { id }
+    mutationFn: async ({ id, status }: { id: string; status: 'enabled' | 'disabled' }) => {
+      const data = await graphqlRequest<{ updateChannelStatus: Channel }>(
+        UPDATE_CHANNEL_STATUS_MUTATION,
+        { id, status }
       )
-      return data.deleteChannel
+      return channelSchema.parse(data.updateChannelStatus)
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] })
-      toast.success('Channel 删除成功')
+      queryClient.invalidateQueries({ queryKey: ['channel', data.id] })
+      toast.success(`Channel 状态已更新为 ${data.status === 'enabled' ? '启用' : '禁用'}`)
     },
     onError: (error) => {
-      toast.error(`删除失败: ${error.message}`)
+      toast.error(`状态更新失败: ${error.message}`)
     },
   })
 }

@@ -10,6 +10,9 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -56,14 +59,16 @@ func (r *mutationResolver) UpdateChannel(ctx context.Context, id objects.GUID, i
 	return channel, nil
 }
 
-// DeleteChannel is the resolver for the deleteChannel field.
-func (r *mutationResolver) DeleteChannel(ctx context.Context, id objects.GUID) (bool, error) {
-	err := r.client.Channel.DeleteOneID(id.ID).Exec(ctx)
+// UpdateChannelStatus is the resolver for the updateChannelStatus field.
+func (r *mutationResolver) UpdateChannelStatus(ctx context.Context, id objects.GUID, status channel.Status) (*ent.Channel, error) {
+	channel, err := r.client.Channel.UpdateOneID(id.ID).
+		SetStatus(status).
+		Save(ctx)
 	if err != nil {
-		return false, fmt.Errorf("failed to delete channel: %w", err)
+		return nil, fmt.Errorf("failed to update channel status: %w", err)
 	}
 
-	return true, nil
+	return channel, nil
 }
 
 // CreateAPIKey is the resolver for the createAPIKey field.
@@ -75,6 +80,18 @@ func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPI
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API key: %w", err)
+	}
+
+	return apiKey, nil
+}
+
+// UpdateAPIKeyStatus is the resolver for the updateAPIKeyStatus field.
+func (r *mutationResolver) UpdateAPIKeyStatus(ctx context.Context, id objects.GUID, status apikey.Status) (*ent.APIKey, error) {
+	apiKey, err := r.client.APIKey.UpdateOneID(id.ID).
+		SetStatus(status).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update API key status: %w", err)
 	}
 
 	return apiKey, nil
@@ -156,14 +173,16 @@ func (r *mutationResolver) UpdateUser(ctx context.Context, id objects.GUID, inpu
 	return user, nil
 }
 
-// DeleteUser is the resolver for the deleteUser field.
-func (r *mutationResolver) DeleteUser(ctx context.Context, id objects.GUID) (bool, error) {
-	err := r.client.User.DeleteOneID(id.ID).Exec(ctx)
+// UpdateUserStatus is the resolver for the updateUserStatus field.
+func (r *mutationResolver) UpdateUserStatus(ctx context.Context, id objects.GUID, status user.Status) (*ent.User, error) {
+	user, err := r.client.User.UpdateOneID(id.ID).
+		SetStatus(status).
+		Save(ctx)
 	if err != nil {
-		return false, fmt.Errorf("failed to delete user: %w", err)
+		return nil, fmt.Errorf("failed to update user status: %w", err)
 	}
 
-	return true, nil
+	return user, nil
 }
 
 // CreateRole is the resolver for the createRole field.
@@ -366,3 +385,37 @@ func (r *queryResolver) Me(ctx context.Context) (*UserInfo, error) {
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 type mutationResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *mutationResolver) DeleteChannel(ctx context.Context, id objects.GUID) (bool, error) {
+	err := r.client.Channel.DeleteOneID(id.ID).Exec(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete channel: %w", err)
+	}
+
+	return true, nil
+}
+func (r *mutationResolver) DisableChannel(ctx context.Context, id objects.GUID) (bool, error) {
+	panic(fmt.Errorf("not implemented: DisableChannel - disableChannel"))
+}
+func (r *mutationResolver) DisableAPIKey(ctx context.Context, id objects.GUID) (bool, error) {
+	panic(fmt.Errorf("not implemented: DisableAPIKey - disableAPIKey"))
+}
+func (r *mutationResolver) DeleteUser(ctx context.Context, id objects.GUID) (bool, error) {
+	err := r.client.User.DeleteOneID(id.ID).Exec(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	return true, nil
+}
+func (r *mutationResolver) DeactivateUser(ctx context.Context, id objects.GUID) (bool, error) {
+	panic(fmt.Errorf("not implemented: DeactivateUser - deactivateUser"))
+}
+*/

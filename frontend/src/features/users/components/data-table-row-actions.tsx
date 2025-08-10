@@ -1,6 +1,6 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { Row } from '@tanstack/react-table'
-import { IconEdit, IconTrash, IconKey } from '@tabler/icons-react'
+import { IconEdit, IconUserOff, IconUserCheck, IconKey } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -58,13 +58,13 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(row.original)
-              setOpen('delete')
+              setOpen('status')
             }}
-            className='text-red-500!'
+            className={row.original.status === 'activated' ? 'text-red-500!' : 'text-green-500!'}
           >
-            Delete
+            {row.original.status === 'activated' ? '停用' : '激活'}
             <DropdownMenuShortcut>
-              <IconTrash size={16} />
+              {row.original.status === 'activated' ? <IconUserOff size={16} /> : <IconUserCheck size={16} />}
             </DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -38,6 +38,7 @@ func (APIKey) Fields() []ent.Field {
 		field.Int("user_id").Immutable(),
 		field.String("key").Immutable(),
 		field.String("name"),
+		field.Enum("status").Values("enabled", "disabled").Default("enabled"),
 	}
 }
 

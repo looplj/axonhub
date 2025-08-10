@@ -1,6 +1,6 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { Row } from '@tanstack/react-table'
-import { IconEdit, IconSettings, IconTrash } from '@tabler/icons-react'
+import { IconEdit, IconToggleLeft, IconToggleRight, IconSettings } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -58,13 +58,13 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(row.original)
-              setOpen('delete')
+              setOpen('status')
             }}
-            className='text-red-500!'
+            className={row.original.status === 'enabled' ? 'text-red-500!' : 'text-green-500!'}
           >
-            删除
+            {row.original.status === 'enabled' ? '禁用' : '启用'}
             <DropdownMenuShortcut>
-              <IconTrash size={16} />
+              {row.original.status === 'enabled' ? <IconToggleLeft size={16} /> : <IconToggleRight size={16} />}
             </DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuContent>

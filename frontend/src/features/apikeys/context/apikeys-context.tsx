@@ -1,7 +1,7 @@
 import { createContext, useContext, useState } from 'react'
 import { ApiKey } from '../data/schema'
 
-type ApiKeyDialogType = 'create' | 'edit' | 'delete'
+type ApiKeyDialogType = 'create' | 'edit' | 'delete' | 'status'
 
 interface ApiKeysContextType {
   selectedApiKey: ApiKey | null
@@ -19,6 +19,7 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
     create: false,
     edit: false,
     delete: false,
+    status: false,
   })
 
   const openDialog = (type: ApiKeyDialogType, apiKey?: ApiKey) => {

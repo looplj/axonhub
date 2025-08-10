@@ -1,10 +1,14 @@
 import { z } from "zod";
 
+export const userStatusSchema = z.enum(['activated', 'deactivated'])
+export type UserStatus = z.infer<typeof userStatusSchema>
+
 export const userSchema = z.object({
   id: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
   email: z.string(),
+  status: userStatusSchema,
   firstName: z.string(),
   lastName: z.string(),
   isOwner: z.boolean(),

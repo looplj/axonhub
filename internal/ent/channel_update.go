@@ -87,6 +87,20 @@ func (cu *ChannelUpdate) SetNillableName(s *string) *ChannelUpdate {
 	return cu
 }
 
+// SetStatus sets the "status" field.
+func (cu *ChannelUpdate) SetStatus(c channel.Status) *ChannelUpdate {
+	cu.mutation.SetStatus(c)
+	return cu
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (cu *ChannelUpdate) SetNillableStatus(c *channel.Status) *ChannelUpdate {
+	if c != nil {
+		cu.SetStatus(*c)
+	}
+	return cu
+}
+
 // SetAPIKey sets the "api_key" field.
 func (cu *ChannelUpdate) SetAPIKey(s string) *ChannelUpdate {
 	cu.mutation.SetAPIKey(s)
@@ -260,6 +274,11 @@ func (cu *ChannelUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (cu *ChannelUpdate) check() error {
+	if v, ok := cu.mutation.Status(); ok {
+		if err := channel.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Channel.status": %w`, err)}
+		}
+	}
 	if v, ok := cu.mutation.APIKey(); ok {
 		if err := channel.APIKeyValidator(v); err != nil {
 			return &ValidationError{Name: "api_key", err: fmt.Errorf(`ent: validator failed for field "Channel.api_key": %w`, err)}
@@ -294,6 +313,9 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := cu.mutation.Name(); ok {
 		_spec.SetField(channel.FieldName, field.TypeString, value)
+	}
+	if value, ok := cu.mutation.Status(); ok {
+		_spec.SetField(channel.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := cu.mutation.APIKey(); ok {
 		_spec.SetField(channel.FieldAPIKey, field.TypeString, value)
@@ -476,6 +498,20 @@ func (cuo *ChannelUpdateOne) SetName(s string) *ChannelUpdateOne {
 func (cuo *ChannelUpdateOne) SetNillableName(s *string) *ChannelUpdateOne {
 	if s != nil {
 		cuo.SetName(*s)
+	}
+	return cuo
+}
+
+// SetStatus sets the "status" field.
+func (cuo *ChannelUpdateOne) SetStatus(c channel.Status) *ChannelUpdateOne {
+	cuo.mutation.SetStatus(c)
+	return cuo
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (cuo *ChannelUpdateOne) SetNillableStatus(c *channel.Status) *ChannelUpdateOne {
+	if c != nil {
+		cuo.SetStatus(*c)
 	}
 	return cuo
 }
@@ -666,6 +702,11 @@ func (cuo *ChannelUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (cuo *ChannelUpdateOne) check() error {
+	if v, ok := cuo.mutation.Status(); ok {
+		if err := channel.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Channel.status": %w`, err)}
+		}
+	}
 	if v, ok := cuo.mutation.APIKey(); ok {
 		if err := channel.APIKeyValidator(v); err != nil {
 			return &ValidationError{Name: "api_key", err: fmt.Errorf(`ent: validator failed for field "Channel.api_key": %w`, err)}
@@ -717,6 +758,9 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 	}
 	if value, ok := cuo.mutation.Name(); ok {
 		_spec.SetField(channel.FieldName, field.TypeString, value)
+	}
+	if value, ok := cuo.mutation.Status(); ok {
+		_spec.SetField(channel.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := cuo.mutation.APIKey(); ok {
 		_spec.SetField(channel.FieldAPIKey, field.TypeString, value)

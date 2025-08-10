@@ -96,11 +96,11 @@ func init() {
 	// channel.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	channel.DefaultDeletedAt = channelDescDeletedAt.Default.(int)
 	// channelDescAPIKey is the schema descriptor for api_key field.
-	channelDescAPIKey := channelFields[3].Descriptor()
+	channelDescAPIKey := channelFields[4].Descriptor()
 	// channel.APIKeyValidator is a validator for the "api_key" field. It is called by the builders before save.
 	channel.APIKeyValidator = channelDescAPIKey.Validators[0].(func(string) error)
 	// channelDescSettings is the schema descriptor for settings field.
-	channelDescSettings := channelFields[6].Descriptor()
+	channelDescSettings := channelFields[7].Descriptor()
 	// channel.DefaultSettings holds the default value on creation for the settings field.
 	channel.DefaultSettings = channelDescSettings.Default.(*objects.ChannelSettings)
 	job.Policy = privacy.NewPolicies(schema.Job{})
@@ -280,19 +280,19 @@ func init() {
 	// user.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	user.DefaultDeletedAt = userDescDeletedAt.Default.(int)
 	// userDescFirstName is the schema descriptor for first_name field.
-	userDescFirstName := userFields[2].Descriptor()
+	userDescFirstName := userFields[3].Descriptor()
 	// user.DefaultFirstName holds the default value on creation for the first_name field.
 	user.DefaultFirstName = userDescFirstName.Default.(string)
 	// userDescLastName is the schema descriptor for last_name field.
-	userDescLastName := userFields[3].Descriptor()
+	userDescLastName := userFields[4].Descriptor()
 	// user.DefaultLastName holds the default value on creation for the last_name field.
 	user.DefaultLastName = userDescLastName.Default.(string)
 	// userDescIsOwner is the schema descriptor for is_owner field.
-	userDescIsOwner := userFields[4].Descriptor()
+	userDescIsOwner := userFields[5].Descriptor()
 	// user.DefaultIsOwner holds the default value on creation for the is_owner field.
 	user.DefaultIsOwner = userDescIsOwner.Default.(bool)
 	// userDescScopes is the schema descriptor for scopes field.
-	userDescScopes := userFields[5].Descriptor()
+	userDescScopes := userFields[6].Descriptor()
 	// user.DefaultScopes holds the default value on creation for the scopes field.
 	user.DefaultScopes = userDescScopes.Default.([]string)
 }

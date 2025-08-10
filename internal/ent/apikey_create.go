@@ -84,6 +84,20 @@ func (akc *APIKeyCreate) SetName(s string) *APIKeyCreate {
 	return akc
 }
 
+// SetStatus sets the "status" field.
+func (akc *APIKeyCreate) SetStatus(a apikey.Status) *APIKeyCreate {
+	akc.mutation.SetStatus(a)
+	return akc
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (akc *APIKeyCreate) SetNillableStatus(a *apikey.Status) *APIKeyCreate {
+	if a != nil {
+		akc.SetStatus(*a)
+	}
+	return akc
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (akc *APIKeyCreate) SetUser(u *User) *APIKeyCreate {
 	return akc.SetUserID(u.ID)
@@ -159,6 +173,10 @@ func (akc *APIKeyCreate) defaults() error {
 		v := apikey.DefaultDeletedAt
 		akc.mutation.SetDeletedAt(v)
 	}
+	if _, ok := akc.mutation.Status(); !ok {
+		v := apikey.DefaultStatus
+		akc.mutation.SetStatus(v)
+	}
 	return nil
 }
 
@@ -181,6 +199,14 @@ func (akc *APIKeyCreate) check() error {
 	}
 	if _, ok := akc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "APIKey.name"`)}
+	}
+	if _, ok := akc.mutation.Status(); !ok {
+		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "APIKey.status"`)}
+	}
+	if v, ok := akc.mutation.Status(); ok {
+		if err := apikey.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "APIKey.status": %w`, err)}
+		}
 	}
 	if len(akc.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "APIKey.user"`)}
@@ -231,6 +257,10 @@ func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	if value, ok := akc.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)
 		_node.Name = value
+	}
+	if value, ok := akc.mutation.Status(); ok {
+		_spec.SetField(apikey.FieldStatus, field.TypeEnum, value)
+		_node.Status = value
 	}
 	if nodes := akc.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -359,6 +389,18 @@ func (u *APIKeyUpsert) UpdateName() *APIKeyUpsert {
 	return u
 }
 
+// SetStatus sets the "status" field.
+func (u *APIKeyUpsert) SetStatus(v apikey.Status) *APIKeyUpsert {
+	u.Set(apikey.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateStatus() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldStatus)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -456,6 +498,20 @@ func (u *APIKeyUpsertOne) SetName(v string) *APIKeyUpsertOne {
 func (u *APIKeyUpsertOne) UpdateName() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.UpdateName()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *APIKeyUpsertOne) SetStatus(v apikey.Status) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateStatus() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateStatus()
 	})
 }
 
@@ -722,6 +778,20 @@ func (u *APIKeyUpsertBulk) SetName(v string) *APIKeyUpsertBulk {
 func (u *APIKeyUpsertBulk) UpdateName() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.UpdateName()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *APIKeyUpsertBulk) SetStatus(v apikey.Status) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateStatus() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateStatus()
 	})
 }
 

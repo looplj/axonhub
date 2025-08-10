@@ -7,7 +7,7 @@ import {
   USER_QUERY,
   CREATE_USER_MUTATION,
   UPDATE_USER_MUTATION,
-  DELETE_USER_MUTATION
+  UPDATE_USER_STATUS_MUTATION
 } from '@/gql/users'
 import {
   User,
@@ -112,12 +112,35 @@ export function useUpdateUser() {
   })
 }
 
+export function useUpdateUserStatus() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: 'activated' | 'deactivated' }) => {
+      const data = await graphqlRequest<{ updateUserStatus: User }>(
+        UPDATE_USER_STATUS_MUTATION,
+        { id, status }
+      )
+      return userSchema.parse(data.updateUserStatus)
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['user', data.id] })
+      toast.success(`用户状态已更新为 ${data.status === 'activated' ? '已激活' : '已停用'}`)
+    },
+    onError: (error: any) => {
+      toast.error(`状态更新失败: ${error.message}`)
+    },
+  })
+}
+
 export function useDeleteUser() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await graphqlRequest(DELETE_USER_MUTATION, { id })
+      // This is now deprecated, use useUpdateUserStatus instead
+      throw new Error('Direct deletion is not supported. Use status update instead.')
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })

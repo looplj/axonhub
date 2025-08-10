@@ -70,6 +70,20 @@ func (aku *APIKeyUpdate) SetNillableName(s *string) *APIKeyUpdate {
 	return aku
 }
 
+// SetStatus sets the "status" field.
+func (aku *APIKeyUpdate) SetStatus(a apikey.Status) *APIKeyUpdate {
+	aku.mutation.SetStatus(a)
+	return aku
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (aku *APIKeyUpdate) SetNillableStatus(a *apikey.Status) *APIKeyUpdate {
+	if a != nil {
+		aku.SetStatus(*a)
+	}
+	return aku
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (aku *APIKeyUpdate) AddRequestIDs(ids ...int) *APIKeyUpdate {
 	aku.mutation.AddRequestIDs(ids...)
@@ -155,6 +169,11 @@ func (aku *APIKeyUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (aku *APIKeyUpdate) check() error {
+	if v, ok := aku.mutation.Status(); ok {
+		if err := apikey.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "APIKey.status": %w`, err)}
+		}
+	}
 	if aku.mutation.UserCleared() && len(aku.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "APIKey.user"`)
 	}
@@ -184,6 +203,9 @@ func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := aku.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)
+	}
+	if value, ok := aku.mutation.Status(); ok {
+		_spec.SetField(apikey.FieldStatus, field.TypeEnum, value)
 	}
 	if aku.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -291,6 +313,20 @@ func (akuo *APIKeyUpdateOne) SetNillableName(s *string) *APIKeyUpdateOne {
 	return akuo
 }
 
+// SetStatus sets the "status" field.
+func (akuo *APIKeyUpdateOne) SetStatus(a apikey.Status) *APIKeyUpdateOne {
+	akuo.mutation.SetStatus(a)
+	return akuo
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (akuo *APIKeyUpdateOne) SetNillableStatus(a *apikey.Status) *APIKeyUpdateOne {
+	if a != nil {
+		akuo.SetStatus(*a)
+	}
+	return akuo
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (akuo *APIKeyUpdateOne) AddRequestIDs(ids ...int) *APIKeyUpdateOne {
 	akuo.mutation.AddRequestIDs(ids...)
@@ -389,6 +425,11 @@ func (akuo *APIKeyUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (akuo *APIKeyUpdateOne) check() error {
+	if v, ok := akuo.mutation.Status(); ok {
+		if err := apikey.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "APIKey.status": %w`, err)}
+		}
+	}
 	if akuo.mutation.UserCleared() && len(akuo.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "APIKey.user"`)
 	}
@@ -435,6 +476,9 @@ func (akuo *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err er
 	}
 	if value, ok := akuo.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)
+	}
+	if value, ok := akuo.mutation.Status(); ok {
+		_spec.SetField(apikey.FieldStatus, field.TypeEnum, value)
 	}
 	if akuo.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{

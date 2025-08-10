@@ -86,6 +86,22 @@ export const columns: ColumnDef<Channel>[] = [
     enableSorting: false,
   },
   {
+    accessorKey: 'status',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='状态' />
+    ),
+    cell: ({ row }) => {
+      const status = row.getValue('status') as string
+      return (
+        <Badge variant={status === 'enabled' ? 'default' : 'secondary'}>
+          {status === 'enabled' ? '启用' : '禁用'}
+        </Badge>
+      )
+    },
+    enableSorting: true,
+    enableHiding: false,
+  },
+  {
     accessorKey: 'baseURL',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Base URL' />

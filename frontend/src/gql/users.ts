@@ -23,6 +23,7 @@ export const USERS_QUERY = `
           createdAt
           updatedAt
           email
+          status
           firstName
           lastName
           isOwner
@@ -54,6 +55,7 @@ export const USER_QUERY = `
       createdAt
       updatedAt
       email
+      status
       firstName
       lastName
       isOwner
@@ -77,6 +79,7 @@ export const CREATE_USER_MUTATION = `
       createdAt
       updatedAt
       email
+      status
       firstName
       lastName
       isOwner
@@ -100,6 +103,7 @@ export const UPDATE_USER_MUTATION = `
       createdAt
       updatedAt
       email
+      status
       firstName
       lastName
       isOwner
@@ -116,9 +120,27 @@ export const UPDATE_USER_MUTATION = `
   }
 `;
 
-export const DELETE_USER_MUTATION = `
-  mutation DeleteUser($id: ID!) {
-    deleteUser(id: $id)
+export const UPDATE_USER_STATUS_MUTATION = `
+  mutation UpdateUserStatus($id: ID!, $status: UserStatus!) {
+    updateUserStatus(id: $id, status: $status) {
+      id
+      createdAt
+      updatedAt
+      email
+      status
+      firstName
+      lastName
+      isOwner
+      scopes
+      roles {
+        edges {
+          node {
+            id
+            name
+          }
+        }
+      }
+    }
   }
 `;
 

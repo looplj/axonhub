@@ -5,8 +5,10 @@ package ent
 import (
 	"time"
 
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -17,6 +19,7 @@ type CreateAPIKeyInput struct {
 	DeletedAt *int
 	Key       string
 	Name      string
+	Status    *apikey.Status
 	UserID    int
 }
 
@@ -33,6 +36,9 @@ func (i *CreateAPIKeyInput) Mutate(m *APIKeyMutation) {
 	}
 	m.SetKey(i.Key)
 	m.SetName(i.Name)
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
 	m.SetUserID(i.UserID)
 }
 
@@ -47,6 +53,7 @@ type UpdateAPIKeyInput struct {
 	UpdatedAt *time.Time
 	DeletedAt *int
 	Name      *string
+	Status    *apikey.Status
 }
 
 // Mutate applies the UpdateAPIKeyInput on the APIKeyMutation builder.
@@ -59,6 +66,9 @@ func (i *UpdateAPIKeyInput) Mutate(m *APIKeyMutation) {
 	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
 	}
 }
 
@@ -82,6 +92,7 @@ type CreateChannelInput struct {
 	Type             channel.Type
 	BaseURL          string
 	Name             string
+	Status           *channel.Status
 	APIKey           string
 	SupportedModels  []string
 	DefaultTestModel string
@@ -102,6 +113,9 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 	m.SetType(i.Type)
 	m.SetBaseURL(i.BaseURL)
 	m.SetName(i.Name)
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
 	m.SetAPIKey(i.APIKey)
 	if v := i.SupportedModels; v != nil {
 		m.SetSupportedModels(v)
@@ -124,6 +138,7 @@ type UpdateChannelInput struct {
 	DeletedAt             *int
 	BaseURL               *string
 	Name                  *string
+	Status                *channel.Status
 	APIKey                *string
 	SupportedModels       []string
 	AppendSupportedModels []string
@@ -145,6 +160,9 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
 	}
 	if v := i.APIKey; v != nil {
 		m.SetAPIKey(*v)
@@ -452,6 +470,7 @@ type CreateUserInput struct {
 	UpdatedAt *time.Time
 	DeletedAt *int
 	Email     string
+	Status    *user.Status
 	Password  string
 	FirstName *string
 	LastName  *string
@@ -472,6 +491,9 @@ func (i *CreateUserInput) Mutate(m *UserMutation) {
 		m.SetDeletedAt(*v)
 	}
 	m.SetEmail(i.Email)
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
 	m.SetPassword(i.Password)
 	if v := i.FirstName; v != nil {
 		m.SetFirstName(*v)
@@ -501,6 +523,7 @@ type UpdateUserInput struct {
 	UpdatedAt     *time.Time
 	DeletedAt     *int
 	Email         *string
+	Status        *user.Status
 	Password      *string
 	FirstName     *string
 	LastName      *string
@@ -523,6 +546,9 @@ func (i *UpdateUserInput) Mutate(m *UserMutation) {
 	}
 	if v := i.Email; v != nil {
 		m.SetEmail(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
 	}
 	if v := i.Password; v != nil {
 		m.SetPassword(*v)

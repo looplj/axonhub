@@ -125,6 +125,20 @@ export const columns: ColumnDef<ApiKey>[] = [
     enableSorting: false,
   },
   {
+    accessorKey: 'status',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='状态' />
+    ),
+    cell: ({ row }) => {
+      const status = row.getValue('status') as string
+      return (
+        <div className={`text-sm ${status === 'enabled' ? 'text-green-600' : 'text-red-600'}`}>
+          {status === 'enabled' ? '已激活' : '已停用'}
+        </div>
+      )
+    },
+  },
+  {
     accessorKey: 'createdAt',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='创建时间' />

@@ -1,7 +1,7 @@
 import { useChannels } from '../context/channels-context'
 import { ChannelsActionDialog } from './channels-action-dialog'
-import { ChannelsDeleteDialog } from './channels-delete-dialog'
 import { ChannelsSettingsDialog } from './channels-settings-dialog'
+import { ChannelsStatusDialog } from './channels-status-dialog'
 
 export function ChannelsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = useChannels()
@@ -27,7 +27,7 @@ export function ChannelsDialogs() {
             currentRow={currentRow}
           />
 
-          <ChannelsDeleteDialog
+          {/* <ChannelsDeleteDialog
             key={`channel-delete-${currentRow.id}`}
             open={open === 'delete'}
             onOpenChange={() => {
@@ -37,13 +37,25 @@ export function ChannelsDialogs() {
               }, 500)
             }}
             currentRow={currentRow}
-          />
+          /> */}
 
           <ChannelsSettingsDialog
             key={`channel-settings-${currentRow.id}`}
             open={open === 'settings'}
             onOpenChange={() => {
               setOpen('settings')
+              setTimeout(() => {
+                setCurrentRow(null)
+              }, 500)
+            }}
+            currentRow={currentRow}
+          />
+
+          <ChannelsStatusDialog
+            key={`channel-status-${currentRow.id}`}
+            open={open === 'status'}
+            onOpenChange={() => {
+              setOpen('status')
               setTimeout(() => {
                 setCurrentRow(null)
               }, 500)

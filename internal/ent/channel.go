@@ -31,6 +31,8 @@ type Channel struct {
 	BaseURL string `json:"base_url,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
+	// Status holds the value of the "status" field.
+	Status channel.Status `json:"status,omitempty"`
 	// APIKey holds the value of the "api_key" field.
 	APIKey string `json:"-"`
 	// SupportedModels holds the value of the "supported_models" field.
@@ -88,7 +90,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case channel.FieldID, channel.FieldDeletedAt:
 			values[i] = new(sql.NullInt64)
-		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldAPIKey, channel.FieldDefaultTestModel:
+		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldAPIKey, channel.FieldDefaultTestModel:
 			values[i] = new(sql.NullString)
 		case channel.FieldCreatedAt, channel.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -148,6 +150,12 @@ func (c *Channel) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
 				c.Name = value.String
+			}
+		case channel.FieldStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field status", values[i])
+			} else if value.Valid {
+				c.Status = channel.Status(value.String)
 			}
 		case channel.FieldAPIKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -240,6 +248,9 @@ func (c *Channel) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(c.Name)
+	builder.WriteString(", ")
+	builder.WriteString("status=")
+	builder.WriteString(fmt.Sprintf("%v", c.Status))
 	builder.WriteString(", ")
 	builder.WriteString("api_key=<sensitive>")
 	builder.WriteString(", ")

@@ -360,6 +360,26 @@ func NameContainsFold(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldContainsFold(FieldName, v))
 }
 
+// StatusEQ applies the EQ predicate on the "status" field.
+func StatusEQ(v Status) predicate.Channel {
+	return predicate.Channel(sql.FieldEQ(FieldStatus, v))
+}
+
+// StatusNEQ applies the NEQ predicate on the "status" field.
+func StatusNEQ(v Status) predicate.Channel {
+	return predicate.Channel(sql.FieldNEQ(FieldStatus, v))
+}
+
+// StatusIn applies the In predicate on the "status" field.
+func StatusIn(vs ...Status) predicate.Channel {
+	return predicate.Channel(sql.FieldIn(FieldStatus, vs...))
+}
+
+// StatusNotIn applies the NotIn predicate on the "status" field.
+func StatusNotIn(vs ...Status) predicate.Channel {
+	return predicate.Channel(sql.FieldNotIn(FieldStatus, vs...))
+}
+
 // APIKeyEQ applies the EQ predicate on the "api_key" field.
 func APIKeyEQ(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldAPIKey, v))
