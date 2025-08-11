@@ -375,6 +375,16 @@ func StatusNotIn(vs ...Status) predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotIn(FieldStatus, vs...))
 }
 
+// ScopesIsNil applies the IsNil predicate on the "scopes" field.
+func ScopesIsNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldIsNull(FieldScopes))
+}
+
+// ScopesNotNil applies the NotNil predicate on the "scopes" field.
+func ScopesNotNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldNotNull(FieldScopes))
+}
+
 // HasUser applies the HasEdge predicate on the "user" edge.
 func HasUser() predicate.APIKey {
 	return predicate.APIKey(func(s *sql.Selector) {

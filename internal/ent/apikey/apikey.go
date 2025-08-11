@@ -32,6 +32,8 @@ const (
 	FieldName = "name"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldScopes holds the string denoting the scopes field in the database.
+	FieldScopes = "scopes"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
@@ -64,6 +66,7 @@ var Columns = []string{
 	FieldKey,
 	FieldName,
 	FieldStatus,
+	FieldScopes,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -93,6 +96,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
+	// DefaultScopes holds the default value on creation for the "scopes" field.
+	DefaultScopes []string
 )
 
 // Status defines the type for the "status" enum field.

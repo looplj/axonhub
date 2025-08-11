@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -32,6 +33,8 @@ type APIKey struct {
 	Name string `json:"name,omitempty"`
 	// Status holds the value of the "status" field.
 	Status apikey.Status `json:"status,omitempty"`
+	// API Key specific scopes: read_channels, write_requests, etc.
+	Scopes []string `json:"-"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the APIKeyQuery when eager-loading is set.
 	Edges        APIKeyEdges `json:"edges"`
@@ -78,6 +81,8 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case apikey.FieldScopes:
+			values[i] = new([]byte)
 		case apikey.FieldID, apikey.FieldDeletedAt, apikey.FieldUserID:
 			values[i] = new(sql.NullInt64)
 		case apikey.FieldKey, apikey.FieldName, apikey.FieldStatus:
@@ -147,6 +152,14 @@ func (ak *APIKey) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				ak.Status = apikey.Status(value.String)
 			}
+		case apikey.FieldScopes:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field scopes", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &ak.Scopes); err != nil {
+					return fmt.Errorf("unmarshal field scopes: %w", err)
+				}
+			}
 		default:
 			ak.selectValues.Set(columns[i], values[i])
 		}
@@ -213,6 +226,8 @@ func (ak *APIKey) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", ak.Status))
+	builder.WriteString(", ")
+	builder.WriteString("scopes=<sensitive>")
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -1,6 +1,7 @@
 package scopes
 
-// Scope represents a permission scope.
+// Scope represents a permission scope to view or manage the data of the system.
+// Every user can view and manage their own data, and manage data of other users if they have the appropriate scopes.
 type Scope string
 
 // Available scopes in the system.
@@ -36,9 +37,6 @@ const (
 	// Settings scopes.
 	ScopeReadSettings  Scope = "read_settings"
 	ScopeWriteSettings Scope = "write_settings"
-
-	// Admin scope - full access.
-	ScopeAdmin Scope = "admin"
 )
 
 // AllScopes returns all available scopes.
@@ -59,7 +57,6 @@ func AllScopes() []Scope {
 		ScopeReadDashboard,
 		ScopeReadSettings,
 		ScopeWriteSettings,
-		ScopeAdmin,
 	}
 }
 
@@ -93,7 +90,6 @@ func ScopeDescriptions() map[Scope]string {
 		ScopeReadDashboard: "查看仪表板",
 		ScopeReadSettings:  "查看系统设置",
 		ScopeWriteSettings: "管理系统设置",
-		ScopeAdmin:         "系统管理员（完全访问权限）",
 	}
 }
 

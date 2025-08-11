@@ -98,6 +98,12 @@ func (akc *APIKeyCreate) SetNillableStatus(a *apikey.Status) *APIKeyCreate {
 	return akc
 }
 
+// SetScopes sets the "scopes" field.
+func (akc *APIKeyCreate) SetScopes(s []string) *APIKeyCreate {
+	akc.mutation.SetScopes(s)
+	return akc
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (akc *APIKeyCreate) SetUser(u *User) *APIKeyCreate {
 	return akc.SetUserID(u.ID)
@@ -176,6 +182,10 @@ func (akc *APIKeyCreate) defaults() error {
 	if _, ok := akc.mutation.Status(); !ok {
 		v := apikey.DefaultStatus
 		akc.mutation.SetStatus(v)
+	}
+	if _, ok := akc.mutation.Scopes(); !ok {
+		v := apikey.DefaultScopes
+		akc.mutation.SetScopes(v)
 	}
 	return nil
 }
@@ -261,6 +271,10 @@ func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	if value, ok := akc.mutation.Status(); ok {
 		_spec.SetField(apikey.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := akc.mutation.Scopes(); ok {
+		_spec.SetField(apikey.FieldScopes, field.TypeJSON, value)
+		_node.Scopes = value
 	}
 	if nodes := akc.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -401,6 +415,24 @@ func (u *APIKeyUpsert) UpdateStatus() *APIKeyUpsert {
 	return u
 }
 
+// SetScopes sets the "scopes" field.
+func (u *APIKeyUpsert) SetScopes(v []string) *APIKeyUpsert {
+	u.Set(apikey.FieldScopes, v)
+	return u
+}
+
+// UpdateScopes sets the "scopes" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateScopes() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldScopes)
+	return u
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (u *APIKeyUpsert) ClearScopes() *APIKeyUpsert {
+	u.SetNull(apikey.FieldScopes)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -512,6 +544,27 @@ func (u *APIKeyUpsertOne) SetStatus(v apikey.Status) *APIKeyUpsertOne {
 func (u *APIKeyUpsertOne) UpdateStatus() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetScopes sets the "scopes" field.
+func (u *APIKeyUpsertOne) SetScopes(v []string) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetScopes(v)
+	})
+}
+
+// UpdateScopes sets the "scopes" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateScopes() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateScopes()
+	})
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (u *APIKeyUpsertOne) ClearScopes() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.ClearScopes()
 	})
 }
 
@@ -792,6 +845,27 @@ func (u *APIKeyUpsertBulk) SetStatus(v apikey.Status) *APIKeyUpsertBulk {
 func (u *APIKeyUpsertBulk) UpdateStatus() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetScopes sets the "scopes" field.
+func (u *APIKeyUpsertBulk) SetScopes(v []string) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetScopes(v)
+	})
+}
+
+// UpdateScopes sets the "scopes" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateScopes() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateScopes()
+	})
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (u *APIKeyUpsertBulk) ClearScopes() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.ClearScopes()
 	})
 }
 

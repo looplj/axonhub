@@ -30,7 +30,7 @@ func main() {
 		log.Fatalf("creating entgql extension: %v", err)
 	}
 	opts := []entc.Option{
-		entc.FeatureNames("intercept", "schema/snapshot", "sql/upsert"),
+		entc.FeatureNames("intercept", "schema/snapshot", "sql/upsert", "entql", "privacy"),
 		entc.Extensions(ex),
 	}
 	// rt := reflect.TypeOf(objects.GUID{})

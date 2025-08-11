@@ -8,7 +8,7 @@ The rules for AxonHub
 
 1. The server in development is managed by air, will rebuild when code changes, so no need to restart manually.
 
-2. Change any ent schema or graphql schema, need to run `go generate` in server directory.
+2. Change any ent schema or graphql schema, need to run `go generate` in the internal/server/gql directory.
 
 3. DO NOT ADD ANY NEW METHOD/STRUCTURE/FUNCTION/VARIABLE IN *.resolvers.go
 

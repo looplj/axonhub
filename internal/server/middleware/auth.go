@@ -76,11 +76,11 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, biz.ErrInvalidJWT) {
 				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": "Invalid JWT token",
+					"error": "Invalid token",
 				})
 			} else {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Failed to validate JWT token",
+					"error": "Failed to validate token",
 				})
 			}
 

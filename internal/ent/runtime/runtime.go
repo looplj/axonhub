@@ -60,6 +60,10 @@ func init() {
 	apikeyDescDeletedAt := apikeyMixinFields1[0].Descriptor()
 	// apikey.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	apikey.DefaultDeletedAt = apikeyDescDeletedAt.Default.(int)
+	// apikeyDescScopes is the schema descriptor for scopes field.
+	apikeyDescScopes := apikeyFields[4].Descriptor()
+	// apikey.DefaultScopes holds the default value on creation for the scopes field.
+	apikey.DefaultScopes = apikeyDescScopes.Default.([]string)
 	channelMixin := schema.Channel{}.Mixin()
 	channel.Policy = privacy.NewPolicies(schema.Channel{})
 	channel.Hooks[0] = func(next ent.Mutator) ent.Mutator {

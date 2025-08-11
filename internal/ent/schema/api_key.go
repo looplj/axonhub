@@ -3,13 +3,12 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
-	"entgo.io/ent/privacy"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
-	scopes2 "github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 type APIKey struct {
@@ -39,6 +38,14 @@ func (APIKey) Fields() []ent.Field {
 		field.String("key").Immutable(),
 		field.String("name"),
 		field.Enum("status").Values("enabled", "disabled").Default("enabled"),
+		field.Strings("scopes").
+			Comment("API Key specific scopes: read_channels, write_requests, etc.").
+			Default([]string{"read_channels", "write_requests"}).
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			).
+			Sensitive().
+			Optional(),
 	}
 }
 
@@ -67,16 +74,16 @@ func (APIKey) Annotations() []schema.Annotation {
 
 // Policy 定义 APIKey 的权限策略.
 func (APIKey) Policy() ent.Policy {
-	return privacy.Policy{
-		Query: privacy.QueryPolicy{
-			scopes2.OwnerRule(),                             // owner 用户可以访问所有 API Keys
-			scopes2.UserOwnedQueryRule(),                    // 用户只能查看自己的 API Keys
-			scopes2.ReadScopeRule(scopes2.ScopeReadAPIKeys), // 需要 API Keys 读取权限
+	return scopes.Policy{
+		Query: scopes.QueryPolicy{
+			scopes.OwnerRule(), // owner 用户可以访问所有 API Keys
+			scopes.UserReadScopeRule(scopes.ScopeReadAPIKeys), // 需要 API Keys 读取权限
+			scopes.UserOwnedQueryRule(),                       // 用户只能查看自己的 API Keys
 		},
-		Mutation: privacy.MutationPolicy{
-			scopes2.OwnerRule(),                               // owner 用户可以修改所有 API Keys
-			scopes2.UserOwnedMutationRule(),                   // 用户只能修改自己的 API Keys
-			scopes2.WriteScopeRule(scopes2.ScopeWriteAPIKeys), // 需要 API Keys 写入权限
+		Mutation: scopes.MutationPolicy{
+			scopes.OwnerRule(), // owner 用户可以修改所有 API Keys
+			scopes.UserWriteScopeRule(scopes.ScopeWriteAPIKeys), // 需要 API Keys 写入权限
+			scopes.UserOwnedMutationRule(),                      // 用户只能修改自己的 API Keys
 		},
 	}
 }

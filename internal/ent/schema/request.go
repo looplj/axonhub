@@ -3,14 +3,13 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
-	"entgo.io/ent/privacy"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/objects"
-	scopes2 "github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 type Request struct {
@@ -83,16 +82,17 @@ func (Request) Annotations() []schema.Annotation {
 
 // Policy 定义 Request 的权限策略.
 func (Request) Policy() ent.Policy {
-	return privacy.Policy{
-		Query: privacy.QueryPolicy{
-			scopes2.OwnerRule(),                              // owner 用户可以访问所有请求
-			scopes2.UserOwnedQueryRule(),                     // 用户只能查看自己的请求
-			scopes2.ReadScopeRule(scopes2.ScopeReadRequests), // 需要 requests 读取权限
+	return scopes.Policy{
+		Query: scopes.QueryPolicy{
+			scopes.OwnerRule(), // owner 用户可以访问所有请求
+			scopes.UserReadScopeRule(scopes.ScopeReadRequests), // 需要 requests 读取权限
+			scopes.UserOwnedQueryRule(),                        // 用户只能查看自己的请求
 		},
-		Mutation: privacy.MutationPolicy{
-			scopes2.OwnerRule(),                                // owner 用户可以修改所有请求
-			scopes2.UserOwnedMutationRule(),                    // 用户只能修改自己的请求
-			scopes2.WriteScopeRule(scopes2.ScopeWriteRequests), // 需要 requests 写入权限
+		Mutation: scopes.MutationPolicy{
+			scopes.APIKeyScopeMutationRule(scopes.ScopeWriteRequests),
+			scopes.OwnerRule(), // owner 用户可以修改所有请求
+			scopes.UserWriteScopeRule(scopes.ScopeWriteRequests),      // 需要 requests 写入权限
+			scopes.APIKeyScopeMutationRule(scopes.ScopeWriteRequests), // 需要 requests 写入权限
 		},
 	}
 }

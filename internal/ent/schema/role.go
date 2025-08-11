@@ -3,13 +3,12 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
-	"entgo.io/ent/privacy"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
-	scopes2 "github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 // Role holds the schema definition for the Role entity.
@@ -65,15 +64,15 @@ func (Role) Annotations() []schema.Annotation {
 
 // Policy 定义 Role 的权限策略.
 func (Role) Policy() ent.Policy {
-	return privacy.Policy{
-		Query: privacy.QueryPolicy{
-			scopes2.OwnerRule(),
-			scopes2.UserOwnedQueryRule(),                  // 用户可以查询自己的角色
-			scopes2.ReadScopeRule(scopes2.ScopeReadRoles), // 需要 roles 读取权限
+	return scopes.Policy{
+		Query: scopes.QueryPolicy{
+			scopes.OwnerRule(),
+			scopes.UserReadScopeRule(scopes.ScopeReadRoles), // 需要 roles 读取权限
+			scopes.UserOwnedQueryRule(),                     // 用户可以查询自己的角色
 		},
-		Mutation: privacy.MutationPolicy{
-			scopes2.OwnerRule(),                             // owner 用户可以修改所有角色
-			scopes2.WriteScopeRule(scopes2.ScopeWriteRoles), // 需要 roles 写入权限
+		Mutation: scopes.MutationPolicy{
+			scopes.OwnerRule(), // owner 用户可以修改所有角色
+			scopes.UserWriteScopeRule(scopes.ScopeWriteRoles), // 需要 roles 写入权限
 		},
 	}
 }

@@ -3,13 +3,12 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
-	"entgo.io/ent/privacy"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/mixin"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
-	scopes2 "github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 // User holds the schema definition for the User entity.
@@ -71,14 +70,14 @@ func (User) Annotations() []schema.Annotation {
 
 // Policy 定义 User 的权限策略.
 func (User) Policy() ent.Policy {
-	return privacy.Policy{
-		Query: privacy.QueryPolicy{
-			scopes2.OwnerRule(),                           // owner 用户可以访问所有用户
-			scopes2.ReadScopeRule(scopes2.ScopeReadUsers), // 需要 users 读取权限
+	return scopes.Policy{
+		Query: scopes.QueryPolicy{
+			scopes.OwnerRule(), // owner 用户可以访问所有用户
+			scopes.UserReadScopeRule(scopes.ScopeReadUsers), // 需要 users 读取权限
 		},
-		Mutation: privacy.MutationPolicy{
-			scopes2.OwnerRule(),                             // owner 用户可以修改所有用户
-			scopes2.WriteScopeRule(scopes2.ScopeWriteUsers), // 需要 users 写入权限
+		Mutation: scopes.MutationPolicy{
+			scopes.OwnerRule(), // owner 用户可以修改所有用户
+			scopes.UserWriteScopeRule(scopes.ScopeWriteUsers), // 需要 users 写入权限
 		},
 	}
 }

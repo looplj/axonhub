@@ -2,10 +2,9 @@ package schema
 
 import (
 	"entgo.io/ent"
-	"entgo.io/ent/privacy"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
-	scopes2 "github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 type Job struct {
@@ -36,14 +35,14 @@ func (Job) Fields() []ent.Field {
 
 // Policy 定义 Job 的权限策略.
 func (Job) Policy() ent.Policy {
-	return privacy.Policy{
-		Query: privacy.QueryPolicy{
-			scopes2.OwnerRule(),                          // owner 用户可以访问所有任务
-			scopes2.ReadScopeRule(scopes2.ScopeReadJobs), // 需要 jobs 读取权限
+	return scopes.Policy{
+		Query: scopes.QueryPolicy{
+			scopes.OwnerRule(), // owner 用户可以访问所有任务
+			scopes.UserReadScopeRule(scopes.ScopeReadJobs), // 需要 jobs 读取权限
 		},
-		Mutation: privacy.MutationPolicy{
-			scopes2.OwnerRule(),                            // owner 用户可以修改所有任务
-			scopes2.WriteScopeRule(scopes2.ScopeWriteJobs), // 需要 jobs 写入权限
+		Mutation: scopes.MutationPolicy{
+			scopes.OwnerRule(), // owner 用户可以修改所有任务
+			scopes.UserWriteScopeRule(scopes.ScopeWriteJobs), // 需要 jobs 写入权限
 		},
 	}
 }

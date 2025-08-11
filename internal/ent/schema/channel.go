@@ -3,14 +3,13 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
-	"entgo.io/ent/privacy"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/objects"
-	scopes2 "github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 type Channel struct {
@@ -89,14 +88,15 @@ func (Channel) Annotations() []schema.Annotation {
 
 // Policy 定义 Channel 的权限策略.
 func (Channel) Policy() ent.Policy {
-	return privacy.Policy{
-		Query: privacy.QueryPolicy{
-			scopes2.OwnerRule(), // owner 用户可以访问所有渠道
-			scopes2.ReadScopeRule(scopes2.ScopeReadChannels), // 需要 channels 读取权限
+	return scopes.Policy{
+		Query: scopes.QueryPolicy{
+			scopes.APIKeyQueryRule(scopes.ScopeReadChannels),
+			scopes.OwnerRule(), // owner 用户可以访问所有渠道
+			scopes.UserReadScopeRule(scopes.ScopeReadChannels), // 需要 channels 读取权限
 		},
-		Mutation: privacy.MutationPolicy{
-			scopes2.OwnerRule(), // owner 用户可以修改所有渠道
-			scopes2.WriteScopeRule(scopes2.ScopeWriteChannels), // 需要 channels 写入权限
+		Mutation: scopes.MutationPolicy{
+			scopes.OwnerRule(), // owner 用户可以修改所有渠道
+			scopes.UserWriteScopeRule(scopes.ScopeWriteChannels), // 需要 channels 写入权限
 		},
 	}
 }

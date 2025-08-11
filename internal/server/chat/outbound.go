@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"entgo.io/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
@@ -148,9 +147,6 @@ func (p *PersistentOutboundTransformer) TransformError(ctx context.Context, rawE
 
 // Outbound transformer methods for enhanced version.
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
-	// TODO fix the privacy context
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	if len(p.state.Channels) == 0 {
 		channels, err := p.state.ChannelService.ChooseChannels(ctx, llmRequest)
 		if err != nil {

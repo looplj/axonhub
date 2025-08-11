@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/predicate"
@@ -81,6 +82,24 @@ func (aku *APIKeyUpdate) SetNillableStatus(a *apikey.Status) *APIKeyUpdate {
 	if a != nil {
 		aku.SetStatus(*a)
 	}
+	return aku
+}
+
+// SetScopes sets the "scopes" field.
+func (aku *APIKeyUpdate) SetScopes(s []string) *APIKeyUpdate {
+	aku.mutation.SetScopes(s)
+	return aku
+}
+
+// AppendScopes appends s to the "scopes" field.
+func (aku *APIKeyUpdate) AppendScopes(s []string) *APIKeyUpdate {
+	aku.mutation.AppendScopes(s)
+	return aku
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (aku *APIKeyUpdate) ClearScopes() *APIKeyUpdate {
+	aku.mutation.ClearScopes()
 	return aku
 }
 
@@ -207,6 +226,17 @@ func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := aku.mutation.Status(); ok {
 		_spec.SetField(apikey.FieldStatus, field.TypeEnum, value)
 	}
+	if value, ok := aku.mutation.Scopes(); ok {
+		_spec.SetField(apikey.FieldScopes, field.TypeJSON, value)
+	}
+	if value, ok := aku.mutation.AppendedScopes(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, apikey.FieldScopes, value)
+		})
+	}
+	if aku.mutation.ScopesCleared() {
+		_spec.ClearField(apikey.FieldScopes, field.TypeJSON)
+	}
 	if aku.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -324,6 +354,24 @@ func (akuo *APIKeyUpdateOne) SetNillableStatus(a *apikey.Status) *APIKeyUpdateOn
 	if a != nil {
 		akuo.SetStatus(*a)
 	}
+	return akuo
+}
+
+// SetScopes sets the "scopes" field.
+func (akuo *APIKeyUpdateOne) SetScopes(s []string) *APIKeyUpdateOne {
+	akuo.mutation.SetScopes(s)
+	return akuo
+}
+
+// AppendScopes appends s to the "scopes" field.
+func (akuo *APIKeyUpdateOne) AppendScopes(s []string) *APIKeyUpdateOne {
+	akuo.mutation.AppendScopes(s)
+	return akuo
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (akuo *APIKeyUpdateOne) ClearScopes() *APIKeyUpdateOne {
+	akuo.mutation.ClearScopes()
 	return akuo
 }
 
@@ -479,6 +527,17 @@ func (akuo *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err er
 	}
 	if value, ok := akuo.mutation.Status(); ok {
 		_spec.SetField(apikey.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := akuo.mutation.Scopes(); ok {
+		_spec.SetField(apikey.FieldScopes, field.TypeJSON, value)
+	}
+	if value, ok := akuo.mutation.AppendedScopes(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, apikey.FieldScopes, value)
+		})
+	}
+	if akuo.mutation.ScopesCleared() {
+		_spec.ClearField(apikey.FieldScopes, field.TypeJSON)
 	}
 	if akuo.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
