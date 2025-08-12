@@ -54,8 +54,6 @@ export const createApiKeyInputSchemaFactory = (t: (key: string) => string) => z.
 // Default schema for backward compatibility
 export const createApiKeyInputSchema = z.object({
   name: z.string().min(1, '名称不能为空'),
-  userID: z.string().min(1, '用户ID不能为空'),
-  key: z.string().min(1, 'API Key不能为空'),
 })
 export type CreateApiKeyInput = z.infer<typeof createApiKeyInputSchema>
 

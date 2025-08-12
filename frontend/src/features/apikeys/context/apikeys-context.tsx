@@ -1,14 +1,14 @@
 import { createContext, useContext, useState } from 'react'
 import { ApiKey } from '../data/schema'
 
-type ApiKeyDialogType = 'create' | 'edit' | 'delete' | 'status'
+type ApiKeyDialogType = 'create' | 'edit' | 'delete' | 'status' | 'view'
 
 interface ApiKeysContextType {
   selectedApiKey: ApiKey | null
   setSelectedApiKey: (apiKey: ApiKey | null) => void
   isDialogOpen: Record<ApiKeyDialogType, boolean>
   openDialog: (type: ApiKeyDialogType, apiKey?: ApiKey) => void
-  closeDialog: (type: ApiKeyDialogType) => void
+  closeDialog: (type?: ApiKeyDialogType) => void
 }
 
 const ApiKeysContext = createContext<ApiKeysContextType | undefined>(undefined)
@@ -20,6 +20,7 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
     edit: false,
     delete: false,
     status: false,
+    view: false,
   })
 
   const openDialog = (type: ApiKeyDialogType, apiKey?: ApiKey) => {
@@ -29,9 +30,21 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
     setIsDialogOpen((prev) => ({ ...prev, [type]: true }))
   }
 
-  const closeDialog = (type: ApiKeyDialogType) => {
-    setIsDialogOpen((prev) => ({ ...prev, [type]: false }))
-    if (type === 'delete' || type === 'edit') {
+  const closeDialog = (type?: ApiKeyDialogType) => {
+    if (type) {
+      setIsDialogOpen((prev) => ({ ...prev, [type]: false }))
+      if (type === 'delete' || type === 'edit' || type === 'view') {
+        setSelectedApiKey(null)
+      }
+    } else {
+      // Close all dialogs
+      setIsDialogOpen({
+        create: false,
+        edit: false,
+        delete: false,
+        status: false,
+        view: false,
+      })
       setSelectedApiKey(null)
     }
   }

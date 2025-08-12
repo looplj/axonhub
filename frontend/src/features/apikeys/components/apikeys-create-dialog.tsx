@@ -22,7 +22,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useApiKeysContext } from '../context/apikeys-context'
 import { useCreateApiKey } from '../data/apikeys'
-import { CreateApiKeyInput, createApiKeyInputSchemaFactory } from '../data/schema'
+import { CreateApiKeyInput, createApiKeyInputSchema } from '../data/schema'
 
 export function ApiKeysCreateDialog() {
   const { t } = useTranslation()
@@ -31,11 +31,9 @@ export function ApiKeysCreateDialog() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<CreateApiKeyInput>({
-    resolver: zodResolver(createApiKeyInputSchemaFactory(t)),
+    resolver: zodResolver(createApiKeyInputSchema),
     defaultValues: {
       name: '',
-      userID: '',
-      key: '',
     },
   })
 
@@ -76,32 +74,6 @@ export function ApiKeysCreateDialog() {
                   <FormLabel>{t('apikeys.dialog.fields.name.label')}</FormLabel>
                   <FormControl>
                     <Input placeholder={t('apikeys.dialog.fields.name.placeholder')} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name='userID'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('apikeys.dialog.fields.userId.label')}</FormLabel>
-                  <FormControl>
-                    <Input placeholder={t('apikeys.dialog.fields.userId.placeholder')} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name='key'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('apikeys.dialog.fields.key.label')}</FormLabel>
-                  <FormControl>
-                    <Input placeholder={t('apikeys.dialog.fields.key.placeholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

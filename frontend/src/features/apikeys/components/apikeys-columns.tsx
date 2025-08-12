@@ -11,11 +11,15 @@ import LongText from '@/components/long-text'
 import { ApiKey } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'
+import { useApiKeysContext } from '../context/apikeys-context'
 
-function ApiKeyCell({ apiKey }: { apiKey: string }) {
+function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey }) {
   const [isVisible, setIsVisible] = useState(false)
   const { t } = useTranslation()
+  const { openDialog } = useApiKeysContext()
 
+  // 显示前8个字符和后4个字符，中间用省略号
+  const shortKey = `${apiKey.slice(0, 8)}...${apiKey.slice(-4)}`
   const maskedKey = apiKey.replace(/./g, '*').slice(0, -4) + apiKey.slice(-4)
 
   const copyToClipboard = () => {
@@ -23,28 +27,30 @@ function ApiKeyCell({ apiKey }: { apiKey: string }) {
     toast.success(t('apikeys.messages.copied'))
   }
 
+  const handleViewKey = () => {
+    openDialog('view', fullApiKey)
+  }
+
   return (
-    <div className='flex items-center space-x-2'>
-      <code className='bg-muted rounded px-2 py-1 font-mono text-sm'>
-        {isVisible ? apiKey : maskedKey}
+    <div className='flex items-center space-x-2 max-w-48'>
+      <code className='bg-muted rounded px-2 py-1 font-mono text-sm truncate'>
+        {isVisible ? shortKey : maskedKey}
       </code>
       <Button
         variant='ghost'
         size='sm'
-        onClick={() => setIsVisible(!isVisible)}
-        className='h-6 w-6 p-0'
+        onClick={handleViewKey}
+        className='h-6 w-6 p-0 flex-shrink-0'
+        title={t('apikeys.actions.view')}
       >
-        {isVisible ? (
-          <EyeOff className='h-3 w-3' />
-        ) : (
-          <Eye className='h-3 w-3' />
-        )}
+        <Eye className='h-3 w-3' />
       </Button>
       <Button
         variant='ghost'
         size='sm'
         onClick={copyToClipboard}
-        className='h-6 w-6 p-0'
+        className='h-6 w-6 p-0 flex-shrink-0'
+        title={t('apikeys.actions.copy')}
       >
         <Copy className='h-3 w-3' />
       </Button>
@@ -107,8 +113,11 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={t('apikeys.columns.key')} />
     ),
-    cell: ({ row }) => <ApiKeyCell apiKey={row.getValue('key')} />,
+    cell: ({ row }) => <ApiKeyCell apiKey={row.getValue('key')} fullApiKey={row.original} />,
     enableSorting: false,
+    meta: {
+      className: 'max-w-48',
+    },
   },
   {
     accessorKey: 'user',

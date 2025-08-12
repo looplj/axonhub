@@ -23,6 +23,14 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { openDialog } = useApiKeysContext()
   const apiKey = row.original
 
+  const handleEdit = (apiKey: ApiKey) => {
+    openDialog('edit', apiKey)
+  }
+
+  const handleStatusChange = (apiKey: ApiKey) => {
+    openDialog('status', apiKey)
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

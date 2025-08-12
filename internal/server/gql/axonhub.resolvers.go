@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -72,10 +73,22 @@ func (r *mutationResolver) UpdateChannelStatus(ctx context.Context, id objects.G
 
 // CreateAPIKey is the resolver for the createAPIKey field.
 func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error) {
+	// Get current user from context
+	user, ok := contexts.GetUser(ctx)
+	if !ok || user == nil {
+		return nil, fmt.Errorf("user not found in context")
+	}
+
+	// Generate API key with ah- prefix (similar to OpenAI format)
+	generatedKey, err := r.authService.GenerateAPIKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate API key: %w", err)
+	}
+
 	apiKey, err := r.client.APIKey.Create().
 		SetName(input.Name).
-		SetKey(input.Key).
-		SetUserID(input.UserID).
+		SetKey(generatedKey).
+		SetUserID(user.ID).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API key: %w", err)

@@ -56,8 +56,8 @@ const APIKEY_QUERY = `
 `
 
 const CREATE_APIKEY_MUTATION = `
-  mutation CreateApiKey($input: CreateApiKeyInput!) {
-    createApiKey(input: $input) {
+  mutation CreateAPIKey($input: CreateAPIKeyInput!) {
+    createAPIKey(input: $input) {
       id
       createdAt
       updatedAt
@@ -74,8 +74,8 @@ const CREATE_APIKEY_MUTATION = `
 `
 
 const UPDATE_APIKEY_MUTATION = `
-  mutation UpdateApiKey($id: ID!, $input: UpdateApiKeyInput!) {
-    updateApiKey(id: $id, input: $input) {
+  mutation UpdateAPIKey($id: ID!, $input: UpdateAPIKeyInput!) {
+    updateAPIKey(id: $id, input: $input) {  
       id
       createdAt
       updatedAt
@@ -92,7 +92,7 @@ const UPDATE_APIKEY_MUTATION = `
 `
 
 const UPDATE_APIKEY_STATUS_MUTATION = `
-  mutation UpdateApiKeyStatus($id: ID!, $status: APIKeyStatus!) {
+  mutation UpdateAPIKeyStatus($id: ID!, $status: APIKeyStatus!) {
     updateAPIKeyStatus(id: $id, status: $status) {
       id
       status

@@ -482,10 +482,8 @@ input CreateAPIKeyInput {
   createdAt: Time
   updatedAt: Time
   deletedAt: Int
-  key: String!
   name: String!
   status: APIKeyStatus
-  userID: ID!
 }
 """
 CreateChannelInput is used for create Channel object.

@@ -99,6 +99,7 @@
       "disable": "停用",
       "delete": "删除",
       "copy": "复制",
+      "view": "查看",
       "show": "显示",
       "hide": "隐藏"
     },
@@ -116,11 +117,16 @@
         "description": "确定要删除 API 密钥 \"{{name}}\" 吗？此操作无法撤销。"
       },
       "status": {
-        "disableTitle": "禁用 API Key",
-        "enableTitle": "启用 API Key",
-        "disableDescription": "确定要禁用 API Key \"{{name}}\" 吗？",
-        "enableDescription": "确定要启用 API Key \"{{name}}\" 吗？"
-      },
+          "disableTitle": "禁用 API Key",
+          "enableTitle": "启用 API Key",
+          "disableDescription": "确定要禁用 API Key \"{{name}}\" 吗？",
+          "enableDescription": "确定要启用 API Key \"{{name}}\" 吗？"
+        },
+        "view": {
+          "title": "查看 API 密钥",
+          "description": "查看完整的 API 密钥详情。",
+          "warning": "⚠️ 请妥善保管您的 API 密钥，不要与未授权的人员分享。任何拥有此密钥的人都可以代表您发出请求。"
+        },
       "fields": {
         "name": {
           "label": "名称",

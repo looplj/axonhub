@@ -100,6 +100,7 @@
       "disable": "Disable",
       "delete": "Delete",
       "copy": "Copy",
+      "view": "View",
       "show": "Show",
       "hide": "Hide"
     },
@@ -122,7 +123,16 @@
       },
       "status": {
         "title": "Change Status",
-        "description": "Are you sure you want to change the status of this API Key?"
+        "description": "Are you sure you want to change the status of this API Key?",
+        "enableTitle": "Enable API Key",
+        "disableTitle": "Disable API Key",
+        "enableDescription": "Are you sure you want to enable API Key \"{{name}}\"?",
+        "disableDescription": "Are you sure you want to disable API Key \"{{name}}\"?"
+      },
+      "view": {
+        "title": "View API Key",
+        "description": "View the complete API key details.",
+        "warning": "⚠️ Keep your API key secure and do not share it with unauthorized parties. Anyone with access to this key can make requests on your behalf."
       },
       "fields": {
         "name": {

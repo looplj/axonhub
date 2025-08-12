@@ -159,3 +159,16 @@ func (s *AuthService) ValidateAPIKey(ctx context.Context, key string) (*ent.APIK
 
 	return apiKey, nil
 }
+
+// GenerateAPIKey generates a new API key with ah- prefix (similar to OpenAI format).
+func (s *AuthService) GenerateAPIKey() (string, error) {
+	// Generate 32 bytes of random data
+	bytes := make([]byte, 32)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+
+	// Convert to hex and add ah- prefix
+	return "ah-" + hex.EncodeToString(bytes), nil
+}
