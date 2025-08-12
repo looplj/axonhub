@@ -104,10 +104,6 @@
       "show": "Show",
       "hide": "Hide"
     },
-    "filters": {
-      "status": "Status",
-      "reset": "Reset"
-    },
     "dialog": {
       "create": {
         "title": "Create API Key",
@@ -168,10 +164,39 @@
     "messages": {
       "copied": "API Key copied to clipboard",
       "createSuccess": "API Key created successfully",
+      "createError": "Failed to create API Key",
       "updateSuccess": "API Key updated successfully",
+      "updateError": "Failed to update API Key",
       "deleteSuccess": "API Key deleted successfully",
-      "statusUpdateSuccess": "API Key status updated successfully"
-    }
+      "statusUpdateSuccess": "API Key status updated to {{status}}",
+      "statusUpdateError": "Failed to update status"
+    },
+    "errors": {
+      "fetchData": "Failed to fetch API key data",
+      "fetchDetails": "Failed to fetch API key details"
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "userIdRequired": "User ID is required",
+      "keyRequired": "API Key is required"
+    },
+    "filters": {
+      "status": "Status",
+      "reset": "Reset",
+      "selectedCount": "{{count}} selected",
+      "noResults": "No results found",
+      "clearFilter": "Clear filter"
+    },
+    "view": {
+      "title": "View",
+      "toggleColumns": "Toggle columns"
+    },
+    "sort": {
+      "ascending": "Ascending",
+      "descending": "Descending",
+      "hide": "Hide"
+    },
+    "noData": "No data available"
   },
   "roles": {
     "title": "Role Management",
@@ -371,12 +396,14 @@
         "enable": {
           "title": "Enable Channel",
           "description": "Are you sure you want to enable channel \"{{name}}\"? The channel will be available for use after enabling.",
-          "confirmText": "Enable"
+          "confirmText": "Enable",
+          "button": "Enable"
         },
         "disable": {
           "title": "Disable Channel",
           "description": "Are you sure you want to disable channel \"{{name}}\"? The channel will be unavailable after disabling.",
-          "confirmText": "Disable"
+          "confirmText": "Disable",
+          "button": "Disable"
         }
       },
       "settings": {

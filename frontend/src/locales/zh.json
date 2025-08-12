@@ -85,6 +85,7 @@
       "status": "状态",
       "createdAt": "创建时间",
       "updatedAt": "更新时间",
+      "actions": "操作",
       "selectAll": "全选",
       "selectRow": "选择行"
     },
@@ -117,16 +118,18 @@
         "description": "确定要删除 API 密钥 \"{{name}}\" 吗？此操作无法撤销。"
       },
       "status": {
-          "disableTitle": "禁用 API Key",
-          "enableTitle": "启用 API Key",
-          "disableDescription": "确定要禁用 API Key \"{{name}}\" 吗？",
-          "enableDescription": "确定要启用 API Key \"{{name}}\" 吗？"
-        },
-        "view": {
-          "title": "查看 API 密钥",
-          "description": "查看完整的 API 密钥详情。",
-          "warning": "⚠️ 请妥善保管您的 API 密钥，不要与未授权的人员分享。任何拥有此密钥的人都可以代表您发出请求。"
-        },
+        "title": "更改状态",
+        "description": "确定要更改此 API Key 的状态吗？",
+        "disableTitle": "禁用 API Key",
+        "enableTitle": "启用 API Key",
+        "disableDescription": "确定要禁用 API Key \"{{name}}\" 吗？",
+        "enableDescription": "确定要启用 API Key \"{{name}}\" 吗？"
+      },
+      "view": {
+        "title": "查看 API 密钥",
+        "description": "查看完整的 API 密钥详情。",
+        "warning": "⚠️ 请妥善保管您的 API 密钥，不要与未授权的人员分享。任何拥有此密钥的人都可以代表您发出请求。"
+      },
       "fields": {
         "name": {
           "label": "名称",
@@ -265,14 +268,14 @@
     }
   },
   "channels": {
-    "title": "Channel 管理",
-    "description": "管理您的 AI 模型 Channel 和配置。",
+    "title": "渠道管理",
+    "description": "管理您的 AI 模型渠道和配置。",
     "loading": "加载中...",
     "loadError": "加载失败:",
     "noResults": "无结果。",
-    "addChannel": "添加 Channel",
+    "addChannel": "添加渠道",
     "settings": "设置",
-    "filterChannels": "筛选 Channel...",
+    "filterChannels": "筛选渠道...",
     "columns": {
       "name": "名称",
       "type": "类型",
@@ -325,6 +328,14 @@
       "delete": {
         "title": "删除 Channel",
         "description": "确定要删除这个 Channel 吗？此操作无法撤销。"
+      },
+      "settings": {
+        "title": "Channel 设置",
+        "description": "配置全局 Channel 设置。"
+      },
+      "status": {
+        "title": "更改状态",
+        "description": "确定要更改此 Channel 的状态吗？"
       },
       "fields": {
         "name": {
@@ -387,12 +398,14 @@
         "enable": {
           "title": "启用频道",
           "description": "确定要启用频道 \"{{name}}\" 吗？启用后该频道将可以正常使用。",
-          "button": "启用"
+          "button": "启用",
+          "confirmText": "启用"
         },
         "disable": {
           "title": "禁用频道",
           "description": "确定要禁用频道 \"{{name}}\" 吗？禁用后该频道将无法使用。",
-          "button": "禁用"
+          "button": "禁用",
+          "confirmText": "禁用"
         }
       },
       "settings": {
@@ -526,23 +539,23 @@
     "noData": "暂无数据",
     "cards": {
       "totalUsers": "总用户数",
-      "totalChannels": "总 Channel 数",
+      "totalChannels": "总渠道数",
       "totalRequests": "总请求数",
       "requestsToday": "今日请求数"
     },
     "charts": {
       "dailyRequestOverview": "每日请求概览",
       "topUsers": "活跃用户",
-      "requestsByChannel": "按 Channel 分组的请求",
+      "requestsByChannel": "按渠道分组的请求",
       "requestsByStatus": "按状态分组的请求",
       "errorLoadingChart": "加载图表数据失败:",
       "errorLoadingTopUsers": "加载活跃用户失败:",
-      "errorLoadingChannelData": "加载 Channel 数据失败:",
+      "errorLoadingChannelData": "加载渠道数据失败:",
       "errorLoadingStatusData": "加载状态数据失败:",
       "noUserData": "暂无用户数据",
-      "noChannelData": "暂无 Channel 数据",
+      "noChannelData": "暂无渠道数据",
       "noStatusData": "暂无状态数据",
-      "requestsByChannelDescription": "不同 Channel 的请求分布情况。",
+      "requestsByChannelDescription": "不同渠道的请求分布情况。",
       "requestsByStatusDescription": "请求状态的详细分析。"
     },
     "stats": {
