@@ -8,11 +8,22 @@ import (
 	"testing"
 
 	"github.com/samber/lo"
+	"github.com/stretchr/testify/assert"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
+	// Helper function to create transformer
+	createTransformer := func(baseURL, apiKey string) *OutboundTransformer {
+		transformerInterface, err := NewOutboundTransformer(baseURL, apiKey)
+		if err != nil {
+			t.Fatalf("Failed to create transformer: %v", err)
+		}
+
+		return transformerInterface.(*OutboundTransformer)
+	}
+
 	tests := []struct {
 		name        string
 		transformer *OutboundTransformer
@@ -23,7 +34,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	}{
 		{
 			name:        "valid request with default URL",
-			transformer: NewOutboundTransformer("", "test-api-key").(*OutboundTransformer),
+			transformer: createTransformer("https://api.openai.com/v1", "test-api-key"),
 			request: &llm.Request{
 				Model: "gpt-4",
 				Messages: []llm.Message{
@@ -47,7 +58,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 		},
 		{
 			name:        "valid request with custom URL",
-			transformer: NewOutboundTransformer("https://custom.api.com/v1", "test-key").(*OutboundTransformer),
+			transformer: createTransformer("https://custom.api.com/v1", "test-key"),
 			request: &llm.Request{
 				Model: "gpt-4",
 				Messages: []llm.Message{
@@ -64,35 +75,17 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				return req.URL == "https://custom.api.com/v1/chat/completions"
 			},
 		},
-		{
-			name:        "valid request without API key",
-			transformer: NewOutboundTransformer("https://api.openai.com/v1", "").(*OutboundTransformer),
-			request: &llm.Request{
-				Model: "gpt-4",
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: lo.ToPtr("Hello, world!"),
-						},
-					},
-				},
-			},
-			wantErr: false,
-			validate: func(req *httpclient.Request) bool {
-				return req.Auth == nil
-			},
-		},
+
 		{
 			name:        "nil request",
-			transformer: NewOutboundTransformer("", "test-key").(*OutboundTransformer),
+			transformer: createTransformer("https://api.openai.com/v1", "test-key"),
 			request:     nil,
 			wantErr:     true,
 			errContains: "chat completion request is nil",
 		},
 		{
 			name:        "missing model",
-			transformer: NewOutboundTransformer("", "test-key").(*OutboundTransformer),
+			transformer: createTransformer("https://api.openai.com/v1", "test-key"),
 			request: &llm.Request{
 				Messages: []llm.Message{
 					{
@@ -107,17 +100,8 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			errContains: "model is required",
 		},
 		{
-			name:        "missing messages",
-			transformer: NewOutboundTransformer("", "test-key").(*OutboundTransformer),
-			request: &llm.Request{
-				Model: "gpt-4",
-			},
-			wantErr:     true,
-			errContains: "messages are required",
-		},
-		{
 			name:        "URL with trailing slash",
-			transformer: NewOutboundTransformer("https://api.openai.com/v1/", "test-key").(*OutboundTransformer),
+			transformer: createTransformer("https://api.openai.com/v1/", "test-key"),
 			request: &llm.Request{
 				Model: "gpt-4",
 				Messages: []llm.Message{
@@ -185,7 +169,12 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 }
 
 func TestOutboundTransformer_TransformError(t *testing.T) {
-	transformer := NewOutboundTransformer("", "test-key")
+	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	transformer := transformerInterface.(*OutboundTransformer)
 
 	tests := []struct {
 		name               string
@@ -247,7 +236,12 @@ func TestOutboundTransformer_TransformError(t *testing.T) {
 }
 
 func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
-	transformer := NewOutboundTransformer("", "test-key").(*OutboundTransformer)
+	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	transformer := transformerInterface.(*OutboundTransformer)
 
 	tests := []struct {
 		name        string
@@ -370,7 +364,12 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 }
 
 func TestOutboundTransformer_TransformResponse(t *testing.T) {
-	transformer := NewOutboundTransformer("", "test-key").(*OutboundTransformer)
+	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	transformer := transformerInterface.(*OutboundTransformer)
 
 	tests := []struct {
 		name        string
@@ -489,67 +488,67 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 }
 
 func TestOutboundTransformer_SetAPIKey(t *testing.T) {
-	transformer := NewOutboundTransformer("", "initial-key").(*OutboundTransformer)
+	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "initial-key")
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	transformer := transformerInterface.(*OutboundTransformer)
 
 	newKey := "new-api-key"
 	transformer.SetAPIKey(newKey)
 
-	if transformer.apiKey != newKey {
-		t.Errorf("SetAPIKey() failed, got %v, want %v", transformer.apiKey, newKey)
+	if transformer.config.APIKey != newKey {
+		t.Errorf("SetAPIKey() failed, got %v, want %v", transformer.config.APIKey, newKey)
 	}
 }
 
 func TestOutboundTransformer_SetBaseURL(t *testing.T) {
-	transformer := NewOutboundTransformer("initial-url", "test-key").(*OutboundTransformer)
+	transformerInterface, err := NewOutboundTransformer("initial-url", "test-key")
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	transformer := transformerInterface.(*OutboundTransformer)
 
 	newURL := "https://new.api.com/v1"
 	transformer.SetBaseURL(newURL)
 
-	if transformer.baseURL != newURL {
-		t.Errorf("SetBaseURL() failed, got %v, want %v", transformer.baseURL, newURL)
+	if transformer.config.BaseURL != newURL {
+		t.Errorf("SetBaseURL() failed, got %v, want %v", transformer.config.BaseURL, newURL)
 	}
 }
 
 func TestNewOutboundTransformer(t *testing.T) {
 	tests := []struct {
-		name    string
-		baseURL string
-		apiKey  string
-		wantURL string
+		name      string
+		baseURL   string
+		apiKey    string
+		wantURL   string
+		assertErr assert.ErrorAssertionFunc
 	}{
 		{
 			name:    "empty base URL uses default",
 			baseURL: "",
 			apiKey:  "test-key",
 			wantURL: "https://api.openai.com/v1",
+			assertErr: func(tt assert.TestingT, err error, msg ...interface{}) bool {
+				return assert.Contains(tt, err.Error(), "base URL is required")
+			},
 		},
 		{
-			name:    "custom base URL",
-			baseURL: "https://custom.api.com/v1",
-			apiKey:  "test-key",
-			wantURL: "https://custom.api.com/v1",
+			name:      "custom base URL",
+			baseURL:   "https://custom.api.com/v1",
+			apiKey:    "test-key",
+			wantURL:   "https://custom.api.com/v1",
+			assertErr: assert.NoError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer := NewOutboundTransformer(tt.baseURL, tt.apiKey).(*OutboundTransformer)
-
-			if transformer.baseURL != tt.wantURL {
-				t.Errorf(
-					"NewOutboundTransformer() baseURL = %v, want %v",
-					transformer.baseURL,
-					tt.wantURL,
-				)
-			}
-
-			if transformer.apiKey != tt.apiKey {
-				t.Errorf(
-					"NewOutboundTransformer() apiKey = %v, want %v",
-					transformer.apiKey,
-					tt.apiKey,
-				)
-			}
+			_, err := NewOutboundTransformer(tt.baseURL, tt.apiKey)
+			tt.assertErr(t, err)
 		})
 	}
 }

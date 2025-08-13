@@ -44,7 +44,8 @@ func TestPipeline_OpenAI_to_OpenAI(t *testing.T) {
 
 	// Create transformers
 	inbound := openai.NewInboundTransformer()
-	outbound := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	outbound, err := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
 
 	// Mock OpenAI response
 	mockResponse := &llm.Response{
@@ -252,7 +253,8 @@ func TestPipeline_Anthropic_to_OpenAI(t *testing.T) {
 
 	// Create transformers
 	inbound := anthropic.NewInboundTransformer()
-	outbound := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	outbound, err := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
 
 	// Mock OpenAI response
 	mockOpenAIResponse := &llm.Response{

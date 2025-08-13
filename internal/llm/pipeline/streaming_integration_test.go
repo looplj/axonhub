@@ -21,7 +21,8 @@ func TestPipeline_Streaming_OpenAI_to_OpenAI(t *testing.T) {
 
 	// Create transformers
 	inbound := openai.NewInboundTransformer()
-	outbound := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	outbound, err := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
 
 	// Load test data using xtest
 	streamEvents, err := xtest.LoadStreamChunks("openai-tool.stream.jsonl")
@@ -220,7 +221,8 @@ func TestPipeline_Streaming_Anthropic_to_OpenAI(t *testing.T) {
 
 	// Create transformers
 	inbound := anthropic.NewInboundTransformer()
-	outbound := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	outbound, err := openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
 
 	// Load test data using xtest
 	streamEvents, err := xtest.LoadStreamChunks("openai-tool.stream.jsonl")
@@ -463,7 +465,10 @@ func TestPipeline_Streaming_WithTestData(t *testing.T) {
 
 			switch tt.outboundType {
 			case "openai":
-				outbound = openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+				var err error
+
+				outbound, err = openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+				require.NoError(t, err)
 			case "anthropic":
 				outbound = anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
 			}

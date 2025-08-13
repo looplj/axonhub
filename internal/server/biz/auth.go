@@ -164,6 +164,7 @@ func (s *AuthService) ValidateAPIKey(ctx context.Context, key string) (*ent.APIK
 func (s *AuthService) GenerateAPIKey() (string, error) {
 	// Generate 32 bytes of random data
 	bytes := make([]byte, 32)
+
 	_, err := rand.Read(bytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate random bytes: %w", err)

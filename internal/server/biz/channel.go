@@ -89,7 +89,12 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 		//nolint:exhaustive // TODO SUPPORT.
 		switch c.Type {
 		case "openai":
-			transformer := openai.NewOutboundTransformer(c.BaseURL, c.APIKey)
+			transformer, err := openai.NewOutboundTransformer(c.BaseURL, c.APIKey)
+			if err != nil {
+				log.Warn(ctx, "failed to create openai outbound transformer", log.Cause(err))
+				continue
+			}
+
 			channels = append(channels, &Channel{
 				Channel:  c,
 				Outbound: transformer,

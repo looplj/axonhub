@@ -18,7 +18,11 @@ import (
 func TestIntegration_OpenAITransformers(t *testing.T) {
 	// Create transformers
 	inbound := NewInboundTransformer()
-	outbound := NewOutboundTransformer("", "test-api-key")
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com/v1", "test-api-key")
+	if err != nil {
+		t.Fatalf("Failed to create outbound transformer: %v", err)
+	}
 
 	// Create HTTP client
 	httpClient := httpclient.NewHttpClient()
