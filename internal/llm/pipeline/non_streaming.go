@@ -36,8 +36,13 @@ func (p *pipeline) notStream(
 		return nil, err
 	}
 
+	executor := p.Executor
+	if c, ok := p.Outbound.(ChannelCustomizedExecutor); ok {
+		executor = c.CustomizeExecutor(executor)
+	}
+
 	// Step 3: Execute HTTP request
-	httpResp, err := p.HttpClient.Do(ctx, httpReq)
+	httpResp, err := executor.Do(ctx, httpReq)
 	if err != nil {
 		log.Error(ctx, "HTTP request failed", log.Cause(err))
 

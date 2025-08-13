@@ -19,6 +19,13 @@ type ChannelRetryable interface {
 	HasMoreChannels() bool
 }
 
+// ChannelCustomizedExecutor interface for channel need custom the process of request.
+// The customized executor will be used to execute the request.
+// e.g. the aws bedrock process need a custom executor to handle the request.
+type ChannelCustomizedExecutor interface {
+	CustomizeExecutor(Executor) Executor
+}
+
 // Option defines a pipeline configuration option.
 type Option func(*pipeline)
 
@@ -40,13 +47,13 @@ func WithDecorators(decorators ...decorator.Decorator) Option {
 
 // Factory creates pipeline instances.
 type Factory struct {
-	HttpClient Executor
+	Executor Executor
 }
 
 // NewFactory creates a new pipeline factory.
-func NewFactory(httpClient Executor) *Factory {
+func NewFactory(executor Executor) *Factory {
 	return &Factory{
-		HttpClient: httpClient,
+		Executor: executor,
 	}
 }
 
@@ -57,9 +64,9 @@ func (f *Factory) Pipeline(
 	opts ...Option,
 ) *pipeline {
 	p := &pipeline{
-		HttpClient: f.HttpClient,
-		Inbound:    inbound,
-		Outbound:   outbound,
+		Executor: f.Executor,
+		Inbound:  inbound,
+		Outbound: outbound,
 	}
 
 	// Apply options
@@ -72,7 +79,7 @@ func (f *Factory) Pipeline(
 
 // pipeline implements the main pipeline logic with retry capabilities.
 type pipeline struct {
-	HttpClient      Executor
+	Executor        Executor
 	Inbound         transformer.Inbound
 	Outbound        transformer.Outbound
 	decorators      []decorator.Decorator

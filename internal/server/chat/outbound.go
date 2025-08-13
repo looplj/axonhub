@@ -6,6 +6,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -304,4 +305,18 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 // HasMoreChannels returns true if there are more channels available for retry.
 func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
 	return p.state.ChannelIndex+1 < len(p.state.Channels)
+}
+
+// CustomizeExecutor customizes the executor for the current channel.
+// If the current channel has an executor, it will be used.
+// Otherwise, the default executor will be used.
+//
+// The customized executor will be used to execute the request.
+// e.g. the aws bedrock process need a custom executor to handle the request.
+func (p *PersistentOutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
+	if p.state.CurrentChannel.Executor != nil {
+		return p.state.CurrentChannel.Executor
+	}
+
+	return executor
 }

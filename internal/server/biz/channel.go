@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"slices"
 
-	"entgo.io/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
@@ -21,7 +23,11 @@ import (
 type Channel struct {
 	*ent.Channel
 
+	// Outbound is the outbound transformer for the channel.
 	Outbound transformer.Outbound
+
+	// Executor is the executor for the channel.
+	Executor pipeline.Executor
 }
 
 func (c Channel) ChooseModel(model string) (string, error) {
@@ -41,8 +47,9 @@ func (c Channel) ChooseModel(model string) (string, error) {
 type ChannelServiceParams struct {
 	fx.In
 
-	Ent      *ent.Client
-	Executor executors.ScheduledExecutor
+	Ent        *ent.Client
+	Executor   executors.ScheduledExecutor
+	HttpClient *httpclient.HttpClient
 }
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
@@ -104,6 +111,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 			channels = append(channels, &Channel{
 				Channel:  c,
 				Outbound: transformer,
+				// TODO: support aws.bedrock/gcp.vertex
 			})
 		}
 	}
