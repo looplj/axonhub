@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AxonHub - AI Gateway System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bg-primary': '#F8F6F5',
+                        'text-primary': '#010101',
+                        'gradient-start': '#F69AAC',
+                        'gradient-mid': '#DF95E3',
+                        'gradient-end': '#7DBDE9'
+                    },
+                    fontFamily: {
+                        'sans': ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'Roboto', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #F69AAC 0%, #DF95E3 50%, #7DBDE9 100%);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #F69AAC 0%, #DF95E3 50%, #7DBDE9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .tech-glow {
+            box-shadow: 0 0 20px rgba(246, 154, 172, 0.3);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        .icon-stroke {
+            stroke-width: 1.5;
+            stroke: currentColor;
+            fill: none;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-bg-primary text-text-primary font-sans">
+    <!-- Hero Section -->
+    <div class="min-h-screen p-4 md:p-8">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <header class="text-center mb-16">
+                <h1 class="text-6xl md:text-8xl lg:text-9xl font-bold mb-6 gradient-text">
+                    AxonHub
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto">
+                    现代化AI网关系统 · 统一多提供商API · 企业级架构
+                </p>
+            </header>
+
+            <!-- Bento Grid Layout -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6 auto-rows-auto">
+                
+                <!-- Main Feature Card - Spans 2x2 -->
+                <div class="lg:col-span-2 lg:row-span-2 bg-white rounded-3xl p-8 card-hover tech-glow">
+                    <div class="flex flex-col h-full">
+                        <div class="mb-6">
+                            <svg class="w-16 h-16 text-gradient-start floating" viewBox="0 0 24 24">
+                                <path class="icon-stroke" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                            </svg>
+                        </div>
+                        <h2 class="text-3xl font-bold mb-4">AI Gateway</h2>
+                        <p class="text-gray-600 text-lg leading-relaxed flex-grow">
+                            统一OpenAI兼容API层，支持OpenAI、Anthropic、AI SDK等多个提供商的无缝切换
+                        </p>
+                        <div class="mt-6">
+                            <span class="text-5xl font-bold gradient-text">3+</span>
+                            <p class="text-sm text-gray-500 mt-1">AI提供商支持</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Architecture Card -->
+                <div class="lg:col-span-2 bg-white rounded-3xl p-6 card-hover">
+                    <div class="flex items-center mb-4">
+                        <svg class="w-12 h-12 text-gradient-mid mr-4" viewBox="0 0 24 24">
+                            <path class="icon-stroke" d="M4 7v10c0 2.21 1.79 4 4 4h8c2.21 0 4-1.79 4-4V7c0-2.21-1.79-4-4-4H8c-2.21 0-4 1.79-4 4z"/>
+                            <path class="icon-stroke" d="M9 9h6v6H9z"/>
+                        </svg>
+                        <div>
+                            <h3 class="text-xl font-bold">双向转换架构</h3>
+                            <p class="text-gray-600 text-sm">Inbound/Outbound Transformer</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-3xl font-bold gradient-text">99.9%</span>
+                        <p class="text-xs text-gray-500">可用性保证</p>
+                    </div>
+                </div>
+
+                <!-- Performance Card -->
+                <div class="bg-white rounded-3xl p-6 card-hover">
+                    <svg class="w-10 h-10 text-gradient-end mb-4" viewBox="0 0 24 24">
+                        <path class="icon-stroke" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                    </svg>
+                    <h3 class="text-lg font-bold mb-2">高性能</h3>
+                    <div class="text-2xl font-bold gradient-text">< 100ms</div>
+                    <p class="text-xs text-gray-500">响应延迟</p>
+                </div>
+
+                <!-- Streaming Support -->
+                <div class="bg-white rounded-3xl p-6 card-hover">
+                    <svg class="w-10 h-10 text-gradient-start mb-4" viewBox="0 0 24 24">
+                        <path class="icon-stroke" d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        <polyline class="icon-stroke" points="7.5,4.21 12,6.81 16.5,4.21"/>
+                        <polyline class="icon-stroke" points="7.5,19.79 7.5,14.6 3,12"/>
+                        <polyline class="icon-stroke" points="21,12 16.5,14.6 16.5,19.79"/>
+                    </svg>
+                    <h3 class="text-lg font-bold mb-2">流式处理</h3>
+                    <p class="text-sm text-gray-600">实时响应</p>
+                </div>
+
+                <!-- Backend Tech Stack -->
+                <div class="lg:col-span-2 bg-white rounded-3xl p-6 card-hover">
+                    <div class="flex items-center mb-4">
+                        <svg class="w-12 h-12 text-gradient-end mr-4" viewBox="0 0 24 24">
+                            <path class="icon-stroke" d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                            <polyline class="icon-stroke" points="14,2 14,8 20,8"/>
+                        </svg>
+                        <div>
+                            <h3 class="text-xl font-bold">Go 后端架构</h3>
+                            <p class="text-gray-600 text-sm">企业级可扩展性</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <div class="font-semibold text-gradient-start">Ent ORM</div>
+                            <div class="text-gray-500">数据库抽象</div>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gradient-mid">GraphQL</div>
+                            <div class="text-gray-500">灵活查询</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Frontend Tech Stack -->
+                <div class="lg:col-span-2 bg-white rounded-3xl p-6 card-hover">
+                    <div class="flex items-center mb-4">
+                        <svg class="w-12 h-12 text-gradient-start mr-4" viewBox="0 0 24 24">
+                            <path class="icon-stroke" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        <div>
+                            <h3 class="text-xl font-bold">React 前端</h3>
+                            <p class="text-gray-600 text-sm">现代化用户体验</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <div class="font-semibold text-gradient-mid">TanStack</div>
+                            <div class="text-gray-500">状态管理</div>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gradient-end">Shadcn/ui</div>
+                            <div class="text-gray-500">组件库</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security & Auth -->
+                <div class="bg-white rounded-3xl p-6 card-hover">
+                    <svg class="w-10 h-10 text-gradient-mid mb-4" viewBox="0 0 24 24">
+                        <rect class="icon-stroke" x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <circle class="icon-stroke" cx="12" cy="16" r="1"/>
+                        <path class="icon-stroke" d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <h3 class="text-lg font-bold mb-2">安全认证</h3>
+                    <p class="text-sm text-gray-600">RBAC权限控制</p>
+                </div>
+
+                <!-- API Management -->
+                <div class="bg-white rounded-3xl p-6 card-hover">
+                    <svg class="w-10 h-10 text-gradient-end mb-4" viewBox="0 0 24 24">
+                        <path class="icon-stroke" d="M9 12l2 2 4-4"/>
+                        <path class="icon-stroke" d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
+                        <path class="icon-stroke" d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
+                        <path class="icon-stroke" d="M13 12h3a2 2 0 0 1 2 2v1"/>
+                        <path class="icon-stroke" d="M11 12H8a2 2 0 0 0-2 2v1"/>
+                    </svg>
+                    <h3 class="text-lg font-bold mb-2">API管理</h3>
+                    <p class="text-sm text-gray-600">统一接口</p>
+                </div>
+
+                <!-- Statistics Card -->
+                <div class="lg:col-span-2 bg-white rounded-3xl p-6 card-hover">
+                    <h3 class="text-xl font-bold mb-6">核心数据</h3>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold gradient-text">100%</div>
+                            <div class="text-xs text-gray-500 mt-1">OpenAI兼容</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold gradient-text">∞</div>
+                            <div class="text-xs text-gray-500 mt-1">并发请求</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold gradient-text">24/7</div>
+                            <div class="text-xs text-gray-500 mt-1">服务可用</div>
+                        </div>
+                    </div>
+                    <div class="mt-6 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full gradient-bg rounded-full" style="width: 85%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">系统负载优化</p>
+                </div>
+
+                <!-- Developer Experience -->
+                <div class="lg:col-span-2 bg-white rounded-3xl p-6 card-hover">
+                    <div class="flex items-center mb-4">
+                        <svg class="w-12 h-12 text-gradient-start mr-4" viewBox="0 0 24 24">
+                            <polyline class="icon-stroke" points="16 18 22 12 16 6"/>
+                            <polyline class="icon-stroke" points="8 6 2 12 8 18"/>
+                        </svg>
+                        <div>
+                            <h3 class="text-xl font-bold">开发者体验</h3>
+                            <p class="text-gray-600 text-sm">TypeScript + 热重载</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm">类型安全</span>
+                            <div class="w-20 h-2 bg-gray-100 rounded-full">
+                                <div class="h-full bg-gradient-start rounded-full" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm">测试覆盖</span>
+                            <div class="w-20 h-2 bg-gray-100 rounded-full">
+                                <div class="h-full bg-gradient-mid rounded-full" style="width: 90%"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm">文档完整</span>
+                            <div class="w-20 h-2 bg-gray-100 rounded-full">
+                                <div class="h-full bg-gradient-end rounded-full" style="width: 95%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CTA Card -->
+                <div class="lg:col-span-2 bg-white rounded-3xl p-8 card-hover tech-glow">
+                    <div class="text-center">
+                        <h3 class="text-2xl font-bold mb-4">开始使用 AxonHub</h3>
+                        <p class="text-gray-600 mb-6">体验下一代AI网关系统</p>
+                        <button class="gradient-bg text-white px-8 py-3 rounded-2xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                            立即部署
+                        </button>
+                        <div class="mt-4 text-sm text-gray-500">
+                            <span class="inline-block w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                            开源免费 · MIT许可
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <footer class="mt-16 text-center text-gray-500">
+                <div class="flex justify-center items-center space-x-8 mb-4">
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24">
+                            <path class="icon-stroke" d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+                        </svg>
+                        <span>GitHub</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24">
+                            <path class="icon-stroke" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline class="icon-stroke" points="14,2 14,8 20,8"/>
+                            <line class="icon-stroke" x1="16" y1="13" x2="8" y2="13"/>
+                            <line class="icon-stroke" x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline class="icon-stroke" points="10,9 9,9 8,9"/>
+                        </svg>
+                        <span>文档</span>
+                    </div>
+                </div>
+                <p>&copy; 2024 AxonHub. 构建下一代AI基础设施.</p>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        // 添加交互效果
+        document.addEventListener('DOMContentLoaded', function() {
+            // 卡片悬停效果增强
+            const cards = document.querySelectorAll('.card-hover');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-8px) scale(1.02)';
+                });
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+
+            // 数字动画效果
+            const animateNumbers = () => {
+                const numbers = document.querySelectorAll('.gradient-text');
+                numbers.forEach(num => {
+                    if (num.textContent.includes('%') || num.textContent.includes('ms')) {
+                        num.style.animation = 'pulse 2s ease-in-out infinite';
+                    }
+                });
+            };
+            
+            setTimeout(animateNumbers, 1000);
+
+            // 滚动视差效果
+            window.addEventListener('scroll', () => {
+                const scrolled = window.pageYOffset;
+                const parallax = document.querySelector('.floating');
+                if (parallax) {
+                    const speed = scrolled * 0.5;
+                    parallax.style.transform = `translateY(${speed}px)`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
