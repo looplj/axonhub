@@ -1,8 +1,11 @@
 package httpclient
 
 import (
+	"context"
 	"io"
 	"net/http"
+
+	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
 // Request represents a generic HTTP request that can be adapted to different providers.
@@ -65,3 +68,9 @@ type StreamEvent struct {
 	Type        string `json:"type"`
 	Data        []byte `json:"data"`
 }
+
+// StreamDecoder defines the interface for decoding streaming responses.
+type StreamDecoder = streams.Stream[*StreamEvent]
+
+// StreamDecoderFactory is a function that creates a StreamDecoder from a ReadCloser.
+type StreamDecoderFactory func(ctx context.Context, rc io.ReadCloser) StreamDecoder

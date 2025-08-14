@@ -37,6 +37,7 @@ const CHANNELS_QUERY = `
               to
             }
           }
+
         }
         cursor
       }
@@ -70,6 +71,7 @@ const CREATE_CHANNEL_MUTATION = `
           to
         }
       }
+
     }
   }
 `
@@ -92,6 +94,7 @@ const UPDATE_CHANNEL_MUTATION = `
           to
         }
       }
+
     }
   }
 `

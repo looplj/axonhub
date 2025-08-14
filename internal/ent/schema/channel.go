@@ -34,12 +34,12 @@ func (Channel) Indexes() []ent.Index {
 func (Channel) Fields() []ent.Field {
 	return []ent.Field{
 		field.Enum("type").
-			Values("openai", "anthropic", "gemini", "deepseek", "doubao", "kimi").
+			Values("openai", "anthropic", "anthropic_aws", "gemini", "deepseek", "doubao", "kimi").
 			Immutable(),
-		field.String("base_url"),
+		field.String("base_url").Optional(),
 		field.String("name"),
 		field.Enum("status").Values("enabled", "disabled").Default("enabled"),
-		field.String("api_key").Sensitive().NotEmpty(),
+		field.JSON("credentials", &objects.ChannelCredentials{}).Sensitive().Default(&objects.ChannelCredentials{}),
 		field.Strings("supported_models"),
 		field.String("default_test_model"),
 		field.JSON("settings", &objects.ChannelSettings{}).

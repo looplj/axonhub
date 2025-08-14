@@ -16,7 +16,7 @@ import (
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
-	transformer := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	transformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
 
 	tests := []struct {
 		name        string
@@ -189,7 +189,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 }
 
 func TestOutboundTransformer_TransformResponse(t *testing.T) {
-	transformer := NewOutboundTransformer("", "")
+	transformer, _ := NewOutboundTransformer("", "")
 
 	tests := []struct {
 		name        string
@@ -287,24 +287,8 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
-func TestOutboundTransformer_SetAPIKey(t *testing.T) {
-	transformer := NewOutboundTransformer("", "")
-
-	newAPIKey := "new-api-key"
-	transformer.SetAPIKey(newAPIKey)
-	require.Equal(t, newAPIKey, transformer.apiKey)
-}
-
-func TestOutboundTransformer_SetBaseURL(t *testing.T) {
-	transformer := NewOutboundTransformer("", "")
-
-	newBaseURL := "https://custom.api.com"
-	transformer.SetBaseURL(newBaseURL)
-	require.Equal(t, newBaseURL, transformer.baseURL)
-}
-
 func TestOutboundTransformer_ErrorHandling(t *testing.T) {
-	transformer := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	transformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-key")
 
 	t.Run("TransformRequest error cases", func(t *testing.T) {
 		tests := []struct {
@@ -461,7 +445,7 @@ func TestOutboundTransformer_ErrorHandling(t *testing.T) {
 }
 
 func TestOutboundTransformer_ToolUse(t *testing.T) {
-	transformer := NewOutboundTransformer("", "")
+	transformer, _ := NewOutboundTransformer("https://api.example.com", "test-api-key")
 
 	t.Run("Tool conversion and handling", func(t *testing.T) {
 		tests := []struct {
@@ -722,7 +706,7 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 }
 
 func TestOutboundTransformer_ValidationEdgeCases(t *testing.T) {
-	transformer := NewOutboundTransformer("", "")
+	transformer, _ := NewOutboundTransformer("https://api.example.com", "test-api-key")
 
 	t.Run("Message content validation", func(t *testing.T) {
 		tests := []struct {
@@ -799,7 +783,7 @@ func TestOutboundTransformer_ValidationEdgeCases(t *testing.T) {
 }
 
 func TestConvertToAnthropicRequest(t *testing.T) {
-	transformer := NewOutboundTransformer("", "")
+	transformer, _ := NewOutboundTransformer("", "")
 
 	tests := []struct {
 		name     string
@@ -873,7 +857,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := transformer.convertToAnthropicRequest(tt.chatReq)
+			result := transformer.(*OutboundTransformer).convertToAnthropicRequest(tt.chatReq)
 			require.Equal(t, tt.expected.Model, result.Model)
 			require.Equal(t, tt.expected.MaxTokens, result.MaxTokens)
 			require.Equal(t, tt.expected.System, result.System)
@@ -883,7 +867,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 }
 
 func TestOutboundTransformer_StreamTransformation_WithTestData_Stop(t *testing.T) {
-	transformer := NewOutboundTransformer("", "")
+	transformer, _ := NewOutboundTransformer("https://example.com", "xxx")
 
 	// Load test data from files
 	anthropicData, err := os.ReadFile("testdata/anthropic-stop.stream.jsonl")
@@ -1026,7 +1010,7 @@ func TestOutboundTransformer_StreamTransformation_WithTestData_Stop(t *testing.T
 }
 
 func TestOutboundTransformer_TransformError(t *testing.T) {
-	transformer := NewOutboundTransformer("", "")
+	transformer, _ := NewOutboundTransformer("https://example.com", "xxx")
 
 	tests := []struct {
 		name     string

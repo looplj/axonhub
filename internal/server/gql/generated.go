@@ -49,6 +49,7 @@ type Config struct {
 type ResolverRoot interface {
 	APIKey() APIKeyResolver
 	Channel() ChannelResolver
+	ChannelCredentials() ChannelCredentialsResolver
 	Job() JobResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
@@ -57,6 +58,7 @@ type ResolverRoot interface {
 	Role() RoleResolver
 	System() SystemResolver
 	User() UserResolver
+	ChannelCredentialsInput() ChannelCredentialsInputResolver
 }
 
 type DirectiveRoot struct {
@@ -87,6 +89,12 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
+	AwsCredentials struct {
+		AccessKeyID     func(childComplexity int) int
+		Region          func(childComplexity int) int
+		SecretAccessKey func(childComplexity int) int
+	}
+
 	Channel struct {
 		BaseURL          func(childComplexity int) int
 		CreatedAt        func(childComplexity int) int
@@ -107,6 +115,11 @@ type ComplexityRoot struct {
 		Edges      func(childComplexity int) int
 		PageInfo   func(childComplexity int) int
 		TotalCount func(childComplexity int) int
+	}
+
+	ChannelCredentials struct {
+		APIKey func(childComplexity int) int
+		AWS    func(childComplexity int) int
 	}
 
 	ChannelEdge struct {
@@ -401,6 +414,9 @@ type APIKeyResolver interface {
 type ChannelResolver interface {
 	ID(ctx context.Context, obj *ent.Channel) (*objects.GUID, error)
 }
+type ChannelCredentialsResolver interface {
+	AWS(ctx context.Context, obj *objects.ChannelCredentials) (*AWSCredentials, error)
+}
 type JobResolver interface {
 	ID(ctx context.Context, obj *ent.Job) (*objects.GUID, error)
 }
@@ -461,6 +477,10 @@ type SystemResolver interface {
 }
 type UserResolver interface {
 	ID(ctx context.Context, obj *ent.User) (*objects.GUID, error)
+}
+
+type ChannelCredentialsInputResolver interface {
+	AWS(ctx context.Context, obj *objects.ChannelCredentials, data *AWSCredentialsInput) error
 }
 
 type executableSchema struct {
@@ -592,6 +612,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.APIKeyEdge.Node(childComplexity), true
 
+	case "AwsCredentials.accessKeyID":
+		if e.complexity.AwsCredentials.AccessKeyID == nil {
+			break
+		}
+
+		return e.complexity.AwsCredentials.AccessKeyID(childComplexity), true
+
+	case "AwsCredentials.region":
+		if e.complexity.AwsCredentials.Region == nil {
+			break
+		}
+
+		return e.complexity.AwsCredentials.Region(childComplexity), true
+
+	case "AwsCredentials.secretAccessKey":
+		if e.complexity.AwsCredentials.SecretAccessKey == nil {
+			break
+		}
+
+		return e.complexity.AwsCredentials.SecretAccessKey(childComplexity), true
+
 	case "Channel.baseURL":
 		if e.complexity.Channel.BaseURL == nil {
 			break
@@ -713,6 +754,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelConnection.TotalCount(childComplexity), true
+
+	case "ChannelCredentials.apiKey":
+		if e.complexity.ChannelCredentials.APIKey == nil {
+			break
+		}
+
+		return e.complexity.ChannelCredentials.APIKey(childComplexity), true
+
+	case "ChannelCredentials.aws":
+		if e.complexity.ChannelCredentials.AWS == nil {
+			break
+		}
+
+		return e.complexity.ChannelCredentials.AWS(childComplexity), true
 
 	case "ChannelEdge.cursor":
 		if e.complexity.ChannelEdge.Cursor == nil {
@@ -2099,6 +2154,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAPIKeyOrder,
 		ec.unmarshalInputAPIKeyWhereInput,
+		ec.unmarshalInputAwsCredentialsInput,
+		ec.unmarshalInputChannelCredentialsInput,
 		ec.unmarshalInputChannelOrder,
 		ec.unmarshalInputChannelSettingsInput,
 		ec.unmarshalInputChannelWhereInput,
@@ -5811,6 +5868,138 @@ func (ec *executionContext) fieldContext_APIKeyEdge_cursor(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _AwsCredentials_accessKeyID(ctx context.Context, field graphql.CollectedField, obj *AWSCredentials) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AwsCredentials_accessKeyID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AccessKeyID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AwsCredentials_accessKeyID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AwsCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AwsCredentials_secretAccessKey(ctx context.Context, field graphql.CollectedField, obj *AWSCredentials) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AwsCredentials_secretAccessKey(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SecretAccessKey, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AwsCredentials_secretAccessKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AwsCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AwsCredentials_region(ctx context.Context, field graphql.CollectedField, obj *AWSCredentials) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AwsCredentials_region(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Region, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AwsCredentials_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AwsCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Channel_id(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Channel_id(ctx, field)
 	if err != nil {
@@ -6052,14 +6241,11 @@ func (ec *executionContext) _Channel_baseURL(ctx context.Context, field graphql.
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Channel_baseURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -6562,6 +6748,99 @@ func (ec *executionContext) fieldContext_ChannelConnection_totalCount(_ context.
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelCredentials_apiKey(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelCredentials_apiKey(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.APIKey, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelCredentials_apiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelCredentials_aws(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelCredentials_aws(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ChannelCredentials().AWS(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*AWSCredentials)
+	fc.Result = res
+	return ec.marshalOAwsCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAWSCredentials(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelCredentials_aws(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCredentials",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "accessKeyID":
+				return ec.fieldContext_AwsCredentials_accessKeyID(ctx, field)
+			case "secretAccessKey":
+				return ec.fieldContext_AwsCredentials_secretAccessKey(ctx, field)
+			case "region":
+				return ec.fieldContext_AwsCredentials_region(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AwsCredentials", field.Name)
 		},
 	}
 	return fc, nil
@@ -18123,6 +18402,83 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputAwsCredentialsInput(ctx context.Context, obj any) (AWSCredentialsInput, error) {
+	var it AWSCredentialsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"accessKeyID", "secretAccessKey", "region"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "accessKeyID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accessKeyID"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccessKeyID = data
+		case "secretAccessKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secretAccessKey"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SecretAccessKey = data
+		case "region":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("region"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Region = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Context, obj any) (objects.ChannelCredentials, error) {
+	var it objects.ChannelCredentials
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"apiKey", "aws"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "apiKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKey = data
+		case "aws":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aws"))
+			data, err := ec.unmarshalOAwsCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAWSCredentialsInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ChannelCredentialsInput().AWS(ctx, &it, data); err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelOrder(ctx context.Context, obj any) (ent.ChannelOrder, error) {
 	var it ent.ChannelOrder
 	asMap := map[string]any{}
@@ -18195,7 +18551,7 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLIsNil", "baseURLNotNil", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18584,6 +18940,20 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.BaseURLHasSuffix = data
+		case "baseURLIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseURLIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseURLIsNil = data
+		case "baseURLNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseURLNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseURLNotNil = data
 		case "baseURLEqualFold":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseURLEqualFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -18904,7 +19274,7 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"createdAt", "updatedAt", "deletedAt", "type", "baseURL", "name", "status", "apiKey", "supportedModels", "defaultTestModel", "settings"}
+	fieldsInOrder := [...]string{"createdAt", "updatedAt", "deletedAt", "type", "baseURL", "name", "status", "credentials", "supportedModels", "defaultTestModel", "settings"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18941,7 +19311,7 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 			it.Type = data
 		case "baseURL":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseURL"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -18960,13 +19330,13 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.Status = data
-		case "apiKey":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+		case "credentials":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("credentials"))
+			data, err := ec.unmarshalOChannelCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelCredentials(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.APIKey = data
+			it.Credentials = data
 		case "supportedModels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supportedModels"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
@@ -22362,7 +22732,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"updatedAt", "deletedAt", "baseURL", "name", "status", "apiKey", "supportedModels", "appendSupportedModels", "defaultTestModel", "settings", "clearSettings"}
+	fieldsInOrder := [...]string{"updatedAt", "deletedAt", "baseURL", "clearBaseURL", "name", "status", "credentials", "supportedModels", "appendSupportedModels", "defaultTestModel", "settings", "clearSettings"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -22390,6 +22760,13 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.BaseURL = data
+		case "clearBaseURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearBaseURL"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearBaseURL = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -22404,13 +22781,13 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.Status = data
-		case "apiKey":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+		case "credentials":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("credentials"))
+			data, err := ec.unmarshalOChannelCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelCredentials(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.APIKey = data
+			it.Credentials = data
 		case "supportedModels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supportedModels"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -24017,6 +24394,55 @@ func (ec *executionContext) _APIKeyEdge(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var awsCredentialsImplementors = []string{"AwsCredentials"}
+
+func (ec *executionContext) _AwsCredentials(ctx context.Context, sel ast.SelectionSet, obj *AWSCredentials) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, awsCredentialsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AwsCredentials")
+		case "accessKeyID":
+			out.Values[i] = ec._AwsCredentials_accessKeyID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "secretAccessKey":
+			out.Values[i] = ec._AwsCredentials_secretAccessKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "region":
+			out.Values[i] = ec._AwsCredentials_region(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var channelImplementors = []string{"Channel", "Node"}
 
 func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, obj *ent.Channel) graphql.Marshaler {
@@ -24086,9 +24512,6 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "baseURL":
 			out.Values[i] = ec._Channel_baseURL(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "name":
 			out.Values[i] = ec._Channel_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -24229,6 +24652,78 @@ func (ec *executionContext) _ChannelConnection(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelCredentialsImplementors = []string{"ChannelCredentials"}
+
+func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelCredentials) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelCredentialsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelCredentials")
+		case "apiKey":
+			out.Values[i] = ec._ChannelCredentials_apiKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "aws":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelCredentials_aws(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -29188,6 +29683,21 @@ func (ec *executionContext) unmarshalOAPIKeyWhereInput2ᚖgithubᚗcomᚋlooplj�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOAwsCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAWSCredentials(ctx context.Context, sel ast.SelectionSet, v *AWSCredentials) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AwsCredentials(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOAwsCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAWSCredentialsInput(ctx context.Context, v any) (*AWSCredentialsInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAwsCredentialsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -29223,6 +29733,14 @@ func (ec *executionContext) marshalOChannel2ᚖgithubᚗcomᚋloopljᚋaxonhub�
 		return graphql.Null
 	}
 	return ec._Channel(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelCredentials(ctx context.Context, v any) (*objects.ChannelCredentials, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelCredentialsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOChannelEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.ChannelEdge) graphql.Marshaler {

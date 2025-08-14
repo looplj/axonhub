@@ -99,10 +99,10 @@ func init() {
 	channelDescDeletedAt := channelMixinFields1[0].Descriptor()
 	// channel.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	channel.DefaultDeletedAt = channelDescDeletedAt.Default.(int)
-	// channelDescAPIKey is the schema descriptor for api_key field.
-	channelDescAPIKey := channelFields[4].Descriptor()
-	// channel.APIKeyValidator is a validator for the "api_key" field. It is called by the builders before save.
-	channel.APIKeyValidator = channelDescAPIKey.Validators[0].(func(string) error)
+	// channelDescCredentials is the schema descriptor for credentials field.
+	channelDescCredentials := channelFields[4].Descriptor()
+	// channel.DefaultCredentials holds the default value on creation for the credentials field.
+	channel.DefaultCredentials = channelDescCredentials.Default.(*objects.ChannelCredentials)
 	// channelDescSettings is the schema descriptor for settings field.
 	channelDescSettings := channelFields[7].Descriptor()
 	// channel.DefaultSettings holds the default value on creation for the settings field.

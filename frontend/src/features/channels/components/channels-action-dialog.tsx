@@ -58,6 +58,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
   const channelTypes = [
     { value: 'openai', label: t('channels.types.openai') },
     { value: 'anthropic', label: t('channels.types.anthropic') },
+    { value: 'anthropic_aws', label: t('channels.types.anthropic_aws') },
     { value: 'gemini', label: t('channels.types.gemini') },
     { value: 'deepseek', label: t('channels.types.deepseek') },
     { value: 'doubao', label: t('channels.types.doubao') },
@@ -75,12 +76,27 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
           name: currentRow.name,
           supportedModels: currentRow.supportedModels,
           defaultTestModel: currentRow.defaultTestModel,
+          credentials: { 
+            apiKey: '', // credentials字段是敏感字段，不从API返回
+            aws: {
+              accessKeyID: '',
+              secretAccessKey: '',
+              region: '',
+            }
+          },
         }
       : {
           type: 'openai',
           baseURL: '',
           name: '',
-          apiKey: '',
+          credentials: { 
+            apiKey: '',
+            aws: {
+              accessKeyID: '',
+              secretAccessKey: '',
+              region: '',
+            }
+          },
           supportedModels: [],
           defaultTestModel: '',
         },
@@ -220,28 +236,95 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 )}
               />
 
-              {!isEdit && (
-                <FormField
-                  control={form.control}
-                  name='apiKey'
-                  render={({ field }) => (
-                    <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                      <FormLabel className='col-span-2 text-right'>
-                        {t('channels.dialog.fields.apiKey.label')}
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type='password'
-                          placeholder={t('channels.dialog.fields.apiKey.placeholder')}
-                          className='col-span-4'
-                          autoComplete='off'
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage className='col-span-4 col-start-3' />
-                    </FormItem>
-                  )}
-                />
+              <FormField
+                control={form.control}
+                name='credentials.apiKey'
+                render={({ field }) => (
+                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                    <FormLabel className='col-span-2 text-right'>
+                      {t('channels.dialog.fields.apiKey.label')}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type='password'
+                        placeholder={isEdit ? t('channels.dialog.fields.apiKey.editPlaceholder') : t('channels.dialog.fields.apiKey.placeholder')}
+                        className='col-span-4'
+                        autoComplete='off'
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className='col-span-4 col-start-3' />
+                  </FormItem>
+                )}
+              />
+
+              {form.watch('type') === 'anthropic_aws' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name='credentials.aws.accessKeyID'
+                    render={({ field }) => (
+                      <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right'>
+                          {t('channels.dialog.fields.awsAccessKeyID.label')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type='password'
+                            placeholder={t('channels.dialog.fields.awsAccessKeyID.placeholder')}
+                            className='col-span-4'
+                            autoComplete='off'
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className='col-span-4 col-start-3' />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='credentials.aws.secretAccessKey'
+                    render={({ field }) => (
+                      <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right'>
+                          {t('channels.dialog.fields.awsSecretAccessKey.label')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type='password'
+                            placeholder={t('channels.dialog.fields.awsSecretAccessKey.placeholder')}
+                            className='col-span-4'
+                            autoComplete='off'
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className='col-span-4 col-start-3' />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='credentials.aws.region'
+                    render={({ field }) => (
+                      <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right'>
+                          {t('channels.dialog.fields.awsRegion.label')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('channels.dialog.fields.awsRegion.placeholder')}
+                            className='col-span-4'
+                            autoComplete='off'
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className='col-span-4 col-start-3' />
+                      </FormItem>
+                    )}
+                  />
+                </>
               )}
 
               <div className='grid grid-cols-6 items-start space-y-0 gap-x-4 gap-y-1'>

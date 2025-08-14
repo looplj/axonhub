@@ -294,6 +294,7 @@
     "types": {
       "openai": "OpenAI",
       "anthropic": "Anthropic",
+      "anthropic_aws": "Anthropic AWS",
       "gemini": "Gemini",
       "deepseek": "DeepSeek",
       "doubao": "Doubao",
@@ -353,11 +354,13 @@
         "apiKey": {
           "label": "API Key",
           "placeholder": "sk-...",
+          "editPlaceholder": "Leave empty to keep unchanged",
           "description": "API key for authentication"
         },
         "supportedModels": {
           "label": "Supported Models",
-          "description": "List of models supported by this channel"
+          "description": "List of models supported by this channel",
+          "required": "Please add at least one supported model"
         },
         "defaultTestModel": {
           "label": "Default Test Model",
@@ -366,6 +369,21 @@
         "modelName": {
           "label": "Model Name",
           "placeholder": "Enter model name"
+        },
+        "awsAccessKeyID": {
+          "label": "AWS Access Key ID",
+          "placeholder": "Enter AWS Access Key ID",
+          "description": "AWS access key ID for authentication"
+        },
+        "awsSecretAccessKey": {
+          "label": "AWS Secret Access Key",
+          "placeholder": "Enter AWS Secret Access Key",
+          "description": "AWS secret access key for authentication"
+        },
+        "awsRegion": {
+          "label": "AWS Region",
+          "placeholder": "us-east-1",
+          "description": "AWS service region"
         }
       },
       "buttons": {
@@ -679,5 +697,15 @@
   "language": {
     "changeSuccess": "Language changed to {{language}} successfully",
     "changeError": "Failed to change language: {{error}}"
-  }
+  },
+  "loading": "Loading...",
+  "noData": "No data available",
+  "error": "Error",
+  "success": "Success",
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "edit": "Edit",
+  "create": "Create",
+  "update": "Update"
 }

@@ -76,6 +76,12 @@ models:
   ChannelSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings
+  ChannelCredentials:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelCredentials
+  ChannelCredentialsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelCredentials
   JSONRawMessage:
     model:
       - github.com/looplj/axonhub/internal/objects.JSONRawMessage

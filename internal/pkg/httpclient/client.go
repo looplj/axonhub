@@ -3,13 +3,11 @@ package httpclient
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
-	"github.com/tmaxmax/go-sse"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
@@ -120,92 +118,24 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		}
 	}
 
-	// Create SSE stream using go-sse Stream
-	sseStream := sse.NewStream(rawResp.Body)
-
-	stream := &sseStreamWrapper{
-		ctx:       ctx,
-		sseStream: sseStream,
-		current:   nil,
-		err:       nil,
+	// Determine content type and select appropriate decoder
+	contentType := rawResp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "text/event-stream" // Default to SSE
 	}
+
+	// Try to get a registered decoder for the content type
+	decoderFactory, exists := GetDecoder(contentType)
+	if !exists {
+		// Fallback to default SSE decoder
+		log.Debug(ctx, "no decoder found for content type, using default SSE", log.String("content_type", contentType))
+
+		decoderFactory = NewDefaultSSEDecoder
+	}
+
+	stream := decoderFactory(ctx, rawResp.Body)
 
 	return stream, nil
-}
-
-// sseStreamWrapper implements streams.Stream for Server-Sent Events using go-sse Stream.
-//
-//nolint:containedctx // Checked.
-type sseStreamWrapper struct {
-	ctx       context.Context
-	sseStream *sse.Stream
-	current   *StreamEvent
-	err       error
-}
-
-// Next advances to the next event in the stream.
-func (s *sseStreamWrapper) Next() bool {
-	if s.err != nil {
-		return false
-	}
-
-	// Check context cancellation
-	select {
-	case <-s.ctx.Done():
-		s.err = s.ctx.Err()
-		_ = s.Close()
-
-		return false
-	default:
-	}
-
-	// Receive next event from go-sse Stream
-	event, err := s.sseStream.Recv()
-	if err != nil {
-		if errors.Is(err, io.EOF) {
-			// End of stream
-			_ = s.Close()
-			return false
-		}
-
-		s.err = err
-		_ = s.Close()
-
-		return false
-	}
-
-	log.Debug(s.ctx, "SSE event received", log.Any("event", event))
-
-	// Create stream event for this event
-	s.current = &StreamEvent{
-		LastEventID: event.LastEventID,
-		Type:        event.Type,
-		Data:        []byte(event.Data),
-	}
-
-	return true
-}
-
-// Current returns the current event data.
-func (s *sseStreamWrapper) Current() *StreamEvent {
-	return s.current
-}
-
-// Err returns any error that occurred during streaming.
-func (s *sseStreamWrapper) Err() error {
-	return s.err
-}
-
-// Close closes the stream and releases resources.
-func (s *sseStreamWrapper) Close() error {
-	if s.sseStream != nil {
-		err := s.sseStream.Close()
-		log.Debug(s.ctx, "SSE stream closed")
-
-		return err
-	}
-
-	return nil
 }
 
 // buildHttpRequest builds an HTTP request from Request.

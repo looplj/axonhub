@@ -296,6 +296,7 @@
     "types": {
       "openai": "OpenAI",
       "anthropic": "Anthropic",
+      "anthropic_aws": "Anthropic AWS",
       "gemini": "Gemini",
       "deepseek": "DeepSeek",
       "doubao": "Doubao",
@@ -355,11 +356,13 @@
         "apiKey": {
           "label": "API Key",
           "placeholder": "sk-...",
+          "editPlaceholder": "留空则保持不变",
           "description": "用于认证的 API 密钥"
         },
         "supportedModels": {
           "label": "支持的模型",
-          "description": "此 Channel 支持的模型列表"
+          "description": "此 Channel 支持的模型列表",
+          "required": "请至少添加一个支持的模型"
         },
         "defaultTestModel": {
           "label": "默认测试模型",
@@ -368,6 +371,21 @@
         "modelName": {
           "label": "模型名称",
           "placeholder": "输入模型名称"
+        },
+        "awsAccessKeyID": {
+          "label": "AWS Access Key ID",
+          "placeholder": "输入 AWS Access Key ID",
+          "description": "用于 AWS 认证的访问密钥 ID"
+        },
+        "awsSecretAccessKey": {
+          "label": "AWS Secret Access Key",
+          "placeholder": "输入 AWS Secret Access Key",
+          "description": "用于 AWS 认证的秘密访问密钥"
+        },
+        "awsRegion": {
+          "label": "AWS 区域",
+          "placeholder": "us-east-1",
+          "description": "AWS 服务区域"
         }
       },
       "buttons": {
@@ -681,5 +699,15 @@
   "language": {
     "changeSuccess": "语言已成功切换为{{language}}",
     "changeError": "切换语言失败：{{error}}"
-  }
+  },
+  "loading": "加载中...",
+  "noData": "暂无数据",
+  "error": "错误",
+  "success": "成功",
+  "cancel": "取消",
+  "save": "保存",
+  "delete": "删除",
+  "edit": "编辑",
+  "create": "创建",
+  "update": "更新"
 }

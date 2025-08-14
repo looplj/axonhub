@@ -974,7 +974,7 @@ type ChannelMutation struct {
 	base_url               *string
 	name                   *string
 	status                 *channel.Status
-	api_key                *string
+	credentials            **objects.ChannelCredentials
 	supported_models       *[]string
 	appendsupported_models []string
 	default_test_model     *string
@@ -1284,9 +1284,22 @@ func (m *ChannelMutation) OldBaseURL(ctx context.Context) (v string, err error) 
 	return oldValue.BaseURL, nil
 }
 
+// ClearBaseURL clears the value of the "base_url" field.
+func (m *ChannelMutation) ClearBaseURL() {
+	m.base_url = nil
+	m.clearedFields[channel.FieldBaseURL] = struct{}{}
+}
+
+// BaseURLCleared returns if the "base_url" field was cleared in this mutation.
+func (m *ChannelMutation) BaseURLCleared() bool {
+	_, ok := m.clearedFields[channel.FieldBaseURL]
+	return ok
+}
+
 // ResetBaseURL resets all changes to the "base_url" field.
 func (m *ChannelMutation) ResetBaseURL() {
 	m.base_url = nil
+	delete(m.clearedFields, channel.FieldBaseURL)
 }
 
 // SetName sets the "name" field.
@@ -1361,40 +1374,40 @@ func (m *ChannelMutation) ResetStatus() {
 	m.status = nil
 }
 
-// SetAPIKey sets the "api_key" field.
-func (m *ChannelMutation) SetAPIKey(s string) {
-	m.api_key = &s
+// SetCredentials sets the "credentials" field.
+func (m *ChannelMutation) SetCredentials(oc *objects.ChannelCredentials) {
+	m.credentials = &oc
 }
 
-// APIKey returns the value of the "api_key" field in the mutation.
-func (m *ChannelMutation) APIKey() (r string, exists bool) {
-	v := m.api_key
+// Credentials returns the value of the "credentials" field in the mutation.
+func (m *ChannelMutation) Credentials() (r *objects.ChannelCredentials, exists bool) {
+	v := m.credentials
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldAPIKey returns the old "api_key" field's value of the Channel entity.
+// OldCredentials returns the old "credentials" field's value of the Channel entity.
 // If the Channel object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChannelMutation) OldAPIKey(ctx context.Context) (v string, err error) {
+func (m *ChannelMutation) OldCredentials(ctx context.Context) (v *objects.ChannelCredentials, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldAPIKey is only allowed on UpdateOne operations")
+		return v, errors.New("OldCredentials is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldAPIKey requires an ID field in the mutation")
+		return v, errors.New("OldCredentials requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldAPIKey: %w", err)
+		return v, fmt.Errorf("querying old value for OldCredentials: %w", err)
 	}
-	return oldValue.APIKey, nil
+	return oldValue.Credentials, nil
 }
 
-// ResetAPIKey resets all changes to the "api_key" field.
-func (m *ChannelMutation) ResetAPIKey() {
-	m.api_key = nil
+// ResetCredentials resets all changes to the "credentials" field.
+func (m *ChannelMutation) ResetCredentials() {
+	m.credentials = nil
 }
 
 // SetSupportedModels sets the "supported_models" field.
@@ -1697,8 +1710,8 @@ func (m *ChannelMutation) Fields() []string {
 	if m.status != nil {
 		fields = append(fields, channel.FieldStatus)
 	}
-	if m.api_key != nil {
-		fields = append(fields, channel.FieldAPIKey)
+	if m.credentials != nil {
+		fields = append(fields, channel.FieldCredentials)
 	}
 	if m.supported_models != nil {
 		fields = append(fields, channel.FieldSupportedModels)
@@ -1731,8 +1744,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.Name()
 	case channel.FieldStatus:
 		return m.Status()
-	case channel.FieldAPIKey:
-		return m.APIKey()
+	case channel.FieldCredentials:
+		return m.Credentials()
 	case channel.FieldSupportedModels:
 		return m.SupportedModels()
 	case channel.FieldDefaultTestModel:
@@ -1762,8 +1775,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldName(ctx)
 	case channel.FieldStatus:
 		return m.OldStatus(ctx)
-	case channel.FieldAPIKey:
-		return m.OldAPIKey(ctx)
+	case channel.FieldCredentials:
+		return m.OldCredentials(ctx)
 	case channel.FieldSupportedModels:
 		return m.OldSupportedModels(ctx)
 	case channel.FieldDefaultTestModel:
@@ -1828,12 +1841,12 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetStatus(v)
 		return nil
-	case channel.FieldAPIKey:
-		v, ok := value.(string)
+	case channel.FieldCredentials:
+		v, ok := value.(*objects.ChannelCredentials)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetAPIKey(v)
+		m.SetCredentials(v)
 		return nil
 	case channel.FieldSupportedModels:
 		v, ok := value.([]string)
@@ -1901,6 +1914,9 @@ func (m *ChannelMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *ChannelMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(channel.FieldBaseURL) {
+		fields = append(fields, channel.FieldBaseURL)
+	}
 	if m.FieldCleared(channel.FieldSettings) {
 		fields = append(fields, channel.FieldSettings)
 	}
@@ -1918,6 +1934,9 @@ func (m *ChannelMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ChannelMutation) ClearField(name string) error {
 	switch name {
+	case channel.FieldBaseURL:
+		m.ClearBaseURL()
+		return nil
 	case channel.FieldSettings:
 		m.ClearSettings()
 		return nil
@@ -1950,8 +1969,8 @@ func (m *ChannelMutation) ResetField(name string) error {
 	case channel.FieldStatus:
 		m.ResetStatus()
 		return nil
-	case channel.FieldAPIKey:
-		m.ResetAPIKey()
+	case channel.FieldCredentials:
+		m.ResetCredentials()
 		return nil
 	case channel.FieldSupportedModels:
 		m.ResetSupportedModels()

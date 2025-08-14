@@ -1,4 +1,4 @@
-package pipeline
+package pipeline_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -98,7 +99,7 @@ func TestPipeline_OpenAI_to_OpenAI(t *testing.T) {
 	}
 
 	// Create pipeline
-	factory := NewFactory(executor)
+	factory := pipeline.NewFactory(executor)
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (OpenAI format)
@@ -150,7 +151,8 @@ func TestPipeline_OpenAI_to_Anthropic(t *testing.T) {
 
 	// Create transformers
 	inbound := openai.NewInboundTransformer()
-	outbound := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	outbound, err := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
 
 	// Mock Anthropic response
 	mockAnthropicResponse := &anthropic.Message{
@@ -199,7 +201,7 @@ func TestPipeline_OpenAI_to_Anthropic(t *testing.T) {
 	}
 
 	// Create pipeline
-	factory := NewFactory(executor)
+	factory := pipeline.NewFactory(executor)
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (OpenAI format)
@@ -307,7 +309,7 @@ func TestPipeline_Anthropic_to_OpenAI(t *testing.T) {
 	}
 
 	// Create pipeline
-	factory := NewFactory(executor)
+	factory := pipeline.NewFactory(executor)
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (Anthropic format)
@@ -363,7 +365,8 @@ func TestPipeline_Anthropic_to_Anthropic(t *testing.T) {
 
 	// Create transformers
 	inbound := anthropic.NewInboundTransformer()
-	outbound := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	outbound, err := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
 
 	// Mock Anthropic response
 	mockAnthropicResponse := &anthropic.Message{
@@ -412,7 +415,7 @@ func TestPipeline_Anthropic_to_Anthropic(t *testing.T) {
 	}
 
 	// Create pipeline
-	factory := NewFactory(executor)
+	factory := pipeline.NewFactory(executor)
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (Anthropic format)

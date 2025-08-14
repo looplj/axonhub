@@ -16,6 +16,28 @@ input ChannelSettingsInput {
   modelMappings: [ModelMappingInput!]
 }
 
+type ChannelCredentials {
+  apiKey: String!
+  aws: AwsCredentials
+}
+
+type AwsCredentials {
+  accessKeyID: String!
+  secretAccessKey: String!
+  region: String!
+}
+
+input ChannelCredentialsInput {
+  apiKey: String!
+  aws: AwsCredentialsInput
+}
+
+input AwsCredentialsInput {
+  accessKeyID: String!
+  secretAccessKey: String!
+  region: String!
+}
+
 scalar JSONRawMessage
 scalar JSONRawMessageInput
 

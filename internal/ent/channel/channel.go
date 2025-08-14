@@ -33,8 +33,8 @@ const (
 	FieldName = "name"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
-	// FieldAPIKey holds the string denoting the api_key field in the database.
-	FieldAPIKey = "api_key"
+	// FieldCredentials holds the string denoting the credentials field in the database.
+	FieldCredentials = "credentials"
 	// FieldSupportedModels holds the string denoting the supported_models field in the database.
 	FieldSupportedModels = "supported_models"
 	// FieldDefaultTestModel holds the string denoting the default_test_model field in the database.
@@ -73,7 +73,7 @@ var Columns = []string{
 	FieldBaseURL,
 	FieldName,
 	FieldStatus,
-	FieldAPIKey,
+	FieldCredentials,
 	FieldSupportedModels,
 	FieldDefaultTestModel,
 	FieldSettings,
@@ -106,8 +106,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
-	// APIKeyValidator is a validator for the "api_key" field. It is called by the builders before save.
-	APIKeyValidator func(string) error
+	// DefaultCredentials holds the default value on creation for the "credentials" field.
+	DefaultCredentials *objects.ChannelCredentials
 	// DefaultSettings holds the default value on creation for the "settings" field.
 	DefaultSettings *objects.ChannelSettings
 )
@@ -117,12 +117,13 @@ type Type string
 
 // Type values.
 const (
-	TypeOpenai    Type = "openai"
-	TypeAnthropic Type = "anthropic"
-	TypeGemini    Type = "gemini"
-	TypeDeepseek  Type = "deepseek"
-	TypeDoubao    Type = "doubao"
-	TypeKimi      Type = "kimi"
+	TypeOpenai       Type = "openai"
+	TypeAnthropic    Type = "anthropic"
+	TypeAnthropicAWS Type = "anthropic_aws"
+	TypeGemini       Type = "gemini"
+	TypeDeepseek     Type = "deepseek"
+	TypeDoubao       Type = "doubao"
+	TypeKimi         Type = "kimi"
 )
 
 func (_type Type) String() string {
@@ -132,7 +133,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeOpenai, TypeAnthropic, TypeGemini, TypeDeepseek, TypeDoubao, TypeKimi:
+	case TypeOpenai, TypeAnthropic, TypeAnthropicAWS, TypeGemini, TypeDeepseek, TypeDoubao, TypeKimi:
 		return nil
 	default:
 		return fmt.Errorf("channel: invalid enum value for type field: %q", _type)
@@ -206,11 +207,6 @@ func ByName(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
-}
-
-// ByAPIKey orders the results by the api_key field.
-func ByAPIKey(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAPIKey, opts...).ToFunc()
 }
 
 // ByDefaultTestModel orders the results by the default_test_model field.

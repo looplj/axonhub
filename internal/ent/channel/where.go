@@ -80,11 +80,6 @@ func Name(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldName, v))
 }
 
-// APIKey applies equality check predicate on the "api_key" field. It's identical to APIKeyEQ.
-func APIKey(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldEQ(FieldAPIKey, v))
-}
-
 // DefaultTestModel applies equality check predicate on the "default_test_model" field. It's identical to DefaultTestModelEQ.
 func DefaultTestModel(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldDefaultTestModel, v))
@@ -285,6 +280,16 @@ func BaseURLHasSuffix(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldHasSuffix(FieldBaseURL, v))
 }
 
+// BaseURLIsNil applies the IsNil predicate on the "base_url" field.
+func BaseURLIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldBaseURL))
+}
+
+// BaseURLNotNil applies the NotNil predicate on the "base_url" field.
+func BaseURLNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldBaseURL))
+}
+
 // BaseURLEqualFold applies the EqualFold predicate on the "base_url" field.
 func BaseURLEqualFold(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldEqualFold(FieldBaseURL, v))
@@ -378,71 +383,6 @@ func StatusIn(vs ...Status) predicate.Channel {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.Channel {
 	return predicate.Channel(sql.FieldNotIn(FieldStatus, vs...))
-}
-
-// APIKeyEQ applies the EQ predicate on the "api_key" field.
-func APIKeyEQ(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldEQ(FieldAPIKey, v))
-}
-
-// APIKeyNEQ applies the NEQ predicate on the "api_key" field.
-func APIKeyNEQ(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldNEQ(FieldAPIKey, v))
-}
-
-// APIKeyIn applies the In predicate on the "api_key" field.
-func APIKeyIn(vs ...string) predicate.Channel {
-	return predicate.Channel(sql.FieldIn(FieldAPIKey, vs...))
-}
-
-// APIKeyNotIn applies the NotIn predicate on the "api_key" field.
-func APIKeyNotIn(vs ...string) predicate.Channel {
-	return predicate.Channel(sql.FieldNotIn(FieldAPIKey, vs...))
-}
-
-// APIKeyGT applies the GT predicate on the "api_key" field.
-func APIKeyGT(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldGT(FieldAPIKey, v))
-}
-
-// APIKeyGTE applies the GTE predicate on the "api_key" field.
-func APIKeyGTE(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldGTE(FieldAPIKey, v))
-}
-
-// APIKeyLT applies the LT predicate on the "api_key" field.
-func APIKeyLT(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldLT(FieldAPIKey, v))
-}
-
-// APIKeyLTE applies the LTE predicate on the "api_key" field.
-func APIKeyLTE(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldLTE(FieldAPIKey, v))
-}
-
-// APIKeyContains applies the Contains predicate on the "api_key" field.
-func APIKeyContains(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldContains(FieldAPIKey, v))
-}
-
-// APIKeyHasPrefix applies the HasPrefix predicate on the "api_key" field.
-func APIKeyHasPrefix(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldHasPrefix(FieldAPIKey, v))
-}
-
-// APIKeyHasSuffix applies the HasSuffix predicate on the "api_key" field.
-func APIKeyHasSuffix(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldHasSuffix(FieldAPIKey, v))
-}
-
-// APIKeyEqualFold applies the EqualFold predicate on the "api_key" field.
-func APIKeyEqualFold(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldEqualFold(FieldAPIKey, v))
-}
-
-// APIKeyContainsFold applies the ContainsFold predicate on the "api_key" field.
-func APIKeyContainsFold(v string) predicate.Channel {
-	return predicate.Channel(sql.FieldContainsFold(FieldAPIKey, v))
 }
 
 // DefaultTestModelEQ applies the EQ predicate on the "default_test_model" field.

@@ -1,4 +1,4 @@
-package pipeline
+package pipeline_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
@@ -46,7 +47,7 @@ func TestPipeline_Streaming_OpenAI_to_OpenAI(t *testing.T) {
 	}
 
 	// Create pipeline
-	factory := NewFactory(executor)
+	factory := pipeline.NewFactory(executor)
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (OpenAI format with streaming)
@@ -120,7 +121,8 @@ func TestPipeline_Streaming_OpenAI_to_Anthropic(t *testing.T) {
 
 	// Create transformers
 	inbound := openai.NewInboundTransformer()
-	outbound := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	outbound, err := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
 
 	// Load test data using xtest
 	streamEvents, err := xtest.LoadStreamChunks("anthropic-tool.stream.jsonl")
@@ -146,7 +148,7 @@ func TestPipeline_Streaming_OpenAI_to_Anthropic(t *testing.T) {
 	}
 
 	// Create pipeline
-	factory := NewFactory(executor)
+	factory := pipeline.NewFactory(executor)
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (OpenAI format with streaming)
@@ -246,7 +248,7 @@ func TestPipeline_Streaming_Anthropic_to_OpenAI(t *testing.T) {
 	}
 
 	// Create pipeline
-	factory := NewFactory(executor)
+	factory := pipeline.NewFactory(executor)
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (Anthropic format with streaming)
@@ -318,7 +320,8 @@ func TestPipeline_Streaming_Anthropic_to_Anthropic(t *testing.T) {
 
 	// Create transformers
 	inbound := anthropic.NewInboundTransformer()
-	outbound := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	outbound, err := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
 
 	// Load test data using xtest
 	streamEvents, err := xtest.LoadStreamChunks("anthropic-tool.stream.jsonl")
@@ -344,7 +347,7 @@ func TestPipeline_Streaming_Anthropic_to_Anthropic(t *testing.T) {
 	}
 
 	// Create pipeline
-	factory := NewFactory(executor)
+	factory := pipeline.NewFactory(executor)
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request (Anthropic format with streaming)
@@ -470,7 +473,10 @@ func TestPipeline_Streaming_WithTestData(t *testing.T) {
 				outbound, err = openai.NewOutboundTransformer("https://api.openai.com", "test-api-key")
 				require.NoError(t, err)
 			case "anthropic":
-				outbound = anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+				var err error
+
+				outbound, err = anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+				require.NoError(t, err)
 			}
 
 			// Load test data using xtest
@@ -485,7 +491,7 @@ func TestPipeline_Streaming_WithTestData(t *testing.T) {
 			}
 
 			// Create pipeline
-			factory := NewFactory(executor)
+			factory := pipeline.NewFactory(executor)
 			pipeline := factory.Pipeline(inbound, outbound)
 
 			// Create appropriate test request

@@ -73,6 +73,12 @@ func (cu *ChannelUpdate) SetNillableBaseURL(s *string) *ChannelUpdate {
 	return cu
 }
 
+// ClearBaseURL clears the value of the "base_url" field.
+func (cu *ChannelUpdate) ClearBaseURL() *ChannelUpdate {
+	cu.mutation.ClearBaseURL()
+	return cu
+}
+
 // SetName sets the "name" field.
 func (cu *ChannelUpdate) SetName(s string) *ChannelUpdate {
 	cu.mutation.SetName(s)
@@ -101,17 +107,9 @@ func (cu *ChannelUpdate) SetNillableStatus(c *channel.Status) *ChannelUpdate {
 	return cu
 }
 
-// SetAPIKey sets the "api_key" field.
-func (cu *ChannelUpdate) SetAPIKey(s string) *ChannelUpdate {
-	cu.mutation.SetAPIKey(s)
-	return cu
-}
-
-// SetNillableAPIKey sets the "api_key" field if the given value is not nil.
-func (cu *ChannelUpdate) SetNillableAPIKey(s *string) *ChannelUpdate {
-	if s != nil {
-		cu.SetAPIKey(*s)
-	}
+// SetCredentials sets the "credentials" field.
+func (cu *ChannelUpdate) SetCredentials(oc *objects.ChannelCredentials) *ChannelUpdate {
+	cu.mutation.SetCredentials(oc)
 	return cu
 }
 
@@ -279,11 +277,6 @@ func (cu *ChannelUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Channel.status": %w`, err)}
 		}
 	}
-	if v, ok := cu.mutation.APIKey(); ok {
-		if err := channel.APIKeyValidator(v); err != nil {
-			return &ValidationError{Name: "api_key", err: fmt.Errorf(`ent: validator failed for field "Channel.api_key": %w`, err)}
-		}
-	}
 	return nil
 }
 
@@ -311,14 +304,17 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := cu.mutation.BaseURL(); ok {
 		_spec.SetField(channel.FieldBaseURL, field.TypeString, value)
 	}
+	if cu.mutation.BaseURLCleared() {
+		_spec.ClearField(channel.FieldBaseURL, field.TypeString)
+	}
 	if value, ok := cu.mutation.Name(); ok {
 		_spec.SetField(channel.FieldName, field.TypeString, value)
 	}
 	if value, ok := cu.mutation.Status(); ok {
 		_spec.SetField(channel.FieldStatus, field.TypeEnum, value)
 	}
-	if value, ok := cu.mutation.APIKey(); ok {
-		_spec.SetField(channel.FieldAPIKey, field.TypeString, value)
+	if value, ok := cu.mutation.Credentials(); ok {
+		_spec.SetField(channel.FieldCredentials, field.TypeJSON, value)
 	}
 	if value, ok := cu.mutation.SupportedModels(); ok {
 		_spec.SetField(channel.FieldSupportedModels, field.TypeJSON, value)
@@ -488,6 +484,12 @@ func (cuo *ChannelUpdateOne) SetNillableBaseURL(s *string) *ChannelUpdateOne {
 	return cuo
 }
 
+// ClearBaseURL clears the value of the "base_url" field.
+func (cuo *ChannelUpdateOne) ClearBaseURL() *ChannelUpdateOne {
+	cuo.mutation.ClearBaseURL()
+	return cuo
+}
+
 // SetName sets the "name" field.
 func (cuo *ChannelUpdateOne) SetName(s string) *ChannelUpdateOne {
 	cuo.mutation.SetName(s)
@@ -516,17 +518,9 @@ func (cuo *ChannelUpdateOne) SetNillableStatus(c *channel.Status) *ChannelUpdate
 	return cuo
 }
 
-// SetAPIKey sets the "api_key" field.
-func (cuo *ChannelUpdateOne) SetAPIKey(s string) *ChannelUpdateOne {
-	cuo.mutation.SetAPIKey(s)
-	return cuo
-}
-
-// SetNillableAPIKey sets the "api_key" field if the given value is not nil.
-func (cuo *ChannelUpdateOne) SetNillableAPIKey(s *string) *ChannelUpdateOne {
-	if s != nil {
-		cuo.SetAPIKey(*s)
-	}
+// SetCredentials sets the "credentials" field.
+func (cuo *ChannelUpdateOne) SetCredentials(oc *objects.ChannelCredentials) *ChannelUpdateOne {
+	cuo.mutation.SetCredentials(oc)
 	return cuo
 }
 
@@ -707,11 +701,6 @@ func (cuo *ChannelUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Channel.status": %w`, err)}
 		}
 	}
-	if v, ok := cuo.mutation.APIKey(); ok {
-		if err := channel.APIKeyValidator(v); err != nil {
-			return &ValidationError{Name: "api_key", err: fmt.Errorf(`ent: validator failed for field "Channel.api_key": %w`, err)}
-		}
-	}
 	return nil
 }
 
@@ -756,14 +745,17 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 	if value, ok := cuo.mutation.BaseURL(); ok {
 		_spec.SetField(channel.FieldBaseURL, field.TypeString, value)
 	}
+	if cuo.mutation.BaseURLCleared() {
+		_spec.ClearField(channel.FieldBaseURL, field.TypeString)
+	}
 	if value, ok := cuo.mutation.Name(); ok {
 		_spec.SetField(channel.FieldName, field.TypeString, value)
 	}
 	if value, ok := cuo.mutation.Status(); ok {
 		_spec.SetField(channel.FieldStatus, field.TypeEnum, value)
 	}
-	if value, ok := cuo.mutation.APIKey(); ok {
-		_spec.SetField(channel.FieldAPIKey, field.TypeString, value)
+	if value, ok := cuo.mutation.Credentials(); ok {
+		_spec.SetField(channel.FieldCredentials, field.TypeJSON, value)
 	}
 	if value, ok := cuo.mutation.SupportedModels(); ok {
 		_spec.SetField(channel.FieldSupportedModels, field.TypeJSON, value)

@@ -497,6 +497,8 @@ type ChannelWhereInput struct {
 	BaseURLContains     *string  `json:"baseURLContains,omitempty"`
 	BaseURLHasPrefix    *string  `json:"baseURLHasPrefix,omitempty"`
 	BaseURLHasSuffix    *string  `json:"baseURLHasSuffix,omitempty"`
+	BaseURLIsNil        bool     `json:"baseURLIsNil,omitempty"`
+	BaseURLNotNil       bool     `json:"baseURLNotNil,omitempty"`
 	BaseURLEqualFold    *string  `json:"baseURLEqualFold,omitempty"`
 	BaseURLContainsFold *string  `json:"baseURLContainsFold,omitempty"`
 
@@ -520,21 +522,6 @@ type ChannelWhereInput struct {
 	StatusNEQ   *channel.Status  `json:"statusNEQ,omitempty"`
 	StatusIn    []channel.Status `json:"statusIn,omitempty"`
 	StatusNotIn []channel.Status `json:"statusNotIn,omitempty"`
-
-	// "api_key" field predicates.
-	APIKey             *string  `json:"apiKey,omitempty"`
-	APIKeyNEQ          *string  `json:"apiKeyNEQ,omitempty"`
-	APIKeyIn           []string `json:"apiKeyIn,omitempty"`
-	APIKeyNotIn        []string `json:"apiKeyNotIn,omitempty"`
-	APIKeyGT           *string  `json:"apiKeyGT,omitempty"`
-	APIKeyGTE          *string  `json:"apiKeyGTE,omitempty"`
-	APIKeyLT           *string  `json:"apiKeyLT,omitempty"`
-	APIKeyLTE          *string  `json:"apiKeyLTE,omitempty"`
-	APIKeyContains     *string  `json:"apiKeyContains,omitempty"`
-	APIKeyHasPrefix    *string  `json:"apiKeyHasPrefix,omitempty"`
-	APIKeyHasSuffix    *string  `json:"apiKeyHasSuffix,omitempty"`
-	APIKeyEqualFold    *string  `json:"apiKeyEqualFold,omitempty"`
-	APIKeyContainsFold *string  `json:"apiKeyContainsFold,omitempty"`
 
 	// "default_test_model" field predicates.
 	DefaultTestModel             *string  `json:"defaultTestModel,omitempty"`
@@ -772,6 +759,12 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 	if i.BaseURLHasSuffix != nil {
 		predicates = append(predicates, channel.BaseURLHasSuffix(*i.BaseURLHasSuffix))
 	}
+	if i.BaseURLIsNil {
+		predicates = append(predicates, channel.BaseURLIsNil())
+	}
+	if i.BaseURLNotNil {
+		predicates = append(predicates, channel.BaseURLNotNil())
+	}
 	if i.BaseURLEqualFold != nil {
 		predicates = append(predicates, channel.BaseURLEqualFold(*i.BaseURLEqualFold))
 	}
@@ -828,45 +821,6 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, channel.StatusNotIn(i.StatusNotIn...))
-	}
-	if i.APIKey != nil {
-		predicates = append(predicates, channel.APIKeyEQ(*i.APIKey))
-	}
-	if i.APIKeyNEQ != nil {
-		predicates = append(predicates, channel.APIKeyNEQ(*i.APIKeyNEQ))
-	}
-	if len(i.APIKeyIn) > 0 {
-		predicates = append(predicates, channel.APIKeyIn(i.APIKeyIn...))
-	}
-	if len(i.APIKeyNotIn) > 0 {
-		predicates = append(predicates, channel.APIKeyNotIn(i.APIKeyNotIn...))
-	}
-	if i.APIKeyGT != nil {
-		predicates = append(predicates, channel.APIKeyGT(*i.APIKeyGT))
-	}
-	if i.APIKeyGTE != nil {
-		predicates = append(predicates, channel.APIKeyGTE(*i.APIKeyGTE))
-	}
-	if i.APIKeyLT != nil {
-		predicates = append(predicates, channel.APIKeyLT(*i.APIKeyLT))
-	}
-	if i.APIKeyLTE != nil {
-		predicates = append(predicates, channel.APIKeyLTE(*i.APIKeyLTE))
-	}
-	if i.APIKeyContains != nil {
-		predicates = append(predicates, channel.APIKeyContains(*i.APIKeyContains))
-	}
-	if i.APIKeyHasPrefix != nil {
-		predicates = append(predicates, channel.APIKeyHasPrefix(*i.APIKeyHasPrefix))
-	}
-	if i.APIKeyHasSuffix != nil {
-		predicates = append(predicates, channel.APIKeyHasSuffix(*i.APIKeyHasSuffix))
-	}
-	if i.APIKeyEqualFold != nil {
-		predicates = append(predicates, channel.APIKeyEqualFold(*i.APIKeyEqualFold))
-	}
-	if i.APIKeyContainsFold != nil {
-		predicates = append(predicates, channel.APIKeyContainsFold(*i.APIKeyContainsFold))
 	}
 	if i.DefaultTestModel != nil {
 		predicates = append(predicates, channel.DefaultTestModelEQ(*i.DefaultTestModel))

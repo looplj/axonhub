@@ -197,12 +197,12 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "status",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(c.APIKey); err != nil {
+	if buf, err = json.Marshal(c.Credentials); err != nil {
 		return nil, err
 	}
 	node.Fields[7] = &Field{
-		Type:  "string",
-		Name:  "api_key",
+		Type:  "*objects.ChannelCredentials",
+		Name:  "credentials",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(c.SupportedModels); err != nil {

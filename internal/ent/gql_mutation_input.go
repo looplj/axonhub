@@ -86,10 +86,10 @@ type CreateChannelInput struct {
 	UpdatedAt        *time.Time
 	DeletedAt        *int
 	Type             channel.Type
-	BaseURL          string
+	BaseURL          *string
 	Name             string
 	Status           *channel.Status
-	APIKey           string
+	Credentials      *objects.ChannelCredentials
 	SupportedModels  []string
 	DefaultTestModel string
 	Settings         *objects.ChannelSettings
@@ -107,12 +107,16 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 		m.SetDeletedAt(*v)
 	}
 	m.SetType(i.Type)
-	m.SetBaseURL(i.BaseURL)
+	if v := i.BaseURL; v != nil {
+		m.SetBaseURL(*v)
+	}
 	m.SetName(i.Name)
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
 	}
-	m.SetAPIKey(i.APIKey)
+	if v := i.Credentials; v != nil {
+		m.SetCredentials(v)
+	}
 	if v := i.SupportedModels; v != nil {
 		m.SetSupportedModels(v)
 	}
@@ -132,10 +136,11 @@ func (c *ChannelCreate) SetInput(i CreateChannelInput) *ChannelCreate {
 type UpdateChannelInput struct {
 	UpdatedAt             *time.Time
 	DeletedAt             *int
+	ClearBaseURL          bool
 	BaseURL               *string
 	Name                  *string
 	Status                *channel.Status
-	APIKey                *string
+	Credentials           *objects.ChannelCredentials
 	SupportedModels       []string
 	AppendSupportedModels []string
 	DefaultTestModel      *string
@@ -151,6 +156,9 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	if v := i.DeletedAt; v != nil {
 		m.SetDeletedAt(*v)
 	}
+	if i.ClearBaseURL {
+		m.ClearBaseURL()
+	}
 	if v := i.BaseURL; v != nil {
 		m.SetBaseURL(*v)
 	}
@@ -160,8 +168,8 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
 	}
-	if v := i.APIKey; v != nil {
-		m.SetAPIKey(*v)
+	if v := i.Credentials; v != nil {
+		m.SetCredentials(v)
 	}
 	if v := i.SupportedModels; v != nil {
 		m.SetSupportedModels(v)

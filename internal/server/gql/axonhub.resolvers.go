@@ -17,13 +17,18 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
+// AWS is the resolver for the aws field.
+func (r *channelCredentialsResolver) AWS(ctx context.Context, obj *objects.ChannelCredentials) (*AWSCredentials, error) {
+	panic(fmt.Errorf("not implemented: AWS - aws"))
+}
+
 // CreateChannel is the resolver for the createChannel field.
 func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
 	channel, err := r.client.Channel.Create().
 		SetType(input.Type).
-		SetBaseURL(input.BaseURL).
+		SetNillableBaseURL(input.BaseURL).
 		SetName(input.Name).
-		SetAPIKey(input.APIKey).
+		SetCredentials(input.Credentials).
 		SetSupportedModels(input.SupportedModels).
 		SetDefaultTestModel(input.DefaultTestModel).
 		SetSettings(input.Settings).
@@ -40,7 +45,6 @@ func (r *mutationResolver) UpdateChannel(ctx context.Context, id objects.GUID, i
 	mut := r.client.Channel.UpdateOneID(id.ID).
 		SetNillableBaseURL(input.BaseURL).
 		SetNillableName(input.Name).
-		SetNillableAPIKey(input.APIKey).
 		SetNillableDefaultTestModel(input.DefaultTestModel)
 
 	if input.SupportedModels != nil {
@@ -49,6 +53,10 @@ func (r *mutationResolver) UpdateChannel(ctx context.Context, id objects.GUID, i
 
 	if input.Settings != nil {
 		mut.SetSettings(input.Settings)
+	}
+
+	if input.Credentials != nil {
+		mut.SetCredentials(input.Credentials)
 	}
 
 	channel, err := mut.Save(ctx)
@@ -340,7 +348,26 @@ func (r *queryResolver) SystemSettings(ctx context.Context) (*SystemSettings, er
 	}, nil
 }
 
+// AWS is the resolver for the aws field.
+func (r *channelCredentialsInputResolver) AWS(ctx context.Context, obj *objects.ChannelCredentials, data *AWSCredentialsInput) error {
+	panic(fmt.Errorf("not implemented: AWS - aws"))
+}
+
+// ChannelCredentials returns ChannelCredentialsResolver implementation.
+func (r *Resolver) ChannelCredentials() ChannelCredentialsResolver {
+	return &channelCredentialsResolver{r}
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
-type mutationResolver struct{ *Resolver }
+// ChannelCredentialsInput returns ChannelCredentialsInputResolver implementation.
+func (r *Resolver) ChannelCredentialsInput() ChannelCredentialsInputResolver {
+	return &channelCredentialsInputResolver{r}
+}
+
+type (
+	channelCredentialsResolver      struct{ *Resolver }
+	mutationResolver                struct{ *Resolver }
+	channelCredentialsInputResolver struct{ *Resolver }
+)

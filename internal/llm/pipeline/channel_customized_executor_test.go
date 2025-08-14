@@ -1,4 +1,4 @@
-package pipeline
+package pipeline_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
@@ -18,10 +19,10 @@ type mockChannelCustomizedExecutor struct {
 	*openai.OutboundTransformer
 
 	customizeExecutorCalled bool
-	customExecutor          Executor
+	customExecutor          pipeline.Executor
 }
 
-func (m *mockChannelCustomizedExecutor) CustomizeExecutor(executor Executor) Executor {
+func (m *mockChannelCustomizedExecutor) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
 	m.customizeExecutorCalled = true
 	if m.customExecutor != nil {
 		return m.customExecutor
@@ -85,7 +86,7 @@ func TestChannelCustomizedExecutor_StreamingPath(t *testing.T) {
 	}
 
 	// Create factory and pipeline
-	factory := NewFactory(originalExecutor)
+	factory := pipeline.NewFactory(originalExecutor)
 	pipeline := factory.Pipeline(inbound, mockCustomized)
 
 	// Create test request
@@ -149,7 +150,7 @@ func TestChannelCustomizedExecutor_NonStreamingPath(t *testing.T) {
 	}
 
 	// Create factory and pipeline
-	factory := NewFactory(originalExecutor)
+	factory := pipeline.NewFactory(originalExecutor)
 	pipeline := factory.Pipeline(inbound, mockCustomized)
 
 	// Create test request (non-streaming)
@@ -201,7 +202,7 @@ func TestChannelCustomizedExecutor_CustomExecutorError(t *testing.T) {
 	originalExecutor := &mockExecutor{}
 
 	// Create factory and pipeline
-	factory := NewFactory(originalExecutor)
+	factory := pipeline.NewFactory(originalExecutor)
 	pipeline := factory.Pipeline(inbound, mockCustomized)
 
 	// Create test request
@@ -241,7 +242,7 @@ func TestChannelCustomizedExecutor_NoCustomization(t *testing.T) {
 	}
 
 	// Create factory and pipeline
-	factory := NewFactory(originalExecutor)
+	factory := pipeline.NewFactory(originalExecutor)
 	pipeline := factory.Pipeline(inbound, outbound)
 
 	// Create test request
@@ -290,7 +291,7 @@ func TestChannelCustomizedExecutor_NonStreamingCustomExecutorError(t *testing.T)
 	originalExecutor := &mockExecutor{}
 
 	// Create factory and pipeline
-	factory := NewFactory(originalExecutor)
+	factory := pipeline.NewFactory(originalExecutor)
 	pipeline := factory.Pipeline(inbound, mockCustomized)
 
 	// Create test request (non-streaming)
@@ -337,7 +338,7 @@ func TestChannelCustomizedExecutor_ReturnsSameExecutor(t *testing.T) {
 	}
 
 	// Create factory and pipeline
-	factory := NewFactory(originalExecutor)
+	factory := pipeline.NewFactory(originalExecutor)
 	pipeline := factory.Pipeline(inbound, mockCustomized)
 
 	// Create test request

@@ -213,7 +213,7 @@ type Channel implements Node {
   updatedAt: Time!
   deletedAt: Int!
   type: ChannelType!
-  baseURL: String!
+  baseURL: String
   name: String!
   status: ChannelStatus!
   supportedModels: [String!]!
@@ -344,6 +344,7 @@ ChannelType is enum for the field type
 enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel.Type") {
   openai
   anthropic
+  anthropic_aws
   gemini
   deepseek
   doubao
@@ -422,6 +423,8 @@ input ChannelWhereInput {
   baseURLContains: String
   baseURLHasPrefix: String
   baseURLHasSuffix: String
+  baseURLIsNil: Boolean
+  baseURLNotNil: Boolean
   baseURLEqualFold: String
   baseURLContainsFold: String
   """
@@ -494,10 +497,10 @@ input CreateChannelInput {
   updatedAt: Time
   deletedAt: Int
   type: ChannelType!
-  baseURL: String!
+  baseURL: String
   name: String!
   status: ChannelStatus
-  apiKey: String!
+  credentials: ChannelCredentialsInput
   supportedModels: [String!]!
   defaultTestModel: String!
   settings: ChannelSettingsInput
@@ -1681,9 +1684,10 @@ input UpdateChannelInput {
   updatedAt: Time
   deletedAt: Int
   baseURL: String
+  clearBaseURL: Boolean
   name: String
   status: ChannelStatus
-  apiKey: String
+  credentials: ChannelCredentialsInput
   supportedModels: [String!]
   appendSupportedModels: [String!]
   defaultTestModel: String

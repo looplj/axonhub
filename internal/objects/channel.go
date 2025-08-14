@@ -11,3 +11,14 @@ type ModelMapping struct {
 type ChannelSettings struct {
 	ModelMappings []ModelMapping
 }
+
+type ChannelCredentials struct {
+	// APIKey is the API key for the channel.
+	APIKey string `json:"apiKey,omitempty"`
+
+	AWS *struct {
+		AccessKeyID     string `json:"accessKeyID"`
+		SecretAccessKey string `json:"secretAccessKey"`
+		Region          string `json:"region"`
+	} `json:"aws,omitempty"`
+}

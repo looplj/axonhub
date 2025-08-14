@@ -11,7 +11,7 @@ import (
 
 func TestAnthropicTransformers_Integration(t *testing.T) {
 	inboundTransformer := NewInboundTransformer()
-	outboundTransformer := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	outboundTransformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
 
 	tests := []struct {
 		name                 string
@@ -186,7 +186,7 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 }
 
 func TestAnthropicTransformers_StreamingIntegration(t *testing.T) {
-	outboundTransformer := NewOutboundTransformer("", "")
+	outboundTransformer, _ := NewOutboundTransformer("https://api.claude.com", "xxx")
 
 	// Simulate streaming chunks from Anthropic
 	chunks := []*httpclient.StreamEvent{

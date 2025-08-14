@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
@@ -95,8 +96,8 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	for _, c := range entities {
 		//nolint:exhaustive // TODO SUPPORT.
 		switch c.Type {
-		case "openai":
-			transformer, err := openai.NewOutboundTransformer(c.BaseURL, c.APIKey)
+		case channel.TypeOpenai:
+			transformer, err := openai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 			if err != nil {
 				log.Warn(ctx, "failed to create openai outbound transformer", log.Cause(err))
 				continue
@@ -106,12 +107,34 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				Channel:  c,
 				Outbound: transformer,
 			})
-		case "anthropic":
-			transformer := anthropic.NewOutboundTransformer(c.BaseURL, c.APIKey)
+		case channel.TypeAnthropic:
+			transformer, err := anthropic.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+			if err != nil {
+				log.Warn(ctx, "failed to create anthropic outbound transformer", log.Cause(err))
+				continue
+			}
+
 			channels = append(channels, &Channel{
 				Channel:  c,
 				Outbound: transformer,
-				// TODO: support aws.bedrock/gcp.vertex
+			})
+		case channel.TypeAnthropicAWS:
+			// For anthropic_aws, we need to create a transformer with AWS credentials
+			// The transformer will handle AWS Bedrock integration
+			transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+				Type:            anthropic.PlatformBedrock,
+				Region:          c.Credentials.AWS.Region,
+				AccessKeyID:     c.Credentials.AWS.AccessKeyID,
+				SecretAccessKey: c.Credentials.AWS.SecretAccessKey,
+			})
+			if err != nil {
+				log.Warn(ctx, "failed to create anthropic aws outbound transformer", log.Cause(err))
+				continue
+			}
+
+			channels = append(channels, &Channel{
+				Channel:  c,
+				Outbound: transformer,
 			})
 		}
 	}

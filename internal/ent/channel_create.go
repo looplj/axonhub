@@ -79,6 +79,14 @@ func (cc *ChannelCreate) SetBaseURL(s string) *ChannelCreate {
 	return cc
 }
 
+// SetNillableBaseURL sets the "base_url" field if the given value is not nil.
+func (cc *ChannelCreate) SetNillableBaseURL(s *string) *ChannelCreate {
+	if s != nil {
+		cc.SetBaseURL(*s)
+	}
+	return cc
+}
+
 // SetName sets the "name" field.
 func (cc *ChannelCreate) SetName(s string) *ChannelCreate {
 	cc.mutation.SetName(s)
@@ -99,9 +107,9 @@ func (cc *ChannelCreate) SetNillableStatus(c *channel.Status) *ChannelCreate {
 	return cc
 }
 
-// SetAPIKey sets the "api_key" field.
-func (cc *ChannelCreate) SetAPIKey(s string) *ChannelCreate {
-	cc.mutation.SetAPIKey(s)
+// SetCredentials sets the "credentials" field.
+func (cc *ChannelCreate) SetCredentials(oc *objects.ChannelCredentials) *ChannelCreate {
+	cc.mutation.SetCredentials(oc)
 	return cc
 }
 
@@ -212,6 +220,10 @@ func (cc *ChannelCreate) defaults() error {
 		v := channel.DefaultStatus
 		cc.mutation.SetStatus(v)
 	}
+	if _, ok := cc.mutation.Credentials(); !ok {
+		v := channel.DefaultCredentials
+		cc.mutation.SetCredentials(v)
+	}
 	if _, ok := cc.mutation.Settings(); !ok {
 		v := channel.DefaultSettings
 		cc.mutation.SetSettings(v)
@@ -238,9 +250,6 @@ func (cc *ChannelCreate) check() error {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Channel.type": %w`, err)}
 		}
 	}
-	if _, ok := cc.mutation.BaseURL(); !ok {
-		return &ValidationError{Name: "base_url", err: errors.New(`ent: missing required field "Channel.base_url"`)}
-	}
 	if _, ok := cc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Channel.name"`)}
 	}
@@ -252,13 +261,8 @@ func (cc *ChannelCreate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Channel.status": %w`, err)}
 		}
 	}
-	if _, ok := cc.mutation.APIKey(); !ok {
-		return &ValidationError{Name: "api_key", err: errors.New(`ent: missing required field "Channel.api_key"`)}
-	}
-	if v, ok := cc.mutation.APIKey(); ok {
-		if err := channel.APIKeyValidator(v); err != nil {
-			return &ValidationError{Name: "api_key", err: fmt.Errorf(`ent: validator failed for field "Channel.api_key": %w`, err)}
-		}
+	if _, ok := cc.mutation.Credentials(); !ok {
+		return &ValidationError{Name: "credentials", err: errors.New(`ent: missing required field "Channel.credentials"`)}
 	}
 	if _, ok := cc.mutation.SupportedModels(); !ok {
 		return &ValidationError{Name: "supported_models", err: errors.New(`ent: missing required field "Channel.supported_models"`)}
@@ -321,9 +325,9 @@ func (cc *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 		_spec.SetField(channel.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
 	}
-	if value, ok := cc.mutation.APIKey(); ok {
-		_spec.SetField(channel.FieldAPIKey, field.TypeString, value)
-		_node.APIKey = value
+	if value, ok := cc.mutation.Credentials(); ok {
+		_spec.SetField(channel.FieldCredentials, field.TypeJSON, value)
+		_node.Credentials = value
 	}
 	if value, ok := cc.mutation.SupportedModels(); ok {
 		_spec.SetField(channel.FieldSupportedModels, field.TypeJSON, value)
@@ -463,6 +467,12 @@ func (u *ChannelUpsert) UpdateBaseURL() *ChannelUpsert {
 	return u
 }
 
+// ClearBaseURL clears the value of the "base_url" field.
+func (u *ChannelUpsert) ClearBaseURL() *ChannelUpsert {
+	u.SetNull(channel.FieldBaseURL)
+	return u
+}
+
 // SetName sets the "name" field.
 func (u *ChannelUpsert) SetName(v string) *ChannelUpsert {
 	u.Set(channel.FieldName, v)
@@ -487,15 +497,15 @@ func (u *ChannelUpsert) UpdateStatus() *ChannelUpsert {
 	return u
 }
 
-// SetAPIKey sets the "api_key" field.
-func (u *ChannelUpsert) SetAPIKey(v string) *ChannelUpsert {
-	u.Set(channel.FieldAPIKey, v)
+// SetCredentials sets the "credentials" field.
+func (u *ChannelUpsert) SetCredentials(v *objects.ChannelCredentials) *ChannelUpsert {
+	u.Set(channel.FieldCredentials, v)
 	return u
 }
 
-// UpdateAPIKey sets the "api_key" field to the value that was provided on create.
-func (u *ChannelUpsert) UpdateAPIKey() *ChannelUpsert {
-	u.SetExcluded(channel.FieldAPIKey)
+// UpdateCredentials sets the "credentials" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateCredentials() *ChannelUpsert {
+	u.SetExcluded(channel.FieldCredentials)
 	return u
 }
 
@@ -638,6 +648,13 @@ func (u *ChannelUpsertOne) UpdateBaseURL() *ChannelUpsertOne {
 	})
 }
 
+// ClearBaseURL clears the value of the "base_url" field.
+func (u *ChannelUpsertOne) ClearBaseURL() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearBaseURL()
+	})
+}
+
 // SetName sets the "name" field.
 func (u *ChannelUpsertOne) SetName(v string) *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
@@ -666,17 +683,17 @@ func (u *ChannelUpsertOne) UpdateStatus() *ChannelUpsertOne {
 	})
 }
 
-// SetAPIKey sets the "api_key" field.
-func (u *ChannelUpsertOne) SetAPIKey(v string) *ChannelUpsertOne {
+// SetCredentials sets the "credentials" field.
+func (u *ChannelUpsertOne) SetCredentials(v *objects.ChannelCredentials) *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
-		s.SetAPIKey(v)
+		s.SetCredentials(v)
 	})
 }
 
-// UpdateAPIKey sets the "api_key" field to the value that was provided on create.
-func (u *ChannelUpsertOne) UpdateAPIKey() *ChannelUpsertOne {
+// UpdateCredentials sets the "credentials" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateCredentials() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
-		s.UpdateAPIKey()
+		s.UpdateCredentials()
 	})
 }
 
@@ -992,6 +1009,13 @@ func (u *ChannelUpsertBulk) UpdateBaseURL() *ChannelUpsertBulk {
 	})
 }
 
+// ClearBaseURL clears the value of the "base_url" field.
+func (u *ChannelUpsertBulk) ClearBaseURL() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearBaseURL()
+	})
+}
+
 // SetName sets the "name" field.
 func (u *ChannelUpsertBulk) SetName(v string) *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
@@ -1020,17 +1044,17 @@ func (u *ChannelUpsertBulk) UpdateStatus() *ChannelUpsertBulk {
 	})
 }
 
-// SetAPIKey sets the "api_key" field.
-func (u *ChannelUpsertBulk) SetAPIKey(v string) *ChannelUpsertBulk {
+// SetCredentials sets the "credentials" field.
+func (u *ChannelUpsertBulk) SetCredentials(v *objects.ChannelCredentials) *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
-		s.SetAPIKey(v)
+		s.SetCredentials(v)
 	})
 }
 
-// UpdateAPIKey sets the "api_key" field to the value that was provided on create.
-func (u *ChannelUpsertBulk) UpdateAPIKey() *ChannelUpsertBulk {
+// UpdateCredentials sets the "credentials" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateCredentials() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
-		s.UpdateAPIKey()
+		s.UpdateCredentials()
 	})
 }
 

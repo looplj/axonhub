@@ -61,7 +61,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channel.FieldBaseURL:          {Type: field.TypeString, Column: channel.FieldBaseURL},
 			channel.FieldName:             {Type: field.TypeString, Column: channel.FieldName},
 			channel.FieldStatus:           {Type: field.TypeEnum, Column: channel.FieldStatus},
-			channel.FieldAPIKey:           {Type: field.TypeString, Column: channel.FieldAPIKey},
+			channel.FieldCredentials:      {Type: field.TypeJSON, Column: channel.FieldCredentials},
 			channel.FieldSupportedModels:  {Type: field.TypeJSON, Column: channel.FieldSupportedModels},
 			channel.FieldDefaultTestModel: {Type: field.TypeString, Column: channel.FieldDefaultTestModel},
 			channel.FieldSettings:         {Type: field.TypeJSON, Column: channel.FieldSettings},
@@ -541,9 +541,9 @@ func (f *ChannelFilter) WhereStatus(p entql.StringP) {
 	f.Where(p.Field(channel.FieldStatus))
 }
 
-// WhereAPIKey applies the entql string predicate on the api_key field.
-func (f *ChannelFilter) WhereAPIKey(p entql.StringP) {
-	f.Where(p.Field(channel.FieldAPIKey))
+// WhereCredentials applies the entql json.RawMessage predicate on the credentials field.
+func (f *ChannelFilter) WhereCredentials(p entql.BytesP) {
+	f.Where(p.Field(channel.FieldCredentials))
 }
 
 // WhereSupportedModels applies the entql json.RawMessage predicate on the supported_models field.

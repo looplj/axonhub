@@ -509,7 +509,7 @@ data: [DONE]
 `
 	body := io.NopCloser(strings.NewReader(sseData))
 
-	stream := &sseStreamWrapper{
+	stream := &defaultSSEDecoder{
 		ctx:       t.Context(),
 		sseStream: sse.NewStream(body),
 	}

@@ -33,8 +33,8 @@ type Channel struct {
 	Name string `json:"name,omitempty"`
 	// Status holds the value of the "status" field.
 	Status channel.Status `json:"status,omitempty"`
-	// APIKey holds the value of the "api_key" field.
-	APIKey string `json:"-"`
+	// Credentials holds the value of the "credentials" field.
+	Credentials *objects.ChannelCredentials `json:"-"`
 	// SupportedModels holds the value of the "supported_models" field.
 	SupportedModels []string `json:"supported_models,omitempty"`
 	// DefaultTestModel holds the value of the "default_test_model" field.
@@ -86,11 +86,11 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case channel.FieldSupportedModels, channel.FieldSettings:
+		case channel.FieldCredentials, channel.FieldSupportedModels, channel.FieldSettings:
 			values[i] = new([]byte)
 		case channel.FieldID, channel.FieldDeletedAt:
 			values[i] = new(sql.NullInt64)
-		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldAPIKey, channel.FieldDefaultTestModel:
+		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldDefaultTestModel:
 			values[i] = new(sql.NullString)
 		case channel.FieldCreatedAt, channel.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -157,11 +157,13 @@ func (c *Channel) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				c.Status = channel.Status(value.String)
 			}
-		case channel.FieldAPIKey:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field api_key", values[i])
-			} else if value.Valid {
-				c.APIKey = value.String
+		case channel.FieldCredentials:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field credentials", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &c.Credentials); err != nil {
+					return fmt.Errorf("unmarshal field credentials: %w", err)
+				}
 			}
 		case channel.FieldSupportedModels:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -252,7 +254,7 @@ func (c *Channel) String() string {
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", c.Status))
 	builder.WriteString(", ")
-	builder.WriteString("api_key=<sensitive>")
+	builder.WriteString("credentials=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("supported_models=")
 	builder.WriteString(fmt.Sprintf("%v", c.SupportedModels))
