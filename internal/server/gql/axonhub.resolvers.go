@@ -279,8 +279,11 @@ func (r *mutationResolver) InitializeSystem(ctx context.Context, input Initializ
 	}
 
 	err = r.systemService.Initialize(ctx, &biz.InitializeSystemArgs{
-		OwnerEmail:    input.OwnerEmail,
-		OwnerPassword: input.OwnerPassword,
+		OwnerEmail:     input.OwnerEmail,
+		OwnerPassword:  input.OwnerPassword,
+		OwnerFirstName: input.OwnerFirstName,
+		OwnerLastName:  input.OwnerLastName,
+		BrandName:      input.BrandName,
 	})
 	if err != nil {
 		return &InitializeSystemPayload{
@@ -318,14 +321,27 @@ func (r *mutationResolver) UpdateSystemSettings(ctx context.Context, input Updat
 		}
 	}
 
+	if input.BrandName != nil {
+		err := r.systemService.SetBrandName(ctx, *input.BrandName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update brand name setting: %w", err)
+		}
+	}
+
 	// Return current settings
 	storeChunks, err := r.systemService.StoreChunks(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get store chunks setting: %w", err)
 	}
 
+	brandName, err := r.systemService.BrandName(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get brand name setting: %w", err)
+	}
+
 	return &SystemSettings{
 		StoreChunks: storeChunks,
+		BrandName:   &brandName,
 	}, nil
 }
 
@@ -348,8 +364,14 @@ func (r *queryResolver) SystemSettings(ctx context.Context) (*SystemSettings, er
 		return nil, fmt.Errorf("failed to get store chunks setting: %w", err)
 	}
 
+	brandName, err := r.systemService.BrandName(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get brand name setting: %w", err)
+	}
+
 	return &SystemSettings{
 		StoreChunks: storeChunks,
+		BrandName:   &brandName,
 	}, nil
 }
 

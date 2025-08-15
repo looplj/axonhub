@@ -5,17 +5,20 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { useTranslation } from 'react-i18next'
 import AuthLayout from '../auth-layout'
 import { InitializationForm } from './components/initialization-form'
 
 export default function Initialization() {
+  const { t } = useTranslation()
+  
   return (
     <AuthLayout>
       <Card className='gap-4'>
         <CardHeader>
-          <CardTitle className='text-lg tracking-tight'>Initialize System</CardTitle>
+          <CardTitle className='text-lg tracking-tight'>{t('initialization.title')}</CardTitle>
           <CardDescription>
-            Welcome to AxonHub! Please set up the system by creating an owner account.
+            {t('initialization.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>

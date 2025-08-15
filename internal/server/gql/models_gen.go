@@ -55,8 +55,11 @@ type HourlyRequestStats struct {
 }
 
 type InitializeSystemInput struct {
-	OwnerEmail    string `json:"ownerEmail"`
-	OwnerPassword string `json:"ownerPassword"`
+	OwnerEmail     string `json:"ownerEmail"`
+	OwnerPassword  string `json:"ownerPassword"`
+	OwnerFirstName string `json:"ownerFirstName"`
+	OwnerLastName  string `json:"ownerLastName"`
+	BrandName      string `json:"brandName"`
 }
 
 type InitializeSystemPayload struct {
@@ -103,7 +106,8 @@ type SignInPayload struct {
 }
 
 type SystemSettings struct {
-	StoreChunks bool `json:"storeChunks"`
+	StoreChunks bool    `json:"storeChunks"`
+	BrandName   *string `json:"brandName,omitempty"`
 }
 
 type SystemStatus struct {
@@ -125,7 +129,8 @@ type UpdateMeInput struct {
 }
 
 type UpdateSystemSettingsInput struct {
-	StoreChunks *bool `json:"storeChunks,omitempty"`
+	StoreChunks *bool   `json:"storeChunks,omitempty"`
+	BrandName   *string `json:"brandName,omitempty"`
 }
 
 type UserInfo struct {

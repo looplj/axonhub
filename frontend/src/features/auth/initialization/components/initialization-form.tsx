@@ -2,6 +2,7 @@ import { HTMLAttributes } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,39 +19,59 @@ import { useInitializeSystem } from '@/features/auth/data/initialization'
 
 type InitializationFormProps = HTMLAttributes<HTMLFormElement>
 
-const formSchema = z.object({
+// Create form schema factory to support i18n
+const createFormSchema = (t: (key: string) => string) => z.object({
   ownerEmail: z
     .string()
-    .min(1, { message: 'Please enter owner email' })
-    .email({ message: 'Invalid email address' }),
+    .min(1, { message: t('initialization.form.validation.ownerEmailRequired') })
+    .email({ message: t('initialization.form.validation.ownerEmailInvalid') }),
   ownerPassword: z
     .string()
     .min(1, {
-      message: 'Please enter owner password',
+      message: t('initialization.form.validation.ownerPasswordRequired'),
     })
     .min(8, {
-      message: 'Password must be at least 8 characters long',
+      message: t('initialization.form.validation.ownerPasswordMinLength'),
     }),
+  ownerFirstName: z
+    .string()
+    .min(1, { message: t('initialization.form.validation.ownerFirstNameRequired') }),
+  ownerLastName: z
+    .string()
+    .min(1, { message: t('initialization.form.validation.ownerLastNameRequired') }),
+  brandName: z
+    .string()
+    .min(1, { message: t('initialization.form.validation.brandNameRequired') }),
 })
 
 export function InitializationForm({
   className,
   ...props
 }: InitializationFormProps) {
+  const { t } = useTranslation()
   const initializeSystemMutation = useInitializeSystem()
+  
+  const formSchema = createFormSchema(t)
+  type FormData = z.infer<typeof formSchema>
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       ownerEmail: '',
       ownerPassword: '',
+      ownerFirstName: '',
+      ownerLastName: '',
+      brandName: '',
     },
   })
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
+  function onSubmit(data: FormData) {
     const input = {
       ownerEmail: data.ownerEmail,
       ownerPassword: data.ownerPassword,
+      ownerFirstName: data.ownerFirstName,
+      ownerLastName: data.ownerLastName,
+      brandName: data.brandName,
     }
     initializeSystemMutation.mutate(input)
   }
@@ -64,12 +85,38 @@ export function InitializationForm({
       >
         <FormField
           control={form.control}
+          name='ownerFirstName'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('initialization.form.ownerFirstName')}</FormLabel>
+              <FormControl>
+                <Input placeholder={t('initialization.form.placeholders.ownerFirstName')} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name='ownerLastName'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('initialization.form.ownerLastName')}</FormLabel>
+              <FormControl>
+                <Input placeholder={t('initialization.form.placeholders.ownerLastName')} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
           name='ownerEmail'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Owner Email</FormLabel>
+              <FormLabel>{t('initialization.form.ownerEmail')}</FormLabel>
               <FormControl>
-                <Input placeholder='admin@example.com' {...field} />
+                <Input placeholder={t('initialization.form.placeholders.ownerEmail')} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -80,9 +127,22 @@ export function InitializationForm({
           name='ownerPassword'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Owner Password</FormLabel>
+              <FormLabel>{t('initialization.form.ownerPassword')}</FormLabel>
               <FormControl>
-                <PasswordInput placeholder='********' {...field} />
+                <PasswordInput placeholder={t('initialization.form.placeholders.ownerPassword')} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name='brandName'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('initialization.form.brandName')}</FormLabel>
+              <FormControl>
+                <Input placeholder={t('initialization.form.placeholders.brandName')} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -94,8 +154,8 @@ export function InitializationForm({
           disabled={initializeSystemMutation.isPending}
         >
           {initializeSystemMutation.isPending
-            ? 'Initializing...'
-            : 'Initialize System'}
+            ? t('initialization.form.submitting')
+            : t('initialization.form.submit')}
         </Button>
       </form>
     </Form>

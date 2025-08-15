@@ -135,6 +135,9 @@ export const systemApi = {
   initialize: (data: {
     ownerEmail: string
     ownerPassword: string
+    ownerFirstName: string
+    ownerLastName: string
+    brandName: string
   }): Promise<{ success: boolean; message: string }> =>
     apiRequest('/v1/system/initialize', {
       method: 'POST',

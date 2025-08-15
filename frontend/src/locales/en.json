@@ -469,6 +469,15 @@
         "description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing"
       }
     },
+    "general": {
+      "title": "General Settings",
+      "description": "Configure basic system information and branding settings",
+      "brandName": {
+        "label": "Brand Name",
+        "placeholder": "Enter system brand name",
+        "description": "Set the system brand name that will be displayed in the interface"
+      }
+    },
     "other": {
       "title": "Other Settings",
       "description": "More system configuration options will be added here",
@@ -723,5 +732,34 @@
   "delete": "Delete",
   "edit": "Edit",
   "create": "Create",
-  "update": "Update"
+  "update": "Update",
+  "initialization": {
+    "title": "Initialize System",
+    "description": "Welcome to AxonHub! Please set up the system by creating an owner account.",
+    "form": {
+      "ownerEmail": "Owner Email",
+      "ownerPassword": "Owner Password",
+      "ownerFirstName": "Owner First Name",
+      "ownerLastName": "Owner Last Name",
+      "brandName": "Brand Name",
+      "placeholders": {
+        "ownerEmail": "admin@example.com",
+        "ownerPassword": "********",
+        "ownerFirstName": "John",
+        "ownerLastName": "Doe",
+        "brandName": "Your Company Name"
+      },
+      "validation": {
+        "ownerEmailRequired": "Please enter owner email",
+        "ownerEmailInvalid": "Invalid email address",
+        "ownerPasswordRequired": "Please enter owner password",
+        "ownerPasswordMinLength": "Password must be at least 8 characters long",
+        "ownerFirstNameRequired": "Please enter owner first name",
+        "ownerLastNameRequired": "Please enter owner last name",
+        "brandNameRequired": "Please enter brand name"
+      },
+      "submit": "Initialize System",
+      "submitting": "Initializing..."
+    }
+  }
 }

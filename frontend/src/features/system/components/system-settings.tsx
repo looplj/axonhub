@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Loader2, Save } from 'lucide-react'
 import { useSystemSettings, useUpdateSystemSettings } from '../data/system'
 import { useSystemContext } from '../context/system-context'
@@ -17,11 +18,13 @@ export function SystemSettings() {
   const { isLoading, setIsLoading } = useSystemContext()
   
   const [storeChunks, setStoreChunks] = useState(settings?.storeChunks ?? false)
+  const [brandName, setBrandName] = useState(settings?.brandName ?? '')
 
   // Update local state when settings are loaded
   React.useEffect(() => {
     if (settings) {
       setStoreChunks(settings.storeChunks)
+      setBrandName(settings.brandName ?? '')
     }
   }, [settings])
 
@@ -30,13 +33,14 @@ export function SystemSettings() {
     try {
       await updateSettings.mutateAsync({
         storeChunks,
+        brandName: brandName.trim() || undefined,
       })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const hasChanges = settings && settings.storeChunks !== storeChunks
+  const hasChanges = settings && (settings.storeChunks !== storeChunks || (settings.brandName ?? '') !== brandName)
 
   if (isLoadingSettings) {
     return (
@@ -70,6 +74,32 @@ export function SystemSettings() {
               onCheckedChange={setStoreChunks}
               disabled={isLoading}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('system.general.title')}</CardTitle>
+          <CardDescription>
+            {t('system.general.description')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='space-y-6'>
+          <div className='space-y-2'>
+            <Label htmlFor='brand-name'>{t('system.general.brandName.label')}</Label>
+            <Input
+              id='brand-name'
+              type='text'
+              placeholder={t('system.general.brandName.placeholder')}
+              value={brandName}
+              onChange={(e) => setBrandName(e.target.value)}
+              disabled={isLoading}
+              className='max-w-md'
+            />
+            <div className='text-sm text-muted-foreground'>
+              {t('system.general.brandName.description')}
+            </div>
           </div>
         </CardContent>
       </Card>

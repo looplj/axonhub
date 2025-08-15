@@ -81,6 +81,9 @@ type SignInPayload {
 input InitializeSystemInput {
   ownerEmail: String!
   ownerPassword: String!
+  ownerFirstName: String!
+  ownerLastName: String!
+  brandName: String!
 }
 
 type InitializeSystemPayload {
@@ -96,6 +99,7 @@ type SystemStatus {
 
 type SystemSettings {
   storeChunks: Boolean!
+  brandName: String
 }
 
 type UserInfo {
@@ -115,6 +119,7 @@ type RoleInfo {
 
 input UpdateSystemSettingsInput {
   storeChunks: Boolean
+  brandName: String
 }
 
 extend type Query {

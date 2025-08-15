@@ -471,6 +471,15 @@
         "description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理"
       }
     },
+    "general": {
+      "title": "常规设置",
+      "description": "配置系统的基本信息和品牌设置",
+      "brandName": {
+        "label": "品牌名称",
+        "placeholder": "输入系统品牌名称",
+        "description": "设置系统的品牌名称，将在界面中显示"
+      }
+    },
     "other": {
       "title": "其他设置",
       "description": "更多系统配置选项将在此处添加",
@@ -725,5 +734,34 @@
   "delete": "删除",
   "edit": "编辑",
   "create": "创建",
-  "update": "更新"
+  "update": "更新",
+  "initialization": {
+    "title": "初始化系统",
+    "description": "欢迎使用 AxonHub！请通过创建所有者账户来设置系统。",
+    "form": {
+      "ownerEmail": "所有者邮箱",
+      "ownerPassword": "所有者密码",
+      "ownerFirstName": "所有者名",
+      "ownerLastName": "所有者姓",
+      "brandName": "品牌名称",
+      "placeholders": {
+        "ownerEmail": "admin@example.com",
+        "ownerPassword": "********",
+        "ownerFirstName": "张",
+        "ownerLastName": "三",
+        "brandName": "您的公司名称"
+      },
+      "validation": {
+        "ownerEmailRequired": "请输入所有者邮箱",
+        "ownerEmailInvalid": "邮箱地址无效",
+        "ownerPasswordRequired": "请输入所有者密码",
+        "ownerPasswordMinLength": "密码至少需要8个字符",
+        "ownerFirstNameRequired": "请输入所有者名",
+        "ownerLastNameRequired": "请输入所有者姓",
+        "brandNameRequired": "请输入品牌名称"
+      },
+      "submit": "初始化系统",
+      "submitting": "初始化中..."
+    }
+  }
 }

@@ -23,6 +23,9 @@ const (
 	// If set to true, the system will store chunks in the database.
 	// Default value is false.
 	SystemKeyStoreChunks = "store_chunks"
+
+	// SystemKeyBrandName is the key for the brand name.
+	SystemKeyBrandName = "brand_name"
 )
 
 type SystemServiceParams struct {
@@ -59,8 +62,11 @@ func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
 }
 
 type InitializeSystemArgs struct {
-	OwnerEmail    string
-	OwnerPassword string
+	OwnerEmail     string
+	OwnerPassword  string
+	OwnerFirstName string
+	OwnerLastName  string
+	BrandName      string
 }
 
 // Initialize initializes the system with a secret key and sets the initialized flag.
@@ -106,6 +112,8 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	user, err := tx.User.Create().
 		SetEmail(args.OwnerEmail).
 		SetPassword(hashedPassword).
+		SetFirstName(args.OwnerFirstName).
+		SetLastName(args.OwnerLastName).
 		SetIsOwner(true).
 		SetScopes([]string{"*"}). // Give owner all scopes
 		Save(ctx)
@@ -119,6 +127,12 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	err = s.setSystemValue(ctx, tx.System, SystemKeySecretKey, secretKey)
 	if err != nil {
 		return fmt.Errorf("failed to set secret key: %w", err)
+	}
+
+	// Set brand name
+	err = s.setSystemValue(ctx, tx.System, SystemKeyBrandName, args.BrandName)
+	if err != nil {
+		return fmt.Errorf("failed to set brand name: %w", err)
 	}
 
 	// Set initialized flag
@@ -172,6 +186,25 @@ func (s *SystemService) StoreChunks(ctx context.Context) (bool, error) {
 // SetStoreChunks sets the store_chunks flag.
 func (s *SystemService) SetStoreChunks(ctx context.Context, storeChunks bool) error {
 	return s.setSystemValue(ctx, s.Ent.System, SystemKeyStoreChunks, fmt.Sprintf("%t", storeChunks))
+}
+
+// BrandName retrieves the brand name.
+func (s *SystemService) BrandName(ctx context.Context) (string, error) {
+	sys, err := s.Ent.System.Query().Where(system.KeyEQ(SystemKeyBrandName)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return "", nil
+		}
+
+		return "", fmt.Errorf("failed to get brand name: %w", err)
+	}
+
+	return sys.Value, nil
+}
+
+// SetBrandName sets the brand name.
+func (s *SystemService) SetBrandName(ctx context.Context, brandName string) error {
+	return s.setSystemValue(ctx, s.Ent.System, SystemKeyBrandName, brandName)
 }
 
 // setSystemValue sets or updates a system key-value pair.

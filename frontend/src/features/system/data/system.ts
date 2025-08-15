@@ -8,6 +8,7 @@ const SYSTEM_SETTINGS_QUERY = `
   query SystemSettings {
     systemSettings {
       storeChunks
+      brandName
     }
   }
 `
@@ -16,6 +17,7 @@ const UPDATE_SYSTEM_SETTINGS_MUTATION = `
   mutation UpdateSystemSettings($input: UpdateSystemSettingsInput!) {
     updateSystemSettings(input: $input) {
       storeChunks
+      brandName
     }
   }
 `
@@ -23,10 +25,12 @@ const UPDATE_SYSTEM_SETTINGS_MUTATION = `
 // Types
 export interface SystemSettings {
   storeChunks: boolean
+  brandName?: string
 }
 
 export interface UpdateSystemSettingsInput {
   storeChunks?: boolean
+  brandName?: string
 }
 
 // Hooks
