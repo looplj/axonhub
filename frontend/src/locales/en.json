@@ -295,6 +295,7 @@
       "openai": "OpenAI",
       "anthropic": "Anthropic",
       "anthropic_aws": "Anthropic AWS",
+      "anthropic_gcp": "Anthropic GCP",
       "gemini": "Gemini",
       "deepseek": "DeepSeek",
       "doubao": "Doubao",
@@ -384,6 +385,21 @@
           "label": "AWS Region",
           "placeholder": "us-east-1",
           "description": "AWS service region"
+        },
+        "gcpRegion": {
+          "label": "GCP Region",
+          "placeholder": "us-central1",
+          "description": "Google Cloud Platform service region"
+        },
+        "gcpProjectID": {
+          "label": "GCP Project ID",
+          "placeholder": "my-gcp-project",
+          "description": "Google Cloud Platform project identifier"
+        },
+        "jsonData": {
+          "label": "Service Account JSON",
+          "placeholder": "Paste your GCP service account JSON credentials here",
+          "description": "Complete JSON credentials for GCP service account authentication"
         }
       },
       "buttons": {

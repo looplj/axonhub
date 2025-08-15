@@ -34,7 +34,7 @@ func (Channel) Indexes() []ent.Index {
 func (Channel) Fields() []ent.Field {
 	return []ent.Field{
 		field.Enum("type").
-			Values("openai", "anthropic", "anthropic_aws", "gemini", "deepseek", "doubao", "kimi").
+			Values("openai", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini", "deepseek", "doubao", "kimi").
 			Immutable(),
 		field.String("base_url").Optional(),
 		field.String("name"),

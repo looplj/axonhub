@@ -297,6 +297,7 @@
       "openai": "OpenAI",
       "anthropic": "Anthropic",
       "anthropic_aws": "Anthropic AWS",
+      "anthropic_gcp": "Anthropic GCP",
       "gemini": "Gemini",
       "deepseek": "DeepSeek",
       "doubao": "Doubao",
@@ -386,6 +387,21 @@
           "label": "AWS 区域",
           "placeholder": "us-east-1",
           "description": "AWS 服务区域"
+        },
+        "gcpRegion": {
+          "label": "GCP 区域",
+          "placeholder": "us-central1",
+          "description": "Google Cloud Platform 服务区域"
+        },
+        "gcpProjectID": {
+          "label": "GCP 项目 ID",
+          "placeholder": "my-gcp-project",
+          "description": "Google Cloud Platform 项目标识符"
+        },
+        "jsonData": {
+          "label": "服务账户 JSON",
+          "placeholder": "在此粘贴您的 GCP 服务账户 JSON 凭据",
+          "description": "用于 GCP 服务账户认证的完整 JSON 凭据"
         }
       },
       "buttons": {

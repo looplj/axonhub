@@ -26,6 +26,13 @@ func NewHttpClient() *HttpClient {
 	}
 }
 
+// NewHttpClientWithClient creates a new HTTP client with a custom http.Client.
+func NewHttpClientWithClient(client *http.Client) *HttpClient {
+	return &HttpClient{
+		client: client,
+	}
+}
+
 // Do executes the HTTP request.
 func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, error) {
 	log.Debug(ctx, "execute http request", log.Any("request", request))

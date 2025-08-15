@@ -26,18 +26,10 @@ import { SelectDropdown } from '@/components/select-dropdown'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { X } from 'lucide-react'
-import { Channel, channelTypeSchema, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
+import { Channel, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
 import { useCreateChannel, useUpdateChannel } from '../data/channels'
 import { useState } from 'react'
 
-const channelTypes = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic' },
-  { value: 'gemini', label: 'Gemini' },
-  { value: 'deepseek', label: 'DeepSeek' },
-  { value: 'doubao', label: 'Doubao' },
-  { value: 'kimi', label: 'Kimi' },
-]
 
 interface Props {
   currentRow?: Channel
@@ -59,6 +51,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     { value: 'openai', label: t('channels.types.openai') },
     { value: 'anthropic', label: t('channels.types.anthropic') },
     { value: 'anthropic_aws', label: t('channels.types.anthropic_aws') },
+    { value: 'anthropic_gcp', label: t('channels.types.anthropic_gcp') },
     { value: 'gemini', label: t('channels.types.gemini') },
     { value: 'deepseek', label: t('channels.types.deepseek') },
     { value: 'doubao', label: t('channels.types.doubao') },
@@ -155,14 +148,14 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
         onOpenChange(state)
       }}
     >
-      <DialogContent className='sm:max-w-lg'>
+      <DialogContent className='sm:max-w-4xl max-h-[90vh]'>
         <DialogHeader className='text-left'>
           <DialogTitle>{isEdit ? t('channels.dialog.edit.title') : t('channels.dialog.create.title')}</DialogTitle>
           <DialogDescription>
             {isEdit ? t('channels.dialog.edit.description') : t('channels.dialog.create.description')}
           </DialogDescription>
         </DialogHeader>
-        <div className='-mr-4 h-[28rem] w-full overflow-y-auto py-1 pr-4'>
+        <div className='-mr-4 h-[36rem] w-full overflow-y-auto py-1 pr-4'>
           <Form {...form}>
             <form
               id='channel-form'
@@ -236,27 +229,29 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name='credentials.apiKey'
-                render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
-                      {t('channels.dialog.fields.apiKey.label')}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type='password'
-                        placeholder={isEdit ? t('channels.dialog.fields.apiKey.editPlaceholder') : t('channels.dialog.fields.apiKey.placeholder')}
-                        className='col-span-4'
-                        autoComplete='off'
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
-                  </FormItem>
-                )}
-              />
+              {form.watch('type') !== 'anthropic_aws' && form.watch('type') !== 'anthropic_gcp' && (
+                <FormField
+                  control={form.control}
+                  name='credentials.apiKey'
+                  render={({ field }) => (
+                    <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                      <FormLabel className='col-span-2 text-right'>
+                        {t('channels.dialog.fields.apiKey.label')}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type='password'
+                          placeholder={isEdit ? t('channels.dialog.fields.apiKey.editPlaceholder') : t('channels.dialog.fields.apiKey.placeholder')}
+                          className='col-span-4'
+                          autoComplete='off'
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage className='col-span-4 col-start-3' />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {form.watch('type') === 'anthropic_aws' && (
                 <>
@@ -317,6 +312,72 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                             placeholder={t('channels.dialog.fields.awsRegion.placeholder')}
                             className='col-span-4'
                             autoComplete='off'
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className='col-span-4 col-start-3' />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {form.watch('type') === 'anthropic_gcp' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name='credentials.gcp.region'
+                    render={({ field }) => (
+                      <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right'>
+                          {t('channels.dialog.fields.gcpRegion.label')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('channels.dialog.fields.gcpRegion.placeholder')}
+                            className='col-span-4'
+                            autoComplete='off'
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className='col-span-4 col-start-3' />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='credentials.gcp.projectID'
+                    render={({ field }) => (
+                      <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right'>
+                          {t('channels.dialog.fields.gcpProjectID.label')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('channels.dialog.fields.gcpProjectID.placeholder')}
+                            className='col-span-4'
+                            autoComplete='off'
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className='col-span-4 col-start-3' />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='credentials.gcp.jsonData'
+                    render={({ field }) => (
+                      <FormItem className='grid grid-cols-6 items-start space-y-0 gap-x-4 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right pt-2'>
+                          {t('channels.dialog.fields.gcpJsonData.label')}
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder={`{\n  "type": "service_account",\n  "project_id": "project-123",\n  "private_key_id": "fdfd",\n  "private_key": "-----BEGIN PRIVATE KEY-----\\n-----END PRIVATE KEY-----\\n",\n  "client_email": "xxx@developer.gserviceaccount.com",\n  "client_id": "client_213123123",\n  "auth_uri": "https://accounts.google.com/o/oauth2/auth",\n  "token_uri": "https://oauth2.googleapis.com/token",\n  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",\n  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/xxx-compute%40developer.gserviceaccount.com",\n  "universe_domain": "googleapis.com"\n}`}
+                            className='col-span-4 min-h-[200px] font-mono text-xs resize-y'
                             {...field}
                           />
                         </FormControl>

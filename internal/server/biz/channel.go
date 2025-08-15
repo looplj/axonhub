@@ -136,6 +136,29 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				Channel:  c,
 				Outbound: transformer,
 			})
+		case channel.TypeAnthropicGcp:
+			// For anthropic_vertex, we need to create a VertexTransformer with GCP credentials
+			// The transformer will handle Google Vertex AI integration
+			if c.Credentials.GCP == nil {
+				log.Warn(ctx, "GCP credentials are required for anthropic_vertex channel")
+				continue
+			}
+
+			transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+				Type:      anthropic.PlatformVertex,
+				Region:    c.Credentials.GCP.Region,
+				ProjectID: c.Credentials.GCP.ProjectID,
+				JSONData:  c.Credentials.GCP.JSONData,
+			})
+			if err != nil {
+				log.Warn(ctx, "failed to create anthropic vertex outbound transformer", log.Cause(err))
+				continue
+			}
+
+			channels = append(channels, &Channel{
+				Channel:  c,
+				Outbound: transformer,
+			})
 		}
 	}
 

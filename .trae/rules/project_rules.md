@@ -12,12 +12,15 @@ The rules for AxonHub
 
 3. DO NOT ADD ANY NEW METHOD/STRUCTURE/FUNCTION/VARIABLE IN *.resolvers.go
 
+##  Golang rules
+
+1. USE github.com/samber/lo package to handle collection, slice, map, ptr, etc.
+
 
 # Frontend rules
 
 1. We use the pnpm as the package manager, can run `pnpm dev` to start the development server
 
+## i18n rules
 
-# Golang rules
-
-1. USE github.com/samber/lo package to handle collection, slice, map, ptr, etc.
+1. ADD i18n key in the i18n file if created a new key in the code.

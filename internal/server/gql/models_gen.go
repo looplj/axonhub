@@ -39,6 +39,16 @@ type DashboardStats struct {
 	AverageResponseTime *float64 `json:"averageResponseTime,omitempty"`
 }
 
+type GCPCredentials struct {
+	Region   string `json:"region"`
+	JSONData string `json:"jsonData"`
+}
+
+type GCPCredentialsInput struct {
+	Region   string `json:"region"`
+	JSONData string `json:"jsonData"`
+}
+
 type HourlyRequestStats struct {
 	Hour  int `json:"hour"`
 	Count int `json:"count"`

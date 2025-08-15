@@ -345,6 +345,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   openai
   anthropic
   anthropic_aws
+  anthropic_gcp
   gemini
   deepseek
   doubao

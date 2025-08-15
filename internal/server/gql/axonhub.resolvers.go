@@ -22,6 +22,11 @@ func (r *channelCredentialsResolver) AWS(ctx context.Context, obj *objects.Chann
 	panic(fmt.Errorf("not implemented: AWS - aws"))
 }
 
+// GCP is the resolver for the gcp field.
+func (r *channelCredentialsResolver) GCP(ctx context.Context, obj *objects.ChannelCredentials) (*GCPCredentials, error) {
+	panic(fmt.Errorf("not implemented: GCP - gcp"))
+}
+
 // CreateChannel is the resolver for the createChannel field.
 func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
 	channel, err := r.client.Channel.Create().
@@ -351,6 +356,11 @@ func (r *queryResolver) SystemSettings(ctx context.Context) (*SystemSettings, er
 // AWS is the resolver for the aws field.
 func (r *channelCredentialsInputResolver) AWS(ctx context.Context, obj *objects.ChannelCredentials, data *AWSCredentialsInput) error {
 	panic(fmt.Errorf("not implemented: AWS - aws"))
+}
+
+// GCP is the resolver for the gcp field.
+func (r *channelCredentialsInputResolver) GCP(ctx context.Context, obj *objects.ChannelCredentials, data *GCPCredentialsInput) error {
+	panic(fmt.Errorf("not implemented: GCP - gcp"))
 }
 
 // ChannelCredentials returns ChannelCredentialsResolver implementation.

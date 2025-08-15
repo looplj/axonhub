@@ -120,6 +120,7 @@ type ComplexityRoot struct {
 	ChannelCredentials struct {
 		APIKey func(childComplexity int) int
 		AWS    func(childComplexity int) int
+		GCP    func(childComplexity int) int
 	}
 
 	ChannelEdge struct {
@@ -149,6 +150,11 @@ type ComplexityRoot struct {
 		TotalChannels       func(childComplexity int) int
 		TotalRequests       func(childComplexity int) int
 		TotalUsers          func(childComplexity int) int
+	}
+
+	GcpCredentials struct {
+		JSONData func(childComplexity int) int
+		Region   func(childComplexity int) int
 	}
 
 	HourlyRequestStats struct {
@@ -416,6 +422,7 @@ type ChannelResolver interface {
 }
 type ChannelCredentialsResolver interface {
 	AWS(ctx context.Context, obj *objects.ChannelCredentials) (*AWSCredentials, error)
+	GCP(ctx context.Context, obj *objects.ChannelCredentials) (*GCPCredentials, error)
 }
 type JobResolver interface {
 	ID(ctx context.Context, obj *ent.Job) (*objects.GUID, error)
@@ -481,6 +488,7 @@ type UserResolver interface {
 
 type ChannelCredentialsInputResolver interface {
 	AWS(ctx context.Context, obj *objects.ChannelCredentials, data *AWSCredentialsInput) error
+	GCP(ctx context.Context, obj *objects.ChannelCredentials, data *GCPCredentialsInput) error
 }
 
 type executableSchema struct {
@@ -769,6 +777,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelCredentials.AWS(childComplexity), true
 
+	case "ChannelCredentials.gcp":
+		if e.complexity.ChannelCredentials.GCP == nil {
+			break
+		}
+
+		return e.complexity.ChannelCredentials.GCP(childComplexity), true
+
 	case "ChannelEdge.cursor":
 		if e.complexity.ChannelEdge.Cursor == nil {
 			break
@@ -887,6 +902,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DashboardStats.TotalUsers(childComplexity), true
+
+	case "GcpCredentials.jsonData":
+		if e.complexity.GcpCredentials.JSONData == nil {
+			break
+		}
+
+		return e.complexity.GcpCredentials.JSONData(childComplexity), true
+
+	case "GcpCredentials.region":
+		if e.complexity.GcpCredentials.Region == nil {
+			break
+		}
+
+		return e.complexity.GcpCredentials.Region(childComplexity), true
 
 	case "HourlyRequestStats.count":
 		if e.complexity.HourlyRequestStats.Count == nil {
@@ -2165,6 +2194,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateRoleInput,
 		ec.unmarshalInputCreateSystemInput,
 		ec.unmarshalInputCreateUserInput,
+		ec.unmarshalInputGcpCredentialsInput,
 		ec.unmarshalInputInitializeSystemInput,
 		ec.unmarshalInputJobWhereInput,
 		ec.unmarshalInputModelMappingInput,
@@ -6774,14 +6804,11 @@ func (ec *executionContext) _ChannelCredentials_apiKey(ctx context.Context, fiel
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ChannelCredentials_apiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -6841,6 +6868,53 @@ func (ec *executionContext) fieldContext_ChannelCredentials_aws(_ context.Contex
 				return ec.fieldContext_AwsCredentials_region(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AwsCredentials", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelCredentials_gcp(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelCredentials_gcp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ChannelCredentials().GCP(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*GCPCredentials)
+	fc.Result = res
+	return ec.marshalOGcpCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGCPCredentials(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelCredentials_gcp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCredentials",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "region":
+				return ec.fieldContext_GcpCredentials_region(ctx, field)
+			case "jsonData":
+				return ec.fieldContext_GcpCredentials_jsonData(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GcpCredentials", field.Name)
 		},
 	}
 	return fc, nil
@@ -7614,6 +7688,94 @@ func (ec *executionContext) fieldContext_DashboardStats_averageResponseTime(_ co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GcpCredentials_region(ctx context.Context, field graphql.CollectedField, obj *GCPCredentials) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GcpCredentials_region(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Region, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GcpCredentials_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GcpCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GcpCredentials_jsonData(ctx context.Context, field graphql.CollectedField, obj *GCPCredentials) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GcpCredentials_jsonData(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JSONData, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GcpCredentials_jsonData(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GcpCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -18450,7 +18612,7 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiKey", "aws"}
+	fieldsInOrder := [...]string{"apiKey", "aws", "gcp"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18459,7 +18621,7 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 		switch k {
 		case "apiKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -18471,6 +18633,15 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 				return it, err
 			}
 			if err = ec.resolvers.ChannelCredentialsInput().AWS(ctx, &it, data); err != nil {
+				return it, err
+			}
+		case "gcp":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gcp"))
+			data, err := ec.unmarshalOGcpCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGCPCredentialsInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ChannelCredentialsInput().GCP(ctx, &it, data); err != nil {
 				return it, err
 			}
 		}
@@ -19699,6 +19870,40 @@ func (ec *executionContext) unmarshalInputCreateUserInput(ctx context.Context, o
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.RoleIDs = converted
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputGcpCredentialsInput(ctx context.Context, obj any) (GCPCredentialsInput, error) {
+	var it GCPCredentialsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"region", "jsonData"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "region":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("region"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Region = data
+		case "jsonData":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jsonData"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.JSONData = data
 		}
 	}
 
@@ -24688,9 +24893,6 @@ func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.Sel
 			out.Values[i] = graphql.MarshalString("ChannelCredentials")
 		case "apiKey":
 			out.Values[i] = ec._ChannelCredentials_apiKey(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "aws":
 			field := field
 
@@ -24701,6 +24903,39 @@ func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.Sel
 					}
 				}()
 				res = ec._ChannelCredentials_aws(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "gcp":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelCredentials_gcp(ctx, field, obj)
 				return res
 			}
 
@@ -24936,6 +25171,50 @@ func (ec *executionContext) _DashboardStats(ctx context.Context, sel ast.Selecti
 			}
 		case "averageResponseTime":
 			out.Values[i] = ec._DashboardStats_averageResponseTime(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var gcpCredentialsImplementors = []string{"GcpCredentials"}
+
+func (ec *executionContext) _GcpCredentials(ctx context.Context, sel ast.SelectionSet, obj *GCPCredentials) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, gcpCredentialsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GcpCredentials")
+		case "region":
+			out.Values[i] = ec._GcpCredentials_region(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "jsonData":
+			out.Values[i] = ec._GcpCredentials_jsonData(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -30033,6 +30312,21 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	_ = sel
 	res := graphql.MarshalFloatContext(*v)
 	return graphql.WrapContextMarshaler(ctx, res)
+}
+
+func (ec *executionContext) marshalOGcpCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGCPCredentials(ctx context.Context, sel ast.SelectionSet, v *GCPCredentials) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._GcpCredentials(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOGcpCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGCPCredentialsInput(ctx context.Context, v any) (*GCPCredentialsInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputGcpCredentialsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx context.Context, v any) ([]*objects.GUID, error) {

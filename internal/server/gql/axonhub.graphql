@@ -17,8 +17,14 @@ input ChannelSettingsInput {
 }
 
 type ChannelCredentials {
-  apiKey: String!
+  apiKey: String
   aws: AwsCredentials
+  gcp: GcpCredentials
+}
+
+type GcpCredentials {
+  region: String!
+  jsonData: String!
 }
 
 type AwsCredentials {
@@ -28,8 +34,9 @@ type AwsCredentials {
 }
 
 input ChannelCredentialsInput {
-  apiKey: String!
+  apiKey: String
   aws: AwsCredentialsInput
+  gcp: GcpCredentialsInput
 }
 
 input AwsCredentialsInput {
@@ -37,6 +44,26 @@ input AwsCredentialsInput {
   secretAccessKey: String!
   region: String!
 }
+
+input GcpCredentialsInput {
+  region: String!
+  jsonData: String!
+}
+
+# input GcpCredentialsInput {
+#   region: String!
+#   type: String!
+#   projectID: String!
+#   privateKeyID: String!
+#   privateKey: String!
+#   clientEmail: String!
+#   clientID: String!
+#   authURI: String!
+#   tokenURI: String!
+#   authProviderX509CertURL: String!
+#   clientX509CertURL: String!
+#   universeDomain: String!
+# }
 
 scalar JSONRawMessage
 scalar JSONRawMessageInput
@@ -91,27 +118,27 @@ input UpdateSystemSettingsInput {
 }
 
 extend type Query {
-    systemStatus: SystemStatus!
-    systemSettings: SystemSettings!
+  systemStatus: SystemStatus!
+  systemSettings: SystemSettings!
 }
 
 type Mutation {
-    createChannel(input: CreateChannelInput!): Channel!
-    updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
-    updateChannelStatus(id: ID!, status: ChannelStatus!): Channel!
+  createChannel(input: CreateChannelInput!): Channel!
+  updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
+  updateChannelStatus(id: ID!, status: ChannelStatus!): Channel!
 
-    createAPIKey(input: CreateAPIKeyInput!): APIKey!
-    updateAPIKeyStatus(id: ID!, status: APIKeyStatus!): APIKey!
+  createAPIKey(input: CreateAPIKeyInput!): APIKey!
+  updateAPIKeyStatus(id: ID!, status: APIKeyStatus!): APIKey!
 
-    createUser(input: CreateUserInput!): User!
-    updateUser(id: ID!, input: UpdateUserInput!): User!
-    updateUserStatus(id: ID!, status: UserStatus!): User!
+  createUser(input: CreateUserInput!): User!
+  updateUser(id: ID!, input: UpdateUserInput!): User!
+  updateUserStatus(id: ID!, status: UserStatus!): User!
 
-    createRole(input: CreateRoleInput!): Role!
-    updateRole(id: ID!, input: UpdateRoleInput!): Role!
+  createRole(input: CreateRoleInput!): Role!
+  updateRole(id: ID!, input: UpdateRoleInput!): Role!
 
-    signIn(input: SignInInput!): SignInPayload!
+  signIn(input: SignInInput!): SignInPayload!
 
-    initializeSystem(input: InitializeSystemInput!): InitializeSystemPayload!
-    updateSystemSettings(input: UpdateSystemSettingsInput!): SystemSettings!
+  initializeSystem(input: InitializeSystemInput!): InitializeSystemPayload!
+  updateSystemSettings(input: UpdateSystemSettingsInput!): SystemSettings!
 }

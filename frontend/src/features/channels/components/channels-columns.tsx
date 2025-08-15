@@ -14,6 +14,7 @@ const getChannelTypeConfig = (t: ReturnType<typeof useTranslation>['t']): Record
   openai: { label: t('channels.types.openai'), color: 'bg-green-100 text-green-800 border-green-200' },
   anthropic: { label: t('channels.types.anthropic'), color: 'bg-orange-100 text-orange-800 border-orange-200' },
   anthropic_aws: { label: t('channels.types.anthropic_aws'), color: 'bg-orange-100 text-orange-800 border-orange-200' },
+  anthropic_gcp: { label: t('channels.types.anthropic_gcp'), color: 'bg-orange-100 text-orange-800 border-orange-200' },
   gemini: { label: t('channels.types.gemini'), color: 'bg-blue-100 text-blue-800 border-blue-200' },
   deepseek: { label: t('channels.types.deepseek'), color: 'bg-purple-100 text-purple-800 border-purple-200' },
   doubao: { label: t('channels.types.doubao'), color: 'bg-red-100 text-red-800 border-red-200' },

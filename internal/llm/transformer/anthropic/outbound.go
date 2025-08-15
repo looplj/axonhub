@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/bedrock"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
+	"github.com/looplj/axonhub/internal/pkg/vertex"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
@@ -35,6 +36,7 @@ type Config struct {
 	SecretAccessKey string `json:"secretAccessKey,omitempty"` // For Bedrock
 
 	ProjectID string `json:"project_id,omitempty"` // For Vertex
+	JSONData  string `json:"json_data,omitempty"`  // For Vertex
 
 	// API configuration
 	BaseURL string `json:"base_url,omitempty"` // Custom base URL (optional)
@@ -69,14 +71,26 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	}
 
 	if config.Type == PlatformBedrock {
-		bedrockExecutor, err := bedrock.NewExecutor(config.Region, config.AccessKeyID, config.SecretAccessKey)
+		executor, err := bedrock.NewExecutor(config.Region, config.AccessKeyID, config.SecretAccessKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bedrock executor: %w", err)
 		}
 
 		t = &BedrockTransformer{
 			Outbound: t,
-			bedrock:  bedrockExecutor,
+			bedrock:  executor,
+		}
+	}
+
+	if config.Type == PlatformVertex {
+		executor, err := vertex.NewExecutorFromJSON(config.Region, config.ProjectID, config.JSONData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create vertex transformer: %w", err)
+		}
+
+		t = &VertexTransformer{
+			Outbound: t,
+			executor: executor,
 		}
 	}
 

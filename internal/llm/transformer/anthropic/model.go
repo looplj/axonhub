@@ -9,7 +9,12 @@ import (
 type MessageRequest struct {
 	MaxTokens int64          `json:"max_tokens" validate:"required,gte=1"`
 	Messages  []MessageParam `json:"messages"   validate:"required"`
-	Model     string         `json:"model"      validate:"required"`
+	Model     string         `json:"model,omitempty"      validate:"required"`
+
+	// The version of the Anthropic API to use.
+	//
+	// It is required for bedrock and vertex.
+	AnthropicVersion string `json:"anthropic_version,omitempty"`
 
 	// Amount of randomness injected into the response.
 	//

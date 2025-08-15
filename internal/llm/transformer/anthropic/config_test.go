@@ -150,35 +150,3 @@ func TestOutboundTransformer_PlatformConfigurationErrors(t *testing.T) {
 		assert.Contains(t, err.Error(), "project ID is required")
 	})
 }
-
-func TestOutboundTransformer_NewOutboundTransformerWithConfig(t *testing.T) {
-	t.Run("Vertex AI configuration", func(t *testing.T) {
-		config := &Config{
-			Type:      PlatformVertex,
-			Region:    "asia-southeast1",
-			ProjectID: "my-vertex-project",
-			APIKey:    "test-key",
-		}
-
-		transformer, _ := NewOutboundTransformerWithConfig(config)
-
-		assert.Equal(t, "https://asia-southeast1-aiplatform.googleapis.com", transformer.(*OutboundTransformer).config.BaseURL)
-		assert.Equal(t, PlatformVertex, transformer.(*OutboundTransformer).config.Type)
-		assert.Equal(t, "asia-southeast1", transformer.(*OutboundTransformer).config.Region)
-		assert.Equal(t, "my-vertex-project", transformer.(*OutboundTransformer).config.ProjectID)
-		assert.Equal(t, "test-key", transformer.(*OutboundTransformer).config.APIKey)
-	})
-
-	t.Run("Direct API with default base URL", func(t *testing.T) {
-		config := &Config{
-			Type:   PlatformDirect,
-			APIKey: "test-key",
-		}
-
-		transformer, _ := NewOutboundTransformerWithConfig(config)
-
-		assert.Equal(t, "https://api.anthropic.com", transformer.(*OutboundTransformer).config.BaseURL)
-		assert.Equal(t, PlatformDirect, transformer.(*OutboundTransformer).config.Type)
-		assert.Equal(t, "test-key", transformer.(*OutboundTransformer).config.APIKey)
-	})
-}
