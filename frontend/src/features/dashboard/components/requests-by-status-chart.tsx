@@ -49,7 +49,7 @@ export function RequestsByStatusChart() {
         <XAxis dataKey="status" />
         <YAxis />
         <Tooltip />
-        <Bar dataKey="count" fill="#8884d8" />
+        <Bar dataKey="count" fill="var(--chart-1)" />
       </BarChart>
     </ResponsiveContainer>
   )

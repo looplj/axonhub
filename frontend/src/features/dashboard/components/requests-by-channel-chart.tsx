@@ -5,7 +5,14 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { useRequestsByChannel } from '../data/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
+const COLORS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+  'var(--chart-1)'
+]
 
 export function RequestsByChannelChart() {
   const { t } = useTranslation()

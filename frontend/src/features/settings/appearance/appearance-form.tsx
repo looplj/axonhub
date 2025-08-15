@@ -19,9 +19,14 @@ import {
 } from '@/components/ui/form'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 
+const colorSchemes = ['blue', 'green', 'purple', 'orange', 'red', 'black', 'cream'] as const
+
 const appearanceFormSchema = z.object({
   theme: z.enum(['light', 'dark'], {
     required_error: 'Please select a theme.',
+  }),
+  colorScheme: z.enum(colorSchemes, {
+    required_error: 'Please select a color scheme.',
   }),
   font: z.enum(fonts, {
     invalid_type_error: 'Select a font',
@@ -33,11 +38,12 @@ type AppearanceFormValues = z.infer<typeof appearanceFormSchema>
 
 export function AppearanceForm() {
   const { font, setFont } = useFont()
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, colorScheme, setColorScheme } = useTheme()
 
   // This can come from your database or API.
   const defaultValues: Partial<AppearanceFormValues> = {
     theme: theme as 'light' | 'dark',
+    colorScheme,
     font,
   }
 
@@ -49,6 +55,7 @@ export function AppearanceForm() {
   function onSubmit(data: AppearanceFormValues) {
     if (data.font != font) setFont(data.font)
     if (data.theme != theme) setTheme(data.theme)
+    if (data.colorScheme != colorScheme) setColorScheme(data.colorScheme)
 
     showSubmittedData(data)
   }
@@ -90,6 +97,38 @@ export function AppearanceForm() {
         />
         <FormField
           control={form.control}
+          name='colorScheme'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Color Scheme</FormLabel>
+              <div className='relative w-max'>
+                <FormControl>
+                  <select
+                    className={cn(
+                      buttonVariants({ variant: 'outline' }),
+                      'w-[200px] appearance-none font-normal capitalize',
+                      'dark:bg-background dark:hover:bg-background'
+                    )}
+                    {...field}
+                  >
+                    {colorSchemes.map((scheme) => (
+                      <option key={scheme} value={scheme}>
+                        {scheme}
+                      </option>
+                    ))}
+                  </select>
+                </FormControl>
+                <ChevronDownIcon className='absolute top-2.5 right-3 h-4 w-4 opacity-50' />
+              </div>
+              <FormDescription className='font-manrope'>
+                Choose your preferred color scheme for the interface.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
           name='theme'
           render={({ field }) => (
             <FormItem className='space-y-1'>
@@ -108,19 +147,19 @@ export function AppearanceForm() {
                     <FormControl>
                       <RadioGroupItem value='light' className='sr-only' />
                     </FormControl>
-                    <div className='border-muted hover:border-accent items-center rounded-md border-2 p-1'>
-                      <div className='space-y-2 rounded-sm bg-[#ecedef] p-2'>
-                        <div className='space-y-2 rounded-md bg-white p-2 shadow-xs'>
-                          <div className='h-2 w-[80px] rounded-lg bg-[#ecedef]' />
-                          <div className='h-2 w-[100px] rounded-lg bg-[#ecedef]' />
+                    <div className='border-muted hover:border-accent items-center rounded-md border-2 p-1 transition-colors'>
+                      <div className='space-y-2 rounded-sm bg-[#f8f9fa] p-2'>
+                        <div className='space-y-2 rounded-md bg-white p-2 shadow-sm'>
+                          <div className='h-2 w-[80px] rounded-lg bg-[#e9ecef]' />
+                          <div className='h-2 w-[100px] rounded-lg bg-[#e9ecef]' />
                         </div>
-                        <div className='flex items-center space-x-2 rounded-md bg-white p-2 shadow-xs'>
-                          <div className='h-4 w-4 rounded-full bg-[#ecedef]' />
-                          <div className='h-2 w-[100px] rounded-lg bg-[#ecedef]' />
+                        <div className='flex items-center space-x-2 rounded-md bg-white p-2 shadow-sm'>
+                          <div className='h-4 w-4 rounded-full bg-primary/20' />
+                          <div className='h-2 w-[100px] rounded-lg bg-[#e9ecef]' />
                         </div>
-                        <div className='flex items-center space-x-2 rounded-md bg-white p-2 shadow-xs'>
-                          <div className='h-4 w-4 rounded-full bg-[#ecedef]' />
-                          <div className='h-2 w-[100px] rounded-lg bg-[#ecedef]' />
+                        <div className='flex items-center space-x-2 rounded-md bg-white p-2 shadow-sm'>
+                          <div className='h-4 w-4 rounded-full bg-[#e9ecef]' />
+                          <div className='h-2 w-[100px] rounded-lg bg-[#e9ecef]' />
                         </div>
                       </div>
                     </div>
@@ -134,19 +173,19 @@ export function AppearanceForm() {
                     <FormControl>
                       <RadioGroupItem value='dark' className='sr-only' />
                     </FormControl>
-                    <div className='border-muted bg-popover hover:bg-accent hover:text-accent-foreground items-center rounded-md border-2 p-1'>
+                    <div className='border-muted hover:border-accent items-center rounded-md border-2 p-1 transition-colors'>
                       <div className='space-y-2 rounded-sm bg-slate-950 p-2'>
-                        <div className='space-y-2 rounded-md bg-slate-800 p-2 shadow-xs'>
-                          <div className='h-2 w-[80px] rounded-lg bg-slate-400' />
-                          <div className='h-2 w-[100px] rounded-lg bg-slate-400' />
+                        <div className='space-y-2 rounded-md bg-slate-800 p-2 shadow-sm'>
+                          <div className='h-2 w-[80px] rounded-lg bg-slate-600' />
+                          <div className='h-2 w-[100px] rounded-lg bg-slate-600' />
                         </div>
-                        <div className='flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-xs'>
-                          <div className='h-4 w-4 rounded-full bg-slate-400' />
-                          <div className='h-2 w-[100px] rounded-lg bg-slate-400' />
+                        <div className='flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-sm'>
+                          <div className='h-4 w-4 rounded-full bg-primary/30' />
+                          <div className='h-2 w-[100px] rounded-lg bg-slate-600' />
                         </div>
-                        <div className='flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-xs'>
-                          <div className='h-4 w-4 rounded-full bg-slate-400' />
-                          <div className='h-2 w-[100px] rounded-lg bg-slate-400' />
+                        <div className='flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-sm'>
+                          <div className='h-4 w-4 rounded-full bg-slate-600' />
+                          <div className='h-2 w-[100px] rounded-lg bg-slate-600' />
                         </div>
                       </div>
                     </div>

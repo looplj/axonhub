@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { IconCheck, IconMoon, IconSun } from '@tabler/icons-react'
+import { IconCheck, IconMoon, IconSun, IconPalette } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/context/theme-context'
 import { Button } from '@/components/ui/button'
@@ -7,14 +7,27 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-export function ThemeSwitch() {
-  const { theme, setTheme } = useTheme()
+const colorSchemes = [
+  { name: 'blue', label: 'Blue', color: 'bg-blue-500' },
+  { name: 'green', label: 'Green', color: 'bg-green-500' },
+  { name: 'purple', label: 'Purple', color: 'bg-purple-500' },
+  { name: 'orange', label: 'Orange', color: 'bg-orange-500' },
+  { name: 'red', label: 'Red', color: 'bg-red-500' },
+  { name: 'black', label: 'Black', color: 'bg-black' },
+  { name: 'cream', label: 'Cream', color: 'bg-amber-100' },
+] as const
 
-  /* Update theme-color meta tag
-   * when theme is updated */
+export function ThemeSwitch() {
+  const { theme, setTheme, colorScheme, setColorScheme } = useTheme()
+
+  /* Update theme-color meta tag when theme is updated */
   useEffect(() => {
     const themeColor = theme === 'dark' ? '#020817' : '#fff'
     const metaThemeColor = document.querySelector("meta[name='theme-color']")
@@ -52,6 +65,34 @@ export function ThemeSwitch() {
             className={cn('ml-auto', theme !== 'system' && 'hidden')}
           />
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <IconPalette size={14} className='mr-2' />
+            Color Scheme
+            <div className={cn('ml-auto h-3 w-3 rounded-full', 
+              colorSchemes.find(s => s.name === colorScheme)?.color || 'bg-blue-500'
+            )} />
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            {colorSchemes.map((scheme) => (
+              <DropdownMenuItem
+                key={scheme.name}
+                onClick={() => setColorScheme(scheme.name)}
+                className='flex items-center justify-between'
+              >
+                <div className='flex items-center'>
+                  <div className={cn('mr-2 h-3 w-3 rounded-full', scheme.color)} />
+                  {scheme.label}
+                </div>
+                <IconCheck
+                  size={14}
+                  className={cn('ml-auto', colorScheme !== scheme.name && 'hidden')}
+                />
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
       </DropdownMenuContent>
     </DropdownMenu>
   )

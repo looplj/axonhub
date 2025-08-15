@@ -92,7 +92,7 @@ if (!rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme='light' storageKey='vite-ui-theme'>
+        <ThemeProvider defaultTheme='light' defaultColorScheme='black' storageKey='axonhub-ui-theme'>
           <FontProvider>
             <SearchProvider>
               <RouterProvider router={router} />
