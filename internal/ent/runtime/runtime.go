@@ -296,11 +296,11 @@ func init() {
 	// user.DefaultLastName holds the default value on creation for the last_name field.
 	user.DefaultLastName = userDescLastName.Default.(string)
 	// userDescIsOwner is the schema descriptor for is_owner field.
-	userDescIsOwner := userFields[6].Descriptor()
+	userDescIsOwner := userFields[7].Descriptor()
 	// user.DefaultIsOwner holds the default value on creation for the is_owner field.
 	user.DefaultIsOwner = userDescIsOwner.Default.(bool)
 	// userDescScopes is the schema descriptor for scopes field.
-	userDescScopes := userFields[7].Descriptor()
+	userDescScopes := userFields[8].Descriptor()
 	// user.DefaultScopes holds the default value on creation for the scopes field.
 	user.DefaultScopes = userDescScopes.Default.([]string)
 }

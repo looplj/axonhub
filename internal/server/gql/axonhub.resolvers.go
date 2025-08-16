@@ -283,8 +283,6 @@ func (r *Resolver) ChannelCredentialsInput() ChannelCredentialsInputResolver {
 	return &channelCredentialsInputResolver{r}
 }
 
-type (
-	channelCredentialsResolver      struct{ *Resolver }
-	mutationResolver                struct{ *Resolver }
-	channelCredentialsInputResolver struct{ *Resolver }
-)
+type channelCredentialsResolver struct{ *Resolver }
+type mutationResolver struct{ *Resolver }
+type channelCredentialsInputResolver struct{ *Resolver }

@@ -567,6 +567,10 @@ input CreateUserInput {
   password: String!
   firstName: String
   lastName: String
+  """
+  用户头像URL
+  """
+  avatar: String
   isOwner: Boolean
   """
   User-specific scopes: write_channels, read_channels, add_users, read_users, etc.
@@ -1754,6 +1758,11 @@ input UpdateUserInput {
   password: String
   firstName: String
   lastName: String
+  """
+  用户头像URL
+  """
+  avatar: String
+  clearAvatar: Boolean
   isOwner: Boolean
   """
   User-specific scopes: write_channels, read_channels, add_users, read_users, etc.
@@ -1778,6 +1787,10 @@ type User implements Node {
   preferLanguage: String!
   firstName: String!
   lastName: String!
+  """
+  用户头像URL
+  """
+  avatar: String
   isOwner: Boolean!
   """
   User-specific scopes: write_channels, read_channels, add_users, read_users, etc.
@@ -2056,6 +2069,24 @@ input UserWhereInput {
   lastNameHasSuffix: String
   lastNameEqualFold: String
   lastNameContainsFold: String
+  """
+  avatar field predicates
+  """
+  avatar: String
+  avatarNEQ: String
+  avatarIn: [String!]
+  avatarNotIn: [String!]
+  avatarGT: String
+  avatarGTE: String
+  avatarLT: String
+  avatarLTE: String
+  avatarContains: String
+  avatarHasPrefix: String
+  avatarHasSuffix: String
+  avatarIsNil: Boolean
+  avatarNotNil: Boolean
+  avatarEqualFold: String
+  avatarContainsFold: String
   """
   is_owner field predicates
   """

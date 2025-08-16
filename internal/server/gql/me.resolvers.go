@@ -39,6 +39,10 @@ func (r *mutationResolver) UpdateMe(ctx context.Context, input UpdateMeInput) (*
 		mut.SetPreferLanguage(*input.PreferLanguage)
 	}
 
+	if input.Avatar != nil {
+		mut.SetAvatar(*input.Avatar)
+	}
+
 	return mut.Save(ctx)
 }
 
@@ -91,6 +95,7 @@ func (r *queryResolver) Me(ctx context.Context) (*UserInfo, error) {
 		LastName:       user.LastName,
 		IsOwner:        user.IsOwner,
 		PreferLanguage: user.PreferLanguage,
+		Avatar:         &user.Avatar,
 		Scopes:         scopesList,
 		Roles:          userRoles,
 	}, nil

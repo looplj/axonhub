@@ -20,6 +20,7 @@ interface MeResponse {
     lastName: string
     isOwner: boolean
     preferLanguage: string
+    avatar?: string
     scopes: string[]
     roles: Array<{
       id: string
@@ -52,6 +53,7 @@ export function useMe() {
         lastName: query.data.lastName,
         isOwner: query.data.isOwner,
         preferLanguage: userLanguage,
+        avatar: query.data.avatar,
         scopes: query.data.scopes,
         roles: query.data.roles.map(role => ({
           id: role.id,

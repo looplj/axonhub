@@ -1712,6 +1712,11 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 				selectedFields = append(selectedFields, user.FieldLastName)
 				fieldSeen[user.FieldLastName] = struct{}{}
 			}
+		case "avatar":
+			if _, ok := fieldSeen[user.FieldAvatar]; !ok {
+				selectedFields = append(selectedFields, user.FieldAvatar)
+				fieldSeen[user.FieldAvatar] = struct{}{}
+			}
 		case "isOwner":
 			if _, ok := fieldSeen[user.FieldIsOwner]; !ok {
 				selectedFields = append(selectedFields, user.FieldIsOwner)

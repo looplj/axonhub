@@ -189,6 +189,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			user.FieldPassword:       {Type: field.TypeString, Column: user.FieldPassword},
 			user.FieldFirstName:      {Type: field.TypeString, Column: user.FieldFirstName},
 			user.FieldLastName:       {Type: field.TypeString, Column: user.FieldLastName},
+			user.FieldAvatar:         {Type: field.TypeString, Column: user.FieldAvatar},
 			user.FieldIsOwner:        {Type: field.TypeBool, Column: user.FieldIsOwner},
 			user.FieldScopes:         {Type: field.TypeJSON, Column: user.FieldScopes},
 		},
@@ -1141,6 +1142,11 @@ func (f *UserFilter) WhereFirstName(p entql.StringP) {
 // WhereLastName applies the entql string predicate on the last_name field.
 func (f *UserFilter) WhereLastName(p entql.StringP) {
 	f.Where(p.Field(user.FieldLastName))
+}
+
+// WhereAvatar applies the entql string predicate on the avatar field.
+func (f *UserFilter) WhereAvatar(p entql.StringP) {
+	f.Where(p.Field(user.FieldAvatar))
 }
 
 // WhereIsOwner applies the entql bool predicate on the is_owner field.

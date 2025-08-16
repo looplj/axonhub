@@ -14,6 +14,7 @@ interface AuthUser {
   lastName: string
   isOwner: boolean
   preferLanguage: string
+  avatar?: string
   scopes: string[]
   roles: Role[]
 }

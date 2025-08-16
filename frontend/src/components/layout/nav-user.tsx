@@ -6,6 +6,7 @@ import {
   CreditCard,
   LogOut,
   Sparkles,
+  User,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -40,8 +41,8 @@ export function NavUser({
   const { t } = useTranslation()
 
   // Check if avatar is a URL or initials
-  const isAvatarUrl = user.avatar.startsWith('http') || user.avatar.startsWith('/')
-  const avatarFallback = isAvatarUrl ? user.name.slice(0, 2).toUpperCase() : user.avatar
+  const isAvatarUrl = user.avatar.startsWith('http') || user.avatar.startsWith('/') || user.avatar.startsWith('data:')
+  const avatarFallback = isAvatarUrl ? user.name.charAt(0).toUpperCase() : user.avatar
 
   return (
     <SidebarMenu>

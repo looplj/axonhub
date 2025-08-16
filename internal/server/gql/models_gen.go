@@ -127,6 +127,7 @@ type UpdateMeInput struct {
 	FirstName      *string `json:"firstName,omitempty"`
 	LastName       *string `json:"lastName,omitempty"`
 	PreferLanguage *string `json:"preferLanguage,omitempty"`
+	Avatar         *string `json:"avatar,omitempty"`
 }
 
 type UpdateSystemSettingsInput struct {
@@ -141,6 +142,7 @@ type UserInfo struct {
 	LastName       string      `json:"lastName"`
 	IsOwner        bool        `json:"isOwner"`
 	PreferLanguage string      `json:"preferLanguage"`
+	Avatar         *string     `json:"avatar,omitempty"`
 	Scopes         []string    `json:"scopes"`
 	Roles          []*RoleInfo `json:"roles"`
 }

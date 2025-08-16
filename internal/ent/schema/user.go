@@ -32,6 +32,7 @@ func (User) Fields() []ent.Field {
 		field.String("password").Sensitive(),
 		field.String("first_name").Default(""),
 		field.String("last_name").Default(""),
+		field.String("avatar").Optional().Comment("用户头像URL"),
 		field.Bool("is_owner").Default(false),
 		field.Strings("scopes").
 			Comment("User-specific scopes: write_channels, read_channels, add_users, read_users, etc.").

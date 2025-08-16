@@ -725,6 +725,11 @@
             "en": "English",
             "zh": "中文"
           }
+        },
+        "avatar": {
+          "label": "Avatar",
+          "upload": "Upload Avatar",
+          "description": "Upload a profile picture. Recommended size is 200x200 pixels."
         }
       },
       "validation": {

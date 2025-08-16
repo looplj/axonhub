@@ -760,6 +760,11 @@
             "en": "English",
             "zh": "中文"
           }
+        },
+        "avatar": {
+          "label": "头像",
+          "upload": "上传头像",
+          "description": "上传个人头像。推荐尺寸为200x200像素。"
         }
       },
       "validation": {

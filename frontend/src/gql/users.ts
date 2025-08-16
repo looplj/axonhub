@@ -7,6 +7,7 @@ export const ME_QUERY = `
       isOwner
       scopes
       preferLanguage
+      avatar
       roles {
         id
         name
@@ -187,6 +188,7 @@ export const UPDATE_ME_MUTATION = `
       lastName
       isOwner
       preferLanguage
+      avatar
     }
   }
 `;

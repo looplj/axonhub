@@ -2948,6 +2948,23 @@ type UserWhereInput struct {
 	LastNameEqualFold    *string  `json:"lastNameEqualFold,omitempty"`
 	LastNameContainsFold *string  `json:"lastNameContainsFold,omitempty"`
 
+	// "avatar" field predicates.
+	Avatar             *string  `json:"avatar,omitempty"`
+	AvatarNEQ          *string  `json:"avatarNEQ,omitempty"`
+	AvatarIn           []string `json:"avatarIn,omitempty"`
+	AvatarNotIn        []string `json:"avatarNotIn,omitempty"`
+	AvatarGT           *string  `json:"avatarGT,omitempty"`
+	AvatarGTE          *string  `json:"avatarGTE,omitempty"`
+	AvatarLT           *string  `json:"avatarLT,omitempty"`
+	AvatarLTE          *string  `json:"avatarLTE,omitempty"`
+	AvatarContains     *string  `json:"avatarContains,omitempty"`
+	AvatarHasPrefix    *string  `json:"avatarHasPrefix,omitempty"`
+	AvatarHasSuffix    *string  `json:"avatarHasSuffix,omitempty"`
+	AvatarIsNil        bool     `json:"avatarIsNil,omitempty"`
+	AvatarNotNil       bool     `json:"avatarNotNil,omitempty"`
+	AvatarEqualFold    *string  `json:"avatarEqualFold,omitempty"`
+	AvatarContainsFold *string  `json:"avatarContainsFold,omitempty"`
+
 	// "is_owner" field predicates.
 	IsOwner    *bool `json:"isOwner,omitempty"`
 	IsOwnerNEQ *bool `json:"isOwnerNEQ,omitempty"`
@@ -3338,6 +3355,51 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 	}
 	if i.LastNameContainsFold != nil {
 		predicates = append(predicates, user.LastNameContainsFold(*i.LastNameContainsFold))
+	}
+	if i.Avatar != nil {
+		predicates = append(predicates, user.AvatarEQ(*i.Avatar))
+	}
+	if i.AvatarNEQ != nil {
+		predicates = append(predicates, user.AvatarNEQ(*i.AvatarNEQ))
+	}
+	if len(i.AvatarIn) > 0 {
+		predicates = append(predicates, user.AvatarIn(i.AvatarIn...))
+	}
+	if len(i.AvatarNotIn) > 0 {
+		predicates = append(predicates, user.AvatarNotIn(i.AvatarNotIn...))
+	}
+	if i.AvatarGT != nil {
+		predicates = append(predicates, user.AvatarGT(*i.AvatarGT))
+	}
+	if i.AvatarGTE != nil {
+		predicates = append(predicates, user.AvatarGTE(*i.AvatarGTE))
+	}
+	if i.AvatarLT != nil {
+		predicates = append(predicates, user.AvatarLT(*i.AvatarLT))
+	}
+	if i.AvatarLTE != nil {
+		predicates = append(predicates, user.AvatarLTE(*i.AvatarLTE))
+	}
+	if i.AvatarContains != nil {
+		predicates = append(predicates, user.AvatarContains(*i.AvatarContains))
+	}
+	if i.AvatarHasPrefix != nil {
+		predicates = append(predicates, user.AvatarHasPrefix(*i.AvatarHasPrefix))
+	}
+	if i.AvatarHasSuffix != nil {
+		predicates = append(predicates, user.AvatarHasSuffix(*i.AvatarHasSuffix))
+	}
+	if i.AvatarIsNil {
+		predicates = append(predicates, user.AvatarIsNil())
+	}
+	if i.AvatarNotNil {
+		predicates = append(predicates, user.AvatarNotNil())
+	}
+	if i.AvatarEqualFold != nil {
+		predicates = append(predicates, user.AvatarEqualFold(*i.AvatarEqualFold))
+	}
+	if i.AvatarContainsFold != nil {
+		predicates = append(predicates, user.AvatarContainsFold(*i.AvatarContainsFold))
 	}
 	if i.IsOwner != nil {
 		predicates = append(predicates, user.IsOwnerEQ(*i.IsOwner))

@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { User } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,9 +31,9 @@ export function ProfileDropdown() {
       <DropdownMenuTrigger asChild>
         <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
           <Avatar className='h-8 w-8'>
-            <AvatarImage src='/avatars/01.png' alt={user?.email || t('profile.dropdown.user')} />
+            <AvatarImage src={user?.avatar} alt={user?.email || t('profile.dropdown.user')} />
             <AvatarFallback>
-              {user?.email ? getInitials(user.email) : t('profile.dropdown.user').charAt(0)}
+              {user?.avatar ? null : <User className='h-4 w-4' />}
             </AvatarFallback>
           </Avatar>
         </Button>

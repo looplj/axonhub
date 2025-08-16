@@ -161,7 +161,7 @@ export function useSidebarData(): SidebarData {
     user: {
       name: getDisplayName(user?.firstName, user?.lastName, user?.email),
       email: user?.email || 'user@example.com',
-      avatar: getInitials(user?.firstName, user?.lastName, user?.email),
+      avatar: user?.avatar || getInitials(user?.firstName, user?.lastName, user?.email),
     },
     teams: [
       {

@@ -70,6 +70,7 @@ type UserInfo {
   lastName: String!
   isOwner: Boolean!
   preferLanguage: String!
+  avatar: String
   scopes: [String!]!
   roles: [RoleInfo!]!
 }
