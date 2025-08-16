@@ -808,10 +808,10 @@
     "title": "初始化系统",
     "description": "欢迎使用 AxonHub！请通过创建所有者账户来设置系统。",
     "form": {
-      "ownerEmail": "所有者邮箱",
-      "ownerPassword": "所有者密码",
-      "ownerFirstName": "所有者名",
-      "ownerLastName": "所有者姓",
+      "ownerEmail": "管理员邮箱",
+      "ownerPassword": "管理员密码",
+      "ownerFirstName": "管理员名",
+      "ownerLastName": "管理员姓",
       "brandName": "品牌名称",
       "placeholders": {
         "ownerEmail": "admin@example.com",

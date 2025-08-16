@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"entgo.io/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/log"
 	"go.uber.org/fx"
@@ -15,17 +15,20 @@ import (
 
 const (
 	// SystemKeyInitialized is the key used to store the initialized flag in the system table.
-	SystemKeyInitialized = "initialized"
+	SystemKeyInitialized = "system_initialized"
+
 	// SystemKeySecretKey is the key used to store the secret key in the system table.
-	SystemKeySecretKey = "secret_key"
+	//
+	//nolint:gosec // Not a secret.
+	SystemKeySecretKey = "system_jwt_secret_key"
+
+	// SystemKeyBrandName is the key for the brand name.
+	SystemKeyBrandName = "system_brand_name"
 
 	// SystemKeyStoreChunks is the key used to store the store_chunks flag in the system table.
 	// If set to true, the system will store chunks in the database.
 	// Default value is false.
-	SystemKeyStoreChunks = "store_chunks"
-
-	// SystemKeyBrandName is the key for the brand name.
-	SystemKeyBrandName = "brand_name"
+	SystemKeyStoreChunks = "requests_store_chunks"
 )
 
 type SystemServiceParams struct {
@@ -210,68 +213,17 @@ func (s *SystemService) SetBrandName(ctx context.Context, brandName string) erro
 // setSystemValue sets or updates a system key-value pair.
 func (s *SystemService) setSystemValue(
 	ctx context.Context,
-	client interface{},
+	client *ent.SystemClient,
 	key, value string,
 ) error {
-	switch c := client.(type) {
-	case *ent.SystemClient:
-		// Check if record exists
-		existing, err := c.Query().Where(system.KeyEQ(key)).Only(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				// Create new record
-				_, err = c.Create().
-					SetKey(key).
-					SetValue(value).
-					Save(ctx)
-				if err != nil {
-					return fmt.Errorf("failed to create system setting: %w", err)
-				}
-
-				return nil
-			}
-
-			return fmt.Errorf("failed to query system setting: %w", err)
-		}
-
-		// Update existing record
-		_, err = c.UpdateOneID(existing.ID).
-			SetValue(value).
-			Save(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to update system setting: %w", err)
-		}
-
-	case *ent.Tx:
-		// Check if record exists
-		existing, err := c.System.Query().Where(system.KeyEQ(key)).Only(ctx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				// Create new record
-				_, err = c.System.Create().
-					SetKey(key).
-					SetValue(value).
-					Save(ctx)
-				if err != nil {
-					return fmt.Errorf("failed to create system setting: %w", err)
-				}
-
-				return nil
-			}
-
-			return fmt.Errorf("failed to query system setting: %w", err)
-		}
-
-		// Update existing record
-		_, err = c.System.UpdateOneID(existing.ID).
-			SetValue(value).
-			Save(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to update system setting: %w", err)
-		}
-
-	default:
-		return fmt.Errorf("unsupported client type")
+	err := client.Create().
+		SetKey(key).
+		SetValue(value).
+		OnConflict().
+		UpdateNewValues().
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create system setting: %w", err)
 	}
 
 	return nil

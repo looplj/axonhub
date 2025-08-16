@@ -33,8 +33,11 @@ type SystemStatusResponse struct {
 
 // InitializeSystemRequest 系统初始化请求.
 type InitializeSystemRequest struct {
-	OwnerEmail    string `json:"ownerEmail"    binding:"required,email"`
-	OwnerPassword string `json:"ownerPassword" binding:"required,min=6"`
+	OwnerEmail     string `json:"ownerEmail"     binding:"required,email"`
+	OwnerPassword  string `json:"ownerPassword"  binding:"required,min=6"`
+	OwnerFirstName string `json:"ownerFirstName" binding:"required"`
+	OwnerLastName  string `json:"ownerLastName"  binding:"required"`
+	BrandName      string `json:"brandName"      binding:"required"`
 }
 
 // InitializeSystemResponse 系统初始化响应.
@@ -95,8 +98,11 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 
 	// Initialize system
 	err = h.SystemService.Initialize(c.Request.Context(), &biz.InitializeSystemArgs{
-		OwnerEmail:    req.OwnerEmail,
-		OwnerPassword: req.OwnerPassword,
+		OwnerEmail:     req.OwnerEmail,
+		OwnerPassword:  req.OwnerPassword,
+		OwnerFirstName: req.OwnerFirstName,
+		OwnerLastName:  req.OwnerLastName,
+		BrandName:      req.BrandName,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, InitializeSystemResponse{

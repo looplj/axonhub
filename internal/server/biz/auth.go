@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	"entgo.io/ent/privacy"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"go.uber.org/fx"
 	"golang.org/x/crypto/bcrypt"

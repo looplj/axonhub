@@ -5,6 +5,7 @@ schema:
   - dashboard.graphql
   - scopes.graphql
   - me.graphql
+  - system.graphql
 
 #exec:
 #  layout: follow-schema

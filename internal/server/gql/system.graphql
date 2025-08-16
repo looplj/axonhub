@@ -1,0 +1,40 @@
+
+input InitializeSystemInput {
+  ownerEmail: String!
+  ownerPassword: String!
+  ownerFirstName: String!
+  ownerLastName: String!
+  brandName: String!
+}
+
+type InitializeSystemPayload {
+  success: Boolean!
+  message: String!
+  user: User
+  token: String
+}
+
+type SystemStatus {
+  isInitialized: Boolean!
+}
+
+type SystemSettings {
+  storeChunks: Boolean!
+  brandName: String
+}
+
+input UpdateSystemSettingsInput {
+  storeChunks: Boolean
+  brandName: String
+}
+
+extend type Mutation {
+  initializeSystem(input: InitializeSystemInput!): InitializeSystemPayload!
+  updateSystemSettings(input: UpdateSystemSettingsInput!): Boolean!
+}
+
+
+extend type Query {
+  systemStatus: SystemStatus!
+  systemSettings: SystemSettings!
+}

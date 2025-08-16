@@ -15,10 +15,7 @@ const SYSTEM_SETTINGS_QUERY = `
 
 const UPDATE_SYSTEM_SETTINGS_MUTATION = `
   mutation UpdateSystemSettings($input: UpdateSystemSettingsInput!) {
-    updateSystemSettings(input: $input) {
-      storeChunks
-      brandName
-    }
+    updateSystemSettings(input: $input)
   }
 `
 
@@ -58,7 +55,7 @@ export function useUpdateSystemSettings() {
   
   return useMutation({
     mutationFn: async (input: UpdateSystemSettingsInput) => {
-      const data = await graphqlRequest<{ updateSystemSettings: SystemSettings }>(
+      const data = await graphqlRequest<{ updateSystemSettings: boolean }>(
         UPDATE_SYSTEM_SETTINGS_MUTATION,
         { input }
       )
