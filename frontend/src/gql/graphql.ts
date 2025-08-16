@@ -1,27 +1,7 @@
 import { toast } from 'sonner'
+import { getTokenFromStorage, removeTokenFromStorage } from '@/stores/authStore'
 
-export const GRAPHQL_ENDPOINT = import.meta.env.VITE_SERVER_ADMIN_GRAPHQL_URL
-
-const ACCESS_TOKEN = 'axonhub_access_token'
-
-// Helper function to get token from localStorage
-const getTokenFromStorage = (): string => {
-  try {
-    return localStorage.getItem(ACCESS_TOKEN) || ''
-  } catch (error) {
-    console.warn('Failed to read token from localStorage:', error)
-    return ''
-  }
-}
-
-// Helper function to remove token from localStorage
-const removeTokenFromStorage = (): void => {
-  try {
-    localStorage.removeItem(ACCESS_TOKEN)
-  } catch (error) {
-    console.warn('Failed to remove token from localStorage:', error)
-  }
-}
+export const GRAPHQL_ENDPOINT = '/admin/graphql'
 
 // GraphQL client function with token support
 export async function graphqlRequest<T>(
@@ -62,12 +42,13 @@ export async function graphqlRequest<T>(
 
   if (result.errors) {
     // Check for authentication errors
-    const authError = result.errors.find((error: any) => 
-      error.message?.includes('unauthorized') || 
-      error.message?.includes('unauthenticated') ||
-      error.extensions?.code === 'UNAUTHENTICATED'
+    const authError = result.errors.find(
+      (error: any) =>
+        error.message?.includes('unauthorized') ||
+        error.message?.includes('unauthenticated') ||
+        error.extensions?.code === 'UNAUTHENTICATED'
     )
-    
+
     if (authError) {
       // Clear token and redirect to login
       removeTokenFromStorage()
@@ -75,7 +56,7 @@ export async function graphqlRequest<T>(
       window.location.href = '/sign-in'
       throw new Error('Unauthorized')
     }
-    
+
     throw new Error(result.errors[0]?.message || 'GraphQL Error')
   }
 

@@ -1,11 +1,15 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
-import { authApi, setTokenInStorage, removeTokenFromStorage } from '@/lib/api-client'
-import { useAuthStore } from '@/stores/authStore'
-import { toast } from 'sonner'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { graphqlRequest } from '@/gql/graphql'
 import { ME_QUERY } from '@/gql/users'
+import { toast } from 'sonner'
+import {
+  useAuthStore,
+  setTokenToStorage,
+  removeTokenFromStorage,
+} from '@/stores/authStore'
+import { authApi } from '@/lib/api-client'
 import i18n from '@/lib/i18n'
 
 export interface SignInInput {
@@ -31,7 +35,7 @@ interface MeResponse {
 
 export function useMe() {
   const { setUser } = useAuthStore((state) => state.auth)
-  
+
   const query = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
@@ -46,7 +50,7 @@ export function useMe() {
   useEffect(() => {
     if (query.data) {
       const userLanguage = query.data.preferLanguage || 'en'
-      
+
       setUser({
         email: query.data.email,
         firstName: query.data.firstName,
@@ -55,10 +59,10 @@ export function useMe() {
         preferLanguage: userLanguage,
         avatar: query.data.avatar,
         scopes: query.data.scopes,
-        roles: query.data.roles.map(role => ({
+        roles: query.data.roles.map((role) => ({
           id: role.id,
-          name: role.name
-        }))
+          name: role.name,
+        })),
       })
 
       // Initialize i18n with user's preferred language
@@ -81,10 +85,10 @@ export function useSignIn() {
     },
     onSuccess: (data) => {
       // Store token in localStorage
-      setTokenInStorage(data.token)
-      
+      setTokenToStorage(data.token)
+
       const userLanguage = data.user.preferLanguage || 'en'
-      
+
       // Update auth store
       setAccessToken(data.token)
       setUser({
@@ -94,26 +98,26 @@ export function useSignIn() {
         isOwner: data.user.isOwner,
         preferLanguage: userLanguage,
         scopes: data.user.scopes,
-        roles: data.user.roles.map(role => ({
+        roles: data.user.roles.map((role) => ({
           id: role.id,
-          name: role.name
-        }))
+          name: role.name,
+        })),
       })
 
       // Initialize i18n with user's preferred language
       if (userLanguage !== i18n.language) {
         i18n.changeLanguage(userLanguage)
       }
-      
+
       toast.success('Successfully signed in!')
-      
+
       // Redirect to home page
       router.navigate({ to: '/' })
     },
     onError: (error: any) => {
       const errorMessage = error.message || 'Failed to sign in'
       toast.error(errorMessage)
-    }
+    },
   })
 }
 
@@ -124,12 +128,12 @@ export function useSignOut() {
   return () => {
     // Clear token from localStorage
     removeTokenFromStorage()
-    
+
     // Clear auth store
     reset()
-    
+
     toast.success('Successfully signed out!')
-    
+
     // Redirect to sign in page
     router.navigate({ to: '/sign-in' })
   }

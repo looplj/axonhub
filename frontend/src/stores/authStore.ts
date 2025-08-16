@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-const ACCESS_TOKEN = 'axonhub_access_token'
+export const ACCESS_TOKEN = 'axonhub_access_token'
 const USER_INFO = 'axonhub_user_info'
 
 interface Role {
@@ -31,7 +31,7 @@ interface AuthState {
 }
 
 // Helper functions for localStorage
-const getTokenFromStorage = (): string => {
+export const getTokenFromStorage = (): string => {
   try {
     return localStorage.getItem(ACCESS_TOKEN) || ''
   } catch (error) {
@@ -40,7 +40,7 @@ const getTokenFromStorage = (): string => {
   }
 }
 
-const setTokenToStorage = (token: string): void => {
+export const setTokenToStorage = (token: string): void => {
   try {
     localStorage.setItem(ACCESS_TOKEN, token)
   } catch (error) {
@@ -48,7 +48,7 @@ const setTokenToStorage = (token: string): void => {
   }
 }
 
-const removeTokenFromStorage = (): void => {
+export const removeTokenFromStorage = (): void => {
   try {
     localStorage.removeItem(ACCESS_TOKEN)
   } catch (error) {

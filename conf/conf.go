@@ -19,28 +19,6 @@ func Load() Config {
 			BasePath:       "",
 			RequestTimeout: 0,
 			Debug:          false,
-			CORS: server.CORS{
-				Debug:   false,
-				Enabled: true,
-				AllowedOrigins: []string{
-					"http://localhost:3000",
-					"http://localhost:5173",
-				},
-				AllowedMethods: []string{
-					"GET",
-					"POST",
-					"DELETE",
-					"PATCH",
-					"PUT",
-					"OPTIONS",
-					"HEAD",
-				},
-				AllowedHeaders:     []string{"*"},
-				ExposedHeaders:     nil,
-				AllowCredentials:   true,
-				MaxAge:             0,
-				OptionsPassthrough: false,
-			},
 		},
 	}
 }

@@ -1,36 +1,7 @@
-import { toast } from 'sonner'
+import { getTokenFromStorage } from '@/stores/authStore'
 
-export const API_BASE_URL = import.meta.env.VITE_SERVER_BASE_URL || 'http://localhost:8090'
-
-const ACCESS_TOKEN = 'axonhub_access_token'
-
-// Helper function to get token from localStorage
-const getTokenFromStorage = (): string => {
-  try {
-    return localStorage.getItem(ACCESS_TOKEN) || ''
-  } catch (error) {
-    console.error('Failed to get token from localStorage:', error)
-    return ''
-  }
-}
-
-// Helper function to set token in localStorage
-export const setTokenInStorage = (token: string): void => {
-  try {
-    localStorage.setItem(ACCESS_TOKEN, token)
-  } catch (error) {
-    console.error('Failed to set token in localStorage:', error)
-  }
-}
-
-// Helper function to remove token from localStorage
-export const removeTokenFromStorage = (): void => {
-  try {
-    localStorage.removeItem(ACCESS_TOKEN)
-  } catch (error) {
-    console.error('Failed to remove token from localStorage:', error)
-  }
-}
+// Same domain, no need to add baseURL.
+export const API_BASE_URL = ''
 
 interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
@@ -54,18 +25,13 @@ export async function apiRequest<T>(
   endpoint: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
-  const {
-    method = 'GET',
-    headers = {},
-    body,
-    requireAuth = false
-  } = options
+  const { method = 'GET', headers = {}, body, requireAuth = false } = options
 
   const url = `${API_BASE_URL}${endpoint}`
-  
+
   const requestHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...headers
+    ...headers,
   }
 
   // Add Authorization header if auth is required
@@ -87,11 +53,11 @@ export async function apiRequest<T>(
 
   try {
     const response = await fetch(url, requestOptions)
-    
+
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`
       let errorData: any = null
-      
+
       try {
         errorData = await response.json()
         if (errorData.message) {
@@ -102,7 +68,7 @@ export async function apiRequest<T>(
       } catch {
         // If response is not JSON, use status text
       }
-      
+
       throw new ApiError(errorMessage, response.status, errorData)
     }
 
@@ -117,7 +83,7 @@ export async function apiRequest<T>(
     if (error instanceof ApiError) {
       throw error
     }
-    
+
     // Network or other errors
     console.error('API request failed:', error)
     throw new ApiError(
@@ -131,7 +97,7 @@ export async function apiRequest<T>(
 export const systemApi = {
   getStatus: (): Promise<{ isInitialized: boolean }> =>
     apiRequest('/v1/system/status'),
-    
+
   initialize: (data: {
     ownerEmail: string
     ownerPassword: string
@@ -141,8 +107,8 @@ export const systemApi = {
   }): Promise<{ success: boolean; message: string }> =>
     apiRequest('/v1/system/initialize', {
       method: 'POST',
-      body: data
-    })
+      body: data,
+    }),
 }
 
 // Auth API endpoints
@@ -165,6 +131,6 @@ export const authApi = {
   }> =>
     apiRequest('/v1/auth/signin', {
       method: 'POST',
-      body: data
-    })
+      body: data,
+    }),
 }

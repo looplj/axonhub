@@ -1,7 +1,6 @@
 package server
 
 import (
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/api"
@@ -24,12 +23,11 @@ type Handlers struct {
 
 func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, client *ent.Client) {
 	server.Use(middleware.WithEntClient(client))
-	unAuthGroup := server.Group("/v1", cors.Default())
+	unAuthGroup := server.Group("/v1")
 	{
 		// Favicon API - 不需要认证
 		unAuthGroup.GET("/favicon", handlers.System.GetFavicon)
 
-		unAuthGroup.OPTIONS("*any", cors.Default())
 		// 系统状态和初始化 API - 不需要认证
 		unAuthGroup.GET("/system/status", handlers.System.GetSystemStatus)
 		unAuthGroup.POST("/system/initialize", handlers.System.InitializeSystem)
@@ -37,16 +35,15 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 		unAuthGroup.POST("/auth/signin", handlers.Auth.SignIn)
 	}
 
-	adminCorsConfig := cors.DefaultConfig()
-	adminCorsConfig.AllowAllOrigins = true
-	adminCorsConfig.AddAllowHeaders("Authorization")
+	// adminCorsConfig := cors.DefaultConfig()
+	// adminCorsConfig.AllowAllOrigins = true
+	// adminCorsConfig.AddAllowHeaders("Authorization")
 	adminGroup := server.Group("/admin",
-		cors.New(adminCorsConfig),
+		// cors.New(adminCorsConfig),
 		middleware.WithJWTAuth(auth),
 	)
 	// 管理员路由 - 使用 JWT 认证
 	{
-		adminGroup.OPTIONS("*any", cors.Default())
 		adminGroup.GET("/playground", func(c *gin.Context) {
 			handlers.Graphql.Playground.ServeHTTP(c.Writer, c.Request)
 		})
