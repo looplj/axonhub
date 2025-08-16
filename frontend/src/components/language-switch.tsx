@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { IconLanguage } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/hooks/useLanguage'
 
 const languages = [
@@ -15,6 +16,7 @@ const languages = [
 
 export function LanguageSwitch() {
   const { currentLanguage, changeLanguage, isUpdating } = useLanguage()
+  const { t } = useTranslation()
 
   const currentLanguageInfo = languages.find(lang => lang.code === currentLanguage) || languages[0]
 
@@ -23,7 +25,7 @@ export function LanguageSwitch() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="h-8 w-8 px-0" disabled={isUpdating}>
           <IconLanguage className="h-4 w-4" />
-          <span className="sr-only">Toggle language</span>
+          <span className="sr-only">{t('language.toggle')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

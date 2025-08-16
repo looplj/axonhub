@@ -167,7 +167,9 @@ export function useSidebarData(): SidebarData {
       {
         name: t('sidebar.team.name'),
         logo: Command,
-        plan: t('sidebar.team.plan'),
+        plan: '',
+        // DO NOT USE THIS
+        // plan: t('sidebar.team.plan'),
       },
     ],
     navGroups: filteredNavGroups,

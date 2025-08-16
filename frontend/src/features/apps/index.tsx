@@ -4,6 +4,7 @@ import {
   IconSortAscendingLetters,
   IconSortDescendingLetters,
 } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -21,16 +22,17 @@ import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { apps } from './data/apps'
 
-const appText = new Map<string, string>([
-  ['all', 'All Apps'],
-  ['connected', 'Connected'],
-  ['notConnected', 'Not Connected'],
-])
-
 export default function Apps() {
   const [sort, setSort] = useState('ascending')
   const [appType, setAppType] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const { t } = useTranslation()
+
+  const appText = new Map<string, string>([
+    ['all', t('apps.filter.all')],
+    ['connected', t('apps.filter.connected')],
+    ['notConnected', t('apps.filter.notConnected')],
+  ])
 
   const filteredApps = apps
     .sort((a, b) =>
@@ -62,16 +64,16 @@ export default function Apps() {
       <Main fixed>
         <div>
           <h1 className='text-2xl font-bold tracking-tight'>
-            App Integrations
+            {t('apps.title')}
           </h1>
           <p className='text-muted-foreground'>
-            Here&apos;s a list of your apps for the integration!
+            {t('apps.description')}
           </p>
         </div>
         <div className='my-4 flex items-end justify-between sm:my-0 sm:items-center'>
           <div className='flex flex-col gap-4 sm:my-4 sm:flex-row'>
             <Input
-              placeholder='Filter apps...'
+              placeholder={t('apps.filter.placeholder')}
               className='h-9 w-40 lg:w-[250px]'
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -81,9 +83,9 @@ export default function Apps() {
                 <SelectValue>{appText.get(appType)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value='all'>All Apps</SelectItem>
-                <SelectItem value='connected'>Connected</SelectItem>
-                <SelectItem value='notConnected'>Not Connected</SelectItem>
+                <SelectItem value='all'>{t('apps.filter.all')}</SelectItem>
+                <SelectItem value='connected'>{t('apps.filter.connected')}</SelectItem>
+                <SelectItem value='notConnected'>{t('apps.filter.notConnected')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -98,13 +100,13 @@ export default function Apps() {
               <SelectItem value='ascending'>
                 <div className='flex items-center gap-4'>
                   <IconSortAscendingLetters size={16} />
-                  <span>Ascending</span>
+                  <span>{t('apps.sort.ascending')}</span>
                 </div>
               </SelectItem>
               <SelectItem value='descending'>
                 <div className='flex items-center gap-4'>
                   <IconSortDescendingLetters size={16} />
-                  <span>Descending</span>
+                  <span>{t('apps.sort.descending')}</span>
                 </div>
               </SelectItem>
             </SelectContent>
@@ -128,7 +130,7 @@ export default function Apps() {
                   size='sm'
                   className={`${app.connected ? 'border border-blue-300 bg-blue-50 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:hover:bg-blue-900' : ''}`}
                 >
-                  {app.connected ? 'Connected' : 'Connect'}
+                  {app.connected ? t('apps.status.connected') : t('apps.status.connect')}
                 </Button>
               </div>
               <div>

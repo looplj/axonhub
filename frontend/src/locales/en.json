@@ -267,6 +267,7 @@
   },
   "channels": {
     "title": "Channel Management",
+    "view": "View",
     "description": "Manage your AI model channels and configurations.",
     "loading": "Loading...",
     "loadError": "Load failed:",
@@ -634,7 +635,24 @@
       "noChannelsAvailable": "No models available"
     }
   },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage your account settings and set e-mail preferences.",
+    "nav": {
+      "profile": "Profile",
+      "account": "Account",
+      "appearance": "Appearance",
+      "notifications": "Notifications",
+      "display": "Display"
+    }
+  },
   "profile": {
+    "dropdown": {
+      "user": "User",
+      "defaultEmail": "user@example.com",
+      "settings": "Settings",
+      "logOut": "Log out"
+    },
     "title": "Profile",
     "description": "This is how others will see you on the site.",
     "loading": "Loading...",
@@ -694,15 +712,6 @@
     "languages": {
       "en": "English",
       "zh": "中文"
-    },
-    "buttons": {
-      "save": "Save Changes",
-      "saving": "Saving...",
-      "cancel": "Cancel"
-    },
-    "messages": {
-      "updateSuccess": "Profile updated successfully!",
-      "updateError": "Failed to update profile: {{message}}"
     }
   },
   "pagination": {

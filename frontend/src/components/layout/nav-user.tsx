@@ -24,6 +24,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { useSignOut } from '@/features/auth/data/auth'
+import { useTranslation } from 'react-i18next'
 
 export function NavUser({
   user,
@@ -36,6 +37,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const signOut = useSignOut()
+  const { t } = useTranslation()
 
   // Check if avatar is a URL or initials
   const isAvatarUrl = user.avatar.startsWith('http') || user.avatar.startsWith('/')
@@ -91,7 +93,7 @@ export function NavUser({
               <DropdownMenuItem asChild>
                 <Link to='/settings/account'>
                   <BadgeCheck />
-                  Account
+                  {t('sidebar.userMenu.account')}
                 </Link>
               </DropdownMenuItem>
               {/* <DropdownMenuItem asChild>
@@ -110,7 +112,7 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut}>
               <LogOut />
-              Log out
+              {t('sidebar.userMenu.logOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -2,7 +2,7 @@
   "sidebar": {
     "groups": {
       "admin": "管理",
-      "general": "通用",
+      "general": "常规",
       "settings": "设置"
     },
     "items": {
@@ -19,6 +19,66 @@
     "team": {
       "name": "AxonHub 管理",
       "plan": "AI + 统一"
+    },
+    "userMenu": {
+      "account": "账户",
+      "logOut": "退出登录"
+    },
+    "profile": {
+      "dropdown": {
+        "user": "用户",
+        "defaultEmail": "user@example.com",
+        "settings": "设置",
+        "logOut": "退出登录"
+      }
+    },
+    "teamSwitcher": {
+      "teams": "团队"
+    }
+  },
+  "theme": {
+    "toggle": "切换主题",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "系统",
+    "colorScheme": "配色方案",
+    "colors": {
+      "blue": "蓝色",
+      "green": "绿色",
+      "purple": "紫色",
+      "orange": "橙色",
+      "red": "红色",
+      "black": "黑色",
+      "cream": "奶油色"
+    }
+  },
+  "language": {
+    "toggle": "切换语言"
+  },
+  "command": {
+    "placeholder": "输入命令或搜索...",
+    "noResults": "未找到结果。",
+    "theme": "主题"
+  },
+  "search": {
+    "placeholder": "搜索"
+  },
+  "apps": {
+    "title": "应用集成",
+    "description": "这是您的应用集成列表！",
+    "filter": {
+      "placeholder": "筛选应用...",
+      "all": "所有应用",
+      "connected": "已连接",
+      "notConnected": "未连接"
+    },
+    "sort": {
+      "ascending": "升序",
+      "descending": "降序"
+    },
+    "status": {
+      "connected": "已连接",
+      "connect": "连接"
     }
   },
   "users": {
@@ -269,6 +329,7 @@
   },
   "channels": {
     "title": "渠道管理",
+    "view": "视图",
     "description": "管理您的 AI 模型渠道和配置。",
     "loading": "加载中...",
     "loadError": "加载失败:",
@@ -636,7 +697,24 @@
       "noChannelsAvailable": "没有可用的模型"
     }
   },
+  "settings": {
+    "title": "设置",
+    "description": "管理您的账户设置和邮件偏好。",
+    "nav": {
+      "profile": "个人资料",
+      "account": "账户",
+      "appearance": "外观",
+      "notifications": "通知",
+      "display": "显示"
+    }
+  },
   "profile": {
+    "dropdown": {
+      "user": "用户",
+      "defaultEmail": "user@example.com",
+      "settings": "设置",
+      "logOut": "退出登录"
+    },
     "title": "个人资料",
     "description": "这是其他人在网站上看到您的方式。",
     "loading": "加载中...",
@@ -696,15 +774,6 @@
     "languages": {
       "en": "English",
       "zh": "中文"
-    },
-    "buttons": {
-      "save": "保存更改",
-      "saving": "保存中...",
-      "cancel": "取消"
-    },
-    "messages": {
-      "updateSuccess": "个人资料更新成功！",
-      "updateError": "更新个人资料失败：{{message}}"
     }
   },
   "pagination": {

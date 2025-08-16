@@ -13,8 +13,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuthStore } from '@/stores/authStore'
 import { useSignOut } from '@/features/auth/data/auth'
+import { useTranslation } from 'react-i18next'
 
 export function ProfileDropdown() {
+  const { t } = useTranslation()
   const { user } = useAuthStore((state) => state.auth)
   const signOut = useSignOut()
 
@@ -28,9 +30,9 @@ export function ProfileDropdown() {
       <DropdownMenuTrigger asChild>
         <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
           <Avatar className='h-8 w-8'>
-            <AvatarImage src='/avatars/01.png' alt={user?.email || 'User'} />
+            <AvatarImage src='/avatars/01.png' alt={user?.email || t('profile.dropdown.user')} />
             <AvatarFallback>
-              {user?.email ? getInitials(user.email) : 'U'}
+              {user?.email ? getInitials(user.email) : t('profile.dropdown.user').charAt(0)}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -39,10 +41,10 @@ export function ProfileDropdown() {
         <DropdownMenuLabel className='font-normal'>
           <div className='flex flex-col space-y-1'>
             <p className='text-sm leading-none font-medium'>
-              {user?.email?.split('@')[0] || 'User'}
+              {user?.email?.split('@')[0] || t('profile.dropdown.user')}
             </p>
             <p className='text-muted-foreground text-xs leading-none'>
-              {user?.email || 'user@example.com'}
+              {user?.email || t('profile.dropdown.defaultEmail')}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -50,27 +52,14 @@ export function ProfileDropdown() {
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
             <Link to='/settings'>
-              Profile
-              <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to='/settings'>
-              Billing
-              <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to='/settings'>
-              Settings
+              {t('profile.dropdown.settings')}
               <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem>New Team</DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut}>
-          Log out
+          {t('profile.dropdown.logOut')}
           <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>

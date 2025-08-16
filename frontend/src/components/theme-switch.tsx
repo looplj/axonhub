@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { IconCheck, IconMoon, IconSun, IconPalette } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/context/theme-context'
 import { Button } from '@/components/ui/button'
@@ -14,18 +15,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const colorSchemes = [
-  { name: 'blue', label: 'Blue', color: 'bg-blue-500' },
-  { name: 'green', label: 'Green', color: 'bg-green-500' },
-  { name: 'purple', label: 'Purple', color: 'bg-purple-500' },
-  { name: 'orange', label: 'Orange', color: 'bg-orange-500' },
-  { name: 'red', label: 'Red', color: 'bg-red-500' },
-  { name: 'black', label: 'Black', color: 'bg-black' },
-  { name: 'cream', label: 'Cream', color: 'bg-amber-100' },
-] as const
-
 export function ThemeSwitch() {
   const { theme, setTheme, colorScheme, setColorScheme } = useTheme()
+  const { t } = useTranslation()
+
+  const colorSchemes = [
+    { name: 'blue', label: t('theme.colors.blue'), color: 'bg-blue-500' },
+    { name: 'green', label: t('theme.colors.green'), color: 'bg-green-500' },
+    { name: 'purple', label: t('theme.colors.purple'), color: 'bg-purple-500' },
+    { name: 'orange', label: t('theme.colors.orange'), color: 'bg-orange-500' },
+    { name: 'red', label: t('theme.colors.red'), color: 'bg-red-500' },
+    { name: 'black', label: t('theme.colors.black'), color: 'bg-black' },
+    { name: 'cream', label: t('theme.colors.cream'), color: 'bg-amber-100' },
+  ] as const
 
   /* Update theme-color meta tag when theme is updated */
   useEffect(() => {
@@ -40,26 +42,26 @@ export function ThemeSwitch() {
         <Button variant='ghost' size='icon' className='scale-95 rounded-full'>
           <IconSun className='size-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90' />
           <IconMoon className='absolute size-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0' />
-          <span className='sr-only'>Toggle theme</span>
+          <span className='sr-only'>{t('theme.toggle')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end'>
         <DropdownMenuItem onClick={() => setTheme('light')}>
-          Light{' '}
+          {t('theme.light')}{' '}
           <IconCheck
             size={14}
             className={cn('ml-auto', theme !== 'light' && 'hidden')}
           />
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme('dark')}>
-          Dark
+          {t('theme.dark')}
           <IconCheck
             size={14}
             className={cn('ml-auto', theme !== 'dark' && 'hidden')}
           />
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme('system')}>
-          System
+          {t('theme.system')}
           <IconCheck
             size={14}
             className={cn('ml-auto', theme !== 'system' && 'hidden')}
@@ -69,7 +71,7 @@ export function ThemeSwitch() {
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <IconPalette size={14} className='mr-2' />
-            Color Scheme
+            {t('theme.colorScheme')}
             <div className={cn('ml-auto h-3 w-3 rounded-full', 
               colorSchemes.find(s => s.name === colorScheme)?.color || 'bg-blue-500'
             )} />
