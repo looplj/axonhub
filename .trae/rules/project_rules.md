@@ -6,7 +6,7 @@ The rules for AxonHub
 
 # Backend rules
 
-1. The server in development is managed by air, will rebuild when code changes, so no need to restart manually.
+1. The server in development is managed by air, it will rebuild and start when code changed, so DO NOT restart manually.
 
 2. Change any ent schema or graphql schema, need to run `make generate` to regenerate models and resolvers.
 
@@ -21,7 +21,14 @@ The rules for AxonHub
 
 # Frontend rules
 
-1. We use the pnpm as the package manager, can run `pnpm dev` to start the development server
+1. DO NOT restart the development server, I have started it already.
+
+2. We use the pnpm as the package manager, can run `pnpm dev` to start the development server
+
+
+## Login
+
+1. Use my@example.com as the email, and pwd123456 as the password to login when need to test the frontend.
 
 ## i18n rules
 

@@ -21,6 +21,34 @@
       "plan": "AI + Unified"
     }
   },
+  "theme": {
+    "toggle": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "colorScheme": "Color scheme",
+    "colors": {
+      "blue": "Blue",
+      "green": "Green",
+      "purple": "Purple",
+      "orange": "Orange",
+      "red": "Red",
+      "black": "Black",
+      "cream": "Cream",
+      "claude": "Claude"
+    }
+  },
+  "language": {
+    "toggle": "Toggle language"
+  },
+  "command": {
+    "placeholder": "Type a command or search...",
+    "noResults": "No results found.",
+    "theme": "Theme"
+  },
+  "search": {
+    "placeholder": "Search"
+  },
   "users": {
     "title": "User Management",
     "description": "Manage system users and permission configurations.",
