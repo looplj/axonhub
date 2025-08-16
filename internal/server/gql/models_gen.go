@@ -7,18 +7,6 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
-type AWSCredentials struct {
-	AccessKeyID     string `json:"accessKeyID"`
-	SecretAccessKey string `json:"secretAccessKey"`
-	Region          string `json:"region"`
-}
-
-type AWSCredentialsInput struct {
-	AccessKeyID     string `json:"accessKeyID"`
-	SecretAccessKey string `json:"secretAccessKey"`
-	Region          string `json:"region"`
-}
-
 type DailyRequestStats struct {
 	Date         string `json:"date"`
 	Count        int    `json:"count"`
@@ -37,16 +25,6 @@ type DashboardStats struct {
 	SuccessfulRequests  int      `json:"successfulRequests"`
 	FailedRequests      int      `json:"failedRequests"`
 	AverageResponseTime *float64 `json:"averageResponseTime,omitempty"`
-}
-
-type GCPCredentials struct {
-	Region   string `json:"region"`
-	JSONData string `json:"jsonData"`
-}
-
-type GCPCredentialsInput struct {
-	Region   string `json:"region"`
-	JSONData string `json:"jsonData"`
 }
 
 type HourlyRequestStats struct {

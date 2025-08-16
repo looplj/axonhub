@@ -22,9 +22,9 @@ export default function ChannelsProvider({ children }: Props) {
   const [currentRow, setCurrentRow] = useState<Channel | null>(null)
 
   return (
-    <ChannelsContext value={{ open, setOpen, currentRow, setCurrentRow }}>
+    <ChannelsContext.Provider value={{ open, setOpen, currentRow, setCurrentRow }}>
       {children}
-    </ChannelsContext>
+    </ChannelsContext.Provider>
   )
 }
 

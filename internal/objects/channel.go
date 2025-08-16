@@ -16,20 +16,26 @@ type ChannelCredentials struct {
 	// APIKey is the API key for the channel.
 	APIKey string `json:"apiKey,omitempty"`
 
-	AWS *struct {
-		Region          string `json:"region"`
-		AccessKeyID     string `json:"accessKeyID"`
-		SecretAccessKey string `json:"secretAccessKey"`
-	} `json:"aws,omitempty"`
+	// AWS is the AWS credentials for the channel.
+	AWS *AWSCredential `json:"aws,omitempty"`
 
-	GCP *struct {
-		Region    string `json:"region"`
-		ProjectID string `json:"projectID"`
-		JSONData  string `json:"jsonData"`
-	} `json:"gcp,omitempty"`
+	// GCP is the GCP credentials for the channel.
+	GCP *GCPCredential `json:"gcp,omitempty"`
 }
 
-type GCPCredentials struct {
+type AWSCredential struct {
+	Region          string `json:"region"`
+	AccessKeyID     string `json:"accessKeyID"`
+	SecretAccessKey string `json:"secretAccessKey"`
+}
+
+type GCPCredential struct {
+	Region    string `json:"region"`
+	ProjectID string `json:"projectID"`
+	JSONData  string `json:"jsonData"`
+}
+
+type GCPCredentialsJSON struct {
 	Type                    string `json:"type" validate:"required"`
 	ProjectID               string `json:"project_id" validate:"required"`
 	PrivateKeyID            string `json:"private_key_id" validate:"required"`

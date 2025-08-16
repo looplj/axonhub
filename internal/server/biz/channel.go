@@ -158,6 +158,30 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				Channel:  c,
 				Outbound: transformer,
 			})
+		case channel.TypeAnthropicFake:
+			// For anthropic_fake, we use the fake transformer for testing
+			fakeTransformer := anthropic.NewFakeTransformer()
+
+			channels = append(channels, &Channel{
+				Channel:  c,
+				Outbound: fakeTransformer,
+			})
+		case channel.TypeOpenaiFake:
+			// For openai_fake, we create a regular outbound transformer and use fake executor
+			transformer, err := openai.NewOutboundTransformer(c.BaseURL, "fake-api-key")
+			if err != nil {
+				log.Warn(ctx, "failed to create openai fake outbound transformer", log.Cause(err))
+				continue
+			}
+
+			fakeTransformer := openai.NewFakeTransformer()
+			fakeExecutor := fakeTransformer.CustomizeExecutor(nil)
+
+			channels = append(channels, &Channel{
+				Channel:  c,
+				Outbound: transformer,
+				Executor: fakeExecutor,
+			})
 		}
 	}
 

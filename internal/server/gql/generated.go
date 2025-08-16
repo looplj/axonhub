@@ -49,7 +49,6 @@ type Config struct {
 type ResolverRoot interface {
 	APIKey() APIKeyResolver
 	Channel() ChannelResolver
-	ChannelCredentials() ChannelCredentialsResolver
 	Job() JobResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
@@ -58,7 +57,6 @@ type ResolverRoot interface {
 	Role() RoleResolver
 	System() SystemResolver
 	User() UserResolver
-	ChannelCredentialsInput() ChannelCredentialsInputResolver
 }
 
 type DirectiveRoot struct {
@@ -89,7 +87,7 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
-	AwsCredentials struct {
+	AWSCredential struct {
 		AccessKeyID     func(childComplexity int) int
 		Region          func(childComplexity int) int
 		SecretAccessKey func(childComplexity int) int
@@ -152,9 +150,10 @@ type ComplexityRoot struct {
 		TotalUsers          func(childComplexity int) int
 	}
 
-	GcpCredentials struct {
-		JSONData func(childComplexity int) int
-		Region   func(childComplexity int) int
+	GCPCredential struct {
+		JSONData  func(childComplexity int) int
+		ProjectID func(childComplexity int) int
+		Region    func(childComplexity int) int
 	}
 
 	HourlyRequestStats struct {
@@ -424,10 +423,6 @@ type APIKeyResolver interface {
 type ChannelResolver interface {
 	ID(ctx context.Context, obj *ent.Channel) (*objects.GUID, error)
 }
-type ChannelCredentialsResolver interface {
-	AWS(ctx context.Context, obj *objects.ChannelCredentials) (*AWSCredentials, error)
-	GCP(ctx context.Context, obj *objects.ChannelCredentials) (*GCPCredentials, error)
-}
 type JobResolver interface {
 	ID(ctx context.Context, obj *ent.Job) (*objects.GUID, error)
 }
@@ -488,11 +483,6 @@ type SystemResolver interface {
 }
 type UserResolver interface {
 	ID(ctx context.Context, obj *ent.User) (*objects.GUID, error)
-}
-
-type ChannelCredentialsInputResolver interface {
-	AWS(ctx context.Context, obj *objects.ChannelCredentials, data *AWSCredentialsInput) error
-	GCP(ctx context.Context, obj *objects.ChannelCredentials, data *GCPCredentialsInput) error
 }
 
 type executableSchema struct {
@@ -624,26 +614,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.APIKeyEdge.Node(childComplexity), true
 
-	case "AwsCredentials.accessKeyID":
-		if e.complexity.AwsCredentials.AccessKeyID == nil {
+	case "AWSCredential.accessKeyID":
+		if e.complexity.AWSCredential.AccessKeyID == nil {
 			break
 		}
 
-		return e.complexity.AwsCredentials.AccessKeyID(childComplexity), true
+		return e.complexity.AWSCredential.AccessKeyID(childComplexity), true
 
-	case "AwsCredentials.region":
-		if e.complexity.AwsCredentials.Region == nil {
+	case "AWSCredential.region":
+		if e.complexity.AWSCredential.Region == nil {
 			break
 		}
 
-		return e.complexity.AwsCredentials.Region(childComplexity), true
+		return e.complexity.AWSCredential.Region(childComplexity), true
 
-	case "AwsCredentials.secretAccessKey":
-		if e.complexity.AwsCredentials.SecretAccessKey == nil {
+	case "AWSCredential.secretAccessKey":
+		if e.complexity.AWSCredential.SecretAccessKey == nil {
 			break
 		}
 
-		return e.complexity.AwsCredentials.SecretAccessKey(childComplexity), true
+		return e.complexity.AWSCredential.SecretAccessKey(childComplexity), true
 
 	case "Channel.baseURL":
 		if e.complexity.Channel.BaseURL == nil {
@@ -907,19 +897,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.DashboardStats.TotalUsers(childComplexity), true
 
-	case "GcpCredentials.jsonData":
-		if e.complexity.GcpCredentials.JSONData == nil {
+	case "GCPCredential.jsonData":
+		if e.complexity.GCPCredential.JSONData == nil {
 			break
 		}
 
-		return e.complexity.GcpCredentials.JSONData(childComplexity), true
+		return e.complexity.GCPCredential.JSONData(childComplexity), true
 
-	case "GcpCredentials.region":
-		if e.complexity.GcpCredentials.Region == nil {
+	case "GCPCredential.projectID":
+		if e.complexity.GCPCredential.ProjectID == nil {
 			break
 		}
 
-		return e.complexity.GcpCredentials.Region(childComplexity), true
+		return e.complexity.GCPCredential.ProjectID(childComplexity), true
+
+	case "GCPCredential.region":
+		if e.complexity.GCPCredential.Region == nil {
+			break
+		}
+
+		return e.complexity.GCPCredential.Region(childComplexity), true
 
 	case "HourlyRequestStats.count":
 		if e.complexity.HourlyRequestStats.Count == nil {
@@ -2215,7 +2212,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAPIKeyOrder,
 		ec.unmarshalInputAPIKeyWhereInput,
-		ec.unmarshalInputAwsCredentialsInput,
+		ec.unmarshalInputAWSCredentialInput,
 		ec.unmarshalInputChannelCredentialsInput,
 		ec.unmarshalInputChannelOrder,
 		ec.unmarshalInputChannelSettingsInput,
@@ -2226,7 +2223,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateRoleInput,
 		ec.unmarshalInputCreateSystemInput,
 		ec.unmarshalInputCreateUserInput,
-		ec.unmarshalInputGcpCredentialsInput,
+		ec.unmarshalInputGCPCredentialInput,
 		ec.unmarshalInputInitializeSystemInput,
 		ec.unmarshalInputJobWhereInput,
 		ec.unmarshalInputModelMappingInput,
@@ -5933,8 +5930,8 @@ func (ec *executionContext) fieldContext_APIKeyEdge_cursor(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _AwsCredentials_accessKeyID(ctx context.Context, field graphql.CollectedField, obj *AWSCredentials) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_AwsCredentials_accessKeyID(ctx, field)
+func (ec *executionContext) _AWSCredential_accessKeyID(ctx context.Context, field graphql.CollectedField, obj *objects.AWSCredential) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AWSCredential_accessKeyID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -5964,9 +5961,9 @@ func (ec *executionContext) _AwsCredentials_accessKeyID(ctx context.Context, fie
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_AwsCredentials_accessKeyID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AWSCredential_accessKeyID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "AwsCredentials",
+		Object:     "AWSCredential",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -5977,8 +5974,8 @@ func (ec *executionContext) fieldContext_AwsCredentials_accessKeyID(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _AwsCredentials_secretAccessKey(ctx context.Context, field graphql.CollectedField, obj *AWSCredentials) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_AwsCredentials_secretAccessKey(ctx, field)
+func (ec *executionContext) _AWSCredential_secretAccessKey(ctx context.Context, field graphql.CollectedField, obj *objects.AWSCredential) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AWSCredential_secretAccessKey(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6008,9 +6005,9 @@ func (ec *executionContext) _AwsCredentials_secretAccessKey(ctx context.Context,
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_AwsCredentials_secretAccessKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AWSCredential_secretAccessKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "AwsCredentials",
+		Object:     "AWSCredential",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -6021,8 +6018,8 @@ func (ec *executionContext) fieldContext_AwsCredentials_secretAccessKey(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _AwsCredentials_region(ctx context.Context, field graphql.CollectedField, obj *AWSCredentials) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_AwsCredentials_region(ctx, field)
+func (ec *executionContext) _AWSCredential_region(ctx context.Context, field graphql.CollectedField, obj *objects.AWSCredential) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AWSCredential_region(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6052,9 +6049,9 @@ func (ec *executionContext) _AwsCredentials_region(ctx context.Context, field gr
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_AwsCredentials_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AWSCredential_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "AwsCredentials",
+		Object:     "AWSCredential",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -6873,7 +6870,7 @@ func (ec *executionContext) _ChannelCredentials_aws(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.ChannelCredentials().AWS(rctx, obj)
+		return obj.AWS, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6882,27 +6879,27 @@ func (ec *executionContext) _ChannelCredentials_aws(ctx context.Context, field g
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*AWSCredentials)
+	res := resTmp.(*objects.AWSCredential)
 	fc.Result = res
-	return ec.marshalOAwsCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAWSCredentials(ctx, field.Selections, res)
+	return ec.marshalOAWSCredential2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAWSCredential(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ChannelCredentials_aws(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelCredentials",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "accessKeyID":
-				return ec.fieldContext_AwsCredentials_accessKeyID(ctx, field)
+				return ec.fieldContext_AWSCredential_accessKeyID(ctx, field)
 			case "secretAccessKey":
-				return ec.fieldContext_AwsCredentials_secretAccessKey(ctx, field)
+				return ec.fieldContext_AWSCredential_secretAccessKey(ctx, field)
 			case "region":
-				return ec.fieldContext_AwsCredentials_region(ctx, field)
+				return ec.fieldContext_AWSCredential_region(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type AwsCredentials", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type AWSCredential", field.Name)
 		},
 	}
 	return fc, nil
@@ -6922,7 +6919,7 @@ func (ec *executionContext) _ChannelCredentials_gcp(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.ChannelCredentials().GCP(rctx, obj)
+		return obj.GCP, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6931,25 +6928,27 @@ func (ec *executionContext) _ChannelCredentials_gcp(ctx context.Context, field g
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*GCPCredentials)
+	res := resTmp.(*objects.GCPCredential)
 	fc.Result = res
-	return ec.marshalOGcpCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGCPCredentials(ctx, field.Selections, res)
+	return ec.marshalOGCPCredential2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ChannelCredentials_gcp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelCredentials",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "region":
-				return ec.fieldContext_GcpCredentials_region(ctx, field)
+				return ec.fieldContext_GCPCredential_region(ctx, field)
+			case "projectID":
+				return ec.fieldContext_GCPCredential_projectID(ctx, field)
 			case "jsonData":
-				return ec.fieldContext_GcpCredentials_jsonData(ctx, field)
+				return ec.fieldContext_GCPCredential_jsonData(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type GcpCredentials", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GCPCredential", field.Name)
 		},
 	}
 	return fc, nil
@@ -7728,8 +7727,8 @@ func (ec *executionContext) fieldContext_DashboardStats_averageResponseTime(_ co
 	return fc, nil
 }
 
-func (ec *executionContext) _GcpCredentials_region(ctx context.Context, field graphql.CollectedField, obj *GCPCredentials) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GcpCredentials_region(ctx, field)
+func (ec *executionContext) _GCPCredential_region(ctx context.Context, field graphql.CollectedField, obj *objects.GCPCredential) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GCPCredential_region(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7759,9 +7758,9 @@ func (ec *executionContext) _GcpCredentials_region(ctx context.Context, field gr
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GcpCredentials_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GCPCredential_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GcpCredentials",
+		Object:     "GCPCredential",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7772,8 +7771,52 @@ func (ec *executionContext) fieldContext_GcpCredentials_region(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _GcpCredentials_jsonData(ctx context.Context, field graphql.CollectedField, obj *GCPCredentials) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GcpCredentials_jsonData(ctx, field)
+func (ec *executionContext) _GCPCredential_projectID(ctx context.Context, field graphql.CollectedField, obj *objects.GCPCredential) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GCPCredential_projectID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GCPCredential_projectID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GCPCredential",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GCPCredential_jsonData(ctx context.Context, field graphql.CollectedField, obj *objects.GCPCredential) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GCPCredential_jsonData(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7803,9 +7846,9 @@ func (ec *executionContext) _GcpCredentials_jsonData(ctx context.Context, field 
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GcpCredentials_jsonData(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GCPCredential_jsonData(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GcpCredentials",
+		Object:     "GCPCredential",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -18781,8 +18824,8 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputAwsCredentialsInput(ctx context.Context, obj any) (AWSCredentialsInput, error) {
-	var it AWSCredentialsInput
+func (ec *executionContext) unmarshalInputAWSCredentialInput(ctx context.Context, obj any) (objects.AWSCredential, error) {
+	var it objects.AWSCredential
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -18845,22 +18888,18 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 			it.APIKey = data
 		case "aws":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("aws"))
-			data, err := ec.unmarshalOAwsCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAWSCredentialsInput(ctx, v)
+			data, err := ec.unmarshalOAWSCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAWSCredential(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.ChannelCredentialsInput().AWS(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.AWS = data
 		case "gcp":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gcp"))
-			data, err := ec.unmarshalOGcpCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGCPCredentialsInput(ctx, v)
+			data, err := ec.unmarshalOGCPCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.ChannelCredentialsInput().GCP(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.GCP = data
 		}
 	}
 
@@ -20100,14 +20139,14 @@ func (ec *executionContext) unmarshalInputCreateUserInput(ctx context.Context, o
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputGcpCredentialsInput(ctx context.Context, obj any) (GCPCredentialsInput, error) {
-	var it GCPCredentialsInput
+func (ec *executionContext) unmarshalInputGCPCredentialInput(ctx context.Context, obj any) (objects.GCPCredential, error) {
+	var it objects.GCPCredential
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"region", "jsonData"}
+	fieldsInOrder := [...]string{"region", "projectID", "jsonData"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -20121,6 +20160,13 @@ func (ec *executionContext) unmarshalInputGcpCredentialsInput(ctx context.Contex
 				return it, err
 			}
 			it.Region = data
+		case "projectID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectID"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectID = data
 		case "jsonData":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jsonData"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -24984,29 +25030,29 @@ func (ec *executionContext) _APIKeyEdge(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
-var awsCredentialsImplementors = []string{"AwsCredentials"}
+var aWSCredentialImplementors = []string{"AWSCredential"}
 
-func (ec *executionContext) _AwsCredentials(ctx context.Context, sel ast.SelectionSet, obj *AWSCredentials) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, awsCredentialsImplementors)
+func (ec *executionContext) _AWSCredential(ctx context.Context, sel ast.SelectionSet, obj *objects.AWSCredential) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aWSCredentialImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("AwsCredentials")
+			out.Values[i] = graphql.MarshalString("AWSCredential")
 		case "accessKeyID":
-			out.Values[i] = ec._AwsCredentials_accessKeyID(ctx, field, obj)
+			out.Values[i] = ec._AWSCredential_accessKeyID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "secretAccessKey":
-			out.Values[i] = ec._AwsCredentials_secretAccessKey(ctx, field, obj)
+			out.Values[i] = ec._AWSCredential_secretAccessKey(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "region":
-			out.Values[i] = ec._AwsCredentials_region(ctx, field, obj)
+			out.Values[i] = ec._AWSCredential_region(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -25279,71 +25325,9 @@ func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.Sel
 		case "apiKey":
 			out.Values[i] = ec._ChannelCredentials_apiKey(ctx, field, obj)
 		case "aws":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._ChannelCredentials_aws(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._ChannelCredentials_aws(ctx, field, obj)
 		case "gcp":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._ChannelCredentials_gcp(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._ChannelCredentials_gcp(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -25579,24 +25563,29 @@ func (ec *executionContext) _DashboardStats(ctx context.Context, sel ast.Selecti
 	return out
 }
 
-var gcpCredentialsImplementors = []string{"GcpCredentials"}
+var gCPCredentialImplementors = []string{"GCPCredential"}
 
-func (ec *executionContext) _GcpCredentials(ctx context.Context, sel ast.SelectionSet, obj *GCPCredentials) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, gcpCredentialsImplementors)
+func (ec *executionContext) _GCPCredential(ctx context.Context, sel ast.SelectionSet, obj *objects.GCPCredential) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, gCPCredentialImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("GcpCredentials")
+			out.Values[i] = graphql.MarshalString("GCPCredential")
 		case "region":
-			out.Values[i] = ec._GcpCredentials_region(ctx, field, obj)
+			out.Values[i] = ec._GCPCredential_region(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "projectID":
+			out.Values[i] = ec._GCPCredential_projectID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "jsonData":
-			out.Values[i] = ec._GcpCredentials_jsonData(ctx, field, obj)
+			out.Values[i] = ec._GCPCredential_jsonData(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -30355,18 +30344,18 @@ func (ec *executionContext) unmarshalOAPIKeyWhereInput2ᚖgithubᚗcomᚋlooplj�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOAwsCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAWSCredentials(ctx context.Context, sel ast.SelectionSet, v *AWSCredentials) graphql.Marshaler {
+func (ec *executionContext) marshalOAWSCredential2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAWSCredential(ctx context.Context, sel ast.SelectionSet, v *objects.AWSCredential) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	return ec._AwsCredentials(ctx, sel, v)
+	return ec._AWSCredential(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOAwsCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAWSCredentialsInput(ctx context.Context, v any) (*AWSCredentialsInput, error) {
+func (ec *executionContext) unmarshalOAWSCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAWSCredential(ctx context.Context, v any) (*objects.AWSCredential, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalInputAwsCredentialsInput(ctx, v)
+	res, err := ec.unmarshalInputAWSCredentialInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -30707,18 +30696,18 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
-func (ec *executionContext) marshalOGcpCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGCPCredentials(ctx context.Context, sel ast.SelectionSet, v *GCPCredentials) graphql.Marshaler {
+func (ec *executionContext) marshalOGCPCredential2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, sel ast.SelectionSet, v *objects.GCPCredential) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	return ec._GcpCredentials(ctx, sel, v)
+	return ec._GCPCredential(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOGcpCredentialsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGCPCredentialsInput(ctx context.Context, v any) (*GCPCredentialsInput, error) {
+func (ec *executionContext) unmarshalOGCPCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, v any) (*objects.GCPCredential, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalInputGcpCredentialsInput(ctx, v)
+	res, err := ec.unmarshalInputGCPCredentialInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

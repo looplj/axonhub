@@ -17,16 +17,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// AWS is the resolver for the aws field.
-func (r *channelCredentialsResolver) AWS(ctx context.Context, obj *objects.ChannelCredentials) (*AWSCredentials, error) {
-	panic(fmt.Errorf("not implemented: AWS - aws"))
-}
-
-// GCP is the resolver for the gcp field.
-func (r *channelCredentialsResolver) GCP(ctx context.Context, obj *objects.ChannelCredentials) (*GCPCredentials, error) {
-	panic(fmt.Errorf("not implemented: GCP - gcp"))
-}
-
 // CreateChannel is the resolver for the createChannel field.
 func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
 	channel, err := r.client.Channel.Create().
@@ -260,31 +250,7 @@ func (r *mutationResolver) SignIn(ctx context.Context, input SignInInput) (*Sign
 	}, nil
 }
 
-// AWS is the resolver for the aws field.
-func (r *channelCredentialsInputResolver) AWS(ctx context.Context, obj *objects.ChannelCredentials, data *AWSCredentialsInput) error {
-	panic(fmt.Errorf("not implemented: AWS - aws"))
-}
-
-// GCP is the resolver for the gcp field.
-func (r *channelCredentialsInputResolver) GCP(ctx context.Context, obj *objects.ChannelCredentials, data *GCPCredentialsInput) error {
-	panic(fmt.Errorf("not implemented: GCP - gcp"))
-}
-
-// ChannelCredentials returns ChannelCredentialsResolver implementation.
-func (r *Resolver) ChannelCredentials() ChannelCredentialsResolver {
-	return &channelCredentialsResolver{r}
-}
-
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
-// ChannelCredentialsInput returns ChannelCredentialsInputResolver implementation.
-func (r *Resolver) ChannelCredentialsInput() ChannelCredentialsInputResolver {
-	return &channelCredentialsInputResolver{r}
-}
-
-type (
-	channelCredentialsResolver      struct{ *Resolver }
-	mutationResolver                struct{ *Resolver }
-	channelCredentialsInputResolver struct{ *Resolver }
-)
+type mutationResolver struct{ *Resolver }

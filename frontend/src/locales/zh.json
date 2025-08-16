@@ -364,7 +364,9 @@
       "gemini": "Gemini",
       "deepseek": "DeepSeek",
       "doubao": "Doubao",
-      "kimi": "Kimi"
+      "kimi": "Kimi",
+      "anthropic_fake": "Anthropic Fake",
+      "openai_fake": "OpenAI Fake"
     },
     "actions": {
       "openMenu": "打开菜单",

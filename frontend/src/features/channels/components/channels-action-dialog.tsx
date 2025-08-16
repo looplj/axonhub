@@ -56,6 +56,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     { value: 'deepseek', label: t('channels.types.deepseek') },
     { value: 'doubao', label: t('channels.types.doubao') },
     { value: 'kimi', label: t('channels.types.kimi') },
+    { value: 'anthropic_fake', label: t('channels.types.anthropic_fake') },
+    { value: 'openai_fake', label: t('channels.types.openai_fake') },
   ]
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema
@@ -75,6 +77,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
               accessKeyID: '',
               secretAccessKey: '',
               region: '',
+            },
+            gcp: {
+              region: '',
+              projectID: '',
+              jsonData: '',
             }
           },
         }
@@ -88,7 +95,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
               accessKeyID: '',
               secretAccessKey: '',
               region: '',
-            }
+            },
+            gcp: {
+              region: '',
+              projectID: '',
+              jsonData: '',
+            },
           },
           supportedModels: [],
           defaultTestModel: '',

@@ -16,18 +16,19 @@ input ChannelSettingsInput {
   modelMappings: [ModelMappingInput!]
 }
 
-type ChannelCredentials {
+type ChannelCredentials { 
   apiKey: String
-  aws: AwsCredentials
-  gcp: GcpCredentials
+  aws: AWSCredential
+  gcp: GCPCredential
 }
 
-type GcpCredentials {
+type GCPCredential {
   region: String!
+  projectID: String!
   jsonData: String!
 }
 
-type AwsCredentials {
+type AWSCredential {
   accessKeyID: String!
   secretAccessKey: String!
   region: String!
@@ -35,18 +36,19 @@ type AwsCredentials {
 
 input ChannelCredentialsInput {
   apiKey: String
-  aws: AwsCredentialsInput
-  gcp: GcpCredentialsInput
+  aws: AWSCredentialInput
+  gcp: GCPCredentialInput
 }
 
-input AwsCredentialsInput {
+input AWSCredentialInput {
   accessKeyID: String!
   secretAccessKey: String!
   region: String!
 }
 
-input GcpCredentialsInput {
+input GCPCredentialInput {
   region: String!
+  projectID: String!
   jsonData: String!
 }
 

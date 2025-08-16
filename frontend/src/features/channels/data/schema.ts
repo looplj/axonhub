@@ -9,7 +9,9 @@ export const channelTypeSchema = z.enum([
   'gemini',
   'deepseek',
   'doubao',
-  'kimi'
+  'kimi',
+  'anthropic_fake',
+  'openai_fake'
 ])
 export type ChannelType = z.infer<typeof channelTypeSchema>
 
@@ -43,7 +45,7 @@ export const channelSchema = z.object({
   status: channelStatusSchema,
   supportedModels: z.array(z.string()),
   defaultTestModel: z.string(),
-  settings: channelSettingsSchema,
+  settings: channelSettingsSchema.optional().nullable(),
 
 })
 export type Channel = z.infer<typeof channelSchema>
@@ -53,41 +55,49 @@ export const createChannelInputSchema = z.object({
   type: channelTypeSchema,
   baseURL: z.string().url('请输入有效的 URL'),
   name: z.string().min(1, '名称不能为空'),
-  supportedModels: z.array(z.string()).min(1, '至少选择一个支持的模型'),
+  supportedModels: z.array(z.string()).min(0, '至少选择一个支持的模型'),
   defaultTestModel: z.string().min(1, '请选择默认测试模型'),
   settings: channelSettingsSchema.optional(),
   credentials: z.object({
     apiKey: z.string().min(1, 'API Key 不能为空'),
     aws: z.object({
-      accessKeyID: z.string().min(1, 'AWS Access Key ID 不能为空'),
-      secretAccessKey: z.string().min(1, 'AWS Secret Access Key 不能为空'),
-      region: z.string().min(1, 'AWS Region 不能为空'),
+      accessKeyID: z.string().optional(),
+      secretAccessKey: z.string().optional(),
+      region: z.string().optional(),
     }).optional(),
     gcp: z.object({
-      region: z.string().min(1, 'GCP Region 不能为空'),
-      projectID: z.string().min(1, 'GCP Project ID 不能为空'),
-      jsonData: z.string().min(1, 'GCP Service Account JSON 不能为空'),
+      region: z.string().optional(),
+      projectID: z.string().optional(),
+      jsonData: z.string().optional(),
     }).optional(),
   }),
-}).refine((data) => {
-  // 如果是 anthropic_aws 类型，AWS 字段必填
+}).superRefine((data, ctx) => {
+  // 如果是 anthropic_aws 类型，AWS 字段必填（精确到字段级报错）
   if (data.type === 'anthropic_aws') {
-    return data.credentials.aws && 
-           data.credentials.aws.accessKeyID && 
-           data.credentials.aws.secretAccessKey && 
-           data.credentials.aws.region;
+    const aws = data.credentials?.aws
+    if (!aws?.accessKeyID) {
+      ctx.addIssue({ code: 'custom', message: 'AWS Access Key ID 不能为空', path: ['credentials', 'aws', 'accessKeyID'] })
+    }
+    if (!aws?.secretAccessKey) {
+      ctx.addIssue({ code: 'custom', message: 'AWS Secret Access Key 不能为空', path: ['credentials', 'aws', 'secretAccessKey'] })
+    }
+    if (!aws?.region) {
+      ctx.addIssue({ code: 'custom', message: 'AWS Region 不能为空', path: ['credentials', 'aws', 'region'] })
+    }
   }
-  // 如果是 anthropic_gcp 类型，GCP 字段必填
+  // 如果是 anthropic_gcp 类型，GCP 字段必填（精确到字段级报错）
   if (data.type === 'anthropic_gcp') {
-    return data.credentials.gcp && 
-           data.credentials.gcp.region && 
-           data.credentials.gcp.projectID && 
-           data.credentials.gcp.jsonData;
+    const gcp = data.credentials?.gcp
+    if (!gcp?.region) {
+      ctx.addIssue({ code: 'custom', message: 'GCP Region 不能为空', path: ['credentials', 'gcp', 'region'] })
+    }
+    if (!gcp?.projectID) {
+      ctx.addIssue({ code: 'custom', message: 'GCP Project ID 不能为空', path: ['credentials', 'gcp', 'projectID'] })
+    }
+    if (!gcp?.jsonData) {
+      ctx.addIssue({ code: 'custom', message: 'GCP Service Account JSON 不能为空', path: ['credentials', 'gcp', 'jsonData'] })
+    }
   }
-  return true;
-}, {
-  message: '选择 Anthropic AWS 类型时，AWS 配置信息为必填项；选择 Anthropic GCP 类型时，GCP 配置信息为必填项',
-  path: ['credentials'],
 })
 export type CreateChannelInput = z.infer<typeof createChannelInputSchema>
 
@@ -102,35 +112,43 @@ export const updateChannelInputSchema = z.object({
   credentials: z.object({
     apiKey: z.string().optional(),
     aws: z.object({
-      accessKeyID: z.string().min(1, 'AWS Access Key ID 不能为空'),
-      secretAccessKey: z.string().min(1, 'AWS Secret Access Key 不能为空'),
-      region: z.string().min(1, 'AWS Region 不能为空'),
+      accessKeyID: z.string().optional(),
+      secretAccessKey: z.string().optional(),
+      region: z.string().optional(),
     }).optional(),
     gcp: z.object({
-      region: z.string().min(1, 'GCP Region 不能为空'),
-      projectID: z.string().min(1, 'GCP Project ID 不能为空'),
-      jsonData: z.string().min(1, 'GCP Service Account JSON 不能为空'),
+      region: z.string().optional(),
+      projectID: z.string().optional(),
+      jsonData: z.string().optional(),
     }).optional(),
   }).optional(),
-}).refine((data) => {
-  // 如果是 anthropic_aws 类型且提供了 credentials，AWS 字段必填
+}).superRefine((data, ctx) => {
+  // 如果是 anthropic_aws 类型且提供了 credentials，AWS 字段必填（字段级报错）
   if (data.type === 'anthropic_aws' && data.credentials) {
-    return data.credentials.aws && 
-           data.credentials.aws.accessKeyID && 
-           data.credentials.aws.secretAccessKey && 
-           data.credentials.aws.region;
+    const aws = data.credentials.aws
+    if (!aws?.accessKeyID) {
+      ctx.addIssue({ code: 'custom', message: 'AWS Access Key ID 不能为空', path: ['credentials', 'aws', 'accessKeyID'] })
+    }
+    if (!aws?.secretAccessKey) {
+      ctx.addIssue({ code: 'custom', message: 'AWS Secret Access Key 不能为空', path: ['credentials', 'aws', 'secretAccessKey'] })
+    }
+    if (!aws?.region) {
+      ctx.addIssue({ code: 'custom', message: 'AWS Region 不能为空', path: ['credentials', 'aws', 'region'] })
+    }
   }
-  // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填
+  // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）
   if (data.type === 'anthropic_gcp' && data.credentials) {
-    return data.credentials.gcp && 
-           data.credentials.gcp.region && 
-           data.credentials.gcp.projectID && 
-           data.credentials.gcp.jsonData;
+    const gcp = data.credentials.gcp
+    if (!gcp?.region) {
+      ctx.addIssue({ code: 'custom', message: 'GCP Region 不能为空', path: ['credentials', 'gcp', 'region'] })
+    }
+    if (!gcp?.projectID) {
+      ctx.addIssue({ code: 'custom', message: 'GCP Project ID 不能为空', path: ['credentials', 'gcp', 'projectID'] })
+    }
+    if (!gcp?.jsonData) {
+      ctx.addIssue({ code: 'custom', message: 'GCP Service Account JSON 不能为空', path: ['credentials', 'gcp', 'jsonData'] })
+    }
   }
-  return true;
-}, {
-  message: '选择 Anthropic AWS 类型时，AWS 配置信息为必填项；选择 Anthropic GCP 类型时，GCP 配置信息为必填项',
-  path: ['credentials'],
 })
 export type UpdateChannelInput = z.infer<typeof updateChannelInputSchema>
 

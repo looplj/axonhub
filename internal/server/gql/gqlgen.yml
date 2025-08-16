@@ -83,6 +83,18 @@ models:
   ChannelCredentialsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelCredentials
+  AWSCredential:
+    model:
+      - github.com/looplj/axonhub/internal/objects.AWSCredential
+  AWSCredentialInput: 
+    model:
+      - github.com/looplj/axonhub/internal/objects.AWSCredential
+  GCPCredential:
+    model:
+      - github.com/looplj/axonhub/internal/objects.GCPCredential
+  GCPCredentialInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.GCPCredential
   JSONRawMessage:
     model:
       - github.com/looplj/axonhub/internal/objects.JSONRawMessage
