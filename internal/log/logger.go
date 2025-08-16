@@ -10,18 +10,18 @@ import (
 
 // Config ...
 type Config struct {
-	Name        string
-	Debug       bool
-	SkipLevel   int
-	Level       Level
-	LevelKey    string
-	TimeKey     string
-	CallerKey   string
-	FunctionKey string
-	NameKey     string
-	Encoding    string
-	Includes    []string
-	Excludes    []string
+	Name        string   `conf:"name"`
+	Debug       bool     `conf:"debug"`
+	SkipLevel   int      `conf:"skip_level"`
+	Level       Level    `conf:"level"`
+	LevelKey    string   `conf:"level_key"`
+	TimeKey     string   `conf:"time_key"`
+	CallerKey   string   `conf:"caller_key"`
+	FunctionKey string   `conf:"function_key"`
+	NameKey     string   `conf:"name_key"`
+	Encoding    string   `conf:"encoding"`
+	Includes    []string `conf:"includes"`
+	Excludes    []string `conf:"excludes"`
 }
 
 type Logger struct {

@@ -1,22 +1,22 @@
 package middleware
 
 import (
-	"net/http"
+	"context"
 	"time"
 
-	"github.com/gin-contrib/timeout"
 	"github.com/gin-gonic/gin"
+
+	"github.com/looplj/axonhub/internal/log"
 )
 
-func responseTimeout(c *gin.Context) {
-	c.JSON(http.StatusBadGateway, gin.H{
-		"error": "Request timeout",
-	})
-}
-
 func WithTimeout(ts time.Duration) gin.HandlerFunc {
-	return timeout.New(
-		timeout.WithTimeout(ts),
-		timeout.WithResponse(responseTimeout),
-	)
+	return func(c *gin.Context) {
+		log.Info(c, "WithTimeout", log.String("timeout", ts.String()))
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), ts)
+		defer cancel()
+
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	}
 }

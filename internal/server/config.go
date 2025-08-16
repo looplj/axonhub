@@ -5,19 +5,19 @@ import (
 )
 
 type Config struct {
-	Port        int
-	Name        string
-	BasePath    string
-	ReadTimeout time.Duration
+	Port        int           `conf:"port"`
+	Name        string        `conf:"name"`
+	BasePath    string        `conf:"base_path"`
+	ReadTimeout time.Duration `conf:"read_timeout"`
 
 	// WriteTimeout is the maximum duration for writing the response.
-	WriteTimeout time.Duration
+	WriteTimeout time.Duration `conf:"write_timeout"`
 
 	// RequestTimeout is the maximum duration for processing a request.
-	RequestTimeout time.Duration
+	RequestTimeout time.Duration `conf:"request_timeout"`
 
 	// LLMRequestTimeout is the maximum duration for processing a request to LLM.
-	LLMRequestTimeout time.Duration
+	LLMRequestTimeout time.Duration `conf:"llm_request_timeout"`
 
-	Debug bool
+	Debug bool `conf:"debug"`
 }

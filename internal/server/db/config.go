@@ -1,7 +1,7 @@
 package db
 
 type Config struct {
-	Dialect string
-	DSN     string
-	Debug   bool
+	Dialect string `conf:"dialect"`
+	DSN     string `conf:"dsn"`
+	Debug   bool   `conf:"debug"`
 }

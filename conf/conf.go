@@ -2,10 +2,14 @@ package conf
 
 import (
 	"context"
+	"encoding"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
+	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 	"go.uber.org/zap/zapcore"
@@ -18,9 +22,9 @@ import (
 type Config struct {
 	fx.Out
 
-	DB        db.Config     `mapstructure:"db"`
-	Log       log.Config    `mapstructure:"log"`
-	APIServer server.Config `mapstructure:"server"`
+	DB        db.Config     `conf:"db"`
+	Log       log.Config    `conf:"log"`
+	APIServer server.Config `conf:"server"`
 }
 
 // Load loads configuration from YAML file and environment variables.
@@ -64,13 +68,44 @@ func Load() Config {
 
 	// Unmarshal config
 	var config Config
-	if err := v.Unmarshal(&config); err != nil {
+	if err := v.Unmarshal(&config, func(dc *mapstructure.DecoderConfig) {
+		dc.DecodeHook = customizedDecodeHook
+		dc.TagName = "conf"
+	}); err != nil {
 		panic(fmt.Errorf("failed to unmarshal config: %w", err))
 	}
 
-	log.Debug(context.Background(), "Config loaded successfully", log.Any("config", config))
+	log.Info(context.Background(), "Config loaded successfully", log.Any("config", config))
 
 	return config
+}
+
+var (
+	_TypeTextUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+	_TypeDuration        = reflect.TypeOf(time.Duration(1))
+)
+
+func customizedDecodeHook(srcType reflect.Type, dstType reflect.Type, data interface{}) (interface{}, error) {
+	str, ok := data.(string)
+	if !ok {
+		return data, nil
+	}
+
+	switch {
+	case reflect.PointerTo(dstType).Implements(_TypeTextUnmarshaler):
+		value := reflect.New(dstType)
+
+		u, _ := value.Interface().(encoding.TextUnmarshaler)
+		if err := u.UnmarshalText([]byte(str)); err != nil {
+			return nil, err
+		}
+
+		return u, nil
+	case dstType == _TypeDuration:
+		return time.ParseDuration(str)
+	default:
+		return data, nil
+	}
 }
 
 // setDefaults sets default configuration values.
