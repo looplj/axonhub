@@ -26,6 +26,9 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 	server.Use(middleware.WithEntClient(client))
 	unAuthGroup := server.Group("/v1", cors.Default())
 	{
+		// Favicon API - 不需要认证
+		unAuthGroup.GET("/favicon", handlers.System.GetFavicon)
+
 		unAuthGroup.OPTIONS("*any", cors.Default())
 		// 系统状态和初始化 API - 不需要认证
 		unAuthGroup.GET("/system/status", handlers.System.GetSystemStatus)

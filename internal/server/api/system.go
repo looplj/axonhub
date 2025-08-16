@@ -1,10 +1,13 @@
 package api
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"go.uber.org/fx"
@@ -117,4 +120,79 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 		Success: true,
 		Message: "System initialized successfully",
 	})
+}
+
+// GetFavicon returns the system brand logo as favicon.
+func (h *SystemHandlers) GetFavicon(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	brandLogo, err := h.SystemService.BrandLogo(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to get brand logo", log.Cause(err))
+
+		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
+			Error: "Failed to get brand logo",
+		})
+
+		return
+	}
+
+	// 如果没有设置品牌标志，返回 404
+	if brandLogo == "" {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	// 解析 base64 编码的图片数据
+	// 假设格式为 "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+	if !strings.HasPrefix(brandLogo, "data:") {
+		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
+			Error: "Invalid brand logo format",
+		})
+
+		return
+	}
+
+	// 提取 MIME 类型和 base64 数据
+	parts := strings.Split(brandLogo, ",")
+	if len(parts) != 2 {
+		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
+			Error: "Invalid brand logo format",
+		})
+
+		return
+	}
+
+	// 提取 MIME 类型
+	headerPart := parts[0] // "data:image/png;base64"
+	mimeStart := strings.Index(headerPart, ":")
+
+	mimeEnd := strings.Index(headerPart, ";")
+	if mimeStart == -1 || mimeEnd == -1 {
+		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
+			Error: "Invalid brand logo format",
+		})
+
+		return
+	}
+
+	mimeType := headerPart[mimeStart+1 : mimeEnd]
+
+	// 解码 base64 数据
+	imageData, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
+			Error: "Failed to decode brand logo",
+		})
+
+		return
+	}
+
+	// 设置响应头
+	c.Header("Content-Type", mimeType)
+	c.Header("Cache-Control", "public, max-age=3600") // 缓存 1 小时
+	c.Header("Content-Length", fmt.Sprintf("%d", len(imageData)))
+
+	// 返回图片数据
+	c.Data(http.StatusOK, mimeType, imageData)
 }
