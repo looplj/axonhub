@@ -92,7 +92,7 @@ if (!rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme='light' defaultColorScheme='black' storageKey='axonhub-ui-theme'>
+        <ThemeProvider defaultTheme='system' defaultColorScheme='claude'>
           <FontProvider>
             <SearchProvider>
               <RouterProvider router={router} />

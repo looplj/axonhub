@@ -30,9 +30,9 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 export function ThemeProvider({
   children,
   defaultTheme = 'system',
-  defaultColorScheme = 'blue',
-  storageKey = 'vite-ui-theme',
-  colorSchemeStorageKey = 'vite-ui-color-scheme',
+  defaultColorScheme = 'claude',
+  storageKey = 'axonhub-ui-theme',
+  colorSchemeStorageKey = 'axonhub-ui-color-scheme',
   ...props
 }: ThemeProviderProps) {
   const [theme, _setTheme] = useState<Theme>(
