@@ -71,6 +71,7 @@ linters:
     - gocognit
     - err113
     - funcorder
+    - noinlineerr
     
 
   # all available settings of specific linters

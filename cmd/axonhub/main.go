@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/looplj/axonhub/conf"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server"
 	"go.uber.org/fx"
@@ -13,21 +14,7 @@ import (
 func main() {
 	server.Run(
 		fx.Provide(conf.Load),
-		fx.Supply(log.Config{
-			Name:        "AxonHub",
-			Debug:       true,
-			SkipLevel:   0,
-			Level:       log.DebugLevel,
-			LevelKey:    "",
-			TimeKey:     "",
-			CallerKey:   "",
-			FunctionKey: "",
-			NameKey:     "",
-			Encoding:    "console_json",
-			Includes:    nil,
-			Excludes:    nil,
-		}),
-		fx.Invoke(func(lc fx.Lifecycle, server *server.Server) {
+		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, ent *ent.Client) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					go func() {
@@ -40,7 +27,15 @@ func main() {
 					return nil
 				},
 				OnStop: func(ctx context.Context) error {
-					return server.Shutdown(ctx)
+					err := server.Shutdown(ctx)
+					if err != nil {
+						log.Error(context.Background(), "server shutdown error:", log.Cause(err))
+					}
+					err = ent.Close()
+					if err != nil {
+						log.Error(context.Background(), "ent close error:", log.Cause(err))
+					}
+					return nil
 				},
 			})
 		}),

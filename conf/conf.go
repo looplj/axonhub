@@ -1,24 +1,122 @@
 package conf
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/spf13/viper"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server"
+	"github.com/looplj/axonhub/internal/server/db"
 	"go.uber.org/fx"
+	"go.uber.org/zap/zapcore"
 )
 
 type Config struct {
 	fx.Out
 
-	APIServer server.Config
+	DB        db.Config     `mapstructure:"db"`
+	Log       log.Config    `mapstructure:"log"`
+	APIServer server.Config `mapstructure:"server"`
 }
 
+// Load loads configuration from YAML file and environment variables.
 func Load() Config {
-	return Config{
-		APIServer: server.Config{
-			Port:           8090,
-			Name:           "AxonHub",
-			BasePath:       "",
-			RequestTimeout: 0,
-			Debug:          false,
-		},
+	v := viper.New()
+
+	// Set config file name and paths
+	v.SetConfigName("config")
+	v.SetConfigType("yml")
+	v.AddConfigPath(".")
+	v.AddConfigPath("./conf")
+	v.AddConfigPath("/etc/axonhub/")
+	v.AddConfigPath("$HOME/.axonhub")
+
+	// Enable environment variable support
+	v.AutomaticEnv()
+	v.SetEnvPrefix("AXONHUB")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	// Set default values
+	setDefaults(v)
+
+	// Read config file
+	if err := v.ReadInConfig(); err != nil {
+		var configFileNotFoundError viper.ConfigFileNotFoundError
+		if errors.As(err, &configFileNotFoundError) {
+			panic(fmt.Errorf("failed to read config file: %w", err))
+		}
+		// Config file not found, use defaults and environment variables
+	}
+
+	// Parse log level from string before unmarshaling
+	logLevelStr := v.GetString("log.level")
+
+	logLevel, err := parseLogLevel(logLevelStr)
+	if err != nil {
+		panic(fmt.Errorf("invalid log level '%s': %w", logLevelStr, err))
+	}
+	// Set the parsed log level back to viper for unmarshaling
+	v.Set("log.level", int(logLevel))
+
+	// Unmarshal config
+	var config Config
+	if err := v.Unmarshal(&config); err != nil {
+		panic(fmt.Errorf("failed to unmarshal config: %w", err))
+	}
+
+	log.Info(context.Background(), "Config loaded successfully", log.Any("config", config))
+
+	return config
+}
+
+// setDefaults sets default configuration values.
+func setDefaults(v *viper.Viper) {
+	// Server defaults
+	v.SetDefault("server.port", 8090)
+	v.SetDefault("server.name", "AxonHub")
+	v.SetDefault("server.base_path", "")
+	v.SetDefault("server.request_timeout", "30s")
+	v.SetDefault("server.debug", false)
+
+	// Database defaults
+	v.SetDefault("db.dialect", "sqlite3")
+	v.SetDefault("db.dsn", "file:axonhub.db?cache=shared&_fk=1&journal_mode=WAL")
+	v.SetDefault("db.debug", false)
+
+	// Log defaults
+	v.SetDefault("log.name", "axonhub")
+	v.SetDefault("log.debug", false)
+	v.SetDefault("log.skip_level", 1)
+	v.SetDefault("log.level", "info")
+	v.SetDefault("log.level_key", "level")
+	v.SetDefault("log.time_key", "time")
+	v.SetDefault("log.caller_key", "label")
+	v.SetDefault("log.function_key", "")
+	v.SetDefault("log.name_key", "logger")
+	v.SetDefault("log.encoding", "json")
+	v.SetDefault("log.includes", []string{})
+	v.SetDefault("log.excludes", []string{})
+}
+
+// parseLogLevel converts a string log level to zapcore.Level.
+func parseLogLevel(level string) (zapcore.Level, error) {
+	switch strings.ToLower(level) {
+	case "debug":
+		return zapcore.DebugLevel, nil
+	case "info":
+		return zapcore.InfoLevel, nil
+	case "warn", "warning":
+		return zapcore.WarnLevel, nil
+	case "error":
+		return zapcore.ErrorLevel, nil
+	case "panic":
+		return zapcore.PanicLevel, nil
+	case "fatal":
+		return zapcore.FatalLevel, nil
+	default:
+		return zapcore.InfoLevel, fmt.Errorf("unknown log level: %s", level)
 	}
 }

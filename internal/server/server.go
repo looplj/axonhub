@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/looplj/axonhub/internal/log"
@@ -20,6 +19,10 @@ import (
 func New(config Config) *Server {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
+
+	if !config.Debug {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
 	return &Server{
 		config: config,
@@ -44,10 +47,9 @@ func (srv *Server) Run() error {
 	)
 	addr := fmt.Sprintf("0.0.0.0:%d", srv.config.Port)
 	srv.server = &http.Server{
-		Addr:    addr,
-		Handler: srv.Engine,
-		// TODO: set timeout for chat request.
-		ReadTimeout: 10 * time.Minute,
+		Addr:        addr,
+		Handler:     srv.Engine,
+		ReadTimeout: srv.config.ReadTimeout,
 	}
 	srv.addr = addr
 
@@ -70,11 +72,10 @@ func (srv *Server) Shutdown(ctx context.Context) error {
 func Run(opts ...fx.Option) {
 	var constructors []any
 
-	constructors = append(constructors, log.New)
 	constructors = append(constructors, gql.NewGraphqlHandlers, New)
-
 	app := fx.New(
 		append([]fx.Option{
+			fx.NopLogger,
 			fx.Provide(constructors...),
 			dependencies.Module,
 			biz.Module,

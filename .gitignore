@@ -106,3 +106,5 @@ node_modules/
 playwright-report/
 .trae/summary/
 .claude
+
+config.yml

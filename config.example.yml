@@ -1,0 +1,37 @@
+# AxonHub Configuration Example
+# Copy this file to config.yml and modify as needed
+
+# Server configuration
+server:
+  port: 8090                    # Server port (env: AXONHUB_SERVER_PORT)
+  name: "AxonHub"               # Server name (env: AXONHUB_SERVER_NAME)
+  base_path: ""                 # Base path for API routes (env: AXONHUB_SERVER_BASE_PATH)
+  request_timeout: "30s"        # Request timeout duration (env: AXONHUB_SERVER_REQUEST_TIMEOUT)
+  debug: false                  # Enable debug mode (env: AXONHUB_SERVER_DEBUG)
+
+# Database configuration
+db:
+  dialect: "sqlite3"            # Database dialect: sqlite3, postgres, mysql (env: AXONHUB_DB_DIALECT)
+  dsn: "file:axonhub.db?cache=shared&_fk=1"  # Database connection string (env: AXONHUB_DB_DSN)
+  debug: false                  # Enable database debug logging (env: AXONHUB_DB_DEBUG)
+
+# Logging configuration
+log:
+  name: "axonhub"               # Logger name (env: AXONHUB_LOG_NAME)
+  debug: false                  # Enable debug logging (env: AXONHUB_LOG_DEBUG)
+  skip_level: 1                 # Skip levels for caller info (env: AXONHUB_LOG_SKIP_LEVEL)
+  level: "info"                 # Log level: debug, info, warn, error, panic, fatal (env: AXONHUB_LOG_LEVEL)
+  level_key: "level"            # Key name for log level field (env: AXONHUB_LOG_LEVEL_KEY)
+  time_key: "time"              # Key name for timestamp field (env: AXONHUB_LOG_TIME_KEY)
+  caller_key: "label"           # Key name for caller info field (env: AXONHUB_LOG_CALLER_KEY)
+  function_key: ""              # Key name for function field (env: AXONHUB_LOG_FUNCTION_KEY)
+  name_key: "logger"            # Key name for logger name field (env: AXONHUB_LOG_NAME_KEY)
+  encoding: "json"              # Log encoding: json, console, console_json (env: AXONHUB_LOG_ENCODING)
+  includes: []                  # Logger names to include (env: AXONHUB_LOG_INCLUDES)
+  excludes: []                  # Logger names to exclude (env: AXONHUB_LOG_EXCLUDES)
+
+# Environment Variable Examples:
+# export AXONHUB_SERVER_PORT=8080
+# export AXONHUB_DB_DSN="postgres://user:pass@localhost/axonhub?sslmode=disable"
+# export AXONHUB_LOG_LEVEL="debug"
+# export AXONHUB_LOG_ENCODING="console"
