@@ -8,11 +8,13 @@ The rules for AxonHub
 
 1. The server in development is managed by air, it will rebuild and start when code changed, so DO NOT restart manually.
 
-2. Change any ent schema or graphql schema, need to run `make generate` to regenerate models and resolvers.
+2. Use `go build -o axonhub` to build the server to make sure the server is built successfully.
 
-3. Use `make generate` command to generate GraphQL and Ent code, which will automatically enter the gql directory and run go generate.
+3. Change any ent schema or graphql schema, need to run `make generate` to regenerate models and resolvers.
 
-3. DO NOT ADD ANY NEW METHOD/STRUCTURE/FUNCTION/VARIABLE IN *.resolvers.go
+4. Use `make generate` command to generate GraphQL and Ent code, which will automatically enter the gql directory and run go generate.
+
+5. DO NOT ADD ANY NEW METHOD/STRUCTURE/FUNCTION/VARIABLE IN *.resolvers.go
 
 ##  Golang rules
 

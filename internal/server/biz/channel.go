@@ -15,7 +15,6 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
@@ -48,15 +47,14 @@ func (c Channel) ChooseModel(model string) (string, error) {
 type ChannelServiceParams struct {
 	fx.In
 
-	Ent        *ent.Client
-	Executor   executors.ScheduledExecutor
-	HttpClient *httpclient.HttpClient
+	Executor executors.ScheduledExecutor
+	Client   *ent.Client
 }
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
 	svc := &ChannelService{
-		Ent:       params.Ent,
 		Executors: params.Executor,
+		Ent:       params.Client,
 	}
 
 	xerrors.NoErr(svc.loadChannels(context.Background()))
@@ -71,9 +69,9 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 }
 
 type ChannelService struct {
-	Ent       *ent.Client
 	Channels  []*Channel
 	Executors executors.ScheduledExecutor
+	Ent       *ent.Client
 }
 
 func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {

@@ -33,26 +33,22 @@ const (
 
 type SystemServiceParams struct {
 	fx.In
-
-	Ent *ent.Client
 }
 
 func NewSystemService(params SystemServiceParams) *SystemService {
-	svc := &SystemService{
-		Ent: params.Ent,
-	}
+	svc := &SystemService{}
 
 	return svc
 }
 
-type SystemService struct {
-	Ent *ent.Client
-}
+type SystemService struct{}
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	sys, err := s.Ent.System.Query().Where(system.KeyEQ(SystemKeyInitialized)).Only(ctx)
+	client := ent.FromContext(ctx)
+
+	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyInitialized)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return false, nil
@@ -91,20 +87,8 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 		return fmt.Errorf("failed to generate secret key: %w", err)
 	}
 
-	// Start a transaction
-	tx, err := s.Ent.Tx(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to start transaction: %w", err)
-	}
+	tx := ent.FromContext(ctx)
 
-	defer func() {
-		if err != nil {
-			tErr := tx.Rollback()
-			if tErr != nil {
-				log.Error(ctx, "failed to rollback transaction", zap.Error(tErr))
-			}
-		}
-	}()
 	// Hash the owner password
 	hashedPassword, err := HashPassword(args.OwnerPassword)
 	if err != nil {
@@ -127,27 +111,21 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	log.Info(ctx, "created owner user", zap.Int("user_id", user.ID))
 
 	// Set secret key
-	err = s.setSystemValue(ctx, tx.System, SystemKeySecretKey, secretKey)
+	err = s.setSystemValue(ctx, SystemKeySecretKey, secretKey)
 	if err != nil {
 		return fmt.Errorf("failed to set secret key: %w", err)
 	}
 
 	// Set brand name
-	err = s.setSystemValue(ctx, tx.System, SystemKeyBrandName, args.BrandName)
+	err = s.setSystemValue(ctx, SystemKeyBrandName, args.BrandName)
 	if err != nil {
 		return fmt.Errorf("failed to set brand name: %w", err)
 	}
 
 	// Set initialized flag
-	err = s.setSystemValue(ctx, tx.System, SystemKeyInitialized, "true")
+	err = s.setSystemValue(ctx, SystemKeyInitialized, "true")
 	if err != nil {
 		return fmt.Errorf("failed to set initialized flag: %w", err)
-	}
-
-	// Commit transaction
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -155,7 +133,9 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 
 // SecretKey retrieves the JWT secret key from system settings.
 func (s *SystemService) SecretKey(ctx context.Context) (string, error) {
-	sys, err := s.Ent.System.Query().Where(system.KeyEQ(SystemKeySecretKey)).Only(ctx)
+	client := ent.FromContext(ctx)
+
+	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeySecretKey)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return "", fmt.Errorf("secret key not found, system may not be initialized")
@@ -169,12 +149,14 @@ func (s *SystemService) SecretKey(ctx context.Context) (string, error) {
 
 // SetSecretKey sets a new JWT secret key.
 func (s *SystemService) SetSecretKey(ctx context.Context, secretKey string) error {
-	return s.setSystemValue(ctx, s.Ent.System, SystemKeySecretKey, secretKey)
+	return s.setSystemValue(ctx, SystemKeySecretKey, secretKey)
 }
 
 // StoreChunks retrieves the store_chunks flag.
 func (s *SystemService) StoreChunks(ctx context.Context) (bool, error) {
-	sys, err := s.Ent.System.Query().Where(system.KeyEQ(SystemKeyStoreChunks)).Only(ctx)
+	client := ent.FromContext(ctx)
+
+	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyStoreChunks)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return false, nil
@@ -188,12 +170,14 @@ func (s *SystemService) StoreChunks(ctx context.Context) (bool, error) {
 
 // SetStoreChunks sets the store_chunks flag.
 func (s *SystemService) SetStoreChunks(ctx context.Context, storeChunks bool) error {
-	return s.setSystemValue(ctx, s.Ent.System, SystemKeyStoreChunks, fmt.Sprintf("%t", storeChunks))
+	return s.setSystemValue(ctx, SystemKeyStoreChunks, fmt.Sprintf("%t", storeChunks))
 }
 
 // BrandName retrieves the brand name.
 func (s *SystemService) BrandName(ctx context.Context) (string, error) {
-	sys, err := s.Ent.System.Query().Where(system.KeyEQ(SystemKeyBrandName)).Only(ctx)
+	client := ent.FromContext(ctx)
+
+	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyBrandName)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return "", nil
@@ -207,16 +191,17 @@ func (s *SystemService) BrandName(ctx context.Context) (string, error) {
 
 // SetBrandName sets the brand name.
 func (s *SystemService) SetBrandName(ctx context.Context, brandName string) error {
-	return s.setSystemValue(ctx, s.Ent.System, SystemKeyBrandName, brandName)
+	return s.setSystemValue(ctx, SystemKeyBrandName, brandName)
 }
 
 // setSystemValue sets or updates a system key-value pair.
 func (s *SystemService) setSystemValue(
 	ctx context.Context,
-	client *ent.SystemClient,
 	key, value string,
 ) error {
-	err := client.Create().
+	client := ent.FromContext(ctx)
+
+	err := client.System.Create().
 		SetKey(key).
 		SetValue(value).
 		OnConflict().

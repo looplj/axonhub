@@ -3,10 +3,11 @@ package biz
 import (
 	"testing"
 
-	"entgo.io/ent/privacy"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	_ "github.com/looplj/axonhub/internal/ent/runtime"
 )
 
@@ -14,8 +15,9 @@ func TestSystemService_Initialize(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{Ent: client})
+	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
+	ctx = ent.NewContext(ctx, client)
 
 	// Test system initialization with auto-generated secret key
 	err := service.Initialize(ctx, &InitializeSystemArgs{
@@ -55,8 +57,9 @@ func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
 	defer client.Close()
 
-	service := NewSystemService(SystemServiceParams{Ent: client})
+	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
+	ctx = ent.NewContext(ctx, client)
 
 	// Getting secret key before initialization should return error
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)

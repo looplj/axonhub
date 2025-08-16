@@ -19,19 +19,16 @@ import (
 type AuthServiceParams struct {
 	fx.In
 
-	Ent           *ent.Client
 	SystemService *SystemService
 }
 
 func NewAuthService(params AuthServiceParams) *AuthService {
 	return &AuthService{
-		Ent:           params.Ent,
 		SystemService: params.SystemService,
 	}
 }
 
 type AuthService struct {
-	Ent           *ent.Client
 	SystemService *SystemService
 }
 
@@ -91,7 +88,9 @@ func (s *AuthService) AuthenticateUser(
 ) (*ent.User, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	user, err := s.Ent.User.Query().
+	client := ent.FromContext(ctx)
+
+	user, err := client.User.Query().
 		Where(user.EmailEQ(email)).
 		WithRoles().
 		Only(ctx)
@@ -138,7 +137,9 @@ func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) 
 		return nil, fmt.Errorf("invalid token claims")
 	}
 
-	user, err := s.Ent.User.Get(ctx, int(userID))
+	client := ent.FromContext(ctx)
+
+	user, err := client.User.Get(ctx, int(userID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -149,7 +150,9 @@ func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) 
 func (s *AuthService) ValidateAPIKey(ctx context.Context, key string) (*ent.APIKey, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	// 查询数据库验证 API key 是否存在
-	apiKey, err := s.Ent.APIKey.Query().
+	client := ent.FromContext(ctx)
+
+	apiKey, err := client.APIKey.Query().
 		WithUser().
 		Where(apikey.KeyEQ(key)).
 		First(ctx)

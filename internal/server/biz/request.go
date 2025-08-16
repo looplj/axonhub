@@ -16,14 +16,12 @@ import (
 
 // RequestService handles request and request execution operations.
 type RequestService struct {
-	EntClient     *ent.Client
 	SystemService *SystemService
 }
 
 // NewRequestService creates a new RequestService.
-func NewRequestService(entClient *ent.Client, systemService *SystemService) *RequestService {
+func NewRequestService(systemService *SystemService) *RequestService {
 	return &RequestService{
-		EntClient:     entClient,
 		SystemService: systemService,
 	}
 }
@@ -43,7 +41,8 @@ func (s *RequestService) CreateRequest(
 		return nil, err
 	}
 
-	mut := s.EntClient.Request.Create().
+	client := ent.FromContext(ctx)
+	mut := client.Request.Create().
 		SetUser(user).
 		SetModelID(llmRequest.Model).
 		SetFormat(format).
@@ -78,7 +77,9 @@ func (s *RequestService) CreateRequestExecution(
 		return nil, err
 	}
 
-	return s.EntClient.RequestExecution.Create().
+	client := ent.FromContext(ctx)
+
+	return client.RequestExecution.Create().
 		SetFormat(format).
 		SetRequestID(request.ID).
 		SetUserID(request.UserID).
@@ -101,7 +102,9 @@ func (s *RequestService) UpdateRequestCompleted(
 		return err
 	}
 
-	_, err = s.EntClient.Request.UpdateOneID(requestID).
+	client := ent.FromContext(ctx)
+
+	_, err = client.Request.UpdateOneID(requestID).
 		SetStatus(request.StatusCompleted).
 		SetResponseBody(responseBodyBytes).
 		Save(ctx)
@@ -115,7 +118,9 @@ func (s *RequestService) UpdateRequestCompleted(
 
 // UpdateRequestFailed updates request status to failed.
 func (s *RequestService) UpdateRequestFailed(ctx context.Context, requestID int) error {
-	_, err := s.EntClient.Request.UpdateOneID(requestID).
+	client := ent.FromContext(ctx)
+
+	_, err := client.Request.UpdateOneID(requestID).
 		SetStatus(request.StatusFailed).
 		Save(ctx)
 	if err != nil {
@@ -137,7 +142,9 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 		return err
 	}
 
-	_, err = s.EntClient.RequestExecution.UpdateOneID(executionID).
+	client := ent.FromContext(ctx)
+
+	_, err = client.RequestExecution.UpdateOneID(executionID).
 		SetStatus(requestexecution.StatusCompleted).
 		SetResponseBody(responseBodyBytes).
 		Save(ctx)
@@ -155,7 +162,9 @@ func (s *RequestService) UpdateRequestExecutionFailed(
 	executionID int,
 	errorMsg string,
 ) error {
-	_, err := s.EntClient.RequestExecution.UpdateOneID(executionID).
+	client := ent.FromContext(ctx)
+
+	_, err := client.RequestExecution.UpdateOneID(executionID).
 		SetStatus(requestexecution.StatusFailed).
 		SetErrorMessage(errorMsg).
 		Save(ctx)
@@ -203,7 +212,9 @@ func (s *RequestService) AppendRequestExecutionChunk(
 		return err
 	}
 
-	_, err = s.EntClient.RequestExecution.UpdateOneID(executionID).
+	client := ent.FromContext(ctx)
+
+	_, err = client.RequestExecution.UpdateOneID(executionID).
 		AppendResponseChunks([]objects.JSONRawMessage{chunkBytes}).
 		Save(ctx)
 	if err != nil {
@@ -242,7 +253,9 @@ func (s *RequestService) AppendRequestChunk(
 		return err
 	}
 
-	_, err = s.EntClient.Request.UpdateOneID(requestID).
+	client := ent.FromContext(ctx)
+
+	_, err = client.Request.UpdateOneID(requestID).
 		AppendResponseChunks([]objects.JSONRawMessage{chunkBytes}).
 		Save(ctx)
 	if err != nil {
@@ -264,7 +277,9 @@ func (s *RequestService) UpdateRequestExecutionCompletd(
 		return err
 	}
 
-	_, err = s.EntClient.RequestExecution.UpdateOneID(executionID).
+	client := ent.FromContext(ctx)
+
+	_, err = client.RequestExecution.UpdateOneID(executionID).
 		SetStatus(requestexecution.StatusCompleted).
 		SetResponseBody(responseBodyBytes).
 		Save(ctx)

@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/api"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gql"
@@ -21,7 +22,8 @@ type Handlers struct {
 	Auth      *api.AuthHandlers
 }
 
-func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService) {
+func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, client *ent.Client) {
+	server.Use(middleware.WithEntClient(client))
 	unAuthGroup := server.Group("/v1", cors.Default())
 	{
 		unAuthGroup.OPTIONS("*any", cors.Default())

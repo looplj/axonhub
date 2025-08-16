@@ -3,6 +3,7 @@ package gql
 import (
 	"net/http"
 
+	"entgo.io/contrib/entgql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
@@ -17,7 +18,7 @@ import (
 type Dependencies struct {
 	fx.In
 
-	Client        *ent.Client
+	Ent           *ent.Client
 	AuthService   *biz.AuthService
 	SystemService *biz.SystemService
 }
@@ -28,7 +29,7 @@ type GraphqlHandler struct {
 }
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
-	gqlSrv := handler.New(NewSchema(deps.Client, deps.AuthService, deps.SystemService))
+	gqlSrv := handler.New(NewSchema(deps.Ent, deps.AuthService, deps.SystemService))
 
 	gqlSrv.AddTransport(transport.Options{})
 	gqlSrv.AddTransport(transport.GET{})
@@ -41,6 +42,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](1024),
 	})
+	gqlSrv.Use(entgql.Transactioner{TxOpener: deps.Ent})
 
 	return &GraphqlHandler{
 		Graphql:    gqlSrv,
