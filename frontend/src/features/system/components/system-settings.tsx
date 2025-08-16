@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Loader2, Save } from 'lucide-react'
+import React, { useState, useRef } from 'react'
+import { Loader2, Save, Upload, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -25,14 +26,56 @@ export function SystemSettings() {
 
   const [storeChunks, setStoreChunks] = useState(settings?.storeChunks ?? false)
   const [brandName, setBrandName] = useState(settings?.brandName ?? '')
+  const [brandLogo, setBrandLogo] = useState(settings?.brandLogo ?? '')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Update local state when settings are loaded
   React.useEffect(() => {
     if (settings) {
       setStoreChunks(settings.storeChunks)
       setBrandName(settings.brandName ?? '')
+      setBrandLogo(settings.brandLogo ?? '')
     }
   }, [settings])
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+      toast.error(t('system.general.brandLogo.invalidFormat'))
+      return
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error(t('system.general.brandLogo.fileTooLarge'))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        // Check if image is square
+        if (img.width !== img.height) {
+          toast.error(t('system.general.brandLogo.notSquare'))
+          return
+        }
+        setBrandLogo(e.target?.result as string)
+      }
+      img.src = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveLogo = () => {
+    setBrandLogo('')
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
 
   const handleSave = async () => {
     setIsLoading(true)
@@ -40,6 +83,7 @@ export function SystemSettings() {
       await updateSettings.mutateAsync({
         storeChunks,
         brandName: brandName.trim() || undefined,
+        brandLogo: brandLogo || undefined,
       })
     } finally {
       setIsLoading(false)
@@ -49,7 +93,8 @@ export function SystemSettings() {
   const hasChanges =
     settings &&
     (settings.storeChunks !== storeChunks ||
-      (settings.brandName ?? '') !== brandName)
+      (settings.brandName ?? '') !== brandName ||
+      (settings.brandLogo ?? '') !== brandLogo)
 
   if (isLoadingSettings) {
     return (
@@ -85,6 +130,56 @@ export function SystemSettings() {
             />
             <div className='text-muted-foreground text-sm'>
               {t('system.general.brandName.description')}
+            </div>
+          </div>
+
+          <div className='space-y-2'>
+            <Label htmlFor='brand-logo'>
+              {t('system.general.brandLogo.label')}
+            </Label>
+            {brandLogo && (
+              <div className='flex justify-center mb-4 max-w-md'>
+                <div className='relative'>
+                  <img
+                    src={brandLogo}
+                    alt='Brand Logo Preview'
+                    className='w-20 h-20 object-cover rounded border'
+                  />
+                  <Button
+                    type='button'
+                    variant='destructive'
+                    size='sm'
+                    onClick={handleRemoveLogo}
+                    disabled={isLoading}
+                    className='absolute -top-2 -right-2 h-6 w-6 rounded-full p-0'
+                  >
+                    <X className='h-3 w-3' />
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className='space-y-2'>
+              <input
+                ref={fileInputRef}
+                type='file'
+                accept='image/png,image/jpeg'
+                onChange={handleFileUpload}
+                className='hidden'
+                id='brand-logo'
+              />
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                className='w-full max-w-md'
+              >
+                <Upload className='mr-2 h-4 w-4' />
+                {t('system.general.brandLogo.upload')}
+              </Button>
+              <div className='text-muted-foreground text-sm'>
+                {t('system.general.brandLogo.description')}
+              </div>
             </div>
           </div>
         </CardContent>

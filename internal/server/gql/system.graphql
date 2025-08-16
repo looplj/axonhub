@@ -21,11 +21,13 @@ type SystemStatus {
 type SystemSettings {
   storeChunks: Boolean!
   brandName: String
+  brandLogo: String
 }
 
 input UpdateSystemSettingsInput {
   storeChunks: Boolean
   brandName: String
+  brandLogo: String
 }
 
 extend type Mutation {

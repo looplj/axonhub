@@ -108,6 +108,7 @@ type SignInPayload struct {
 type SystemSettings struct {
 	StoreChunks bool    `json:"storeChunks"`
 	BrandName   *string `json:"brandName,omitempty"`
+	BrandLogo   *string `json:"brandLogo,omitempty"`
 }
 
 type SystemStatus struct {
@@ -131,6 +132,7 @@ type UpdateMeInput struct {
 type UpdateSystemSettingsInput struct {
 	StoreChunks *bool   `json:"storeChunks,omitempty"`
 	BrandName   *string `json:"brandName,omitempty"`
+	BrandLogo   *string `json:"brandLogo,omitempty"`
 }
 
 type UserInfo struct {

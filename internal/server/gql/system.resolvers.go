@@ -79,6 +79,13 @@ func (r *mutationResolver) UpdateSystemSettings(ctx context.Context, input Updat
 		}
 	}
 
+	if input.BrandLogo != nil {
+		err := r.systemService.SetBrandLogo(ctx, *input.BrandLogo)
+		if err != nil {
+			return false, fmt.Errorf("failed to update brand logo setting: %w", err)
+		}
+	}
+
 	return true, nil
 }
 
@@ -106,8 +113,14 @@ func (r *queryResolver) SystemSettings(ctx context.Context) (*SystemSettings, er
 		return nil, fmt.Errorf("failed to get brand name setting: %w", err)
 	}
 
+	brandLogo, err := r.systemService.BrandLogo(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get brand logo setting: %w", err)
+	}
+
 	return &SystemSettings{
 		StoreChunks: storeChunks,
 		BrandName:   &brandName,
+		BrandLogo:   &brandLogo,
 	}, nil
 }

@@ -9,6 +9,7 @@ const SYSTEM_SETTINGS_QUERY = `
     systemSettings {
       storeChunks
       brandName
+      brandLogo
     }
   }
 `
@@ -23,11 +24,13 @@ const UPDATE_SYSTEM_SETTINGS_MUTATION = `
 export interface SystemSettings {
   storeChunks: boolean
   brandName?: string
+  brandLogo?: string
 }
 
 export interface UpdateSystemSettingsInput {
   storeChunks?: boolean
   brandName?: string
+  brandLogo?: string
 }
 
 // Hooks

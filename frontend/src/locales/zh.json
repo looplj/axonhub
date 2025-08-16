@@ -3,6 +3,7 @@
     "groups": {
       "admin": "管理",
       "general": "常规",
+      "api": "API",
       "settings": "设置"
     },
     "items": {
@@ -540,6 +541,14 @@
         "label": "品牌名称",
         "placeholder": "输入系统品牌名称",
         "description": "设置系统的品牌名称，将在界面中显示"
+      },
+      "brandLogo": {
+        "label": "品牌标志",
+        "upload": "上传标志",
+        "description": "上传正方形的PNG或JPEG标志（最大2MB）。标志将在系统界面中显示。",
+        "invalidFormat": "请上传PNG或JPEG格式的图片文件。",
+        "fileTooLarge": "文件大小必须小于2MB。",
+        "notSquare": "请上传正方形图片（宽度等于高度）。"
       }
     },
     "other": {

@@ -3,6 +3,7 @@
     "groups": {
       "admin": "Admin",
       "general": "General",
+      "api": "API",
       "settings": "Settings"
     },
     "items": {
@@ -505,6 +506,14 @@
         "label": "Brand Name",
         "placeholder": "Enter system brand name",
         "description": "Set the system brand name that will be displayed in the interface"
+      },
+      "brandLogo": {
+        "label": "Brand Logo",
+        "upload": "Upload Logo",
+        "description": "Upload a square PNG or JPEG logo (max 2MB). The logo will be displayed in the system interface.",
+        "invalidFormat": "Please upload a PNG or JPEG image file.",
+        "fileTooLarge": "File size must be less than 2MB.",
+        "notSquare": "Please upload a square image (width equals height)."
       }
     },
     "other": {

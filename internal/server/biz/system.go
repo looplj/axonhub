@@ -25,6 +25,9 @@ const (
 	// SystemKeyBrandName is the key for the brand name.
 	SystemKeyBrandName = "system_brand_name"
 
+	// SystemKeyBrandLogo is the key for the brand logo (base64 encoded).
+	SystemKeyBrandLogo = "system_brand_logo"
+
 	// SystemKeyStoreChunks is the key used to store the store_chunks flag in the system table.
 	// If set to true, the system will store chunks in the database.
 	// Default value is false.
@@ -192,6 +195,27 @@ func (s *SystemService) BrandName(ctx context.Context) (string, error) {
 // SetBrandName sets the brand name.
 func (s *SystemService) SetBrandName(ctx context.Context, brandName string) error {
 	return s.setSystemValue(ctx, SystemKeyBrandName, brandName)
+}
+
+// BrandLogo retrieves the brand logo (base64 encoded).
+func (s *SystemService) BrandLogo(ctx context.Context) (string, error) {
+	client := ent.FromContext(ctx)
+
+	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyBrandLogo)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return "", nil
+		}
+
+		return "", fmt.Errorf("failed to get brand logo: %w", err)
+	}
+
+	return sys.Value, nil
+}
+
+// SetBrandLogo sets the brand logo (base64 encoded).
+func (s *SystemService) SetBrandLogo(ctx context.Context, brandLogo string) error {
+	return s.setSystemValue(ctx, SystemKeyBrandLogo, brandLogo)
 }
 
 // setSystemValue sets or updates a system key-value pair.

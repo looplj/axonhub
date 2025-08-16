@@ -108,7 +108,7 @@ export function useSidebarData(): SidebarData {
       ],
     },
     {
-      title: t('sidebar.groups.general'),
+      title: t('sidebar.groups.api'),
       items: [
         {
           title: t('sidebar.items.requests'),

@@ -359,6 +359,7 @@ type ComplexityRoot struct {
 	}
 
 	SystemSettings struct {
+		BrandLogo   func(childComplexity int) int
 		BrandName   func(childComplexity int) int
 		StoreChunks func(childComplexity int) int
 	}
@@ -1934,6 +1935,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SystemEdge.Node(childComplexity), true
+
+	case "SystemSettings.brandLogo":
+		if e.complexity.SystemSettings.BrandLogo == nil {
+			break
+		}
+
+		return e.complexity.SystemSettings.BrandLogo(childComplexity), true
 
 	case "SystemSettings.brandName":
 		if e.complexity.SystemSettings.BrandName == nil {
@@ -10677,6 +10685,8 @@ func (ec *executionContext) fieldContext_Query_systemSettings(_ context.Context,
 				return ec.fieldContext_SystemSettings_storeChunks(ctx, field)
 			case "brandName":
 				return ec.fieldContext_SystemSettings_brandName(ctx, field)
+			case "brandLogo":
+				return ec.fieldContext_SystemSettings_brandLogo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SystemSettings", field.Name)
 		},
@@ -14568,6 +14578,47 @@ func (ec *executionContext) _SystemSettings_brandName(ctx context.Context, field
 }
 
 func (ec *executionContext) fieldContext_SystemSettings_brandName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SystemSettings_brandLogo(ctx context.Context, field graphql.CollectedField, obj *SystemSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SystemSettings_brandLogo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BrandLogo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SystemSettings_brandLogo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SystemSettings",
 		Field:      field,
@@ -23380,7 +23431,7 @@ func (ec *executionContext) unmarshalInputUpdateSystemSettingsInput(ctx context.
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"storeChunks", "brandName"}
+	fieldsInOrder := [...]string{"storeChunks", "brandName", "brandLogo"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -23401,6 +23452,13 @@ func (ec *executionContext) unmarshalInputUpdateSystemSettingsInput(ctx context.
 				return it, err
 			}
 			it.BrandName = data
+		case "brandLogo":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("brandLogo"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BrandLogo = data
 		}
 	}
 
@@ -27589,6 +27647,8 @@ func (ec *executionContext) _SystemSettings(ctx context.Context, sel ast.Selecti
 			}
 		case "brandName":
 			out.Values[i] = ec._SystemSettings_brandName(ctx, field, obj)
+		case "brandLogo":
+			out.Values[i] = ec._SystemSettings_brandLogo(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
