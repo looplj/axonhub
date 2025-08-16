@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/tmaxmax/go-sse"
+
 	"github.com/looplj/axonhub/internal/log"
 )
 

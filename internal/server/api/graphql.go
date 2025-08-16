@@ -10,8 +10,9 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/vektah/gqlparser/v2/ast"
-	"github.com/looplj/axonhub/internal/ent"
 	"go.uber.org/fx"
+
+	"github.com/looplj/axonhub/internal/ent"
 )
 
 type Dependencies struct {

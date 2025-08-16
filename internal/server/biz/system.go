@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"go.uber.org/fx"
+	"go.uber.org/zap"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/log"
-	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 const (

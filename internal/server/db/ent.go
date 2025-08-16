@@ -5,10 +5,13 @@ import (
 	"database/sql"
 
 	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
+
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"
+
+	entsql "entgo.io/ent/dialect/sql"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/migrate"
 	_ "github.com/looplj/axonhub/internal/ent/runtime"

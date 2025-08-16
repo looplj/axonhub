@@ -4,11 +4,12 @@ import (
 	"context"
 	"os"
 
+	"go.uber.org/fx"
+
 	"github.com/looplj/axonhub/conf"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server"
-	"go.uber.org/fx"
 )
 
 func main() {

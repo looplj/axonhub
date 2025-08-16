@@ -2,6 +2,7 @@ package gql
 
 import (
 	"github.com/99designs/gqlgen/graphql"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 )

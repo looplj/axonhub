@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"entgo.io/ent/dialect/sql"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"

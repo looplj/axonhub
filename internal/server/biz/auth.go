@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"go.uber.org/fx"
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/user"
-	"go.uber.org/fx"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthServiceParams struct {

@@ -3,8 +3,9 @@ package dependencies
 import (
 	"context"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/zhenzou/executors"
+
+	"github.com/looplj/axonhub/internal/log"
 )
 
 type ErrorHandler struct{}

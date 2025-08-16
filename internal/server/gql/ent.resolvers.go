@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"entgo.io/contrib/entgql"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 )

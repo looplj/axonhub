@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	"go.uber.org/fx"
+	"go.uber.org/zap/zapcore"
+
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server"
 	"github.com/looplj/axonhub/internal/server/db"
-	"go.uber.org/fx"
-	"go.uber.org/zap/zapcore"
 )
 
 type Config struct {
@@ -67,7 +68,7 @@ func Load() Config {
 		panic(fmt.Errorf("failed to unmarshal config: %w", err))
 	}
 
-	log.Info(context.Background(), "Config loaded successfully", log.Any("config", config))
+	log.Debug(context.Background(), "Config loaded successfully", log.Any("config", config))
 
 	return config
 }

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/zhenzou/executors"
+	"go.uber.org/fx"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
@@ -16,8 +19,6 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
-	"github.com/zhenzou/executors"
-	"go.uber.org/fx"
 )
 
 type Channel struct {
