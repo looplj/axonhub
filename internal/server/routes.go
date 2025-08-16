@@ -23,7 +23,7 @@ type Handlers struct {
 
 func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, client *ent.Client) {
 	server.Use(middleware.WithEntClient(client))
-	unAuthGroup := server.Group("/v1")
+	unAuthGroup := server.Group("/v1", middleware.WithTimeout(server.config.RequestTimeout))
 	{
 		// Favicon API - 不需要认证
 		unAuthGroup.GET("/favicon", handlers.System.GetFavicon)
@@ -35,26 +35,20 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 		unAuthGroup.POST("/auth/signin", handlers.Auth.SignIn)
 	}
 
-	// adminCorsConfig := cors.DefaultConfig()
-	// adminCorsConfig.AllowAllOrigins = true
-	// adminCorsConfig.AddAllowHeaders("Authorization")
-	adminGroup := server.Group("/admin",
-		// cors.New(adminCorsConfig),
-		middleware.WithJWTAuth(auth),
-	)
+	adminGroup := server.Group("/admin", middleware.WithJWTAuth(auth))
 	// 管理员路由 - 使用 JWT 认证
 	{
-		adminGroup.GET("/playground", func(c *gin.Context) {
+		adminGroup.GET("/playground", middleware.WithTimeout(server.config.RequestTimeout), func(c *gin.Context) {
 			handlers.Graphql.Playground.ServeHTTP(c.Writer, c.Request)
 		})
-		adminGroup.POST("/graphql", func(c *gin.Context) {
+		adminGroup.POST("/graphql", middleware.WithTimeout(server.config.RequestTimeout), func(c *gin.Context) {
 			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
 		})
-		adminGroup.POST("/v1/chat", handlers.AiSDK.ChatCompletion)
+
+		adminGroup.POST("/v1/chat", middleware.WithTimeout(server.config.LLMRequestTimeout), handlers.AiSDK.ChatCompletion)
 	}
 
-	// API 路由 - 需要 API key 认证
-	apiGroup := server.Group("/v1")
+	apiGroup := server.Group("/v1", middleware.WithTimeout(server.config.LLMRequestTimeout))
 	apiGroup.Use(middleware.WithAPIKeyAuth(auth))
 	{
 		apiGroup.POST("/messages", handlers.Anthropic.CreateMessage)

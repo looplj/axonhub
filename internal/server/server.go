@@ -47,9 +47,10 @@ func (srv *Server) Run() error {
 	)
 	addr := fmt.Sprintf("0.0.0.0:%d", srv.config.Port)
 	srv.server = &http.Server{
-		Addr:        addr,
-		Handler:     srv.Engine,
-		ReadTimeout: srv.config.ReadTimeout,
+		Addr:         addr,
+		Handler:      srv.Engine,
+		ReadTimeout:  srv.config.ReadTimeout,
+		WriteTimeout: srv.config.WriteTimeout,
 	}
 	srv.addr = addr
 
