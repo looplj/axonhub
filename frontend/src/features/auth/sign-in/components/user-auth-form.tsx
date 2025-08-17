@@ -54,19 +54,23 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-3', className)}
+        className={cn('grid gap-6', className)}
         {...props}
       >
         <FormField
           control={form.control}
           name='email'
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
+            <FormItem className='animate-fade-in-up animation-delay-300'>
+              <FormLabel className='text-white/90 text-sm font-medium'>Email</FormLabel>
               <FormControl>
-                <Input placeholder='name@example.com' {...field} />
+                <Input 
+                  placeholder='name@example.com' 
+                  className='bg-white/10 border-white/20 text-white placeholder:text-white/50 backdrop-blur-sm focus:bg-white/15 focus:border-cyan-400/50 transition-all duration-300'
+                  {...field} 
+                />
               </FormControl>
-              <FormMessage />
+              <FormMessage className='text-red-300' />
             </FormItem>
           )}
         />
@@ -74,44 +78,40 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           control={form.control}
           name='password'
           render={({ field }) => (
-            <FormItem className='relative'>
-              <FormLabel>Password</FormLabel>
+            <FormItem className='relative animate-fade-in-up animation-delay-300'>
+              <div className='flex justify-between items-center'>
+                <FormLabel className='text-white/90 text-sm font-medium'>Password</FormLabel>
+                {/* <Link
+                  to='/forgot-password'
+                  className='text-cyan-300 hover:text-cyan-200 text-sm font-medium transition-colors'
+                >
+                  Forgot password?
+                </Link> */}
+              </div>
               <FormControl>
-                <PasswordInput placeholder='********' {...field} />
+                <PasswordInput 
+                  placeholder='Enter your password' 
+                  className='bg-white/10 border-white/20 text-white placeholder:text-white/50 backdrop-blur-sm focus:bg-white/15 focus:border-cyan-400/50 transition-all duration-300'
+                  {...field} 
+                />
               </FormControl>
-              <FormMessage />
-              <Link
-                to='/forgot-password'
-                className='text-muted-foreground absolute -top-0.5 right-0 text-sm font-medium hover:opacity-75'
-              >
-                Forgot password?
-              </Link>
+              <FormMessage className='text-red-300' />
             </FormItem>
           )}
         />
-        <Button className='mt-2' disabled={signInMutation.isPending}>
-          Login
+        <Button 
+          className='mt-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 animate-fade-in-up animation-delay-300' 
+          disabled={signInMutation.isPending}
+        >
+          {signInMutation.isPending ? (
+            <div className='flex items-center gap-2'>
+              <div className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin'></div>
+              Signing In...
+            </div>
+          ) : (
+            'Sign In'
+          )}
         </Button>
-
-        <div className='relative my-2'>
-          <div className='absolute inset-0 flex items-center'>
-            <span className='w-full border-t' />
-          </div>
-          <div className='relative flex justify-center text-xs uppercase'>
-            <span className='bg-background text-muted-foreground px-2'>
-              Or continue with
-            </span>
-          </div>
-        </div>
-
-        <div className='grid grid-cols-2 gap-2'>
-          <Button variant='outline' type='button' disabled={signInMutation.isPending}>
-            <IconBrandGithub className='h-4 w-4' /> GitHub
-          </Button>
-          <Button variant='outline' type='button' disabled={signInMutation.isPending}>
-            <IconBrandFacebook className='h-4 w-4' /> Facebook
-          </Button>
-        </div>
       </form>
     </Form>
   )
