@@ -3,6 +3,7 @@ import { systemApi } from '@/lib/api-client'
 import { useAuthStore } from '@/stores/authStore'
 import { toast } from 'sonner'
 import { useRouter } from '@tanstack/react-router'
+import i18n from '@/lib/i18n'
 
 export interface SystemStatus {
   isInitialized: boolean
@@ -50,7 +51,7 @@ export function useInitializeSystem() {
       }
     },
     onError: (error: any) => {
-      const errorMessage = error.message || 'Failed to initialize system'
+      const errorMessage = error.message || i18n.t('common.errors.initializationFailed')
       toast.error(errorMessage)
     }
   })

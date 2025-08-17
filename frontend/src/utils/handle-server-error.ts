@@ -1,11 +1,12 @@
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
+import i18n from '@/lib/i18n'
 
 export function handleServerError(error: unknown) {
   // eslint-disable-next-line no-console
   console.log(error)
 
-  let errMsg = 'Something went wrong!'
+  let errMsg = i18n.t('common.errors.somethingWentWrong')
 
   if (
     error &&
@@ -13,7 +14,7 @@ export function handleServerError(error: unknown) {
     'status' in error &&
     Number(error.status) === 204
   ) {
-    errMsg = 'Content not found.'
+    errMsg = i18n.t('common.errors.contentNotFound')
   }
 
   if (error instanceof AxiosError) {

@@ -1,5 +1,6 @@
 import { toast } from 'sonner'
 import { getTokenFromStorage, removeTokenFromStorage } from '@/stores/authStore'
+import i18n from '@/lib/i18n'
 
 export const GRAPHQL_ENDPOINT = '/admin/graphql'
 
@@ -33,7 +34,7 @@ export async function graphqlRequest<T>(
   if (response.status === 401) {
     // Clear token and redirect to login
     removeTokenFromStorage()
-    toast.error('Session expired. Please sign in again.')
+    toast.error(i18n.t('common.errors.sessionExpiredSignIn'))
     window.location.href = '/sign-in'
     throw new Error('Unauthorized')
   }
@@ -52,7 +53,7 @@ export async function graphqlRequest<T>(
     if (authError) {
       // Clear token and redirect to login
       removeTokenFromStorage()
-      toast.error('Session expired. Please sign in again.')
+      toast.error(i18n.t('common.errors.sessionExpiredSignIn'))
       window.location.href = '/sign-in'
       throw new Error('Unauthorized')
     }

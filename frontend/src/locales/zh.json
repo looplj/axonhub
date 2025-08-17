@@ -916,6 +916,43 @@
   "edit": "编辑",
   "create": "创建",
   "update": "更新",
+  "common": {
+      "errors": {
+        "sessionExpired": "会话已过期！",
+        "sessionExpiredSignIn": "会话已过期，请重新登录。",
+        "contentNotModified": "内容未修改！",
+        "internalServerError": "内部服务器错误！",
+        "somethingWentWrong": "出现了一些问题！",
+        "contentNotFound": "内容未找到。",
+        "initializationFailed": "系统初始化失败",
+        "unknownError": "发生未知错误",
+        "validationError": "数据校验错误",
+        "validationFailed": "数据校验失败：{{details}}",
+        "operationFailed": "{{operation}}失败",
+        "copyFailed": "复制到剪贴板失败。",
+        "userLoadFailed": "加载角色和权限失败",
+        "userSaveFailed": "保存用户失败",
+        "userDeleteFailed": "删除用户失败",
+        "modelCreateFailed": "创建模型失败",
+        "modelUpdateFailed": "更新模型失败",
+        "modelDeleteFailed": "删除模型失败"
+      },
+      "success": {
+        "copiedToClipboard": "已复制到剪贴板！",
+        "roleCreated": "角色创建成功",
+        "roleUpdated": "角色更新成功",
+        "roleDeleted": "角色删除成功",
+        "signedIn": "登录成功！",
+        "signedOut": "退出登录成功！",
+        "userCreated": "用户创建成功",
+        "userUpdated": "用户更新成功",
+        "userDeleted": "用户删除成功",
+        "modelCreated": "模型创建成功",
+        "modelUpdated": "模型更新成功",
+        "modelDeleted": "模型删除成功",
+        "systemSettingsUpdated": "系统设置更新成功"
+      }
+    },
   "initialization": {
     "title": "初始化系统",
     "description": "欢迎使用 AxonHub！请通过创建所有者账户来设置系统。",

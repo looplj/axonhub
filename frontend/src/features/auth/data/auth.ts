@@ -109,7 +109,7 @@ export function useSignIn() {
         i18n.changeLanguage(userLanguage)
       }
 
-      toast.success('Successfully signed in!')
+      toast.success(i18n.t('common.success.signedIn'))
 
       // Redirect to home page
       router.navigate({ to: '/' })
@@ -132,7 +132,7 @@ export function useSignOut() {
     // Clear auth store
     reset()
 
-    toast.success('Successfully signed out!')
+    toast.success(i18n.t('common.success.signedOut'))
 
     // Redirect to sign in page
     router.navigate({ to: '/sign-in' })

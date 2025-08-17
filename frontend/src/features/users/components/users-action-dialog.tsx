@@ -161,7 +161,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
       setAllScopes(scopesResponse.allScopes);
     } catch (error) {
       console.error("Failed to load roles and scopes:", error);
-      toast.error("Failed to load roles and scopes");
+      toast.error(t('common.errors.userLoadFailed'));
     } finally {
       setLoading(false);
     }
@@ -197,7 +197,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
           id: currentRow.id,
           input: updateInput,
         });
-        toast.success("User updated successfully");
+        toast.success(t('common.success.userUpdated'));
       } else {
         // 创建用户时，移除 confirmPassword 字段
         const createInput: CreateUserInput = {
@@ -212,14 +212,14 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         };
         
         await createUser.mutateAsync(createInput);
-        toast.success("User created successfully");
+        toast.success(t('common.success.userCreated'));
       }
       
       form.reset();
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to save user:", error);
-      toast.error("Failed to save user");
+      toast.error(t('common.errors.userSaveFailed'));
     }
   };
 

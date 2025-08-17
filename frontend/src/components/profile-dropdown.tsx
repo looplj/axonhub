@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { User } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { useAuthStore } from '@/stores/authStore'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,26 +14,22 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useAuthStore } from '@/stores/authStore'
 import { useSignOut } from '@/features/auth/data/auth'
-import { useTranslation } from 'react-i18next'
 
 export function ProfileDropdown() {
   const { t } = useTranslation()
   const { user } = useAuthStore((state) => state.auth)
   const signOut = useSignOut()
 
-  // Get user initials for avatar fallback
-  const getInitials = (email: string) => {
-    return email.split('@')[0].slice(0, 2).toUpperCase()
-  }
-
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
           <Avatar className='h-8 w-8'>
-            <AvatarImage src={user?.avatar} alt={user?.email || t('profile.dropdown.user')} />
+            <AvatarImage
+              src={user?.avatar}
+              alt={user?.email || t('profile.dropdown.user')}
+            />
             <AvatarFallback>
               {user?.avatar ? null : <User className='h-4 w-4' />}
             </AvatarFallback>

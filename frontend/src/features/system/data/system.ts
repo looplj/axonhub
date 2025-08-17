@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
 import { toast } from 'sonner'
 import { useErrorHandler } from '@/hooks/use-error-handler'
+import i18n from '@/lib/i18n'
 
 // GraphQL queries and mutations
 const SYSTEM_SETTINGS_QUERY = `
@@ -66,10 +67,10 @@ export function useUpdateSystemSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['systemSettings'] })
-      toast.success('系统设置更新成功')
+      toast.success(i18n.t('common.success.systemUpdated'))
     },
     onError: (error: any) => {
-      toast.error(`更新系统设置失败: ${error.message}`)
+      toast.error(i18n.t('common.errors.systemUpdateFailed'))
     },
   })
 }

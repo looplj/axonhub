@@ -882,6 +882,36 @@
   "edit": "Edit",
   "create": "Create",
   "update": "Update",
+  "common": {
+      "errors": {
+        "sessionExpired": "Session expired!",
+        "sessionExpiredSignIn": "Session expired. Please sign in again.",
+        "contentNotModified": "Content not modified!",
+        "internalServerError": "Internal Server Error!",
+        "somethingWentWrong": "Something went wrong!",
+        "contentNotFound": "Content not found.",
+        "initializationFailed": "Failed to initialize system",
+        "unknownError": "Unknown error occurred",
+        "validationError": "Validation error",
+        "validationFailed": "Validation failed: {{details}}",
+        "operationFailed": "{{operation}} failed",
+        "copyFailed": "Failed to copy to clipboard."
+      },
+      "success": {
+        "copiedToClipboard": "Copied to clipboard!",
+        "roleCreated": "Role created successfully",
+        "roleUpdated": "Role updated successfully",
+        "roleDeleted": "Role deleted successfully",
+        "signedIn": "Successfully signed in!",
+        "signedOut": "Successfully signed out!",
+        "userCreated": "User created successfully",
+        "userUpdated": "User updated successfully",
+        "userDeleted": "User deleted successfully",
+        "modelCreated": "Model created successfully",
+        "modelUpdated": "Model updated successfully",
+        "modelDeleted": "Model deleted successfully"
+      }
+    },
   "initialization": {
     "title": "Initialize System",
     "description": "Welcome to AxonHub! Please set up the system by creating an owner account.",

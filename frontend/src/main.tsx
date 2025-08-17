@@ -18,6 +18,7 @@ import './index.css'
 import { routeTree } from './routeTree.gen'
 // Initialize i18n
 import './lib/i18n'
+import i18n from './lib/i18n'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,7 +44,7 @@ const queryClient = new QueryClient({
 
         if (error instanceof AxiosError) {
           if (error.response?.status === 304) {
-            toast.error('Content not modified!')
+            toast.error(i18n.t('common.errors.contentNotModified'))
           }
         }
       },
@@ -53,13 +54,13 @@ const queryClient = new QueryClient({
     onError: (error) => {
       if (error instanceof AxiosError) {
         if (error.response?.status === 401) {
-          toast.error('Session expired!')
+          toast.error(i18n.t('common.errors.sessionExpired'))
           useAuthStore.getState().auth.reset()
           const redirect = `${router.history.location.href}`
           router.navigate({ to: '/sign-in', search: { redirect } })
         }
         if (error.response?.status === 500) {
-          toast.error('Internal Server Error!')
+          toast.error(i18n.t('common.errors.internalServerError'))
           router.navigate({ to: '/500' })
         }
         if (error.response?.status === 403) {

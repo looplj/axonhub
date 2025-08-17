@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,21 +18,22 @@ interface Props {
 }
 
 export function UsersDeleteDialog({ open, onOpenChange, currentRow }: Props) {
-  const [value, setValue] = useState('')
+  const { t } = useTranslation()
+  const [confirmText, setConfirmText] = useState('')
   const deleteUser = useDeleteUser()
   
   const fullName = `${currentRow.firstName} ${currentRow.lastName}`
 
   const handleDelete = async () => {
-    if (value.trim() !== fullName) return
+    if (confirmText.trim() !== fullName) return
 
     try {
       await deleteUser.mutateAsync(currentRow.id)
-      toast.success('User deleted successfully')
+      toast.success(t('common.success.userDeleted'))
       onOpenChange(false)
     } catch (error) {
       console.error('Failed to delete user:', error)
-      toast.error('Failed to delete user')
+      toast.error(t('common.errors.userDeleteFailed'))
     }
   }
 
@@ -40,7 +42,7 @@ export function UsersDeleteDialog({ open, onOpenChange, currentRow }: Props) {
       open={open}
       onOpenChange={onOpenChange}
       handleConfirm={handleDelete}
-      disabled={value.trim() !== fullName || deleteUser.isPending}
+      disabled={confirmText.trim() !== fullName || deleteUser.isPending}
       title={
         <span className='text-destructive'>
           <IconAlertTriangle
@@ -62,8 +64,8 @@ export function UsersDeleteDialog({ open, onOpenChange, currentRow }: Props) {
           <Label className='my-2'>
             Full Name:
             <Input
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
               placeholder='Enter full name to confirm deletion.'
               data-testid="delete-confirmation-input"
             />

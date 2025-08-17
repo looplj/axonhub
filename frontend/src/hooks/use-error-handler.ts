@@ -1,12 +1,15 @@
 import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { ZodError } from 'zod'
+import { useTranslation } from 'react-i18next'
 
 export function useErrorHandler() {
+  const { t } = useTranslation()
+  
   const handleError = useCallback((error: unknown, context?: string) => {
     console.error('Error occurred:', error)
 
-    let errorMessage = '发生未知错误'
+    let errorMessage = t('common.errors.unknownError')
     
     if (error instanceof ZodError) {
       // Schema validation error
@@ -15,9 +18,9 @@ export function useErrorHandler() {
         return `${path}: ${err.message}`
       }).join(', ')
       
-      errorMessage = `数据校验失败: ${fieldErrors}`
+      errorMessage = t('common.errors.validationFailed', { details: fieldErrors })
       
-      toast.error('数据校验错误', {
+      toast.error(t('common.errors.validationError'), {
         description: errorMessage,
         duration: 5000,
       })
@@ -25,7 +28,7 @@ export function useErrorHandler() {
       errorMessage = error.message
       
       if (context) {
-        toast.error(`${context}失败`, {
+        toast.error(t('common.errors.operationFailed', { operation: context }), {
           description: errorMessage,
           duration: 4000,
         })
@@ -35,7 +38,7 @@ export function useErrorHandler() {
     } else {
       // Unknown error type
       if (context) {
-        toast.error(`${context}失败`, {
+        toast.error(t('common.errors.operationFailed', { operation: context }), {
           description: errorMessage,
           duration: 4000,
         })
@@ -43,7 +46,7 @@ export function useErrorHandler() {
         toast.error(errorMessage)
       }
     }
-  }, [])
+  }, [t])
 
   return { handleError }
 }

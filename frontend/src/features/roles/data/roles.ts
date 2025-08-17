@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
 import { toast } from 'sonner'
 import { useErrorHandler } from '@/hooks/use-error-handler'
+import i18n from '@/lib/i18n'
 import {
   Role,
   RoleConnection,
@@ -169,7 +170,7 @@ export function useCreateRole() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] })
-      toast.success('角色创建成功')
+      toast.success(i18n.t('common.success.roleCreated'))
     },
   })
 }
@@ -194,7 +195,7 @@ export function useUpdateRole() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] })
       queryClient.invalidateQueries({ queryKey: ['role'] })
-      toast.success('角色更新成功')
+      toast.success(i18n.t('common.success.roleUpdated'))
     },
   })
 }
@@ -214,7 +215,7 @@ export function useDeleteRole() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] })
-      toast.success('角色删除成功')
+      toast.success(i18n.t('common.success.roleDeleted'))
     },
   })
 }
