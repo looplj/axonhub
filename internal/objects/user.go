@@ -14,6 +14,6 @@ type UserInfo struct {
 
 // Role 角色信息.
 type Role struct {
-	ID   string `json:"id"`
+	Code string `json:"code"`
 	Name string `json:"name"`
 }

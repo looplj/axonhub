@@ -4,7 +4,7 @@ export const ACCESS_TOKEN = 'axonhub_access_token'
 const USER_INFO = 'axonhub_user_info'
 
 interface Role {
-  id: string
+  code: string
   name: string
 }
 

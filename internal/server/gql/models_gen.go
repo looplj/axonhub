@@ -64,7 +64,7 @@ type RequestsByStatus struct {
 }
 
 type RoleInfo struct {
-	ID   string `json:"id"`
+	Code string `json:"code"`
 	Name string `json:"name"`
 }
 

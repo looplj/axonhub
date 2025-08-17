@@ -9,7 +9,7 @@ export const ME_QUERY = `
       preferLanguage
       avatar
       roles {
-        id
+        code
         name
       }
     }

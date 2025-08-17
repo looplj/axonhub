@@ -323,7 +323,7 @@ type ComplexityRoot struct {
 	}
 
 	RoleInfo struct {
-		ID   func(childComplexity int) int
+		Code func(childComplexity int) int
 		Name func(childComplexity int) int
 	}
 
@@ -1816,12 +1816,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RoleEdge.Node(childComplexity), true
 
-	case "RoleInfo.id":
-		if e.complexity.RoleInfo.ID == nil {
+	case "RoleInfo.code":
+		if e.complexity.RoleInfo.Code == nil {
 			break
 		}
 
-		return e.complexity.RoleInfo.ID(childComplexity), true
+		return e.complexity.RoleInfo.Code(childComplexity), true
 
 	case "RoleInfo.name":
 		if e.complexity.RoleInfo.Name == nil {
@@ -13778,8 +13778,8 @@ func (ec *executionContext) fieldContext_RoleEdge_cursor(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _RoleInfo_id(ctx context.Context, field graphql.CollectedField, obj *RoleInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RoleInfo_id(ctx, field)
+func (ec *executionContext) _RoleInfo_code(ctx context.Context, field graphql.CollectedField, obj *RoleInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleInfo_code(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13792,7 +13792,7 @@ func (ec *executionContext) _RoleInfo_id(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ID, nil
+		return obj.Code, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13809,7 +13809,7 @@ func (ec *executionContext) _RoleInfo_id(ctx context.Context, field graphql.Coll
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RoleInfo_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RoleInfo_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RoleInfo",
 		Field:      field,
@@ -16245,8 +16245,8 @@ func (ec *executionContext) fieldContext_UserInfo_roles(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_RoleInfo_id(ctx, field)
+			case "code":
+				return ec.fieldContext_RoleInfo_code(ctx, field)
 			case "name":
 				return ec.fieldContext_RoleInfo_name(ctx, field)
 			}
@@ -27566,8 +27566,8 @@ func (ec *executionContext) _RoleInfo(ctx context.Context, sel ast.SelectionSet,
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RoleInfo")
-		case "id":
-			out.Values[i] = ec._RoleInfo_id(ctx, field, obj)
+		case "code":
+			out.Values[i] = ec._RoleInfo_code(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

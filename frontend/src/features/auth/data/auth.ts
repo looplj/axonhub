@@ -27,7 +27,7 @@ interface MeResponse {
     avatar?: string
     scopes: string[]
     roles: Array<{
-      id: string
+      code: string
       name: string
     }>
   }
@@ -60,7 +60,7 @@ export function useMe() {
         avatar: query.data.avatar,
         scopes: query.data.scopes,
         roles: query.data.roles.map((role) => ({
-          id: role.id,
+          code: role.code,
           name: role.name,
         })),
       })
@@ -99,7 +99,7 @@ export function useSignIn() {
         preferLanguage: userLanguage,
         scopes: data.user.scopes,
         roles: data.user.roles.map((role) => ({
-          id: role.id,
+          code: role.code,
           name: role.name,
         })),
       })

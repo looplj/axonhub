@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 )
@@ -54,16 +55,11 @@ func (r *queryResolver) Me(ctx context.Context) (*UserInfo, error) {
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	roles, err := user.QueryRoles().All(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load user roles: %w", err)
-	}
-
 	// Convert ent.Role to RoleInfo
-	userRoles := make([]*RoleInfo, len(roles))
-	for i, role := range roles {
+	userRoles := make([]*RoleInfo, len(user.Edges.Roles))
+	for i, role := range user.Edges.Roles {
 		userRoles[i] = &RoleInfo{
-			ID:   fmt.Sprintf("%d", role.ID),
+			Code: role.Code,
 			Name: role.Name,
 		}
 	}
@@ -77,16 +73,10 @@ func (r *queryResolver) Me(ctx context.Context) (*UserInfo, error) {
 	}
 
 	// Add scopes from all roles
-	for _, role := range roles {
+	for _, role := range user.Edges.Roles {
 		for _, scope := range role.Scopes {
 			allScopes[scope] = true
 		}
-	}
-
-	// Convert map to slice
-	scopesList := make([]string, 0, len(allScopes))
-	for scope := range allScopes {
-		scopesList = append(scopesList, scope)
 	}
 
 	return &UserInfo{
@@ -96,7 +86,7 @@ func (r *queryResolver) Me(ctx context.Context) (*UserInfo, error) {
 		IsOwner:        user.IsOwner,
 		PreferLanguage: user.PreferLanguage,
 		Avatar:         &user.Avatar,
-		Scopes:         scopesList,
+		Scopes:         lo.Keys(allScopes),
 		Roles:          userRoles,
 	}, nil
 }

@@ -27,7 +27,7 @@ func (r userScopeQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
 		return privacy.Allow
 	}
 
-	return privacy.Denyf("user does not have required read scope: %s", r.requiredScope)
+	return privacy.Skipf("user does not have required read scope: %s", r.requiredScope)
 }
 
 // UserWriteScopeRule checks write permissions.

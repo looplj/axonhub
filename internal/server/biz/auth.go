@@ -97,15 +97,14 @@ func (s *AuthService) AuthenticateUser(
 		WithRoles().
 		Only(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("invalid email or password")
+		return nil, fmt.Errorf("invalid email or password: %w", ErrInvalidPassword)
 	}
 
 	// Verify password
 	err = VerifyPassword(user.Password, password)
 	if err != nil {
-		return nil, fmt.Errorf("invalid email or password")
+		return nil, fmt.Errorf("invalid email or password %w", ErrInvalidPassword)
 	}
-
 	return user, nil
 }
 
@@ -140,8 +139,10 @@ func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) 
 	}
 
 	client := ent.FromContext(ctx)
-
-	u, err := client.User.Get(ctx, int(userID))
+	u, err := client.User.Query().
+		Where(user.ID(int(userID))).
+		WithRoles().
+		Only(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}

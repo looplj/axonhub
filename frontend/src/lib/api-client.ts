@@ -125,7 +125,7 @@ export const authApi = {
       isOwner: boolean
       preferLanguage?: string
       scopes: string[]
-      roles: Array<{ id: string; name: string }>
+      roles: Array<{ code: string; name: string }>
     }
     token: string
   }> =>

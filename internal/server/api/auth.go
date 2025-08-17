@@ -1,11 +1,14 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -40,6 +43,7 @@ type SignInResponse struct {
 
 // SignIn handles user authentication.
 func (h *AuthHandlers) SignIn(c *gin.Context) {
+	var ctx = c.Request.Context()
 	var req SignInRequest
 
 	err := c.ShouldBindJSON(&req)
@@ -52,17 +56,23 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 	}
 
 	// Authenticate user
-	user, err := h.AuthService.AuthenticateUser(c.Request.Context(), req.Email, req.Password)
+	user, err := h.AuthService.AuthenticateUser(ctx, req.Email, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, objects.ErrorResponse{
-			Error: "Invalid email or password",
-		})
+		if errors.Is(err, biz.ErrInvalidPassword) {
+			c.JSON(http.StatusUnauthorized, objects.ErrorResponse{
+				Error: "Invalid email or password",
+			})
+			return
+		}
 
+		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
+			Error: "Failed to authenticate user",
+		})
 		return
 	}
 
 	// Generate JWT token
-	token, err := h.AuthService.GenerateJWTToken(c.Request.Context(), user)
+	token, err := h.AuthService.GenerateJWTToken(ctx, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
 			Error: "Failed to generate token",
@@ -79,7 +89,12 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 			IsOwner:        user.IsOwner,
 			PreferLanguage: user.PreferLanguage,
 			Scopes:         user.Scopes,
-			Roles:          []objects.Role{}, // TODO: Load user roles
+			Roles: lo.Map(user.Edges.Roles, func(role *ent.Role, _ int) objects.Role {
+				return objects.Role{
+					Code: role.Code,
+					Name: role.Name,
+				}
+			}),
 		},
 		Token: token,
 	}
