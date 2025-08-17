@@ -31,11 +31,11 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
   }
 
   const isDisabling = currentRow.status === 'enabled'
-  const title = isDisabling ? t('channels.status.disable.title') : t('channels.status.enable.title')
+  const title = isDisabling ? t('channels.dialog.status.disable.title') : t('channels.dialog.status.enable.title')
   const description = isDisabling 
-    ? t('channels.status.disable.description', { name: currentRow.name })
-    : t('channels.status.enable.description', { name: currentRow.name })
-  const actionText = isDisabling ? t('channels.status.disable.button') : t('channels.status.enable.button')
+    ? t('channels.dialog.status.disable.description', { name: currentRow.name })
+    : t('channels.dialog.status.enable.description', { name: currentRow.name })
+  const actionText = isDisabling ? t('channels.dialog.status.disable.button') : t('channels.dialog.status.enable.button')
 
   return (
     <ConfirmDialog

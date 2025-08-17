@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
 import { toast } from 'sonner'
 import { useErrorHandler } from '@/hooks/use-error-handler'
+import { useTranslation } from 'react-i18next'
 import {
   Channel,
   ChannelConnection,
@@ -116,7 +117,7 @@ export function useChannels(variables?: {
   where?: Record<string, any>
 }) {
   const { handleError } = useErrorHandler()
-  
+
   return useQuery({
     queryKey: ['channels', variables],
     queryFn: async () => {
@@ -136,7 +137,7 @@ export function useChannels(variables?: {
 
 export function useChannel(id: string) {
   const { handleError } = useErrorHandler()
-  
+
   return useQuery({
     queryKey: ['channel', id],
     queryFn: async () => {
@@ -162,6 +163,7 @@ export function useChannel(id: string) {
 // Mutation hooks
 export function useCreateChannel() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: async (input: CreateChannelInput) => {
@@ -173,16 +175,17 @@ export function useCreateChannel() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['channels'] })
-      toast.success('Channel 创建成功')
+      toast.success(t('channels.messages.createSuccess'))
     },
     onError: (error) => {
-      toast.error(`创建失败: ${error.message}`)
+      toast.error(t('channels.messages.createError', { error: error.message }))
     },
   })
 }
 
 export function useUpdateChannel() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
 
   return useMutation({
     mutationFn: async ({
@@ -201,32 +204,39 @@ export function useUpdateChannel() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] })
       queryClient.invalidateQueries({ queryKey: ['channel', data.id] })
-      toast.success('Channel 更新成功')
+      toast.success(t('channels.messages.updateSuccess'))
     },
     onError: (error) => {
-      toast.error(`更新失败: ${error.message}`)
+      toast.error(t('channels.messages.updateError', { error: error.message }))
     },
   })
 }
 
 export function useUpdateChannelStatus() {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
 
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: 'enabled' | 'disabled' }) => {
-      const data = await graphqlRequest<{ updateChannelStatus: Channel }>(
+    mutationFn: async ({
+      id,
+      status,
+    }: {
+      id: string
+      status: 'enabled' | 'disabled'
+    }) => {
+      const data = await graphqlRequest<{ updateChannelStatus: boolean }>(
         UPDATE_CHANNEL_STATUS_MUTATION,
         { id, status }
       )
-      return channelSchema.parse(data.updateChannelStatus)
+      return data.updateChannelStatus
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] })
-      queryClient.invalidateQueries({ queryKey: ['channel', data.id] })
-      toast.success(`Channel 状态已更新为 ${data.status === 'enabled' ? '启用' : '禁用'}`)
+      const statusText = variables.status === 'enabled' ? t('channels.status.enabled') : t('channels.status.disabled')
+      toast.success(t('channels.messages.statusUpdateSuccess', { status: statusText }))
     },
     onError: (error) => {
-      toast.error(`状态更新失败: ${error.message}`)
+      toast.error(t('channels.messages.statusUpdateError', { error: error.message }))
     },
   })
 }

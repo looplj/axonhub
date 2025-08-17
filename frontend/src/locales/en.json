@@ -297,6 +297,7 @@
   "channels": {
     "title": "Channel Management",
     "view": "View",
+    "toggleColumns": "Toggle columns",
     "description": "Manage your AI model channels and configurations.",
     "loading": "Loading...",
     "loadError": "Load failed:",
@@ -348,6 +349,18 @@
       "reset": "Reset",
       "filterByName": "Search by name"
     },
+    "messages": {
+      "addAtLeastOneModel": "Please add at least one supported model",
+      "createDescription": "Create a new Channel here.",
+      "editDescription": "Update Channel information here.",
+      "completeAndSave": "Click save when complete.",
+      "createSuccess": "Channel created successfully",
+      "createError": "Creation failed: {{error}}",
+      "updateSuccess": "Channel updated successfully",
+      "updateError": "Update failed: {{error}}",
+      "statusUpdateSuccess": "Channel status updated to {{status}}",
+      "statusUpdateError": "Status update failed: {{error}}"
+    },
     "dialog": {
       "create": {
         "title": "Add Channel",
@@ -360,14 +373,6 @@
       "delete": {
         "title": "Delete Channel",
         "description": "Are you sure you want to delete this channel? This action cannot be undone."
-      },
-      "settings": {
-        "title": "Channel Settings",
-        "description": "Configure global channel settings."
-      },
-      "status": {
-        "title": "Change Status",
-        "description": "Are you sure you want to change the status of this channel?"
       },
       "fields": {
         "name": {
@@ -429,7 +434,7 @@
           "description": "Google Cloud Platform project identifier"
         },
         "jsonData": {
-          "label": "Service Account JSON",
+          "label": "GCP Service Account JSON",
           "placeholder": "Paste your GCP service account JSON credentials here",
           "description": "Complete JSON credentials for GCP service account authentication"
         }
@@ -452,12 +457,7 @@
         "saving": "Saving...",
         "add": "Add"
       },
-      "messages": {
-        "addAtLeastOneModel": "Please add at least one supported model",
-        "createDescription": "Create a new Channel here.",
-        "editDescription": "Update Channel information here.",
-        "completeAndSave": "Click save when complete."
-      },
+
       "status": {
         "enable": {
           "title": "Enable Channel",

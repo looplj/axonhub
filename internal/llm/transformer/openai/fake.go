@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/looplj/axonhub/internal/llm/pipeline"
+	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
@@ -20,11 +21,20 @@ var testdataFS embed.FS
 
 // FakeTransformer implements pipeline.ChannelCustomizedExecutor for testing purposes.
 // It returns fixed responses from testdata files.
-type FakeTransformer struct{}
+type FakeTransformer struct {
+	transformer.Outbound
+}
 
 // NewFakeTransformer creates a new FakeTransformer instance.
 func NewFakeTransformer() *FakeTransformer {
-	return &FakeTransformer{}
+	outbound, err := NewOutboundTransformer("https://fake.openai.com", "fake")
+	if err != nil {
+		panic(err)
+	}
+
+	return &FakeTransformer{
+		Outbound: outbound,
+	}
 }
 
 // CustomizeExecutor returns a fake executor that returns fixed responses.

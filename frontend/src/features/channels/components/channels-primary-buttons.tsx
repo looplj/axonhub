@@ -9,13 +9,13 @@ export function ChannelsPrimaryButtons() {
   
   return (
     <div className='flex gap-2'>
-      <Button
+      {/* <Button
         variant='outline'
         className='space-x-1'
         onClick={() => setOpen('settings')}
       >
         <span>{t('channels.settings')}</span> <IconSettings size={18} />
-      </Button>
+      </Button> */}
       <Button className='space-x-1' onClick={() => setOpen('add')}>
         <span>{t('channels.addChannel')}</span> <IconPlus size={18} />
       </Button>

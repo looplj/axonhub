@@ -24,7 +24,14 @@ type FakeTransformer struct {
 
 // NewFakeTransformer creates a new fake transformer.
 func NewFakeTransformer() *FakeTransformer {
-	return &FakeTransformer{}
+	outbound, err := NewOutboundTransformer("https://fake.anthropic.com", "fake")
+	if err != nil {
+		panic(err)
+	}
+
+	return &FakeTransformer{
+		Outbound: outbound,
+	}
 }
 
 // CustomizeExecutor returns a fake executor that serves fixed responses.

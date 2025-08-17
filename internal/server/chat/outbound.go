@@ -314,8 +314,8 @@ func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
 // The customized executor will be used to execute the request.
 // e.g. the aws bedrock process need a custom executor to handle the request.
 func (p *PersistentOutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
-	if p.state.CurrentChannel.Executor != nil {
-		return p.state.CurrentChannel.Executor
+	if customExecutor, ok := p.state.CurrentChannel.Outbound.(pipeline.ChannelCustomizedExecutor); ok {
+		return customExecutor.CustomizeExecutor(executor)
 	}
 
 	return executor

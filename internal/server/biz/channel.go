@@ -12,7 +12,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
@@ -26,14 +25,15 @@ type Channel struct {
 
 	// Outbound is the outbound transformer for the channel.
 	Outbound transformer.Outbound
-
-	// Executor is the executor for the channel.
-	Executor pipeline.Executor
 }
 
 func (c Channel) ChooseModel(model string) (string, error) {
 	if slices.Contains(c.SupportedModels, model) {
 		return model, nil
+	}
+
+	if c.Settings == nil {
+		return "", fmt.Errorf("model %s not supported in channel %s", model, c.Name)
 	}
 
 	for _, mapping := range c.Settings.ModelMappings {
@@ -85,7 +85,7 @@ func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {
 func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	entities, err := svc.Ent.Channel.Query().All(ctx)
+	entities, err := svc.Ent.Channel.Query().Where(channel.StatusEQ(channel.StatusEnabled)).All(ctx)
 	if err != nil {
 		return err
 	}
@@ -167,20 +167,10 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				Outbound: fakeTransformer,
 			})
 		case channel.TypeOpenaiFake:
-			// For openai_fake, we create a regular outbound transformer and use fake executor
-			transformer, err := openai.NewOutboundTransformer(c.BaseURL, "fake-api-key")
-			if err != nil {
-				log.Warn(ctx, "failed to create openai fake outbound transformer", log.Cause(err))
-				continue
-			}
-
 			fakeTransformer := openai.NewFakeTransformer()
-			fakeExecutor := fakeTransformer.CustomizeExecutor(nil)
-
 			channels = append(channels, &Channel{
 				Channel:  c,
-				Outbound: transformer,
-				Executor: fakeExecutor,
+				Outbound: fakeTransformer,
 			})
 		}
 	}
@@ -199,6 +189,10 @@ func (svc *ChannelService) ChooseChannels(
 	for _, channel := range svc.Channels {
 		if slices.Contains(channel.SupportedModels, chatReq.Model) {
 			channels = append(channels, channel)
+			continue
+		}
+
+		if channel.Settings == nil {
 			continue
 		}
 

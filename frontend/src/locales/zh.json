@@ -332,6 +332,7 @@
   "channels": {
     "title": "渠道管理",
     "view": "视图",
+    "toggleColumns": "切换列",
     "description": "管理您的 AI 模型渠道和配置。",
     "loading": "加载中...",
     "loadError": "加载失败:",
@@ -377,6 +378,18 @@
       "test": "测试",
       "settings": "设置"
     },
+    "messages": {
+      "addAtLeastOneModel": "请至少添加一个支持的模型",
+      "createDescription": "在此创建新的 Channel。",
+      "editDescription": "在此更新 Channel 信息。",
+      "completeAndSave": "完成后点击保存。",
+      "createSuccess": "Channel 创建成功",
+      "createError": "创建失败: {{error}}",
+      "updateSuccess": "Channel 更新成功",
+      "updateError": "更新失败: {{error}}",
+      "statusUpdateSuccess": "Channel 状态已更新为 {{status}}",
+      "statusUpdateError": "状态更新失败: {{error}}"
+    },
     "filters": {
       "type": "类型",
       "status": "状态",
@@ -395,14 +408,6 @@
       "delete": {
         "title": "删除 Channel",
         "description": "确定要删除这个 Channel 吗？此操作无法撤销。"
-      },
-      "settings": {
-        "title": "Channel 设置",
-        "description": "配置全局 Channel 设置。"
-      },
-      "status": {
-        "title": "更改状态",
-        "description": "确定要更改此 Channel 的状态吗？"
       },
       "fields": {
         "name": {
@@ -487,32 +492,27 @@
         "saving": "保存中...",
         "add": "添加"
       },
-      "messages": {
-        "addAtLeastOneModel": "请至少添加一个支持的模型",
-        "createDescription": "在此创建新的 Channel。",
-        "editDescription": "在此更新 Channel 信息。",
-        "completeAndSave": "完成后点击保存。"
-      },
+
       "status": {
         "enable": {
           "title": "启用频道",
-          "description": "确定要启用频道 \"{{name}}\" 吗？启用后该频道将可以正常使用。",
+          "description": "确定要启用频道 \"{{name}}\" 吗？启用后该渠道将可以正常使用。",
           "button": "启用",
           "confirmText": "启用"
         },
         "disable": {
           "title": "禁用频道",
-          "description": "确定要禁用频道 \"{{name}}\" 吗？禁用后该频道将无法使用。",
+          "description": "确定要禁用频道 \"{{name}}\" 吗？禁用后该渠道将无法使用。",
           "button": "禁用",
           "confirmText": "禁用"
         }
       },
       "settings": {
-        "title": "Channel 设置",
+        "title": "渠道设置",
         "description": "配置 {{name}} 的高级设置。",
         "basicInfo": {
           "title": "基本信息",
-          "description": "Channel 的基本配置信息"
+          "description": "渠道的基本配置信息"
         },
         "modelMapping": {
           "title": "模型映射",
