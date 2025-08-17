@@ -31,14 +31,13 @@ func userOwnedQueryRule(ctx context.Context, q privacy.Filter) error {
 		return err
 	}
 
-	f, ok := q.(UserFilter)
-	if !ok {
-		return privacy.Denyf("query type %T does not implement UserFilter", q)
+	switch q := q.(type) {
+	case UserFilter:
+		q.WhereUserID(entql.IntEQ(user.ID))
+		return privacy.Allowf("Users can query their own API Keys", user.ID)
+	default:
+		return privacy.Skip
 	}
-
-	f.WhereUserID(entql.IntEQ(user.ID))
-
-	return privacy.Skip
 }
 
 // UserOwnedMutationRule ensures users can only modify their own resources.

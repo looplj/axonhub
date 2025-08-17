@@ -14,11 +14,15 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 // DashboardStats is the resolver for the dashboardStats field.
 func (r *queryResolver) DashboardStats(ctx context.Context) (*DashboardStats, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	weekAgo := today.AddDate(0, 0, -7)
@@ -27,22 +31,26 @@ func (r *queryResolver) DashboardStats(ctx context.Context) (*DashboardStats, er
 	// Get total counts
 	totalUsers, err := r.client.User.Query().Count(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count users: %w", err)
+		log.Warn(ctx, "failed to count users", log.Cause(err))
+		return nil, fmt.Errorf("failed to count users")
 	}
 
 	totalChannels, err := r.client.Channel.Query().Count(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count channels: %w", err)
+		log.Warn(ctx, "failed to count channels", log.Cause(err))
+		return nil, fmt.Errorf("failed to count channels")
 	}
 
 	totalRequests, err := r.client.Request.Query().Count(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count requests: %w", err)
+		log.Warn(ctx, "failed to count requests", log.Cause(err))
+		return nil, fmt.Errorf("failed to count requests")
 	}
 
 	totalAPIKeys, err := r.client.APIKey.Query().Count(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count API keys: %w", err)
+		log.Warn(ctx, "failed to count API keys", log.Cause(err))
+		return nil, fmt.Errorf("failed to count API keys")
 	}
 
 	// Get time-based counts
@@ -50,21 +58,24 @@ func (r *queryResolver) DashboardStats(ctx context.Context) (*DashboardStats, er
 		Where(request.CreatedAtGTE(today)).
 		Count(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count today's requests: %w", err)
+		log.Warn(ctx, "failed to count today's requests", log.Cause(err))
+		return nil, fmt.Errorf("failed to count today's requests")
 	}
 
 	requestsThisWeek, err := r.client.Request.Query().
 		Where(request.CreatedAtGTE(weekAgo)).
 		Count(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count this week's requests: %w", err)
+		log.Warn(ctx, "failed to count this week's requests", log.Cause(err))
+		return nil, fmt.Errorf("failed to count this week's requests")
 	}
 
 	requestsThisMonth, err := r.client.Request.Query().
 		Where(request.CreatedAtGTE(monthAgo)).
 		Count(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count this month's requests: %w", err)
+		log.Warn(ctx, "failed to count this month's requests", log.Cause(err))
+		return nil, fmt.Errorf("failed to count this month's requests")
 	}
 
 	// Get status-based counts
@@ -72,14 +83,16 @@ func (r *queryResolver) DashboardStats(ctx context.Context) (*DashboardStats, er
 		Where(request.StatusEQ(request.StatusCompleted)).
 		Count(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count successful requests: %w", err)
+		log.Warn(ctx, "failed to count successful requests", log.Cause(err))
+		return nil, fmt.Errorf("failed to count successful requests")
 	}
 
 	failedRequests, err := r.client.Request.Query().
 		Where(request.StatusEQ(request.StatusFailed)).
 		Count(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count failed requests: %w", err)
+		log.Warn(ctx, "failed to count failed requests", log.Cause(err))
+		return nil, fmt.Errorf("failed to count failed requests")
 	}
 
 	return &DashboardStats{
@@ -98,12 +111,8 @@ func (r *queryResolver) DashboardStats(ctx context.Context) (*DashboardStats, er
 
 // RequestsByStatus is the resolver for the requestsByStatus field.
 func (r *queryResolver) RequestsByStatus(ctx context.Context) ([]*RequestsByStatus, error) {
-	type statusCount struct {
-		Status string `json:"status"`
-		Count  int    `json:"count"`
-	}
-
-	var results []statusCount
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	var results []RequestsByStatus
 
 	err := r.client.Request.Query().
 		GroupBy(request.FieldStatus).
@@ -112,20 +121,13 @@ func (r *queryResolver) RequestsByStatus(ctx context.Context) ([]*RequestsByStat
 	if err != nil {
 		return nil, fmt.Errorf("failed to get requests by status: %w", err)
 	}
-
-	var response []*RequestsByStatus
-	for _, result := range results {
-		response = append(response, &RequestsByStatus{
-			Status: result.Status,
-			Count:  result.Count,
-		})
-	}
-
-	return response, nil
+	return lo.ToSlicePtr(results), nil
 }
 
 // RequestsByChannel is the resolver for the requestsByChannel field.
 func (r *queryResolver) RequestsByChannel(ctx context.Context) ([]*RequestsByChannel, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
 	executions, err := r.client.RequestExecution.Query().
 		WithRequest(func(q *ent.RequestQuery) {
 			q.WithAPIKey(func(aq *ent.APIKeyQuery) {
@@ -171,6 +173,8 @@ func (r *queryResolver) RequestsByChannel(ctx context.Context) ([]*RequestsByCha
 
 // RequestsByModel is the resolver for the requestsByModel field.
 func (r *queryResolver) RequestsByModel(ctx context.Context) ([]*RequestsByModel, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
 	type modelCount struct {
 		ModelID string `json:"model_id"`
 		Count   int    `json:"count"`
@@ -199,6 +203,8 @@ func (r *queryResolver) RequestsByModel(ctx context.Context) ([]*RequestsByModel
 
 // DailyRequestStats is the resolver for the dailyRequestStats field.
 func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*DailyRequestStats, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
 	daysCount := 30
 	if days != nil {
 		daysCount = *days
@@ -258,6 +264,8 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*Da
 
 // HourlyRequestStats is the resolver for the hourlyRequestStats field.
 func (r *queryResolver) HourlyRequestStats(ctx context.Context, date *string) ([]*HourlyRequestStats, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
 	targetDate := time.Now()
 
 	if date != nil {
@@ -316,6 +324,8 @@ func (r *queryResolver) HourlyRequestStats(ctx context.Context, date *string) ([
 
 // TopUsers is the resolver for the topUsers field.
 func (r *queryResolver) TopUsers(ctx context.Context, limit *int) ([]*TopUsers, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
 	limitCount := 10
 	if limit != nil {
 		limitCount = *limit

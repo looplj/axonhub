@@ -3,8 +3,10 @@ package scopes
 import (
 	"context"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/log"
 )
 
 // UserReadScopeRule checks read permissions.
@@ -23,7 +25,7 @@ func (r userScopeQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
 		return err
 	}
 
-	if checkUserPermission(user, r.requiredScope) {
+	if userHasScope(user, r.requiredScope) {
 		return privacy.Allow
 	}
 
@@ -38,7 +40,7 @@ func UserWriteScopeRule(writeScope Scope) privacy.MutationRule {
 			return err
 		}
 
-		if checkUserPermission(user, writeScope) {
+		if userHasScope(user, writeScope) {
 			return privacy.Allow
 		}
 
@@ -54,10 +56,25 @@ func UserScopeQueryMutationRule(requiredScope Scope) privacy.QueryMutationRule {
 			return err
 		}
 
-		if checkUserPermission(user, requiredScope) {
+		if userHasScope(user, requiredScope) {
 			return privacy.Allow
 		}
 
 		return privacy.Skipf("user does not have required scope: %s", requiredScope)
 	})
+}
+
+func WithUserScopeDecision(ctx context.Context, requiredScope Scope) context.Context {
+	user, ok := contexts.GetUser(ctx)
+	if !ok {
+		return privacy.DecisionContext(ctx, privacy.Deny)
+	}
+	log.Debug(ctx, "Check user has required scope",
+		log.String("scope", string(requiredScope)),
+		log.Any("user", user),
+	)
+	if userHasScope(user, requiredScope) {
+		return privacy.DecisionContext(ctx, privacy.Allow)
+	}
+	return privacy.DecisionContext(ctx, privacy.Deny)
 }

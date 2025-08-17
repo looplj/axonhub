@@ -9,7 +9,10 @@ import (
 )
 
 type (
-	QueryPolicy    []privacy.QueryRule
+	// QueryPolicy will deny if the query rule returns nil or privacy.Skip.
+	QueryPolicy []privacy.QueryRule
+
+	// MutationPolicy will deny if the mutation rule returns nil or privacy.Skip.
 	MutationPolicy []privacy.MutationRule
 )
 
@@ -35,6 +38,7 @@ func (policies QueryPolicy) EvalQuery(ctx context.Context, q ent.Query) error {
 	for _, policy := range policies {
 		switch decision := policy.EvalQuery(ctx, q); {
 		case decision == nil || errors.Is(decision, privacy.Skip):
+			continue
 		default:
 			return decision
 		}
@@ -49,6 +53,7 @@ func (policies MutationPolicy) EvalMutation(ctx context.Context, m ent.Mutation)
 	for _, policy := range policies {
 		switch decision := policy.EvalMutation(ctx, m); {
 		case decision == nil || errors.Is(decision, privacy.Skip):
+			continue
 		default:
 			return decision
 		}

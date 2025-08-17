@@ -111,8 +111,10 @@ export function useSignIn() {
 
       toast.success(i18n.t('common.success.signedIn'))
 
-      // Redirect to home page
-      router.navigate({ to: '/' })
+      // Redirect based on user role
+      // Owner users go to dashboard, non-owner users go to requests page
+      const redirectPath = data.user.isOwner ? '/' : '/requests'
+      router.navigate({ to: redirectPath })
     },
     onError: (error: any) => {
       const errorMessage = error.message || 'Failed to sign in'

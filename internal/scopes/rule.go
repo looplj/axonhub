@@ -22,25 +22,23 @@ func AlwaysDeny() privacy.QueryMutationRule {
 }
 
 // hasScope checks if a scope exists in the given scopes slice.
-func hasScope(userScopes []string, requiredScope string) bool {
-	return slices.Contains(userScopes, requiredScope)
+func hasScope(scopes []string, requiredScope string) bool {
+	return slices.Contains(scopes, requiredScope)
 }
 
 // hasRoleScope checks if a user has a required scope through their roles.
 func hasRoleScope(user *ent.User, requiredScope Scope) bool {
-	if user.Edges.Roles != nil {
-		for _, role := range user.Edges.Roles {
-			if hasScope(role.Scopes, string(requiredScope)) {
-				return true
-			}
+	for _, role := range user.Edges.Roles {
+		if hasScope(role.Scopes, string(requiredScope)) {
+			return true
 		}
 	}
 
 	return false
 }
 
-// checkUserPermission checks if a user has the required scope either directly or through roles.
-func checkUserPermission(user *ent.User, requiredScope Scope) bool {
+// userHasScope checks if a user has the required scope either directly or through roles.
+func userHasScope(user *ent.User, requiredScope Scope) bool {
 	// Owner has all permissions
 	if user.IsOwner {
 		return true
@@ -61,7 +59,6 @@ func getUserFromContext(ctx context.Context) (*ent.User, error) {
 	if !ok || user == nil {
 		return nil, privacy.Denyf(ErrNoUser)
 	}
-
 	return user, nil
 }
 

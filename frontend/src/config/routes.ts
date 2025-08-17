@@ -18,7 +18,8 @@ export const routeConfigs: RouteGroup[] = [
     routes: [
       {
         path: '/',
-        // Dashboard 不需要特殊权限，所有认证用户都可以访问
+        requiredScopes: ['read_dashboard'],
+        mode: 'hidden',
       },
       {
         path: '/users',
@@ -42,22 +43,19 @@ export const routeConfigs: RouteGroup[] = [
     ],
   },
   {
-    title: 'General',
+    title: 'API',
     routes: [
       {
         path: '/requests',
-        requiredScopes: ['read_requests'],
-        mode: 'hidden'
+        // 移除权限要求，所有用户都可以访问自己的请求数据
       },
       {
         path: '/api-keys',
-        requiredScopes: ['read_api_keys'],
-        mode: 'hidden'
+        // 移除权限要求，所有用户都可以管理自己的 API 密钥
       },
       {
         path: '/playground',
-        requiredScopes: ['read_dashboard'], // 假设playground需要dashboard权限
-        mode: 'hidden'
+        // 移除权限要求，所有用户都可以使用测试场
       }
     ]
   },
