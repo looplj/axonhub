@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sheet'
 import { RequestExecution } from '../data/schema'
 import { useChannels } from '@/features/channels/data'
+import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
 import { getStatusColor } from './help'
 
 interface ExecutionsDrawerProps {
@@ -29,6 +30,7 @@ export function ExecutionsDrawer({
   onExecutionSelect,
 }: ExecutionsDrawerProps) {
   const { t, i18n } = useTranslation()
+  const permissions = useRequestPermissions()
   const locale = i18n.language === 'zh' ? zhCN : enUS
 
   return (
@@ -69,7 +71,12 @@ export function ExecutionsDrawer({
                     <div className='space-y-2 text-xs text-muted-foreground'>
                       <div className='flex justify-between'>
                         <span>{t('requests.dialogs.executionDetail.channel')}:</span>
-                        <span className='font-mono'>{execution.channel?.name || t('requests.columns.unknown')}</span>
+                        <span className='font-mono'>
+                          {permissions.canViewChannels 
+                            ? (execution.channel?.name || t('requests.columns.unknown'))
+                            : '-'
+                          }
+                        </span>
                       </div>
                       <div className='flex justify-between'>
                         <span>{t('requests.dialogs.executionDetail.modelId')}:</span>

@@ -205,6 +205,7 @@
     "createApiKey": "Create API Key",
     "filterApiKeys": "Filter API keys...",
     "columns": {
+      "id": "ID",
       "name": "Name",
       "key": "API Key",
       "user": "User",
@@ -307,7 +308,10 @@
       "keyRequired": "API Key is required"
     },
     "filters": {
+      "filterId": "Filter by ID...",
+      "filterName": "Filter by name...",
       "status": "Status",
+      "user": "User",
       "reset": "Reset",
       "selectedCount": "{{count}} selected",
       "noResults": "No results found",
@@ -662,6 +666,7 @@
     "filters": {
       "filterId": "Filter by ID...",
       "status": "Status",
+      "user": "User",
       "reset": "Reset"
     },
     "dialogs": {

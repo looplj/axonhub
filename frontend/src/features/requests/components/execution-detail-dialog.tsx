@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { RequestExecution } from '../data/schema'
 import { useTranslation } from 'react-i18next'
+import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
 import { getStatusColor } from './help'
 
 interface ExecutionDetailDialogProps {
@@ -28,6 +29,7 @@ export function ExecutionDetailDialog({
 }: ExecutionDetailDialogProps) {
   const { t, i18n } = useTranslation()
   const locale = i18n.language === 'zh' ? zhCN : enUS
+  const permissions = useRequestPermissions()
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -65,7 +67,10 @@ export function ExecutionDetailDialog({
                 <div className='flex items-center gap-2'>
                   <span className='text-sm font-medium'>{t('requests.dialogs.executionDetail.channel')}:</span>
                    <p className='text-muted-foreground text-sm'>
-                  {execution.channel?.name || t('requests.dialogs.executionDetail.unknown')}
+                  {permissions.canViewChannels 
+                    ? (execution.channel?.name || t('requests.dialogs.executionDetail.unknown'))
+                    : '-'
+                  }
                 </p>
                 </div>
                

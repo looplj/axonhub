@@ -15,22 +15,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useRequestsContext } from '../context'
+import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
 import { Request, RequestStatus } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { getStatusColor } from './help'
 
-const statusColors: Record<RequestStatus, string> = {
-  pending:
-    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-  processing: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  completed:
-    'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-}
+// Removed unused statusColors - using getStatusColor helper instead
 
 export function useRequestsColumns(): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation()
   const locale = i18n.language === 'zh' ? zhCN : enUS
+  const permissions = useRequestPermissions()
 
   return [
   {
@@ -73,11 +68,19 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
   },
   {
     id: 'user',
+    accessorFn: (row) => row.user?.id || '',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={t('requests.columns.user')} />
     ),
     enableSorting: false,
     cell: ({ row }) => {
+      if (!permissions.canViewUsers) {
+        return (
+          <div className='font-mono text-xs text-muted-foreground'>
+            -
+          </div>
+        )
+      }
       const user = row.original.user
       const displayName = user ? `${user.firstName} ${user.lastName}` : t('requests.columns.unknown')
       return (
@@ -86,6 +89,11 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         </div>
       )
     },
+    filterFn: (row, _id, value) => {
+      const user = row.original.user
+      if (!user) return false
+      return value.includes(user.id)
+    },
   },
   {
     accessorKey: 'apiKey',
@@ -93,11 +101,20 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       <DataTableColumnHeader column={column} title={t('requests.columns.apiKey')} />
     ),
     enableSorting: false,
-    cell: ({ row }) => (
-      <div className='font-mono text-xs'>
-        {row.original.apiKey?.name || t('requests.columns.unknown')}
-      </div>
-    ),
+    cell: ({ row }) => {
+      if (!permissions.canViewApiKeys) {
+        return (
+          <div className='font-mono text-xs text-muted-foreground'>
+            -
+          </div>
+        )
+      }
+      return (
+        <div className='font-mono text-xs'>
+          {row.original.apiKey?.name || t('requests.columns.unknown')}
+        </div>
+      )
+    },
   },
   {
     id: 'requestBody',

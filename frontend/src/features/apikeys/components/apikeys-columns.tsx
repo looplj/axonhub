@@ -1,7 +1,6 @@
-import { useState } from 'react'
 import { format } from 'date-fns'
 import { ColumnDef } from '@tanstack/react-table'
-import { Copy, Eye, EyeOff } from 'lucide-react'
+import { Copy, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
@@ -14,12 +13,10 @@ import { DataTableRowActions } from './data-table-row-actions'
 import { useApiKeysContext } from '../context/apikeys-context'
 
 function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey }) {
-  const [isVisible, setIsVisible] = useState(false)
   const { t } = useTranslation()
   const { openDialog } = useApiKeysContext()
 
   // 显示前8个字符和后4个字符，中间用省略号
-  const shortKey = `${apiKey.slice(0, 8)}...${apiKey.slice(-4)}`
   const maskedKey = apiKey.replace(/./g, '*').slice(0, -4) + apiKey.slice(-4)
 
   const copyToClipboard = () => {
@@ -34,7 +31,7 @@ function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey
   return (
     <div className='flex items-center space-x-2 max-w-48'>
       <code className='bg-muted rounded px-2 py-1 font-mono text-sm truncate'>
-        {isVisible ? shortKey : maskedKey}
+        {maskedKey}
       </code>
       <Button
         variant='ghost'
@@ -90,6 +87,18 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     enableHiding: false,
   },
   {
+    accessorKey: 'id',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={t('apikeys.columns.id')} />
+    ),
+    cell: ({ row }) => (
+      <LongText className='max-w-24 font-mono text-xs text-muted-foreground'>
+        {row.getValue('id')}
+      </LongText>
+    ),
+    enableSorting: false,
+  },
+  {
     accessorKey: 'name',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title={t('apikeys.columns.name')} />
@@ -132,6 +141,11 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
           {displayName}
         </LongText>
       )
+    },
+    filterFn: (row, _id, value) => {
+      const user = row.original.user
+      if (!user) return false
+      return value.includes(user.id)
     },
     enableSorting: false,
   },

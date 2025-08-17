@@ -19,12 +19,17 @@ import {
 } from './schema'
 
 // Query hooks
-export function useUsers(variables?: {
-  first?: number
-  after?: string
-  orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
-  where?: Record<string, any>
-}) {
+export function useUsers(
+  variables?: {
+    first?: number
+    after?: string
+    orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
+    where?: Record<string, any>
+  },
+  options?: {
+    disableAutoFetch?: boolean
+  }
+) {
   const { t } = useTranslation()
   const { handleError } = useErrorHandler()
 
@@ -42,6 +47,7 @@ export function useUsers(variables?: {
         throw error
       }
     },
+    enabled: !options?.disableAutoFetch,
   })
 }
 

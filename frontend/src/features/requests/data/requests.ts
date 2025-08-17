@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
 import { useErrorHandler } from '@/hooks/use-error-handler'
+import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
 import {
   Request,
   RequestConnection,
@@ -10,43 +11,121 @@ import {
   requestSchema,
 } from './schema'
 
-// GraphQL queries
-const REQUESTS_QUERY = `
-  query GetRequests(
-    $first: Int
-    $after: Cursor
-    $orderBy: RequestOrder
-    $where: RequestWhereInput
-  ) {
-    requests(first: $first, after: $after, orderBy: $orderBy, where: $where) {
-      edges {
-        node {
-          id
-          createdAt
-          updatedAt
+// Dynamic GraphQL query builder
+function buildRequestsQuery(permissions: { canViewUsers: boolean; canViewApiKeys: boolean; canViewChannels: boolean }) {
+  const userFields = permissions.canViewUsers ? `
           user {
             id
             firstName
             lastName
-          }
+          }` : ''
+  
+  const apiKeyFields = permissions.canViewApiKeys ? `
           apiKey {
             id
             name
+          }` : ''
+  
+  const channelFields = permissions.canViewChannels ? `
+                channel {
+                  id
+                  name
+                }` : ''
+
+  return `
+    query GetRequests(
+      $first: Int
+      $after: Cursor
+      $orderBy: RequestOrder
+      $where: RequestWhereInput
+    ) {
+      requests(first: $first, after: $after, orderBy: $orderBy, where: $where) {
+        edges {
+          node {
+            id
+            createdAt
+            updatedAt${userFields}${apiKeyFields}
+            modelID
+            requestBody
+            responseBody
+            status
+            executions(first: 10, orderBy: { field: CREATED_AT, direction: DESC }) {
+              edges {
+                node {
+                  id
+                  createdAt
+                  updatedAt${channelFields}
+                  modelID
+                  requestBody
+                  responseBody
+                  responseChunks
+                  errorMessage
+                  status
+                }
+                cursor
+              }
+              pageInfo {
+                hasNextPage
+                hasPreviousPage
+                startCursor
+                endCursor
+              }
+              totalCount
+            }
           }
+          cursor
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }
+        totalCount
+      }
+    }
+  `
+}
+
+function buildRequestDetailQuery(permissions: { canViewUsers: boolean; canViewApiKeys: boolean; canViewChannels: boolean }) {
+  const userFields = permissions.canViewUsers ? `
+        user {
+            id
+            firstName
+            lastName
+          }` : ''
+  
+  const apiKeyFields = permissions.canViewApiKeys ? `
+          apiKey {
+            id
+            name
+        }` : ''
+  
+  const channelFields = permissions.canViewChannels ? `
+              channel {
+                id
+                name
+              }` : ''
+
+  return `
+    query GetRequestDetail($id: ID!) {
+      node(id: $id) {
+        ... on Request {
+          id
+          createdAt
+          updatedAt${userFields}${apiKeyFields}
           modelID
           requestBody
           responseBody
           status
-          executions(first: 10, orderBy: { field: CREATED_AT, direction: DESC }) {
+          executions(first: 100, orderBy: { field: CREATED_AT, direction: DESC }) {
             edges {
               node {
                 id
                 createdAt
                 updatedAt
-                channel {
-                  id
-                  name
-                }
+                userID
+                requestID${channelFields}
                 modelID
                 requestBody
                 responseBody
@@ -65,116 +144,58 @@ const REQUESTS_QUERY = `
             totalCount
           }
         }
-        cursor
-      }
-      pageInfo {
-        hasNextPage
-        hasPreviousPage
-        startCursor
-        endCursor
-      }
-      totalCount
-    }
-  }
-`
-
-const REQUEST_DETAIL_QUERY = `
-  query GetRequestDetail($id: ID!) {
-    node(id: $id) {
-      ... on Request {
-        id
-        createdAt
-        updatedAt
-        user {
-            id
-            firstName
-            lastName
-          }
-          apiKey {
-            id
-            name
-        }
-        modelID
-        requestBody
-        responseBody
-        status
-        executions(first: 100, orderBy: { field: CREATED_AT, direction: DESC }) {
-          edges {
-            node {
-              id
-              createdAt
-              updatedAt
-              userID
-              requestID
-              channel {
-                id
-                name
-              }
-              modelID
-              requestBody
-              responseBody
-              responseChunks
-              errorMessage
-              status
-            }
-            cursor
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-            startCursor
-            endCursor
-          }
-          totalCount
-        }
       }
     }
-  }
-`
+  `
+}
 
-const REQUEST_EXECUTIONS_QUERY = `
-  query GetRequestExecutions(
-    $requestID: ID!
-    $first: Int
-    $after: Cursor
-    $orderBy: RequestExecutionOrder
-    $where: RequestExecutionWhereInput
-  ) {
-    node(id: $requestID) {
-      ... on Request {
-        executions(first: $first, after: $after, orderBy: $orderBy, where: $where) {
-          edges {
-            node {
-              id
-              createdAt
-              updatedAt
-              userID
-              requestID
+function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) {
+  const channelFields = permissions.canViewChannels ? `
               channel {
                   id
                   name
+              }` : ''
+
+  return `
+    query GetRequestExecutions(
+      $requestID: ID!
+      $first: Int
+      $after: Cursor
+      $orderBy: RequestExecutionOrder
+      $where: RequestExecutionWhereInput
+    ) {
+      node(id: $requestID) {
+        ... on Request {
+          executions(first: $first, after: $after, orderBy: $orderBy, where: $where) {
+            edges {
+              node {
+                id
+                createdAt
+                updatedAt
+                userID
+                requestID${channelFields}
+                modelID
+                requestBody
+                responseBody
+                responseChunks
+                errorMessage
+                status
               }
-              modelID
-              requestBody
-              responseBody
-              responseChunks
-              errorMessage
-              status
+              cursor
             }
-            cursor
+            pageInfo {
+              hasNextPage
+              hasPreviousPage
+              startCursor
+              endCursor
+            }
+            totalCount
           }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-            startCursor
-            endCursor
-          }
-          totalCount
         }
       }
     }
-  }
-`
+  `
+}
 
 // Query hooks
 export function useRequests(variables?: {
@@ -184,13 +205,15 @@ export function useRequests(variables?: {
   where?: Record<string, any>
 }) {
   const { handleError } = useErrorHandler()
+  const permissions = useRequestPermissions()
   
   return useQuery({
-    queryKey: ['requests', variables],
+    queryKey: ['requests', variables, permissions],
     queryFn: async () => {
       try {
+        const query = buildRequestsQuery(permissions)
         const data = await graphqlRequest<{ requests: RequestConnection }>(
-          REQUESTS_QUERY,
+          query,
           variables
         )
         return requestConnectionSchema.parse(data?.requests)
@@ -204,13 +227,15 @@ export function useRequests(variables?: {
 
 export function useRequest(id: string) {
   const { handleError } = useErrorHandler()
+  const permissions = useRequestPermissions()
   
   return useQuery({
-    queryKey: ['request', id],
+    queryKey: ['request', id, permissions],
     queryFn: async () => {
       try {
+        const query = buildRequestDetailQuery(permissions)
         const data = await graphqlRequest<{ node: Request }>(
-          REQUEST_DETAIL_QUERY,
+          query,
           { id }
         )
         if (!data.node) {
@@ -232,11 +257,14 @@ export function useRequestExecutions(requestID: string, variables?: {
   orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
   where?: Record<string, any>
 }) {
+  const permissions = useRequestPermissions()
+  
   return useQuery({
-    queryKey: ['request-executions', requestID, variables],
+    queryKey: ['request-executions', requestID, variables, permissions],
     queryFn: async () => {
+      const query = buildRequestExecutionsQuery(permissions)
       const data = await graphqlRequest<{ node: { executions: RequestExecutionConnection } }>(
-        REQUEST_EXECUTIONS_QUERY,
+        query,
         { requestID, ...variables }
       )
       return requestExecutionConnectionSchema.parse(data?.node?.executions)

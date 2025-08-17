@@ -32,7 +32,7 @@ export const requestExecutionSchema = z.object({
   // userID: z.number(),
   // requestID: z.string(),
   // channelID: z.number(),
-  channel: channelSchema.partial(),
+  channel: channelSchema.partial().optional(),
   modelID: z.string(),
   requestBody: z.any(), // JSONRawMessage
   responseBody: z.any().nullable(), // JSONRawMessage
@@ -48,9 +48,9 @@ export const requestSchema = z.object({
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
   // userID: z.string().optional().nullable(),
-  user: userSchema.partial(),
+  user: userSchema.partial().optional(),
   // apiKeyID: z.string().optional().nullable(),
-  apiKey: apiKeySchema.partial().nullable(),
+  apiKey: apiKeySchema.partial().nullable().optional(),
   modelID: z.string(),
   requestBody: z.any(), // JSONRawMessage
   responseBody: z.any().nullable(), // JSONRawMessage

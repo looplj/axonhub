@@ -237,6 +237,7 @@
     "createApiKey": "创建 API Key",
     "filterApiKeys": "筛选 API 密钥...",
     "columns": {
+      "id": "ID",
       "name": "名称",
       "key": "API Key",
       "user": "用户",
@@ -341,7 +342,10 @@
       "keyRequired": "API Key不能为空"
     },
     "filters": {
+      "filterId": "按 ID 筛选...",
+      "filterName": "按名称筛选...",
       "status": "状态",
+      "user": "用户",
       "reset": "重置",
       "selectedCount": "已选择 {{count}} 项",
       "noResults": "没有找到结果",
@@ -696,6 +700,7 @@
     "filters": {
       "filterId": "按ID筛选...",
       "status": "状态",
+      "user": "用户",
       "reset": "重置"
     },
     "dialogs": {

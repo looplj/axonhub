@@ -2,94 +2,111 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { graphqlRequest } from '@/gql/graphql'
 import { useErrorHandler } from '@/hooks/use-error-handler'
+import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
 import type { ApiKey, ApiKeyConnection, CreateApiKeyInput, UpdateApiKeyInput } from './schema'
 import { apiKeyConnectionSchema, apiKeySchema } from './schema'
 import { toast } from 'sonner'
 
-// GraphQL queries and mutations
-const APIKEYS_QUERY = `
-  query GetApiKeys($first: Int, $after: Cursor, $orderBy: APIKeyOrder) {
-    apiKeys(first: $first, after: $after, orderBy: $orderBy) {
-      edges {
-        node {
-          id
-          createdAt
-          updatedAt
+// Dynamic GraphQL query builders
+function buildApiKeysQuery(permissions: { canViewUsers: boolean }) {
+  const userFields = permissions.canViewUsers ? `
           user {
             id
             firstName
             lastName
+          }` : ''
+
+  return `
+    query GetApiKeys($first: Int, $after: Cursor, $orderBy: APIKeyOrder) {
+      apiKeys(first: $first, after: $after, orderBy: $orderBy) {
+        edges {
+          node {
+            id
+            createdAt
+            updatedAt${userFields}
+            key
+            name
+            status
           }
-          key
-          name
-          status
+          cursor
         }
-        cursor
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }
+        totalCount
       }
-      pageInfo {
-        hasNextPage
-        hasPreviousPage
-        startCursor
-        endCursor
-      }
-      totalCount
     }
-  }
-`
+  `
+}
 
-const APIKEY_QUERY = `
-  query GetApiKey($id: ID!) {
-    apiKey(id: $id) {
-      id
-      createdAt
-      updatedAt
+function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
+  const userFields = permissions.canViewUsers ? `
       user {
         id
         firstName
         lastName
-      }
-      key
-      name
-      status
-    }
-  }
-`
+      }` : ''
 
-const CREATE_APIKEY_MUTATION = `
-  mutation CreateAPIKey($input: CreateAPIKeyInput!) {
-    createAPIKey(input: $input) {
-      id
-      createdAt
-      updatedAt
+  return `
+    query GetApiKey($id: ID!) {
+      apiKey(id: $id) {
+        id
+        createdAt
+        updatedAt${userFields}
+        key
+        name
+        status
+      }
+    }
+  `
+}
+
+function buildCreateApiKeyMutation(permissions: { canViewUsers: boolean }) {
+  const userFields = permissions.canViewUsers ? `
       user {
         id
         firstName
         lastName
-      }
-      key
-      name
-      status
-    }
-  }
-`
+      }` : ''
 
-const UPDATE_APIKEY_MUTATION = `
-  mutation UpdateAPIKey($id: ID!, $input: UpdateAPIKeyInput!) {
-    updateAPIKey(id: $id, input: $input) {  
-      id
-      createdAt
-      updatedAt
+  return `
+    mutation CreateAPIKey($input: CreateAPIKeyInput!) {
+      createAPIKey(input: $input) {
+        id
+        createdAt
+        updatedAt${userFields}
+        key
+        name
+        status
+      }
+    }
+  `
+}
+
+function buildUpdateApiKeyMutation(permissions: { canViewUsers: boolean }) {
+  const userFields = permissions.canViewUsers ? `
       user {
         id
         firstName
         lastName
+      }` : ''
+
+  return `
+    mutation UpdateAPIKey($id: ID!, $input: UpdateAPIKeyInput!) {
+      updateAPIKey(id: $id, input: $input) {
+        id
+        createdAt
+        updatedAt${userFields}
+        key
+        name
+        status
       }
-      key
-      name
-      status
     }
-  }
-`
+  `
+}
 
 const UPDATE_APIKEY_STATUS_MUTATION = `
   mutation UpdateAPIKeyStatus($id: ID!, $status: APIKeyStatus!) {
@@ -109,13 +126,15 @@ export function useApiKeys(variables?: {
 }) {
   const { t } = useTranslation()
   const { handleError } = useErrorHandler()
+  const permissions = useRequestPermissions()
   
   return useQuery({
-    queryKey: ['apiKeys', variables],
+    queryKey: ['apiKeys', variables, permissions],
     queryFn: async () => {
       try {
+        const query = buildApiKeysQuery(permissions)
         const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(
-          APIKEYS_QUERY,
+          query,
           variables
         )
         return apiKeyConnectionSchema.parse(data?.apiKeys)
@@ -130,12 +149,14 @@ export function useApiKeys(variables?: {
 export function useApiKey(id: string) {
   const { t } = useTranslation()
   const { handleError } = useErrorHandler()
+  const permissions = useRequestPermissions()
   
   return useQuery({
-    queryKey: ['apiKey', id],
+    queryKey: ['apiKey', id, permissions],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ apiKey: ApiKey }>(APIKEY_QUERY, { id })
+        const query = buildApiKeyQuery(permissions)
+        const data = await graphqlRequest<{ apiKey: ApiKey }>(query, { id })
         return apiKeySchema.parse(data.apiKey)
       } catch (error) {
         handleError(error, t('apikeys.errors.fetchDetails'))
@@ -149,11 +170,14 @@ export function useApiKey(id: string) {
 export function useCreateApiKey() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const permissions = useRequestPermissions()
   
   return useMutation({
-    mutationFn: (input: CreateApiKeyInput) => 
-      graphqlRequest<{ createApiKey: ApiKey }>(CREATE_APIKEY_MUTATION, { input }),
-    onSuccess: (data) => {
+    mutationFn: (input: CreateApiKeyInput) => {
+      const mutation = buildCreateApiKeyMutation(permissions)
+      return graphqlRequest<{ createAPIKey: ApiKey }>(mutation, { input })
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
       toast.success(t('apikeys.messages.createSuccess'))
     },
@@ -167,11 +191,14 @@ export function useCreateApiKey() {
 export function useUpdateApiKey() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const permissions = useRequestPermissions()
   
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyInput }) => 
-      graphqlRequest<{ updateApiKey: ApiKey }>(UPDATE_APIKEY_MUTATION, { id, input }),
-    onSuccess: (data, variables) => {
+    mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyInput }) => {
+      const mutation = buildUpdateApiKeyMutation(permissions)
+      return graphqlRequest<{ updateAPIKey: ApiKey }>(mutation, { id, input })
+    },
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] })
       toast.success(t('apikeys.messages.updateSuccess'))
