@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -112,6 +113,7 @@ func (r *queryResolver) DashboardStats(ctx context.Context) (*DashboardStats, er
 // RequestsByStatus is the resolver for the requestsByStatus field.
 func (r *queryResolver) RequestsByStatus(ctx context.Context) ([]*RequestsByStatus, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
 	var results []RequestsByStatus
 
 	err := r.client.Request.Query().
@@ -121,6 +123,7 @@ func (r *queryResolver) RequestsByStatus(ctx context.Context) ([]*RequestsByStat
 	if err != nil {
 		return nil, fmt.Errorf("failed to get requests by status: %w", err)
 	}
+
 	return lo.ToSlicePtr(results), nil
 }
 

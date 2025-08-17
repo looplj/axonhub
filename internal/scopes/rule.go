@@ -59,6 +59,7 @@ func getUserFromContext(ctx context.Context) (*ent.User, error) {
 	if !ok || user == nil {
 		return nil, privacy.Denyf(ErrNoUser)
 	}
+
 	return user, nil
 }
 

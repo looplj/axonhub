@@ -153,7 +153,7 @@ export function CreateRoleDialog() {
                                     <Badge variant='outline' className='mr-2'>
                                       {scope.scope}
                                     </Badge>
-                                    {scope.description}
+                                    {t(`scopes.${scope.scope}`)}
                                   </FormLabel>
                                 </div>
                               </FormItem>
@@ -310,7 +310,7 @@ export function EditRoleDialog() {
                                     <Badge variant='outline' className='mr-2'>
                                       {scope.scope}
                                     </Badge>
-                                    {scope.description}
+                                    {t(`scopes.${scope.scope}`)}
                                   </FormLabel>
                                 </div>
                               </FormItem>

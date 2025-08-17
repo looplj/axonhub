@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -48,11 +49,10 @@ func (m *mockBasicMutation) Type() string {
 
 func TestUserOwnedQueryRule(t *testing.T) {
 	tests := []struct {
-		name        string
-		ctx         context.Context
-		setupQuery  func() ent.Query
-		expectError bool
-		expectSkip  bool
+		name       string
+		ctx        context.Context
+		setupQuery func() ent.Query
+		assertErr  assert.ErrorAssertionFunc
 	}{
 		{
 			name: "no user in context",
@@ -60,8 +60,9 @@ func TestUserOwnedQueryRule(t *testing.T) {
 			setupQuery: func() ent.Query {
 				return &ent.APIKeyQuery{}
 			},
-			expectError: true,
-			expectSkip:  false,
+			assertErr: func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+				return assert.Error(t, err) && !errors.Is(err, privacy.Skip) && !errors.Is(err, privacy.Allow)
+			},
 		},
 		{
 			name: "valid user with APIKeyQuery (has WhereUserID)",
@@ -71,8 +72,9 @@ func TestUserOwnedQueryRule(t *testing.T) {
 			setupQuery: func() ent.Query {
 				return &ent.APIKeyQuery{}
 			},
-			expectError: false,
-			expectSkip:  true,
+			assertErr: func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+				return assert.Error(t, err) && errors.Is(err, privacy.Allow)
+			},
 		},
 		{
 			name: "valid user with UserQuery (no WhereUserID)",
@@ -82,8 +84,9 @@ func TestUserOwnedQueryRule(t *testing.T) {
 			setupQuery: func() ent.Query {
 				return &ent.UserQuery{}
 			},
-			expectError: true,
-			expectSkip:  false,
+			assertErr: func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+				return assert.Error(t, err) && !errors.Is(err, privacy.Skip) && !errors.Is(err, privacy.Allow)
+			},
 		},
 	}
 
@@ -93,15 +96,7 @@ func TestUserOwnedQueryRule(t *testing.T) {
 			query := tt.setupQuery()
 			err := rule.EvalQuery(tt.ctx, query)
 
-			if tt.expectError {
-				if err == nil || errors.Is(err, privacy.Skip) || errors.Is(err, privacy.Allow) {
-					t.Errorf("expected error, got %v", err)
-				}
-			} else if tt.expectSkip {
-				if !errors.Is(err, privacy.Skip) {
-					t.Errorf("expected privacy.Skip, got %v", err)
-				}
-			}
+			tt.assertErr(t, err)
 		})
 	}
 }

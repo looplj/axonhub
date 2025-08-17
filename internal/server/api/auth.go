@@ -43,8 +43,10 @@ type SignInResponse struct {
 
 // SignIn handles user authentication.
 func (h *AuthHandlers) SignIn(c *gin.Context) {
-	var ctx = c.Request.Context()
-	var req SignInRequest
+	var (
+		ctx = c.Request.Context()
+		req SignInRequest
+	)
 
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
@@ -62,12 +64,14 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, objects.ErrorResponse{
 				Error: "Invalid email or password",
 			})
+
 			return
 		}
 
 		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
 			Error: "Failed to authenticate user",
 		})
+
 		return
 	}
 

@@ -27,10 +27,6 @@ const (
 	ScopeReadRequests  Scope = "read_requests"
 	ScopeWriteRequests Scope = "write_requests"
 
-	// Job scopes.
-	ScopeReadJobs  Scope = "read_jobs"
-	ScopeWriteJobs Scope = "write_jobs"
-
 	// Dashboard scopes.
 	ScopeReadDashboard Scope = "read_dashboard"
 
@@ -52,8 +48,6 @@ func AllScopes() []Scope {
 		ScopeWriteAPIKeys,
 		ScopeReadRequests,
 		ScopeWriteRequests,
-		ScopeReadJobs,
-		ScopeWriteJobs,
 		ScopeReadDashboard,
 		ScopeReadSettings,
 		ScopeWriteSettings,
@@ -75,21 +69,19 @@ func AllScopesAsStrings() []string {
 // ScopeDescriptions returns human-readable descriptions for scopes.
 func ScopeDescriptions() map[Scope]string {
 	return map[Scope]string{
-		ScopeReadChannels:  "查看渠道信息",
-		ScopeWriteChannels: "管理渠道（创建、编辑、删除）",
-		ScopeReadUsers:     "查看用户信息",
-		ScopeWriteUsers:    "管理用户（创建、编辑、删除）",
-		ScopeReadRoles:     "查看角色信息",
-		ScopeWriteRoles:    "管理角色（创建、编辑、删除）",
-		ScopeReadAPIKeys:   "查看API密钥",
-		ScopeWriteAPIKeys:  "管理API密钥（创建、编辑、删除）",
-		ScopeReadRequests:  "查看请求记录",
-		ScopeWriteRequests: "管理请求记录",
-		ScopeReadJobs:      "查看任务信息",
-		ScopeWriteJobs:     "管理任务",
-		ScopeReadDashboard: "查看仪表板",
-		ScopeReadSettings:  "查看系统设置",
-		ScopeWriteSettings: "管理系统设置",
+		ScopeReadChannels:  "View channel information",
+		ScopeWriteChannels: "Manage channels (create, edit, delete)",
+		ScopeReadUsers:     "View user information",
+		ScopeWriteUsers:    "Manage users (create, edit, delete)",
+		ScopeReadRoles:     "View role information",
+		ScopeWriteRoles:    "Manage roles (create, edit, delete)",
+		ScopeReadAPIKeys:   "View API keys",
+		ScopeWriteAPIKeys:  "Manage API keys (create, edit, delete)",
+		ScopeReadRequests:  "View request records",
+		ScopeWriteRequests: "Manage request records",
+		ScopeReadDashboard: "View dashboard",
+		ScopeReadSettings:  "View system settings",
+		ScopeWriteSettings: "Manage system settings",
 	}
 }
 

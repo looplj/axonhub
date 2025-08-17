@@ -6,7 +6,6 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
-	"github.com/looplj/axonhub/internal/log"
 )
 
 // UserReadScopeRule checks read permissions.
@@ -69,12 +68,10 @@ func WithUserScopeDecision(ctx context.Context, requiredScope Scope) context.Con
 	if !ok {
 		return privacy.DecisionContext(ctx, privacy.Deny)
 	}
-	log.Debug(ctx, "Check user has required scope",
-		log.String("scope", string(requiredScope)),
-		log.Any("user", user),
-	)
+
 	if userHasScope(user, requiredScope) {
 		return privacy.DecisionContext(ctx, privacy.Allow)
 	}
+
 	return privacy.DecisionContext(ctx, privacy.Deny)
 }

@@ -425,18 +425,23 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                 ) : (
                   <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
                     {allScopes.map((scope) => (
-                      <div key={scope.scope} className="flex items-center space-x-2">
+                      <div key={scope.scope} className="flex items-start space-x-2">
                         <Checkbox
                           id={`scope-${scope.scope}`}
                           checked={(form.watch("scopes") || []).includes(scope.scope)}
                           onCheckedChange={() => handleScopeToggle(scope.scope)}
                         />
-                        <label
-                          htmlFor={`scope-${scope.scope}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {scope.scope}
-                        </label>
+                        <div className="space-y-1 leading-none">
+                          <label
+                            htmlFor={`scope-${scope.scope}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            <Badge variant="outline" className="mr-2">
+                              {scope.scope}
+                            </Badge>
+                            {t(`scopes.${scope.scope}`)}
+                          </label>
+                        </div>
                       </div>
                     ))}
                   </div>

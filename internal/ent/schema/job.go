@@ -39,11 +39,9 @@ func (Job) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
 			scopes.OwnerRule(), // owner 用户可以访问所有任务
-			scopes.UserReadScopeRule(scopes.ScopeReadJobs), // 需要 jobs 读取权限
 		},
 		Mutation: scopes.MutationPolicy{
 			scopes.OwnerRule(), // owner 用户可以修改所有任务
-			scopes.UserWriteScopeRule(scopes.ScopeWriteJobs), // 需要 jobs 写入权限
 		},
 	}
 }
