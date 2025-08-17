@@ -2,7 +2,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -12,36 +11,18 @@ import { UserAuthForm } from './components/user-auth-form'
 export default function SignIn() {
   return (
     <AuthLayout>
-      <Card className='backdrop-blur-xl bg-white/10 border-white/20 shadow-2xl animate-fade-in-up animation-delay-300'>
-        <CardHeader className='text-center pb-8'>
-          <CardTitle className='text-2xl font-bold text-white mb-2 animate-fade-in-up animation-delay-300'>
-            Welcome Back
+      <Card className='backdrop-blur-xl bg-[#252525]/80 border-[#00FF9D]/20 shadow-[0_0_50px_rgba(0,255,157,0.1)] animate-fade-in-up animation-delay-300 hover:shadow-[0_0_80px_rgba(0,255,157,0.2)] transition-all duration-500'>
+        <CardHeader className='text-center pb-6'>
+          <CardTitle className='text-2xl font-bold text-[#F0F0F0] mb-2 animate-fade-in-up animation-delay-300'>
+            欢迎回来
           </CardTitle>
-          <CardDescription className='text-cyan-100/80 text-base animate-fade-in-up animation-delay-300'>
-            Enter your credentials to access your account
+          <CardDescription className='text-[#B0B0B0] text-base animate-fade-in-up animation-delay-500'>
+            输入您的凭据以访问您的账户
           </CardDescription>
         </CardHeader>
-        <CardContent className='animate-fade-in-up animation-delay-300'>
+        <CardContent className='animate-fade-in-up animation-delay-700'>
           <UserAuthForm />
         </CardContent>
-        {/* <CardFooter className='pt-6 animate-fade-in-up animation-delay-300'>
-          <p className='text-cyan-100/60 text-center text-sm w-full'>
-            By signing in, you agree to our{' '}
-            <a
-              href='/terms'
-              className='text-cyan-300 hover:text-cyan-200 underline underline-offset-4 transition-colors'
-            >
-              Terms of Service
-            </a>{' '}
-            and{' '}
-            <a
-              href='/privacy'
-              className='text-cyan-300 hover:text-cyan-200 underline underline-offset-4 transition-colors'
-            >
-              Privacy Policy
-            </a>
-          </p>
-        </CardFooter> */}
       </Card>
     </AuthLayout>
   )

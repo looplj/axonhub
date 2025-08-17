@@ -4,78 +4,173 @@ interface Props {
 
 export default function AuthLayout({ children }: Props) {
   return (
-    <div className='relative min-h-screen overflow-hidden'>
-      {/* Darker animated gradient background */}
-      <div className='absolute inset-0 bg-gradient-to-br from-gray-950 via-slate-950 to-black'>
-        <div className='absolute inset-0 bg-gradient-to-tr from-transparent via-blue-600/15 to-transparent animate-pulse'></div>
-        <div className='absolute inset-0 bg-gradient-to-bl from-transparent via-cyan-600/10 to-transparent animate-pulse animation-delay-1000'></div>
-        
-        {/* Main animated blobs - larger and more vibrant */}
-        <div className='absolute -top-20 left-1/4 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl animate-blob'></div>
-        <div className='absolute -top-10 right-1/4 w-80 h-80 bg-cyan-400/35 rounded-full blur-3xl animate-blob animation-delay-2000'></div>
-        <div className='absolute -bottom-20 left-1/3 w-96 h-96 bg-teal-500/25 rounded-full blur-3xl animate-blob animation-delay-4000'></div>
-        <div className='absolute bottom-1/4 right-1/5 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-blob animation-delay-3000'></div>
-        
-        {/* Additional smaller animated elements */}
-        <div className='absolute top-1/3 left-1/6 w-48 h-48 bg-indigo-400/25 rounded-full blur-2xl animate-blob animation-delay-1500'></div>
-        <div className='absolute bottom-1/3 right-1/3 w-56 h-56 bg-blue-400/30 rounded-full blur-2xl animate-blob animation-delay-5000'></div>
-        
-        {/* Moving light streaks */}
-        <div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent animate-slide-right'></div>
-        <div className='absolute bottom-0 right-0 w-full h-1 bg-gradient-to-l from-transparent via-blue-400/50 to-transparent animate-slide-left animation-delay-2000'></div>
-        <div className='absolute top-1/2 left-0 w-1 h-full bg-gradient-to-b from-transparent via-teal-400/40 to-transparent animate-slide-down animation-delay-3000'></div>
-      </div>
+    <div className='relative min-h-screen overflow-hidden bg-[#1A1A1A] tech'>
+      {/* Tech grid background */}
+      <div className='absolute inset-0 tech-grid opacity-30'></div>
       
-      {/* Content container */}
-      <div className='relative z-10 container grid h-svh max-w-none items-center justify-center'>
-        <div className='mx-auto flex w-full flex-col justify-center space-y-2 py-8 sm:w-[480px] sm:p-8 animate-fade-in-up'>
-          <div className='mb-8 flex items-center justify-center'>
-            <div className='flex items-center space-x-3 animate-fade-in'>
-              <div className='relative'>
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  className='h-8 w-8 text-cyan-400 animate-glow'
-                >
-                  <path d='M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' />
-                </svg>
-                <div className='absolute inset-0 h-8 w-8 bg-cyan-400/20 rounded-full blur-md animate-pulse'></div>
-              </div>
-              <h1 className='text-3xl font-bold bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-transparent'>
-                AxonHub
+      {/* Low-poly network pattern */}
+      <div className='absolute inset-0 low-poly-network'></div>
+      
+      {/* Top Navigation */}
+      <nav className='relative z-50 flex items-center justify-between p-6'>
+        <div className='flex items-center space-x-3'>
+          <div className='relative'>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              className='h-8 w-8 text-[#00C77E] animate-neon-pulse'
+            >
+              <path d='M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' />
+            </svg>
+          </div>
+          <h1 className='text-2xl font-bold text-[#00C77E] animate-neon-pulse font-mono'>
+            AxonHub
+          </h1>
+        </div>
+        
+        <div className='flex items-center space-x-4'>
+          <select className='bg-transparent border border-[#00C77E]/30 text-[#F0F0F0] px-3 py-1 rounded text-sm hover-glow focus-particles'>
+            <option value='zh'>中文</option>
+            <option value='en'>English</option>
+          </select>
+        </div>
+      </nav>
+      
+      {/* Main Content Area */}
+      <div className='relative z-10 flex min-h-[calc(100vh-88px)]'>
+        {/* Left Content Section */}
+        <div className='flex-1 flex items-center justify-center p-12'>
+          <div className='max-w-2xl space-y-8 animate-fade-in-up'>
+            <div className='space-y-4'>
+              <h1 className='text-5xl font-bold text-[#F0F0F0] leading-tight'>
+                聚合AI之力，
+                <span className='text-[#00C77E] animate-neon-pulse'>精准调校</span>
+                每一段对话
               </h1>
+              <p className='text-xl text-[#B0B0B0] font-light'>
+                一站式API管理 × Prompt工程实验室
+              </p>
+            </div>
+            
+            {/* Feature Points */}
+            <div className='space-y-4'>
+              <div className='flex items-center space-x-3 animate-fade-in-up animation-delay-300'>
+                <div className='w-2 h-2 bg-[#00C77E] rounded-full animate-neon-pulse'></div>
+                <span className='text-[#F0F0F0]'>支持20+主流AI平台API无缝切换</span>
+              </div>
+              <div className='flex items-center space-x-3 animate-fade-in-up animation-delay-500'>
+                <div className='w-2 h-2 bg-[#00C77E] rounded-full animate-neon-pulse'></div>
+                <span className='text-[#F0F0F0]'>可视化Prompt性能评估仪表盘</span>
+              </div>
+              <div className='flex items-center space-x-3 animate-fade-in-up animation-delay-700'>
+                <div className='w-2 h-2 bg-[#00C77E] rounded-full animate-neon-pulse'></div>
+                <span className='text-[#F0F0F0]'>团队协作式调试工作流</span>
+              </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className='flex space-x-4 animate-fade-in-up animation-delay-1000'>
+              <button className='bg-[#00C77E] text-[#1A1A1A] px-8 py-4 rounded-lg font-semibold hover:bg-[#00CC7E] transition-all duration-300 hover-glow animate-neon-pulse'>
+                立即开始
+              </button>
+              <button className='border border-[#00C77E] text-[#00C77E] px-8 py-4 rounded-lg font-semibold hover:bg-[#00C77E]/10 transition-all duration-300 hover-glow'>
+                观看演示
+              </button>
             </div>
           </div>
-          <div className='animate-fade-in-up animation-delay-300'>
+        </div>
+        
+        {/* Right Graphics Section */}
+        <div className='flex-1 flex items-center justify-center p-12 relative'>
+          {/* Tech Graphics Container */}
+          <div className='relative w-full max-w-lg h-96'>
+            {/* 3D Data Flow Network */}
+            <div className='absolute inset-0'>
+              {/* Central AI Chip */}
+              <div className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 border-2 border-[#00C77E] rounded-lg bg-[#00C77E]/10 animate-neon-pulse'>
+                <div className='w-full h-full flex items-center justify-center'>
+                  <div className='w-8 h-8 bg-[#00C77E] rounded animate-breathing-glow'></div>
+                </div>
+              </div>
+              
+              {/* Data Flow Nodes */}
+              <div className='absolute top-8 left-8 w-16 h-16 border border-[#00C77E]/50 rounded-full bg-[#00C77E]/5 animate-particle-float'></div>
+              <div className='absolute top-8 right-8 w-12 h-12 border border-[#FF2E4D]/50 rounded-full bg-[#FF2E4D]/5 animate-particle-float animation-delay-1000'></div>
+              <div className='absolute bottom-8 left-8 w-14 h-14 border border-[#00C77E]/50 rounded-full bg-[#00C77E]/5 animate-particle-float animation-delay-2000'></div>
+              <div className='absolute bottom-8 right-8 w-10 h-10 border border-[#FF2E4D]/50 rounded-full bg-[#FF2E4D]/5 animate-particle-float animation-delay-3000'></div>
+              
+              {/* Connection Lines */}
+              <svg className='absolute inset-0 w-full h-full' viewBox='0 0 400 400'>
+                <defs>
+                  <linearGradient id='dataFlow' x1='0%' y1='0%' x2='100%' y2='0%'>
+                    <stop offset='0%' stopColor='#00C77E' stopOpacity='0' />
+                    <stop offset='50%' stopColor='#00C77E' stopOpacity='1' />
+                    <stop offset='100%' stopColor='#00C77E' stopOpacity='0' />
+                  </linearGradient>
+                </defs>
+                <line x1='50' y1='50' x2='200' y2='200' stroke='url(#dataFlow)' strokeWidth='2' className='animate-data-flow' />
+                <line x1='350' y1='50' x2='200' y2='200' stroke='url(#dataFlow)' strokeWidth='2' className='animate-data-flow animation-delay-1000' />
+                <line x1='50' y1='350' x2='200' y2='200' stroke='url(#dataFlow)' strokeWidth='2' className='animate-data-flow animation-delay-2000' />
+                <line x1='350' y1='350' x2='200' y2='200' stroke='url(#dataFlow)' strokeWidth='2' className='animate-data-flow animation-delay-3000' />
+              </svg>
+              
+              {/* Radar Chart Overlay */}
+              <div className='absolute top-4 right-4 w-32 h-32 border border-[#00C77E]/30 rounded-full animate-grid-pulse'>
+                <div className='absolute inset-4 border border-[#00C77E]/20 rounded-full'></div>
+                <div className='absolute inset-8 border border-[#00C77E]/10 rounded-full'></div>
+                <div className='absolute top-1/2 left-0 w-full h-px bg-[#00C77E]/20'></div>
+                <div className='absolute top-0 left-1/2 w-px h-full bg-[#00C77E]/20'></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Centered Login Form */}
+        <div className='absolute inset-0 flex items-center justify-center z-20'>
+          <div className='w-full max-w-md animate-fade-in-up animation-delay-300'>
             {children}
           </div>
         </div>
       </div>
       
-      {/* Enhanced floating particles and light effects */}
-      <div className='absolute inset-0 overflow-hidden pointer-events-none'>
-        {/* Floating particles */}
-        <div className='absolute top-1/4 left-1/4 w-3 h-3 bg-cyan-400/50 rounded-full animate-float shadow-lg shadow-cyan-400/30'></div>
-        <div className='absolute top-1/3 right-1/3 w-2 h-2 bg-blue-400/60 rounded-full animate-float animation-delay-1000 shadow-lg shadow-blue-400/40'></div>
-        <div className='absolute bottom-1/4 left-1/2 w-2.5 h-2.5 bg-teal-400/50 rounded-full animate-float animation-delay-2000 shadow-lg shadow-teal-400/30'></div>
-        <div className='absolute top-1/2 right-1/4 w-2 h-2 bg-cyan-300/60 rounded-full animate-float animation-delay-3000 shadow-lg shadow-cyan-300/40'></div>
-        <div className='absolute top-3/4 left-1/5 w-1.5 h-1.5 bg-purple-400/50 rounded-full animate-float animation-delay-4000 shadow-lg shadow-purple-400/30'></div>
-        <div className='absolute top-1/5 right-1/2 w-2 h-2 bg-indigo-400/55 rounded-full animate-float animation-delay-500 shadow-lg shadow-indigo-400/35'></div>
+      {/* Micro-light Particles Background */}
+      <div className='absolute inset-0 overflow-hidden pointer-events-none z-0'>
+        {/* Matrix Rain Effect */}
+        <div className='absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-[#00C77E]/30 to-transparent animate-matrix-rain'></div>
+        <div className='absolute top-0 left-3/4 w-px h-full bg-gradient-to-b from-transparent via-[#00C77E]/20 to-transparent animate-matrix-rain animation-delay-2000'></div>
+        <div className='absolute top-0 left-1/2 w-px h-full bg-gradient-to-b from-transparent via-[#FF2E4D]/20 to-transparent animate-matrix-rain animation-delay-4000'></div>
         
-        {/* Glowing orbs */}
-        <div className='absolute top-1/6 left-3/4 w-4 h-4 bg-cyan-300/40 rounded-full animate-pulse-glow animation-delay-1000'></div>
-        <div className='absolute bottom-1/6 right-1/6 w-3 h-3 bg-blue-300/45 rounded-full animate-pulse-glow animation-delay-2500'></div>
-        <div className='absolute top-2/3 left-1/8 w-3.5 h-3.5 bg-teal-300/40 rounded-full animate-pulse-glow animation-delay-4500'></div>
-        
-        {/* Shooting stars */}
-        <div className='absolute top-1/4 -left-10 w-20 h-0.5 bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent animate-shooting-star animation-delay-6000'></div>
-        <div className='absolute top-3/4 -right-10 w-16 h-0.5 bg-gradient-to-l from-transparent via-blue-400/60 to-transparent animate-shooting-star-reverse animation-delay-8000'></div>
+        {/* Floating Particles */}
+        <div className='absolute top-1/4 left-1/6 w-1 h-1 bg-[#00C77E] rounded-full animate-particle-float shadow-[0_0_10px_#00C77E]'></div>
+        <div className='absolute top-1/3 right-1/4 w-1 h-1 bg-[#00C77E] rounded-full animate-particle-float animation-delay-1000 shadow-[0_0_10px_#00C77E]'></div>
+        <div className='absolute bottom-1/4 left-1/3 w-1 h-1 bg-[#FF2E4D] rounded-full animate-particle-float animation-delay-2000 shadow-[0_0_10px_#FF2E4D]'></div>
+        <div className='absolute top-1/2 right-1/6 w-1 h-1 bg-[#00C77E] rounded-full animate-particle-float animation-delay-3000 shadow-[0_0_10px_#00C77E]'></div>
+        <div className='absolute top-3/4 left-1/5 w-1 h-1 bg-[#FF2E4D] rounded-full animate-particle-float animation-delay-4000 shadow-[0_0_10px_#FF2E4D]'></div>
+        <div className='absolute top-1/5 right-1/3 w-1 h-1 bg-[#00C77E] rounded-full animate-particle-float animation-delay-500 shadow-[0_0_10px_#00C77E]'></div>
       </div>
+      
+      {/* Footer */}
+      <footer className='absolute bottom-0 left-0 right-0 z-30 p-6'>
+        <div className='flex justify-between items-center text-[#B0B0B0] text-sm'>
+          <div className='flex space-x-6'>
+            <span>© 2024 AxonHub. All rights reserved.</span>
+            <a href='#' className='hover:text-[#00C77E] transition-colors'>服务条款</a>
+            <a href='#' className='hover:text-[#00C77E] transition-colors'>隐私政策</a>
+          </div>
+          
+          {/* Binary Code Stream */}
+          <div className='relative overflow-hidden w-64 h-4'>
+            <div className='absolute inset-0 text-[#00C77E]/30 text-xs font-mono animate-binary-stream whitespace-nowrap'>
+              01001000 01100101 01101100 01101100 01101111
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
