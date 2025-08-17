@@ -49,7 +49,7 @@ export function ExecutionsDrawer({
                   >
                     <div className='flex items-center justify-between mb-3'>
                       <h4 className='text-sm font-medium'>
-                        {t('requests.dialog.requestDetail.execution', { index: index + 1 })}
+                        {t('requests.dialogs.requestDetail.execution', { index: index + 1 })}
                       </h4>
                       <div className='flex items-center gap-2'>
                         <Badge className={getStatusColor(execution.status)}>
@@ -68,15 +68,15 @@ export function ExecutionsDrawer({
                     
                     <div className='space-y-2 text-xs text-muted-foreground'>
                       <div className='flex justify-between'>
-                        <span>{t('requests.dialog.executionDetail.channel')}:</span>
+                        <span>{t('requests.dialogs.executionDetail.channel')}:</span>
                         <span className='font-mono'>{execution.channel?.name || t('requests.columns.unknown')}</span>
                       </div>
                       <div className='flex justify-between'>
-                        <span>{t('requests.dialog.executionDetail.modelId')}:</span>
+                        <span>{t('requests.dialogs.executionDetail.modelId')}:</span>
                         <span className='font-mono'>{execution.modelID || t('requests.columns.unknown')}</span>
                       </div>
                       <div className='flex justify-between'>
-                        <span>{t('requests.dialog.executionDetail.createdAt')}:</span>
+                        <span>{t('requests.dialogs.executionDetail.createdAt')}:</span>
                         <span>
                           {format(
                             new Date(execution.createdAt),
@@ -87,7 +87,7 @@ export function ExecutionsDrawer({
                       </div>
                       {execution.errorMessage && (
                         <div className='mt-2 p-2 bg-red-50 rounded text-red-800'>
-                          <div className='font-medium'>{t('requests.dialog.executionDetail.errorMessage')}:</div>
+                          <div className='font-medium'>{t('requests.dialogs.executionDetail.errorMessage')}:</div>
                           <div className='truncate'>{execution.errorMessage}</div>
                         </div>
                       )}
@@ -98,7 +98,7 @@ export function ExecutionsDrawer({
             </ScrollArea>
           ) : (
             <div className='py-8 text-center'>
-              <p className='text-muted-foreground text-sm'>{t('requests.dialog.requestDetail.noExecutions')}</p>
+              <p className='text-muted-foreground text-sm'>{t('requests.dialogs.requestDetail.noExecutions')}</p>
             </div>
           )}
         </div>

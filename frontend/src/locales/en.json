@@ -97,6 +97,103 @@
       "changePassword": "Change Password",
       "activate": "Activate",
       "deactivate": "Deactivate"
+    },
+    "dialogs": {
+      "add": {
+        "title": "Add New User",
+        "description": "Create new user here. Click save when you're done."
+      },
+      "edit": {
+        "title": "Edit User",
+        "description": "Update the user here. Click save when you're done."
+      },
+      "changePassword": {
+        "title": "Change Password",
+        "description": "Change password for {{firstName}} {{lastName}} ({{email}})"
+      },
+      "statusChange": {
+        "title": "{{action}} User",
+        "confirmMessage": "Are you sure you want to {{action}} user {{name}}?",
+        "deactivateWarning": "After deactivation, this user will not be able to log in to the system.",
+        "activateInfo": "After activation, this user will be able to log in to the system normally."
+      },
+      "status": {
+        "activate": {
+          "title": "Activate User",
+          "description": "Are you sure you want to activate user {{firstName}} {{lastName}}?",
+          "note": "After activation, this user will be able to log in to the system normally."
+        },
+        "deactivate": {
+          "title": "Deactivate User",
+          "description": "Are you sure you want to deactivate user {{firstName}} {{lastName}}?",
+          "note": "After deactivation, this user will not be able to log in to the system."
+        }
+      }
+    },
+    "form": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmNewPassword": "Confirm New Password",
+      "isOwner": "Owner",
+      "ownerDescription": "Grant owner privileges to this user",
+      "roles": "Roles",
+      "scopes": "Scopes",
+      "loadingRoles": "Loading roles...",
+      "loadingScopes": "Loading scopes...",
+      "placeholders": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john.doe@example.com",
+        "password": "Enter password",
+        "confirmPassword": "Confirm password",
+        "currentPassword": "Enter current password",
+        "newPassword": "Enter new password",
+        "confirmNewPassword": "Confirm new password",
+        "currentPasswordPlaceholder": "Enter current password",
+        "newPasswordPlaceholder": "Enter new password",
+        "confirmNewPasswordPlaceholder": "Confirm new password"
+      }
+    },
+    "validation": {
+      "firstNameRequired": "First name is required",
+      "lastNameRequired": "Last name is required",
+      "emailInvalid": "Invalid email address",
+      "passwordMinLength": "Password must be at least 6 characters",
+      "passwordsNotMatch": "Passwords don't match",
+      "currentPasswordRequired": "Current password is required",
+      "newPasswordRequired": "New password is required",
+      "newPasswordMinLength": "New password must be at least 6 characters"
+    },
+    "buttons": {
+      "save": "Save changes",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "changePassword": "Change Password",
+      "changing": "Changing...",
+      "saveChanges": "Save changes"
+    },
+    "messages": {
+      "createSuccess": "User created successfully",
+      "updateSuccess": "User updated successfully",
+      "passwordChangeSuccess": "Password changed successfully",
+      "statusUpdateSuccess": "User status updated to {{status}}",
+      "createError": "Failed to save user",
+      "updateError": "Failed to save user",
+      "passwordChangeError": "Failed to change password",
+      "statusUpdateError": "Failed to update status",
+      "deleteSuccess": "User deleted successfully",
+      "deleteError": "Failed to delete user",
+      "loadUsersError": "Failed to load users data",
+      "loadUserError": "Failed to load user details",
+      "userNotFound": "User not found",
+      "loadRolesError": "Failed to load roles and scopes"
     }
   },
   "apikeys": {
@@ -133,7 +230,7 @@
       "show": "Show",
       "hide": "Hide"
     },
-    "dialog": {
+    "dialogs": {
       "create": {
         "title": "Create API Key",
         "description": "Create a new API Key for system access."
@@ -254,7 +351,7 @@
     "filters": {
       "reset": "Reset"
     },
-    "dialog": {
+    "dialogs": {
       "create": {
         "title": "Create Role",
         "description": "Create a new role and configure its permission scopes."
@@ -361,7 +458,7 @@
       "statusUpdateSuccess": "Channel status updated to {{status}}",
       "statusUpdateError": "Status update failed: {{error}}"
     },
-    "dialog": {
+    "dialogs": {
       "create": {
         "title": "Add Channel",
         "description": "Create a new AI model channel."
@@ -567,8 +664,7 @@
       "status": "Status",
       "reset": "Reset"
     },
-
-    "dialog": {
+    "dialogs": {
       "jsonViewer": {
         "requestBody": "Request Body",
         "responseBody": "Response Body",

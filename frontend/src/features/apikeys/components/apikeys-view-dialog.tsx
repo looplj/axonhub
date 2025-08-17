@@ -33,16 +33,16 @@ export function ApiKeysViewDialog() {
     <Dialog open={isDialogOpen.view} onOpenChange={() => closeDialog()}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>{t('apikeys.dialog.view.title')}</DialogTitle>
+          <DialogTitle>{t('apikeys.dialogs.view.title')}</DialogTitle>
           <DialogDescription>
-            {t('apikeys.dialog.view.description')}
+            {t('apikeys.dialogs.view.description')}
           </DialogDescription>
         </DialogHeader>
         
         <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
           <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <AlertDescription className="text-orange-800 dark:text-orange-200">
-            {t('apikeys.dialog.view.warning')}
+            {t('apikeys.dialogs.view.warning')}
           </AlertDescription>
         </Alert>
 

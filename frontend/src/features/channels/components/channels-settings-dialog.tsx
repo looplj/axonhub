@@ -98,41 +98,41 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
     >
       <DialogContent className='sm:max-w-2xl'>
         <DialogHeader className='text-left'>
-          <DialogTitle>{t('channels.dialog.settings.title')}</DialogTitle>
+          <DialogTitle>{t('channels.dialogs.settings.title')}</DialogTitle>
           <DialogDescription>
-            {t('channels.dialog.settings.description', { name: currentRow.name })}
+            {t('channels.dialogs.settings.description', { name: currentRow.name })}
           </DialogDescription>
         </DialogHeader>
         
         <div className='space-y-6'>
           <Card>
             <CardHeader>
-              <CardTitle className='text-lg'>{t('channels.dialog.settings.basicInfo.title')}</CardTitle>
+              <CardTitle className='text-lg'>{t('channels.dialogs.settings.basicInfo.title')}</CardTitle>
               <CardDescription>
-                {t('channels.dialog.settings.basicInfo.description')}
+                {t('channels.dialogs.settings.basicInfo.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div className='grid grid-cols-2 gap-4'>
                 <div>
-                  <label className='text-sm font-medium'>{t('channels.dialog.fields.name.label')}</label>
+                  <label className='text-sm font-medium'>{t('channels.dialogs.fields.name.label')}</label>
                   <p className='text-sm text-muted-foreground'>{currentRow.name}</p>
                 </div>
                 <div>
-                  <label className='text-sm font-medium'>{t('channels.dialog.fields.type.label')}</label>
+                  <label className='text-sm font-medium'>{t('channels.dialogs.fields.type.label')}</label>
                   <p className='text-sm text-muted-foreground'>{currentRow.type}</p>
                 </div>
                 <div>
-                  <label className='text-sm font-medium'>{t('channels.dialog.fields.baseURL.label')}</label>
+                  <label className='text-sm font-medium'>{t('channels.dialogs.fields.baseURL.label')}</label>
                   <p className='text-sm text-muted-foreground'>{currentRow.baseURL}</p>
                 </div>
                 <div>
-                  <label className='text-sm font-medium'>{t('channels.dialog.fields.defaultTestModel.label')}</label>
+                  <label className='text-sm font-medium'>{t('channels.dialogs.fields.defaultTestModel.label')}</label>
                   <p className='text-sm text-muted-foreground'>{currentRow.defaultTestModel}</p>
                 </div>
               </div>
               <div>
-                <label className='text-sm font-medium'>{t('channels.dialog.fields.supportedModels.label')}</label>
+                <label className='text-sm font-medium'>{t('channels.dialogs.fields.supportedModels.label')}</label>
                 <div className='flex flex-wrap gap-1 mt-1'>
                   {currentRow.supportedModels.map((model) => (
                     <Badge key={model} variant='outline' className='text-xs'>
@@ -146,22 +146,22 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
 
           <Card>
             <CardHeader>
-              <CardTitle className='text-lg'>{t('channels.dialog.settings.modelMapping.title')}</CardTitle>
+              <CardTitle className='text-lg'>{t('channels.dialogs.settings.modelMapping.title')}</CardTitle>
               <CardDescription>
-                {t('channels.dialog.settings.modelMapping.description')}
+                {t('channels.dialogs.settings.modelMapping.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div className='flex gap-2'>
                 <Input
-                  placeholder={t('channels.dialog.settings.modelMapping.originalModel')}
+                  placeholder={t('channels.dialogs.settings.modelMapping.originalModel')}
                   value={newMapping.from}
                   onChange={(e) => setNewMapping({ ...newMapping, from: e.target.value })}
                   className='flex-1'
                 />
                 <span className='flex items-center text-muted-foreground'>→</span>
                 <Input
-                  placeholder={t('channels.dialog.settings.modelMapping.targetModel')}
+                  placeholder={t('channels.dialogs.settings.modelMapping.targetModel')}
                   value={newMapping.to}
                   onChange={(e) => setNewMapping({ ...newMapping, to: e.target.value })}
                   className='flex-1'
@@ -179,7 +179,7 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
               <div className='space-y-2'>
                 {modelMappings.length === 0 ? (
                   <p className='text-sm text-muted-foreground text-center py-4'>
-                    {t('channels.dialog.settings.modelMapping.noMappings')}
+                    {t('channels.dialogs.settings.modelMapping.noMappings')}
                   </p>
                 ) : (
                   modelMappings.map((mapping, index) => (
@@ -215,14 +215,14 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
             variant='outline'
             onClick={() => onOpenChange(false)}
           >
-            {t('channels.dialog.buttons.cancel')}
+            {t('channels.dialogs.buttons.cancel')}
           </Button>
           <Button
             type='button'
             onClick={() => onSubmit({ modelMappings })}
             disabled={updateChannel.isPending}
           >
-            {updateChannel.isPending ? t('channels.dialog.buttons.saving') : t('channels.dialog.buttons.save')}
+            {updateChannel.isPending ? t('channels.dialogs.buttons.saving') : t('channels.dialogs.buttons.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

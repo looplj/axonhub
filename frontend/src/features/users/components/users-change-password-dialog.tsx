@@ -3,6 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Props) {
+  const { t } = useTranslation();
   const form = useForm({
     resolver: zodResolver(changePasswordFormSchema),
     defaultValues: {
@@ -54,12 +56,12 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
       // 模拟 API 调用
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      toast.success("Password changed successfully");
+      toast.success(t("users.messages.passwordChangeSuccess"));
       form.reset();
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to change password:", error);
-      toast.error("Failed to change password");
+      toast.error(t("users.messages.passwordChangeError"));
     }
   };
 
@@ -75,9 +77,12 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="text-left">
-          <DialogTitle>Change Password</DialogTitle>
+          <DialogTitle>{t("users.dialogs.changePassword.title")}</DialogTitle>
           <DialogDescription>
-            Change password for {currentRow?.firstName} {currentRow?.lastName} ({currentRow?.email})
+            {t("users.dialogs.changePassword.description", { 
+              name: `${currentRow?.firstName} ${currentRow?.lastName}`, 
+              email: currentRow?.email 
+            })}
           </DialogDescription>
         </DialogHeader>
         
@@ -92,11 +97,11 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
               name="currentPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Current Password</FormLabel>
+                  <FormLabel>{t("users.form.currentPassword")}</FormLabel>
                   <FormControl>
                     <Input 
                       type="password" 
-                      placeholder="Enter current password" 
+                      placeholder={t("users.form.currentPasswordPlaceholder")} 
                       {...field} 
                     />
                   </FormControl>
@@ -110,11 +115,11 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
               name="newPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New Password</FormLabel>
+                  <FormLabel>{t("users.form.newPassword")}</FormLabel>
                   <FormControl>
                     <Input 
                       type="password" 
-                      placeholder="Enter new password" 
+                      placeholder={t("users.form.newPasswordPlaceholder")} 
                       {...field} 
                     />
                   </FormControl>
@@ -128,11 +133,11 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormLabel>{t("users.form.confirmNewPassword")}</FormLabel>
                   <FormControl>
                     <Input 
                       type="password" 
-                      placeholder="Confirm new password" 
+                      placeholder={t("users.form.confirmNewPasswordPlaceholder")} 
                       {...field} 
                     />
                   </FormControl>
@@ -148,14 +153,14 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
             variant="outline"
             onClick={() => onOpenChange(false)}
           >
-            Cancel
+            {t("users.buttons.cancel")}
           </Button>
           <Button
             type="submit"
             form="change-password-form"
             disabled={form.formState.isSubmitting}
           >
-            {form.formState.isSubmitting ? "Changing..." : "Change Password"}
+            {form.formState.isSubmitting ? t("users.buttons.changing") : t("users.buttons.changePassword")}
           </Button>
         </DialogFooter>
       </DialogContent>

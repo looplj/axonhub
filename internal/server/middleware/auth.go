@@ -32,7 +32,7 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 		// 查询数据库验证 API key 是否存在
 		apiKey, err := auth.ValidateAPIKey(c.Request.Context(), key)
 		if err != nil {
-			if ent.IsNotFound(err) {
+			if ent.IsNotFound(err) || errors.Is(err, biz.ErrInvalidAPIKey) {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "Invalid API key",
 				})

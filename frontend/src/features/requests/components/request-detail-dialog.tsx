@@ -57,7 +57,7 @@ export function RequestDetailDialog({
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <Database className='h-5 w-5' />
-            {t('requests.dialog.requestDetail.title')} - {requestId}
+            {t('requests.dialogs.requestDetail.title')} - {requestId}
           </DialogTitle>
         </DialogHeader>
 
@@ -71,10 +71,10 @@ export function RequestDetailDialog({
         ) : request ? (
           <Tabs defaultValue='overview' className='w-full'>
             <TabsList className='grid w-full grid-cols-4'>
-              <TabsTrigger value='overview'>{t('requests.dialog.requestDetail.tabs.overview')}</TabsTrigger>
-              <TabsTrigger value='request'>{t('requests.dialog.requestDetail.tabs.request')}</TabsTrigger>
-              <TabsTrigger value='response'>{t('requests.dialog.requestDetail.tabs.response')}</TabsTrigger>
-              <TabsTrigger value='executions'>{t('requests.dialog.requestDetail.tabs.executions')}</TabsTrigger>
+              <TabsTrigger value='overview'>{t('requests.dialogs.requestDetail.tabs.overview')}</TabsTrigger>
+              <TabsTrigger value='request'>{t('requests.dialogs.requestDetail.tabs.request')}</TabsTrigger>
+              <TabsTrigger value='response'>{t('requests.dialogs.requestDetail.tabs.response')}</TabsTrigger>
+              <TabsTrigger value='executions'>{t('requests.dialogs.requestDetail.tabs.executions')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value='overview' className='space-y-4'>
@@ -82,7 +82,7 @@ export function RequestDetailDialog({
                 <div className='space-y-2'>
                   <div className='flex items-center gap-2'>
                     <User className='text-muted-foreground h-4 w-4' />
-                    <span className='text-sm font-medium'>{t('requests.dialog.requestDetail.fields.userId')}</span>
+                    <span className='text-sm font-medium'>{t('requests.dialogs.requestDetail.fields.userId')}</span>
                   </div>
                   <p className='text-muted-foreground text-sm'>
                     {request.user?.id || t('requests.columns.unknown')}
@@ -91,7 +91,7 @@ export function RequestDetailDialog({
                 <div className='space-y-2'>
                   <div className='flex items-center gap-2'>
                     <Key className='text-muted-foreground h-4 w-4' />
-                    <span className='text-sm font-medium'>{t('requests.dialog.requestDetail.fields.apiKeyId')}</span>
+                    <span className='text-sm font-medium'>{t('requests.dialogs.requestDetail.fields.apiKeyId')}</span>
                   </div>
                   <p className='text-muted-foreground text-sm'>
                     {request.apiKey?.id || t('requests.columns.unknown')}
@@ -131,7 +131,7 @@ export function RequestDetailDialog({
                     }
                   >
                     <Copy className='mr-2 h-4 w-4' />
-                    {t('requests.dialog.jsonViewer.copy')}
+                    {t('requests.dialogs.jsonViewer.copy')}
                   </Button>
                 </div>
                 <ScrollArea className='h-64 w-full rounded-md border p-4'>
@@ -155,14 +155,14 @@ export function RequestDetailDialog({
                     disabled={!request.responseBody}
                   >
                     <Copy className='mr-2 h-4 w-4' />
-                    {t('requests.dialog.jsonViewer.copy')}
+                    {t('requests.dialogs.jsonViewer.copy')}
                   </Button>
                 </div>
                 <ScrollArea className='h-64 w-full rounded-md border p-4'>
                   <pre className='text-xs whitespace-pre-wrap'>
                     {request.responseBody
                       ? formatJson(request.responseBody)
-                      : t('requests.dialog.executionDetail.noResponse')}
+                      : t('requests.dialogs.executionDetail.noResponse')}
                   </pre>
                 </ScrollArea>
               </div>
@@ -182,7 +182,7 @@ export function RequestDetailDialog({
                     >
                       <div className='flex items-center justify-between'>
                         <h5 className='text-sm font-medium'>
-                          {t('requests.dialog.requestDetail.execution', { index: index + 1 })}
+                          {t('requests.dialogs.requestDetail.execution', { index: index + 1 })}
                         </h5>
                         <Badge className={getStatusColor(execution.status)}>
                           {t(`requests.status.${execution.status}`)}
@@ -191,7 +191,7 @@ export function RequestDetailDialog({
 
                       <div className='grid grid-cols-2 gap-4 text-xs'>
                         <div>
-                          <span className='font-medium'>{t('requests.dialog.requestDetail.fields.startTime')}:</span>
+                          <span className='font-medium'>{t('requests.dialogs.requestDetail.fields.startTime')}:</span>
                           <p className='text-muted-foreground'>
                             {execution.createdAt
                               ? format(
@@ -199,11 +199,11 @@ export function RequestDetailDialog({
                                   'yyyy-MM-dd HH:mm:ss',
                                   { locale }
                                 )
-                              : t('requests.dialog.requestDetail.fields.notStarted')}
+                              : t('requests.dialogs.requestDetail.fields.notStarted')}
                           </p>
                         </div>
                         <div>
-                          <span className='font-medium'>{t('requests.dialog.requestDetail.fields.endTime')}:</span>
+                          <span className='font-medium'>{t('requests.dialogs.requestDetail.fields.endTime')}:</span>
                           {/* <p className='text-muted-foreground'>
                             {execution.finishedAt
                               ? format(
@@ -219,7 +219,7 @@ export function RequestDetailDialog({
                       {execution.errorMessage && (
                         <div className='space-y-1'>
                           <span className='text-xs font-medium text-red-600'>
-                            {t('requests.dialog.executionDetail.errorMessage')}:
+                            {t('requests.dialogs.executionDetail.errorMessage')}:
                           </span>
                           <ScrollArea className='h-20 w-full rounded border bg-red-50 p-2'>
                             <pre className='text-xs whitespace-pre-wrap text-red-800'>
@@ -255,14 +255,14 @@ export function RequestDetailDialog({
                 </div>
               ) : (
                 <div className='py-8 text-center'>
-                  <p className='text-muted-foreground text-sm'>{t('requests.dialog.requestDetail.noExecutions')}</p>
+                  <p className='text-muted-foreground text-sm'>{t('requests.dialogs.requestDetail.noExecutions')}</p>
                 </div>
               )}
             </TabsContent>
           </Tabs>
         ) : (
           <div className='py-8 text-center'>
-            <p className='text-muted-foreground text-sm'>{t('requests.dialog.requestDetail.notFound')}</p>
+            <p className='text-muted-foreground text-sm'>{t('requests.dialogs.requestDetail.notFound')}</p>
           </div>
         )}
       </DialogContent>

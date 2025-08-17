@@ -59,9 +59,9 @@ export function ApiKeysCreateDialog() {
     <Dialog open={isDialogOpen.create} onOpenChange={handleClose}>
       <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
-          <DialogTitle>{t('apikeys.dialog.create.title')}</DialogTitle>
+          <DialogTitle>{t('apikeys.dialogs.create.title')}</DialogTitle>
           <DialogDescription>
-            {t('apikeys.dialog.create.description')}
+            {t('apikeys.dialogs.create.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -71,9 +71,9 @@ export function ApiKeysCreateDialog() {
               name='name'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('apikeys.dialog.fields.name.label')}</FormLabel>
+                  <FormLabel>{t('apikeys.dialogs.fields.name.label')}</FormLabel>
                   <FormControl>
-                    <Input placeholder={t('apikeys.dialog.fields.name.placeholder')} {...field} />
+                    <Input placeholder={t('apikeys.dialogs.fields.name.placeholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -86,10 +86,10 @@ export function ApiKeysCreateDialog() {
                 onClick={handleClose}
                 disabled={isSubmitting}
               >
-                {t('apikeys.dialog.buttons.cancel')}
+                {t('apikeys.dialogs.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={isSubmitting}>
-                {isSubmitting ? t('apikeys.dialog.buttons.creating') : t('apikeys.dialog.buttons.create')}
+                {isSubmitting ? t('apikeys.dialogs.buttons.creating') : t('apikeys.dialogs.buttons.create')}
               </Button>
             </DialogFooter>
           </form>

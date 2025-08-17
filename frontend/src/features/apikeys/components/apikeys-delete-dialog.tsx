@@ -40,9 +40,9 @@ export function ApiKeysDeleteDialog() {
     <Dialog open={isDialogOpen.delete} onOpenChange={handleClose}>
       <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
-          <DialogTitle>{t('apikeys.dialog.delete.title')}</DialogTitle>
+          <DialogTitle>{t('apikeys.dialogs.delete.title')}</DialogTitle>
           <DialogDescription>
-            {t('apikeys.dialog.delete.description', { name: selectedApiKey?.name })}
+            {t('apikeys.dialogs.delete.description', { name: selectedApiKey?.name })}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -52,7 +52,7 @@ export function ApiKeysDeleteDialog() {
             onClick={handleClose}
             disabled={isDeleting}
           >
-            {t('apikeys.dialog.buttons.cancel')}
+            {t('apikeys.dialogs.buttons.cancel')}
           </Button>
           <Button
             type='button'
@@ -60,7 +60,7 @@ export function ApiKeysDeleteDialog() {
             onClick={handleDelete}
             disabled={isDeleting}
           >
-            {isDeleting ? t('apikeys.dialog.buttons.deleting') : t('apikeys.dialog.buttons.delete')}
+            {isDeleting ? t('apikeys.dialogs.buttons.deleting') : t('apikeys.dialogs.buttons.delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

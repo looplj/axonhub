@@ -130,6 +130,102 @@
       "changePassword": "修改密码",
       "activate": "激活",
       "deactivate": "停用"
+    },
+    "dialogs": {
+      "add": {
+        "title": "添加新用户",
+        "description": "在此创建新用户。完成后点击保存。"
+      },
+      "edit": {
+        "title": "编辑用户",
+        "description": "在此更新用户信息。完成后点击保存。"
+      },
+      "changePassword": {
+        "title": "修改密码",
+        "description": "为 {{name}} ({{email}}) 修改密码"
+      },
+      "statusChange": {
+        "title": "{{action}}用户",
+        "confirmMessage": "您确定要{{action}}用户 {{name}} 吗？",
+        "deactivateWarning": "停用后，该用户将无法登录系统。",
+        "activateInfo": "激活后，该用户将能够正常登录系统。"
+      },
+      "status": {
+        "activate": {
+          "title": "激活用户",
+          "description": "您确定要激活用户 {{firstName}} {{lastName}} 吗？",
+          "note": "激活后，该用户将能够正常登录系统。"
+        },
+        "deactivate": {
+          "title": "停用用户",
+          "description": "您确定要停用用户 {{firstName}} {{lastName}} 吗？",
+          "note": "停用后，该用户将无法登录系统。"
+        }
+      }
+    },
+    "form": {
+      "firstName": "名",
+      "lastName": "姓",
+      "email": "邮箱",
+      "password": "密码",
+      "confirmPassword": "确认密码",
+      "currentPassword": "当前密码",
+      "newPassword": "新密码",
+      "confirmNewPassword": "确认新密码",
+      "isOwner": "所有者",
+      "ownerDescription": "授予此用户所有者权限",
+      "roles": "角色",
+      "scopes": "权限范围",
+      "loadingRoles": "加载角色中...",
+      "loadingScopes": "加载权限范围中...",
+      "placeholders": {
+        "firstName": "张",
+        "lastName": "三",
+        "email": "zhangsan@example.com",
+        "password": "请输入密码",
+        "confirmPassword": "请确认密码",
+        "currentPassword": "当前密码",
+        "currentPasswordPlaceholder": "输入当前密码",
+        "newPassword": "新密码",
+        "newPasswordPlaceholder": "输入新密码",
+        "confirmNewPassword": "确认新密码",
+        "confirmNewPasswordPlaceholder": "确认新密码"
+      }
+    },
+    "validation": {
+      "firstNameRequired": "名字不能为空",
+      "lastNameRequired": "姓氏不能为空",
+      "emailInvalid": "邮箱格式无效",
+      "passwordMinLength": "密码至少需要6个字符",
+      "passwordsNotMatch": "密码不匹配",
+      "currentPasswordRequired": "当前密码不能为空",
+      "newPasswordRequired": "新密码不能为空",
+      "newPasswordMinLength": "新密码至少需要6个字符"
+    },
+    "buttons": {
+      "save": "保存更改",
+      "saving": "保存中...",
+      "cancel": "取消",
+      "activate": "激活",
+      "deactivate": "停用",
+      "changePassword": "修改密码",
+      "changing": "修改中..."
+    },
+    "messages": {
+      "createSuccess": "用户创建成功",
+      "updateSuccess": "用户更新成功",
+      "passwordChangeSuccess": "密码修改成功",
+      "statusUpdateSuccess": "用户状态已更新为{{status}}",
+      "createError": "保存用户失败",
+      "updateError": "保存用户失败",
+      "passwordChangeError": "修改密码失败",
+      "statusUpdateError": "状态更新失败",
+      "deleteSuccess": "用户删除成功",
+      "deleteError": "删除用户失败",
+      "loadUsersError": "获取用户数据失败",
+      "loadUserError": "获取用户详情失败",
+      "userNotFound": "用户未找到",
+      "loadRolesError": "加载角色和权限范围失败"
     }
   },
   "apikeys": {
@@ -166,7 +262,7 @@
       "show": "显示",
       "hide": "隐藏"
     },
-    "dialog": {
+    "dialogs": {
       "create": {
         "title": "创建 API Key",
         "description": "创建一个新的 API Key 用于访问系统。"
@@ -289,7 +385,7 @@
     "filters": {
       "reset": "重置"
     },
-    "dialog": {
+    "dialogs": {
       "create": {
         "title": "新建角色",
         "description": "创建一个新的角色并配置其权限范围。"
@@ -396,7 +492,7 @@
       "reset": "重置",
       "filterByName": "按名称筛选"
     },
-    "dialog": {
+    "dialogs": {
       "create": {
         "title": "添加 Channel",
         "description": "创建一个新的 AI 模型 Channel。"
@@ -602,8 +698,7 @@
       "status": "状态",
       "reset": "重置"
     },
-
-    "dialog": {
+    "dialogs": {
       "jsonViewer": {
         "requestBody": "请求体",
         "responseBody": "响应体",

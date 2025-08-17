@@ -109,7 +109,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
 
       const handleViewRequestBody = () => {
         setJsonViewerData({
-          title: t('requests.dialog.jsonViewer.requestBody'),
+          title: t('requests.dialogs.jsonViewer.requestBody'),
           data: row.original.requestBody,
         })
         setJsonViewerOpen(true)
@@ -133,7 +133,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
 
       const handleViewResponseBody = () => {
         setJsonViewerData({
-          title: t('requests.dialog.jsonViewer.responseBody'),
+          title: t('requests.dialogs.jsonViewer.responseBody'),
           data: row.original.responseBody,
         })
         setJsonViewerOpen(true)

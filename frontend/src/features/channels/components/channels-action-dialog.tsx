@@ -162,9 +162,9 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     >
       <DialogContent className='sm:max-w-4xl max-h-[90vh]'>
         <DialogHeader className='text-left'>
-          <DialogTitle>{isEdit ? t('channels.dialog.edit.title') : t('channels.dialog.create.title')}</DialogTitle>
+          <DialogTitle>{isEdit ? t('channels.dialogs.edit.title') : t('channels.dialogs.create.title')}</DialogTitle>
           <DialogDescription>
-            {isEdit ? t('channels.dialog.edit.description') : t('channels.dialog.create.description')}
+            {isEdit ? t('channels.dialogs.edit.description') : t('channels.dialogs.create.description')}
           </DialogDescription>
         </DialogHeader>
         <div className='-mr-4 h-[36rem] w-full overflow-y-auto py-1 pr-4'>
@@ -181,14 +181,14 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-right'>
-                      {t('channels.dialog.fields.type.label')}
+                      {t('channels.dialogs.fields.type.label')}
                     </FormLabel>
                     <FormControl>
                       <SelectDropdown
                         defaultValue={field.value}
                         onValueChange={field.onChange}
                         items={channelTypes}
-                        placeholder={t('channels.dialog.fields.type.description')}
+                        placeholder={t('channels.dialogs.fields.type.description')}
                         className='col-span-4'
                         isControlled={true}
                         disabled={isEdit}
@@ -205,11 +205,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-right'>
-                      {t('channels.dialog.fields.name.label')}
+                      {t('channels.dialogs.fields.name.label')}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder={t('channels.dialog.fields.name.placeholder')}
+                        placeholder={t('channels.dialogs.fields.name.placeholder')}
                         className='col-span-4'
                         autoComplete='off'
                         {...field}
@@ -226,11 +226,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-right'>
-                      {t('channels.dialog.fields.baseURL.label')}
+                      {t('channels.dialogs.fields.baseURL.label')}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder={t('channels.dialog.fields.baseURL.placeholder')}
+                        placeholder={t('channels.dialogs.fields.baseURL.placeholder')}
                         className='col-span-4'
                         autoComplete='off'
                         {...field}
@@ -248,12 +248,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                   render={({ field }) => (
                     <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                       <FormLabel className='col-span-2 text-right'>
-                        {t('channels.dialog.fields.apiKey.label')}
+                        {t('channels.dialogs.fields.apiKey.label')}
                       </FormLabel>
                       <FormControl>
                         <Input
                           type='password'
-                          placeholder={isEdit ? t('channels.dialog.fields.apiKey.editPlaceholder') : t('channels.dialog.fields.apiKey.placeholder')}
+                          placeholder={isEdit ? t('channels.dialogs.fields.apiKey.editPlaceholder') : t('channels.dialogs.fields.apiKey.placeholder')}
                           className='col-span-4'
                           autoComplete='off'
                           {...field}
@@ -273,12 +273,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     render={({ field }) => (
                       <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                         <FormLabel className='col-span-2 text-right'>
-                          {t('channels.dialog.fields.awsAccessKeyID.label')}
+                          {t('channels.dialogs.fields.awsAccessKeyID.label')}
                         </FormLabel>
                         <FormControl>
                           <Input
                             type='password'
-                            placeholder={t('channels.dialog.fields.awsAccessKeyID.placeholder')}
+                            placeholder={t('channels.dialogs.fields.awsAccessKeyID.placeholder')}
                             className='col-span-4'
                             autoComplete='off'
                             {...field}
@@ -295,12 +295,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     render={({ field }) => (
                       <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                         <FormLabel className='col-span-2 text-right'>
-                          {t('channels.dialog.fields.awsSecretAccessKey.label')}
+                          {t('channels.dialogs.fields.awsSecretAccessKey.label')}
                         </FormLabel>
                         <FormControl>
                           <Input
                             type='password'
-                            placeholder={t('channels.dialog.fields.awsSecretAccessKey.placeholder')}
+                            placeholder={t('channels.dialogs.fields.awsSecretAccessKey.placeholder')}
                             className='col-span-4'
                             autoComplete='off'
                             {...field}
@@ -317,11 +317,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     render={({ field }) => (
                       <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                         <FormLabel className='col-span-2 text-right'>
-                          {t('channels.dialog.fields.awsRegion.label')}
+                          {t('channels.dialogs.fields.awsRegion.label')}
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder={t('channels.dialog.fields.awsRegion.placeholder')}
+                            placeholder={t('channels.dialogs.fields.awsRegion.placeholder')}
                             className='col-span-4'
                             autoComplete='off'
                             {...field}
@@ -342,11 +342,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     render={({ field }) => (
                       <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                         <FormLabel className='col-span-2 text-right'>
-                          {t('channels.dialog.fields.gcpRegion.label')}
+                          {t('channels.dialogs.fields.gcpRegion.label')}
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder={t('channels.dialog.fields.gcpRegion.placeholder')}
+                            placeholder={t('channels.dialogs.fields.gcpRegion.placeholder')}
                             className='col-span-4'
                             autoComplete='off'
                             {...field}
@@ -363,11 +363,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     render={({ field }) => (
                       <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                         <FormLabel className='col-span-2 text-right'>
-                          {t('channels.dialog.fields.gcpProjectID.label')}
+                          {t('channels.dialogs.fields.gcpProjectID.label')}
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder={t('channels.dialog.fields.gcpProjectID.placeholder')}
+                            placeholder={t('channels.dialogs.fields.gcpProjectID.placeholder')}
                             className='col-span-4'
                             autoComplete='off'
                             {...field}
@@ -384,7 +384,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     render={({ field }) => (
                       <FormItem className='grid grid-cols-6 items-start space-y-0 gap-x-4 gap-y-1'>
                         <FormLabel className='col-span-2 text-right pt-2'>
-                          {t('channels.dialog.fields.gcpJsonData.label')}
+                          {t('channels.dialogs.fields.gcpJsonData.label')}
                         </FormLabel>
                         <FormControl>
                           <Textarea
@@ -402,19 +402,19 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
 
               <div className='grid grid-cols-6 items-start space-y-0 gap-x-4 gap-y-1'>
                 <label className='col-span-2 text-right text-sm font-medium'>
-                  {t('channels.dialog.fields.supportedModels.label')}
+                  {t('channels.dialogs.fields.supportedModels.label')}
                 </label>
                 <div className='col-span-4 space-y-2'>
                   <div className='flex gap-2'>
                     <Input
-                      placeholder={t('channels.dialog.fields.supportedModels.description')}
+                      placeholder={t('channels.dialogs.fields.supportedModels.description')}
                       value={newModel}
                       onChange={(e) => setNewModel(e.target.value)}
                       onKeyPress={handleKeyPress}
                       className='flex-1'
                     />
                     <Button type='button' onClick={addModel} size='sm'>
-                      {t('channels.dialog.buttons.add')}
+                      {t('channels.dialogs.buttons.add')}
                     </Button>
                   </div>
                   <div className='flex flex-wrap gap-1'>
@@ -433,7 +433,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                   </div>
                   {supportedModels.length === 0 && (
                     <p className='text-sm text-muted-foreground'>
-                      {t('channels.dialog.fields.supportedModels.required')}
+                      {t('channels.dialogs.fields.supportedModels.required')}
                     </p>
                   )}
                 </div>
@@ -445,14 +445,14 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
                     <FormLabel className='col-span-2 text-right'>
-                      {t('channels.dialog.fields.defaultTestModel.label')}
+                      {t('channels.dialogs.fields.defaultTestModel.label')}
                     </FormLabel>
                     <FormControl>
                       <SelectDropdown
                         defaultValue={field.value}
                         onValueChange={field.onChange}
                         items={supportedModels.map(model => ({ value: model, label: model }))}
-                        placeholder={t('channels.dialog.fields.defaultTestModel.description')}
+                        placeholder={t('channels.dialogs.fields.defaultTestModel.description')}
                         className='col-span-4'
                         disabled={supportedModels.length === 0}
                         isControlled={true}
@@ -476,8 +476,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
             }
           >
             {createChannel.isPending || updateChannel.isPending 
-              ? (isEdit ? t('channels.dialog.buttons.updating') : t('channels.dialog.buttons.creating'))
-              : (isEdit ? t('channels.dialog.buttons.update') : t('channels.dialog.buttons.create'))
+              ? (isEdit ? t('channels.dialogs.buttons.updating') : t('channels.dialogs.buttons.creating'))
+              : (isEdit ? t('channels.dialogs.buttons.update') : t('channels.dialogs.buttons.create'))
             }
           </Button>
         </DialogFooter>

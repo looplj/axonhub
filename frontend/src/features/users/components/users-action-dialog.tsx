@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,11 +32,11 @@ import { ROLES_QUERY, ALL_SCOPES_QUERY } from "@/gql/roles";
 import { User, CreateUserInput, UpdateUserInput } from "../data/schema";
 import { useCreateUser, useUpdateUser } from "../data/users";
 
-// 统一的表单模式，包含所有字段
-const formSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
+// 创建表单验证模式的工厂函数
+const createFormSchema = (t: (key: string) => string) => z.object({
+  firstName: z.string().min(1, t("users.validation.firstNameRequired")),
+  lastName: z.string().min(1, t("users.validation.lastNameRequired")),
+  email: z.string().email(t("users.validation.emailInvalid")),
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
   isOwner: z.boolean().optional(),
@@ -47,7 +48,7 @@ const formSchema = z.object({
     if (!data.password || data.password.length < 6) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Password must be at least 6 characters",
+        message: t("users.validation.passwordMinLength"),
         path: ["password"],
       });
     }
@@ -55,14 +56,12 @@ const formSchema = z.object({
     if (data.password !== data.confirmPassword) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Passwords don't match",
+        message: t("users.validation.passwordsNotMatch"),
         path: ["confirmPassword"],
       });
     }
   }
 });
-
-type UserForm = z.infer<typeof formSchema>;
 
 interface Role {
   id: string;
@@ -83,6 +82,7 @@ interface Props {
 }
 
 export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
+  const { t } = useTranslation();
   const isEdit = !!currentRow;
   const [roles, setRoles] = useState<Role[]>([]);
   const [allScopes, setAllScopes] = useState<ScopeInfo[]>([]);
@@ -90,6 +90,10 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
 
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
+
+  // 创建表单验证模式
+  const formSchema = createFormSchema(t);
+  type UserForm = z.infer<typeof formSchema>;
 
   // 根据是否为编辑模式使用不同的表单配置
   const form = useForm<UserForm>({
@@ -222,7 +226,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
   const handleRoleToggle = (roleId: string) => {
     const currentRoles = form.getValues("roleIDs") || [];
     const newRoles = currentRoles.includes(roleId)
-      ? currentRoles.filter(id => id !== roleId)
+      ? currentRoles.filter((id: string) => id !== roleId)
       : [...currentRoles, roleId];
     form.setValue("roleIDs", newRoles);
   };
@@ -230,14 +234,14 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
   const handleScopeToggle = (scopeName: string) => {
     const currentScopes = form.getValues("scopes") || [];
     const newScopes = currentScopes.includes(scopeName)
-      ? currentScopes.filter(name => name !== scopeName)
+      ? currentScopes.filter((name: string) => name !== scopeName)
       : [...currentScopes, scopeName];
     form.setValue("scopes", newScopes);
   };
 
   const handleScopeRemove = (scopeName: string) => {
     const currentScopes = form.getValues("scopes") || [];
-    const newScopes = currentScopes.filter(name => name !== scopeName);
+    const newScopes = currentScopes.filter((name: string) => name !== scopeName);
     form.setValue("scopes", newScopes);
   };
 
@@ -253,10 +257,9 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
     >
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader className="text-left">
-          <DialogTitle>{isEdit ? "Edit User" : "Add New User"}</DialogTitle>
+          <DialogTitle>{isEdit ? t("users.dialogs.edit.title") : t("users.dialogs.add.title")}</DialogTitle>
           <DialogDescription>
-            {isEdit ? "Update the user here. " : "Create new user here. "}
-            Click save when you're done.
+            {isEdit ? t("users.dialogs.edit.description") : t("users.dialogs.add.description")}
           </DialogDescription>
         </DialogHeader>
         
@@ -273,7 +276,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                   name="firstName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>First Name</FormLabel>
+                      <FormLabel>{t("users.form.firstName")}</FormLabel>
                       <FormControl>
                         <Input placeholder="John" {...field} />
                       </FormControl>
@@ -286,7 +289,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                   name="lastName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Last Name</FormLabel>
+                      <FormLabel>{t("users.form.lastName")}</FormLabel>
                       <FormControl>
                         <Input placeholder="Doe" {...field} />
                       </FormControl>
@@ -301,7 +304,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t("users.form.email")}</FormLabel>
                     <FormControl>
                       <Input placeholder="john.doe@example.com" {...field} />
                     </FormControl>
@@ -318,7 +321,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Password</FormLabel>
+                        <FormLabel>{t("users.form.password")}</FormLabel>
                         <FormControl>
                           <Input 
                             type="password" 
@@ -335,7 +338,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     name="confirmPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
+                        <FormLabel>{t("users.form.confirmPassword")}</FormLabel>
                         <FormControl>
                           <Input 
                             type="password" 
@@ -363,10 +366,10 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>
-                        Owner
+                        {t("users.form.isOwner")}
                       </FormLabel>
                       <p className="text-sm text-muted-foreground">
-                        Grant owner privileges to this user
+                        {t("users.form.ownerDescription")}
                       </p>
                     </div>
                   </FormItem>
@@ -375,9 +378,9 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
 
               {/* Roles Section */}
               <div className="space-y-3">
-                <FormLabel>Roles</FormLabel>
+                <FormLabel>{t("users.form.roles")}</FormLabel>
                 {loading ? (
-                  <div>Loading roles...</div>
+                  <div>{t("users.form.loadingRoles")}</div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     {roles.map((role) => (
@@ -401,7 +404,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
 
               {/* Scopes Section */}
               <div className="space-y-3">
-                <FormLabel>Scopes</FormLabel>
+                <FormLabel>{t("users.form.scopes")}</FormLabel>
                 
                 {/* Selected Scopes */}
                 <div className="flex flex-wrap gap-2">
@@ -410,7 +413,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                       {scope}
                       <X
                         className="h-3 w-3 cursor-pointer"
-                        onClick={() => handleScopeRemove(scope)}
+                        onClick={() => handleScopeRemove(scope as string)}
                       />
                     </Badge>
                   ))}
@@ -418,7 +421,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
 
                 {/* Available Scopes */}
                 {loading ? (
-                  <div>Loading scopes...</div>
+                  <div>{t("users.form.loadingScopes")}</div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
                     {allScopes.map((scope) => (
@@ -449,7 +452,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
             form="user-form"
             disabled={createUser.isPending || updateUser.isPending}
           >
-            {createUser.isPending || updateUser.isPending ? "Saving..." : "Save changes"}
+            {createUser.isPending || updateUser.isPending ? t("users.buttons.saving") : t("users.buttons.saveChanges")}
           </Button>
         </DialogFooter>
       </DialogContent>

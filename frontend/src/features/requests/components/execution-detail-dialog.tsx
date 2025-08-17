@@ -53,7 +53,7 @@ export function ExecutionDetailDialog({
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <Database className='h-5 w-5' />
-            {t('requests.dialog.executionDetail.title')}
+            {t('requests.dialogs.executionDetail.title')}
           </DialogTitle>
         </DialogHeader>
 
@@ -63,9 +63,9 @@ export function ExecutionDetailDialog({
             <div className='grid grid-cols-2 gap-4'>
               <div className='space-y-2'>
                 <div className='flex items-center gap-2'>
-                  <span className='text-sm font-medium'>{t('requests.dialog.executionDetail.channel')}:</span>
+                  <span className='text-sm font-medium'>{t('requests.dialogs.executionDetail.channel')}:</span>
                    <p className='text-muted-foreground text-sm'>
-                  {execution.channel?.name || t('requests.dialog.executionDetail.unknown')}
+                  {execution.channel?.name || t('requests.dialogs.executionDetail.unknown')}
                 </p>
                 </div>
                
@@ -73,15 +73,15 @@ export function ExecutionDetailDialog({
               <div className='space-y-2'>
                 <div className='flex items-center gap-2'>
                   <Key className='text-muted-foreground h-4 w-4' />
-                  <span className='text-sm font-medium'>{t('requests.dialog.executionDetail.modelId')}:</span>
+                  <span className='text-sm font-medium'>{t('requests.dialogs.executionDetail.modelId')}:</span>
                     <p className='text-muted-foreground text-sm'>
-                  {execution.modelID || t('requests.dialog.executionDetail.unknown')}
+                  {execution.modelID || t('requests.dialogs.executionDetail.unknown')}
                 </p>
                 </div>
               
               </div>
               <div className='space-y-2'>
-                <span className='text-sm font-medium'>{t('requests.dialog.executionDetail.status')}:</span>
+                <span className='text-sm font-medium'>{t('requests.dialogs.executionDetail.status')}:</span>
                 <Badge className={getStatusColor(execution.status)}>
                   {t(`requests.status.${execution.status}`)}
                 </Badge>
@@ -89,7 +89,7 @@ export function ExecutionDetailDialog({
               <div className='space-y-2'>
                 <div className='flex items-center gap-2'>
                   <Clock className='text-muted-foreground h-4 w-4' />
-                  <span className='text-sm font-medium'>{t('requests.dialog.executionDetail.createdAt')}:</span>
+                  <span className='text-sm font-medium'>{t('requests.dialogs.executionDetail.createdAt')}:</span>
                   <p className='text-muted-foreground text-sm'>
                     {format(
                       new Date(execution.createdAt),
@@ -109,7 +109,7 @@ export function ExecutionDetailDialog({
             {/* Request Body */}
             <div className='space-y-3'>
               <div className='flex items-center justify-between'>
-                <h4 className='text-sm font-medium'>{t('requests.dialog.executionDetail.requestBody')}</h4>
+                <h4 className='text-sm font-medium'>{t('requests.dialogs.executionDetail.requestBody')}</h4>
                 <Button
                   variant='outline'
                   size='sm'
@@ -118,7 +118,7 @@ export function ExecutionDetailDialog({
                   }
                 >
                   <Copy className='mr-2 h-4 w-4' />
-                  {t('requests.dialog.jsonViewer.copy')}
+                  {t('requests.dialogs.jsonViewer.copy')}
                 </Button>
               </div>
               <ScrollArea className='h-128 w-full rounded-xs border p-4'>
@@ -131,7 +131,7 @@ export function ExecutionDetailDialog({
             {/* Response Body */}
             <div className='space-y-3'>
               <div className='flex items-center justify-between'>
-                <h4 className='text-sm font-medium'>{t('requests.dialog.executionDetail.responseBody')}</h4>
+                <h4 className='text-sm font-medium'>{t('requests.dialogs.executionDetail.responseBody')}</h4>
                 <Button
                   variant='outline'
                   size='sm'
@@ -141,14 +141,14 @@ export function ExecutionDetailDialog({
                   disabled={!execution.responseBody}
                 >
                   <Copy className='mr-2 h-4 w-4' />
-                  {t('requests.dialog.jsonViewer.copy')}
+                  {t('requests.dialogs.jsonViewer.copy')}
                 </Button>
               </div>
               <ScrollArea className='h-128 w-full rounded-xs border p-4'>
                 <pre className='text-xs whitespace-pre-wrap font-mono min-w-full'>
                   {execution.responseBody
                     ? formatJson(execution.responseBody)
-                    : t('requests.dialog.executionDetail.noResponse')}
+                    : t('requests.dialogs.executionDetail.noResponse')}
                 </pre>
               </ScrollArea>
             </div>
@@ -159,7 +159,7 @@ export function ExecutionDetailDialog({
             <>
               <Separator />
               <div className='space-y-3'>
-                <h4 className='text-sm font-medium text-red-600'>{t('requests.dialog.executionDetail.errorMessage')}</h4>
+                <h4 className='text-sm font-medium text-red-600'>{t('requests.dialogs.executionDetail.errorMessage')}</h4>
                 <ScrollArea className='h-64 w-full rounded-xs border bg-red-50 p-4'>
                   <pre className='text-xs whitespace-pre-wrap text-red-800'>
                     {execution.errorMessage}

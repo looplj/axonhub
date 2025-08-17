@@ -42,16 +42,16 @@ export function ApiKeysStatusDialog() {
             className={`${isDisabling ? 'stroke-destructive' : 'stroke-green-600'} mr-1 inline-block`}
             size={18}
           />
-          {isDisabling ? t('apikeys.dialog.status.disableTitle') : t('apikeys.dialog.status.enableTitle')}
+          {isDisabling ? t('apikeys.dialogs.status.disableTitle') : t('apikeys.dialogs.status.enableTitle')}
         </span>
       }
       desc={
         isDisabling
-          ? t('apikeys.dialog.status.disableDescription', { name: selectedApiKey.name })
-          : t('apikeys.dialog.status.enableDescription', { name: selectedApiKey.name })
+          ? t('apikeys.dialogs.status.disableDescription', { name: selectedApiKey.name })
+          : t('apikeys.dialogs.status.enableDescription', { name: selectedApiKey.name })
       }
-      confirmText={isDisabling ? t('apikeys.dialog.buttons.disable') : t('apikeys.dialog.buttons.enable')}
-      cancelBtnText={t('apikeys.dialog.buttons.cancel')}
+      confirmText={isDisabling ? t('apikeys.dialogs.buttons.disable') : t('apikeys.dialogs.buttons.enable')}
+      cancelBtnText={t('apikeys.dialogs.buttons.cancel')}
     />
   )
 }

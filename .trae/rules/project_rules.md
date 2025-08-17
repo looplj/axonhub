@@ -34,4 +34,6 @@ The rules for AxonHub
 
 ## i18n rules
 
-1. ADD i18n key in the i18n file if created a new key in the code.
+1. MUST ADD i18n key in the locales/*.json file if created a new key in the code.
+
+2. MUST KEEP THE KEY IN THE CODE AND JSON FILE THE SAME.

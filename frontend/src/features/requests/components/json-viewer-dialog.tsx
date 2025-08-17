@@ -62,7 +62,7 @@ export function JsonViewerDialog({
               ) : (
                 <Copy className='mr-2 h-4 w-4' />
               )}
-              {copied ? t('requests.dialog.jsonViewer.copied') : t('requests.dialog.jsonViewer.copy')}
+              {copied ? t('requests.dialogs.jsonViewer.copied') : t('requests.dialogs.jsonViewer.copy')}
             </Button>
           </DialogTitle>
         </DialogHeader>

@@ -71,9 +71,9 @@ export function ApiKeysEditDialog() {
     <Dialog open={isDialogOpen.edit} onOpenChange={handleClose}>
       <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
-          <DialogTitle>{t('apikeys.dialog.edit.title')}</DialogTitle>
+          <DialogTitle>{t('apikeys.dialogs.edit.title')}</DialogTitle>
           <DialogDescription>
-            {t('apikeys.dialog.edit.description')}
+            {t('apikeys.dialogs.edit.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -83,9 +83,9 @@ export function ApiKeysEditDialog() {
               name='name'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('apikeys.dialog.fields.name.label')}</FormLabel>
+                  <FormLabel>{t('apikeys.dialogs.fields.name.label')}</FormLabel>
                   <FormControl>
-                    <Input placeholder={t('apikeys.dialog.fields.name.placeholder')} {...field} />
+                    <Input placeholder={t('apikeys.dialogs.fields.name.placeholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -94,13 +94,13 @@ export function ApiKeysEditDialog() {
             <div className='space-y-4'>
               <div>
                 <label className='text-sm font-medium text-muted-foreground'>
-                  {t('apikeys.dialog.fields.userId.label')}
+                  {t('apikeys.dialogs.fields.userId.label')}
                 </label>
                 <p className='text-sm text-foreground mt-1'>{selectedApiKey?.user?.email || selectedApiKey?.user?.id}</p>
               </div>
               <div>
                 <label className='text-sm font-medium text-muted-foreground'>
-                  {t('apikeys.dialog.fields.key.label')}
+                  {t('apikeys.dialogs.fields.key.label')}
                 </label>
                 <p className='text-sm text-foreground mt-1 font-mono'>{selectedApiKey?.key}</p>
               </div>
@@ -112,10 +112,10 @@ export function ApiKeysEditDialog() {
                 onClick={handleClose}
                 disabled={isSubmitting}
               >
-                {t('apikeys.dialog.buttons.cancel')}
+                {t('apikeys.dialogs.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={isSubmitting}>
-                {isSubmitting ? t('apikeys.dialog.buttons.saving') : t('apikeys.dialog.buttons.save')}
+                {isSubmitting ? t('apikeys.dialogs.buttons.saving') : t('apikeys.dialogs.buttons.save')}
               </Button>
             </DialogFooter>
           </form>

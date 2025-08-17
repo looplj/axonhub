@@ -93,6 +93,7 @@ func (s *AuthService) AuthenticateUser(
 
 	user, err := client.User.Query().
 		Where(user.EmailEQ(email)).
+		Where(user.StatusEQ(user.StatusActivated)).
 		WithRoles().
 		Only(ctx)
 	if err != nil {
@@ -117,7 +118,7 @@ func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) 
 		return nil, fmt.Errorf("failed to get secret key: %w", err)
 	}
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -125,27 +126,31 @@ func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) 
 		return []byte(secretKey), nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse token: %w", err)
+		return nil, fmt.Errorf("failed to parse jwt token: %w", ErrInvalidJWT)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return nil, fmt.Errorf("invalid token")
+		return nil, fmt.Errorf("invalid token: %w", ErrInvalidJWT)
 	}
 
 	userID, ok := claims["user_id"].(float64)
 	if !ok {
-		return nil, fmt.Errorf("invalid token claims")
+		return nil, fmt.Errorf("invalid token claims: %w", ErrInvalidJWT)
 	}
 
 	client := ent.FromContext(ctx)
 
-	user, err := client.User.Get(ctx, int(userID))
+	u, err := client.User.Get(ctx, int(userID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	return user, nil
+	if u.Status != user.StatusActivated {
+		return nil, fmt.Errorf("user not activated: %w", ErrInvalidJWT)
+	}
+
+	return u, nil
 }
 
 func (s *AuthService) ValidateAPIKey(ctx context.Context, key string) (*ent.APIKey, error) {
@@ -155,10 +160,19 @@ func (s *AuthService) ValidateAPIKey(ctx context.Context, key string) (*ent.APIK
 
 	apiKey, err := client.APIKey.Query().
 		WithUser().
-		Where(apikey.KeyEQ(key)).
+		Where(apikey.KeyEQ(key), apikey.StatusEQ(apikey.StatusEnabled)).
 		First(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get api key: %w", err)
+	}
+
+	apiOwner, err := apiKey.User(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get api key: %w", err)
+	}
+
+	if apiOwner == nil || apiOwner.Status != user.StatusActivated {
+		return nil, fmt.Errorf("api key owner not valid: %w", ErrInvalidAPIKey)
 	}
 
 	return apiKey, nil

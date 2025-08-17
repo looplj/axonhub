@@ -67,9 +67,9 @@ export function CreateRoleDialog() {
     <Dialog open={isCreateDialogOpen} onOpenChange={handleClose}>
       <DialogContent className='max-w-2xl'>
         <DialogHeader>
-          <DialogTitle>{t('roles.dialog.create.title')}</DialogTitle>
+          <DialogTitle>{t('roles.dialogs.create.title')}</DialogTitle>
           <DialogDescription>
-            {t('roles.dialog.create.description')}
+            {t('roles.dialogs.create.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -80,12 +80,12 @@ export function CreateRoleDialog() {
                 name='code'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('roles.dialog.fields.code.label')}</FormLabel>
+                    <FormLabel>{t('roles.dialogs.fields.code.label')}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t('roles.dialog.fields.code.placeholder')} {...field} />
+                      <Input placeholder={t('roles.dialogs.fields.code.placeholder')} {...field} />
                     </FormControl>
                     <FormDescription>
-                      {t('roles.dialog.fields.code.description')}
+                      {t('roles.dialogs.fields.code.description')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -96,12 +96,12 @@ export function CreateRoleDialog() {
                 name='name'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('roles.dialog.fields.name.label')}</FormLabel>
+                    <FormLabel>{t('roles.dialogs.fields.name.label')}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t('roles.dialog.fields.name.placeholder')} {...field} />
+                      <Input placeholder={t('roles.dialogs.fields.name.placeholder')} {...field} />
                     </FormControl>
                     <FormDescription>
-                      {t('roles.dialog.fields.name.description')}
+                      {t('roles.dialogs.fields.name.description')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -115,9 +115,9 @@ export function CreateRoleDialog() {
               render={() => (
                 <FormItem>
                   <div className='mb-4'>
-                    <FormLabel className='text-base'>{t('roles.dialog.fields.scopes.label')}</FormLabel>
+                    <FormLabel className='text-base'>{t('roles.dialogs.fields.scopes.label')}</FormLabel>
                     <FormDescription>
-                      {t('roles.dialog.fields.scopes.description')}
+                      {t('roles.dialogs.fields.scopes.description')}
                     </FormDescription>
                   </div>
                   <ScrollArea className='h-[300px] w-full rounded-md border p-4'>
@@ -170,10 +170,10 @@ export function CreateRoleDialog() {
             
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
-                {t('roles.dialog.buttons.cancel')}
+                {t('roles.dialogs.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={createRole.isPending}>
-                {createRole.isPending ? t('roles.dialog.buttons.creating') : t('roles.dialog.buttons.create')}
+                {createRole.isPending ? t('roles.dialogs.buttons.creating') : t('roles.dialogs.buttons.create')}
               </Button>
             </DialogFooter>
           </form>
@@ -229,23 +229,23 @@ export function EditRoleDialog() {
     <Dialog open={!!editingRole} onOpenChange={handleClose}>
       <DialogContent className='max-w-2xl'>
         <DialogHeader>
-          <DialogTitle>{t('roles.dialog.edit.title')}</DialogTitle>
+          <DialogTitle>{t('roles.dialogs.edit.title')}</DialogTitle>
           <DialogDescription>
-            {t('roles.dialog.edit.description')}
+            {t('roles.dialogs.edit.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
             <div className='grid grid-cols-2 gap-4'>
               <div>
-                <FormLabel>{t('roles.dialog.fields.code.label')}</FormLabel>
+                <FormLabel>{t('roles.dialogs.fields.code.label')}</FormLabel>
                 <Input 
                   value={editingRole.code} 
                   disabled 
                   className='bg-muted'
                 />
                 <FormDescription>
-                  {t('roles.dialog.edit.codeNotEditable')}
+                  {t('roles.dialogs.edit.codeNotEditable')}
                 </FormDescription>
               </div>
               <FormField
@@ -253,12 +253,12 @@ export function EditRoleDialog() {
                 name='name'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('roles.dialog.fields.name.label')}</FormLabel>
+                    <FormLabel>{t('roles.dialogs.fields.name.label')}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t('roles.dialog.fields.name.placeholder')} {...field} />
+                      <Input placeholder={t('roles.dialogs.fields.name.placeholder')} {...field} />
                     </FormControl>
                     <FormDescription>
-                      {t('roles.dialog.fields.name.description')}
+                      {t('roles.dialogs.fields.name.description')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -272,9 +272,9 @@ export function EditRoleDialog() {
               render={() => (
                 <FormItem>
                   <div className='mb-4'>
-                    <FormLabel className='text-base'>{t('roles.dialog.fields.scopes.label')}</FormLabel>
+                    <FormLabel className='text-base'>{t('roles.dialogs.fields.scopes.label')}</FormLabel>
                     <FormDescription>
-                      {t('roles.dialog.fields.scopes.description')}
+                      {t('roles.dialogs.fields.scopes.description')}
                     </FormDescription>
                   </div>
                   <ScrollArea className='h-[300px] w-full rounded-md border p-4'>
@@ -327,10 +327,10 @@ export function EditRoleDialog() {
             
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
-                {t('roles.dialog.buttons.cancel')}
+                {t('roles.dialogs.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={updateRole.isPending}>
-                {updateRole.isPending ? t('roles.dialog.buttons.saving') : t('roles.dialog.buttons.save')}
+                {updateRole.isPending ? t('roles.dialogs.buttons.saving') : t('roles.dialogs.buttons.save')}
               </Button>
             </DialogFooter>
           </form>
@@ -361,10 +361,10 @@ export function DeleteRoleDialog() {
     <ConfirmDialog
       open={!!deletingRole}
       onOpenChange={() => setDeletingRole(null)}
-      title={t('roles.dialog.delete.title')}
-      desc={t('roles.dialog.delete.description', { name: deletingRole?.name })}
-      confirmText={t('roles.dialog.buttons.delete')}
-      cancelBtnText={t('roles.dialog.buttons.cancel')}
+      title={t('roles.dialogs.delete.title')}
+      desc={t('roles.dialogs.delete.description', { name: deletingRole?.name })}
+      confirmText={t('roles.dialogs.buttons.delete')}
+      cancelBtnText={t('roles.dialogs.buttons.cancel')}
       handleConfirm={handleConfirm}
       isLoading={deleteRole.isPending}
       destructive
