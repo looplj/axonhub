@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { extractNumberID } from '@/lib/utils'
+import { useDebounce } from '@/hooks/use-debounce'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -24,10 +26,21 @@ function RequestsContent() {
   const requestsColumns = useRequestsColumns()
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
+  const [userFilter, setUserFilter] = useState<string>('')
+  
+  // Build where clause with filters
+  const whereClause = (() => {
+    const where: any = {}
+    if (userFilter) {
+      where.userID = userFilter
+    }
+    return Object.keys(where).length > 0 ? where : undefined
+  })()
   
   const { data, isLoading, refetch } = useRequests({
     first: pageSize,
     after: cursor,
+    where: whereClause,
     orderBy: {
       field: 'CREATED_AT',
       direction: 'DESC',
@@ -76,6 +89,11 @@ function RequestsContent() {
     setCursor(undefined) // Reset to first page
   }
 
+  const handleUserFilterChange = (filter: string) => {
+    setUserFilter(filter)
+    setCursor(undefined) // Reset to first page when filtering
+  }
+
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
       <RequestsTable
@@ -83,9 +101,11 @@ function RequestsContent() {
         pageInfo={pageInfo}
         pageSize={pageSize}
         totalCount={data?.totalCount}
+        userFilter={userFilter}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
+        onUserFilterChange={handleUserFilterChange}
       />
     </div>
   )

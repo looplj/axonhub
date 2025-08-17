@@ -202,7 +202,11 @@ export function useRequests(variables?: {
   first?: number
   after?: string
   orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
-  where?: Record<string, any>
+  where?: {
+    userID?: string
+    status?: string
+    [key: string]: any
+  }
 }) {
   const { handleError } = useErrorHandler()
   const permissions = useRequestPermissions()

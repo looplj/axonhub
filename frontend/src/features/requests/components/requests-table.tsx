@@ -40,9 +40,11 @@ interface RequestsTableProps {
   pageInfo?: RequestConnection['pageInfo']
   pageSize: number
   totalCount?: number
+  userFilter: string
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
+  onUserFilterChange: (filter: string) => void
 }
 
 export function RequestsTable({
@@ -51,9 +53,11 @@ export function RequestsTable({
   pageInfo,
   totalCount,
   pageSize,
+  userFilter,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
+  onUserFilterChange,
 }: RequestsTableProps) {
   const { t } = useTranslation()
   const requestsColumns = useRequestsColumns()
@@ -62,6 +66,34 @@ export function RequestsTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
 
+  // Sync filters with the server state
+  const handleColumnFiltersChange = (updater: any) => {
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
+    setColumnFilters(newFilters)
+    
+    // Find the user filter and sync it with the server
+    const userFilterValue = newFilters.find((filter: any) => filter.id === 'user')?.value
+    let userFilterString = ''
+    
+    if (userFilterValue) {
+      if (Array.isArray(userFilterValue)) {
+        userFilterString = userFilterValue.length > 0 ? userFilterValue[0] : ''
+      } else {
+        userFilterString = userFilterValue
+      }
+    }
+    
+    if (userFilterString !== userFilter) {
+      onUserFilterChange(userFilterString)
+    }
+  }
+
+  // Initialize filters in column filters if they exist
+  const initialColumnFilters = []
+  if (userFilter) {
+    initialColumnFilters.push({ id: 'user', value: [userFilter] })
+  }
+
   const table = useReactTable({
     data,
     columns: requestsColumns,
@@ -69,12 +101,12 @@ export function RequestsTable({
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters,
+      columnFilters: columnFilters.length === 0 && userFilter ? initialColumnFilters : columnFilters,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: handleColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -83,6 +115,7 @@ export function RequestsTable({
     getFacetedUniqueValues: getFacetedUniqueValues(),
     // Disable client-side pagination since we're using server-side
     manualPagination: true,
+    manualFiltering: true, // Enable manual filtering for server-side filtering
   })
 
   return (

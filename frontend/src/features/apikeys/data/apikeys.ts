@@ -17,8 +17,8 @@ function buildApiKeysQuery(permissions: { canViewUsers: boolean }) {
           }` : ''
 
   return `
-    query GetApiKeys($first: Int, $after: Cursor, $orderBy: APIKeyOrder) {
-      apiKeys(first: $first, after: $after, orderBy: $orderBy) {
+    query GetApiKeys($first: Int, $after: Cursor, $orderBy: APIKeyOrder, $where: APIKeyWhereInput) {
+      apiKeys(first: $first, after: $after, orderBy: $orderBy, where: $where) {
         edges {
           node {
             id
@@ -122,7 +122,12 @@ export function useApiKeys(variables?: {
   first?: number
   after?: string
   orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
-  where?: Record<string, any>
+  where?: {
+    nameContainsFold?: string
+    status?: string
+    userID?: string
+    [key: string]: any
+  }
 }) {
   const { t } = useTranslation()
   const { handleError } = useErrorHandler()

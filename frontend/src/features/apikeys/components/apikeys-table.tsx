@@ -39,9 +39,13 @@ interface DataTableProps {
   pageInfo?: ApiKeyConnection['pageInfo']
   pageSize: number
   totalCount?: number
+  nameFilter: string
+  userFilter: string
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
+  onNameFilterChange: (filter: string) => void
+  onUserFilterChange: (filter: string) => void
 }
 
 export function ApiKeysTable({ 
@@ -50,15 +54,56 @@ export function ApiKeysTable({
   pageInfo,
   pageSize,
   totalCount,
+  nameFilter,
+  userFilter,
   onNextPage,
   onPreviousPage,
-  onPageSizeChange
+  onPageSizeChange,
+  onNameFilterChange,
+  onUserFilterChange
 }: DataTableProps) {
   const { t } = useTranslation()
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
+
+  // Sync filters with the server state
+  const handleColumnFiltersChange = (updater: any) => {
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
+    setColumnFilters(newFilters)
+    
+    // Find the name filter and sync it with the server
+    const nameFilterValue = newFilters.find((filter: any) => filter.id === 'name')?.value || ''
+    if (nameFilterValue !== nameFilter) {
+      onNameFilterChange(nameFilterValue)
+    }
+    
+    // Find the user filter and sync it with the server
+    const userFilterValue = newFilters.find((filter: any) => filter.id === 'user')?.value
+    let userFilterString = ''
+    
+    if (userFilterValue) {
+      if (Array.isArray(userFilterValue)) {
+        userFilterString = userFilterValue.length > 0 ? userFilterValue[0] : ''
+      } else {
+        userFilterString = userFilterValue
+      }
+    }
+    
+    if (userFilterString !== userFilter) {
+      onUserFilterChange(userFilterString)
+    }
+  }
+
+  // Initialize filters in column filters if they exist
+  const initialColumnFilters = []
+  if (nameFilter) {
+    initialColumnFilters.push({ id: 'name', value: nameFilter })
+  }
+  if (userFilter) {
+    initialColumnFilters.push({ id: 'user', value: [userFilter] })
+  }
 
   const table = useReactTable({
     data,
@@ -67,12 +112,12 @@ export function ApiKeysTable({
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters,
+      columnFilters: columnFilters.length === 0 && (nameFilter || userFilter) ? initialColumnFilters : columnFilters,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: handleColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -80,6 +125,7 @@ export function ApiKeysTable({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     manualPagination: true,
+    manualFiltering: true, // Enable manual filtering for server-side filtering
   })
 
   return (

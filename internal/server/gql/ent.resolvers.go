@@ -24,7 +24,10 @@ func (r *aPIKeyResolver) ID(ctx context.Context, obj *ent.APIKey) (*objects.GUID
 
 // UserID is the resolver for the userID field.
 func (r *aPIKeyResolver) UserID(ctx context.Context, obj *ent.APIKey) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: UserID - userID"))
+	return &objects.GUID{
+		Type: "User",
+		ID:   obj.UserID,
+	}, nil
 }
 
 // ID is the resolver for the id field.

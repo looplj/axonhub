@@ -3,7 +3,7 @@ import { ColumnDef } from '@tanstack/react-table'
 import { Copy, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
+import { cn, extractNumberID } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import LongText from '@/components/long-text'
@@ -92,9 +92,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       <DataTableColumnHeader column={column} title={t('apikeys.columns.id')} />
     ),
     cell: ({ row }) => (
-      <LongText className='max-w-24 font-mono text-xs text-muted-foreground'>
-        {row.getValue('id')}
-      </LongText>
+      <div className='font-mono text-xs'>
+        #{extractNumberID(row.getValue('id'))}
+      </div>
     ),
     enableSorting: false,
   },
