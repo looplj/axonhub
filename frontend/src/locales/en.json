@@ -285,7 +285,9 @@
         "enable": "Enable",
         "enabling": "Enabling...",
         "disable": "Disable",
-        "disabling": "Disabling..."
+        "disabling": "Disabling...",
+        "save": "Save",
+        "saving": "Saving..."
       }
     },
     "messages": {

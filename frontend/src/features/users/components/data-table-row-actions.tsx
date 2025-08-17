@@ -8,7 +8,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useUsers } from '../context/users-context'
@@ -40,10 +39,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               setOpen('edit')
             }}
           >
+            <IconEdit size={16} className="mr-2" />
             {t('users.actions.edit')}
-            <DropdownMenuShortcut>
-              <IconEdit size={16} />
-            </DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -51,10 +48,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               setOpen('changePassword')
             }}
           >
+            <IconKey size={16} className="mr-2" />
             {t('users.actions.changePassword')}
-            <DropdownMenuShortcut>
-              <IconKey size={16} />
-            </DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -64,10 +59,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             }}
             className={row.original.status === 'activated' ? 'text-red-500!' : 'text-green-500!'}
           >
+            {row.original.status === 'activated' ? <IconUserOff size={16} className="mr-2" /> : <IconUserCheck size={16} className="mr-2" />}
             {row.original.status === 'activated' ? t('users.actions.deactivate') : t('users.actions.activate')}
-            <DropdownMenuShortcut>
-              {row.original.status === 'activated' ? <IconUserOff size={16} /> : <IconUserCheck size={16} />}
-            </DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

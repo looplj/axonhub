@@ -8,7 +8,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useChannels } from '../context/channels-context'
@@ -40,10 +39,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               setOpen('edit')
             }}
           >
+            <IconEdit size={16} className="mr-2" />
             {t('channels.actions.edit')}
-            <DropdownMenuShortcut>
-              <IconEdit size={16} />
-            </DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -51,10 +48,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               setOpen('settings')
             }}
           >
+            <IconSettings size={16} className="mr-2" />
             {t('channels.actions.settings')}
-            <DropdownMenuShortcut>
-              <IconSettings size={16} />
-            </DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -64,10 +59,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             }}
             className={row.original.status === 'enabled' ? 'text-red-500!' : 'text-green-500!'}
           >
+            {row.original.status === 'enabled' ? <IconToggleLeft size={16} className="mr-2" /> : <IconToggleRight size={16} className="mr-2" />}
             {row.original.status === 'enabled' ? t('channels.actions.disable') : t('channels.actions.enable')}
-            <DropdownMenuShortcut>
-              {row.original.status === 'enabled' ? <IconToggleLeft size={16} /> : <IconToggleRight size={16} />}
-            </DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

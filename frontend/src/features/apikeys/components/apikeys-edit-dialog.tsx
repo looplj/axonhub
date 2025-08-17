@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { IconEye, IconEyeOff } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -29,6 +30,7 @@ export function ApiKeysEditDialog() {
   const { isDialogOpen, closeDialog, selectedApiKey } = useApiKeysContext()
   const updateApiKey = useUpdateApiKey()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showApiKey, setShowApiKey] = useState(false)
 
   const form = useForm<UpdateApiKeyInput>({
     resolver: zodResolver(updateApiKeyInputSchemaFactory(t)),
@@ -69,7 +71,7 @@ export function ApiKeysEditDialog() {
 
   return (
     <Dialog open={isDialogOpen.edit} onOpenChange={handleClose}>
-      <DialogContent className='sm:max-w-[425px]'>
+      <DialogContent className='sm:max-w-[600px]'>
         <DialogHeader>
           <DialogTitle>{t('apikeys.dialogs.edit.title')}</DialogTitle>
           <DialogDescription>
@@ -93,16 +95,30 @@ export function ApiKeysEditDialog() {
             />
             <div className='space-y-4'>
               <div>
-                <label className='text-sm font-medium text-muted-foreground'>
-                  {t('apikeys.dialogs.fields.userId.label')}
-                </label>
-                <p className='text-sm text-foreground mt-1'>{selectedApiKey?.user?.email || selectedApiKey?.user?.id}</p>
-              </div>
-              <div>
-                <label className='text-sm font-medium text-muted-foreground'>
-                  {t('apikeys.dialogs.fields.key.label')}
-                </label>
-                <p className='text-sm text-foreground mt-1 font-mono'>{selectedApiKey?.key}</p>
+                <div className='flex items-center justify-between'>
+                  <label className='text-sm font-medium text-muted-foreground'>
+                    {t('apikeys.dialogs.fields.key.label')}
+                  </label>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='sm'
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className='h-6 px-2'
+                  >
+                    {showApiKey ? (
+                      <IconEyeOff className='h-3 w-3' />
+                    ) : (
+                      <IconEye className='h-3 w-3' />
+                    )}
+                    <span className='ml-1 text-xs'>
+                      {showApiKey ? t('apikeys.actions.hide') : t('apikeys.actions.show')}
+                    </span>
+                  </Button>
+                </div>
+                <p className='text-sm text-foreground mt-1 font-mono break-all'>
+                  {showApiKey ? selectedApiKey?.key : '••••••••••••••••••••••••••••••••'}
+                </p>
               </div>
             </div>
             <DialogFooter>
