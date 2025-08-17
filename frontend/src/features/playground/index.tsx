@@ -283,8 +283,10 @@ export default function Playground() {
                 )}
                 {!channelsLoading && allModels.length > 0 && (
                   <p className='text-muted-foreground text-xs'>
-                    {allModels.length} models available across{' '}
-                    {groupedModels.length} channels
+                    {t('playground.modelsAvailable', {
+                      count: allModels.length,
+                      channels: groupedModels.length
+                    })}
                   </p>
                 )}
               </div>

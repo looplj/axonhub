@@ -777,7 +777,7 @@
     }
   },
   "playground": {
-    "title": "游乐场",
+    "title": "测试场",
     "description": "在交互式环境中测试和体验 AI 模型。",
     "settings": {
       "model": "模型",
@@ -802,7 +802,8 @@
     "loading": "加载中",
     "errors": {
       "noChannelsAvailable": "没有可用的模型"
-    }
+    },
+    "modelsAvailable": "{{count}} 个模型可用，跨 {{channels}} 个渠道"
   },
   "settings": {
     "title": "设置",

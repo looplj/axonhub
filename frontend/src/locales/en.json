@@ -768,7 +768,8 @@
     "loading": "Loading",
     "errors": {
       "noChannelsAvailable": "No models available"
-    }
+    },
+    "modelsAvailable": "{{count}} models available across {{channels}} channels"
   },
   "settings": {
     "title": "Settings",
