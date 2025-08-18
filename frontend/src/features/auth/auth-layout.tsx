@@ -110,7 +110,7 @@ export default function AuthLayout({ children }: Props) {
         </div>
         
         <div className='absolute inset-0 flex items-center justify-center z-20'>
-          <div className='w-full max-w-md animate-fade-in-up animation-delay-300'>
+          <div className='w-full max-w-md'>
             {children}
           </div>
         </div>

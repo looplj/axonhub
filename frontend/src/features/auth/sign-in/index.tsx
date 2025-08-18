@@ -9,16 +9,16 @@ export default function SignIn() {
 
   return (
     <AuthLayout>
-      <Card className='backdrop-blur-xl bg-[#252525]/80 border-[#D5DDDE]/20 shadow-[0_0_50px_rgba(0,255,157,0.1)] animate-fade-in-up animation-delay-300 hover:shadow-[0_0_80px_rgba(0,255,157,0.2)] transition-all duration-500'>
+      <Card className='backdrop-blur-xl bg-[#252525]/80 border-[#D5DDDE]/20 shadow-[0_0_50px_rgba(0,255,157,0.1)] animate-fade-in-up hover:shadow-[0_0_80px_rgba(0,255,157,0.2)] transition-all duration-500'>
         <CardHeader className='text-center pb-6'>
-          <CardTitle className='text-2xl font-bold text-[#F0F0F0] mb-2 animate-fade-in-up animation-delay-300'>
+          <CardTitle className='text-2xl font-bold text-[#F0F0F0] mb-2'>
             {t('auth.signIn.title')}
           </CardTitle>
-          <CardDescription className='text-[#B0B0B0] text-base animate-fade-in-up animation-delay-500'>
+          <CardDescription className='text-[#B0B0B0] text-base'>
             {t('auth.signIn.subtitle')}
           </CardDescription>
         </CardHeader>
-        <CardContent className='animate-fade-in-up animation-delay-700'>
+        <CardContent>
           <UserAuthForm />
         </CardContent>
       </Card>

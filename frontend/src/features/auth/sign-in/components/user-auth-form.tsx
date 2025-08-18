@@ -66,7 +66,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           control={form.control}
           name='email'
           render={({ field }) => (
-            <FormItem className='animate-fade-in-up animation-delay-300'>
+            <FormItem>
               <FormLabel className='text-sm font-medium text-[#F0F0F0]'>
                 {t('auth.signIn.form.email.label')}
               </FormLabel>
@@ -86,7 +86,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           control={form.control}
           name='password'
           render={({ field }) => (
-            <FormItem className='animate-fade-in-up animation-delay-500 relative'>
+            <FormItem className='relative'>
               <div className='flex items-center justify-between'>
                 <FormLabel className='text-sm font-medium text-[#F0F0F0]'>
                   {t('auth.signIn.form.password.label')}
@@ -111,7 +111,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         />
 
         {/* Remember Me Toggle */}
-        <div className='animate-fade-in-up animation-delay-1000 flex items-center justify-between'>
+        <div className='flex items-center justify-between'>
           <label className='flex cursor-pointer items-center space-x-3'>
             <div className='relative'>
               <input
