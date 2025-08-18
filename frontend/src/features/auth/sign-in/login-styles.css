@@ -327,3 +327,75 @@
   z-index: -1;
   animation: neon-pulse 1s ease-in-out;
 }
+
+/* ===== GEOMETRIC BACKGROUND ANIMATIONS ===== */
+
+/* Geometric line pulse animation */
+@keyframes geometric-pulse {
+  0%, 100% {
+    opacity: 0.2;
+    stroke-width: 1;
+  }
+  50% {
+    opacity: 0.6;
+    stroke-width: 1.5;
+  }
+}
+
+/* Geometric point glow animation */
+@keyframes geometric-glow {
+  0%, 100% {
+    opacity: 0.3;
+    r: 2;
+    filter: drop-shadow(0 0 2px currentColor);
+  }
+  50% {
+    opacity: 0.8;
+    r: 3;
+    filter: drop-shadow(0 0 6px currentColor);
+  }
+}
+
+/* Geometric fade animation for connection lines */
+@keyframes geometric-fade {
+  0%, 100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Network connection pulse */
+@keyframes network-pulse {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0.2;
+  }
+  50% {
+    stroke-dashoffset: -10;
+    opacity: 0.6;
+  }
+  100% {
+    stroke-dashoffset: -20;
+    opacity: 0.2;
+  }
+}
+
+/* ===== GEOMETRIC ANIMATION CLASSES ===== */
+
+.animate-geometric-pulse {
+  animation: geometric-pulse 4s ease-in-out infinite;
+}
+
+.animate-geometric-glow {
+  animation: geometric-glow 3s ease-in-out infinite;
+}
+
+.animate-geometric-fade {
+  animation: geometric-fade 6s ease-in-out infinite;
+}
+
+.animate-network-pulse {
+  animation: network-pulse 5s linear infinite;
+}
