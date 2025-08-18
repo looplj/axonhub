@@ -40,7 +40,9 @@
     }
   },
   "language": {
-    "toggle": "Toggle language"
+    "toggle": "Toggle language",
+    "changeSuccess": "Language changed to {{language}} successfully",
+    "changeError": "Failed to change language: {{error}}"
   },
   "command": {
     "placeholder": "Type a command or search...",
@@ -876,10 +878,6 @@
     "hasPrevious": "Has previous",
     "hasNext": "Has next"
   },
-  "language": {
-    "changeSuccess": "Language changed to {{language}} successfully",
-    "changeError": "Failed to change language: {{error}}"
-  },
   "loading": "Loading...",
   "noData": "No data available",
   "error": "Error",
@@ -963,5 +961,41 @@
     "read_dashboard": "View dashboard",
     "read_settings": "View system settings",
     "write_settings": "Manage system settings"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Sign in to AxonHub",
+      "subtitle": "Enter your email and password to access your account",
+      "form": {
+        "email": {
+          "label": "Email",
+          "placeholder": "Enter your email address"
+        },
+        "password": {
+          "label": "Password",
+          "placeholder": "Enter your password"
+        },
+        "captcha": {
+          "label": "Captcha",
+          "placeholder": "Enter captcha",
+          "refresh": "Refresh captcha"
+        },
+        "rememberMe": "Remember me",
+        "signInButton": "Sign in",
+        "signingIn": "Signing in..."
+      },
+      "validation": {
+        "emailRequired": "Email is required",
+        "emailInvalid": "Invalid email format",
+        "passwordRequired": "Password is required",
+        "passwordMinLength": "Password must be at least 7 characters",
+        "captchaRequired": "Captcha is required"
+      },
+      "links": {
+        "forgotPassword": "Forgot password?",
+        "noAccount": "Don't have an account?",
+        "signUp": "Sign up"
+      }
+    }
   }
 }

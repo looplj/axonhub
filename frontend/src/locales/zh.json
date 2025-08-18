@@ -55,7 +55,9 @@
     }
   },
   "language": {
-    "toggle": "切换语言"
+    "toggle": "切换语言",
+    "changeSuccess": "语言已成功切换为{{language}}",
+    "changeError": "切换语言失败：{{error}}"
   },
   "command": {
     "placeholder": "输入命令或搜索...",
@@ -908,10 +910,6 @@
     "hasPrevious": "有上一页",
     "hasNext": "有下一页"
   },
-  "language": {
-    "changeSuccess": "语言已成功切换为{{language}}",
-    "changeError": "切换语言失败：{{error}}"
-  },
   "loading": "加载中...",
   "noData": "暂无数据",
   "error": "错误",
@@ -1002,5 +1000,41 @@
     "read_dashboard": "查看仪表板",
     "read_settings": "查看系统设置",
     "write_settings": "管理系统设置"
+  },
+  "auth": {
+    "signIn": {
+      "title": "登录到 AxonHub",
+      "subtitle": "输入您的邮箱和密码以访问您的账户",
+      "form": {
+        "email": {
+          "label": "邮箱",
+          "placeholder": "输入您的邮箱地址"
+        },
+        "password": {
+          "label": "密码",
+          "placeholder": "输入您的密码"
+        },
+        "captcha": {
+          "label": "验证码",
+          "placeholder": "输入验证码",
+          "refresh": "刷新验证码"
+        },
+        "rememberMe": "记住我",
+        "signInButton": "登录",
+        "signingIn": "登录中..."
+      },
+      "validation": {
+        "emailRequired": "邮箱不能为空",
+        "emailInvalid": "邮箱格式无效",
+        "passwordRequired": "密码不能为空",
+        "passwordMinLength": "密码至少需要7个字符",
+        "captchaRequired": "验证码不能为空"
+      },
+      "links": {
+        "forgotPassword": "忘记密码？",
+        "noAccount": "还没有账户？",
+        "signUp": "注册"
+      }
+    }
   }
 }

@@ -928,254 +928,6 @@
   }
 }
 
-/* ===== CUSTOM ANIMATIONS FOR LOGIN PAGE ===== */
-
-/* Blob animation for floating background elements */
-@keyframes blob {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-/* Floating animation for particles */
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-    opacity: 0.7;
-  }
-  50% {
-    transform: translateY(-20px);
-    opacity: 1;
-  }
-}
-
-/* Fade in animation */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Fade in up animation */
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Glow animation for logo */
-@keyframes glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.4));
-  }
-  50% {
-    filter: drop-shadow(0 0 20px rgba(34, 211, 238, 0.6));
-  }
-}
-
-/* Animation classes */
-.animate-blob {
-  animation: blob 7s infinite;
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-fade-in {
-  animation: fade-in 1s ease-out;
-}
-
-.animate-fade-in-up {
-  animation: fade-in-up 0.8s ease-out;
-}
-
-.animate-glow {
-  animation: glow 2s ease-in-out infinite;
-}
-
-/* Animation delays */
-.animation-delay-1000 {
-  animation-delay: 1s;
-}
-
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
-
-.animation-delay-3000 {
-  animation-delay: 3s;
-}
-
-.animation-delay-4000 {
-  animation-delay: 4s;
-}
-
-.animation-delay-300 {
-  animation-delay: 0.3s;
-}
-
-.animation-delay-500 {
-  animation-delay: 0.5s;
-}
-
-.animation-delay-1500 {
-  animation-delay: 1.5s;
-}
-
-.animation-delay-2500 {
-  animation-delay: 2.5s;
-}
-
-.animation-delay-4500 {
-  animation-delay: 4.5s;
-}
-
-.animation-delay-5000 {
-  animation-delay: 5s;
-}
-
-.animation-delay-6000 {
-  animation-delay: 6s;
-}
-
-.animation-delay-8000 {
-  animation-delay: 8s;
-}
-
-/* Enhanced glow animation for pulsing orbs */
-@keyframes pulse-glow {
-  0%, 100% {
-    opacity: 0.4;
-    transform: scale(1);
-    filter: blur(1px) drop-shadow(0 0 8px currentColor);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.2);
-    filter: blur(0.5px) drop-shadow(0 0 16px currentColor);
-  }
-}
-
-/* Sliding animations for light streaks */
-@keyframes slide-right {
-  0% {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(100vw);
-    opacity: 0;
-  }
-}
-
-@keyframes slide-left {
-  0% {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(-100vw);
-    opacity: 0;
-  }
-}
-
-@keyframes slide-down {
-  0% {
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(100vh);
-    opacity: 0;
-  }
-}
-
-/* Shooting star animations */
-@keyframes shooting-star {
-  0% {
-    transform: translateX(-100px) translateY(0px) rotate(45deg);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(calc(100vw + 100px)) translateY(-50px) rotate(45deg);
-    opacity: 0;
-  }
-}
-
-@keyframes shooting-star-reverse {
-  0% {
-    transform: translateX(100px) translateY(0px) rotate(-45deg);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(calc(-100vw - 100px)) translateY(50px) rotate(-45deg);
-    opacity: 0;
-  }
-}
-
-/* Animation classes */
-.animate-pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
-}
-
-.animate-slide-right {
-  animation: slide-right 8s linear infinite;
-}
-
-.animate-slide-left {
-  animation: slide-left 8s linear infinite;
-}
-
-.animate-slide-down {
-  animation: slide-down 10s linear infinite;
-}
-
-.animate-shooting-star {
-  animation: shooting-star 4s ease-out infinite;
-}
-
-.animate-shooting-star-reverse {
-  animation: shooting-star-reverse 4s ease-out infinite;
-}
 
 /* ===== TECH COLOR SCHEME - Deep Space Gray + Neon Green + Silver White ===== */
 .tech {
@@ -1257,29 +1009,6 @@
   }
 }
 
-/* Silver glow pulse */
-@keyframes neon-pulse {
-  0%, 100% {
-    box-shadow: 0 0 5px #E8E8E8, 0 0 10px #E8E8E8, 0 0 15px #E8E8E8;
-    text-shadow: 0 0 5px #E8E8E8;
-  }
-  50% {
-    box-shadow: 0 0 10px #E8E8E8, 0 0 20px #E8E8E8, 0 0 30px #E8E8E8;
-    text-shadow: 0 0 10px #E8E8E8;
-  }
-}
-
-/* Breathing glow for buttons */
-@keyframes breathing-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px #FF2E4D, 0 0 10px #FF2E4D;
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 15px #FF2E4D, 0 0 25px #FF2E4D, 0 0 35px #FF2E4D;
-    transform: scale(1.02);
-  }
-}
 
 /* Data flow animation */
 @keyframes data-flow {
@@ -1331,15 +1060,6 @@
   }
 }
 
-/* Hover glow expansion */
-@keyframes hover-glow {
-  0% {
-    box-shadow: 0 0 5px #E8E8E8;
-  }
-  100% {
-    box-shadow: 0 0 20px #E8E8E8, 0 0 30px #E8E8E8, 0 0 40px #E8E8E8;
-  }
-}
 
 /* Animation classes */
 .animate-particle-float {
@@ -1350,13 +1070,6 @@
   animation: matrix-rain 6s linear infinite;
 }
 
-.animate-neon-pulse {
-  animation: neon-pulse 2s ease-in-out infinite;
-}
-
-.animate-breathing-glow {
-  animation: breathing-glow 3s ease-in-out infinite;
-}
 
 .animate-data-flow {
   animation: data-flow 4s ease-in-out infinite;
@@ -1370,28 +1083,6 @@
   animation: grid-pulse 4s ease-in-out infinite;
 }
 
-/* Hover effects */
-.hover-glow:hover {
-  animation: hover-glow 0.3s ease-out forwards;
-}
-
-/* Focus particle effect */
-.focus-particles:focus {
-  position: relative;
-}
-
-.focus-particles:focus::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  background: linear-gradient(45deg, transparent, #E8E8E8, transparent);
-  border-radius: inherit;
-  z-index: -1;
-  animation: neon-pulse 1s ease-in-out;
-}
 
 /* Tech grid background */
 .tech-grid {
