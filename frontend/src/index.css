@@ -1185,32 +1185,32 @@
   --card-foreground: #F0F0F0;
   --popover: #1A1A1A;
   --popover-foreground: #F0F0F0;
-  --primary: #00FF9D; /* Neon green */
+  --primary: #E8E8E8; /* Silver white */
   --primary-foreground: #1A1A1A;
   --secondary: #2A2A2A; /* Slightly lighter gray */
   --secondary-foreground: #F0F0F0;
   --muted: #252525; /* Muted gray */
   --muted-foreground: #B0B0B0;
-  --accent: #00FF9D; /* Neon green accent */
+  --accent: #E8E8E8; /* Silver white accent */
   --accent-foreground: #1A1A1A;
   --destructive: #FF2E4D; /* Dark red for important interactions */
   --destructive-foreground: #F0F0F0;
-  --border: rgba(0, 255, 157, 0.2); /* Neon green border */
+  --border: rgba(232, 232, 232, 0.2); /* Silver white border */
   --input: rgba(240, 240, 240, 0.1); /* Semi-transparent input */
-  --ring: #00FF9D; /* Neon green focus ring */
-  --chart-1: #00FF9D;
+  --ring: #E8E8E8; /* Silver white focus ring */
+  --chart-1: #E8E8E8;
   --chart-2: #FF2E4D;
   --chart-3: #F0F0F0;
   --chart-4: #2A2A2A;
   --chart-5: #00CC7E;
   --sidebar: #1A1A1A;
   --sidebar-foreground: #F0F0F0;
-  --sidebar-primary: #00FF9D;
+  --sidebar-primary: #E8E8E8;
   --sidebar-primary-foreground: #1A1A1A;
   --sidebar-accent: #252525;
   --sidebar-accent-foreground: #F0F0F0;
-  --sidebar-border: rgba(0, 255, 157, 0.2);
-  --sidebar-ring: #00FF9D;
+  --sidebar-border: rgba(232, 232, 232, 0.2);
+  --sidebar-ring: #E8E8E8;
   --font-sans: 'Inter', 'Bai Jamjuree', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -1257,15 +1257,15 @@
   }
 }
 
-/* Neon glow pulse */
+/* Silver glow pulse */
 @keyframes neon-pulse {
   0%, 100% {
-    box-shadow: 0 0 5px #00FF9D, 0 0 10px #00FF9D, 0 0 15px #00FF9D;
-    text-shadow: 0 0 5px #00FF9D;
+    box-shadow: 0 0 5px #E8E8E8, 0 0 10px #E8E8E8, 0 0 15px #E8E8E8;
+    text-shadow: 0 0 5px #E8E8E8;
   }
   50% {
-    box-shadow: 0 0 10px #00FF9D, 0 0 20px #00FF9D, 0 0 30px #00FF9D;
-    text-shadow: 0 0 10px #00FF9D;
+    box-shadow: 0 0 10px #E8E8E8, 0 0 20px #E8E8E8, 0 0 30px #E8E8E8;
+    text-shadow: 0 0 10px #E8E8E8;
   }
 }
 
@@ -1334,10 +1334,10 @@
 /* Hover glow expansion */
 @keyframes hover-glow {
   0% {
-    box-shadow: 0 0 5px #00FF9D;
+    box-shadow: 0 0 5px #E8E8E8;
   }
   100% {
-    box-shadow: 0 0 20px #00FF9D, 0 0 30px #00FF9D, 0 0 40px #00FF9D;
+    box-shadow: 0 0 20px #E8E8E8, 0 0 30px #E8E8E8, 0 0 40px #E8E8E8;
   }
 }
 
@@ -1387,7 +1387,7 @@
   left: -2px;
   right: -2px;
   bottom: -2px;
-  background: linear-gradient(45deg, transparent, #00FF9D, transparent);
+  background: linear-gradient(45deg, transparent, #E8E8E8, transparent);
   border-radius: inherit;
   z-index: -1;
   animation: neon-pulse 1s ease-in-out;

@@ -52,12 +52,12 @@ export default function AuthLayout({ children }: Props) {
               strokeWidth='2'
               strokeLinecap='round'
               strokeLinejoin='round'
-              className='h-8 w-8 text-[#00C77E] animate-neon-pulse'
+              className='h-8 w-8 text-[#00C77E]'
             >
               <path d='M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' />
             </svg>
           </div>
-          <h1 className='text-2xl font-bold text-[#00C77E] animate-neon-pulse font-mono'>
+          <h1 className='text-2xl font-bold text-[#00C77E] font-mono'>
             AxonHub
           </h1>
         </div>
@@ -133,27 +133,6 @@ export default function AuthLayout({ children }: Props) {
           ></div>
         ))}
       </div>
-      
-      {/* Footer */}
-      <footer className='absolute bottom-0 left-0 right-0 z-30 p-6'>
-        <div className='flex justify-between items-center text-[#B0B0B0] text-sm'>
-          <div className='flex space-x-6'>
-            <span> 2024 AxonHub. All rights reserved.</span>
-            <a href='#' className='hover:text-[#00C77E] transition-colors'> </a>
-            <a href='#' className='hover:text-[#00C77E] transition-colors'> </a>
-            <span>© 2024 AxonHub. All rights reserved.</span>
-            <a href='#' className='hover:text-[#00C77E] transition-colors'>服务条款</a>
-            <a href='#' className='hover:text-[#00C77E] transition-colors'>隐私政策</a>
-          </div>
-          
-          {/* Binary Code Stream */}
-          <div className='relative overflow-hidden w-64 h-4'>
-            <div className='absolute inset-0 text-[#00C77E]/30 text-xs font-mono animate-binary-stream whitespace-nowrap'>
-              01001000 01100101 01101100 01101100 01101111
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

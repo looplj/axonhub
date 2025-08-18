@@ -79,7 +79,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
               <FormControl>
                 <Input 
                   placeholder='name@example.com' 
-                  className='bg-[#1A1A1A]/50 border-[#00C77E]/30 text-[#F0F0F0] placeholder:text-[#B0B0B0] backdrop-blur-sm focus:bg-[#1A1A1A]/70 focus:border-[#00C77E] focus-particles hover-glow transition-all duration-300'
+                  className='bg-[#1A1A1A]/50 border-[#C0C0C0]/30 text-[#F0F0F0] placeholder:text-[#B0B0B0] backdrop-blur-sm focus:bg-[#1A1A1A]/70 focus:border-[#E8E8E8] focus-particles hover-glow transition-all duration-300'
                   {...field} 
                 />
               </FormControl>
@@ -93,19 +93,19 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           name='password'
           render={({ field }) => (
             <FormItem className='relative animate-fade-in-up animation-delay-500'>
-              <div className='flex justify-between items-center'>
+              {/* <div className='flex justify-between items-center'>
                 <FormLabel className='text-[#F0F0F0] text-sm font-medium'>密码</FormLabel>
                 <Link
                   to='/forgot-password'
-                  className='text-[#00C77E] hover:text-[#00CC7E] text-sm font-medium transition-colors hover-glow'
+                  className='text-[#C0C0C0] hover:text-[#E0E0E0] text-sm font-medium transition-colors hover-glow'
                 >
                   忘记密码？
                 </Link>
-              </div>
+              </div> */}
               <FormControl>
                 <PasswordInput 
                   placeholder='输入您的密码' 
-                  className='bg-[#1A1A1A]/50 border-[#00C77E]/30 text-[#F0F0F0] placeholder:text-[#B0B0B0] backdrop-blur-sm focus:bg-[#1A1A1A]/70 focus:border-[#00C77E] focus-particles hover-glow transition-all duration-300'
+                  className='bg-[#1A1A1A]/50 border-[#C0C0C0]/30 text-[#F0F0F0] placeholder:text-[#B0B0B0] backdrop-blur-sm focus:bg-[#1A1A1A]/70 focus:border-[#E8E8E8] focus-particles hover-glow transition-all duration-300'
                   {...field} 
                 />
               </FormControl>
@@ -114,7 +114,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           )}
         />
         
-        <FormField
+        {/* <FormField
           control={form.control}
           name='captcha'
           render={({ field }) => (
@@ -124,12 +124,12 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 <FormControl>
                   <Input 
                     placeholder='输入验证码' 
-                    className='bg-[#1A1A1A]/50 border-[#00C77E]/30 text-[#F0F0F0] placeholder:text-[#B0B0B0] backdrop-blur-sm focus:bg-[#1A1A1A]/70 focus:border-[#00C77E] focus-particles hover-glow transition-all duration-300 flex-1'
+                    className='bg-[#1A1A1A]/50 border-[#C0C0C0]/30 text-[#F0F0F0] placeholder:text-[#B0B0B0] backdrop-blur-sm focus:bg-[#1A1A1A]/70 focus:border-[#E8E8E8] focus-particles hover-glow transition-all duration-300 flex-1'
                     {...field} 
                   />
                 </FormControl>
                 <div className='flex items-center gap-2'>
-                  <div className='bg-[#2A2A2A] border border-[#00C77E]/30 px-4 py-2 rounded font-mono text-[#00C77E] text-lg tracking-wider animate-neon-pulse'>
+                  <div className='bg-[#2A2A2A] border border-[#C0C0C0]/30 px-4 py-2 rounded font-mono text-[#C0C0C0] text-lg tracking-wider animate-neon-pulse'>
                     {captcha}
                   </div>
                   <Button
@@ -137,7 +137,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                     variant='outline'
                     size='icon'
                     onClick={refreshCaptcha}
-                    className='border-[#00C77E]/30 text-[#00C77E] hover:bg-[#00C77E]/10 hover:border-[#00C77E] transition-all duration-300 hover-glow'
+                    className='border-[#C0C0C0]/30 text-[#C0C0C0] hover:bg-[#C0C0C0]/10 hover:border-[#C0C0C0] transition-all duration-300 hover-glow'
                   >
                     <IconRefresh className='h-4 w-4' />
                   </Button>
@@ -146,7 +146,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
               <FormMessage className='text-[#FF2E4D]' />
             </FormItem>
           )}
-        />
+        /> */}
         
         {/* Remember Me Toggle */}
         <div className='flex items-center justify-between animate-fade-in-up animation-delay-1000'>
@@ -158,7 +158,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className='sr-only'
               />
-              <div className={`w-12 h-6 rounded-full border-2 transition-all duration-300 ${rememberMe ? 'bg-[#00C77E] border-[#00C77E]' : 'bg-[#2A2A2A] border-[#00C77E]/30'}`}>
+              <div className={`w-12 h-6 rounded-full border-2 transition-all duration-300 ${rememberMe ? 'bg-[#C0C0C0] border-[#C0C0C0]' : 'bg-[#2A2A2A] border-[#C0C0C0]/30'}`}>
                 <div className={`w-4 h-4 bg-[#1A1A1A] rounded-full transition-transform duration-300 mt-0.5 ${rememberMe ? 'translate-x-6 ml-0.5' : 'translate-x-0.5'}`}></div>
               </div>
             </div>
@@ -182,10 +182,10 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         </Button>
         
         {/* Third-party Login */}
-        <div className='space-y-4 animate-fade-in-up animation-delay-1200'>
+        {/* <div className='space-y-4 animate-fade-in-up animation-delay-1200'>
           <div className='relative'>
             <div className='absolute inset-0 flex items-center'>
-              <div className='w-full border-t border-[#00C77E]/20'></div>
+              <div className='w-full border-t border-[#C0C0C0]/20'></div>
             </div>
             <div className='relative flex justify-center text-sm'>
               <span className='bg-[#252525] px-4 text-[#B0B0B0]'>或使用第三方登录</span>
@@ -196,7 +196,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             <Button
               type='button'
               variant='outline'
-              className='border-[#00C77E]/30 text-[#F0F0F0] hover:bg-[#00C77E]/10 hover:border-[#00C77E] hover:text-[#00C77E] transition-all duration-300 hover-glow'
+              className='border-[#C0C0C0]/30 text-[#F0F0F0] hover:bg-[#C0C0C0]/10 hover:border-[#C0C0C0] hover:text-[#C0C0C0] transition-all duration-300 hover-glow'
             >
               <IconBrandGithub className='h-4 w-4 mr-2' />
               GitHub
@@ -204,24 +204,24 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             <Button
               type='button'
               variant='outline'
-              className='border-[#00C77E]/30 text-[#F0F0F0] hover:bg-[#00C77E]/10 hover:border-[#00C77E] hover:text-[#00C77E] transition-all duration-300 hover-glow'
+              className='border-[#C0C0C0]/30 text-[#F0F0F0] hover:bg-[#C0C0C0]/10 hover:border-[#C0C0C0] hover:text-[#C0C0C0] transition-all duration-300 hover-glow'
             >
               <IconBrandGoogle className='h-4 w-4 mr-2' />
               Google
             </Button>
           </div>
-        </div>
+        </div> */}
         
         {/* Register Link */}
-        <div className='text-center animate-fade-in-up animation-delay-1400'>
+        {/* <div className='text-center animate-fade-in-up animation-delay-1400'>
           <span className='text-[#B0B0B0] text-sm'>新用户？</span>
           <Link
-            to='/register'
-            className='text-[#00C77E] hover:text-[#00CC7E] text-sm font-medium ml-2 transition-colors hover-glow'
+            to='/sign-up'
+            className='text-[#C0C0C0] hover:text-[#E0E0E0] text-sm font-medium ml-2 transition-colors hover-glow'
           >
             创建账户
           </Link>
-        </div>
+        </div> */}
       </form>
     </Form>
   )
