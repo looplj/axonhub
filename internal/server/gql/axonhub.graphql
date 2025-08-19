@@ -89,6 +89,7 @@ type Mutation {
   updateChannelStatus(id: ID!, status: ChannelStatus!): Channel!
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
+  updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!
   updateAPIKeyStatus(id: ID!, status: APIKeyStatus!): APIKey!
 
   createUser(input: CreateUserInput!): User!

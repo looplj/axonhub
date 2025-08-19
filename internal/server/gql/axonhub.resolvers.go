@@ -100,6 +100,18 @@ func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPI
 	return apiKey, nil
 }
 
+// UpdateAPIKey is the resolver for the updateAPIKey field.
+func (r *mutationResolver) UpdateAPIKey(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyInput) (*ent.APIKey, error) {
+	apiKey, err := r.client.APIKey.UpdateOneID(id.ID).
+		SetNillableName(input.Name).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update API key: %w", err)
+	}
+
+	return apiKey, nil
+}
+
 // UpdateAPIKeyStatus is the resolver for the updateAPIKeyStatus field.
 func (r *mutationResolver) UpdateAPIKeyStatus(ctx context.Context, id objects.GUID, status apikey.Status) (*ent.APIKey, error) {
 	apiKey, err := r.client.APIKey.UpdateOneID(id.ID).

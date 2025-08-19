@@ -72,6 +72,7 @@ func ConvertGUIDPtrToInt(guid *GUID) (int, error) {
 	if guid == nil {
 		return 0, errors.New("guid is nil")
 	}
+
 	return guid.ID, nil
 }
 
@@ -83,6 +84,7 @@ func ConvertGUIDPtrToIntPtr(guid *GUID) (*int, error) {
 	if guid == nil {
 		return nil, errors.New("guid is nil")
 	}
+
 	return lo.ToPtr(guid.ID), nil
 }
 

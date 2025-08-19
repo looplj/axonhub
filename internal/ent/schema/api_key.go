@@ -44,7 +44,9 @@ func (APIKey) Fields() []ent.Field {
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
 		field.String("name"),
-		field.Enum("status").Values("enabled", "disabled").Default("enabled"),
+		field.Enum("status").Values("enabled", "disabled").Default("enabled").Annotations(
+			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+		),
 		field.Strings("scopes").
 			Comment("API Key specific scopes: read_channels, write_requests, etc.").
 			Default([]string{"read_channels", "write_requests"}).
