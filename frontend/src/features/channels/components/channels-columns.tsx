@@ -8,19 +8,28 @@ import LongText from '@/components/long-text'
 import { Channel, ChannelType } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'
+import { 
+  OpenAI, 
+  Anthropic, 
+  Google, 
+  DeepSeek,
+  Doubao,
+  Moonshot,
+  Azure
+} from '@lobehub/icons'
 
 // Channel type configurations
-const getChannelTypeConfig = (t: ReturnType<typeof useTranslation>['t']): Record<ChannelType, { label: string; color: string }> => ({
-  openai: { label: t('channels.types.openai'), color: 'bg-green-100 text-green-800 border-green-200' },
-  anthropic: { label: t('channels.types.anthropic'), color: 'bg-orange-100 text-orange-800 border-orange-200' },
-  anthropic_aws: { label: t('channels.types.anthropic_aws'), color: 'bg-orange-100 text-orange-800 border-orange-200' },
-  anthropic_gcp: { label: t('channels.types.anthropic_gcp'), color: 'bg-orange-100 text-orange-800 border-orange-200' },
-  gemini: { label: t('channels.types.gemini'), color: 'bg-blue-100 text-blue-800 border-blue-200' },
-  deepseek: { label: t('channels.types.deepseek'), color: 'bg-purple-100 text-purple-800 border-purple-200' },
-  doubao: { label: t('channels.types.doubao'), color: 'bg-red-100 text-red-800 border-red-200' },
-  kimi: { label: t('channels.types.kimi'), color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
-  anthropic_fake: { label: t('channels.types.anthropic_fake'), color: 'bg-gray-100 text-gray-800 border-gray-200' },
-  openai_fake: { label: t('channels.types.openai_fake'), color: 'bg-gray-100 text-gray-800 border-gray-200' },
+const getChannelTypeConfig = (t: ReturnType<typeof useTranslation>['t']): Record<ChannelType, { label: string; color: string; icon: React.ComponentType<{ size?: number; className?: string }> }> => ({
+  openai: { label: t('channels.types.openai'), color: 'bg-green-100 text-green-800 border-green-200', icon: OpenAI },
+  anthropic: { label: t('channels.types.anthropic'), color: 'bg-orange-100 text-orange-800 border-orange-200', icon: Anthropic },
+  anthropic_aws: { label: t('channels.types.anthropic_aws'), color: 'bg-orange-100 text-orange-800 border-orange-200', icon: Anthropic },
+  anthropic_gcp: { label: t('channels.types.anthropic_gcp'), color: 'bg-orange-100 text-orange-800 border-orange-200', icon: Anthropic },
+  gemini: { label: t('channels.types.gemini'), color: 'bg-blue-100 text-blue-800 border-blue-200', icon: Google },
+  deepseek: { label: t('channels.types.deepseek'), color: 'bg-purple-100 text-purple-800 border-purple-200', icon: DeepSeek },
+  doubao: { label: t('channels.types.doubao'), color: 'bg-red-100 text-red-800 border-red-200', icon: Doubao },
+  kimi: { label: t('channels.types.kimi'), color: 'bg-indigo-100 text-indigo-800 border-indigo-200', icon: Moonshot },
+  anthropic_fake: { label: t('channels.types.anthropic_fake'), color: 'bg-gray-100 text-gray-800 border-gray-200', icon: Anthropic },
+  openai_fake: { label: t('channels.types.openai_fake'), color: 'bg-gray-100 text-gray-800 border-gray-200', icon: OpenAI },
 })
 
 export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<Channel>[] => {
@@ -82,9 +91,13 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       cell: ({ row }) => {
         const type = row.getValue('type') as ChannelType
         const config = channelTypeConfig[type]
+        const IconComponent = config.icon
         return (
           <Badge variant='outline' className={cn('capitalize', config.color)}>
-            {config.label}
+            <div className='flex items-center gap-2'>
+              <IconComponent size={16} className='shrink-0' />
+              <span>{config.label}</span>
+            </div>
           </Badge>
         )
       },
