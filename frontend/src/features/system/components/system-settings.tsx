@@ -143,7 +143,7 @@ export function SystemSettings() {
                   <img
                     src={brandLogo}
                     alt='Brand Logo Preview'
-                    className='w-20 h-20 object-cover rounded border'
+                    className='w-60 h-60 object-cover rounded border'
                   />
                   <Button
                     type='button'
