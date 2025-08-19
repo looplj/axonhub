@@ -53,6 +53,11 @@ func TestAggregateStreamChunks(t *testing.T) {
 			streamFile:   "openai-multiple_choice_tool_3.stream.jsonl",
 			responseFile: "openai-multiple_choice_tool_3.response.json",
 		},
+		{
+			name:         "deepseek reasoning stream chunks with stop finish reason",
+			streamFile:   "deepseek-reasoninig.stream.jsonl",
+			responseFile: "deepseek-reasoning.response.json",
+		},
 	}
 
 	for _, tt := range tests {
@@ -125,6 +130,15 @@ func TestAggregateStreamChunks(t *testing.T) {
 				assert.Equal(t, want.Usage.PromptTokens, got.Usage.PromptTokens)
 				assert.Equal(t, want.Usage.CompletionTokens, got.Usage.CompletionTokens)
 				assert.Equal(t, want.Usage.TotalTokens, got.Usage.TotalTokens)
+			}
+
+			// Check reasoning content (for DeepSeek reasoning streams)
+			for i, wantChoice := range want.Choices {
+				gotChoice := got.Choices[i]
+				if wantChoice.Message.ReasoningContent != nil {
+					require.NotNil(t, gotChoice.Message.ReasoningContent, "Expected reasoning content for choice %d", i)
+					assert.Equal(t, *wantChoice.Message.ReasoningContent, *gotChoice.Message.ReasoningContent)
+				}
 			}
 		})
 	}

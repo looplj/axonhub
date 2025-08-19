@@ -15,11 +15,12 @@ import (
 
 // choiceAggregator is a helper struct to aggregate data for each choice.
 type choiceAggregator struct {
-	index        int
-	content      strings.Builder
-	toolCalls    map[int]*llm.ToolCall // Map to track tool calls by their index within the choice
-	finishReason *string
-	role         string
+	index            int
+	content          strings.Builder
+	reasoningContent strings.Builder
+	toolCalls        map[int]*llm.ToolCall // Map to track tool calls by their index within the choice
+	finishReason     *string
+	role             string
 }
 
 // AggregateStreamChunks aggregates OpenAI streaming response chunks into a complete response.
@@ -71,6 +72,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				// Handle content
 				if choice.Delta.Content.Content != nil {
 					choiceAgg.content.WriteString(*choice.Delta.Content.Content)
+				}
+
+				// Handle reasoning content
+				if choice.Delta.ReasoningContent != nil {
+					choiceAgg.reasoningContent.WriteString(*choice.Delta.ReasoningContent)
 				}
 
 				// Handle tool calls
@@ -155,6 +161,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		// Build the message
 		message := &llm.Message{
 			Role: choiceAgg.role,
+		}
+
+		// Set reasoning content if available
+		if choiceAgg.reasoningContent.Len() > 0 {
+			reasoningContent := choiceAgg.reasoningContent.String()
+			message.ReasoningContent = &reasoningContent
 		}
 
 		// Set content or tool calls
