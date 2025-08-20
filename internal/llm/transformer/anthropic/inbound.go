@@ -226,27 +226,62 @@ func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) 
 		}
 
 		if message != nil {
-			// Convert content
+			var contentBlocks []ContentBlock
+
+			// Handle reasoning content (thinking) first if present
+			if message.ReasoningContent != nil && *message.ReasoningContent != "" {
+				contentBlocks = append(contentBlocks, ContentBlock{
+					Type:     "thinking",
+					Thinking: *message.ReasoningContent,
+				})
+			}
+
+			// Handle regular content
 			if message.Content.Content != nil {
-				resp.Content = []ContentBlock{
-					{
-						Type: "text",
-						Text: *message.Content.Content,
-					},
-				}
+				contentBlocks = append(contentBlocks, ContentBlock{
+					Type: "text",
+					Text: *message.Content.Content,
+				})
 			} else if len(message.Content.MultipleContent) > 0 {
-				content := make([]ContentBlock, 0, len(message.Content.MultipleContent))
 				for _, part := range message.Content.MultipleContent {
 					if part.Type == "text" && part.Text != nil {
-						content = append(content, ContentBlock{
+						contentBlocks = append(contentBlocks, ContentBlock{
 							Type: "text",
 							Text: *part.Text,
 						})
 					}
 				}
-
-				resp.Content = content
 			}
+
+			// Handle tool calls
+			if len(message.ToolCalls) > 0 {
+				for _, toolCall := range message.ToolCalls {
+					var input json.RawMessage
+
+					if toolCall.Function.Arguments != "" {
+						// Validate JSON before using it as RawMessage
+						var temp interface{}
+						if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &temp); err != nil {
+							// If invalid JSON, wrap it in a string field
+							escapedArgs, _ := json.Marshal(toolCall.Function.Arguments)
+							input = json.RawMessage(`{"raw_arguments": ` + string(escapedArgs) + `}`)
+						} else {
+							input = json.RawMessage(toolCall.Function.Arguments)
+						}
+					} else {
+						input = json.RawMessage("{}")
+					}
+
+					contentBlocks = append(contentBlocks, ContentBlock{
+						Type:  "tool_use",
+						ID:    toolCall.ID,
+						Name:  &toolCall.Function.Name,
+						Input: input,
+					})
+				}
+			}
+
+			resp.Content = contentBlocks
 		}
 
 		// Convert finish reason
@@ -257,6 +292,9 @@ func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) 
 				resp.StopReason = &stopReason
 			case "length":
 				stopReason := "max_tokens"
+				resp.StopReason = &stopReason
+			case "tool_calls":
+				stopReason := "tool_use"
 				resp.StopReason = &stopReason
 			default:
 				resp.StopReason = choice.FinishReason
@@ -305,19 +343,20 @@ func (t *InboundTransformer) TransformStream(
 //
 //nolint:containedctx // Checked.
 type anthropicInboundStream struct {
-	source                streams.Stream[*llm.Response]
-	ctx                   context.Context
-	hasStarted            bool
-	hasTextContentStarted bool
-	hasToolContentStarted bool
-	hasFinished           bool
-	messageID             string
-	model                 string
-	contentIndex          int64
-	eventQueue            []*httpclient.StreamEvent
-	queueIndex            int
-	err                   error
-	stopReason            *string
+	source                    streams.Stream[*llm.Response]
+	ctx                       context.Context
+	hasStarted                bool
+	hasTextContentStarted     bool
+	hasThinkingContentStarted bool
+	hasToolContentStarted     bool
+	hasFinished               bool
+	messageID                 string
+	model                     string
+	contentIndex              int64
+	eventQueue                []*httpclient.StreamEvent
+	queueIndex                int
+	err                       error
+	stopReason                *string
 	// Tool call tracking
 	toolCalls map[int]*llm.ToolCall // Track tool calls by index
 }
@@ -371,20 +410,10 @@ func (s *anthropicInboundStream) Next() bool {
 		s.model = chunk.Model
 	}
 
-	// Set defaults if still empty
-	if s.messageID == "" {
-		s.messageID = "msg_unknown"
-	}
-
-	if s.model == "" {
-		s.model = "claude-3-sonnet-20240229"
-	}
-
 	// Generate message_start event if this is the first chunk
 	if !s.hasStarted {
 		s.hasStarted = true
 
-		// For message_start, set input_tokens to 1 as default since we don't have usage yet
 		usage := &Usage{
 			InputTokens:  1,
 			OutputTokens: 1,
@@ -413,8 +442,101 @@ func (s *anthropicInboundStream) Next() bool {
 	if len(chunk.Choices) > 0 {
 		choice := chunk.Choices[0]
 
+		// Handle reasoning content (thinking) delta
+		if choice.Delta != nil && choice.Delta.ReasoningContent != nil && *choice.Delta.ReasoningContent != "" {
+			// If the tool content has started before the thinking content, we need to stop it
+			if s.hasToolContentStarted {
+				s.hasToolContentStarted = false
+
+				streamEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				err := s.enqueEvent(&streamEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+			}
+
+			// Generate content_block_start if this is the first thinking content
+			if !s.hasThinkingContentStarted {
+				s.hasThinkingContentStarted = true
+
+				streamEvent := StreamEvent{
+					Type:  "content_block_start",
+					Index: &s.contentIndex,
+					ContentBlock: &ContentBlock{
+						Type:      "thinking",
+						Thinking:  "",
+						Signature: "",
+					},
+				}
+
+				err := s.enqueEvent(&streamEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_start event: %w", err)
+					return false
+				}
+			}
+
+			// Generate content_block_delta for thinking
+			streamEvent := StreamEvent{
+				Type:  "content_block_delta",
+				Index: &s.contentIndex,
+				Delta: &StreamDelta{
+					Type:     lo.ToPtr("thinking_delta"),
+					Thinking: choice.Delta.ReasoningContent,
+				},
+			}
+
+			err := s.enqueEvent(&streamEvent)
+			if err != nil {
+				s.err = fmt.Errorf("failed to enqueue content_block_delta event: %w", err)
+				return false
+			}
+		}
+
 		// Handle content delta
 		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
+			// If the thinking content has started before the text content, we need to stop it
+			if s.hasThinkingContentStarted {
+				s.hasThinkingContentStarted = false
+
+				// Add signature delta before stopping thinking block
+				// TODO Confirm if this is needed.
+				// signatureEvent := StreamEvent{
+				// 	Type:  "content_block_delta",
+				// 	Index: &s.contentIndex,
+				// 	Delta: &StreamDelta{
+				// 		Type:      lo.ToPtr("signature_delta"),
+				// 		Signature: lo.ToPtr(""),
+				// 	},
+				// }
+
+				// err := s.enqueEvent(&signatureEvent)
+				// if err != nil {
+				// 	s.err = fmt.Errorf("failed to enqueue signature_delta event: %w", err)
+				// 	return false
+				// }
+
+				stopEvent := StreamEvent{
+					Type:  "content_block_stop",
+					Index: &s.contentIndex,
+				}
+
+				err := s.enqueEvent(&stopEvent)
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+					return false
+				}
+
+				s.contentIndex += 1
+			}
+
 			// If the tool content has started before the content block, we need to stop it
 			if s.hasToolContentStarted {
 				s.hasToolContentStarted = false
@@ -537,21 +659,18 @@ func (s *anthropicInboundStream) Next() bool {
 						s.err = fmt.Errorf("failed to enqueue content_block_start event: %w", err)
 						return false
 					}
-				}
-
-				// Accumulate arguments
-				if deltaToolCall.Function.Arguments != "" {
+				} else {
 					s.toolCalls[toolCallIndex].Function.Arguments += deltaToolCall.Function.Arguments
 
 					// Generate content_block_delta for input_json_delta
-					contentBlockIndex := int64(toolCallIndex)
-					if s.hasTextContentStarted {
-						contentBlockIndex = s.contentIndex + 1 + int64(toolCallIndex)
-					}
+					// contentBlockIndex := int64(toolCallIndex)
+					// if s.hasTextContentStarted || s.hasThinkingContentStarted {
+					// 	contentBlockIndex = s.contentIndex + 1 + int64(toolCallIndex)
+					// }
 
 					streamEvent := StreamEvent{
 						Type:  "content_block_delta",
-						Index: &contentBlockIndex,
+						Index: &s.contentIndex,
 						Delta: &StreamDelta{
 							Type:        lo.ToPtr("input_json_delta"),
 							PartialJSON: &deltaToolCall.Function.Arguments,

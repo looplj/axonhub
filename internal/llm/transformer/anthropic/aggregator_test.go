@@ -853,18 +853,23 @@ func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 			streamFile:   "anthropic-tool.stream.jsonl",
 			responseFile: "anthropic-tool.response.json",
 		},
+		{
+			name:         "anthropic stream chunks with thinking blocks and tool calls",
+			streamFile:   "anthropic-think.stream.jsonl",
+			responseFile: "anthropic-think.response.json",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Load the stream data
-			streamData, err := xtest.LoadStreamChunks(tt.streamFile)
+			streamData, err := xtest.LoadStreamChunks(t, tt.streamFile)
 			require.NoError(t, err)
 			require.NotEmpty(t, streamData)
 
 			var expectedData Message
 			// Load the expected aggregated result
-			err = xtest.LoadTestData(tt.responseFile, &expectedData)
+			err = xtest.LoadTestData(t, tt.responseFile, &expectedData)
 			require.NoError(t, err)
 
 			// Run the aggregation

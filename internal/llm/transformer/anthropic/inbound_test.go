@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
+	"github.com/looplj/axonhub/internal/pkg/xtest"
 )
 
 func TestInboundTransformer_TransformRequest(t *testing.T) {
@@ -310,6 +309,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 		name        string
 		chatResp    *llm.Response
 		expectError bool
+		validate    func(t *testing.T, resp *Message)
 	}{
 		{
 			name: "valid response",
@@ -337,6 +337,13 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 				},
 			},
 			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 1)
+				require.Equal(t, "text", resp.Content[0].Type)
+				require.Equal(t, "Hello! How can I help you?", resp.Content[0].Text)
+				require.Equal(t, "end_turn", *resp.StopReason)
+			},
 		},
 		{
 			name: "response with multimodal content",
@@ -364,6 +371,276 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 				},
 			},
 			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 1)
+				require.Equal(t, "text", resp.Content[0].Type)
+				require.Equal(t, "I can see an image.", resp.Content[0].Text)
+			},
+		},
+		{
+			name: "response with thinking content",
+			chatResp: &llm.Response{
+				ID:      "msg_789",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							ReasoningContent: func() *string {
+								s := "Let me think about this step by step. First, I need to understand the problem..."
+								return &s
+							}(),
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Based on my analysis, the answer is 42."; return &s }(),
+							},
+						},
+						FinishReason: func() *string { s := "stop"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 2)
+
+				// First content block should be thinking
+				require.Equal(t, "thinking", resp.Content[0].Type)
+				require.Equal(t, "Let me think about this step by step. First, I need to understand the problem...", resp.Content[0].Thinking)
+
+				// Second content block should be text
+				require.Equal(t, "text", resp.Content[1].Type)
+				require.Equal(t, "Based on my analysis, the answer is 42.", resp.Content[1].Text)
+			},
+		},
+		{
+			name: "response with tool calls",
+			chatResp: &llm.Response{
+				ID:      "msg_tool_123",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "I'll help you with that calculation."; return &s }(),
+							},
+							ToolCalls: []llm.ToolCall{
+								{
+									ID:   "call_123",
+									Type: "function",
+									Function: llm.FunctionCall{
+										Name:      "calculate",
+										Arguments: `{"operation": "add", "a": 5, "b": 3}`,
+									},
+								},
+							},
+						},
+						FinishReason: func() *string { s := "tool_calls"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 2)
+
+				// First content block should be text
+				require.Equal(t, "text", resp.Content[0].Type)
+				require.Equal(t, "I'll help you with that calculation.", resp.Content[0].Text)
+
+				// Second content block should be tool_use
+				require.Equal(t, "tool_use", resp.Content[1].Type)
+				require.Equal(t, "call_123", resp.Content[1].ID)
+				require.Equal(t, "calculate", *resp.Content[1].Name)
+
+				// Verify tool input JSON
+				var input map[string]interface{}
+				err := json.Unmarshal(resp.Content[1].Input, &input)
+				require.NoError(t, err)
+				require.Equal(t, "add", input["operation"])
+				require.Equal(t, float64(5), input["a"])
+				require.Equal(t, float64(3), input["b"])
+
+				require.Equal(t, "tool_use", *resp.StopReason)
+			},
+		},
+		{
+			name: "response with thinking and tool calls",
+			chatResp: &llm.Response{
+				ID:      "msg_think_tool_456",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							ReasoningContent: func() *string {
+								s := "The user wants me to calculate something. I should use the calculator tool."
+								return &s
+							}(),
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Let me calculate that for you."; return &s }(),
+							},
+							ToolCalls: []llm.ToolCall{
+								{
+									ID:   "call_456",
+									Type: "function",
+									Function: llm.FunctionCall{
+										Name:      "multiply",
+										Arguments: `{"x": 7, "y": 8}`,
+									},
+								},
+								{
+									ID:   "call_789",
+									Type: "function",
+									Function: llm.FunctionCall{
+										Name:      "format_result",
+										Arguments: `{"value": 56, "format": "decimal"}`,
+									},
+								},
+							},
+						},
+						FinishReason: func() *string { s := "tool_calls"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 4)
+
+				// First content block should be thinking
+				require.Equal(t, "thinking", resp.Content[0].Type)
+				require.Equal(t, "The user wants me to calculate something. I should use the calculator tool.", resp.Content[0].Thinking)
+
+				// Second content block should be text
+				require.Equal(t, "text", resp.Content[1].Type)
+				require.Equal(t, "Let me calculate that for you.", resp.Content[1].Text)
+
+				// Third content block should be first tool_use
+				require.Equal(t, "tool_use", resp.Content[2].Type)
+				require.Equal(t, "call_456", resp.Content[2].ID)
+				require.Equal(t, "multiply", *resp.Content[2].Name)
+
+				// Fourth content block should be second tool_use
+				require.Equal(t, "tool_use", resp.Content[3].Type)
+				require.Equal(t, "call_789", resp.Content[3].ID)
+				require.Equal(t, "format_result", *resp.Content[3].Name)
+			},
+		},
+		{
+			name: "response with empty tool arguments",
+			chatResp: &llm.Response{
+				ID:      "msg_empty_args",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							ToolCalls: []llm.ToolCall{
+								{
+									ID:   "call_empty",
+									Type: "function",
+									Function: llm.FunctionCall{
+										Name:      "get_time",
+										Arguments: "", // Empty arguments
+									},
+								},
+							},
+						},
+						FinishReason: func() *string { s := "tool_calls"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 1)
+				require.Equal(t, "tool_use", resp.Content[0].Type)
+				require.Equal(t, "call_empty", resp.Content[0].ID)
+				require.Equal(t, "get_time", *resp.Content[0].Name)
+
+				// Should default to empty JSON object
+				require.Equal(t, json.RawMessage("{}"), resp.Content[0].Input)
+			},
+		},
+		{
+			name: "response with different finish reasons",
+			chatResp: &llm.Response{
+				ID:      "msg_length",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "This is a long response that was cut off..."; return &s }(),
+							},
+						},
+						FinishReason: func() *string { s := "length"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Equal(t, "max_tokens", *resp.StopReason)
+			},
+		},
+		{
+			name: "response with usage details",
+			chatResp: &llm.Response{
+				ID:      "msg_usage",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Response with detailed usage."; return &s }(),
+							},
+						},
+						FinishReason: func() *string { s := "stop"; return &s }(),
+					},
+				},
+				Usage: &llm.Usage{
+					PromptTokens:     100,
+					CompletionTokens: 50,
+					TotalTokens:      150,
+					PromptTokensDetails: &llm.PromptTokensDetails{
+						CachedTokens: 20,
+					},
+					CompletionTokensDetails: &llm.CompletionTokensDetails{
+						ReasoningTokens: 10,
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.NotNil(t, resp.Usage)
+				require.Equal(t, int64(100), resp.Usage.InputTokens)
+				require.Equal(t, int64(50), resp.Usage.OutputTokens)
+				require.Equal(t, int64(20), resp.Usage.CacheReadInputTokens)
+			},
 		},
 		{
 			name:        "nil response",
@@ -395,6 +672,11 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 				require.Equal(t, "message", anthropicResp.Type)
 				require.Equal(t, "assistant", anthropicResp.Role)
 				require.Equal(t, tt.chatResp.Model, anthropicResp.Model)
+
+				// Run custom validation if provided
+				if tt.validate != nil {
+					tt.validate(t, &anthropicResp)
+				}
 			}
 		})
 	}
@@ -824,72 +1106,66 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				assert.Equal(t, "123", langInput["user_id"])
 			},
 		},
+		{
+			name:                "stream transformation with thinking content and parallel tool calls",
+			inputStreamFile:     "llm-think.stream.jsonl",
+			expectedStreamFile:  "anthropic-think.stream.jsonl",
+			expectedInputTokens: 587,
+			expectedAggregated: func(t *testing.T, result *Message) {
+				t.Helper()
+				// Verify aggregated response
+				assert.Equal(t, "msg_bdrk_01DDaPSX8bJqM5dRkdv32TkC", result.ID)
+				assert.Equal(t, "message", result.Type)
+				assert.Equal(t, "claude-sonnet-4-20250514", result.Model)
+				assert.NotEmpty(t, result.Content)
+				assert.Equal(t, "assistant", result.Role)
+				assert.Equal(t, "tool_use", *result.StopReason)
+
+				// Verify we have 4 content blocks: thinking, text, and 2 tool uses
+				assert.Len(t, result.Content, 4)
+
+				// Verify thinking content block
+				assert.Equal(t, "thinking", result.Content[0].Type)
+				expectedThinking := "The user is asking for the weather in San Francisco, CA. To get the weather, I need to:\n\n1. First get the coordinates (latitude and longitude) of San Francisco, CA using the get_coordinates function\n2. Then get the temperature unit for the US using get_temperature_unit function \n3. Finally use the get_weather function with the coordinates and appropriate unit\n\nLet me start with getting the coordinates and temperature unit."
+				assert.Equal(t, expectedThinking, result.Content[0].Thinking)
+
+				// Verify text content block
+				assert.Equal(t, "text", result.Content[1].Type)
+				expectedText := "I'll help you get the weather for San Francisco, CA. Let me first get the coordinates and determine the appropriate temperature unit for the US."
+				assert.Equal(t, expectedText, result.Content[1].Text)
+
+				// Verify first tool call (get_coordinates)
+				assert.Equal(t, "tool_use", result.Content[2].Type)
+				assert.Equal(t, "toolu_bdrk_01RjxXDSvxn69XRfWLjn6Sur", result.Content[2].ID)
+				assert.Equal(t, "get_coordinates", *result.Content[2].Name)
+
+				var coordInput map[string]interface{}
+				err := json.Unmarshal(result.Content[2].Input, &coordInput)
+				require.NoError(t, err)
+				assert.Equal(t, "San Francisco, CA", coordInput["location"])
+
+				// Verify second tool call (get_temperature_unit)
+				assert.Equal(t, "tool_use", result.Content[3].Type)
+				assert.Equal(t, "toolu_bdrk_01E6Gr52e4i9TLwsDn8Sgimg", result.Content[3].ID)
+				assert.Equal(t, "get_temperature_unit", *result.Content[3].Name)
+
+				var unitInput map[string]interface{}
+				err = json.Unmarshal(result.Content[3].Input, &unitInput)
+				require.NoError(t, err)
+				assert.Equal(t, "United States", unitInput["country"])
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Load test data from files
 			// The input file contains OpenAI format responses
-			openaiData, err := os.ReadFile("testdata/" + tt.inputStreamFile)
+			openaiResponses, err := xtest.LoadResponses(t, tt.inputStreamFile)
 			require.NoError(t, err)
 
 			// The expected file contains expected Anthropic format events
-			expectedData, err := os.ReadFile("testdata/" + tt.expectedStreamFile)
+			expectedEvents, err := xtest.LoadStreamChunks(t, tt.expectedStreamFile)
 			require.NoError(t, err)
-
-			// Parse OpenAI stream responses
-			openaiLines := strings.Split(strings.TrimSpace(string(openaiData)), "\n")
-
-			var openaiResponses []*llm.Response
-
-			for _, line := range openaiLines {
-				if line != "" {
-					// Check if this is a DONE event
-					if strings.Contains(line, `"Data":"[DONE]"`) {
-						// This is a DONE event, add the DoneResponse
-						openaiResponses = append(openaiResponses, llm.DoneResponse)
-					} else {
-						// Parse the StreamEvent to get the Data field
-						var event struct {
-							Type string `json:"Type"`
-							Data string `json:"Data"`
-						}
-
-						err := json.Unmarshal([]byte(line), &event)
-						require.NoError(t, err)
-
-						// Parse the Data field as llm.Response
-						var resp llm.Response
-
-						err = json.Unmarshal([]byte(event.Data), &resp)
-						require.NoError(t, err)
-
-						openaiResponses = append(openaiResponses, &resp)
-					}
-				}
-			}
-
-			// Parse expected Anthropic stream events
-			expectedLines := strings.Split(strings.TrimSpace(string(expectedData)), "\n")
-
-			var expectedEvents []*httpclient.StreamEvent
-
-			for _, line := range expectedLines {
-				if line != "" {
-					var event struct {
-						Type string `json:"Type"`
-						Data string `json:"Data"`
-					}
-
-					err := json.Unmarshal([]byte(line), &event)
-					require.NoError(t, err)
-
-					expectedEvents = append(expectedEvents, &httpclient.StreamEvent{
-						Type: event.Type,
-						Data: []byte(event.Data),
-					})
-				}
-			}
 
 			// Create a mock stream from OpenAI responses
 			mockStream := streams.SliceStream(openaiResponses)
@@ -908,11 +1184,8 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 			require.NoError(t, transformedStream.Err())
 
-			// println("wont: %v", xjson.MustMarshalString(expectedEvents))
-			// println("got : %v", xjson.MustMarshalString(actualEvents))
-
 			// Verify the number of events matches
-			// require.Equal(t, len(expectedEvents), len(actualEvents), "Number of events should match")
+			require.Equal(t, len(expectedEvents), len(actualEvents), "Number of events should match")
 
 			// Verify each event
 			for i, expected := range expectedEvents {
@@ -1049,6 +1322,367 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			// Run custom validation if provided
 			if tt.expectedAggregated != nil {
 				tt.expectedAggregated(t, &aggregatedResp)
+			}
+		})
+	}
+}
+
+func TestInboundTransformer_TransformResponse_EdgeCases(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	tests := []struct {
+		name        string
+		chatResp    *llm.Response
+		expectError bool
+		validate    func(t *testing.T, resp *Message)
+	}{
+		{
+			name: "response with only thinking content",
+			chatResp: &llm.Response{
+				ID:      "msg_only_thinking",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							ReasoningContent: func() *string {
+								s := "I need to think about this carefully..."
+								return &s
+							}(),
+						},
+						FinishReason: func() *string { s := "stop"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 1)
+				require.Equal(t, "thinking", resp.Content[0].Type)
+				require.Equal(t, "I need to think about this carefully...", resp.Content[0].Thinking)
+			},
+		},
+		{
+			name: "response with only tool calls",
+			chatResp: &llm.Response{
+				ID:      "msg_only_tools",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							ToolCalls: []llm.ToolCall{
+								{
+									ID:   "call_only",
+									Type: "function",
+									Function: llm.FunctionCall{
+										Name:      "search",
+										Arguments: `{"query": "test"}`,
+									},
+								},
+							},
+						},
+						FinishReason: func() *string { s := "tool_calls"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 1)
+				require.Equal(t, "tool_use", resp.Content[0].Type)
+				require.Equal(t, "call_only", resp.Content[0].ID)
+				require.Equal(t, "search", *resp.Content[0].Name)
+			},
+		},
+		{
+			name: "response with empty thinking content",
+			chatResp: &llm.Response{
+				ID:      "msg_empty_thinking",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							ReasoningContent: func() *string {
+								s := ""
+								return &s
+							}(),
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Direct answer."; return &s }(),
+							},
+						},
+						FinishReason: func() *string { s := "stop"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				// Empty thinking content should be ignored
+				require.Len(t, resp.Content, 1)
+				require.Equal(t, "text", resp.Content[0].Type)
+				require.Equal(t, "Direct answer.", resp.Content[0].Text)
+			},
+		},
+		{
+			name: "response with no choices",
+			chatResp: &llm.Response{
+				ID:      "msg_no_choices",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Empty(t, resp.Content)
+				require.Nil(t, resp.StopReason)
+			},
+		},
+		{
+			name: "response with choice but no message",
+			chatResp: &llm.Response{
+				ID:      "msg_no_message",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index:        0,
+						Message:      nil,
+						Delta:        nil,
+						FinishReason: func() *string { s := "stop"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Empty(t, resp.Content)
+				require.Equal(t, "end_turn", *resp.StopReason)
+			},
+		},
+		{
+			name: "response with delta instead of message",
+			chatResp: &llm.Response{
+				ID:      "msg_delta",
+				Object:  "chat.completion.chunk",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Delta: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Delta content"; return &s }(),
+							},
+						},
+						FinishReason: func() *string { s := "stop"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 1)
+				require.Equal(t, "text", resp.Content[0].Type)
+				require.Equal(t, "Delta content", resp.Content[0].Text)
+			},
+		},
+		{
+			name: "response with unknown finish reason",
+			chatResp: &llm.Response{
+				ID:      "msg_unknown_finish",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								Content: func() *string { s := "Some content"; return &s }(),
+							},
+						},
+						FinishReason: func() *string { s := "unknown_reason"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Equal(t, "unknown_reason", *resp.StopReason)
+			},
+		},
+		{
+			name: "response with malformed tool arguments",
+			chatResp: &llm.Response{
+				ID:      "msg_malformed_args",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							ToolCalls: []llm.ToolCall{
+								{
+									ID:   "call_malformed",
+									Type: "function",
+									Function: llm.FunctionCall{
+										Name:      "test_func",
+										Arguments: `{"invalid": json}`, // Invalid JSON
+									},
+								},
+							},
+						},
+						FinishReason: func() *string { s := "tool_calls"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 1)
+				require.Equal(t, "tool_use", resp.Content[0].Type)
+				require.Equal(t, "call_malformed", resp.Content[0].ID)
+				require.Equal(t, "test_func", *resp.Content[0].Name)
+
+				// Malformed JSON should be wrapped in raw_arguments field
+				var input map[string]interface{}
+				err := json.Unmarshal(resp.Content[0].Input, &input)
+				require.NoError(t, err)
+				require.Equal(t, `{"invalid": json}`, input["raw_arguments"])
+			},
+		},
+		{
+			name: "response with multiple content parts including non-text",
+			chatResp: &llm.Response{
+				ID:      "msg_mixed_content",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								MultipleContent: []llm.MessageContentPart{
+									{
+										Type: "text",
+										Text: func() *string { s := "First text part"; return &s }(),
+									},
+									{
+										Type: "image_url", // Non-text type, should be ignored
+										ImageURL: &llm.ImageURL{
+											URL: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+										},
+									},
+									{
+										Type: "text",
+										Text: func() *string { s := "Second text part"; return &s }(),
+									},
+								},
+							},
+						},
+						FinishReason: func() *string { s := "stop"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				// Should only include text parts
+				require.Len(t, resp.Content, 2)
+				require.Equal(t, "text", resp.Content[0].Type)
+				require.Equal(t, "First text part", resp.Content[0].Text)
+				require.Equal(t, "text", resp.Content[1].Type)
+				require.Equal(t, "Second text part", resp.Content[1].Text)
+			},
+		},
+		{
+			name: "response with nil text in content part",
+			chatResp: &llm.Response{
+				ID:      "msg_nil_text",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								MultipleContent: []llm.MessageContentPart{
+									{
+										Type: "text",
+										Text: nil, // Nil text should be ignored
+									},
+									{
+										Type: "text",
+										Text: func() *string { s := "Valid text"; return &s }(),
+									},
+								},
+							},
+						},
+						FinishReason: func() *string { s := "stop"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				// Should only include the valid text part
+				require.Len(t, resp.Content, 1)
+				require.Equal(t, "text", resp.Content[0].Type)
+				require.Equal(t, "Valid text", resp.Content[0].Text)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := transformer.TransformResponse(t.Context(), tt.chatResp)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Nil(t, result)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, http.StatusOK, result.StatusCode)
+				require.Equal(t, "application/json", result.Headers.Get("Content-Type"))
+				require.NotEmpty(t, result.Body)
+
+				// Verify the response can be unmarshaled to AnthropicResponse
+				var anthropicResp Message
+
+				err := json.Unmarshal(result.Body, &anthropicResp)
+				require.NoError(t, err)
+				require.Equal(t, tt.chatResp.ID, anthropicResp.ID)
+				require.Equal(t, "message", anthropicResp.Type)
+				require.Equal(t, "assistant", anthropicResp.Role)
+				require.Equal(t, tt.chatResp.Model, anthropicResp.Model)
+
+				// Run custom validation if provided
+				if tt.validate != nil {
+					tt.validate(t, &anthropicResp)
+				}
 			}
 		})
 	}

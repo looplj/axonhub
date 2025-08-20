@@ -1,5 +1,9 @@
 package streams
 
+func NoNil[T any](stream Stream[*T]) Stream[*T] {
+	return Filter(stream, func(item *T) bool { return item != nil })
+}
+
 // Filter creates a new stream that filters items from the source stream
 // based on the provided predicate function.
 func Filter[T any](stream Stream[T], predicate func(T) bool) Stream[T] {

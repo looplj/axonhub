@@ -27,7 +27,7 @@ func TestPipeline_Streaming_OpenAI_to_OpenAI(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load test data using xtest
-	streamEvents, err := xtest.LoadStreamChunks("openai-tool.stream.jsonl")
+	streamEvents, err := xtest.LoadStreamChunks(t, "openai-tool.stream.jsonl")
 	require.NoError(t, err)
 
 	// Create mock executor for streaming
@@ -126,7 +126,7 @@ func TestPipeline_Streaming_OpenAI_to_Anthropic(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load test data using xtest
-	streamEvents, err := xtest.LoadStreamChunks("anthropic-tool.stream.jsonl")
+	streamEvents, err := xtest.LoadStreamChunks(t, "anthropic-tool.stream.jsonl")
 	require.NoError(t, err)
 
 	// Create mock executor for streaming
@@ -228,7 +228,7 @@ func TestPipeline_Streaming_Anthropic_to_OpenAI(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load test data using xtest
-	streamEvents, err := xtest.LoadStreamChunks("openai-tool.stream.jsonl")
+	streamEvents, err := xtest.LoadStreamChunks(t, "openai-tool.stream.jsonl")
 	require.NoError(t, err)
 
 	// Create mock executor for streaming
@@ -325,7 +325,7 @@ func TestPipeline_Streaming_Anthropic_to_Anthropic(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load test data using xtest
-	streamEvents, err := xtest.LoadStreamChunks("anthropic-tool.stream.jsonl")
+	streamEvents, err := xtest.LoadStreamChunks(t, "anthropic-tool.stream.jsonl")
 	require.NoError(t, err)
 
 	// Create mock executor for streaming
@@ -481,7 +481,7 @@ func TestPipeline_Streaming_WithTestData(t *testing.T) {
 			}
 
 			// Load test data using xtest
-			streamEvents, err := xtest.LoadStreamChunks(tt.inputStreamFile)
+			streamEvents, err := xtest.LoadStreamChunks(t, tt.inputStreamFile)
 			require.NoError(t, err)
 
 			// Create mock executor

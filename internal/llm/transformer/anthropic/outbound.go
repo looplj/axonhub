@@ -292,7 +292,7 @@ func (t *OutboundTransformer) TransformStream(
 	// Append the DONE event to the filtered stream
 	streamWithDone := streams.AppendStream(filteredStream, doneEvent)
 
-	return newOutboundStream(streamWithDone), nil
+	return streams.NoNil(newOutboundStream(streamWithDone)), nil
 }
 
 // filterStreamEvent determines if a stream event should be processed
@@ -304,9 +304,9 @@ func filterStreamEvent(event *httpclient.StreamEvent) bool {
 
 	// Only process events that contribute to the OpenAI response format
 	switch event.Type {
-	case "message_start", "content_block_delta", "message_delta", "message_stop":
+	case "message_start", "content_block_start", "content_block_delta", "message_delta", "message_stop":
 		return true
-	case "ping", "content_block_start", "content_block_stop":
+	case "ping", "content_block_stop":
 		return false // Skip these events as they're not needed for OpenAI format
 	default:
 		return false // Skip unknown event types
@@ -394,6 +394,9 @@ type streamState struct {
 	streamID    string
 	streamModel string
 	streamUsage *llm.Usage
+	// Tool call tracking
+	toolIndex int
+	toolCalls map[int]*llm.ToolCall // index -> tool call
 }
 
 // outboundStream wraps a stream and maintains state during processing.
@@ -407,7 +410,10 @@ type outboundStream struct {
 func newOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *outboundStream {
 	return &outboundStream{
 		stream: stream,
-		state:  &streamState{},
+		state: &streamState{
+			toolCalls: make(map[int]*llm.ToolCall),
+			toolIndex: -1,
+		},
 	}
 }
 
@@ -430,6 +436,8 @@ func (s *outboundStream) Next() bool {
 }
 
 // transformStreamChunk transforms a single Anthropic streaming chunk to ChatCompletionResponse with state.
+//
+//nolint:maintidx // Checked.
 func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*llm.Response, error) {
 	if event == nil {
 		return nil, fmt.Errorf("stream event is nil")
@@ -500,20 +508,86 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			},
 		}
 
+	case "content_block_start":
+		// Only process tool_use content blocks, skip text content blocks
+		if streamEvent.ContentBlock != nil && streamEvent.ContentBlock.Type == "tool_use" {
+			// Initialize a new tool call
+			state.toolIndex++
+			toolCall := llm.ToolCall{
+				Index: state.toolIndex,
+				ID:    streamEvent.ContentBlock.ID,
+				Type:  "function",
+				Function: llm.FunctionCall{
+					Name:      *streamEvent.ContentBlock.Name,
+					Arguments: "",
+				},
+			}
+			state.toolCalls[state.toolIndex] = &toolCall
+
+			choice := llm.Choice{
+				Index: 0,
+				Delta: &llm.Message{
+					Role:      "assistant",
+					ToolCalls: []llm.ToolCall{toolCall},
+				},
+			}
+			resp.Choices = []llm.Choice{choice}
+		} else {
+			//nolint:nilnil // It is expected.
+			return nil, nil
+		}
+
 	case "content_block_delta":
-		resp.Usage = state.streamUsage
-		if streamEvent.Delta != nil && streamEvent.Delta.Text != nil {
-			resp.Choices = []llm.Choice{
-				{
+		if streamEvent.Delta != nil {
+			// Handle tool use deltas (input_json_delta)
+			if streamEvent.Delta.PartialJSON != nil {
+				choice := llm.Choice{
 					Index: 0,
 					Delta: &llm.Message{
 						Role: "assistant",
-						Content: llm.MessageContent{
-							Content: streamEvent.Delta.Text,
+						ToolCalls: []llm.ToolCall{
+							{
+								Index: state.toolIndex,
+								ID:    state.toolCalls[state.toolIndex].ID,
+								Type:  "function",
+								Function: llm.FunctionCall{
+									Arguments: *streamEvent.Delta.PartialJSON,
+								},
+							},
 						},
 					},
+				}
+				resp.Choices = []llm.Choice{choice}
+
+				return resp, nil
+			}
+
+			choice := llm.Choice{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
 				},
 			}
+
+			// Handle text content
+			if streamEvent.Delta.Text != nil {
+				choice.Delta.Content = llm.MessageContent{
+					Content: streamEvent.Delta.Text,
+				}
+			}
+
+			// Handle thinking content - map to reasoning_content
+			if streamEvent.Delta.Thinking != nil {
+				choice.Delta.ReasoningContent = streamEvent.Delta.Thinking
+			}
+
+			// Skip signature deltas as they're not part of the content
+			if streamEvent.Delta.Signature != nil {
+				//nolint:nilnil // It is expected.
+				return nil, nil
+			}
+
+			resp.Choices = []llm.Choice{choice}
 		}
 
 	case "message_delta":

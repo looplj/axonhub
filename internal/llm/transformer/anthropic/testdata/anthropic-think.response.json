@@ -1,0 +1,39 @@
+{
+  "id": "msg_bdrk_01DDaPSX8bJqM5dRkdv32TkC",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "The user is asking for the weather in San Francisco, CA. To get the weather, I need to:\n\n1. First get the coordinates (latitude and longitude) of San Francisco, CA using the get_coordinates function\n2. Then get the temperature unit for the US using get_temperature_unit function \n3. Finally use the get_weather function with the coordinates and appropriate unit\n\nLet me start with getting the coordinates and temperature unit."
+    },
+    {
+      "type": "text",
+      "text": "I'll help you get the weather for San Francisco, CA. Let me first get the coordinates and determine the appropriate temperature unit for the US."
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_bdrk_01RjxXDSvxn69XRfWLjn6Sur",
+      "name": "get_coordinates",
+      "input": {
+        "location": "San Francisco, CA"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_bdrk_01E6Gr52e4i9TLwsDn8Sgimg",
+      "name": "get_temperature_unit",
+      "input": {
+        "country": "United States"
+      }
+    }
+  ],
+  "model": "claude-sonnet-4-20250514",
+  "stop_reason": "tool_use",
+  "usage": {
+    "input_tokens": 587,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 226
+  }
+}

@@ -145,10 +145,6 @@ func convertUsage(usage Usage) llm.Usage {
 		}
 	}
 
-	u.CompletionTokensDetails = &llm.CompletionTokensDetails{
-		ReasoningTokens: 0, // Anthropic doesn't provide this yet
-	}
-
 	return u
 }
 

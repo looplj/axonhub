@@ -63,13 +63,13 @@ func TestAggregateStreamChunks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Load test data
-			chunks, err := xtest.LoadStreamChunks(tt.streamFile)
+			chunks, err := xtest.LoadStreamChunks(t, tt.streamFile)
 			require.NoError(t, err)
 
 			// Load expected response
 			var want llm.Response
 
-			err = xtest.LoadTestData(tt.responseFile, &want)
+			err = xtest.LoadTestData(t, tt.responseFile, &want)
 			require.NoError(t, err)
 
 			// Test the function
