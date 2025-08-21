@@ -3,7 +3,7 @@ package openai
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateConfig(t *testing.T) {
@@ -113,13 +113,13 @@ func TestValidateConfig(t *testing.T) {
 			err := validateConfig(tt.config)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 
 				if tt.errorMsg != "" {
-					assert.Contains(t, err.Error(), tt.errorMsg)
+					require.Contains(t, err.Error(), tt.errorMsg)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -179,15 +179,15 @@ func TestNewOutboundTransformerWithConfig_Validation(t *testing.T) {
 			transformer, err := NewOutboundTransformerWithConfig(tt.config)
 
 			if tt.expectError {
-				assert.Error(t, err)
-				assert.Nil(t, transformer)
+				require.Error(t, err)
+				require.Nil(t, transformer)
 
 				if tt.errorMsg != "" {
-					assert.Contains(t, err.Error(), tt.errorMsg)
+					require.Contains(t, err.Error(), tt.errorMsg)
 				}
 			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, transformer)
+				require.NoError(t, err)
+				require.NotNil(t, transformer)
 			}
 		})
 	}
@@ -235,26 +235,26 @@ func TestConfigureForAzure_Validation(t *testing.T) {
 				BaseURL: "https://api.openai.com/v1",
 				APIKey:  "initial-key",
 			})
-			assert.NoError(t, initErr)
+			require.NoError(t, initErr)
 
 			transformer := transformerInterface.(*OutboundTransformer)
 
 			err := transformer.ConfigureForAzure(tt.resourceName, tt.apiVersion, tt.apiKey)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 
 				if tt.errorMsg != "" {
-					assert.Contains(t, err.Error(), tt.errorMsg)
+					require.Contains(t, err.Error(), tt.errorMsg)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				// Verify the configuration was applied correctly
 				config := transformer.GetConfig()
-				assert.Equal(t, PlatformAzure, config.Type)
+				require.Equal(t, PlatformAzure, config.Type)
 				// Note: ResourceName field removed from Config struct
-				assert.Equal(t, tt.apiVersion, config.APIVersion)
-				assert.Equal(t, tt.apiKey, config.APIKey)
+				require.Equal(t, tt.apiVersion, config.APIVersion)
+				require.Equal(t, tt.apiKey, config.APIKey)
 			}
 		})
 	}
@@ -266,7 +266,7 @@ func TestSetConfig_Validation(t *testing.T) {
 		BaseURL: "https://api.openai.com/v1",
 		APIKey:  "initial-key",
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	transformer := transformerInterface.(*OutboundTransformer)
 
@@ -277,11 +277,11 @@ func TestSetConfig_Validation(t *testing.T) {
 			BaseURL: "https://api.openai.com/v1",
 		}
 
-		assert.NotPanics(t, func() {
+		require.NotPanics(t, func() {
 			transformer.SetConfig(newConfig)
 		})
 
-		assert.Equal(t, newConfig, transformer.GetConfig())
+		require.Equal(t, newConfig, transformer.GetConfig())
 	})
 
 	t.Run("invalid config update should panic", func(t *testing.T) {
@@ -290,14 +290,14 @@ func TestSetConfig_Validation(t *testing.T) {
 			// Missing API key
 		}
 
-		assert.Panics(t, func() {
+		require.Panics(t, func() {
 			transformer.SetConfig(invalidConfig)
 		})
 	})
 
 	t.Run("nil config gets defaults but still needs API key", func(t *testing.T) {
 		// Setting nil config should panic because default config lacks API key
-		assert.Panics(t, func() {
+		require.Panics(t, func() {
 			transformer.SetConfig(nil)
 		})
 	})
@@ -309,20 +309,20 @@ func TestSetAPIKey_Validation(t *testing.T) {
 		APIKey:  "initial-key",
 		BaseURL: "https://api.openai.com/v1",
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	transformer := transformerInterface.(*OutboundTransformer)
 
 	t.Run("valid API key update", func(t *testing.T) {
-		assert.NotPanics(t, func() {
+		require.NotPanics(t, func() {
 			transformer.SetAPIKey("new-valid-key")
 		})
 
-		assert.Equal(t, "new-valid-key", transformer.GetConfig().APIKey)
+		require.Equal(t, "new-valid-key", transformer.GetConfig().APIKey)
 	})
 
 	t.Run("empty API key should panic", func(t *testing.T) {
-		assert.Panics(t, func() {
+		require.Panics(t, func() {
 			transformer.SetAPIKey("")
 		})
 	})

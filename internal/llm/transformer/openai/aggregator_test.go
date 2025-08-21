@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -83,25 +82,29 @@ func TestAggregateStreamChunks(t *testing.T) {
 			require.NoError(t, err)
 
 			// Assert the result
-			assert.Equal(t, want.ID, got.ID)
-			assert.Equal(t, want.Model, got.Model)
-			assert.Equal(t, want.Object, got.Object)
-			assert.Equal(t, want.Created, got.Created)
-			assert.Equal(t, want.SystemFingerprint, got.SystemFingerprint)
-			assert.Len(t, got.Choices, len(want.Choices))
+			require.Equal(t, want.ID, got.ID)
+			require.Equal(t, want.Model, got.Model)
+			require.Equal(t, want.Object, got.Object)
+			require.Equal(t, want.Created, got.Created)
+			require.Equal(t, want.SystemFingerprint, got.SystemFingerprint)
+			require.Len(t, got.Choices, len(want.Choices))
 
 			// Check all choices
 			for i, wantChoice := range want.Choices {
 				require.Less(t, i, len(got.Choices), "Missing choice at index %d", i)
 				gotChoice := got.Choices[i]
 
-				assert.Equal(t, wantChoice.Index, gotChoice.Index)
-				assert.Equal(t, wantChoice.Message.Role, gotChoice.Message.Role)
+				require.Equal(t, wantChoice.Index, gotChoice.Index)
+				require.Equal(t, wantChoice.Message.Role, gotChoice.Message.Role)
 
 				// Check content
 				if wantChoice.Message.Content.Content != nil {
 					require.NotNil(t, gotChoice.Message.Content.Content)
-					assert.Equal(t, *wantChoice.Message.Content.Content, *gotChoice.Message.Content.Content)
+					require.Equal(t, *wantChoice.Message.Content.Content, *gotChoice.Message.Content.Content)
+				}
+				if wantChoice.Message.ReasoningContent != nil {
+					require.NotNil(t, gotChoice.Message.ReasoningContent)
+					require.Equal(t, *wantChoice.Message.ReasoningContent, *gotChoice.Message.ReasoningContent)
 				}
 
 				// Check tool calls
@@ -110,35 +113,26 @@ func TestAggregateStreamChunks(t *testing.T) {
 
 					for j, wantToolCall := range wantChoice.Message.ToolCalls {
 						gotToolCall := gotChoice.Message.ToolCalls[j]
-						assert.Equal(t, wantToolCall.ID, gotToolCall.ID)
-						assert.Equal(t, wantToolCall.Type, gotToolCall.Type)
-						assert.Equal(t, wantToolCall.Function.Name, gotToolCall.Function.Name)
-						assert.Equal(t, wantToolCall.Function.Arguments, gotToolCall.Function.Arguments)
+						require.Equal(t, wantToolCall.ID, gotToolCall.ID)
+						require.Equal(t, wantToolCall.Type, gotToolCall.Type)
+						require.Equal(t, wantToolCall.Function.Name, gotToolCall.Function.Name)
+						require.Equal(t, wantToolCall.Function.Arguments, gotToolCall.Function.Arguments)
 					}
 				}
 
 				// Check finish reason
 				if wantChoice.FinishReason != nil {
 					require.NotNil(t, gotChoice.FinishReason)
-					assert.Equal(t, *wantChoice.FinishReason, *gotChoice.FinishReason)
+					require.Equal(t, *wantChoice.FinishReason, *gotChoice.FinishReason)
 				}
 			}
 
 			// Check usage
 			if want.Usage != nil {
 				require.NotNil(t, got.Usage)
-				assert.Equal(t, want.Usage.PromptTokens, got.Usage.PromptTokens)
-				assert.Equal(t, want.Usage.CompletionTokens, got.Usage.CompletionTokens)
-				assert.Equal(t, want.Usage.TotalTokens, got.Usage.TotalTokens)
-			}
-
-			// Check reasoning content (for DeepSeek reasoning streams)
-			for i, wantChoice := range want.Choices {
-				gotChoice := got.Choices[i]
-				if wantChoice.Message.ReasoningContent != nil {
-					require.NotNil(t, gotChoice.Message.ReasoningContent, "Expected reasoning content for choice %d", i)
-					assert.Equal(t, *wantChoice.Message.ReasoningContent, *gotChoice.Message.ReasoningContent)
-				}
+				require.Equal(t, want.Usage.PromptTokens, got.Usage.PromptTokens)
+				require.Equal(t, want.Usage.CompletionTokens, got.Usage.CompletionTokens)
+				require.Equal(t, want.Usage.TotalTokens, got.Usage.TotalTokens)
 			}
 		})
 	}
@@ -153,5 +147,5 @@ func TestAggregateStreamChunks_EmptyChunks(t *testing.T) {
 	err = json.Unmarshal(gotBytes, &got)
 	require.NoError(t, err)
 
-	assert.Equal(t, llm.Response{}, got)
+	require.Equal(t, llm.Response{}, got)
 }

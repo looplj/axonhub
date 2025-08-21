@@ -3,7 +3,7 @@ package streams
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFilter_Basic(t *testing.T) {
@@ -15,9 +15,9 @@ func TestFilter_Basic(t *testing.T) {
 		result = append(result, filtered.Current())
 	}
 
-	assert.Equal(t, []int{2, 4, 6}, result)
-	assert.NoError(t, filtered.Err())
-	assert.NoError(t, filtered.Close())
+	require.Equal(t, []int{2, 4, 6}, result)
+	require.NoError(t, filtered.Err())
+	require.NoError(t, filtered.Close())
 }
 
 func TestFilter_AllFilteredOut(t *testing.T) {
@@ -29,9 +29,9 @@ func TestFilter_AllFilteredOut(t *testing.T) {
 		result = append(result, filtered.Current())
 	}
 
-	assert.Empty(t, result)
-	assert.NoError(t, filtered.Err())
-	assert.NoError(t, filtered.Close())
+	require.Empty(t, result)
+	require.NoError(t, filtered.Err())
+	require.NoError(t, filtered.Close())
 }
 
 func TestFilter_NoneFilteredOut(t *testing.T) {
@@ -43,7 +43,7 @@ func TestFilter_NoneFilteredOut(t *testing.T) {
 		result = append(result, filtered.Current())
 	}
 
-	assert.Equal(t, []int{2, 4, 6}, result)
-	assert.NoError(t, filtered.Err())
-	assert.NoError(t, filtered.Close())
+	require.Equal(t, []int{2, 4, 6}, result)
+	require.NoError(t, filtered.Err())
+	require.NoError(t, filtered.Close())
 }

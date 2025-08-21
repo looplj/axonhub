@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm/pipeline"
@@ -107,11 +106,11 @@ func TestChannelCustomizedExecutor_StreamingPath(t *testing.T) {
 	require.True(t, result.Stream)
 
 	// Verify that CustomizeExecutor was called
-	assert.True(t, mockCustomized.customizeExecutorCalled, "CustomizeExecutor should have been called")
+	require.True(t, mockCustomized.customizeExecutorCalled, "CustomizeExecutor should have been called")
 
 	// Verify that the custom executor was used for streaming
-	assert.True(t, customExecutor.doStreamCalled, "Custom executor's DoStream should have been called")
-	assert.False(t, customExecutor.doCalled, "Custom executor's Do should not have been called for streaming")
+	require.True(t, customExecutor.doStreamCalled, "Custom executor's DoStream should have been called")
+	require.False(t, customExecutor.doCalled, "Custom executor's Do should not have been called for streaming")
 }
 
 func TestChannelCustomizedExecutor_NonStreamingPath(t *testing.T) {
@@ -171,11 +170,11 @@ func TestChannelCustomizedExecutor_NonStreamingPath(t *testing.T) {
 	require.False(t, result.Stream)
 
 	// Verify that CustomizeExecutor was called for non-streaming path too
-	assert.True(t, mockCustomized.customizeExecutorCalled, "CustomizeExecutor should have been called")
+	require.True(t, mockCustomized.customizeExecutorCalled, "CustomizeExecutor should have been called")
 
 	// Verify that the custom executor was used for non-streaming
-	assert.True(t, customExecutor.doCalled, "Custom executor's Do should have been called")
-	assert.False(t, customExecutor.doStreamCalled, "Custom executor's DoStream should not have been called for non-streaming")
+	require.True(t, customExecutor.doCalled, "Custom executor's Do should have been called")
+	require.False(t, customExecutor.doStreamCalled, "Custom executor's DoStream should not have been called for non-streaming")
 }
 
 func TestChannelCustomizedExecutor_CustomExecutorError(t *testing.T) {
@@ -220,11 +219,11 @@ func TestChannelCustomizedExecutor_CustomExecutorError(t *testing.T) {
 	result, err := pipeline.Process(ctx, request)
 	require.Error(t, err)
 	require.Nil(t, result)
-	assert.Contains(t, err.Error(), "custom executor error")
+	require.Contains(t, err.Error(), "custom executor error")
 
 	// Verify that CustomizeExecutor was called
-	assert.True(t, mockCustomized.customizeExecutorCalled, "CustomizeExecutor should have been called")
-	assert.True(t, customExecutor.doStreamCalled, "Custom executor's DoStream should have been called")
+	require.True(t, mockCustomized.customizeExecutorCalled, "CustomizeExecutor should have been called")
+	require.True(t, customExecutor.doStreamCalled, "Custom executor's DoStream should have been called")
 }
 
 func TestChannelCustomizedExecutor_NoCustomization(t *testing.T) {
@@ -310,11 +309,11 @@ func TestChannelCustomizedExecutor_NonStreamingCustomExecutorError(t *testing.T)
 	require.Error(t, err)
 	require.Nil(t, result)
 	// The error gets wrapped, so we check for the status code instead
-	assert.Contains(t, err.Error(), "Internal Server Error")
+	require.Contains(t, err.Error(), "Internal Server Error")
 
 	// Verify that CustomizeExecutor was called
-	assert.True(t, mockCustomized.customizeExecutorCalled, "CustomizeExecutor should have been called")
-	assert.True(t, customExecutor.doCalled, "Custom executor's Do should have been called")
+	require.True(t, mockCustomized.customizeExecutorCalled, "CustomizeExecutor should have been called")
+	require.True(t, customExecutor.doCalled, "Custom executor's Do should have been called")
 }
 
 func TestChannelCustomizedExecutor_ReturnsSameExecutor(t *testing.T) {
@@ -359,7 +358,7 @@ func TestChannelCustomizedExecutor_ReturnsSameExecutor(t *testing.T) {
 	require.True(t, result.Stream)
 
 	// Verify that CustomizeExecutor was called
-	assert.True(t, mockCustomized.customizeExecutorCalled, "CustomizeExecutor should have been called")
+	require.True(t, mockCustomized.customizeExecutorCalled, "CustomizeExecutor should have been called")
 
 	// The original executor should have been used since custom executor is nil
 	// This is verified by the successful execution

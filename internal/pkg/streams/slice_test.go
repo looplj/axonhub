@@ -3,7 +3,7 @@ package streams
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSliceStream(t *testing.T) {
@@ -38,9 +38,9 @@ func TestSliceStream(t *testing.T) {
 				result = append(result, stream.Current())
 			}
 
-			assert.Equal(t, tt.expected, result)
-			assert.NoError(t, stream.Err())
-			assert.NoError(t, stream.Close())
+			require.Equal(t, tt.expected, result)
+			require.NoError(t, stream.Err())
+			require.NoError(t, stream.Close())
 		})
 	}
 }
@@ -54,10 +54,10 @@ func TestSliceStream_EmptyAfterCompletion(t *testing.T) {
 	}
 
 	// Should return false for Next() after completion
-	assert.False(t, stream.Next())
+	require.False(t, stream.Next())
 
 	// Current() should return zero value after completion
-	assert.Equal(t, 0, stream.Current())
+	require.Equal(t, 0, stream.Current())
 }
 
 func TestSliceStream_StringType(t *testing.T) {
@@ -70,9 +70,9 @@ func TestSliceStream_StringType(t *testing.T) {
 		result = append(result, stream.Current())
 	}
 
-	assert.Equal(t, items, result)
-	assert.NoError(t, stream.Err())
-	assert.NoError(t, stream.Close())
+	require.Equal(t, items, result)
+	require.NoError(t, stream.Err())
+	require.NoError(t, stream.Close())
 }
 
 func TestSliceStream_CustomStruct(t *testing.T) {
@@ -94,7 +94,7 @@ func TestSliceStream_CustomStruct(t *testing.T) {
 		result = append(result, stream.Current())
 	}
 
-	assert.Equal(t, items, result)
-	assert.NoError(t, stream.Err())
-	assert.NoError(t, stream.Close())
+	require.Equal(t, items, result)
+	require.NoError(t, stream.Err())
+	require.NoError(t, stream.Close())
 }

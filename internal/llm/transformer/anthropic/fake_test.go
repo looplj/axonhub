@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm/pipeline"
@@ -27,8 +26,8 @@ func TestFakeTransformer_CustomizeExecutor(t *testing.T) {
 	customExecutor := fake.CustomizeExecutor(originalExecutor)
 
 	// Verify it returns a different executor (the fake one)
-	assert.NotEqual(t, originalExecutor, customExecutor)
-	assert.IsType(t, &fakeExecutor{}, customExecutor)
+	require.NotEqual(t, originalExecutor, customExecutor)
+	require.IsType(t, &fakeExecutor{}, customExecutor)
 }
 
 func TestFakeExecutor_Do(t *testing.T) {
@@ -51,9 +50,9 @@ func TestFakeExecutor_Do(t *testing.T) {
 	require.NotNil(t, response)
 
 	// Verify response properties
-	assert.Equal(t, http.StatusOK, response.StatusCode)
-	assert.Equal(t, "application/json", response.Headers.Get("Content-Type"))
-	assert.NotEmpty(t, response.Body)
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, "application/json", response.Headers.Get("Content-Type"))
+	require.NotEmpty(t, response.Body)
 
 	// Verify response body is valid JSON and contains expected structure
 	var responseData map[string]interface{}
@@ -62,13 +61,13 @@ func TestFakeExecutor_Do(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check for expected fields in the response
-	assert.Contains(t, responseData, "id")
-	assert.Contains(t, responseData, "type")
-	assert.Contains(t, responseData, "role")
-	assert.Contains(t, responseData, "content")
-	assert.Contains(t, responseData, "model")
-	assert.Equal(t, "message", responseData["type"])
-	assert.Equal(t, "assistant", responseData["role"])
+	require.Contains(t, responseData, "id")
+	require.Contains(t, responseData, "type")
+	require.Contains(t, responseData, "role")
+	require.Contains(t, responseData, "content")
+	require.Contains(t, responseData, "model")
+	require.Equal(t, "message", responseData["type"])
+	require.Equal(t, "assistant", responseData["role"])
 }
 
 func TestFakeExecutor_DoStream(t *testing.T) {
@@ -97,18 +96,18 @@ func TestFakeExecutor_DoStream(t *testing.T) {
 	}
 
 	// Verify no errors occurred
-	assert.NoError(t, stream.Err())
-	assert.NoError(t, stream.Close())
+	require.NoError(t, stream.Err())
+	require.NoError(t, stream.Close())
 
 	// Verify we got some events
-	assert.NotEmpty(t, events)
+	require.NotEmpty(t, events)
 
 	// Verify the first event is message_start
-	assert.Equal(t, "message_start", events[0].Type)
+	require.Equal(t, "message_start", events[0].Type)
 
 	// Verify the last event is message_stop
 	lastEvent := events[len(events)-1]
-	assert.Equal(t, "message_stop", lastEvent.Type)
+	require.Equal(t, "message_stop", lastEvent.Type)
 
 	// Verify we have content_block events
 	hasContentBlock := false
@@ -120,7 +119,7 @@ func TestFakeExecutor_DoStream(t *testing.T) {
 		}
 	}
 
-	assert.True(t, hasContentBlock, "Should have content block events")
+	require.True(t, hasContentBlock, "Should have content block events")
 }
 
 // mockExecutor for testing.

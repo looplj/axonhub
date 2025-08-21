@@ -6,7 +6,6 @@ import (
 	"io"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -97,27 +96,27 @@ func TestRegisterDecoder(t *testing.T) {
 
 	// Verify decoder was registered
 	factory, exists := GetDecoder(testContentType)
-	assert.True(t, exists)
-	assert.NotNil(t, factory)
+	require.True(t, exists)
+	require.NotNil(t, factory)
 
 	// Test that the factory works
 	ctx := context.Background()
 	rc := newMockReadCloser([]byte("test"))
 	decoder := factory(ctx, rc)
-	assert.NotNil(t, decoder)
-	assert.Implements(t, (*StreamDecoder)(nil), decoder)
+	require.NotNil(t, decoder)
+	require.Implements(t, (*StreamDecoder)(nil), decoder)
 }
 
 func TestGetDecoder(t *testing.T) {
 	// Test getting existing decoder (text/event-stream should be registered by default)
 	factory, exists := GetDecoder("text/event-stream")
-	assert.True(t, exists)
-	assert.NotNil(t, factory)
+	require.True(t, exists)
+	require.NotNil(t, factory)
 
 	// Test getting non-existent decoder
 	factory, exists = GetDecoder("application/non-existent")
-	assert.False(t, exists)
-	assert.Nil(t, factory)
+	require.False(t, exists)
+	require.Nil(t, factory)
 }
 
 func TestDefaultSSEDecoder(t *testing.T) {
@@ -128,23 +127,23 @@ func TestDefaultSSEDecoder(t *testing.T) {
 	// Create decoder
 	ctx := context.Background()
 	decoder := NewDefaultSSEDecoder(ctx, rc)
-	assert.NotNil(t, decoder)
-	assert.Implements(t, (*StreamDecoder)(nil), decoder)
+	require.NotNil(t, decoder)
+	require.Implements(t, (*StreamDecoder)(nil), decoder)
 
 	// Test Next() and Current()
 	hasNext := decoder.Next()
-	assert.True(t, hasNext)
-	assert.NoError(t, decoder.Err())
+	require.True(t, hasNext)
+	require.NoError(t, decoder.Err())
 
 	event := decoder.Current()
 	require.NotNil(t, event)
-	assert.Equal(t, "", event.Type) // Default SSE type
-	assert.Contains(t, string(event.Data), "hello")
+	require.Equal(t, "", event.Type) // Default SSE type
+	require.Contains(t, string(event.Data), "hello")
 
 	// Test Close()
 	err := decoder.Close()
-	assert.NoError(t, err)
-	assert.True(t, rc.closed)
+	require.NoError(t, err)
+	require.True(t, rc.closed)
 }
 
 func TestDefaultSSEDecoder_EmptyStream(t *testing.T) {
@@ -154,15 +153,15 @@ func TestDefaultSSEDecoder_EmptyStream(t *testing.T) {
 
 	// Should return false for empty stream
 	hasNext := decoder.Next()
-	assert.False(t, hasNext)
+	require.False(t, hasNext)
 
 	// Current should return nil
 	event := decoder.Current()
-	assert.Nil(t, event)
+	require.Nil(t, event)
 
 	// Close should work
 	err := decoder.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestStreamDecoderInterface(t *testing.T) {
@@ -177,26 +176,26 @@ func TestStreamDecoderInterface(t *testing.T) {
 	decoder := newMockStreamDecoder(ctx, rc, events)
 
 	// Test Next() and Current() for multiple events
-	assert.True(t, decoder.Next())
+	require.True(t, decoder.Next())
 	event1 := decoder.Current()
-	assert.Equal(t, "test1", event1.Type)
-	assert.Equal(t, []byte("data1"), event1.Data)
+	require.Equal(t, "test1", event1.Type)
+	require.Equal(t, []byte("data1"), event1.Data)
 
-	assert.True(t, decoder.Next())
+	require.True(t, decoder.Next())
 	event2 := decoder.Current()
-	assert.Equal(t, "test2", event2.Type)
-	assert.Equal(t, []byte("data2"), event2.Data)
+	require.Equal(t, "test2", event2.Type)
+	require.Equal(t, []byte("data2"), event2.Data)
 
 	// No more events
-	assert.False(t, decoder.Next())
-	assert.Nil(t, decoder.Current())
+	require.False(t, decoder.Next())
+	require.Nil(t, decoder.Current())
 
 	// Test error handling
-	assert.NoError(t, decoder.Err())
+	require.NoError(t, decoder.Err())
 
 	// Test close
 	err := decoder.Close()
-	assert.NoError(t, err)
-	assert.True(t, decoder.closed)
-	assert.True(t, rc.closed)
+	require.NoError(t, err)
+	require.True(t, decoder.closed)
+	require.True(t, rc.closed)
 }

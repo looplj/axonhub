@@ -9,7 +9,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream"
 	"github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream/eventstreamapi"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -91,8 +90,8 @@ func TestNewAWSEventStreamDecoder(t *testing.T) {
 	rc := newMockReadCloser([]byte{})
 	decoder := NewAWSEventStreamDecoder(ctx, rc)
 
-	assert.NotNil(t, decoder)
-	assert.Implements(t, (*httpclient.StreamDecoder)(nil), decoder)
+	require.NotNil(t, decoder)
+	require.Implements(t, (*httpclient.StreamDecoder)(nil), decoder)
 }
 
 func TestAWSEventStreamDecoder_EventMessage(t *testing.T) {
@@ -118,19 +117,19 @@ func TestAWSEventStreamDecoder_EventMessage(t *testing.T) {
 
 	// Test Next()
 	hasNext := decoder.Next()
-	assert.True(t, hasNext)
-	assert.NoError(t, decoder.Err())
+	require.True(t, hasNext)
+	require.NoError(t, decoder.Err())
 
 	// Test Current()
 	event := decoder.Current()
 	require.NotNil(t, event)
-	assert.Equal(t, "message_start", event.Type)
-	assert.Contains(t, string(event.Data), "Hello, World!")
+	require.Equal(t, "message_start", event.Type)
+	require.Contains(t, string(event.Data), "Hello, World!")
 
 	// Test Close()
 	err := decoder.Close()
-	assert.NoError(t, err)
-	assert.True(t, rc.closed)
+	require.NoError(t, err)
+	require.True(t, rc.closed)
 }
 
 func TestAWSEventStreamDecoder_ExceptionMessage(t *testing.T) {
@@ -171,10 +170,10 @@ func TestAWSEventStreamDecoder_ExceptionMessage(t *testing.T) {
 
 	// Test Next() - should return false due to exception
 	hasNext := decoder.Next()
-	assert.False(t, hasNext)
-	assert.Error(t, decoder.Err())
-	assert.Contains(t, decoder.Err().Error(), "ValidationException")
-	assert.Contains(t, decoder.Err().Error(), "Invalid input parameter")
+	require.False(t, hasNext)
+	require.Error(t, decoder.Err())
+	require.Contains(t, decoder.Err().Error(), "ValidationException")
+	require.Contains(t, decoder.Err().Error(), "Invalid input parameter")
 }
 
 func TestAWSEventStreamDecoder_ErrorMessage(t *testing.T) {
@@ -212,10 +211,10 @@ func TestAWSEventStreamDecoder_ErrorMessage(t *testing.T) {
 
 	// Test Next() - should return false due to error
 	hasNext := decoder.Next()
-	assert.False(t, hasNext)
-	assert.Error(t, decoder.Err())
-	assert.Contains(t, decoder.Err().Error(), "InternalError")
-	assert.Contains(t, decoder.Err().Error(), "Internal server error occurred")
+	require.False(t, hasNext)
+	require.Error(t, decoder.Err())
+	require.Contains(t, decoder.Err().Error(), "InternalError")
+	require.Contains(t, decoder.Err().Error(), "Internal server error occurred")
 }
 
 func TestAWSEventStreamDecoder_InvalidMessage(t *testing.T) {
@@ -238,9 +237,9 @@ func TestAWSEventStreamDecoder_InvalidMessage(t *testing.T) {
 
 	// Test Next() - should return false due to missing headers
 	hasNext := decoder.Next()
-	assert.False(t, hasNext)
-	assert.Error(t, decoder.Err())
-	assert.Contains(t, decoder.Err().Error(), "event header not present")
+	require.False(t, hasNext)
+	require.Error(t, decoder.Err())
+	require.Contains(t, decoder.Err().Error(), "event header not present")
 }
 
 func TestAWSEventStreamDecoder_InvalidChunkData(t *testing.T) {
@@ -257,8 +256,8 @@ func TestAWSEventStreamDecoder_InvalidChunkData(t *testing.T) {
 
 	// Test Next() - should return false due to invalid JSON
 	hasNext := decoder.Next()
-	assert.False(t, hasNext)
-	assert.Error(t, decoder.Err())
+	require.False(t, hasNext)
+	require.Error(t, decoder.Err())
 }
 
 func TestAWSEventStreamDecoder_InvalidBase64(t *testing.T) {
@@ -279,8 +278,8 @@ func TestAWSEventStreamDecoder_InvalidBase64(t *testing.T) {
 
 	// Test Next() - should return false due to invalid base64
 	hasNext := decoder.Next()
-	assert.False(t, hasNext)
-	assert.Error(t, decoder.Err())
+	require.False(t, hasNext)
+	require.Error(t, decoder.Err())
 }
 
 func TestAWSEventStreamDecoder_MultipleEvents(t *testing.T) {
@@ -312,23 +311,23 @@ func TestAWSEventStreamDecoder_MultipleEvents(t *testing.T) {
 
 	// Test first event
 	hasNext := decoder.Next()
-	assert.True(t, hasNext)
-	assert.NoError(t, decoder.Err())
+	require.True(t, hasNext)
+	require.NoError(t, decoder.Err())
 
 	event1 := decoder.Current()
 	require.NotNil(t, event1)
-	assert.Equal(t, "message_start", event1.Type)
+	require.Equal(t, "message_start", event1.Type)
 
 	// Test second event
 	hasNext = decoder.Next()
-	assert.True(t, hasNext)
-	assert.NoError(t, decoder.Err())
+	require.True(t, hasNext)
+	require.NoError(t, decoder.Err())
 
 	event2 := decoder.Current()
 	require.NotNil(t, event2)
-	assert.Equal(t, "content_block_delta", event2.Type)
+	require.Equal(t, "content_block_delta", event2.Type)
 
 	// Test no more events
 	hasNext = decoder.Next()
-	assert.False(t, hasNext)
+	require.False(t, hasNext)
 }

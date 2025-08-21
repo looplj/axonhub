@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMap_IntToString(t *testing.T) {
@@ -16,9 +16,9 @@ func TestMap_IntToString(t *testing.T) {
 		result = append(result, mapped.Current())
 	}
 
-	assert.Equal(t, []string{"n=1", "n=2", "n=3"}, result)
-	assert.NoError(t, mapped.Err())
-	assert.NoError(t, mapped.Close())
+	require.Equal(t, []string{"n=1", "n=2", "n=3"}, result)
+	require.NoError(t, mapped.Err())
+	require.NoError(t, mapped.Close())
 }
 
 func TestMapErr_Success(t *testing.T) {
@@ -30,9 +30,9 @@ func TestMapErr_Success(t *testing.T) {
 		result = append(result, mapped.Current())
 	}
 
-	assert.Equal(t, []int{2, 4, 6}, result)
-	assert.NoError(t, mapped.Err())
-	assert.NoError(t, mapped.Close())
+	require.Equal(t, []int{2, 4, 6}, result)
+	require.NoError(t, mapped.Err())
+	require.NoError(t, mapped.Close())
 }
 
 func TestMapErr_WithErrorStopsIteration(t *testing.T) {
@@ -51,9 +51,9 @@ func TestMapErr_WithErrorStopsIteration(t *testing.T) {
 		result = append(result, mapped.Current())
 	}
 
-	assert.Equal(t, []int{10}, result)
-	assert.Equal(t, errTest, mapped.Err())
-	assert.NoError(t, mapped.Close())
+	require.Equal(t, []int{10}, result)
+	require.Equal(t, errTest, mapped.Err())
+	require.NoError(t, mapped.Close())
 }
 
 func TestMap_PropagatesSourceErrorAndClose(t *testing.T) {
@@ -66,9 +66,9 @@ func TestMap_PropagatesSourceErrorAndClose(t *testing.T) {
 		result = append(result, mapped.Current())
 	}
 	// Once source stops early due to error, Next will be false and Err should be the source error
-	assert.Equal(t, []int{2}, result)
-	assert.Equal(t, s.err, mapped.Err())
-	assert.NoError(t, mapped.Close())
+	require.Equal(t, []int{2}, result)
+	require.Equal(t, s.err, mapped.Err())
+	require.NoError(t, mapped.Close())
 }
 
 // faultyStream is a minimal Stream implementation for testing error propagation

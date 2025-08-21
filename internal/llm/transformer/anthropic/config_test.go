@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/samber/lo"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -115,22 +114,22 @@ func TestOutboundTransformer_PlatformConfigurations(t *testing.T) {
 			require.NotNil(t, httpReq)
 
 			// Verify URL
-			assert.Equal(t, tt.expectedURL, httpReq.URL)
+			require.Equal(t, tt.expectedURL, httpReq.URL)
 
 			// Verify Anthropic-Version header
-			assert.Equal(t, tt.expectedHeader, httpReq.Headers.Get("Anthropic-Version"))
+			require.Equal(t, tt.expectedHeader, httpReq.Headers.Get("Anthropic-Version"))
 
 			// Verify Content-Type header
-			assert.Equal(t, "application/json", httpReq.Headers.Get("Content-Type"))
+			require.Equal(t, "application/json", httpReq.Headers.Get("Content-Type"))
 
 			// Verify authentication is only set for direct API
 			if transformer.(*OutboundTransformer).GetConfig().Type == PlatformDirect {
 				require.NotNil(t, httpReq.Auth)
-				assert.Equal(t, "api_key", httpReq.Auth.Type)
-				assert.Equal(t, "test-api-key", httpReq.Auth.APIKey)
-				assert.Equal(t, "X-API-Key", httpReq.Auth.HeaderKey)
+				require.Equal(t, "api_key", httpReq.Auth.Type)
+				require.Equal(t, "test-api-key", httpReq.Auth.APIKey)
+				require.Equal(t, "X-API-Key", httpReq.Auth.HeaderKey)
 			} else {
-				assert.Nil(t, httpReq.Auth)
+				require.Nil(t, httpReq.Auth)
 			}
 		})
 	}
@@ -141,13 +140,13 @@ func TestOutboundTransformer_PlatformConfigurationErrors(t *testing.T) {
 
 	t.Run("Vertex AI - Missing region", func(t *testing.T) {
 		err := transformer.(*OutboundTransformer).ConfigureForVertex("", "my-project")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "region is required")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "region is required")
 	})
 
 	t.Run("Vertex AI - Missing project ID", func(t *testing.T) {
 		err := transformer.(*OutboundTransformer).ConfigureForVertex("us-central1", "")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "project ID is required")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "project ID is required")
 	})
 }

@@ -5,8 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
+	"github.com/stretchr/testify/require"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 )
@@ -115,15 +114,15 @@ func TestQueryPolicy_EvalQuery(t *testing.T) {
 			err := tt.policies.EvalQuery(ctx, nil)
 
 			if tt.expected == nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else if errors.Is(tt.expected, privacy.Allow) {
-				assert.ErrorIs(t, err, privacy.Allow)
+				require.ErrorIs(t, err, privacy.Allow)
 			} else if errors.Is(tt.expected, privacy.Deny) {
-				assert.ErrorIs(t, err, privacy.Deny)
+				require.ErrorIs(t, err, privacy.Deny)
 			} else if errors.Is(tt.expected, privacy.Skip) {
-				assert.ErrorIs(t, err, privacy.Skip)
+				require.ErrorIs(t, err, privacy.Skip)
 			} else {
-				assert.EqualError(t, err, tt.expected.Error())
+				require.EqualError(t, err, tt.expected.Error())
 			}
 		})
 	}
@@ -215,15 +214,15 @@ func TestMutationPolicy_EvalMutation(t *testing.T) {
 			err := tt.policies.EvalMutation(ctx, nil)
 
 			if tt.expected == nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else if errors.Is(tt.expected, privacy.Allow) {
-				assert.ErrorIs(t, err, privacy.Allow)
+				require.ErrorIs(t, err, privacy.Allow)
 			} else if errors.Is(tt.expected, privacy.Deny) {
-				assert.ErrorIs(t, err, privacy.Deny)
+				require.ErrorIs(t, err, privacy.Deny)
 			} else if errors.Is(tt.expected, privacy.Skip) {
-				assert.ErrorIs(t, err, privacy.Skip)
+				require.ErrorIs(t, err, privacy.Skip)
 			} else {
-				assert.EqualError(t, err, tt.expected.Error())
+				require.EqualError(t, err, tt.expected.Error())
 			}
 		})
 	}
@@ -240,17 +239,17 @@ func TestPolicy_Structure(t *testing.T) {
 		},
 	}
 
-	assert.NotNil(t, policy.Query)
-	assert.NotNil(t, policy.Mutation)
-	assert.Len(t, policy.Query, 1)
-	assert.Len(t, policy.Mutation, 1)
+	require.NotNil(t, policy.Query)
+	require.NotNil(t, policy.Mutation)
+	require.Len(t, policy.Query, 1)
+	require.Len(t, policy.Mutation, 1)
 
 	// Test that policies can be evaluated
 	ctx := context.Background()
 
 	queryErr := policy.Query.EvalQuery(ctx, nil)
-	assert.ErrorIs(t, queryErr, privacy.Allow)
+	require.ErrorIs(t, queryErr, privacy.Allow)
 
 	mutationErr := policy.Mutation.EvalMutation(ctx, nil)
-	assert.ErrorIs(t, mutationErr, privacy.Allow)
+	require.ErrorIs(t, mutationErr, privacy.Allow)
 }

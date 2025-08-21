@@ -3,7 +3,7 @@ package streams
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAppendStream_AppendsAfterSource(t *testing.T) {
@@ -15,9 +15,9 @@ func TestAppendStream_AppendsAfterSource(t *testing.T) {
 		result = append(result, appended.Current())
 	}
 
-	assert.Equal(t, []int{1, 2, 3, 4, 5}, result)
-	assert.NoError(t, appended.Err())
-	assert.NoError(t, appended.Close())
+	require.Equal(t, []int{1, 2, 3, 4, 5}, result)
+	require.NoError(t, appended.Err())
+	require.NoError(t, appended.Close())
 }
 
 func TestAppendStream_EmptyBase(t *testing.T) {
@@ -29,9 +29,9 @@ func TestAppendStream_EmptyBase(t *testing.T) {
 		result = append(result, appended.Current())
 	}
 
-	assert.Equal(t, []int{1, 2}, result)
-	assert.NoError(t, appended.Err())
-	assert.NoError(t, appended.Close())
+	require.Equal(t, []int{1, 2}, result)
+	require.NoError(t, appended.Err())
+	require.NoError(t, appended.Close())
 }
 
 func TestAppendStream_NoAppends(t *testing.T) {
@@ -43,7 +43,7 @@ func TestAppendStream_NoAppends(t *testing.T) {
 		result = append(result, appended.Current())
 	}
 
-	assert.Equal(t, []int{1, 2}, result)
-	assert.NoError(t, appended.Err())
-	assert.NoError(t, appended.Close())
+	require.Equal(t, []int{1, 2}, result)
+	require.NoError(t, appended.Err())
+	require.NoError(t, appended.Close())
 }
