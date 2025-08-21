@@ -139,14 +139,23 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 					})
 				case "image":
 					if block.Source != nil {
-						// Convert Anthropic image format to OpenAI format
-						imageURL := fmt.Sprintf("data:%s;base64,%s", block.Source.MediaType, block.Source.Data)
-						contentParts = append(contentParts, llm.MessageContentPart{
-							Type: "image_url",
-							ImageURL: &llm.ImageURL{
-								URL: imageURL,
-							},
-						})
+						if block.Source.Type == "base64" {
+							// Convert Anthropic image format to OpenAI format
+							imageURL := fmt.Sprintf("data:%s;base64,%s", block.Source.MediaType, block.Source.Data)
+							contentParts = append(contentParts, llm.MessageContentPart{
+								Type: "image_url",
+								ImageURL: &llm.ImageURL{
+									URL: imageURL,
+								},
+							})
+						} else {
+							contentParts = append(contentParts, llm.MessageContentPart{
+								Type: "image_url",
+								ImageURL: &llm.ImageURL{
+									URL: block.Source.URL,
+								},
+							})
+						}
 					}
 				}
 			}
@@ -178,16 +187,13 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 }
 
 // TransformResponse transforms ChatCompletionResponse to Anthropic HTTP response.
-func (t *InboundTransformer) TransformResponse(
-	ctx context.Context,
-	chatResp *llm.Response,
-) (*httpclient.Response, error) {
+func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *llm.Response) (*httpclient.Response, error) {
 	if chatResp == nil {
 		return nil, fmt.Errorf("chat completion response is nil")
 	}
 
 	// Convert to Anthropic response format
-	anthropicResp := t.convertToAnthropicResponse(chatResp)
+	anthropicResp := convertToAnthropicResponse(chatResp)
 
 	body, err := json.Marshal(anthropicResp)
 	if err != nil {
@@ -202,128 +208,6 @@ func (t *InboundTransformer) TransformResponse(
 			"Cache-Control": []string{"no-cache"},
 		},
 	}, nil
-}
-
-func (t *InboundTransformer) convertToAnthropicResponse(chatResp *llm.Response) *Message {
-	resp := &Message{
-		ID:    chatResp.ID,
-		Type:  "message",
-		Role:  "assistant",
-		Model: chatResp.Model,
-	}
-
-	// Convert choices to content blocks
-	if len(chatResp.Choices) > 0 {
-		choice := chatResp.Choices[0]
-
-		var message *llm.Message
-
-		if choice.Message != nil {
-			message = choice.Message
-		} else if choice.Delta != nil {
-			message = choice.Delta
-		}
-
-		if message != nil {
-			var contentBlocks []ContentBlock
-
-			// Handle reasoning content (thinking) first if present
-			if message.ReasoningContent != nil && *message.ReasoningContent != "" {
-				contentBlocks = append(contentBlocks, ContentBlock{
-					Type:     "thinking",
-					Thinking: *message.ReasoningContent,
-				})
-			}
-
-			// Handle regular content
-			if message.Content.Content != nil {
-				contentBlocks = append(contentBlocks, ContentBlock{
-					Type: "text",
-					Text: *message.Content.Content,
-				})
-			} else if len(message.Content.MultipleContent) > 0 {
-				for _, part := range message.Content.MultipleContent {
-					if part.Type == "text" && part.Text != nil {
-						contentBlocks = append(contentBlocks, ContentBlock{
-							Type: "text",
-							Text: *part.Text,
-						})
-					}
-				}
-			}
-
-			// Handle tool calls
-			if len(message.ToolCalls) > 0 {
-				for _, toolCall := range message.ToolCalls {
-					var input json.RawMessage
-
-					if toolCall.Function.Arguments != "" {
-						// Validate JSON before using it as RawMessage
-						var temp interface{}
-						if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &temp); err != nil {
-							// If invalid JSON, wrap it in a string field
-							escapedArgs, _ := json.Marshal(toolCall.Function.Arguments)
-							input = json.RawMessage(`{"raw_arguments": ` + string(escapedArgs) + `}`)
-						} else {
-							input = json.RawMessage(toolCall.Function.Arguments)
-						}
-					} else {
-						input = json.RawMessage("{}")
-					}
-
-					contentBlocks = append(contentBlocks, ContentBlock{
-						Type:  "tool_use",
-						ID:    toolCall.ID,
-						Name:  &toolCall.Function.Name,
-						Input: input,
-					})
-				}
-			}
-
-			resp.Content = contentBlocks
-		}
-
-		// Convert finish reason
-		if choice.FinishReason != nil {
-			switch *choice.FinishReason {
-			case "stop":
-				stopReason := "end_turn"
-				resp.StopReason = &stopReason
-			case "length":
-				stopReason := "max_tokens"
-				resp.StopReason = &stopReason
-			case "tool_calls":
-				stopReason := "tool_use"
-				resp.StopReason = &stopReason
-			default:
-				resp.StopReason = choice.FinishReason
-			}
-		}
-	}
-
-	// Convert usage
-	if chatResp.Usage != nil {
-		usage := &Usage{
-			InputTokens:  int64(chatResp.Usage.PromptTokens),
-			OutputTokens: int64(chatResp.Usage.CompletionTokens),
-		}
-
-		// Map detailed token information from unified model to Anthropic format
-		if chatResp.Usage.PromptTokensDetails != nil {
-			usage.CacheReadInputTokens = int64(chatResp.Usage.PromptTokensDetails.CachedTokens)
-		}
-
-		// Note: Anthropic doesn't have a direct equivalent for reasoning tokens in their current API
-		// but we can store it in cache_creation_input_tokens as a workaround if needed
-		if chatResp.Usage.CompletionTokensDetails != nil {
-			// For now, we don't map reasoning tokens as Anthropic doesn't have a direct field
-			// This could be extended in the future if Anthropic adds support
-		}
-
-		resp.Usage = usage
-	}
-
-	return resp
 }
 
 func (t *InboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, error) {

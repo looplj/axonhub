@@ -375,6 +375,187 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 			},
 		},
 		{
+			name: "response with image content",
+			chatResp: &llm.Response{
+				ID:      "msg_image_123",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								MultipleContent: []llm.MessageContentPart{
+									{
+										Type: "text",
+										Text: func() *string { s := "Here's an image for you:"; return &s }(),
+									},
+									{
+										Type: "image_url",
+										ImageURL: &llm.ImageURL{
+											URL: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVR",
+										},
+									},
+								},
+							},
+						},
+						FinishReason: func() *string { s := "stop"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 2)
+
+				// First content block should be text
+				require.Equal(t, "text", resp.Content[0].Type)
+				require.Equal(t, "Here's an image for you:", resp.Content[0].Text)
+
+				// Second content block should be image
+				require.Equal(t, "image", resp.Content[1].Type)
+				require.NotNil(t, resp.Content[1].Source)
+				require.Equal(t, "base64", resp.Content[1].Source.Type)
+				require.Equal(t, "image/jpeg", resp.Content[1].Source.MediaType)
+				require.Equal(t, "/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVR", resp.Content[1].Source.Data)
+			},
+		},
+		{
+			name: "response with multiple images and text",
+			chatResp: &llm.Response{
+				ID:      "msg_multi_image_456",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								MultipleContent: []llm.MessageContentPart{
+									{
+										Type: "text",
+										Text: func() *string { s := "Here are two different images:"; return &s }(),
+									},
+									{
+										Type: "image_url",
+										ImageURL: &llm.ImageURL{
+											URL: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+										},
+									},
+									{
+										Type: "text",
+										Text: func() *string { s := "and"; return &s }(),
+									},
+									{
+										Type: "image_url",
+										ImageURL: &llm.ImageURL{
+											URL: "data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA",
+										},
+									},
+									{
+										Type: "text",
+										Text: func() *string { s := "Both images show different content."; return &s }(),
+									},
+								},
+							},
+						},
+						FinishReason: func() *string { s := "stop"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 5)
+
+				// First content block should be text
+				require.Equal(t, "text", resp.Content[0].Type)
+				require.Equal(t, "Here are two different images:", resp.Content[0].Text)
+
+				// Second content block should be PNG image
+				require.Equal(t, "image", resp.Content[1].Type)
+				require.NotNil(t, resp.Content[1].Source)
+				require.Equal(t, "base64", resp.Content[1].Source.Type)
+				require.Equal(t, "image/png", resp.Content[1].Source.MediaType)
+				require.Equal(t, "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", resp.Content[1].Source.Data)
+
+				// Third content block should be text
+				require.Equal(t, "text", resp.Content[2].Type)
+				require.Equal(t, "and", resp.Content[2].Text)
+
+				// Fourth content block should be WebP image
+				require.Equal(t, "image", resp.Content[3].Type)
+				require.NotNil(t, resp.Content[3].Source)
+				require.Equal(t, "base64", resp.Content[3].Source.Type)
+				require.Equal(t, "image/webp", resp.Content[3].Source.MediaType)
+				require.Equal(t, "UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA", resp.Content[3].Source.Data)
+
+				// Fifth content block should be text
+				require.Equal(t, "text", resp.Content[4].Type)
+				require.Equal(t, "Both images show different content.", resp.Content[4].Text)
+			},
+		},
+		{
+			name: "response with thinking, text, and image content",
+			chatResp: &llm.Response{
+				ID:      "msg_think_image_789",
+				Object:  "chat.completion",
+				Model:   "claude-3-sonnet-20240229",
+				Created: 1234567890,
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							ReasoningContent: func() *string {
+								s := "I should analyze this image and provide a helpful response with a visual example."
+								return &s
+							}(),
+							Content: llm.MessageContent{
+								MultipleContent: []llm.MessageContentPart{
+									{
+										Type: "text",
+										Text: func() *string { s := "Based on my analysis, here's a relevant image:"; return &s }(),
+									},
+									{
+										Type: "image_url",
+										ImageURL: &llm.ImageURL{
+											URL: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+										},
+									},
+								},
+							},
+						},
+						FinishReason: func() *string { s := "stop"; return &s }(),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, resp *Message) {
+				t.Helper()
+				require.Len(t, resp.Content, 3)
+
+				// First content block should be thinking
+				require.Equal(t, "thinking", resp.Content[0].Type)
+				require.Equal(t, "I should analyze this image and provide a helpful response with a visual example.", resp.Content[0].Thinking)
+
+				// Second content block should be text
+				require.Equal(t, "text", resp.Content[1].Type)
+				require.Equal(t, "Based on my analysis, here's a relevant image:", resp.Content[1].Text)
+
+				// Third content block should be GIF image
+				require.Equal(t, "image", resp.Content[2].Type)
+				require.NotNil(t, resp.Content[2].Source)
+				require.Equal(t, "base64", resp.Content[2].Source.Type)
+				require.Equal(t, "image/gif", resp.Content[2].Source.MediaType)
+				require.Equal(t, "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", resp.Content[2].Source.Data)
+			},
+		},
+		{
 			name: "response with thinking content",
 			chatResp: &llm.Response{
 				ID:      "msg_789",
@@ -1315,11 +1496,17 @@ func TestInboundTransformer_TransformResponse_EdgeCases(t *testing.T) {
 			validate: func(t *testing.T, resp *Message) {
 				t.Helper()
 				// Should only include text parts
-				require.Len(t, resp.Content, 2)
+				require.Len(t, resp.Content, 3)
 				require.Equal(t, "text", resp.Content[0].Type)
 				require.Equal(t, "First text part", resp.Content[0].Text)
-				require.Equal(t, "text", resp.Content[1].Type)
-				require.Equal(t, "Second text part", resp.Content[1].Text)
+
+				require.Equal(t, "image", resp.Content[1].Type)
+				require.NotNil(t, resp.Content[1].Source)
+				require.Equal(t, "image/png", resp.Content[1].Source.MediaType)
+				require.Equal(t, "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==", resp.Content[1].Source.Data)
+
+				require.Equal(t, "text", resp.Content[2].Type)
+				require.Equal(t, "Second text part", resp.Content[2].Text)
 			},
 		},
 		{

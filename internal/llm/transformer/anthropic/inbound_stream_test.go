@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -263,7 +264,13 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 					require.NotNil(t, actualStreamEvent.Delta)
 
 					if expectedStreamEvent.Delta.StopReason != nil && actualStreamEvent.Delta.StopReason != nil {
-						require.Equal(t, *expectedStreamEvent.Delta.StopReason, *actualStreamEvent.Delta.StopReason, "Event %d: Stop reason should match", i)
+						require.Equal(
+							t,
+							*expectedStreamEvent.Delta.StopReason,
+							*actualStreamEvent.Delta.StopReason,
+							"Event %d: Stop reason should match",
+							i,
+						)
 					}
 
 					if expectedStreamEvent.Usage != nil && actualStreamEvent.Usage != nil {

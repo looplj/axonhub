@@ -149,7 +149,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert to Anthropic request format
-	anthropicReq := t.convertToAnthropicRequest(chatReq)
+	anthropicReq := convertToAnthropicRequest(chatReq)
 
 	// Apply platform-specific transformations
 	body, err := json.Marshal(anthropicReq)
@@ -195,10 +195,6 @@ func (t *OutboundTransformer) TransformRequest(
 		Body:    body,
 		Auth:    auth,
 	}, nil
-}
-
-func (t *OutboundTransformer) convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
-	return convertToAnthropicRequest(chatReq)
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.

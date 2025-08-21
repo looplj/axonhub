@@ -102,6 +102,7 @@ func TestAggregateStreamChunks(t *testing.T) {
 					require.NotNil(t, gotChoice.Message.Content.Content)
 					require.Equal(t, *wantChoice.Message.Content.Content, *gotChoice.Message.Content.Content)
 				}
+
 				if wantChoice.Message.ReasoningContent != nil {
 					require.NotNil(t, gotChoice.Message.ReasoningContent)
 					require.Equal(t, *wantChoice.Message.ReasoningContent, *gotChoice.Message.ReasoningContent)

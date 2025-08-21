@@ -269,7 +269,7 @@ type ImageSource struct {
 
 	// URL is the URL of the image.
 	// It will be present if Type is url.
-	URL *string `json:"url,omitempty"`
+	URL string `json:"url,omitempty"`
 }
 
 // StreamEvent represents events in Anthropic streaming response.

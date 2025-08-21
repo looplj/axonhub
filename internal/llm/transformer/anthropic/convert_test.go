@@ -325,3 +325,217 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertToAnthropicRequest(t *testing.T) {
+	tests := []struct {
+		name     string
+		chatReq  *llm.Request
+		expected *MessageRequest
+	}{
+		{
+			name: "simple request",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello!"; return &s }(),
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				Messages: []MessageParam{
+					{
+						Role: "user",
+						Content: MessageContent{
+							Content: func() *string { s := "Hello!"; return &s }(),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "request with system message",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "system",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "You are helpful."; return &s }(),
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello!"; return &s }(),
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				System: &SystemPrompt{
+					Prompt: func() *string { s := "You are helpful."; return &s }(),
+				},
+				Messages: []MessageParam{
+					{
+						Role: "user",
+						Content: MessageContent{
+							Content: func() *string { s := "Hello!"; return &s }(),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "request with image content",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{
+									Type: "text",
+									Text: func() *string { s := "What's in this image?"; return &s }(),
+								},
+								{
+									Type: "image_url",
+									ImageURL: &llm.ImageURL{
+										URL: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVR",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				Messages: []MessageParam{
+					{
+						Role: "user",
+						Content: MessageContent{
+							MultipleContent: []ContentBlock{
+								{
+									Type: "text",
+									Text: "What's in this image?",
+								},
+								{
+									Type: "image",
+									Source: &ImageSource{
+										Type:      "base64",
+										MediaType: "image/jpeg",
+										Data:      "/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVR",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "request with multiple images and text",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{
+									Type: "text",
+									Text: func() *string { s := "Compare these two images:"; return &s }(),
+								},
+								{
+									Type: "image_url",
+									ImageURL: &llm.ImageURL{
+										URL: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+									},
+								},
+								{
+									Type: "text",
+									Text: func() *string { s := "and"; return &s }(),
+								},
+								{
+									Type: "image_url",
+									ImageURL: &llm.ImageURL{
+										URL: "data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA",
+									},
+								},
+								{
+									Type: "text",
+									Text: func() *string { s := "What are the differences?"; return &s }(),
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				Messages: []MessageParam{
+					{
+						Role: "user",
+						Content: MessageContent{
+							MultipleContent: []ContentBlock{
+								{
+									Type: "text",
+									Text: "Compare these two images:",
+								},
+								{
+									Type: "image",
+									Source: &ImageSource{
+										Type:      "base64",
+										MediaType: "image/png",
+										Data:      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+									},
+								},
+								{
+									Type: "text",
+									Text: "and",
+								},
+								{
+									Type: "image",
+									Source: &ImageSource{
+										Type:      "base64",
+										MediaType: "image/webp",
+										Data:      "UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA",
+									},
+								},
+								{
+									Type: "text",
+									Text: "What are the differences?",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertToAnthropicRequest(tt.chatReq)
+			require.Equal(t, tt.expected.Model, result.Model)
+			require.Equal(t, tt.expected.MaxTokens, result.MaxTokens)
+			require.Equal(t, tt.expected.System, result.System)
+			require.Equal(t, len(tt.expected.Messages), len(result.Messages))
+		})
+	}
+}
