@@ -109,6 +109,17 @@ const UPDATE_CHANNEL_STATUS_MUTATION = `
   }
 `
 
+const TEST_CHANNEL_MUTATION = `
+  mutation TestChannel($input: TestChannelInput!) {
+    testChannel(input: $input) {
+      latency
+      success
+      error
+      message
+    }
+  }
+`
+
 // Query hooks
 export function useChannels(variables?: {
   first?: number
@@ -237,6 +248,46 @@ export function useUpdateChannelStatus() {
     },
     onError: (error) => {
       toast.error(t('channels.messages.statusUpdateError', { error: error.message }))
+    },
+  })
+}
+
+export function useTestChannel() {
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async ({
+      channelID,
+      modelID,
+    }: {
+      channelID: string
+      modelID?: string
+    }) => {
+      const data = await graphqlRequest<{ 
+        testChannel: { 
+          latency: number
+          success: boolean
+          message?: string | null
+          error?: string | null
+        } 
+      }>(
+        TEST_CHANNEL_MUTATION,
+        { input: { channelID, modelID } }
+      )
+      return data.testChannel
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(t('channels.messages.testSuccess', { latency: data.latency.toFixed(2) }))
+      } else {
+        // Handle case where GraphQL request succeeds but test fails
+        const errorMsg = data.error || t('channels.messages.testUnknownError')
+        toast.error(t('channels.messages.testError', { error: errorMsg }))
+      }
+    },
+    onError: (error) => {
+      // Handle GraphQL/network errors
+      toast.error(t('channels.messages.testError', { error: error.message }))
     },
   })
 }

@@ -149,18 +149,18 @@ func (p *PersistentOutboundTransformer) TransformError(ctx context.Context, rawE
 // Outbound transformer methods for enhanced version.
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
 	if len(p.state.Channels) == 0 {
-		channels, err := p.state.ChannelService.ChooseChannels(ctx, llmRequest)
+		channels, err := p.state.ChannelSelector.Select(ctx, llmRequest)
 		if err != nil {
 			return nil, err
 		}
 
-		log.Debug(ctx, "choosed channels",
+		log.Debug(ctx, "selected channels",
 			log.Any("channels", channels),
 			log.Any("model", llmRequest.Model),
 		)
 
 		if len(channels) == 0 {
-			return nil, errors.New("no provider available")
+			return nil, biz.ErrInvalidModel
 		}
 
 		p.state.Channels = channels

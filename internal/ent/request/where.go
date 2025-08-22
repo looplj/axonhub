@@ -260,6 +260,26 @@ func APIKeyIDNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldAPIKeyID))
 }
 
+// SourceEQ applies the EQ predicate on the "source" field.
+func SourceEQ(v Source) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldSource, v))
+}
+
+// SourceNEQ applies the NEQ predicate on the "source" field.
+func SourceNEQ(v Source) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldSource, v))
+}
+
+// SourceIn applies the In predicate on the "source" field.
+func SourceIn(vs ...Source) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldSource, vs...))
+}
+
+// SourceNotIn applies the NotIn predicate on the "source" field.
+func SourceNotIn(vs ...Source) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldSource, vs...))
+}
+
 // ModelIDEQ applies the EQ predicate on the "model_id" field.
 func ModelIDEQ(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldModelID, v))

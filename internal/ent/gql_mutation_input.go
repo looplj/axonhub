@@ -179,6 +179,7 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 type CreateRequestInput struct {
 	CreatedAt      *time.Time
 	UpdatedAt      *time.Time
+	Source         *request.Source
 	ModelID        string
 	Format         *string
 	RequestBody    objects.JSONRawMessage
@@ -196,6 +197,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if v := i.Source; v != nil {
+		m.SetSource(*v)
 	}
 	m.SetModelID(i.ModelID)
 	if v := i.Format; v != nil {

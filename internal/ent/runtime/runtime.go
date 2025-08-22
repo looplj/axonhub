@@ -152,7 +152,7 @@ func init() {
 	// request.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	request.DefaultDeletedAt = requestDescDeletedAt.Default.(int)
 	// requestDescFormat is the schema descriptor for format field.
-	requestDescFormat := requestFields[3].Descriptor()
+	requestDescFormat := requestFields[4].Descriptor()
 	// request.DefaultFormat holds the default value on creation for the format field.
 	request.DefaultFormat = requestDescFormat.Default.(string)
 	requestexecutionMixin := schema.RequestExecution{}.Mixin()

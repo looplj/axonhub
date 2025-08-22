@@ -1235,6 +1235,12 @@ type RequestWhereInput struct {
 	APIKeyIDIsNil  bool  `json:"apiKeyIDIsNil,omitempty"`
 	APIKeyIDNotNil bool  `json:"apiKeyIDNotNil,omitempty"`
 
+	// "source" field predicates.
+	Source      *request.Source  `json:"source,omitempty"`
+	SourceNEQ   *request.Source  `json:"sourceNEQ,omitempty"`
+	SourceIn    []request.Source `json:"sourceIn,omitempty"`
+	SourceNotIn []request.Source `json:"sourceNotIn,omitempty"`
+
 	// "model_id" field predicates.
 	ModelID             *string  `json:"modelID,omitempty"`
 	ModelIDNEQ          *string  `json:"modelIDNEQ,omitempty"`
@@ -1480,6 +1486,18 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if i.APIKeyIDNotNil {
 		predicates = append(predicates, request.APIKeyIDNotNil())
+	}
+	if i.Source != nil {
+		predicates = append(predicates, request.SourceEQ(*i.Source))
+	}
+	if i.SourceNEQ != nil {
+		predicates = append(predicates, request.SourceNEQ(*i.SourceNEQ))
+	}
+	if len(i.SourceIn) > 0 {
+		predicates = append(predicates, request.SourceIn(i.SourceIn...))
+	}
+	if len(i.SourceNotIn) > 0 {
+		predicates = append(predicates, request.SourceNotIn(i.SourceNotIn...))
 	}
 	if i.ModelID != nil {
 		predicates = append(predicates, request.ModelIDEQ(*i.ModelID))

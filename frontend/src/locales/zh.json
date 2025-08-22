@@ -485,12 +485,15 @@
       "createDescription": "在此创建新的 Channel。",
       "editDescription": "在此更新 Channel 信息。",
       "completeAndSave": "完成后点击保存。",
-      "createSuccess": "Channel 创建成功",
-      "createError": "创建失败: {{error}}",
-      "updateSuccess": "Channel 更新成功",
-      "updateError": "更新失败: {{error}}",
-      "statusUpdateSuccess": "Channel 状态已更新为 {{status}}",
-      "statusUpdateError": "状态更新失败: {{error}}"
+      "createSuccess": "渠道创建成功",
+      "createError": "创建失败：{{error}}",
+      "updateSuccess": "渠道更新成功",
+      "updateError": "更新失败：{{error}}",
+      "statusUpdateSuccess": "渠道状态已更新为 {{status}}",
+      "statusUpdateError": "状态更新失败：{{error}}",
+      "testSuccess": "渠道测试成功（延迟 {{latency}}秒）",
+      "testError": "渠道测试失败：{{error}}",
+      "testUnknownError": "发生未知测试错误"
     },
     "filters": {
       "type": "类型",
@@ -599,6 +602,14 @@
         "enable": {
           "title": "启用频道",
           "description": "确定要启用频道 \"{{name}}\" 吗？启用后该渠道将可以正常使用。",
+          "warning": "请确保渠道配置正确，建议在启用前测试连接以避免服务中断。",
+          "warningTitle": "重要提示",
+          "testRecommended": "建议测试连接：",
+          "testButton": "测试",
+          "testSuccess": "✅ 测试成功（延迟 {{latency}}秒）",
+          "testFailed": "❌ 测试失败 - 请检查配置",
+          "testMessage": "响应内容",
+          "errorDetails": "错误详情",
           "button": "启用",
           "confirmText": "启用"
         },

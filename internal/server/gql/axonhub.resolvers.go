@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/chat"
 )
 
 // CreateChannel is the resolver for the createChannel field.
@@ -72,6 +73,22 @@ func (r *mutationResolver) UpdateChannelStatus(ctx context.Context, id objects.G
 	}
 
 	return channel, nil
+}
+
+// TestChannel is the resolver for the testChannel field.
+func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInput) (*TestChannelPayload, error) {
+	processor := chat.NewTestChannelProcessor(r.channelService, r.requestService, r.httpClient, input.ChannelID)
+
+	result, err := processor.TestChannel(ctx, input.ChannelID, input.ModelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to test channel: %w", err)
+	}
+
+	return &TestChannelPayload{
+		Latency: result.Latency,
+		Success: result.Success,
+		Error:   result.Error,
+	}, nil
 }
 
 // CreateAPIKey is the resolver for the createAPIKey field.

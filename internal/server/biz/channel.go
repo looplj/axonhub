@@ -16,7 +16,6 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
@@ -25,6 +24,24 @@ type Channel struct {
 
 	// Outbound is the outbound transformer for the channel.
 	Outbound transformer.Outbound
+}
+
+func (c Channel) IsModelSupported(model string) bool {
+	if slices.Contains(c.SupportedModels, model) {
+		return true
+	}
+
+	if c.Settings == nil {
+		return false
+	}
+
+	for _, mapping := range c.Settings.ModelMappings {
+		if mapping.From == model {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (c Channel) ChooseModel(model string) (string, error) {
@@ -192,24 +209,82 @@ func (svc *ChannelService) ChooseChannels(
 	var channels []*Channel
 
 	for _, channel := range svc.Channels {
-		if slices.Contains(channel.SupportedModels, chatReq.Model) {
-			channels = append(channels, channel)
-			continue
-		}
-
-		if channel.Settings == nil {
-			continue
-		}
-
-		if slices.ContainsFunc(
-			channel.Settings.ModelMappings,
-			func(model objects.ModelMapping) bool {
-				return model.From == chatReq.Model
-			},
-		) {
+		if channel.IsModelSupported(chatReq.Model) {
 			channels = append(channels, channel)
 		}
 	}
 
 	return channels, nil
+}
+
+// GetChannelForTest retrieves a specific channel by ID for testing purposes,
+// including disabled channels. This bypasses the normal enabled-only filtering.
+func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int) (*Channel, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Get the channel entity from database (including disabled ones)
+	entity, err := svc.Ent.Channel.Get(ctx, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("channel not found: %w", err)
+	}
+
+	// Create the appropriate transformer based on channel type
+	var outboundTransformer transformer.Outbound
+
+	//nolint:exhaustive // TODO SUPPORT.
+	switch entity.Type {
+	case channel.TypeOpenai, channel.TypeDeepseek, channel.TypeDoubao, channel.TypeKimi:
+		transformer, err := openai.NewOutboundTransformer(entity.BaseURL, entity.Credentials.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		outboundTransformer = transformer
+	case channel.TypeAnthropic:
+		transformer, err := anthropic.NewOutboundTransformer(entity.BaseURL, entity.Credentials.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create anthropic outbound transformer: %w", err)
+		}
+
+		outboundTransformer = transformer
+	case channel.TypeAnthropicAWS:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:            anthropic.PlatformBedrock,
+			Region:          entity.Credentials.AWS.Region,
+			AccessKeyID:     entity.Credentials.AWS.AccessKeyID,
+			SecretAccessKey: entity.Credentials.AWS.SecretAccessKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create anthropic aws outbound transformer: %w", err)
+		}
+
+		outboundTransformer = transformer
+	case channel.TypeAnthropicGcp:
+		if entity.Credentials.GCP == nil {
+			return nil, fmt.Errorf("GCP credentials are required for anthropic_vertex channel")
+		}
+
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:      anthropic.PlatformVertex,
+			Region:    entity.Credentials.GCP.Region,
+			ProjectID: entity.Credentials.GCP.ProjectID,
+			JSONData:  entity.Credentials.GCP.JSONData,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create anthropic vertex outbound transformer: %w", err)
+		}
+
+		outboundTransformer = transformer
+	case channel.TypeAnthropicFake:
+		outboundTransformer = anthropic.NewFakeTransformer()
+	case channel.TypeOpenaiFake:
+		outboundTransformer = openai.NewFakeTransformer()
+	default:
+		return nil, fmt.Errorf("unsupported channel type: %s", entity.Type)
+	}
+
+	return &Channel{
+		Channel:  entity,
+		Outbound: outboundTransformer,
+	}, nil
 }

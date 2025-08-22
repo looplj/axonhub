@@ -464,7 +464,10 @@
       "updateSuccess": "Channel updated successfully",
       "updateError": "Update failed: {{error}}",
       "statusUpdateSuccess": "Channel status updated to {{status}}",
-      "statusUpdateError": "Status update failed: {{error}}"
+      "statusUpdateError": "Status update failed: {{error}}",
+      "testSuccess": "Channel test successful ({{latency}}s latency)",
+      "testError": "Channel test failed: {{error}}",
+      "testUnknownError": "Unknown test error occurred"
     },
     "dialogs": {
       "create": {
@@ -567,6 +570,14 @@
         "enable": {
           "title": "Enable Channel",
           "description": "Are you sure you want to enable channel \"{{name}}\"? The channel will be available for use after enabling.",
+          "warning": "Please ensure the channel configuration is correct and test the connection before enabling to avoid service interruptions.",
+          "warningTitle": "Important Notice",
+          "testRecommended": "Test connection recommended:",
+          "testButton": "Test",
+          "testSuccess": "✅ Test successful ({{latency}}s latency)",
+          "testFailed": "❌ Test failed - please check configuration",
+          "testMessage": "Response",
+          "errorDetails": "Error Details",
           "confirmText": "Enable",
           "button": "Enable"
         },

@@ -99,6 +99,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldDeletedAt:      {Type: field.TypeInt, Column: request.FieldDeletedAt},
 			request.FieldUserID:         {Type: field.TypeInt, Column: request.FieldUserID},
 			request.FieldAPIKeyID:       {Type: field.TypeInt, Column: request.FieldAPIKeyID},
+			request.FieldSource:         {Type: field.TypeEnum, Column: request.FieldSource},
 			request.FieldModelID:        {Type: field.TypeString, Column: request.FieldModelID},
 			request.FieldFormat:         {Type: field.TypeString, Column: request.FieldFormat},
 			request.FieldRequestBody:    {Type: field.TypeJSON, Column: request.FieldRequestBody},
@@ -708,6 +709,11 @@ func (f *RequestFilter) WhereUserID(p entql.IntP) {
 // WhereAPIKeyID applies the entql int predicate on the api_key_id field.
 func (f *RequestFilter) WhereAPIKeyID(p entql.IntP) {
 	f.Where(p.Field(request.FieldAPIKeyID))
+}
+
+// WhereSource applies the entql string predicate on the source field.
+func (f *RequestFilter) WhereSource(p entql.StringP) {
+	f.Where(p.Field(request.FieldSource))
 }
 
 // WhereModelID applies the entql string predicate on the model_id field.

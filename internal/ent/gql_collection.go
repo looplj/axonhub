@@ -797,6 +797,11 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldAPIKeyID)
 				fieldSeen[request.FieldAPIKeyID] = struct{}{}
 			}
+		case "source":
+			if _, ok := fieldSeen[request.FieldSource]; !ok {
+				selectedFields = append(selectedFields, request.FieldSource)
+				fieldSeen[request.FieldSource] = struct{}{}
+			}
 		case "modelID":
 			if _, ok := fieldSeen[request.FieldModelID]; !ok {
 				selectedFields = append(selectedFields, request.FieldModelID)

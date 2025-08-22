@@ -2575,6 +2575,7 @@ type RequestMutation struct {
 	updated_at            *time.Time
 	deleted_at            *int
 	adddeleted_at         *int
+	source                *request.Source
 	model_id              *string
 	format                *string
 	request_body          *objects.JSONRawMessage
@@ -2906,6 +2907,42 @@ func (m *RequestMutation) APIKeyIDCleared() bool {
 func (m *RequestMutation) ResetAPIKeyID() {
 	m.api_key = nil
 	delete(m.clearedFields, request.FieldAPIKeyID)
+}
+
+// SetSource sets the "source" field.
+func (m *RequestMutation) SetSource(r request.Source) {
+	m.source = &r
+}
+
+// Source returns the value of the "source" field in the mutation.
+func (m *RequestMutation) Source() (r request.Source, exists bool) {
+	v := m.source
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSource returns the old "source" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldSource(ctx context.Context) (v request.Source, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSource is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSource requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSource: %w", err)
+	}
+	return oldValue.Source, nil
+}
+
+// ResetSource resets all changes to the "source" field.
+func (m *RequestMutation) ResetSource() {
+	m.source = nil
 }
 
 // SetModelID sets the "model_id" field.
@@ -3339,7 +3376,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -3354,6 +3391,9 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.api_key != nil {
 		fields = append(fields, request.FieldAPIKeyID)
+	}
+	if m.source != nil {
+		fields = append(fields, request.FieldSource)
 	}
 	if m.model_id != nil {
 		fields = append(fields, request.FieldModelID)
@@ -3391,6 +3431,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.UserID()
 	case request.FieldAPIKeyID:
 		return m.APIKeyID()
+	case request.FieldSource:
+		return m.Source()
 	case request.FieldModelID:
 		return m.ModelID()
 	case request.FieldFormat:
@@ -3422,6 +3464,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldUserID(ctx)
 	case request.FieldAPIKeyID:
 		return m.OldAPIKeyID(ctx)
+	case request.FieldSource:
+		return m.OldSource(ctx)
 	case request.FieldModelID:
 		return m.OldModelID(ctx)
 	case request.FieldFormat:
@@ -3477,6 +3521,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAPIKeyID(v)
+		return nil
+	case request.FieldSource:
+		v, ok := value.(request.Source)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSource(v)
 		return nil
 	case request.FieldModelID:
 		v, ok := value.(string)
@@ -3619,6 +3670,9 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldAPIKeyID:
 		m.ResetAPIKeyID()
+		return nil
+	case request.FieldSource:
+		m.ResetSource()
 		return nil
 	case request.FieldModelID:
 		m.ResetModelID()

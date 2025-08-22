@@ -19,9 +19,11 @@ import (
 type Dependencies struct {
 	fx.In
 
-	Ent           *ent.Client
-	AuthService   *biz.AuthService
-	SystemService *biz.SystemService
+	Ent            *ent.Client
+	AuthService    *biz.AuthService
+	SystemService  *biz.SystemService
+	ChannelService *biz.ChannelService
+	RequestService *biz.RequestService
 }
 
 type GraphqlHandler struct {
@@ -30,7 +32,7 @@ type GraphqlHandler struct {
 }
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
-	gqlSrv := handler.New(NewSchema(deps.Ent, deps.AuthService, deps.SystemService))
+	gqlSrv := handler.New(NewSchema(deps.Ent, deps.AuthService, deps.SystemService, deps.ChannelService, deps.RequestService))
 
 	gqlSrv.AddTransport(transport.Options{})
 	gqlSrv.AddTransport(transport.GET{})

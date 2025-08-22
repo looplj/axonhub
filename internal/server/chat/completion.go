@@ -21,7 +21,7 @@ func NewChatCompletionProcessor(
 	inbound transformer.Inbound,
 ) *ChatCompletionProcessor {
 	return &ChatCompletionProcessor{
-		ChannelService:  channelService,
+		ChannelSelector: NewDefaultChannelSelector(channelService),
 		Inbound:         inbound,
 		RequestService:  requestService,
 		PipelineFactory: pipeline.NewFactory(httpClient),
@@ -29,7 +29,7 @@ func NewChatCompletionProcessor(
 }
 
 type ChatCompletionProcessor struct {
-	ChannelService  *biz.ChannelService
+	ChannelSelector ChannelSelector
 	Inbound         transformer.Inbound
 	RequestService  *biz.RequestService
 	DecoratorChain  decorator.DecoratorChain
@@ -47,14 +47,14 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 
 	log.Debug(ctx, "request received", log.String("request_body", string(request.Body)))
 
-	inbound, outbound := NewPersistentTransformers(
+	inbound, outbound := NewPersistentTransformersWithSelector(
 		ctx,
 		processor.Inbound,
-		processor.ChannelService,
 		processor.RequestService,
 		apiKey,
 		user,
 		request,
+		processor.ChannelSelector,
 	)
 
 	pipe := processor.PipelineFactory.Pipeline(

@@ -100,6 +100,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "source", Type: field.TypeEnum, Enums: []string{"api", "playground", "test"}, Default: "api"},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "format", Type: field.TypeString, Default: "openai/chat_completions"},
 		{Name: "request_body", Type: field.TypeJSON},
@@ -118,19 +119,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "requests_api_keys_requests",
-				Columns:    []*schema.Column{RequestsColumns[10]},
+				Columns:    []*schema.Column{RequestsColumns[11]},
 				RefColumns: []*schema.Column{APIKeysColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_channels_requests",
-				Columns:    []*schema.Column{RequestsColumns[11]},
+				Columns:    []*schema.Column{RequestsColumns[12]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_users_requests",
-				Columns:    []*schema.Column{RequestsColumns[12]},
+				Columns:    []*schema.Column{RequestsColumns[13]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -139,12 +140,12 @@ var (
 			{
 				Name:    "requests_by_user_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[12]},
+				Columns: []*schema.Column{RequestsColumns[13]},
 			},
 			{
 				Name:    "requests_by_api_key_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[10]},
+				Columns: []*schema.Column{RequestsColumns[11]},
 			},
 		},
 	}

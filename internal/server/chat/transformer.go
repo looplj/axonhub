@@ -14,8 +14,8 @@ type PersistenceState struct {
 	APIKey *ent.APIKey
 	User   *ent.User
 
-	ChannelService *biz.ChannelService
-	RequestService *biz.RequestService
+	RequestService  *biz.RequestService
+	ChannelSelector ChannelSelector
 
 	Request     *ent.Request
 	RequestExec *ent.RequestExecution
@@ -41,12 +41,33 @@ func NewPersistentTransformers(
 	user *ent.User,
 	httpRequest *httpclient.Request,
 ) (*PersistentInboundTransformer, *PersistentOutboundTransformer) {
+	return NewPersistentTransformersWithSelector(
+		ctx,
+		inbound,
+		requestService,
+		apiKey,
+		user,
+		httpRequest,
+		NewDefaultChannelSelector(channelService),
+	)
+}
+
+// NewPersistentTransformersWithSelector creates enhanced persistent transformers with custom channel selector.
+func NewPersistentTransformersWithSelector(
+	ctx context.Context,
+	inbound transformer.Inbound,
+	requestService *biz.RequestService,
+	apiKey *ent.APIKey,
+	user *ent.User,
+	httpRequest *httpclient.Request,
+	channelSelector ChannelSelector,
+) (*PersistentInboundTransformer, *PersistentOutboundTransformer) {
 	state := &PersistenceState{
-		ChannelService: channelService,
-		RequestService: requestService,
-		APIKey:         apiKey,
-		User:           user,
-		ChannelIndex:   0,
+		RequestService:  requestService,
+		ChannelSelector: channelSelector,
+		APIKey:          apiKey,
+		User:            user,
+		ChannelIndex:    0,
 	}
 
 	return &PersistentInboundTransformer{

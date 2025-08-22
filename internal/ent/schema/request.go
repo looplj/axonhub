@@ -40,6 +40,7 @@ func (Request) Fields() []ent.Field {
 			Optional().
 			Immutable().
 			Comment("API Key ID of the request, null for the request from the Admin."),
+		field.Enum("source").Values("api", "playground", "test").Default("api").Immutable(),
 		field.String("model_id").Immutable(),
 		// The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
 		field.String("format").Immutable().Default("openai/chat_completions"),

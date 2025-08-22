@@ -8,4 +8,5 @@ var (
 	ErrInvalidJWT      = errors.New("invalid jwt token")
 	ErrInvalidAPIKey   = errors.New("invalid api key")
 	ErrInvalidPassword = errors.New("invalid password")
+	ErrInvalidModel    = errors.New("invalid model")
 )

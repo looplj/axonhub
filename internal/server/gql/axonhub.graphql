@@ -16,7 +16,7 @@ input ChannelSettingsInput {
   modelMappings: [ModelMappingInput!]
 }
 
-type ChannelCredentials { 
+type ChannelCredentials {
   apiKey: String
   aws: AWSCredential
   gcp: GCPCredential
@@ -65,7 +65,6 @@ type SignInPayload {
   token: String!
 }
 
-
 type UserInfo {
   email: String!
   firstName: String!
@@ -82,11 +81,23 @@ type RoleInfo {
   name: String!
 }
 
+input TestChannelInput {
+  channelID: ID!
+  modelID: String
+}
+
+type TestChannelPayload {
+  latency: Float!
+  success: Boolean!
+  message: String
+  error: String
+}
 
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
   updateChannelStatus(id: ID!, status: ChannelStatus!): Channel!
+  testChannel(input: TestChannelInput!): TestChannelPayload!
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!

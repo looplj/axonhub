@@ -28,6 +28,8 @@ const (
 	FieldUserID = "user_id"
 	// FieldAPIKeyID holds the string denoting the api_key_id field in the database.
 	FieldAPIKeyID = "api_key_id"
+	// FieldSource holds the string denoting the source field in the database.
+	FieldSource = "source"
 	// FieldModelID holds the string denoting the model_id field in the database.
 	FieldModelID = "model_id"
 	// FieldFormat holds the string denoting the format field in the database.
@@ -79,6 +81,7 @@ var Columns = []string{
 	FieldDeletedAt,
 	FieldUserID,
 	FieldAPIKeyID,
+	FieldSource,
 	FieldModelID,
 	FieldFormat,
 	FieldRequestBody,
@@ -128,6 +131,33 @@ var (
 	// DefaultFormat holds the default value on creation for the "format" field.
 	DefaultFormat string
 )
+
+// Source defines the type for the "source" enum field.
+type Source string
+
+// SourceAPI is the default value of the Source enum.
+const DefaultSource = SourceAPI
+
+// Source values.
+const (
+	SourceAPI        Source = "api"
+	SourcePlayground Source = "playground"
+	SourceTest       Source = "test"
+)
+
+func (s Source) String() string {
+	return string(s)
+}
+
+// SourceValidator is a validator for the "source" field enum values. It is called by the builders before save.
+func SourceValidator(s Source) error {
+	switch s {
+	case SourceAPI, SourcePlayground, SourceTest:
+		return nil
+	default:
+		return fmt.Errorf("request: invalid enum value for source field: %q", s)
+	}
+}
 
 // Status defines the type for the "status" enum field.
 type Status string
@@ -185,6 +215,11 @@ func ByUserID(opts ...sql.OrderTermOption) OrderOption {
 // ByAPIKeyID orders the results by the api_key_id field.
 func ByAPIKeyID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAPIKeyID, opts...).ToFunc()
+}
+
+// BySource orders the results by the source field.
+func BySource(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSource, opts...).ToFunc()
 }
 
 // ByModelID orders the results by the model_id field.
@@ -249,6 +284,24 @@ func newExecutionsStep() *sqlgraph.Step {
 		sqlgraph.To(ExecutionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ExecutionsTable, ExecutionsColumn),
 	)
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (e Source) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(e.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (e *Source) UnmarshalGQL(val interface{}) error {
+	str, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("enum %T must be a string", val)
+	}
+	*e = Source(str)
+	if err := SourceValidator(*e); err != nil {
+		return fmt.Errorf("%s is not a valid Source", str)
+	}
+	return nil
 }
 
 // MarshalGQL implements graphql.Marshaler interface.

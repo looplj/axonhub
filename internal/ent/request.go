@@ -31,6 +31,8 @@ type Request struct {
 	UserID int `json:"user_id,omitempty"`
 	// API Key ID of the request, null for the request from the Admin.
 	APIKeyID int `json:"api_key_id,omitempty"`
+	// Source holds the value of the "source" field.
+	Source request.Source `json:"source,omitempty"`
 	// ModelID holds the value of the "model_id" field.
 	ModelID string `json:"model_id,omitempty"`
 	// Format holds the value of the "format" field.
@@ -107,7 +109,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case request.FieldID, request.FieldDeletedAt, request.FieldUserID, request.FieldAPIKeyID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldModelID, request.FieldFormat, request.FieldStatus:
+		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldStatus:
 			values[i] = new(sql.NullString)
 		case request.FieldCreatedAt, request.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -163,6 +165,12 @@ func (r *Request) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field api_key_id", values[i])
 			} else if value.Valid {
 				r.APIKeyID = int(value.Int64)
+			}
+		case request.FieldSource:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field source", values[i])
+			} else if value.Valid {
+				r.Source = request.Source(value.String)
 			}
 		case request.FieldModelID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -278,6 +286,9 @@ func (r *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("api_key_id=")
 	builder.WriteString(fmt.Sprintf("%v", r.APIKeyID))
+	builder.WriteString(", ")
+	builder.WriteString("source=")
+	builder.WriteString(fmt.Sprintf("%v", r.Source))
 	builder.WriteString(", ")
 	builder.WriteString("model_id=")
 	builder.WriteString(r.ModelID)

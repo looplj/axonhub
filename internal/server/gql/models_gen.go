@@ -93,6 +93,18 @@ type SystemStatus struct {
 	IsInitialized bool `json:"isInitialized"`
 }
 
+type TestChannelInput struct {
+	ChannelID objects.GUID `json:"channelID"`
+	ModelID   *string      `json:"modelID,omitempty"`
+}
+
+type TestChannelPayload struct {
+	Latency float64 `json:"latency"`
+	Success bool    `json:"success"`
+	Message *string `json:"message,omitempty"`
+	Error   *string `json:"error,omitempty"`
+}
+
 type TopUsers struct {
 	UserID       objects.GUID `json:"userId"`
 	UserName     string       `json:"userName"`
