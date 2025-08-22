@@ -500,25 +500,25 @@
     },
     "dialogs": {
       "create": {
-        "title": "添加 Channel",
-        "description": "创建一个新的 AI 模型 Channel。"
+        "title": "添加渠道",
+        "description": "创建一个新的 AI 模型渠道"
       },
       "edit": {
-        "title": "编辑 Channel",
-        "description": "修改 Channel 配置信息。"
+        "title": "编辑渠道",
+        "description": "修改渠道配置信息。"
       },
       "delete": {
-        "title": "删除 Channel",
-        "description": "确定要删除这个 Channel 吗？此操作无法撤销。"
+        "title": "删除渠道",
+        "description": "确定要删除这个渠道吗？此操作无法撤销。"
       },
       "fields": {
         "name": {
-          "label": "Channel 名称",
-          "placeholder": "我的 OpenAI Channel",
-          "description": "为此 Channel 设置一个易于识别的名称"
+          "label": "渠道名称",
+          "placeholder": "我的 OpenAI 渠道",
+          "description": "为此渠道设置一个易于识别的名称"
         },
         "type": {
-          "label": "Channel 类型",
+          "label": "渠道类型",
           "description": "选择 AI 模型提供商类型"
         },
         "baseURL": {
@@ -534,7 +534,7 @@
         },
         "supportedModels": {
           "label": "支持的模型",
-          "description": "此 Channel 支持的模型列表",
+          "description": "此渠道支持的模型列表",
           "required": "请至少添加一个支持的模型"
         },
         "defaultTestModel": {
@@ -578,9 +578,9 @@
       },
       "buttons": {
         "cancel": "取消",
-        "create": "创建 Channel",
+        "create": "创建渠道",
         "creating": "创建中...",
-        "update": "更新 Channel",
+        "update": "更新渠道",
         "updating": "更新中...",
         "delete": "删除",
         "deleting": "删除中...",

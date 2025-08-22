@@ -348,8 +348,12 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   anthropic_gcp
   gemini
   deepseek
+  deepseek_anrhropic
   doubao
   kimi
+  kimi_anrhropic
+  zai
+  zhipu
   anthropic_fake
   openai_fake
 }

@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 )

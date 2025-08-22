@@ -35,7 +35,21 @@ func (Channel) Indexes() []ent.Index {
 func (Channel) Fields() []ent.Field {
 	return []ent.Field{
 		field.Enum("type").
-			Values("openai", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini", "deepseek", "doubao", "kimi", "anthropic_fake", "openai_fake").
+			Values("openai",
+				"anthropic",
+				"anthropic_aws",
+				"anthropic_gcp",
+				"gemini",
+				"deepseek",
+				"deepseek_anrhropic",
+				"doubao",
+				"kimi",
+				"kimi_anrhropic",
+				"zai",
+				"zhipu",
+				"anthropic_fake",
+				"openai_fake",
+			).
 			Immutable(),
 		field.String("base_url").Optional(),
 		field.String("name"),
@@ -46,21 +60,7 @@ func (Channel) Fields() []ent.Field {
 		field.JSON("settings", &objects.ChannelSettings{}).
 			Default(&objects.ChannelSettings{
 				ModelMappings: []objects.ModelMapping{},
-			}).Optional().Annotations(
-		// entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
-		// entgql.Directives(entgql.Directive{
-		// 	Name: "goField",
-		// 	Arguments: []*ast.Argument{
-		// 		{
-		// 			Name: "omittable",
-		// 			Value: &ast.Value{
-		// 				Raw:  "true",
-		// 				Kind: ast.BooleanValue,
-		// 			},
-		// 		},
-		// 	},
-		// }),
-		),
+			}).Optional().Annotations(),
 	}
 }
 

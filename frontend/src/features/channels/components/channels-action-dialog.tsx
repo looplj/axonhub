@@ -37,6 +37,20 @@ interface Props {
   onOpenChange: (open: boolean) => void
 }
 
+ // Default base URLs for different channel types
+ const defaultBaseUrls: Record<string, string> = {
+  openai: 'https://api.openai.com/v1',
+  anthropic: 'https://api.anthropic.com/v1',
+  anthropic_aws: 'https://bedrock-runtime.us-east-1.amazonaws.com',
+  anthropic_gcp: 'https://us-east5-aiplatform.googleapis.com',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta',
+  deepseek: 'https://api.deepseek.com/v1',
+  doubao: 'https://ark.cn-beijing.volces.com/api/v3',
+  kimi: 'https://api.moonshot.cn/v1',
+  anthropic_fake: 'https://api.anthropic.com/v1',
+  openai_fake: 'https://api.openai.com/v1',
+}
+
 export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) {
   const { t } = useTranslation()
   const isEdit = !!currentRow
@@ -47,12 +61,13 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
   )
   const [newModel, setNewModel] = useState('')
 
+ 
   const channelTypes = [
     { value: 'openai', label: t('channels.types.openai') },
     { value: 'anthropic', label: t('channels.types.anthropic') },
     { value: 'anthropic_aws', label: t('channels.types.anthropic_aws') },
     { value: 'anthropic_gcp', label: t('channels.types.anthropic_gcp') },
-    { value: 'gemini', label: t('channels.types.gemini') },
+    // { value: 'gemini', label: t('channels.types.gemini') },
     { value: 'deepseek', label: t('channels.types.deepseek') },
     { value: 'doubao', label: t('channels.types.doubao') },
     { value: 'kimi', label: t('channels.types.kimi') },
@@ -87,7 +102,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
         }
       : {
           type: 'openai',
-          baseURL: '',
+          baseURL: defaultBaseUrls.openai,
           name: '',
           credentials: { 
             apiKey: '',
@@ -186,7 +201,13 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     <FormControl>
                       <SelectDropdown
                         defaultValue={field.value}
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          field.onChange(value)
+                          // Auto-fill base URL when type changes (only for new channels)
+                          if (!isEdit && defaultBaseUrls[value]) {
+                            form.setValue('baseURL', defaultBaseUrls[value])
+                          }
+                        }}
                         items={channelTypes}
                         placeholder={t('channels.dialogs.fields.type.description')}
                         className='col-span-4'
