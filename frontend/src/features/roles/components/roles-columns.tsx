@@ -16,6 +16,8 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     enableSorting: false,
     enableHiding: false,
     enableColumnFilter: true,
+    enableGlobalFilter: false,
+    getUniqueValues: () => [],
   },
   {
     id: 'select',

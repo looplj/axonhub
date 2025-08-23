@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { extractNumberID } from '@/lib/utils'
 import { useDebounce } from '@/hooks/use-debounce'
 import { LanguageSwitch } from '@/components/language-switch'
 import { Header } from '@/components/layout/header'
@@ -19,20 +18,25 @@ function ApiKeysContent() {
   const { t } = useTranslation()
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
+  
+  // Filter states - following the same pattern as roles and users
   const [nameFilter, setNameFilter] = useState<string>('')
-  const [userFilter, setUserFilter] = useState<string>('')
-
-  // Debounce the name filter to avoid excessive API calls
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [userFilter, setUserFilter] = useState<string[]>([])
+  
   const debouncedNameFilter = useDebounce(nameFilter, 300)
-
-  // Build where clause with filters
+  
+  // Build where clause for API filtering
   const whereClause = (() => {
-    const where: any = {}
+    const where: Record<string, string | string[]> = {}
     if (debouncedNameFilter) {
       where.nameContainsFold = debouncedNameFilter
     }
-    if (userFilter) {
-      where.userID = userFilter
+    if (statusFilter.length > 0) {
+      where.statusIn = statusFilter
+    }
+    if (userFilter.length > 0 && userFilter[0]) {
+      where.userID = userFilter[0] // API expects single userID
     }
     return Object.keys(where).length > 0 ? where : undefined
   })()
@@ -42,6 +46,11 @@ function ApiKeysContent() {
     after: cursor,
     where: whereClause,
   })
+
+  // Reset cursor when filters change
+  React.useEffect(() => {
+    setCursor(undefined)
+  }, [debouncedNameFilter, statusFilter, userFilter])
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -60,14 +69,11 @@ function ApiKeysContent() {
     setCursor(undefined) // Reset to first page
   }
 
-  const handleNameFilterChange = (filter: string) => {
-    setNameFilter(filter)
-    setCursor(undefined) // Reset to first page when filtering
-  }
-
-  const handleUserFilterChange = (filter: string) => {
-    setUserFilter(filter)
-    setCursor(undefined) // Reset to first page when filtering
+  const handleResetFilters = () => {
+    setNameFilter('')
+    setStatusFilter([])
+    setUserFilter([])
+    setCursor(undefined) // Reset to first page
   }
 
   return (
@@ -90,12 +96,15 @@ function ApiKeysContent() {
           pageSize={pageSize}
           totalCount={data?.totalCount}
           nameFilter={nameFilter}
+          statusFilter={statusFilter}
           userFilter={userFilter}
           onNextPage={handleNextPage}
           onPreviousPage={handlePreviousPage}
           onPageSizeChange={handlePageSizeChange}
-          onNameFilterChange={handleNameFilterChange}
-          onUserFilterChange={handleUserFilterChange}
+          onNameFilterChange={setNameFilter}
+          onStatusFilterChange={setStatusFilter}
+          onUserFilterChange={setUserFilter}
+          onResetFilters={handleResetFilters}
         />
       )}
     </div>

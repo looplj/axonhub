@@ -13,10 +13,12 @@ import { ApiKeyStatus } from '../data/schema'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
+  onResetFilters?: () => void
 }
 
 export function DataTableToolbar<TData>({
   table,
+  onResetFilters,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const isFiltered = table.getState().columnFilters.length > 0
@@ -98,7 +100,10 @@ export function DataTableToolbar<TData>({
         {isFiltered && (
           <Button
             variant='ghost'
-            onClick={() => table.resetColumnFilters()}
+            onClick={() => {
+              table.resetColumnFilters()
+              onResetFilters?.()
+            }}
             className='h-8 px-2 lg:px-3'
           >
             {t('apikeys.filters.reset')}

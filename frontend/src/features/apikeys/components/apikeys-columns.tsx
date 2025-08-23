@@ -115,6 +115,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         'sticky left-6 md:table-cell'
       ),
     },
+    filterFn: (row, _id, value) => {
+      return String(row.getValue('name')).toLowerCase().includes(String(value).toLowerCase())
+    },
     enableHiding: false,
   },
   {
@@ -162,6 +165,10 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         </div>
       )
     },
+    filterFn: (row, _id, value) => {
+      return value.includes(row.getValue('status'))
+    },
+    enableSorting: false,
   },
   {
     accessorKey: 'createdAt',

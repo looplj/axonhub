@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -9,8 +9,6 @@ import {
   getCoreRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
-  getFilteredRowModel,
-  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
@@ -40,12 +38,15 @@ interface DataTableProps {
   pageSize: number
   totalCount?: number
   nameFilter: string
-  userFilter: string
+  statusFilter: string[]
+  userFilter: string[]
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
-  onNameFilterChange: (filter: string) => void
-  onUserFilterChange: (filter: string) => void
+  onNameFilterChange: (value: string) => void
+  onStatusFilterChange: (value: string[]) => void
+  onUserFilterChange: (value: string[]) => void
+  onResetFilters?: () => void
 }
 
 export function ApiKeysTable({ 
@@ -55,12 +56,15 @@ export function ApiKeysTable({
   pageSize,
   totalCount,
   nameFilter,
+  statusFilter,
   userFilter,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
   onNameFilterChange,
-  onUserFilterChange
+  onStatusFilterChange,
+  onUserFilterChange,
+  onResetFilters
 }: DataTableProps) {
   const { t } = useTranslation()
   const [rowSelection, setRowSelection] = useState({})
@@ -68,41 +72,45 @@ export function ApiKeysTable({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
 
-  // Sync filters with the server state
-  const handleColumnFiltersChange = (updater: any) => {
+  // Sync server state to local column filters (for UI display)
+  React.useEffect(() => {
+    const newFilters: ColumnFiltersState = []
+    if (nameFilter) {
+      newFilters.push({ id: 'name', value: nameFilter })
+    }
+    if (statusFilter.length > 0) {
+      newFilters.push({ id: 'status', value: statusFilter })
+    }
+    if (userFilter.length > 0) {
+      newFilters.push({ id: 'user', value: userFilter })
+    }
+    setColumnFilters(newFilters)
+  }, [nameFilter, statusFilter, userFilter])
+
+  const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
     const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
     
-    // Find the name filter and sync it with the server
-    const nameFilterValue = newFilters.find((filter: any) => filter.id === 'name')?.value || ''
-    if (nameFilterValue !== nameFilter) {
-      onNameFilterChange(nameFilterValue)
+    // Extract filter values
+    const nameFilterValue = newFilters.find(f => f.id === 'name')?.value
+    const statusFilterValue = newFilters.find(f => f.id === 'status')?.value
+    const userFilterValue = newFilters.find(f => f.id === 'user')?.value
+    
+    // Only update if values actually change to prevent reset issues
+    const newNameFilter = typeof nameFilterValue === 'string' ? nameFilterValue : ''
+    if (newNameFilter !== nameFilter) {
+      onNameFilterChange(newNameFilter)
     }
     
-    // Find the user filter and sync it with the server
-    const userFilterValue = newFilters.find((filter: any) => filter.id === 'user')?.value
-    let userFilterString = ''
-    
-    if (userFilterValue) {
-      if (Array.isArray(userFilterValue)) {
-        userFilterString = userFilterValue.length > 0 ? userFilterValue[0] : ''
-      } else {
-        userFilterString = userFilterValue
-      }
+    const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : []
+    if (JSON.stringify(newStatusFilter.sort()) !== JSON.stringify(statusFilter.sort())) {
+      onStatusFilterChange(newStatusFilter)
     }
     
-    if (userFilterString !== userFilter) {
-      onUserFilterChange(userFilterString)
+    const newUserFilter = Array.isArray(userFilterValue) ? userFilterValue : []
+    if (JSON.stringify(newUserFilter.sort()) !== JSON.stringify(userFilter.sort())) {
+      onUserFilterChange(newUserFilter)
     }
-  }
-
-  // Initialize filters in column filters if they exist
-  const initialColumnFilters = []
-  if (nameFilter) {
-    initialColumnFilters.push({ id: 'name', value: nameFilter })
-  }
-  if (userFilter) {
-    initialColumnFilters.push({ id: 'user', value: [userFilter] })
   }
 
   const table = useReactTable({
@@ -112,7 +120,7 @@ export function ApiKeysTable({
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters: columnFilters.length === 0 && (nameFilter || userFilter) ? initialColumnFilters : columnFilters,
+      columnFilters,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
@@ -120,17 +128,15 @@ export function ApiKeysTable({
     onColumnFiltersChange: handleColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    manualPagination: true,
+    manualFiltering: true,
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    manualPagination: true,
-    manualFiltering: true, // Enable manual filtering for server-side filtering
   })
 
   return (
     <div className='space-y-4'>
-      <DataTableToolbar table={table} />
+      <DataTableToolbar table={table} onResetFilters={onResetFilters} />
       <div className='rounded-md border'>
         <Table>
           <TableHeader>
