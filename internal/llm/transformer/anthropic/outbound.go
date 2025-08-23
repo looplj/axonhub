@@ -120,9 +120,9 @@ func getDefaultBaseURL(config *Config) string {
 	}
 }
 
-// Name returns the name of the transformer.
-func (t *OutboundTransformer) Name() string {
-	return "claude/messages"
+// APIFormat returns the API format of the transformer.
+func (t *OutboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatAnthropicMessage
 }
 
 // TransformRequest transforms ChatCompletionRequest to Anthropic HTTP request.

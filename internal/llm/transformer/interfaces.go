@@ -11,8 +11,8 @@ import (
 // Inbound represents a transformer accpet the request from user and respond to use the transformed response.
 // e.g: OpenAPI transformer accepts the request from user with OpenAPI format and respond with OpenAI format.
 type Inbound interface {
-	// Name returns the name of the transformer.
-	Name() string
+	// APIFormat returns the API format of the transformer.
+	APIFormat() llm.APIFormat
 
 	// TransformRequest transforms HTTP request to the unified request format.
 	TransformRequest(ctx context.Context, request *httpclient.Request) (*llm.Request, error)
@@ -36,9 +36,9 @@ type Inbound interface {
 // Outbound represents a transformer that convert the generic Request to the undering provider format.
 // And transform the response from the undering provider format to generic Response format.
 type Outbound interface {
-	// Name returns the name of the transformer.
-	// e.g: openai/chat_completions, claude/messages, google/palm.
-	Name() string
+	// APIFormat returns the API format of the transformer.
+	// e.g: openai/chat_completions, claude/messages.
+	APIFormat() llm.APIFormat
 
 	// TransformError transforms the HTTP error response to the unified error response.
 	TransformError(ctx context.Context, err *httpclient.Error) *llm.ResponseError

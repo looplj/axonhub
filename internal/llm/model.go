@@ -58,7 +58,8 @@ type Request struct {
 	// How many chat completion choices to generate for each input message. Note that
 	// you will be charged based on the number of generated tokens across all of the
 	// choices. Keep `n` as `1` to minimize costs.
-	N *int64 `json:"n,omitempty"`
+	// NOTE: Not supported, always 1.
+	// N *int64 `json:"n,omitempty"`
 
 	// Number between -2.0 and 2.0. Positive values penalize new tokens based on
 	// whether they appear in the text so far, increasing the model's likelihood to
@@ -170,7 +171,18 @@ type Request struct {
 	ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
 
 	// Extra parameters for gateway functionality
-	ExtraParams map[string]interface{} `json:"extra_params,omitempty"`
+	// TODO support.
+	// ExtraParams map[string]any `json:"extra_params,omitempty"`
+
+	// Help fields， will not be sent to the llm service.
+
+	// RawRequest is the raw request from the client.
+	RawRequest *httpclient.Request `json:"-"`
+
+	// RawAPIFormat is the original format of the request.
+	// e.g. the request from the chat/completions endpoint is in the openai/chat_completion format.
+	RawAPIFormat APIFormat `json:"-"`
+	// end of help fields
 }
 
 type ToolFunction struct {

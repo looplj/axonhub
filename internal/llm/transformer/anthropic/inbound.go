@@ -21,9 +21,8 @@ func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 
-// Name returns the name of the transformer.
-func (t *InboundTransformer) Name() string {
-	return "claude/messages"
+func (t *InboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatAnthropicMessage
 }
 
 // TransformRequest transforms Anthropic HTTP request to ChatCompletionRequest.

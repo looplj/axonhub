@@ -34,7 +34,7 @@ func (s *RequestService) CreateRequest(
 	apiKey *ent.APIKey,
 	llmRequest *llm.Request,
 	httpRequest *httpclient.Request,
-	format string,
+	format llm.APIFormat,
 ) (*ent.Request, error) {
 	requestBodyBytes, err := xjson.Marshal(httpRequest.Body)
 	if err != nil {
@@ -49,7 +49,7 @@ func (s *RequestService) CreateRequest(
 	mut := client.Request.Create().
 		SetUser(user).
 		SetModelID(llmRequest.Model).
-		SetFormat(format).
+		SetFormat(string(format)).
 		SetSource(source).
 		SetStatus(request.StatusProcessing).
 		SetRequestBody(requestBodyBytes)
@@ -74,7 +74,7 @@ func (s *RequestService) CreateRequestExecution(
 	modelID string,
 	request *ent.Request,
 	channelRequest httpclient.Request,
-	format string,
+	format llm.APIFormat,
 ) (*ent.RequestExecution, error) {
 	requestBodyBytes, err := xjson.Marshal(channelRequest.Body)
 	if err != nil {
@@ -85,7 +85,7 @@ func (s *RequestService) CreateRequestExecution(
 	client := ent.FromContext(ctx)
 
 	return client.RequestExecution.Create().
-		SetFormat(format).
+		SetFormat(string(format)).
 		SetRequestID(request.ID).
 		SetUserID(request.UserID).
 		SetChannelID(channel.ID).

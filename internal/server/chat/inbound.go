@@ -125,9 +125,8 @@ type PersistentInboundTransformer struct {
 	state   *PersistenceState
 }
 
-// Name returns the name of the transformer.
-func (p *PersistentInboundTransformer) Name() string {
-	return p.wrapped.Name()
+func (p *PersistentInboundTransformer) APIFormat() llm.APIFormat {
+	return p.wrapped.APIFormat()
 }
 
 func (p *PersistentInboundTransformer) TransformError(ctx context.Context, rawErr *llm.ResponseError) *httpclient.Error {
@@ -148,7 +147,7 @@ func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, req
 			p.state.APIKey,
 			llmRequest,
 			request,
-			p.Name(),
+			p.APIFormat(),
 		)
 		if err != nil {
 			return nil, err

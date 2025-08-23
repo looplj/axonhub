@@ -22,9 +22,8 @@ func NewTextTransformer() *TextTransformer {
 	return &TextTransformer{}
 }
 
-// Name returns the name of the transformer.
-func (t *TextTransformer) Name() string {
-	return "aisdk/text"
+func (t *TextTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatAiSDKText
 }
 
 // AiSDKRequest represents the AI SDK request format.

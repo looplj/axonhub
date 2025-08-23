@@ -20,9 +20,8 @@ func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 
-// Name returns the name of the transformer.
-func (t *InboundTransformer) Name() string {
-	return "openai/chat_completions"
+func (t *InboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatOpenAIChatCompletion
 }
 
 // TransformRequest transforms HTTP request to ChatCompletionRequest.

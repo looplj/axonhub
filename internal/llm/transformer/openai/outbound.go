@@ -103,9 +103,9 @@ func validateConfig(config *Config) error {
 	return nil
 }
 
-// Name returns the name of the transformer.
-func (t *OutboundTransformer) Name() string {
-	return "openai/chat_completions"
+// APIFormat returns the API format of the transformer.
+func (t *OutboundTransformer) APIFormat() llm.APIFormat {
+	return llm.APIFormatOpenAIChatCompletion
 }
 
 // TransformRequest transforms ChatCompletionRequest to Request.
@@ -197,10 +197,7 @@ func (t *OutboundTransformer) TransformResponse(
 	return &chatResp, nil
 }
 
-func (t *OutboundTransformer) TransformStream(
-	ctx context.Context,
-	stream streams.Stream[*httpclient.StreamEvent],
-) (streams.Stream[*llm.Response], error) {
+func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
 	}), nil
