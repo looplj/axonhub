@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ColumnDef,
@@ -10,8 +10,6 @@ import {
   getCoreRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
-  getFilteredRowModel,
-  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import {
@@ -42,6 +40,12 @@ interface DataTableProps {
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
+  nameFilter: string
+  statusFilter: string[]
+  roleFilter: string[]
+  onNameFilterChange: (value: string) => void
+  onStatusFilterChange: (value: string[]) => void
+  onRoleFilterChange: (value: string[]) => void
 }
 
 export function UsersTable({ 
@@ -52,13 +56,60 @@ export function UsersTable({
   totalCount,
   onNextPage,
   onPreviousPage,
-  onPageSizeChange
+  onPageSizeChange,
+  nameFilter,
+  statusFilter,
+  roleFilter,
+  onNameFilterChange,
+  onStatusFilterChange,
+  onRoleFilterChange
 }: DataTableProps) {
   const { t } = useTranslation()
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
+
+  // Sync server state to local column filters (for UI display)
+  React.useEffect(() => {
+    const newFilters: ColumnFiltersState = []
+    if (nameFilter) {
+      newFilters.push({ id: 'firstName', value: nameFilter })
+    }
+    if (statusFilter.length > 0) {
+      newFilters.push({ id: 'status', value: statusFilter })
+    }
+    if (roleFilter.length > 0) {
+      newFilters.push({ id: 'role', value: roleFilter })
+    }
+    setColumnFilters(newFilters)
+  }, [nameFilter, statusFilter, roleFilter])
+
+  const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
+    setColumnFilters(newFilters)
+    
+    // Extract filter values
+    const nameFilterValue = newFilters.find(f => f.id === 'firstName')?.value
+    const statusFilterValue = newFilters.find(f => f.id === 'status')?.value
+    const roleFilterValue = newFilters.find(f => f.id === 'role')?.value
+    
+    // Only update if values actually change to prevent reset issues
+    const newNameFilter = typeof nameFilterValue === 'string' ? nameFilterValue : ''
+    if (newNameFilter !== nameFilter) {
+      onNameFilterChange(newNameFilter)
+    }
+    
+    const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : []
+    if (JSON.stringify(newStatusFilter.sort()) !== JSON.stringify(statusFilter.sort())) {
+      onStatusFilterChange(newStatusFilter)
+    }
+    
+    const newRoleFilter = Array.isArray(roleFilterValue) ? roleFilterValue : []
+    if (JSON.stringify(newRoleFilter.sort()) !== JSON.stringify(roleFilter.sort())) {
+      onRoleFilterChange(newRoleFilter)
+    }
+  }
 
   const table = useReactTable({
     data,
@@ -72,14 +123,13 @@ export function UsersTable({
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: handleColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    manualFiltering: true,
+    manualPagination: true,
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    manualPagination: true,
   })
 
   return (

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDebounce } from '@/hooks/use-debounce'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -17,10 +18,39 @@ function UsersContent() {
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
   
+  // Filter states
+  const [nameFilter, setNameFilter] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [roleFilter, setRoleFilter] = useState<string[]>([])
+  
+  const debouncedNameFilter = useDebounce(nameFilter, 300)
+  
+  // Build where clause for API filtering
+  const whereClause = (() => {
+    const where: Record<string, string | string[]> = {}
+    if (debouncedNameFilter) {
+      where.firstNameContainsFold = debouncedNameFilter
+    }
+    if (statusFilter.length > 0) {
+      where.statusIn = statusFilter
+    }
+    if (roleFilter.length > 0) {
+      // Note: This would need to be implemented based on the actual user role relationship
+      // For now, we'll leave it as a placeholder
+    }
+    return Object.keys(where).length > 0 ? where : undefined
+  })()
+  
   const { data, isLoading, error } = useUsers({
     first: pageSize,
     after: cursor,
+    where: whereClause,
   })
+
+  // Reset cursor when filters change
+  React.useEffect(() => {
+    setCursor(undefined)
+  }, [debouncedNameFilter, statusFilter, roleFilter])
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -58,6 +88,12 @@ function UsersContent() {
           onNextPage={handleNextPage}
           onPreviousPage={handlePreviousPage}
           onPageSizeChange={handlePageSizeChange}
+          nameFilter={nameFilter}
+          statusFilter={statusFilter}
+          roleFilter={roleFilter}
+          onNameFilterChange={setNameFilter}
+          onStatusFilterChange={setStatusFilter}
+          onRoleFilterChange={setRoleFilter}
         />
       )}
     </div>

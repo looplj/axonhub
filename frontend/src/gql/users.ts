@@ -17,8 +17,8 @@ export const ME_QUERY = `
 `;
 
 export const USERS_QUERY = `
-  query Users($first: Int, $after: Cursor) {
-    users(first: $first, after: $after) {
+  query Users($first: Int, $after: Cursor, $orderBy: UserOrder, $where: UserWhereInput) {
+    users(first: $first, after: $after, orderBy: $orderBy, where: $where) {
       edges {
         node {
           id

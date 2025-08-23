@@ -36,10 +36,8 @@ export function DataTableToolbar<TData>({
               column={table.getColumn('status')}
               title={t('users.filters.status')}
               options={[
-                { label: t('users.status.active'), value: 'active' },
-                { label: t('users.status.inactive'), value: 'inactive' },
-                { label: t('users.status.invited'), value: 'invited' },
-                { label: t('users.status.suspended'), value: 'suspended' },
+                { label: t('users.status.activated'), value: 'activated' },
+                { label: t('users.status.deactivated'), value: 'deactivated' },
               ]}
             />
           )}
