@@ -10,6 +10,14 @@ import { DataTableRowActions } from './data-table-row-actions'
 
 export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<Role>[] => [
   {
+    id: 'search',
+    header: () => null,
+    cell: () => null,
+    enableSorting: false,
+    enableHiding: false,
+    enableColumnFilter: true,
+  },
+  {
     id: 'select',
     header: ({ table }) => (
       <Checkbox

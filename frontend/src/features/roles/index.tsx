@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDebounce } from '@/hooks/use-debounce'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { LanguageSwitch } from '@/components/language-switch'
 import { RolesDialogs } from './components/roles-action-dialog'
@@ -20,10 +20,36 @@ function RolesContent() {
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
   
+  // Filter states - combined search for name or code
+  const [searchFilter, setSearchFilter] = useState<string>('')
+  
+  const debouncedSearchFilter = useDebounce(searchFilter, 300)
+  
+  // Build where clause for API filtering with OR logic
+  const whereClause = (() => {
+    if (!debouncedSearchFilter) {
+      return undefined
+    }
+    
+    // Use OR logic to search in both name and code fields
+    return {
+      or: [
+        { nameContainsFold: debouncedSearchFilter },
+        { codeContainsFold: debouncedSearchFilter }
+      ]
+    }
+  })()
+  
   const { data, isLoading, error } = useRoles({
     first: pageSize,
     after: cursor,
+    where: whereClause,
   })
+
+  // Reset cursor when filters change
+  React.useEffect(() => {
+    setCursor(undefined)
+  }, [debouncedSearchFilter])
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -62,6 +88,8 @@ function RolesContent() {
             onNextPage={handleNextPage}
             onPreviousPage={handlePreviousPage}
             onPageSizeChange={handlePageSizeChange}
+            searchFilter={searchFilter}
+            onSearchFilterChange={setSearchFilter}
           />
       )}
     </div>

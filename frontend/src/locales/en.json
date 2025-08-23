@@ -339,7 +339,7 @@
     "loadError": "Load failed:",
     "noResults": "No results.",
     "createRole": "Create Role",
-    "searchRoles": "Search role names...",
+    "searchRoles": "Search roles by name or code...",
     "columns": {
       "code": "Role Code",
       "name": "Role Name",
@@ -357,7 +357,9 @@
       "delete": "Delete"
     },
     "filters": {
-      "reset": "Reset"
+      "reset": "Reset",
+      "filterByName": "Filter by name...",
+      "filterByCode": "Filter by code..."
     },
     "dialogs": {
       "create": {

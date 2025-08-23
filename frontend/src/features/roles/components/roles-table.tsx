@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -9,8 +9,6 @@ import {
   getCoreRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
-  getFilteredRowModel,
-  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import {
@@ -24,12 +22,6 @@ import {
 import { ServerSidePagination } from '@/components/server-side-pagination'
 import { Role, RoleConnection } from '../data/schema'
 import { DataTableToolbar } from './data-table-toolbar'
-
-declare module '@tanstack/react-table' {
-  interface TableMeta<TData extends RowData> {
-    updateData: (rowIndex: number, columnId: string, value: unknown) => void
-  }
-}
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -47,6 +39,8 @@ interface DataTableProps {
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
+  searchFilter: string
+  onSearchFilterChange: (value: string) => void
 }
 
 export function RolesTable({ 
@@ -57,12 +51,38 @@ export function RolesTable({
   totalCount,
   onNextPage,
   onPreviousPage,
-  onPageSizeChange
+  onPageSizeChange,
+  searchFilter,
+  onSearchFilterChange
 }: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
+
+  // Sync server state to local column filters (for UI display)
+  React.useEffect(() => {
+    const newFilters: ColumnFiltersState = []
+    if (searchFilter) {
+      // Use 'search' as a virtual column ID for the combined search
+      newFilters.push({ id: 'search', value: searchFilter })
+    }
+    setColumnFilters(newFilters)
+  }, [searchFilter])
+
+  const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
+    setColumnFilters(newFilters)
+    
+    // Extract search filter value
+    const searchFilterValue = newFilters.find(f => f.id === 'search')?.value
+    
+    // Only update if values actually change to prevent reset issues
+    const newSearchFilter = typeof searchFilterValue === 'string' ? searchFilterValue : ''
+    if (newSearchFilter !== searchFilter) {
+      onSearchFilterChange(newSearchFilter)
+    }
+  }
 
   const table = useReactTable({
     data,
@@ -76,14 +96,13 @@ export function RolesTable({
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: handleColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    manualFiltering: true,
+    manualPagination: true,
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    manualPagination: true,
   })
 
   return (

@@ -371,7 +371,7 @@
     "loadError": "加载失败:",
     "noResults": "无结果。",
     "createRole": "新建角色",
-    "searchRoles": "搜索角色名称...",
+    "searchRoles": "按名称或代码搜索角色...",
     "columns": {
       "code": "角色代码",
       "name": "角色名称",
@@ -389,7 +389,9 @@
       "delete": "删除"
     },
     "filters": {
-      "reset": "重置"
+      "reset": "重置",
+      "filterByName": "按名称筛选...",
+      "filterByCode": "按代码筛选..."
     },
     "dialogs": {
       "create": {

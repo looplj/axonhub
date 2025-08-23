@@ -3,7 +3,6 @@ import { Table } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { userTypes } from '../data/data'
 import { DataTableFacetedFilter } from './data-table-faceted-filter'
 import { DataTableViewOptions } from './data-table-view-options'
 
@@ -39,13 +38,6 @@ export function DataTableToolbar<TData>({
                 { label: t('users.status.activated'), value: 'activated' },
                 { label: t('users.status.deactivated'), value: 'deactivated' },
               ]}
-            />
-          )}
-          {table.getColumn('role') && (
-            <DataTableFacetedFilter
-              column={table.getColumn('role')}
-              title={t('users.filters.role')}
-              options={userTypes.map((type) => ({ ...type }))}
             />
           )}
         </div>
