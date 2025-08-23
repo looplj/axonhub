@@ -448,7 +448,7 @@
       "status": "状态",
       "baseURL": "Base URL",
       "supportedModels": "支持的模型",
-      "defaultTestModel": "默认测试模型",
+      "test": "测试",
       "createdAt": "创建时间",
       "updatedAt": "更新时间",
       "actions": "操作",
@@ -510,9 +510,19 @@
         "title": "编辑渠道",
         "description": "修改渠道配置信息。"
       },
-      "delete": {
-        "title": "删除渠道",
-        "description": "确定要删除这个渠道吗？此操作无法撤销。"
+      "test": {
+        "title": "渠道模型测试",
+        "description": "使用 {{name}} 渠道测试选中的模型",
+        "searchPlaceholder": "搜索模型...",
+        "modelNameColumn": "模型名称",
+        "statusColumn": "状态",
+        "testAllButton": "批量测试{{count}}个模型",
+        "cancelButton": "取消",
+        "testModel": "测试",
+        "testingModel": "测试中...",
+        "testSuccess": "✅ 成功",
+        "testFailed": "❌ 失败",
+        "notStarted": "未开始"
       },
       "fields": {
         "name": {

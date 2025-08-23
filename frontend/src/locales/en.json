@@ -416,7 +416,7 @@
       "status": "Status",
       "baseURL": "Base URL",
       "supportedModels": "Supported Models",
-      "defaultTestModel": "Default Test Model",
+      "test": "Test",
       "createdAt": "Created At",
       "updatedAt": "Updated At",
       "actions": "Actions",
@@ -478,9 +478,19 @@
         "title": "Edit Channel",
         "description": "Modify channel configuration."
       },
-      "delete": {
-        "title": "Delete Channel",
-        "description": "Are you sure you want to delete this channel? This action cannot be undone."
+      "test": {
+        "title": "Test Channel",
+        "description": "Test {{name}} with selected models",
+        "searchPlaceholder": "Search models...",
+        "modelNameColumn": "Model Name",
+        "statusColumn": "Status",
+        "testAllButton": "Test {{count}} models",
+        "cancelButton": "Cancel",
+        "testModel": "Test",
+        "testingModel": "Testing...",
+        "testSuccess": "✅ Success",
+        "testFailed": "❌ Failed",
+        "notStarted": "Not started"
       },
       "fields": {
         "name": {

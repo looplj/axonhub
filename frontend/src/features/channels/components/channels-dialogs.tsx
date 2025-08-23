@@ -2,6 +2,7 @@ import { useChannels } from '../context/channels-context'
 import { ChannelsActionDialog } from './channels-action-dialog'
 import { ChannelsSettingsDialog } from './channels-settings-dialog'
 import { ChannelsStatusDialog } from './channels-status-dialog'
+import { ChannelsTestDialog } from './channels-test-dialog'
 
 export function ChannelsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = useChannels()
@@ -61,6 +62,18 @@ export function ChannelsDialogs() {
               }, 500)
             }}
             currentRow={currentRow}
+          />
+
+          <ChannelsTestDialog
+            key={`channel-test-${currentRow.id}`}
+            open={open === 'test'}
+            onOpenChange={() => {
+              setOpen('test')
+              setTimeout(() => {
+                setCurrentRow(null)
+              }, 500)
+            }}
+            channel={currentRow}
           />
         </>
       )}
