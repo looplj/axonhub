@@ -27,12 +27,20 @@ function RequestsContent() {
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
   const [userFilter, setUserFilter] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [sourceFilter, setSourceFilter] = useState<string[]>([])
   
   // Build where clause with filters
   const whereClause = (() => {
     const where: any = {}
     if (userFilter) {
       where.userID = userFilter
+    }
+    if (statusFilter.length > 0) {
+      where.statusIn = statusFilter
+    }
+    if (sourceFilter.length > 0) {
+      where.sourceIn = sourceFilter
     }
     return Object.keys(where).length > 0 ? where : undefined
   })()
@@ -94,6 +102,16 @@ function RequestsContent() {
     setCursor(undefined) // Reset to first page when filtering
   }
 
+  const handleStatusFilterChange = (filters: string[]) => {
+    setStatusFilter(filters)
+    setCursor(undefined) // Reset to first page when filtering
+  }
+
+  const handleSourceFilterChange = (filters: string[]) => {
+    setSourceFilter(filters)
+    setCursor(undefined) // Reset to first page when filtering
+  }
+
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
       <RequestsTable
@@ -102,10 +120,14 @@ function RequestsContent() {
         pageSize={pageSize}
         totalCount={data?.totalCount}
         userFilter={userFilter}
+        statusFilter={statusFilter}
+        sourceFilter={sourceFilter}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
         onUserFilterChange={handleUserFilterChange}
+        onStatusFilterChange={handleStatusFilterChange}
+        onSourceFilterChange={handleSourceFilterChange}
       />
     </div>
   )

@@ -41,10 +41,14 @@ interface RequestsTableProps {
   pageSize: number
   totalCount?: number
   userFilter: string
+  statusFilter: string[]
+  sourceFilter: string[]
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
   onUserFilterChange: (filter: string) => void
+  onStatusFilterChange: (filters: string[]) => void
+  onSourceFilterChange: (filters: string[]) => void
 }
 
 export function RequestsTable({
@@ -54,10 +58,14 @@ export function RequestsTable({
   totalCount,
   pageSize,
   userFilter,
+  statusFilter,
+  sourceFilter,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
   onUserFilterChange,
+  onStatusFilterChange,
+  onSourceFilterChange,
 }: RequestsTableProps) {
   const { t } = useTranslation()
   const requestsColumns = useRequestsColumns()
@@ -71,10 +79,13 @@ export function RequestsTable({
     const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
     
-    // Find the user filter and sync it with the server
+    // Find and sync filters with the server
     const userFilterValue = newFilters.find((filter: any) => filter.id === 'user')?.value
-    let userFilterString = ''
+    const statusFilterValue = newFilters.find((filter: any) => filter.id === 'status')?.value
+    const sourceFilterValue = newFilters.find((filter: any) => filter.id === 'source')?.value
     
+    // Handle user filter
+    let userFilterString = ''
     if (userFilterValue) {
       if (Array.isArray(userFilterValue)) {
         userFilterString = userFilterValue.length > 0 ? userFilterValue[0] : ''
@@ -86,12 +97,30 @@ export function RequestsTable({
     if (userFilterString !== userFilter) {
       onUserFilterChange(userFilterString)
     }
+    
+    // Handle status filter
+    const statusFilterArray = Array.isArray(statusFilterValue) ? statusFilterValue : []
+    if (JSON.stringify(statusFilterArray.sort()) !== JSON.stringify(statusFilter.sort())) {
+      onStatusFilterChange(statusFilterArray)
+    }
+    
+    // Handle source filter
+    const sourceFilterArray = Array.isArray(sourceFilterValue) ? sourceFilterValue : []
+    if (JSON.stringify(sourceFilterArray.sort()) !== JSON.stringify(sourceFilter.sort())) {
+      onSourceFilterChange(sourceFilterArray)
+    }
   }
 
   // Initialize filters in column filters if they exist
   const initialColumnFilters = []
   if (userFilter) {
     initialColumnFilters.push({ id: 'user', value: [userFilter] })
+  }
+  if (statusFilter.length > 0) {
+    initialColumnFilters.push({ id: 'status', value: statusFilter })
+  }
+  if (sourceFilter.length > 0) {
+    initialColumnFilters.push({ id: 'source', value: sourceFilter })
   }
 
   const table = useReactTable({
@@ -101,7 +130,7 @@ export function RequestsTable({
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters: columnFilters.length === 0 && userFilter ? initialColumnFilters : columnFilters,
+      columnFilters: columnFilters.length === 0 && (userFilter || statusFilter.length > 0 || sourceFilter.length > 0) ? initialColumnFilters : columnFilters,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,

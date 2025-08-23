@@ -32,8 +32,6 @@ export function DailyRequestStats() {
       day: 'numeric' 
     }),
     total: stat.count,
-    success: stat.successCount,
-    failed: stat.failedCount,
   })) || []
 
   return (
