@@ -106,5 +106,6 @@ node_modules/
 playwright-report/
 .trae/summary/
 .claude
+.qoder
 
 config.yml

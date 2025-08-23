@@ -22,8 +22,9 @@ import (
 // ChannelUpdate is the builder for updating Channel entities.
 type ChannelUpdate struct {
 	config
-	hooks    []Hook
-	mutation *ChannelMutation
+	hooks     []Hook
+	mutation  *ChannelMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the ChannelUpdate builder.
@@ -280,6 +281,12 @@ func (cu *ChannelUpdate) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (cu *ChannelUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *ChannelUpdate {
+	cu.modifiers = append(cu.modifiers, modifiers...)
+	return cu
+}
+
 func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := cu.check(); err != nil {
 		return n, err
@@ -423,6 +430,7 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(cu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, cu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{channel.Label}
@@ -438,9 +446,10 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // ChannelUpdateOne is the builder for updating a single Channel entity.
 type ChannelUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *ChannelMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *ChannelMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetUpdatedAt sets the "updated_at" field.
@@ -704,6 +713,12 @@ func (cuo *ChannelUpdateOne) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (cuo *ChannelUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *ChannelUpdateOne {
+	cuo.modifiers = append(cuo.modifiers, modifiers...)
+	return cuo
+}
+
 func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err error) {
 	if err := cuo.check(); err != nil {
 		return _node, err
@@ -864,6 +879,7 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(cuo.modifiers...)
 	_node = &Channel{config: cuo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

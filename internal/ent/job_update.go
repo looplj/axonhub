@@ -17,8 +17,9 @@ import (
 // JobUpdate is the builder for updating Job entities.
 type JobUpdate struct {
 	config
-	hooks    []Hook
-	mutation *JobMutation
+	hooks     []Hook
+	mutation  *JobMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the JobUpdate builder.
@@ -73,6 +74,12 @@ func (ju *JobUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (ju *JobUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *JobUpdate {
+	ju.modifiers = append(ju.modifiers, modifiers...)
+	return ju
+}
+
 func (ju *JobUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(job.Table, job.Columns, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt))
 	if ps := ju.mutation.predicates; len(ps) > 0 {
@@ -85,6 +92,7 @@ func (ju *JobUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := ju.mutation.Context(); ok {
 		_spec.SetField(job.FieldContext, field.TypeString, value)
 	}
+	_spec.AddModifiers(ju.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, ju.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{job.Label}
@@ -100,9 +108,10 @@ func (ju *JobUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // JobUpdateOne is the builder for updating a single Job entity.
 type JobUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *JobMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *JobMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetContext sets the "context" field.
@@ -164,6 +173,12 @@ func (juo *JobUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (juo *JobUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *JobUpdateOne {
+	juo.modifiers = append(juo.modifiers, modifiers...)
+	return juo
+}
+
 func (juo *JobUpdateOne) sqlSave(ctx context.Context) (_node *Job, err error) {
 	_spec := sqlgraph.NewUpdateSpec(job.Table, job.Columns, sqlgraph.NewFieldSpec(job.FieldID, field.TypeInt))
 	id, ok := juo.mutation.ID()
@@ -193,6 +208,7 @@ func (juo *JobUpdateOne) sqlSave(ctx context.Context) (_node *Job, err error) {
 	if value, ok := juo.mutation.Context(); ok {
 		_spec.SetField(job.FieldContext, field.TypeString, value)
 	}
+	_spec.AddModifiers(juo.modifiers...)
 	_node = &Job{config: juo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

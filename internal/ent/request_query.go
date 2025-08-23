@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -30,9 +31,9 @@ type RequestQuery struct {
 	withUser            *UserQuery
 	withAPIKey          *APIKeyQuery
 	withExecutions      *RequestExecutionQuery
-	withFKs             bool
-	modifiers           []func(*sql.Selector)
+	withChannel         *ChannelQuery
 	loadTotal           []func(context.Context, []*Request) error
+	modifiers           []func(*sql.Selector)
 	withNamedExecutions map[string]*RequestExecutionQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -129,6 +130,28 @@ func (rq *RequestQuery) QueryExecutions() *RequestExecutionQuery {
 			sqlgraph.From(request.Table, request.FieldID, selector),
 			sqlgraph.To(requestexecution.Table, requestexecution.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, request.ExecutionsTable, request.ExecutionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(rq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryChannel chains the current query on the "channel" edge.
+func (rq *RequestQuery) QueryChannel() *ChannelQuery {
+	query := (&ChannelClient{config: rq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := rq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := rq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(request.Table, request.FieldID, selector),
+			sqlgraph.To(channel.Table, channel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, request.ChannelTable, request.ChannelColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(rq.driver.Dialect(), step)
 		return fromU, nil
@@ -331,9 +354,11 @@ func (rq *RequestQuery) Clone() *RequestQuery {
 		withUser:       rq.withUser.Clone(),
 		withAPIKey:     rq.withAPIKey.Clone(),
 		withExecutions: rq.withExecutions.Clone(),
+		withChannel:    rq.withChannel.Clone(),
 		// clone intermediate query.
-		sql:  rq.sql.Clone(),
-		path: rq.path,
+		sql:       rq.sql.Clone(),
+		path:      rq.path,
+		modifiers: append([]func(*sql.Selector){}, rq.modifiers...),
 	}
 }
 
@@ -367,6 +392,17 @@ func (rq *RequestQuery) WithExecutions(opts ...func(*RequestExecutionQuery)) *Re
 		opt(query)
 	}
 	rq.withExecutions = query
+	return rq
+}
+
+// WithChannel tells the query-builder to eager-load the nodes that are connected to
+// the "channel" edge. The optional arguments are used to configure the query builder of the edge.
+func (rq *RequestQuery) WithChannel(opts ...func(*ChannelQuery)) *RequestQuery {
+	query := (&ChannelClient{config: rq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	rq.withChannel = query
 	return rq
 }
 
@@ -453,17 +489,14 @@ func (rq *RequestQuery) prepareQuery(ctx context.Context) error {
 func (rq *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Request, error) {
 	var (
 		nodes       = []*Request{}
-		withFKs     = rq.withFKs
 		_spec       = rq.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			rq.withUser != nil,
 			rq.withAPIKey != nil,
 			rq.withExecutions != nil,
+			rq.withChannel != nil,
 		}
 	)
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, request.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Request).scanValues(nil, columns)
 	}
@@ -501,6 +534,12 @@ func (rq *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Requ
 		if err := rq.loadExecutions(ctx, query, nodes,
 			func(n *Request) { n.Edges.Executions = []*RequestExecution{} },
 			func(n *Request, e *RequestExecution) { n.Edges.Executions = append(n.Edges.Executions, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := rq.withChannel; query != nil {
+		if err := rq.loadChannel(ctx, query, nodes, nil,
+			func(n *Request, e *Channel) { n.Edges.Channel = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -607,6 +646,35 @@ func (rq *RequestQuery) loadExecutions(ctx context.Context, query *RequestExecut
 	}
 	return nil
 }
+func (rq *RequestQuery) loadChannel(ctx context.Context, query *ChannelQuery, nodes []*Request, init func(*Request), assign func(*Request, *Channel)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*Request)
+	for i := range nodes {
+		fk := nodes[i].ChannelID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(channel.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "channel_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
 
 func (rq *RequestQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := rq.querySpec()
@@ -641,6 +709,9 @@ func (rq *RequestQuery) querySpec() *sqlgraph.QuerySpec {
 		}
 		if rq.withAPIKey != nil {
 			_spec.Node.AddColumnOnce(request.FieldAPIKeyID)
+		}
+		if rq.withChannel != nil {
+			_spec.Node.AddColumnOnce(request.FieldChannelID)
 		}
 	}
 	if ps := rq.predicates; len(ps) > 0 {
@@ -681,6 +752,9 @@ func (rq *RequestQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if rq.ctx.Unique != nil && *rq.ctx.Unique {
 		selector.Distinct()
 	}
+	for _, m := range rq.modifiers {
+		m(selector)
+	}
 	for _, p := range rq.predicates {
 		p(selector)
 	}
@@ -696,6 +770,12 @@ func (rq *RequestQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (rq *RequestQuery) Modify(modifiers ...func(s *sql.Selector)) *RequestSelect {
+	rq.modifiers = append(rq.modifiers, modifiers...)
+	return rq.Select()
 }
 
 // WithNamedExecutions tells the query-builder to eager-load the nodes that are connected to the "executions"
@@ -800,4 +880,10 @@ func (rs *RequestSelect) sqlScan(ctx context.Context, root *RequestQuery, v any)
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (rs *RequestSelect) Modify(modifiers ...func(s *sql.Selector)) *RequestSelect {
+	rs.modifiers = append(rs.modifiers, modifiers...)
+	return rs
 }

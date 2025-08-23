@@ -26,8 +26,8 @@ type RequestExecutionQuery struct {
 	predicates  []predicate.RequestExecution
 	withRequest *RequestQuery
 	withChannel *ChannelQuery
-	modifiers   []func(*sql.Selector)
 	loadTotal   []func(context.Context, []*RequestExecution) error
+	modifiers   []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -303,8 +303,9 @@ func (req *RequestExecutionQuery) Clone() *RequestExecutionQuery {
 		withRequest: req.withRequest.Clone(),
 		withChannel: req.withChannel.Clone(),
 		// clone intermediate query.
-		sql:  req.sql.Clone(),
-		path: req.path,
+		sql:       req.sql.Clone(),
+		path:      req.path,
+		modifiers: append([]func(*sql.Selector){}, req.modifiers...),
 	}
 }
 
@@ -586,6 +587,9 @@ func (req *RequestExecutionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if req.ctx.Unique != nil && *req.ctx.Unique {
 		selector.Distinct()
 	}
+	for _, m := range req.modifiers {
+		m(selector)
+	}
 	for _, p := range req.predicates {
 		p(selector)
 	}
@@ -601,6 +605,12 @@ func (req *RequestExecutionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (req *RequestExecutionQuery) Modify(modifiers ...func(s *sql.Selector)) *RequestExecutionSelect {
+	req.modifiers = append(req.modifiers, modifiers...)
+	return req.Select()
 }
 
 // RequestExecutionGroupBy is the group-by builder for RequestExecution entities.
@@ -691,4 +701,10 @@ func (res *RequestExecutionSelect) sqlScan(ctx context.Context, root *RequestExe
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (res *RequestExecutionSelect) Modify(modifiers ...func(s *sql.Selector)) *RequestExecutionSelect {
+	res.modifiers = append(res.modifiers, modifiers...)
+	return res
 }

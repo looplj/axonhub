@@ -26,6 +26,9 @@ func (RequestExecution) Indexes() []ent.Index {
 		index.Fields("request_id").
 			StorageKey("request_executions_by_request_id").
 			Unique(),
+
+		index.Fields("channel_id").
+			StorageKey("request_executions_by_channel_id_created_at"),
 	}
 }
 

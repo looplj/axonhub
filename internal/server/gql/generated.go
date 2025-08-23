@@ -131,21 +131,16 @@ type ComplexityRoot struct {
 	}
 
 	DailyRequestStats struct {
-		Count        func(childComplexity int) int
-		Date         func(childComplexity int) int
-		FailedCount  func(childComplexity int) int
-		SuccessCount func(childComplexity int) int
+		Count func(childComplexity int) int
+		Date  func(childComplexity int) int
 	}
 
-	DashboardStats struct {
+	DashboardOverview struct {
 		AverageResponseTime func(childComplexity int) int
 		FailedRequests      func(childComplexity int) int
 		RequestsThisMonth   func(childComplexity int) int
 		RequestsThisWeek    func(childComplexity int) int
 		RequestsToday       func(childComplexity int) int
-		SuccessfulRequests  func(childComplexity int) int
-		TotalAPIKeys        func(childComplexity int) int
-		TotalChannels       func(childComplexity int) int
 		TotalRequests       func(childComplexity int) int
 		TotalUsers          func(childComplexity int) int
 	}
@@ -207,30 +202,30 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		APIKeys            func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) int
-		AllScopes          func(childComplexity int) int
-		Channels           func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
-		DailyRequestStats  func(childComplexity int, days *int) int
-		DashboardStats     func(childComplexity int) int
-		HourlyRequestStats func(childComplexity int, date *string) int
-		Me                 func(childComplexity int) int
-		Node               func(childComplexity int, id objects.GUID) int
-		Nodes              func(childComplexity int, ids []*objects.GUID) int
-		Requests           func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
-		RequestsByChannel  func(childComplexity int) int
-		RequestsByModel    func(childComplexity int) int
-		RequestsByStatus   func(childComplexity int) int
-		Roles              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) int
-		SystemSettings     func(childComplexity int) int
-		SystemStatus       func(childComplexity int) int
-		Systems            func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
-		TopUsers           func(childComplexity int, limit *int) int
-		Users              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) int
+		APIKeys               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) int
+		AllScopes             func(childComplexity int) int
+		Channels              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
+		DailyRequestStats     func(childComplexity int, days *int) int
+		DashboardOverview     func(childComplexity int) int
+		Me                    func(childComplexity int) int
+		Node                  func(childComplexity int, id objects.GUID) int
+		Nodes                 func(childComplexity int, ids []*objects.GUID) int
+		RequestStatsByChannel func(childComplexity int) int
+		RequestStatsByModel   func(childComplexity int) int
+		Requests              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
+		Roles                 func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) int
+		SystemSettings        func(childComplexity int) int
+		SystemStatus          func(childComplexity int) int
+		Systems               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
+		TopRequestsUsers      func(childComplexity int, limit *int) int
+		Users                 func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) int
 	}
 
 	Request struct {
 		APIKey         func(childComplexity int) int
 		APIKeyID       func(childComplexity int) int
+		Channel        func(childComplexity int) int
+		ChannelID      func(childComplexity int) int
 		CreatedAt      func(childComplexity int) int
 		DeletedAt      func(childComplexity int) int
 		Executions     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestExecutionOrder, where *ent.RequestExecutionWhereInput) int
@@ -287,20 +282,15 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
-	RequestsByChannel struct {
+	RequestStatsByChannel struct {
 		ChannelName func(childComplexity int) int
 		ChannelType func(childComplexity int) int
 		Count       func(childComplexity int) int
 	}
 
-	RequestsByModel struct {
+	RequestStatsByModel struct {
 		Count   func(childComplexity int) int
 		ModelID func(childComplexity int) int
-	}
-
-	RequestsByStatus struct {
-		Count  func(childComplexity int) int
-		Status func(childComplexity int) int
 	}
 
 	Role struct {
@@ -377,7 +367,7 @@ type ComplexityRoot struct {
 		Success func(childComplexity int) int
 	}
 
-	TopUsers struct {
+	TopRequestsUsers struct {
 		RequestCount func(childComplexity int) int
 		UserEmail    func(childComplexity int) int
 		UserID       func(childComplexity int) int
@@ -463,13 +453,11 @@ type QueryResolver interface {
 	Roles(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) (*ent.RoleConnection, error)
 	Systems(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) (*ent.SystemConnection, error)
 	Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error)
-	DashboardStats(ctx context.Context) (*DashboardStats, error)
-	RequestsByStatus(ctx context.Context) ([]*RequestsByStatus, error)
-	RequestsByChannel(ctx context.Context) ([]*RequestsByChannel, error)
-	RequestsByModel(ctx context.Context) ([]*RequestsByModel, error)
+	DashboardOverview(ctx context.Context) (*DashboardOverview, error)
+	RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error)
+	RequestStatsByModel(ctx context.Context) ([]*RequestStatsByModel, error)
 	DailyRequestStats(ctx context.Context, days *int) ([]*DailyRequestStats, error)
-	HourlyRequestStats(ctx context.Context, date *string) ([]*HourlyRequestStats, error)
-	TopUsers(ctx context.Context, limit *int) ([]*TopUsers, error)
+	TopRequestsUsers(ctx context.Context, limit *int) ([]*TopRequestsUsers, error)
 	AllScopes(ctx context.Context) ([]*ScopeInfo, error)
 	Me(ctx context.Context) (*UserInfo, error)
 	SystemStatus(ctx context.Context) (*SystemStatus, error)
@@ -480,6 +468,8 @@ type RequestResolver interface {
 
 	UserID(ctx context.Context, obj *ent.Request) (*objects.GUID, error)
 	APIKeyID(ctx context.Context, obj *ent.Request) (*objects.GUID, error)
+
+	ChannelID(ctx context.Context, obj *ent.Request) (*objects.GUID, error)
 }
 type RequestExecutionResolver interface {
 	ID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error)
@@ -825,89 +815,54 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.DailyRequestStats.Date(childComplexity), true
 
-	case "DailyRequestStats.failedCount":
-		if e.complexity.DailyRequestStats.FailedCount == nil {
+	case "DashboardOverview.averageResponseTime":
+		if e.complexity.DashboardOverview.AverageResponseTime == nil {
 			break
 		}
 
-		return e.complexity.DailyRequestStats.FailedCount(childComplexity), true
+		return e.complexity.DashboardOverview.AverageResponseTime(childComplexity), true
 
-	case "DailyRequestStats.successCount":
-		if e.complexity.DailyRequestStats.SuccessCount == nil {
+	case "DashboardOverview.failedRequests":
+		if e.complexity.DashboardOverview.FailedRequests == nil {
 			break
 		}
 
-		return e.complexity.DailyRequestStats.SuccessCount(childComplexity), true
+		return e.complexity.DashboardOverview.FailedRequests(childComplexity), true
 
-	case "DashboardStats.averageResponseTime":
-		if e.complexity.DashboardStats.AverageResponseTime == nil {
+	case "DashboardOverview.requestsThisMonth":
+		if e.complexity.DashboardOverview.RequestsThisMonth == nil {
 			break
 		}
 
-		return e.complexity.DashboardStats.AverageResponseTime(childComplexity), true
+		return e.complexity.DashboardOverview.RequestsThisMonth(childComplexity), true
 
-	case "DashboardStats.failedRequests":
-		if e.complexity.DashboardStats.FailedRequests == nil {
+	case "DashboardOverview.requestsThisWeek":
+		if e.complexity.DashboardOverview.RequestsThisWeek == nil {
 			break
 		}
 
-		return e.complexity.DashboardStats.FailedRequests(childComplexity), true
+		return e.complexity.DashboardOverview.RequestsThisWeek(childComplexity), true
 
-	case "DashboardStats.requestsThisMonth":
-		if e.complexity.DashboardStats.RequestsThisMonth == nil {
+	case "DashboardOverview.requestsToday":
+		if e.complexity.DashboardOverview.RequestsToday == nil {
 			break
 		}
 
-		return e.complexity.DashboardStats.RequestsThisMonth(childComplexity), true
+		return e.complexity.DashboardOverview.RequestsToday(childComplexity), true
 
-	case "DashboardStats.requestsThisWeek":
-		if e.complexity.DashboardStats.RequestsThisWeek == nil {
+	case "DashboardOverview.totalRequests":
+		if e.complexity.DashboardOverview.TotalRequests == nil {
 			break
 		}
 
-		return e.complexity.DashboardStats.RequestsThisWeek(childComplexity), true
+		return e.complexity.DashboardOverview.TotalRequests(childComplexity), true
 
-	case "DashboardStats.requestsToday":
-		if e.complexity.DashboardStats.RequestsToday == nil {
+	case "DashboardOverview.totalUsers":
+		if e.complexity.DashboardOverview.TotalUsers == nil {
 			break
 		}
 
-		return e.complexity.DashboardStats.RequestsToday(childComplexity), true
-
-	case "DashboardStats.successfulRequests":
-		if e.complexity.DashboardStats.SuccessfulRequests == nil {
-			break
-		}
-
-		return e.complexity.DashboardStats.SuccessfulRequests(childComplexity), true
-
-	case "DashboardStats.totalAPIKeys":
-		if e.complexity.DashboardStats.TotalAPIKeys == nil {
-			break
-		}
-
-		return e.complexity.DashboardStats.TotalAPIKeys(childComplexity), true
-
-	case "DashboardStats.totalChannels":
-		if e.complexity.DashboardStats.TotalChannels == nil {
-			break
-		}
-
-		return e.complexity.DashboardStats.TotalChannels(childComplexity), true
-
-	case "DashboardStats.totalRequests":
-		if e.complexity.DashboardStats.TotalRequests == nil {
-			break
-		}
-
-		return e.complexity.DashboardStats.TotalRequests(childComplexity), true
-
-	case "DashboardStats.totalUsers":
-		if e.complexity.DashboardStats.TotalUsers == nil {
-			break
-		}
-
-		return e.complexity.DashboardStats.TotalUsers(childComplexity), true
+		return e.complexity.DashboardOverview.TotalUsers(childComplexity), true
 
 	case "GCPCredential.jsonData":
 		if e.complexity.GCPCredential.JSONData == nil {
@@ -1277,24 +1232,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.DailyRequestStats(childComplexity, args["days"].(*int)), true
 
-	case "Query.dashboardStats":
-		if e.complexity.Query.DashboardStats == nil {
+	case "Query.dashboardOverview":
+		if e.complexity.Query.DashboardOverview == nil {
 			break
 		}
 
-		return e.complexity.Query.DashboardStats(childComplexity), true
-
-	case "Query.hourlyRequestStats":
-		if e.complexity.Query.HourlyRequestStats == nil {
-			break
-		}
-
-		args, err := ec.field_Query_hourlyRequestStats_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.HourlyRequestStats(childComplexity, args["date"].(*string)), true
+		return e.complexity.Query.DashboardOverview(childComplexity), true
 
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
@@ -1327,6 +1270,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Nodes(childComplexity, args["ids"].([]*objects.GUID)), true
 
+	case "Query.requestStatsByChannel":
+		if e.complexity.Query.RequestStatsByChannel == nil {
+			break
+		}
+
+		return e.complexity.Query.RequestStatsByChannel(childComplexity), true
+
+	case "Query.requestStatsByModel":
+		if e.complexity.Query.RequestStatsByModel == nil {
+			break
+		}
+
+		return e.complexity.Query.RequestStatsByModel(childComplexity), true
+
 	case "Query.requests":
 		if e.complexity.Query.Requests == nil {
 			break
@@ -1338,27 +1295,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Requests(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.RequestOrder), args["where"].(*ent.RequestWhereInput)), true
-
-	case "Query.requestsByChannel":
-		if e.complexity.Query.RequestsByChannel == nil {
-			break
-		}
-
-		return e.complexity.Query.RequestsByChannel(childComplexity), true
-
-	case "Query.requestsByModel":
-		if e.complexity.Query.RequestsByModel == nil {
-			break
-		}
-
-		return e.complexity.Query.RequestsByModel(childComplexity), true
-
-	case "Query.requestsByStatus":
-		if e.complexity.Query.RequestsByStatus == nil {
-			break
-		}
-
-		return e.complexity.Query.RequestsByStatus(childComplexity), true
 
 	case "Query.roles":
 		if e.complexity.Query.Roles == nil {
@@ -1398,17 +1334,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Systems(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.SystemOrder), args["where"].(*ent.SystemWhereInput)), true
 
-	case "Query.topUsers":
-		if e.complexity.Query.TopUsers == nil {
+	case "Query.topRequestsUsers":
+		if e.complexity.Query.TopRequestsUsers == nil {
 			break
 		}
 
-		args, err := ec.field_Query_topUsers_args(ctx, rawArgs)
+		args, err := ec.field_Query_topRequestsUsers_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.TopUsers(childComplexity, args["limit"].(*int)), true
+		return e.complexity.Query.TopRequestsUsers(childComplexity, args["limit"].(*int)), true
 
 	case "Query.users":
 		if e.complexity.Query.Users == nil {
@@ -1435,6 +1371,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.APIKeyID(childComplexity), true
+
+	case "Request.channel":
+		if e.complexity.Request.Channel == nil {
+			break
+		}
+
+		return e.complexity.Request.Channel(childComplexity), true
+
+	case "Request.channelID":
+		if e.complexity.Request.ChannelID == nil {
+			break
+		}
+
+		return e.complexity.Request.ChannelID(childComplexity), true
 
 	case "Request.createdAt":
 		if e.complexity.Request.CreatedAt == nil {
@@ -1714,54 +1664,40 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RequestExecutionEdge.Node(childComplexity), true
 
-	case "RequestsByChannel.channelName":
-		if e.complexity.RequestsByChannel.ChannelName == nil {
+	case "RequestStatsByChannel.channelName":
+		if e.complexity.RequestStatsByChannel.ChannelName == nil {
 			break
 		}
 
-		return e.complexity.RequestsByChannel.ChannelName(childComplexity), true
+		return e.complexity.RequestStatsByChannel.ChannelName(childComplexity), true
 
-	case "RequestsByChannel.channelType":
-		if e.complexity.RequestsByChannel.ChannelType == nil {
+	case "RequestStatsByChannel.channelType":
+		if e.complexity.RequestStatsByChannel.ChannelType == nil {
 			break
 		}
 
-		return e.complexity.RequestsByChannel.ChannelType(childComplexity), true
+		return e.complexity.RequestStatsByChannel.ChannelType(childComplexity), true
 
-	case "RequestsByChannel.count":
-		if e.complexity.RequestsByChannel.Count == nil {
+	case "RequestStatsByChannel.count":
+		if e.complexity.RequestStatsByChannel.Count == nil {
 			break
 		}
 
-		return e.complexity.RequestsByChannel.Count(childComplexity), true
+		return e.complexity.RequestStatsByChannel.Count(childComplexity), true
 
-	case "RequestsByModel.count":
-		if e.complexity.RequestsByModel.Count == nil {
+	case "RequestStatsByModel.count":
+		if e.complexity.RequestStatsByModel.Count == nil {
 			break
 		}
 
-		return e.complexity.RequestsByModel.Count(childComplexity), true
+		return e.complexity.RequestStatsByModel.Count(childComplexity), true
 
-	case "RequestsByModel.modelId":
-		if e.complexity.RequestsByModel.ModelID == nil {
+	case "RequestStatsByModel.modelId":
+		if e.complexity.RequestStatsByModel.ModelID == nil {
 			break
 		}
 
-		return e.complexity.RequestsByModel.ModelID(childComplexity), true
-
-	case "RequestsByStatus.count":
-		if e.complexity.RequestsByStatus.Count == nil {
-			break
-		}
-
-		return e.complexity.RequestsByStatus.Count(childComplexity), true
-
-	case "RequestsByStatus.status":
-		if e.complexity.RequestsByStatus.Status == nil {
-			break
-		}
-
-		return e.complexity.RequestsByStatus.Status(childComplexity), true
+		return e.complexity.RequestStatsByModel.ModelID(childComplexity), true
 
 	case "Role.code":
 		if e.complexity.Role.Code == nil {
@@ -2034,33 +1970,33 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TestChannelPayload.Success(childComplexity), true
 
-	case "TopUsers.requestCount":
-		if e.complexity.TopUsers.RequestCount == nil {
+	case "TopRequestsUsers.requestCount":
+		if e.complexity.TopRequestsUsers.RequestCount == nil {
 			break
 		}
 
-		return e.complexity.TopUsers.RequestCount(childComplexity), true
+		return e.complexity.TopRequestsUsers.RequestCount(childComplexity), true
 
-	case "TopUsers.userEmail":
-		if e.complexity.TopUsers.UserEmail == nil {
+	case "TopRequestsUsers.userEmail":
+		if e.complexity.TopRequestsUsers.UserEmail == nil {
 			break
 		}
 
-		return e.complexity.TopUsers.UserEmail(childComplexity), true
+		return e.complexity.TopRequestsUsers.UserEmail(childComplexity), true
 
-	case "TopUsers.userId":
-		if e.complexity.TopUsers.UserID == nil {
+	case "TopRequestsUsers.userId":
+		if e.complexity.TopRequestsUsers.UserID == nil {
 			break
 		}
 
-		return e.complexity.TopUsers.UserID(childComplexity), true
+		return e.complexity.TopRequestsUsers.UserID(childComplexity), true
 
-	case "TopUsers.userName":
-		if e.complexity.TopUsers.UserName == nil {
+	case "TopRequestsUsers.userName":
+		if e.complexity.TopRequestsUsers.UserName == nil {
 			break
 		}
 
-		return e.complexity.TopUsers.UserName(childComplexity), true
+		return e.complexity.TopRequestsUsers.UserName(childComplexity), true
 
 	case "User.apiKeys":
 		if e.complexity.User.APIKeys == nil {
@@ -3819,34 +3755,6 @@ func (ec *executionContext) field_Query_dailyRequestStats_argsDays(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Query_hourlyRequestStats_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Query_hourlyRequestStats_argsDate(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["date"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Query_hourlyRequestStats_argsDate(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*string, error) {
-	if _, ok := rawArgs["date"]; !ok {
-		var zeroVal *string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("date"))
-	if tmp, ok := rawArgs["date"]; ok {
-		return ec.unmarshalOString2ᚖstring(ctx, tmp)
-	}
-
-	var zeroVal *string
-	return zeroVal, nil
-}
-
 func (ec *executionContext) field_Query_node_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4332,17 +4240,17 @@ func (ec *executionContext) field_Query_systems_argsWhere(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Query_topUsers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Query_topRequestsUsers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_topUsers_argsLimit(ctx, rawArgs)
+	arg0, err := ec.field_Query_topRequestsUsers_argsLimit(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["limit"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query_topUsers_argsLimit(
+func (ec *executionContext) field_Query_topRequestsUsers_argsLimit(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (*int, error) {
@@ -7353,96 +7261,8 @@ func (ec *executionContext) fieldContext_DailyRequestStats_count(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _DailyRequestStats_successCount(ctx context.Context, field graphql.CollectedField, obj *DailyRequestStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DailyRequestStats_successCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.SuccessCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DailyRequestStats_successCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DailyRequestStats",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DailyRequestStats_failedCount(ctx context.Context, field graphql.CollectedField, obj *DailyRequestStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DailyRequestStats_failedCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.FailedCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DailyRequestStats_failedCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DailyRequestStats",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DashboardStats_totalUsers(ctx context.Context, field graphql.CollectedField, obj *DashboardStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardStats_totalUsers(ctx, field)
+func (ec *executionContext) _DashboardOverview_totalUsers(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardOverview_totalUsers(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7472,9 +7292,9 @@ func (ec *executionContext) _DashboardStats_totalUsers(ctx context.Context, fiel
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_DashboardStats_totalUsers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DashboardOverview_totalUsers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "DashboardStats",
+		Object:     "DashboardOverview",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7485,52 +7305,8 @@ func (ec *executionContext) fieldContext_DashboardStats_totalUsers(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _DashboardStats_totalChannels(ctx context.Context, field graphql.CollectedField, obj *DashboardStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardStats_totalChannels(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TotalChannels, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DashboardStats_totalChannels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DashboardStats",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DashboardStats_totalRequests(ctx context.Context, field graphql.CollectedField, obj *DashboardStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardStats_totalRequests(ctx, field)
+func (ec *executionContext) _DashboardOverview_totalRequests(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardOverview_totalRequests(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7560,9 +7336,9 @@ func (ec *executionContext) _DashboardStats_totalRequests(ctx context.Context, f
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_DashboardStats_totalRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DashboardOverview_totalRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "DashboardStats",
+		Object:     "DashboardOverview",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7573,52 +7349,8 @@ func (ec *executionContext) fieldContext_DashboardStats_totalRequests(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _DashboardStats_totalAPIKeys(ctx context.Context, field graphql.CollectedField, obj *DashboardStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardStats_totalAPIKeys(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TotalAPIKeys, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DashboardStats_totalAPIKeys(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DashboardStats",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DashboardStats_requestsToday(ctx context.Context, field graphql.CollectedField, obj *DashboardStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardStats_requestsToday(ctx, field)
+func (ec *executionContext) _DashboardOverview_requestsToday(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardOverview_requestsToday(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7648,9 +7380,9 @@ func (ec *executionContext) _DashboardStats_requestsToday(ctx context.Context, f
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_DashboardStats_requestsToday(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DashboardOverview_requestsToday(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "DashboardStats",
+		Object:     "DashboardOverview",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7661,8 +7393,8 @@ func (ec *executionContext) fieldContext_DashboardStats_requestsToday(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _DashboardStats_requestsThisWeek(ctx context.Context, field graphql.CollectedField, obj *DashboardStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardStats_requestsThisWeek(ctx, field)
+func (ec *executionContext) _DashboardOverview_requestsThisWeek(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardOverview_requestsThisWeek(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7692,9 +7424,9 @@ func (ec *executionContext) _DashboardStats_requestsThisWeek(ctx context.Context
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_DashboardStats_requestsThisWeek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DashboardOverview_requestsThisWeek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "DashboardStats",
+		Object:     "DashboardOverview",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7705,8 +7437,8 @@ func (ec *executionContext) fieldContext_DashboardStats_requestsThisWeek(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _DashboardStats_requestsThisMonth(ctx context.Context, field graphql.CollectedField, obj *DashboardStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardStats_requestsThisMonth(ctx, field)
+func (ec *executionContext) _DashboardOverview_requestsThisMonth(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardOverview_requestsThisMonth(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7736,9 +7468,9 @@ func (ec *executionContext) _DashboardStats_requestsThisMonth(ctx context.Contex
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_DashboardStats_requestsThisMonth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DashboardOverview_requestsThisMonth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "DashboardStats",
+		Object:     "DashboardOverview",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7749,52 +7481,8 @@ func (ec *executionContext) fieldContext_DashboardStats_requestsThisMonth(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _DashboardStats_successfulRequests(ctx context.Context, field graphql.CollectedField, obj *DashboardStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardStats_successfulRequests(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.SuccessfulRequests, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DashboardStats_successfulRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DashboardStats",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DashboardStats_failedRequests(ctx context.Context, field graphql.CollectedField, obj *DashboardStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardStats_failedRequests(ctx, field)
+func (ec *executionContext) _DashboardOverview_failedRequests(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardOverview_failedRequests(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7824,9 +7512,9 @@ func (ec *executionContext) _DashboardStats_failedRequests(ctx context.Context, 
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_DashboardStats_failedRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DashboardOverview_failedRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "DashboardStats",
+		Object:     "DashboardOverview",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7837,8 +7525,8 @@ func (ec *executionContext) fieldContext_DashboardStats_failedRequests(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _DashboardStats_averageResponseTime(ctx context.Context, field graphql.CollectedField, obj *DashboardStats) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardStats_averageResponseTime(ctx, field)
+func (ec *executionContext) _DashboardOverview_averageResponseTime(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardOverview_averageResponseTime(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7865,9 +7553,9 @@ func (ec *executionContext) _DashboardStats_averageResponseTime(ctx context.Cont
 	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_DashboardStats_averageResponseTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DashboardOverview_averageResponseTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "DashboardStats",
+		Object:     "DashboardOverview",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -10439,8 +10127,8 @@ func (ec *executionContext) fieldContext_Query_users(ctx context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_dashboardStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_dashboardStats(ctx, field)
+func (ec *executionContext) _Query_dashboardOverview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_dashboardOverview(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10453,7 +10141,7 @@ func (ec *executionContext) _Query_dashboardStats(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().DashboardStats(rctx)
+		return ec.resolvers.Query().DashboardOverview(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10465,12 +10153,12 @@ func (ec *executionContext) _Query_dashboardStats(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*DashboardStats)
+	res := resTmp.(*DashboardOverview)
 	fc.Result = res
-	return ec.marshalNDashboardStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDashboardStats(ctx, field.Selections, res)
+	return ec.marshalNDashboardOverview2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDashboardOverview(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_dashboardStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_dashboardOverview(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -10479,34 +10167,28 @@ func (ec *executionContext) fieldContext_Query_dashboardStats(_ context.Context,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "totalUsers":
-				return ec.fieldContext_DashboardStats_totalUsers(ctx, field)
-			case "totalChannels":
-				return ec.fieldContext_DashboardStats_totalChannels(ctx, field)
+				return ec.fieldContext_DashboardOverview_totalUsers(ctx, field)
 			case "totalRequests":
-				return ec.fieldContext_DashboardStats_totalRequests(ctx, field)
-			case "totalAPIKeys":
-				return ec.fieldContext_DashboardStats_totalAPIKeys(ctx, field)
+				return ec.fieldContext_DashboardOverview_totalRequests(ctx, field)
 			case "requestsToday":
-				return ec.fieldContext_DashboardStats_requestsToday(ctx, field)
+				return ec.fieldContext_DashboardOverview_requestsToday(ctx, field)
 			case "requestsThisWeek":
-				return ec.fieldContext_DashboardStats_requestsThisWeek(ctx, field)
+				return ec.fieldContext_DashboardOverview_requestsThisWeek(ctx, field)
 			case "requestsThisMonth":
-				return ec.fieldContext_DashboardStats_requestsThisMonth(ctx, field)
-			case "successfulRequests":
-				return ec.fieldContext_DashboardStats_successfulRequests(ctx, field)
+				return ec.fieldContext_DashboardOverview_requestsThisMonth(ctx, field)
 			case "failedRequests":
-				return ec.fieldContext_DashboardStats_failedRequests(ctx, field)
+				return ec.fieldContext_DashboardOverview_failedRequests(ctx, field)
 			case "averageResponseTime":
-				return ec.fieldContext_DashboardStats_averageResponseTime(ctx, field)
+				return ec.fieldContext_DashboardOverview_averageResponseTime(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type DashboardStats", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type DashboardOverview", field.Name)
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_requestsByStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_requestsByStatus(ctx, field)
+func (ec *executionContext) _Query_requestStatsByChannel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_requestStatsByChannel(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10519,7 +10201,7 @@ func (ec *executionContext) _Query_requestsByStatus(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RequestsByStatus(rctx)
+		return ec.resolvers.Query().RequestStatsByChannel(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10531,62 +10213,12 @@ func (ec *executionContext) _Query_requestsByStatus(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*RequestsByStatus)
+	res := resTmp.([]*RequestStatsByChannel)
 	fc.Result = res
-	return ec.marshalNRequestsByStatus2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByStatusᚄ(ctx, field.Selections, res)
+	return ec.marshalNRequestStatsByChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByChannelᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_requestsByStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "status":
-				return ec.fieldContext_RequestsByStatus_status(ctx, field)
-			case "count":
-				return ec.fieldContext_RequestsByStatus_count(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type RequestsByStatus", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_requestsByChannel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_requestsByChannel(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RequestsByChannel(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*RequestsByChannel)
-	fc.Result = res
-	return ec.marshalNRequestsByChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByChannelᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_requestsByChannel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_requestStatsByChannel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -10595,20 +10227,20 @@ func (ec *executionContext) fieldContext_Query_requestsByChannel(_ context.Conte
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "channelName":
-				return ec.fieldContext_RequestsByChannel_channelName(ctx, field)
+				return ec.fieldContext_RequestStatsByChannel_channelName(ctx, field)
 			case "channelType":
-				return ec.fieldContext_RequestsByChannel_channelType(ctx, field)
+				return ec.fieldContext_RequestStatsByChannel_channelType(ctx, field)
 			case "count":
-				return ec.fieldContext_RequestsByChannel_count(ctx, field)
+				return ec.fieldContext_RequestStatsByChannel_count(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type RequestsByChannel", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type RequestStatsByChannel", field.Name)
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_requestsByModel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_requestsByModel(ctx, field)
+func (ec *executionContext) _Query_requestStatsByModel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_requestStatsByModel(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10621,7 +10253,7 @@ func (ec *executionContext) _Query_requestsByModel(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RequestsByModel(rctx)
+		return ec.resolvers.Query().RequestStatsByModel(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10633,12 +10265,12 @@ func (ec *executionContext) _Query_requestsByModel(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*RequestsByModel)
+	res := resTmp.([]*RequestStatsByModel)
 	fc.Result = res
-	return ec.marshalNRequestsByModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByModelᚄ(ctx, field.Selections, res)
+	return ec.marshalNRequestStatsByModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByModelᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_requestsByModel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_requestStatsByModel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -10647,11 +10279,11 @@ func (ec *executionContext) fieldContext_Query_requestsByModel(_ context.Context
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "modelId":
-				return ec.fieldContext_RequestsByModel_modelId(ctx, field)
+				return ec.fieldContext_RequestStatsByModel_modelId(ctx, field)
 			case "count":
-				return ec.fieldContext_RequestsByModel_count(ctx, field)
+				return ec.fieldContext_RequestStatsByModel_count(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type RequestsByModel", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type RequestStatsByModel", field.Name)
 		},
 	}
 	return fc, nil
@@ -10700,10 +10332,6 @@ func (ec *executionContext) fieldContext_Query_dailyRequestStats(ctx context.Con
 				return ec.fieldContext_DailyRequestStats_date(ctx, field)
 			case "count":
 				return ec.fieldContext_DailyRequestStats_count(ctx, field)
-			case "successCount":
-				return ec.fieldContext_DailyRequestStats_successCount(ctx, field)
-			case "failedCount":
-				return ec.fieldContext_DailyRequestStats_failedCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DailyRequestStats", field.Name)
 		},
@@ -10722,8 +10350,8 @@ func (ec *executionContext) fieldContext_Query_dailyRequestStats(ctx context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_hourlyRequestStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_hourlyRequestStats(ctx, field)
+func (ec *executionContext) _Query_topRequestsUsers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_topRequestsUsers(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10736,7 +10364,7 @@ func (ec *executionContext) _Query_hourlyRequestStats(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().HourlyRequestStats(rctx, fc.Args["date"].(*string))
+		return ec.resolvers.Query().TopRequestsUsers(rctx, fc.Args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10748,73 +10376,12 @@ func (ec *executionContext) _Query_hourlyRequestStats(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*HourlyRequestStats)
+	res := resTmp.([]*TopRequestsUsers)
 	fc.Result = res
-	return ec.marshalNHourlyRequestStats2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐHourlyRequestStatsᚄ(ctx, field.Selections, res)
+	return ec.marshalNTopRequestsUsers2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTopRequestsUsersᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_hourlyRequestStats(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "hour":
-				return ec.fieldContext_HourlyRequestStats_hour(ctx, field)
-			case "count":
-				return ec.fieldContext_HourlyRequestStats_count(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type HourlyRequestStats", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_hourlyRequestStats_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_topUsers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_topUsers(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TopUsers(rctx, fc.Args["limit"].(*int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*TopUsers)
-	fc.Result = res
-	return ec.marshalNTopUsers2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTopUsersᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_topUsers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_topRequestsUsers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -10823,15 +10390,15 @@ func (ec *executionContext) fieldContext_Query_topUsers(ctx context.Context, fie
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "userId":
-				return ec.fieldContext_TopUsers_userId(ctx, field)
+				return ec.fieldContext_TopRequestsUsers_userId(ctx, field)
 			case "userName":
-				return ec.fieldContext_TopUsers_userName(ctx, field)
+				return ec.fieldContext_TopRequestsUsers_userName(ctx, field)
 			case "userEmail":
-				return ec.fieldContext_TopUsers_userEmail(ctx, field)
+				return ec.fieldContext_TopRequestsUsers_userEmail(ctx, field)
 			case "requestCount":
-				return ec.fieldContext_TopUsers_requestCount(ctx, field)
+				return ec.fieldContext_TopRequestsUsers_requestCount(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type TopUsers", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type TopRequestsUsers", field.Name)
 		},
 	}
 	defer func() {
@@ -10841,7 +10408,7 @@ func (ec *executionContext) fieldContext_Query_topUsers(ctx context.Context, fie
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_topUsers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_topRequestsUsers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -11710,6 +11277,47 @@ func (ec *executionContext) fieldContext_Request_responseChunks(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Request_channelID(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Request_channelID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Request().ChannelID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*objects.GUID)
+	fc.Result = res
+	return ec.marshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Request_channelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Request_status(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Request_status(ctx, field)
 	if err != nil {
@@ -11956,6 +11564,75 @@ func (ec *executionContext) fieldContext_Request_executions(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Request_channel(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Request_channel(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Channel(ctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Channel)
+	fc.Result = res
+	return ec.marshalOChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannel(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Request_channel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Channel_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Channel_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Channel_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_Channel_deletedAt(ctx, field)
+			case "type":
+				return ec.fieldContext_Channel_type(ctx, field)
+			case "baseURL":
+				return ec.fieldContext_Channel_baseURL(ctx, field)
+			case "name":
+				return ec.fieldContext_Channel_name(ctx, field)
+			case "status":
+				return ec.fieldContext_Channel_status(ctx, field)
+			case "supportedModels":
+				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "defaultTestModel":
+				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
+			case "settings":
+				return ec.fieldContext_Channel_settings(ctx, field)
+			case "requests":
+				return ec.fieldContext_Channel_requests(ctx, field)
+			case "executions":
+				return ec.fieldContext_Channel_executions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RequestConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.RequestConnection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RequestConnection_edges(ctx, field)
 	if err != nil {
@@ -12161,6 +11838,8 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_responseBody(ctx, field)
 			case "responseChunks":
 				return ec.fieldContext_Request_responseChunks(ctx, field)
+			case "channelID":
+				return ec.fieldContext_Request_channelID(ctx, field)
 			case "status":
 				return ec.fieldContext_Request_status(ctx, field)
 			case "user":
@@ -12169,6 +11848,8 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_apiKey(ctx, field)
 			case "executions":
 				return ec.fieldContext_Request_executions(ctx, field)
+			case "channel":
+				return ec.fieldContext_Request_channel(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Request", field.Name)
 		},
@@ -12846,6 +12527,8 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_responseBody(ctx, field)
 			case "responseChunks":
 				return ec.fieldContext_Request_responseChunks(ctx, field)
+			case "channelID":
+				return ec.fieldContext_Request_channelID(ctx, field)
 			case "status":
 				return ec.fieldContext_Request_status(ctx, field)
 			case "user":
@@ -12854,6 +12537,8 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_apiKey(ctx, field)
 			case "executions":
 				return ec.fieldContext_Request_executions(ctx, field)
+			case "channel":
+				return ec.fieldContext_Request_channel(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Request", field.Name)
 		},
@@ -13195,8 +12880,8 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_cursor(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _RequestsByChannel_channelName(ctx context.Context, field graphql.CollectedField, obj *RequestsByChannel) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RequestsByChannel_channelName(ctx, field)
+func (ec *executionContext) _RequestStatsByChannel_channelName(ctx context.Context, field graphql.CollectedField, obj *RequestStatsByChannel) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestStatsByChannel_channelName(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13226,9 +12911,9 @@ func (ec *executionContext) _RequestsByChannel_channelName(ctx context.Context, 
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RequestsByChannel_channelName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RequestStatsByChannel_channelName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "RequestsByChannel",
+		Object:     "RequestStatsByChannel",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -13239,8 +12924,8 @@ func (ec *executionContext) fieldContext_RequestsByChannel_channelName(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _RequestsByChannel_channelType(ctx context.Context, field graphql.CollectedField, obj *RequestsByChannel) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RequestsByChannel_channelType(ctx, field)
+func (ec *executionContext) _RequestStatsByChannel_channelType(ctx context.Context, field graphql.CollectedField, obj *RequestStatsByChannel) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestStatsByChannel_channelType(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13270,9 +12955,9 @@ func (ec *executionContext) _RequestsByChannel_channelType(ctx context.Context, 
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RequestsByChannel_channelType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RequestStatsByChannel_channelType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "RequestsByChannel",
+		Object:     "RequestStatsByChannel",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -13283,8 +12968,8 @@ func (ec *executionContext) fieldContext_RequestsByChannel_channelType(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _RequestsByChannel_count(ctx context.Context, field graphql.CollectedField, obj *RequestsByChannel) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RequestsByChannel_count(ctx, field)
+func (ec *executionContext) _RequestStatsByChannel_count(ctx context.Context, field graphql.CollectedField, obj *RequestStatsByChannel) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestStatsByChannel_count(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13314,9 +12999,9 @@ func (ec *executionContext) _RequestsByChannel_count(ctx context.Context, field 
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RequestsByChannel_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RequestStatsByChannel_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "RequestsByChannel",
+		Object:     "RequestStatsByChannel",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -13327,8 +13012,8 @@ func (ec *executionContext) fieldContext_RequestsByChannel_count(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _RequestsByModel_modelId(ctx context.Context, field graphql.CollectedField, obj *RequestsByModel) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RequestsByModel_modelId(ctx, field)
+func (ec *executionContext) _RequestStatsByModel_modelId(ctx context.Context, field graphql.CollectedField, obj *RequestStatsByModel) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestStatsByModel_modelId(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13358,9 +13043,9 @@ func (ec *executionContext) _RequestsByModel_modelId(ctx context.Context, field 
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RequestsByModel_modelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RequestStatsByModel_modelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "RequestsByModel",
+		Object:     "RequestStatsByModel",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -13371,8 +13056,8 @@ func (ec *executionContext) fieldContext_RequestsByModel_modelId(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _RequestsByModel_count(ctx context.Context, field graphql.CollectedField, obj *RequestsByModel) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RequestsByModel_count(ctx, field)
+func (ec *executionContext) _RequestStatsByModel_count(ctx context.Context, field graphql.CollectedField, obj *RequestStatsByModel) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestStatsByModel_count(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13402,97 +13087,9 @@ func (ec *executionContext) _RequestsByModel_count(ctx context.Context, field gr
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RequestsByModel_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RequestStatsByModel_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "RequestsByModel",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RequestsByStatus_status(ctx context.Context, field graphql.CollectedField, obj *RequestsByStatus) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RequestsByStatus_status(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Status, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RequestsByStatus_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestsByStatus",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RequestsByStatus_count(ctx context.Context, field graphql.CollectedField, obj *RequestsByStatus) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RequestsByStatus_count(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Count, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RequestsByStatus_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestsByStatus",
+		Object:     "RequestStatsByModel",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -15263,8 +14860,8 @@ func (ec *executionContext) fieldContext_TestChannelPayload_error(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _TopUsers_userId(ctx context.Context, field graphql.CollectedField, obj *TopUsers) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TopUsers_userId(ctx, field)
+func (ec *executionContext) _TopRequestsUsers_userId(ctx context.Context, field graphql.CollectedField, obj *TopRequestsUsers) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TopRequestsUsers_userId(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -15294,9 +14891,9 @@ func (ec *executionContext) _TopUsers_userId(ctx context.Context, field graphql.
 	return ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_TopUsers_userId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TopRequestsUsers_userId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "TopUsers",
+		Object:     "TopRequestsUsers",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -15307,8 +14904,8 @@ func (ec *executionContext) fieldContext_TopUsers_userId(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _TopUsers_userName(ctx context.Context, field graphql.CollectedField, obj *TopUsers) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TopUsers_userName(ctx, field)
+func (ec *executionContext) _TopRequestsUsers_userName(ctx context.Context, field graphql.CollectedField, obj *TopRequestsUsers) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TopRequestsUsers_userName(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -15338,9 +14935,9 @@ func (ec *executionContext) _TopUsers_userName(ctx context.Context, field graphq
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_TopUsers_userName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TopRequestsUsers_userName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "TopUsers",
+		Object:     "TopRequestsUsers",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -15351,8 +14948,8 @@ func (ec *executionContext) fieldContext_TopUsers_userName(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _TopUsers_userEmail(ctx context.Context, field graphql.CollectedField, obj *TopUsers) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TopUsers_userEmail(ctx, field)
+func (ec *executionContext) _TopRequestsUsers_userEmail(ctx context.Context, field graphql.CollectedField, obj *TopRequestsUsers) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TopRequestsUsers_userEmail(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -15382,9 +14979,9 @@ func (ec *executionContext) _TopUsers_userEmail(ctx context.Context, field graph
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_TopUsers_userEmail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TopRequestsUsers_userEmail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "TopUsers",
+		Object:     "TopRequestsUsers",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -15395,8 +14992,8 @@ func (ec *executionContext) fieldContext_TopUsers_userEmail(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _TopUsers_requestCount(ctx context.Context, field graphql.CollectedField, obj *TopUsers) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TopUsers_requestCount(ctx, field)
+func (ec *executionContext) _TopRequestsUsers_requestCount(ctx context.Context, field graphql.CollectedField, obj *TopRequestsUsers) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TopRequestsUsers_requestCount(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -15426,9 +15023,9 @@ func (ec *executionContext) _TopUsers_requestCount(ctx context.Context, field gr
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_TopUsers_requestCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TopRequestsUsers_requestCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "TopUsers",
+		Object:     "TopRequestsUsers",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -20288,7 +19885,7 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"createdAt", "updatedAt", "source", "modelID", "format", "requestBody", "responseBody", "responseChunks", "status", "userID", "apiKeyID"}
+	fieldsInOrder := [...]string{"createdAt", "updatedAt", "source", "modelID", "format", "requestBody", "responseBody", "responseChunks", "status", "userID", "apiKeyID", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -20380,6 +19977,17 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.APIKeyID = converted
+		case "channelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelID = converted
 		}
 	}
 
@@ -21916,7 +21524,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasAPIKey", "hasAPIKeyWith", "hasExecutions", "hasExecutionsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasAPIKey", "hasAPIKeyWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -22512,6 +22120,64 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.FormatContainsFold = data
+		case "channelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelID = converted
+		case "channelIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDNEQ"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelIDNEQ = converted
+		case "channelIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelIDIn = converted
+		case "channelIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDNotIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelIDNotIn = converted
+		case "channelIDIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDIsNil = data
+		case "channelIDNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDNotNil = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalORequestStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋrequestᚐStatus(ctx, v)
@@ -22582,6 +22248,20 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.HasExecutionsWith = data
+		case "hasChannel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannel"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasChannel = data
+		case "hasChannelWith":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannelWith"))
+			data, err := ec.unmarshalOChannelWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasChannelWith = data
 		}
 	}
 
@@ -23897,7 +23577,7 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"updatedAt", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "status"}
+	fieldsInOrder := [...]string{"updatedAt", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "status", "channelID", "clearChannel"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -23960,6 +23640,24 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.Status = data
+		case "channelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelID = converted
+		case "clearChannel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearChannel"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearChannel = data
 		}
 	}
 
@@ -25931,16 +25629,6 @@ func (ec *executionContext) _DailyRequestStats(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "successCount":
-			out.Values[i] = ec._DailyRequestStats_successCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "failedCount":
-			out.Values[i] = ec._DailyRequestStats_failedCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -25964,64 +25652,49 @@ func (ec *executionContext) _DailyRequestStats(ctx context.Context, sel ast.Sele
 	return out
 }
 
-var dashboardStatsImplementors = []string{"DashboardStats"}
+var dashboardOverviewImplementors = []string{"DashboardOverview"}
 
-func (ec *executionContext) _DashboardStats(ctx context.Context, sel ast.SelectionSet, obj *DashboardStats) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, dashboardStatsImplementors)
+func (ec *executionContext) _DashboardOverview(ctx context.Context, sel ast.SelectionSet, obj *DashboardOverview) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, dashboardOverviewImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("DashboardStats")
+			out.Values[i] = graphql.MarshalString("DashboardOverview")
 		case "totalUsers":
-			out.Values[i] = ec._DashboardStats_totalUsers(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "totalChannels":
-			out.Values[i] = ec._DashboardStats_totalChannels(ctx, field, obj)
+			out.Values[i] = ec._DashboardOverview_totalUsers(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "totalRequests":
-			out.Values[i] = ec._DashboardStats_totalRequests(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "totalAPIKeys":
-			out.Values[i] = ec._DashboardStats_totalAPIKeys(ctx, field, obj)
+			out.Values[i] = ec._DashboardOverview_totalRequests(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "requestsToday":
-			out.Values[i] = ec._DashboardStats_requestsToday(ctx, field, obj)
+			out.Values[i] = ec._DashboardOverview_requestsToday(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "requestsThisWeek":
-			out.Values[i] = ec._DashboardStats_requestsThisWeek(ctx, field, obj)
+			out.Values[i] = ec._DashboardOverview_requestsThisWeek(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "requestsThisMonth":
-			out.Values[i] = ec._DashboardStats_requestsThisMonth(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "successfulRequests":
-			out.Values[i] = ec._DashboardStats_successfulRequests(ctx, field, obj)
+			out.Values[i] = ec._DashboardOverview_requestsThisMonth(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "failedRequests":
-			out.Values[i] = ec._DashboardStats_failedRequests(ctx, field, obj)
+			out.Values[i] = ec._DashboardOverview_failedRequests(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "averageResponseTime":
-			out.Values[i] = ec._DashboardStats_averageResponseTime(ctx, field, obj)
+			out.Values[i] = ec._DashboardOverview_averageResponseTime(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -26709,7 +26382,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "dashboardStats":
+		case "dashboardOverview":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -26718,7 +26391,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_dashboardStats(ctx, field)
+				res = ec._Query_dashboardOverview(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -26731,7 +26404,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "requestsByStatus":
+		case "requestStatsByChannel":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -26740,7 +26413,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_requestsByStatus(ctx, field)
+				res = ec._Query_requestStatsByChannel(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -26753,7 +26426,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "requestsByChannel":
+		case "requestStatsByModel":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -26762,29 +26435,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_requestsByChannel(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "requestsByModel":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_requestsByModel(ctx, field)
+				res = ec._Query_requestStatsByModel(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -26819,7 +26470,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "hourlyRequestStats":
+		case "topRequestsUsers":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -26828,29 +26479,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_hourlyRequestStats(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "topUsers":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_topUsers(ctx, field)
+				res = ec._Query_topRequestsUsers(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -27137,6 +26766,39 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Request_responseBody(ctx, field, obj)
 		case "responseChunks":
 			out.Values[i] = ec._Request_responseChunks(ctx, field, obj)
+		case "channelID":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Request_channelID(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "status":
 			out.Values[i] = ec._Request_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -27224,6 +26886,39 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "channel":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Request_channel(ctx, field, obj)
 				return res
 			}
 
@@ -27699,29 +27394,29 @@ func (ec *executionContext) _RequestExecutionEdge(ctx context.Context, sel ast.S
 	return out
 }
 
-var requestsByChannelImplementors = []string{"RequestsByChannel"}
+var requestStatsByChannelImplementors = []string{"RequestStatsByChannel"}
 
-func (ec *executionContext) _RequestsByChannel(ctx context.Context, sel ast.SelectionSet, obj *RequestsByChannel) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, requestsByChannelImplementors)
+func (ec *executionContext) _RequestStatsByChannel(ctx context.Context, sel ast.SelectionSet, obj *RequestStatsByChannel) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, requestStatsByChannelImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("RequestsByChannel")
+			out.Values[i] = graphql.MarshalString("RequestStatsByChannel")
 		case "channelName":
-			out.Values[i] = ec._RequestsByChannel_channelName(ctx, field, obj)
+			out.Values[i] = ec._RequestStatsByChannel_channelName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "channelType":
-			out.Values[i] = ec._RequestsByChannel_channelType(ctx, field, obj)
+			out.Values[i] = ec._RequestStatsByChannel_channelType(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "count":
-			out.Values[i] = ec._RequestsByChannel_count(ctx, field, obj)
+			out.Values[i] = ec._RequestStatsByChannel_count(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -27748,68 +27443,24 @@ func (ec *executionContext) _RequestsByChannel(ctx context.Context, sel ast.Sele
 	return out
 }
 
-var requestsByModelImplementors = []string{"RequestsByModel"}
+var requestStatsByModelImplementors = []string{"RequestStatsByModel"}
 
-func (ec *executionContext) _RequestsByModel(ctx context.Context, sel ast.SelectionSet, obj *RequestsByModel) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, requestsByModelImplementors)
+func (ec *executionContext) _RequestStatsByModel(ctx context.Context, sel ast.SelectionSet, obj *RequestStatsByModel) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, requestStatsByModelImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("RequestsByModel")
+			out.Values[i] = graphql.MarshalString("RequestStatsByModel")
 		case "modelId":
-			out.Values[i] = ec._RequestsByModel_modelId(ctx, field, obj)
+			out.Values[i] = ec._RequestStatsByModel_modelId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "count":
-			out.Values[i] = ec._RequestsByModel_count(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var requestsByStatusImplementors = []string{"RequestsByStatus"}
-
-func (ec *executionContext) _RequestsByStatus(ctx context.Context, sel ast.SelectionSet, obj *RequestsByStatus) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, requestsByStatusImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("RequestsByStatus")
-		case "status":
-			out.Values[i] = ec._RequestsByStatus_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "count":
-			out.Values[i] = ec._RequestsByStatus_count(ctx, field, obj)
+			out.Values[i] = ec._RequestStatsByModel_count(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -28500,34 +28151,34 @@ func (ec *executionContext) _TestChannelPayload(ctx context.Context, sel ast.Sel
 	return out
 }
 
-var topUsersImplementors = []string{"TopUsers"}
+var topRequestsUsersImplementors = []string{"TopRequestsUsers"}
 
-func (ec *executionContext) _TopUsers(ctx context.Context, sel ast.SelectionSet, obj *TopUsers) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, topUsersImplementors)
+func (ec *executionContext) _TopRequestsUsers(ctx context.Context, sel ast.SelectionSet, obj *TopRequestsUsers) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, topRequestsUsersImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("TopUsers")
+			out.Values[i] = graphql.MarshalString("TopRequestsUsers")
 		case "userId":
-			out.Values[i] = ec._TopUsers_userId(ctx, field, obj)
+			out.Values[i] = ec._TopRequestsUsers_userId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "userName":
-			out.Values[i] = ec._TopUsers_userName(ctx, field, obj)
+			out.Values[i] = ec._TopRequestsUsers_userName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "userEmail":
-			out.Values[i] = ec._TopUsers_userEmail(ctx, field, obj)
+			out.Values[i] = ec._TopRequestsUsers_userEmail(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "requestCount":
-			out.Values[i] = ec._TopUsers_requestCount(ctx, field, obj)
+			out.Values[i] = ec._TopRequestsUsers_requestCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -29502,18 +29153,18 @@ func (ec *executionContext) marshalNDailyRequestStats2ᚖgithubᚗcomᚋlooplj�
 	return ec._DailyRequestStats(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNDashboardStats2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDashboardStats(ctx context.Context, sel ast.SelectionSet, v DashboardStats) graphql.Marshaler {
-	return ec._DashboardStats(ctx, sel, &v)
+func (ec *executionContext) marshalNDashboardOverview2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDashboardOverview(ctx context.Context, sel ast.SelectionSet, v DashboardOverview) graphql.Marshaler {
+	return ec._DashboardOverview(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNDashboardStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDashboardStats(ctx context.Context, sel ast.SelectionSet, v *DashboardStats) graphql.Marshaler {
+func (ec *executionContext) marshalNDashboardOverview2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐDashboardOverview(ctx context.Context, sel ast.SelectionSet, v *DashboardOverview) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._DashboardStats(ctx, sel, v)
+	return ec._DashboardOverview(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
@@ -29530,60 +29181,6 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 		}
 	}
 	return graphql.WrapContextMarshaler(ctx, res)
-}
-
-func (ec *executionContext) marshalNHourlyRequestStats2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐHourlyRequestStatsᚄ(ctx context.Context, sel ast.SelectionSet, v []*HourlyRequestStats) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNHourlyRequestStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐHourlyRequestStats(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNHourlyRequestStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐHourlyRequestStats(ctx context.Context, sel ast.SelectionSet, v *HourlyRequestStats) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._HourlyRequestStats(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx context.Context, v any) (objects.GUID, error) {
@@ -29866,6 +29463,114 @@ func (ec *executionContext) marshalNRequestSource2githubᚗcomᚋloopljᚋaxonhu
 	return v
 }
 
+func (ec *executionContext) marshalNRequestStatsByChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*RequestStatsByChannel) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRequestStatsByChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByChannel(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRequestStatsByChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByChannel(ctx context.Context, sel ast.SelectionSet, v *RequestStatsByChannel) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RequestStatsByChannel(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRequestStatsByModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByModelᚄ(ctx context.Context, sel ast.SelectionSet, v []*RequestStatsByModel) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRequestStatsByModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByModel(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRequestStatsByModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByModel(ctx context.Context, sel ast.SelectionSet, v *RequestStatsByModel) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RequestStatsByModel(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNRequestStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋrequestᚐStatus(ctx context.Context, v any) (request.Status, error) {
 	var res request.Status
 	err := res.UnmarshalGQL(v)
@@ -29879,168 +29584,6 @@ func (ec *executionContext) marshalNRequestStatus2githubᚗcomᚋloopljᚋaxonhu
 func (ec *executionContext) unmarshalNRequestWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRequestWhereInput(ctx context.Context, v any) (*ent.RequestWhereInput, error) {
 	res, err := ec.unmarshalInputRequestWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNRequestsByChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*RequestsByChannel) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNRequestsByChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByChannel(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNRequestsByChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByChannel(ctx context.Context, sel ast.SelectionSet, v *RequestsByChannel) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._RequestsByChannel(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNRequestsByModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByModelᚄ(ctx context.Context, sel ast.SelectionSet, v []*RequestsByModel) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNRequestsByModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByModel(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNRequestsByModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByModel(ctx context.Context, sel ast.SelectionSet, v *RequestsByModel) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._RequestsByModel(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNRequestsByStatus2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByStatusᚄ(ctx context.Context, sel ast.SelectionSet, v []*RequestsByStatus) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNRequestsByStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByStatus(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNRequestsByStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestsByStatus(ctx context.Context, sel ast.SelectionSet, v *RequestsByStatus) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._RequestsByStatus(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNRole2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRole(ctx context.Context, sel ast.SelectionSet, v ent.Role) graphql.Marshaler {
@@ -30363,7 +29906,7 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 	return res
 }
 
-func (ec *executionContext) marshalNTopUsers2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTopUsersᚄ(ctx context.Context, sel ast.SelectionSet, v []*TopUsers) graphql.Marshaler {
+func (ec *executionContext) marshalNTopRequestsUsers2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTopRequestsUsersᚄ(ctx context.Context, sel ast.SelectionSet, v []*TopRequestsUsers) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -30387,7 +29930,7 @@ func (ec *executionContext) marshalNTopUsers2ᚕᚖgithubᚗcomᚋloopljᚋaxonh
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNTopUsers2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTopUsers(ctx, sel, v[i])
+			ret[i] = ec.marshalNTopRequestsUsers2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTopRequestsUsers(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -30407,14 +29950,14 @@ func (ec *executionContext) marshalNTopUsers2ᚕᚖgithubᚗcomᚋloopljᚋaxonh
 	return ret
 }
 
-func (ec *executionContext) marshalNTopUsers2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTopUsers(ctx context.Context, sel ast.SelectionSet, v *TopUsers) graphql.Marshaler {
+func (ec *executionContext) marshalNTopRequestsUsers2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTopRequestsUsers(ctx context.Context, sel ast.SelectionSet, v *TopRequestsUsers) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._TopUsers(ctx, sel, v)
+	return ec._TopRequestsUsers(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNUpdateAPIKeyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdateAPIKeyInput(ctx context.Context, v any) (ent.UpdateAPIKeyInput, error) {

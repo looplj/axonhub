@@ -5,20 +5,12 @@ import { z } from 'zod'
 // Schema definitions
 export const dashboardStatsSchema = z.object({
   totalUsers: z.number(),
-  totalChannels: z.number(),
   totalRequests: z.number(),
-  totalAPIKeys: z.number(),
   requestsToday: z.number(),
   requestsThisWeek: z.number(),
   requestsThisMonth: z.number(),
-  successfulRequests: z.number(),
   failedRequests: z.number(),
   averageResponseTime: z.number().nullable(),
-})
-
-export const requestsByStatusSchema = z.object({
-  status: z.string(),
-  count: z.number(),
 })
 
 export const requestsByChannelSchema = z.object({
@@ -35,8 +27,6 @@ export const requestsByModelSchema = z.object({
 export const dailyRequestStatsSchema = z.object({
   date: z.string(),
   count: z.number(),
-  successCount: z.number(),
-  failedCount: z.number(),
 })
 
 export const hourlyRequestStatsSchema = z.object({
@@ -52,7 +42,6 @@ export const topUsersSchema = z.object({
 })
 
 export type DashboardStats = z.infer<typeof dashboardStatsSchema>
-export type RequestsByStatus = z.infer<typeof requestsByStatusSchema>
 export type RequestsByChannel = z.infer<typeof requestsByChannelSchema>
 export type RequestsByModel = z.infer<typeof requestsByModelSchema>
 export type DailyRequestStats = z.infer<typeof dailyRequestStatsSchema>
@@ -62,33 +51,21 @@ export type TopUsers = z.infer<typeof topUsersSchema>
 // GraphQL queries
 const DASHBOARD_STATS_QUERY = `
   query GetDashboardStats {
-    dashboardStats {
+    dashboardOverview {
       totalUsers
-      totalChannels
       totalRequests
-      totalAPIKeys
       requestsToday
       requestsThisWeek
       requestsThisMonth
-      successfulRequests
       failedRequests
       averageResponseTime
     }
   }
 `
 
-const REQUESTS_BY_STATUS_QUERY = `
-  query GetRequestsByStatus {
-    requestsByStatus {
-      status
-      count
-    }
-  }
-`
-
 const REQUESTS_BY_CHANNEL_QUERY = `
   query GetRequestsByChannel {
-    requestsByChannel {
+    requestStatsByChannel {
       channelName
       channelType
       count
@@ -98,7 +75,7 @@ const REQUESTS_BY_CHANNEL_QUERY = `
 
 const REQUESTS_BY_MODEL_QUERY = `
   query GetRequestsByModel {
-    requestsByModel {
+    requestStatsByModel {
       modelId
       count
     }
@@ -110,8 +87,6 @@ const DAILY_REQUEST_STATS_QUERY = `
     dailyRequestStats(days: $days) {
       date
       count
-      successCount
-      failedCount
     }
   }
 `
@@ -127,7 +102,7 @@ const HOURLY_REQUEST_STATS_QUERY = `
 
 const TOP_USERS_QUERY = `
   query GetTopUsers($limit: Int) {
-    topUsers(limit: $limit) {
+    topRequestsUsers(limit: $limit) {
       userId
       userName
       userEmail
@@ -141,36 +116,23 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: ['dashboardStats'],
     queryFn: async () => {
-      const data = await graphqlRequest<{ dashboardStats: DashboardStats }>(
+      const data = await graphqlRequest<{ dashboardOverview: DashboardStats }>(
         DASHBOARD_STATS_QUERY
       )
-      return dashboardStatsSchema.parse(data.dashboardStats)
+      return dashboardStatsSchema.parse(data.dashboardOverview)
     },
     refetchInterval: 30000, // Refetch every 30 seconds
   })
 }
 
-export function useRequestsByStatus() {
-  return useQuery({
-    queryKey: ['requestsByStatus'],
-    queryFn: async () => {
-      const data = await graphqlRequest<{ requestsByStatus: RequestsByStatus[] }>(
-        REQUESTS_BY_STATUS_QUERY
-      )
-      return data.requestsByStatus.map(item => requestsByStatusSchema.parse(item))
-    },
-    refetchInterval: 60000, // Refetch every minute
-  })
-}
-
 export function useRequestsByChannel() {
   return useQuery({
-    queryKey: ['requestsByChannel'],
+    queryKey: ['requestStatsByChannel'],
     queryFn: async () => {
-      const data = await graphqlRequest<{ requestsByChannel: RequestsByChannel[] }>(
+      const data = await graphqlRequest<{ requestStatsByChannel: RequestsByChannel[] }>(
         REQUESTS_BY_CHANNEL_QUERY
       )
-      return data.requestsByChannel.map(item => requestsByChannelSchema.parse(item))
+      return data.requestStatsByChannel.map(item => requestsByChannelSchema.parse(item))
     },
     refetchInterval: 60000,
   })
@@ -178,12 +140,12 @@ export function useRequestsByChannel() {
 
 export function useRequestsByModel() {
   return useQuery({
-    queryKey: ['requestsByModel'],
+    queryKey: ['requestStatsByModel'],
     queryFn: async () => {
-      const data = await graphqlRequest<{ requestsByModel: RequestsByModel[] }>(
+      const data = await graphqlRequest<{ requestStatsByModel: RequestsByModel[] }>(
         REQUESTS_BY_MODEL_QUERY
       )
-      return data.requestsByModel.map(item => requestsByModelSchema.parse(item))
+      return data.requestStatsByModel.map(item => requestsByModelSchema.parse(item))
     },
     refetchInterval: 60000,
   })
@@ -219,13 +181,13 @@ export function useHourlyRequestStats(date?: string) {
 
 export function useTopUsers(limit?: number) {
   return useQuery({
-    queryKey: ['topUsers', limit],
+    queryKey: ['topRequestsUsers', limit],
     queryFn: async () => {
-      const data = await graphqlRequest<{ topUsers: TopUsers[] }>(
+      const data = await graphqlRequest<{ topRequestsUsers: TopUsers[] }>(
         TOP_USERS_QUERY,
         { limit }
       )
-      return data.topUsers.map(item => topUsersSchema.parse(item))
+      return data.topRequestsUsers.map(item => topUsersSchema.parse(item))
     },
     refetchInterval: 300000,
   })

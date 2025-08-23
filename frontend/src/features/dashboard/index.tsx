@@ -8,13 +8,12 @@ import {
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
-import { Overview } from './components/overview'
+import { DailyRequestStats } from './components/daily-requests-stats'
 import { RecentSales } from './components/recent-sales'
 import { RequestsByChannelChart } from './components/requests-by-channel-chart'
-import { RequestsByStatusChart } from './components/requests-by-status-chart'
+import { RequestsByModelChart } from './components/requests-by-model-chart'
 import { useDashboardStats } from './data/dashboard'
 import { Header } from '@/components/layout/header'
-import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { LanguageSwitch } from '@/components/language-switch'
@@ -99,35 +98,7 @@ export default function DashboardPage() {
                   {stats?.totalUsers || 0}
                 </div>
                 <p className='text-muted-foreground text-xs'>
-                  +20.1% {t('dashboard.stats.fromLastMonth')}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>
-                  {t('dashboard.cards.totalChannels')}
-                </CardTitle>
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth='2'
-                  className='text-muted-foreground h-4 w-4'
-                >
-                  <rect width='20' height='14' x='2' y='5' rx='2' />
-                  <path d='M2 10h20' />
-                </svg>
-              </CardHeader>
-              <CardContent>
-                <div className='text-2xl font-bold'>
-                  {stats?.totalChannels || 0}
-                </div>
-                <p className='text-muted-foreground text-xs'>
-                  +180.1% {t('dashboard.stats.fromLastMonth')}
+                  {t('dashboard.stats.totalUsersInSystem')}
                 </p>
               </CardContent>
             </Card>
@@ -154,14 +125,14 @@ export default function DashboardPage() {
                   {stats?.totalRequests || 0}
                 </div>
                 <p className='text-muted-foreground text-xs'>
-                  +19% {t('dashboard.stats.fromLastMonth')}
+                  {t('dashboard.stats.allTimeRequests')}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
                 <CardTitle className='text-sm font-medium'>
-                  {t('dashboard.cards.requestsToday')}
+                  {t('dashboard.cards.requestsByTime')}
                 </CardTitle>
                 <svg
                   xmlns='http://www.w3.org/2000/svg'
@@ -173,15 +144,55 @@ export default function DashboardPage() {
                   strokeWidth='2'
                   className='text-muted-foreground h-4 w-4'
                 >
-                  <path d='M22 12h-4l-3 9L9 3l-3 9H2' />
+                  <circle cx='12' cy='12' r='10' />
+                  <polyline points='12,6 12,12 16,14' />
+                </svg>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-1'>
+                  <div className='flex justify-between text-sm'>
+                    <span>{t('dashboard.stats.thisMonth')}:</span>
+                    <span className='font-semibold'>{stats?.requestsThisMonth || 0}</span>
+                  </div>
+                  <div className='flex justify-between text-sm'>
+                    <span>{t('dashboard.stats.thisWeek')}:</span>
+                    <span className='font-semibold'>{stats?.requestsThisWeek || 0}</span>
+                  </div>
+                  <div className='flex justify-between text-sm'>
+                    <span>{t('dashboard.stats.today')}:</span>
+                    <span className='font-semibold'>{stats?.requestsToday || 0}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                <CardTitle className='text-sm font-medium'>
+                  {t('dashboard.cards.successRate')}
+                </CardTitle>
+                <svg
+                  xmlns='http://www.w3.org/2000/svg'
+                  viewBox='0 0 24 24'
+                  fill='none'
+                  stroke='currentColor'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth='2'
+                  className='text-muted-foreground h-4 w-4'
+                >
+                  <path d='M9 12l2 2 4-4' />
+                  <circle cx='12' cy='12' r='10' />
                 </svg>
               </CardHeader>
               <CardContent>
                 <div className='text-2xl font-bold'>
-                  {stats?.requestsToday || 0}
+                  {stats && stats.totalRequests > 0
+                    ? ((stats.totalRequests - stats.failedRequests) / stats.totalRequests * 100).toFixed(1)
+                    : '0.0'
+                  }%
                 </div>
                 <p className='text-muted-foreground text-xs'>
-                  +201 {t('dashboard.stats.sinceYesterday')}
+                  {stats?.failedRequests || 0} {t('dashboard.stats.failedRequests')}
                 </p>
               </CardContent>
             </Card>
@@ -192,7 +203,7 @@ export default function DashboardPage() {
                 <CardTitle>{t('dashboard.charts.dailyRequestOverview')}</CardTitle>
               </CardHeader>
               <CardContent className='pl-2'>
-                <Overview />
+                <DailyRequestStats />
               </CardContent>
             </Card>
             <Card className='col-span-3'>
@@ -221,13 +232,13 @@ export default function DashboardPage() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>{t('dashboard.charts.requestsByStatus')}</CardTitle>
+                <CardTitle>{t('dashboard.charts.requestsByModel')}</CardTitle>
                 <CardDescription>
-                  {t('dashboard.charts.requestsByStatusDescription')}
+                  {t('dashboard.charts.requestsByModelDescription')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <RequestsByStatusChart />
+                <RequestsByModelChart />
               </CardContent>
             </Card>
           </div>

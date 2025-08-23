@@ -20,8 +20,9 @@ import (
 // RequestExecutionUpdate is the builder for updating RequestExecution entities.
 type RequestExecutionUpdate struct {
 	config
-	hooks    []Hook
-	mutation *RequestExecutionMutation
+	hooks     []Hook
+	mutation  *RequestExecutionMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the RequestExecutionUpdate builder.
@@ -163,6 +164,12 @@ func (reu *RequestExecutionUpdate) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (reu *RequestExecutionUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestExecutionUpdate {
+	reu.modifiers = append(reu.modifiers, modifiers...)
+	return reu
+}
+
 func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := reu.check(); err != nil {
 		return n, err
@@ -209,6 +216,7 @@ func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err erro
 	if value, ok := reu.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 	}
+	_spec.AddModifiers(reu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, reu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{requestexecution.Label}
@@ -224,9 +232,10 @@ func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err erro
 // RequestExecutionUpdateOne is the builder for updating a single RequestExecution entity.
 type RequestExecutionUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *RequestExecutionMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *RequestExecutionMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetUpdatedAt sets the "updated_at" field.
@@ -375,6 +384,12 @@ func (reuo *RequestExecutionUpdateOne) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (reuo *RequestExecutionUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestExecutionUpdateOne {
+	reuo.modifiers = append(reuo.modifiers, modifiers...)
+	return reuo
+}
+
 func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *RequestExecution, err error) {
 	if err := reuo.check(); err != nil {
 		return _node, err
@@ -438,6 +453,7 @@ func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Requ
 	if value, ok := reuo.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 	}
+	_spec.AddModifiers(reuo.modifiers...)
 	_node = &RequestExecution{config: reuo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

@@ -129,6 +129,19 @@ func (r *requestResolver) APIKeyID(ctx context.Context, obj *ent.Request) (*obje
 	}, nil
 }
 
+// ChannelID is the resolver for the channelID field.
+func (r *requestResolver) ChannelID(ctx context.Context, obj *ent.Request) (*objects.GUID, error) {
+	if obj.ChannelID == 0 {
+		//nolint:nilnil // Checked.
+		return nil, nil
+	}
+
+	return &objects.GUID{
+		Type: "Channel",
+		ID:   obj.ChannelID,
+	}, nil
+}
+
 // ID is the resolver for the id field.
 func (r *requestExecutionResolver) ID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error) {
 	return &objects.GUID{

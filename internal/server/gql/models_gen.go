@@ -8,21 +8,16 @@ import (
 )
 
 type DailyRequestStats struct {
-	Date         string `json:"date"`
-	Count        int    `json:"count"`
-	SuccessCount int    `json:"successCount"`
-	FailedCount  int    `json:"failedCount"`
+	Date  string `json:"date"`
+	Count int    `json:"count"`
 }
 
-type DashboardStats struct {
+type DashboardOverview struct {
 	TotalUsers          int      `json:"totalUsers"`
-	TotalChannels       int      `json:"totalChannels"`
 	TotalRequests       int      `json:"totalRequests"`
-	TotalAPIKeys        int      `json:"totalAPIKeys"`
 	RequestsToday       int      `json:"requestsToday"`
 	RequestsThisWeek    int      `json:"requestsThisWeek"`
 	RequestsThisMonth   int      `json:"requestsThisMonth"`
-	SuccessfulRequests  int      `json:"successfulRequests"`
 	FailedRequests      int      `json:"failedRequests"`
 	AverageResponseTime *float64 `json:"averageResponseTime,omitempty"`
 }
@@ -47,20 +42,15 @@ type InitializeSystemPayload struct {
 	Token   *string   `json:"token,omitempty"`
 }
 
-type RequestsByChannel struct {
+type RequestStatsByChannel struct {
 	ChannelName string `json:"channelName"`
 	ChannelType string `json:"channelType"`
 	Count       int    `json:"count"`
 }
 
-type RequestsByModel struct {
+type RequestStatsByModel struct {
 	ModelID string `json:"modelId"`
 	Count   int    `json:"count"`
-}
-
-type RequestsByStatus struct {
-	Status string `json:"status"`
-	Count  int    `json:"count"`
 }
 
 type RoleInfo struct {
@@ -105,7 +95,7 @@ type TestChannelPayload struct {
 	Error   *string `json:"error,omitempty"`
 }
 
-type TopUsers struct {
+type TopRequestsUsers struct {
 	UserID       objects.GUID `json:"userId"`
 	UserName     string       `json:"userName"`
 	UserEmail    string       `json:"userEmail"`

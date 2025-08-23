@@ -28,8 +28,8 @@ type ChannelQuery struct {
 	predicates          []predicate.Channel
 	withRequests        *RequestQuery
 	withExecutions      *RequestExecutionQuery
-	modifiers           []func(*sql.Selector)
 	loadTotal           []func(context.Context, []*Channel) error
+	modifiers           []func(*sql.Selector)
 	withNamedRequests   map[string]*RequestQuery
 	withNamedExecutions map[string]*RequestExecutionQuery
 	// intermediate query (i.e. traversal path).
@@ -307,8 +307,9 @@ func (cq *ChannelQuery) Clone() *ChannelQuery {
 		withRequests:   cq.withRequests.Clone(),
 		withExecutions: cq.withExecutions.Clone(),
 		// clone intermediate query.
-		sql:  cq.sql.Clone(),
-		path: cq.path,
+		sql:       cq.sql.Clone(),
+		path:      cq.path,
+		modifiers: append([]func(*sql.Selector){}, cq.modifiers...),
 	}
 }
 
@@ -490,7 +491,9 @@ func (cq *ChannelQuery) loadRequests(ctx context.Context, query *RequestQuery, n
 			init(nodes[i])
 		}
 	}
-	query.withFKs = true
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(request.FieldChannelID)
+	}
 	query.Where(predicate.Request(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(channel.RequestsColumn), fks...))
 	}))
@@ -499,13 +502,10 @@ func (cq *ChannelQuery) loadRequests(ctx context.Context, query *RequestQuery, n
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.channel_requests
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "channel_requests" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
+		fk := n.ChannelID
+		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "channel_requests" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "channel_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -609,6 +609,9 @@ func (cq *ChannelQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if cq.ctx.Unique != nil && *cq.ctx.Unique {
 		selector.Distinct()
 	}
+	for _, m := range cq.modifiers {
+		m(selector)
+	}
 	for _, p := range cq.predicates {
 		p(selector)
 	}
@@ -624,6 +627,12 @@ func (cq *ChannelQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (cq *ChannelQuery) Modify(modifiers ...func(s *sql.Selector)) *ChannelSelect {
+	cq.modifiers = append(cq.modifiers, modifiers...)
+	return cq.Select()
 }
 
 // WithNamedRequests tells the query-builder to eager-load the nodes that are connected to the "requests"
@@ -742,4 +751,10 @@ func (cs *ChannelSelect) sqlScan(ctx context.Context, root *ChannelQuery, v any)
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (cs *ChannelSelect) Modify(modifiers ...func(s *sql.Selector)) *ChannelSelect {
+	cs.modifiers = append(cs.modifiers, modifiers...)
+	return cs
 }

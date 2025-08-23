@@ -293,8 +293,8 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     r.ID,
 		Type:   "Request",
-		Fields: make([]*Field, 12),
-		Edges:  make([]*Edge, 3),
+		Fields: make([]*Field, 13),
+		Edges:  make([]*Edge, 4),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(r.CreatedAt); err != nil {
@@ -385,10 +385,18 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "response_chunks",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(r.Status); err != nil {
+	if buf, err = json.Marshal(r.ChannelID); err != nil {
 		return nil, err
 	}
 	node.Fields[11] = &Field{
+		Type:  "int",
+		Name:  "channel_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(r.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[12] = &Field{
 		Type:  "request.Status",
 		Name:  "status",
 		Value: string(buf),
@@ -420,6 +428,16 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 	err = r.QueryExecutions().
 		Select(requestexecution.FieldID).
 		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[3] = &Edge{
+		Type: "Channel",
+		Name: "channel",
+	}
+	err = r.QueryChannel().
+		Select(channel.FieldID).
+		Scan(ctx, &node.Edges[3].IDs)
 	if err != nil {
 		return nil, err
 	}

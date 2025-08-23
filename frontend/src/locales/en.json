@@ -743,26 +743,32 @@
     "noData": "No data available",
     "cards": {
       "totalUsers": "Total Users",
-      "totalChannels": "Total Channels",
       "totalRequests": "Total Requests",
-      "requestsToday": "Requests Today"
+      "requestsByTime": "Requests by Time",
+      "successRate": "Success Rate"
     },
     "charts": {
       "dailyRequestOverview": "Daily Request Overview",
       "topUsers": "Top Users",
       "requestsByChannel": "Requests by Channel",
-      "requestsByStatus": "Requests by Status",
+      "requestsByModel": "Requests by Model",
       "errorLoadingChart": "Error loading chart data:",
       "errorLoadingTopUsers": "Error loading top users:",
       "errorLoadingChannelData": "Error loading channel data:",
-      "errorLoadingStatusData": "Error loading status data:",
+      "errorLoadingModelData": "Error loading model data:",
       "noUserData": "No user data available",
       "noChannelData": "No channel data available",
-      "noStatusData": "No status data available",
+      "noModelData": "No model data available",
       "requestsByChannelDescription": "Distribution of requests across different channels.",
-      "requestsByStatusDescription": "Breakdown of request statuses."
+      "requestsByModelDescription": "Distribution of requests across different AI models."
     },
     "stats": {
+      "totalUsersInSystem": "Total users in system",
+      "allTimeRequests": "All time requests",
+      "thisMonth": "This month",
+      "thisWeek": "This week",
+      "today": "Today",
+      "failedRequests": "failed requests",
       "fromLastMonth": "from last month",
       "sinceYesterday": "since yesterday",
       "usersWithMostRequests": "Users with the most requests this month.",

@@ -21,7 +21,6 @@ run:
   build-tags: []
 
 
-
 linters:
   default: all
   disable:
@@ -348,7 +347,7 @@ formatters:
     # This option is ignored when using `--stdin` as the path is unknown.
     # Default: []
     paths:
-      - ".*.resolvers.go"
+      - ".resolvers.go"
   
 
 issues:

@@ -108,7 +108,7 @@ var (
 		{Name: "response_chunks", Type: field.TypeJSON, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed"}},
 		{Name: "api_key_id", Type: field.TypeInt, Nullable: true},
-		{Name: "channel_requests", Type: field.TypeInt, Nullable: true},
+		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
 		{Name: "user_id", Type: field.TypeInt},
 	}
 	// RequestsTable holds the schema information for the "requests" table.
@@ -146,6 +146,21 @@ var (
 				Name:    "requests_by_api_key_id",
 				Unique:  false,
 				Columns: []*schema.Column{RequestsColumns[11]},
+			},
+			{
+				Name:    "requests_by_channel_id",
+				Unique:  false,
+				Columns: []*schema.Column{RequestsColumns[12]},
+			},
+			{
+				Name:    "requests_by_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{RequestsColumns[1]},
+			},
+			{
+				Name:    "requests_by_status",
+				Unique:  false,
+				Columns: []*schema.Column{RequestsColumns[10]},
 			},
 		},
 	}
@@ -189,6 +204,11 @@ var (
 				Name:    "request_executions_by_request_id",
 				Unique:  true,
 				Columns: []*schema.Column{RequestExecutionsColumns[12]},
+			},
+			{
+				Name:    "request_executions_by_channel_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{RequestExecutionsColumns[11]},
 			},
 		},
 	}

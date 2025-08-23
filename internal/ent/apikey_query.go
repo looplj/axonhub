@@ -28,8 +28,8 @@ type APIKeyQuery struct {
 	predicates        []predicate.APIKey
 	withUser          *UserQuery
 	withRequests      *RequestQuery
-	modifiers         []func(*sql.Selector)
 	loadTotal         []func(context.Context, []*APIKey) error
+	modifiers         []func(*sql.Selector)
 	withNamedRequests map[string]*RequestQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -306,8 +306,9 @@ func (akq *APIKeyQuery) Clone() *APIKeyQuery {
 		withUser:     akq.withUser.Clone(),
 		withRequests: akq.withRequests.Clone(),
 		// clone intermediate query.
-		sql:  akq.sql.Clone(),
-		path: akq.path,
+		sql:       akq.sql.Clone(),
+		path:      akq.path,
+		modifiers: append([]func(*sql.Selector){}, akq.modifiers...),
 	}
 }
 
@@ -510,7 +511,6 @@ func (akq *APIKeyQuery) loadRequests(ctx context.Context, query *RequestQuery, n
 			init(nodes[i])
 		}
 	}
-	query.withFKs = true
 	if len(query.ctx.Fields) > 0 {
 		query.ctx.AppendFieldOnce(request.FieldAPIKeyID)
 	}
@@ -602,6 +602,9 @@ func (akq *APIKeyQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if akq.ctx.Unique != nil && *akq.ctx.Unique {
 		selector.Distinct()
 	}
+	for _, m := range akq.modifiers {
+		m(selector)
+	}
 	for _, p := range akq.predicates {
 		p(selector)
 	}
@@ -617,6 +620,12 @@ func (akq *APIKeyQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (akq *APIKeyQuery) Modify(modifiers ...func(s *sql.Selector)) *APIKeySelect {
+	akq.modifiers = append(akq.modifiers, modifiers...)
+	return akq.Select()
 }
 
 // WithNamedRequests tells the query-builder to eager-load the nodes that are connected to the "requests"
@@ -721,4 +730,10 @@ func (aks *APIKeySelect) sqlScan(ctx context.Context, root *APIKeyQuery, v any) 
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (aks *APIKeySelect) Modify(modifiers ...func(s *sql.Selector)) *APIKeySelect {
+	aks.modifiers = append(aks.modifiers, modifiers...)
+	return aks
 }

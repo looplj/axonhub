@@ -188,6 +188,7 @@ type CreateRequestInput struct {
 	Status         request.Status
 	UserID         int
 	APIKeyID       *int
+	ChannelID      *int
 }
 
 // Mutate applies the CreateRequestInput on the RequestMutation builder.
@@ -219,6 +220,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	if v := i.APIKeyID; v != nil {
 		m.SetAPIKeyID(*v)
 	}
+	if v := i.ChannelID; v != nil {
+		m.SetChannelID(*v)
+	}
 }
 
 // SetInput applies the change-set in the CreateRequestInput on the RequestCreate builder.
@@ -237,6 +241,8 @@ type UpdateRequestInput struct {
 	ResponseChunks       []objects.JSONRawMessage
 	AppendResponseChunks []objects.JSONRawMessage
 	Status               *request.Status
+	ClearChannel         bool
+	ChannelID            *int
 }
 
 // Mutate applies the UpdateRequestInput on the RequestMutation builder.
@@ -264,6 +270,12 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
+	}
+	if i.ClearChannel {
+		m.ClearChannel()
+	}
+	if v := i.ChannelID; v != nil {
+		m.SetChannelID(*v)
 	}
 }
 

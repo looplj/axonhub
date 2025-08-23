@@ -90,6 +90,11 @@ func Format(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldFormat, v))
 }
 
+// ChannelID applies equality check predicate on the "channel_id" field. It's identical to ChannelIDEQ.
+func ChannelID(v int) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldChannelID, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldCreatedAt, v))
@@ -430,6 +435,36 @@ func ResponseChunksNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldResponseChunks))
 }
 
+// ChannelIDEQ applies the EQ predicate on the "channel_id" field.
+func ChannelIDEQ(v int) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldChannelID, v))
+}
+
+// ChannelIDNEQ applies the NEQ predicate on the "channel_id" field.
+func ChannelIDNEQ(v int) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldChannelID, v))
+}
+
+// ChannelIDIn applies the In predicate on the "channel_id" field.
+func ChannelIDIn(vs ...int) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldChannelID, vs...))
+}
+
+// ChannelIDNotIn applies the NotIn predicate on the "channel_id" field.
+func ChannelIDNotIn(vs ...int) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldChannelID, vs...))
+}
+
+// ChannelIDIsNil applies the IsNil predicate on the "channel_id" field.
+func ChannelIDIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldChannelID))
+}
+
+// ChannelIDNotNil applies the NotNil predicate on the "channel_id" field.
+func ChannelIDNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldChannelID))
+}
+
 // StatusEQ applies the EQ predicate on the "status" field.
 func StatusEQ(v Status) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldStatus, v))
@@ -511,6 +546,29 @@ func HasExecutions() predicate.Request {
 func HasExecutionsWith(preds ...predicate.RequestExecution) predicate.Request {
 	return predicate.Request(func(s *sql.Selector) {
 		step := newExecutionsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasChannel applies the HasEdge predicate on the "channel" edge.
+func HasChannel() predicate.Request {
+	return predicate.Request(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, ChannelTable, ChannelColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasChannelWith applies the HasEdge predicate on the "channel" edge with a given conditions (other predicates).
+func HasChannelWith(preds ...predicate.Channel) predicate.Request {
+	return predicate.Request(func(s *sql.Selector) {
+		step := newChannelStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

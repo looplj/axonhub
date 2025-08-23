@@ -20,8 +20,9 @@ import (
 // APIKeyUpdate is the builder for updating APIKey entities.
 type APIKeyUpdate struct {
 	config
-	hooks    []Hook
-	mutation *APIKeyMutation
+	hooks     []Hook
+	mutation  *APIKeyMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the APIKeyUpdate builder.
@@ -199,6 +200,12 @@ func (aku *APIKeyUpdate) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (aku *APIKeyUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *APIKeyUpdate {
+	aku.modifiers = append(aku.modifiers, modifiers...)
+	return aku
+}
+
 func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := aku.check(); err != nil {
 		return n, err
@@ -282,6 +289,7 @@ func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(aku.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, aku.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{apikey.Label}
@@ -297,9 +305,10 @@ func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // APIKeyUpdateOne is the builder for updating a single APIKey entity.
 type APIKeyUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *APIKeyMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *APIKeyMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetUpdatedAt sets the "updated_at" field.
@@ -484,6 +493,12 @@ func (akuo *APIKeyUpdateOne) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (akuo *APIKeyUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *APIKeyUpdateOne {
+	akuo.modifiers = append(akuo.modifiers, modifiers...)
+	return akuo
+}
+
 func (akuo *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err error) {
 	if err := akuo.check(); err != nil {
 		return _node, err
@@ -584,6 +599,7 @@ func (akuo *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err er
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(akuo.modifiers...)
 	_node = &APIKey{config: akuo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

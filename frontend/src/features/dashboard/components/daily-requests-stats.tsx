@@ -5,7 +5,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { useDailyRequestStats } from '../data/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
 
-export function Overview() {
+export function DailyRequestStats() {
   const { t } = useTranslation()
   const { data: dailyStats, isLoading, error } = useDailyRequestStats(30)
 

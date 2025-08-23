@@ -9,163 +9,141 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
-	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
-// DashboardStats is the resolver for the dashboardStats field.
-func (r *queryResolver) DashboardStats(ctx context.Context) (*DashboardStats, error) {
+// DashboardOverview is the resolver for the dashboardOverview field.
+func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOverview, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Initialize response with defaults to handle partial failures gracefully
+	stats := &DashboardOverview{
+		TotalUsers:          0,
+		TotalRequests:       0,
+		RequestsToday:       0,
+		RequestsThisWeek:    0,
+		RequestsThisMonth:   0,
+		FailedRequests:      0,
+		AverageResponseTime: nil,
+	}
+
+	// Get total counts with defensive error handling
+	if totalUsers, err := r.client.User.Query().Count(ctx); err != nil {
+		log.Warn(ctx, "failed to count users", log.Cause(err))
+	} else {
+		stats.TotalUsers = totalUsers
+	}
+
+	if totalRequests, err := r.client.Request.Query().Count(ctx); err != nil {
+		log.Warn(ctx, "failed to count requests", log.Cause(err))
+	} else {
+		stats.TotalRequests = totalRequests
+	}
 
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	weekAgo := today.AddDate(0, 0, -7)
 	monthAgo := today.AddDate(0, -1, 0)
 
-	// Get total counts
-	totalUsers, err := r.client.User.Query().Count(ctx)
-	if err != nil {
-		log.Warn(ctx, "failed to count users", log.Cause(err))
-		return nil, fmt.Errorf("failed to count users")
-	}
-
-	totalChannels, err := r.client.Channel.Query().Count(ctx)
-	if err != nil {
-		log.Warn(ctx, "failed to count channels", log.Cause(err))
-		return nil, fmt.Errorf("failed to count channels")
-	}
-
-	totalRequests, err := r.client.Request.Query().Count(ctx)
-	if err != nil {
-		log.Warn(ctx, "failed to count requests", log.Cause(err))
-		return nil, fmt.Errorf("failed to count requests")
-	}
-
-	totalAPIKeys, err := r.client.APIKey.Query().Count(ctx)
-	if err != nil {
-		log.Warn(ctx, "failed to count API keys", log.Cause(err))
-		return nil, fmt.Errorf("failed to count API keys")
-	}
-
-	// Get time-based counts
-	requestsToday, err := r.client.Request.Query().
+	// Get time-based counts with optimized single queries
+	if requestsToday, err := r.client.Request.Query().
 		Where(request.CreatedAtGTE(today)).
-		Count(ctx)
-	if err != nil {
+		Count(ctx); err != nil {
 		log.Warn(ctx, "failed to count today's requests", log.Cause(err))
-		return nil, fmt.Errorf("failed to count today's requests")
+	} else {
+		stats.RequestsToday = requestsToday
 	}
 
-	requestsThisWeek, err := r.client.Request.Query().
+	if requestsThisWeek, err := r.client.Request.Query().
 		Where(request.CreatedAtGTE(weekAgo)).
-		Count(ctx)
-	if err != nil {
+		Count(ctx); err != nil {
 		log.Warn(ctx, "failed to count this week's requests", log.Cause(err))
-		return nil, fmt.Errorf("failed to count this week's requests")
+	} else {
+		stats.RequestsThisWeek = requestsThisWeek
 	}
 
-	requestsThisMonth, err := r.client.Request.Query().
+	if requestsThisMonth, err := r.client.Request.Query().
 		Where(request.CreatedAtGTE(monthAgo)).
-		Count(ctx)
-	if err != nil {
+		Count(ctx); err != nil {
 		log.Warn(ctx, "failed to count this month's requests", log.Cause(err))
-		return nil, fmt.Errorf("failed to count this month's requests")
+	} else {
+		stats.RequestsThisMonth = requestsThisMonth
 	}
 
-	// Get status-based counts
-	successfulRequests, err := r.client.Request.Query().
-		Where(request.StatusEQ(request.StatusCompleted)).
-		Count(ctx)
-	if err != nil {
-		log.Warn(ctx, "failed to count successful requests", log.Cause(err))
-		return nil, fmt.Errorf("failed to count successful requests")
-	}
-
-	failedRequests, err := r.client.Request.Query().
+	if failedRequests, err := r.client.Request.Query().
 		Where(request.StatusEQ(request.StatusFailed)).
-		Count(ctx)
-	if err != nil {
+		Count(ctx); err != nil {
 		log.Warn(ctx, "failed to count failed requests", log.Cause(err))
-		return nil, fmt.Errorf("failed to count failed requests")
+	} else {
+		stats.FailedRequests = failedRequests
 	}
 
-	return &DashboardStats{
-		TotalUsers:          totalUsers,
-		TotalChannels:       totalChannels,
-		TotalRequests:       totalRequests,
-		TotalAPIKeys:        totalAPIKeys,
-		RequestsToday:       requestsToday,
-		RequestsThisWeek:    requestsThisWeek,
-		RequestsThisMonth:   requestsThisMonth,
-		SuccessfulRequests:  successfulRequests,
-		FailedRequests:      failedRequests,
-		AverageResponseTime: nil, // TODO: Calculate from request execution data
-	}, nil
+	// TODO: Calculate average response time from request execution data
+	// This would require additional database schema changes to store response times
+
+	return stats, nil
 }
 
-// RequestsByStatus is the resolver for the requestsByStatus field.
-func (r *queryResolver) RequestsByStatus(ctx context.Context) ([]*RequestsByStatus, error) {
+// RequestStatsByChannel is the resolver for the requestStatsByChannel field.
+func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	var results []RequestsByStatus
+	// Use efficient aggregation query to avoid loading all data into memory
+	type channelStats struct {
+		ChannelID int `json:"channel_id"`
+		Count     int `json:"request_count"`
+	}
 
+	var results []channelStats
+
+	// Aggregate by channel_id directly in the database using requests table
 	err := r.client.Request.Query().
-		GroupBy(request.FieldStatus).
-		Aggregate(ent.Count()).
+		Where(request.ChannelIDNotNil()). // Only include requests with channel ID set
+		GroupBy(request.FieldChannelID).
+		Aggregate(ent.As(ent.Count(), "request_count")).
 		Scan(ctx, &results)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get requests by status: %w", err)
+		return nil, fmt.Errorf("failed to get requests by channel: %w", err)
 	}
 
-	return lo.ToSlicePtr(results), nil
-}
+	if len(results) == 0 {
+		return []*RequestStatsByChannel{}, nil
+	}
 
-// RequestsByChannel is the resolver for the requestsByChannel field.
-func (r *queryResolver) RequestsByChannel(ctx context.Context) ([]*RequestsByChannel, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	// Get only the channels we need
+	channelIDs := lo.Map(results, func(item channelStats, _ int) int {
+		return item.ChannelID
+	})
 
-	executions, err := r.client.RequestExecution.Query().
-		WithRequest(func(q *ent.RequestQuery) {
-			q.WithAPIKey(func(aq *ent.APIKeyQuery) {
-				aq.WithUser()
-			})
-		}).
+	channels, err := r.client.Channel.Query().
+		Where(channel.IDIn(channelIDs...)).
 		All(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get request executions: %w", err)
-	}
-
-	// Get channel info
-	channels, err := r.client.Channel.Query().All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channels: %w", err)
 	}
 
-	channelMap := make(map[int]*ent.Channel)
-	for _, ch := range channels {
-		channelMap[ch.ID] = ch
-	}
+	// Create efficient lookup map
+	channelMap := lo.SliceToMap(channels, func(ch *ent.Channel) (int, *ent.Channel) {
+		return ch.ID, ch
+	})
 
-	// Count by channel
-	channelCounts := make(map[int]int)
-	for _, exec := range executions {
-		channelCounts[exec.ChannelID]++
-	}
+	// Build response efficiently
+	var response []*RequestStatsByChannel
 
-	var response []*RequestsByChannel
-
-	for channelID, count := range channelCounts {
-		if ch, exists := channelMap[channelID]; exists {
-			response = append(response, &RequestsByChannel{
+	for _, result := range results {
+		if ch, exists := channelMap[result.ChannelID]; exists {
+			response = append(response, &RequestStatsByChannel{
 				ChannelName: ch.Name,
 				ChannelType: string(ch.Type),
-				Count:       count,
+				Count:       result.Count,
 			})
 		}
 	}
@@ -173,34 +151,33 @@ func (r *queryResolver) RequestsByChannel(ctx context.Context) ([]*RequestsByCha
 	return response, nil
 }
 
-// RequestsByModel is the resolver for the requestsByModel field.
-func (r *queryResolver) RequestsByModel(ctx context.Context) ([]*RequestsByModel, error) {
+// RequestStatsByModel is the resolver for the requestStatsByModel field.
+func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStatsByModel, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	type modelCount struct {
+	type modelStats struct {
 		ModelID string `json:"model_id"`
-		Count   int    `json:"count"`
+		Count   int    `json:"request_count"`
 	}
 
-	var results []modelCount
+	var results []modelStats
 
-	err := r.client.RequestExecution.Query().
-		GroupBy(requestexecution.FieldModelID).
-		Aggregate(ent.Count()).
+	err := r.client.Request.Query().
+		GroupBy(request.FieldModelID).
+		Aggregate(ent.As(ent.Count(), "request_count")).
 		Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get requests by model: %w", err)
 	}
 
-	var response []*RequestsByModel
-	for _, result := range results {
-		response = append(response, &RequestsByModel{
-			ModelID: result.ModelID,
-			Count:   result.Count,
-		})
-	}
+	stats := lo.Map(results, func(item modelStats, _ int) *RequestStatsByModel {
+		return &RequestStatsByModel{
+			ModelID: item.ModelID,
+			Count:   item.Count,
+		}
+	})
 
-	return response, nil
+	return stats, nil
 }
 
 // DailyRequestStats is the resolver for the dailyRequestStats field.
@@ -210,127 +187,78 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*Da
 	daysCount := 30
 	if days != nil {
 		daysCount = *days
+		if daysCount <= 0 || daysCount > 365 {
+			return nil, fmt.Errorf("invalid days parameter: must be between 1 and 365")
+		}
 	}
 
 	now := time.Now()
-	startDate := now.AddDate(0, 0, -daysCount)
+	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, -daysCount+1)
 
-	requests, err := r.client.Request.Query().
-		Where(request.CreatedAtGTE(startDate)).
-		All(ctx)
+	// Use GROUP BY aggregation for efficient database-level computation
+	type dailyStats struct {
+		Date  string `json:"date"`
+		Count int    `json:"total_count"`
+	}
+
+	var results []dailyStats
+
+	// Use raw SQL for complex GROUP BY with conditional counting
+	err := r.client.Request.Query().
+		Where(request.CreatedAtGTE(startDate), request.StatusEQ(request.StatusCompleted)).
+		Modify(func(s *sql.Selector) {
+			s.Select(
+				sql.As("DATE(created_at)", "date"),
+				sql.As(sql.Count("*"), "total_count"),
+			).
+				GroupBy("DATE(created_at)").
+				OrderBy("date")
+		}).
+		Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get daily request stats: %w", err)
 	}
 
-	// Group by date
-	dailyStats := make(map[string]*DailyRequestStats)
+	// Create a map for fast lookup of aggregated data
+	statsMap := lo.SliceToMap(results, func(item dailyStats) (string, dailyStats) {
+		return item.Date, item
+	})
+
+	// Build complete response with zero values for missing dates
+	response := make([]*DailyRequestStats, 0, daysCount)
 
 	for i := range daysCount {
 		date := startDate.AddDate(0, 0, i)
 		dateStr := date.Format("2006-01-02")
-		dailyStats[dateStr] = &DailyRequestStats{
-			Date:         dateStr,
-			Count:        0,
-			SuccessCount: 0,
-			FailedCount:  0,
-		}
-	}
 
-	for _, req := range requests {
-		dateStr := req.CreatedAt.Format("2006-01-02")
-		if stats, exists := dailyStats[dateStr]; exists {
-			stats.Count++
-			//nolint:exhaustive // Checkd.
-			switch req.Status {
-			case request.StatusCompleted:
-				stats.SuccessCount++
-			case request.StatusFailed:
-				stats.FailedCount++
-			}
-		}
-	}
-
-	var response []*DailyRequestStats
-
-	for i := range daysCount {
-		date := startDate.AddDate(0, 0, i)
-
-		dateStr := date.Format("2006-01-02")
-		if stats, exists := dailyStats[dateStr]; exists {
-			response = append(response, stats)
+		if stats, exists := statsMap[dateStr]; exists {
+			// Use aggregated data from database
+			response = append(response, &DailyRequestStats{
+				Date:  dateStr,
+				Count: stats.Count,
+			})
+		} else {
+			// Fill missing dates with zero values
+			response = append(response, &DailyRequestStats{
+				Date:  dateStr,
+				Count: 0,
+			})
 		}
 	}
 
 	return response, nil
 }
 
-// HourlyRequestStats is the resolver for the hourlyRequestStats field.
-func (r *queryResolver) HourlyRequestStats(ctx context.Context, date *string) ([]*HourlyRequestStats, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
-
-	targetDate := time.Now()
-
-	if date != nil {
-		var err error
-
-		targetDate, err = time.Parse("2006-01-02", *date)
-		if err != nil {
-			return nil, fmt.Errorf("invalid date format: %w", err)
-		}
-	}
-
-	startOfDay := time.Date(
-		targetDate.Year(),
-		targetDate.Month(),
-		targetDate.Day(),
-		0,
-		0,
-		0,
-		0,
-		targetDate.Location(),
-	)
-	endOfDay := startOfDay.Add(24 * time.Hour)
-
-	requests, err := r.client.Request.Query().
-		Where(
-			request.CreatedAtGTE(startOfDay),
-			request.CreatedAtLT(endOfDay),
-		).
-		All(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get hourly request stats: %w", err)
-	}
-
-	// Initialize hourly stats
-	hourlyStats := make(map[int]int)
-	for i := range 24 {
-		hourlyStats[i] = 0
-	}
-
-	// Count requests by hour
-	for _, req := range requests {
-		hour := req.CreatedAt.Hour()
-		hourlyStats[hour]++
-	}
-
-	var response []*HourlyRequestStats
-	for hour := range 24 {
-		response = append(response, &HourlyRequestStats{
-			Hour:  hour,
-			Count: hourlyStats[hour],
-		})
-	}
-
-	return response, nil
-}
-
-// TopUsers is the resolver for the topUsers field.
-func (r *queryResolver) TopUsers(ctx context.Context, limit *int) ([]*TopUsers, error) {
+// TopRequestsUsers is the resolver for the topRequestsUsers field.
+func (r *queryResolver) TopRequestsUsers(ctx context.Context, limit *int) ([]*TopRequestsUsers, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	limitCount := 10
 	if limit != nil {
 		limitCount = *limit
+		if limitCount <= 0 || limitCount > 100 {
+			return nil, fmt.Errorf("invalid limit parameter: must be between 1 and 100")
+		}
 	}
 
 	type userRequestCount struct {
@@ -340,53 +268,59 @@ func (r *queryResolver) TopUsers(ctx context.Context, limit *int) ([]*TopUsers, 
 
 	var results []userRequestCount
 
+	// Use database aggregation without ordering (GroupBy doesn't support Order)
 	err := r.client.Request.Query().
-		GroupBy(request.FieldUserID).
-		Aggregate(ent.As(ent.Count(), "request_count")).
+		Limit(limitCount).
+		Modify(func(s *sql.Selector) {
+			s.Select(
+				request.FieldUserID,
+				sql.As(sql.Count("*"), "request_count"),
+			).
+				GroupBy(request.FieldUserID).
+				OrderBy(sql.Desc("request_count"))
+		}).
 		Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get top users: %w", err)
 	}
 
-	// Get user details
+	if len(results) == 0 {
+		return []*TopRequestsUsers{}, nil
+	}
+
+	// Get user details for the top users
+	userIDs := lo.Map(results, func(item userRequestCount, _ int) int {
+		return item.UserID
+	})
+
 	users, err := r.client.User.Query().
-		Where(user.IDIn(lo.Map(results, func(item userRequestCount, _ int) int {
-			return item.UserID
-		})...)).
+		Where(user.IDIn(userIDs...)).
 		All(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get users: %w", err)
+		return nil, fmt.Errorf("failed to get user details: %w", err)
 	}
 
 	userMap := lo.SliceToMap(users, func(u *ent.User) (int, *ent.User) {
 		return u.ID, u
 	})
 
-	// Combine data and sort by request count
-	var response []*TopUsers
+	// Build response with user details
+	var response []*TopRequestsUsers
 
 	for _, result := range results {
-		if user, exists := userMap[result.UserID]; exists {
-			fullName := user.FirstName
-			if user.LastName != "" {
-				fullName = fullName + " " + user.LastName
+		if u, exists := userMap[result.UserID]; exists {
+			fullName := u.FirstName
+			if u.LastName != "" {
+				fullName = fullName + " " + u.LastName
 			}
 
-			response = append(response, &TopUsers{
-				UserID: objects.GUID{
-					Type: "User",
-					ID:   result.UserID,
-				},
+			response = append(response, &TopRequestsUsers{
+				UserID:       objects.GUID{Type: "User", ID: u.ID},
 				UserName:     fullName,
-				UserEmail:    user.Email,
+				UserEmail:    u.Email,
 				RequestCount: result.RequestCount,
 			})
 		}
-	}
-
-	// Sort by request count (descending) and limit
-	if len(response) > limitCount {
-		response = response[:limitCount]
 	}
 
 	return response, nil

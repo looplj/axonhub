@@ -1,30 +1,22 @@
 # Dashboard statistics and analytics
 
-type DashboardStats {
+type DashboardOverview {
   totalUsers: Int!
-  totalChannels: Int!
   totalRequests: Int!
-  totalAPIKeys: Int!
   requestsToday: Int!
   requestsThisWeek: Int!
   requestsThisMonth: Int!
-  successfulRequests: Int!
   failedRequests: Int!
   averageResponseTime: Float
 }
 
-type RequestsByStatus {
-  status: String!
-  count: Int!
-}
-
-type RequestsByChannel {
+type RequestStatsByChannel {
   channelName: String!
   channelType: String!
   count: Int!
 }
 
-type RequestsByModel {
+type RequestStatsByModel {
   modelId: String!
   count: Int!
 }
@@ -32,8 +24,6 @@ type RequestsByModel {
 type DailyRequestStats {
   date: String!
   count: Int!
-  successCount: Int!
-  failedCount: Int!
 }
 
 type HourlyRequestStats {
@@ -41,7 +31,7 @@ type HourlyRequestStats {
   count: Int!
 }
 
-type TopUsers {
+type TopRequestsUsers {
   userId: ID!
   userName: String!
   userEmail: String!
@@ -49,11 +39,9 @@ type TopUsers {
 }
 
 extend type Query {
-  dashboardStats: DashboardStats!
-  requestsByStatus: [RequestsByStatus!]!
-  requestsByChannel: [RequestsByChannel!]!
-  requestsByModel: [RequestsByModel!]!
+  dashboardOverview: DashboardOverview!
+  requestStatsByChannel: [RequestStatsByChannel!]!
+  requestStatsByModel: [RequestStatsByModel!]!
   dailyRequestStats(days: Int = 30): [DailyRequestStats!]!
-  hourlyRequestStats(date: String): [HourlyRequestStats!]!
-  topUsers(limit: Int = 10): [TopUsers!]!
+  topRequestsUsers(limit: Int = 10): [TopRequestsUsers!]!
 }

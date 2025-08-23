@@ -293,7 +293,7 @@ func (cq *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int `sql:"channel_requests"`
+							NodeID int `sql:"channel_id"`
 							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
@@ -772,6 +772,21 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			rq.WithNamedExecutions(alias, func(wq *RequestExecutionQuery) {
 				*wq = *query
 			})
+
+		case "channel":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ChannelClient{config: rq.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, channelImplementors)...); err != nil {
+				return err
+			}
+			rq.withChannel = query
+			if _, ok := fieldSeen[request.FieldChannelID]; !ok {
+				selectedFields = append(selectedFields, request.FieldChannelID)
+				fieldSeen[request.FieldChannelID] = struct{}{}
+			}
 		case "createdAt":
 			if _, ok := fieldSeen[request.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, request.FieldCreatedAt)
@@ -826,6 +841,11 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			if _, ok := fieldSeen[request.FieldResponseChunks]; !ok {
 				selectedFields = append(selectedFields, request.FieldResponseChunks)
 				fieldSeen[request.FieldResponseChunks] = struct{}{}
+			}
+		case "channelID":
+			if _, ok := fieldSeen[request.FieldChannelID]; !ok {
+				selectedFields = append(selectedFields, request.FieldChannelID)
+				fieldSeen[request.FieldChannelID] = struct{}{}
 			}
 		case "status":
 			if _, ok := fieldSeen[request.FieldStatus]; !ok {

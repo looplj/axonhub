@@ -775,26 +775,32 @@
     "noData": "暂无数据",
     "cards": {
       "totalUsers": "总用户数",
-      "totalChannels": "总渠道数",
       "totalRequests": "总请求数",
-      "requestsToday": "今日请求数"
+      "requestsByTime": "请求数统计",
+      "successRate": "成功率"
     },
     "charts": {
       "dailyRequestOverview": "每日请求概览",
       "topUsers": "活跃用户",
       "requestsByChannel": "按渠道分组的请求",
-      "requestsByStatus": "按状态分组的请求",
+      "requestsByModel": "按模型分组的请求",
       "errorLoadingChart": "加载图表数据失败:",
       "errorLoadingTopUsers": "加载活跃用户失败:",
       "errorLoadingChannelData": "加载渠道数据失败:",
-      "errorLoadingStatusData": "加载状态数据失败:",
+      "errorLoadingModelData": "加载模型数据失败:",
       "noUserData": "暂无用户数据",
       "noChannelData": "暂无渠道数据",
-      "noStatusData": "暂无状态数据",
+      "noModelData": "暂无模型数据",
       "requestsByChannelDescription": "不同渠道的请求分布情况。",
-      "requestsByStatusDescription": "请求状态的详细分析。"
+      "requestsByModelDescription": "不同AI模型的请求分布情况。"
     },
     "stats": {
+      "totalUsersInSystem": "系统总用户数",
+      "allTimeRequests": "历史总请求数",
+      "thisMonth": "本月",
+      "thisWeek": "本周",
+      "today": "今天",
+      "failedRequests": "失败请求",
       "fromLastMonth": "较上月",
       "sinceYesterday": "较昨日",
       "usersWithMostRequests": "本月请求最多的用户。",

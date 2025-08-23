@@ -116,6 +116,14 @@ func (r *Request) Executions(
 	return r.QueryExecutions().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (r *Request) Channel(ctx context.Context) (*Channel, error) {
+	result, err := r.Edges.ChannelOrErr()
+	if IsNotLoaded(err) {
+		result, err = r.QueryChannel().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
 func (re *RequestExecution) Request(ctx context.Context) (*Request, error) {
 	result, err := re.Edges.RequestOrErr()
 	if IsNotLoaded(err) {

@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
@@ -43,13 +44,14 @@ type Request struct {
 	ResponseBody objects.JSONRawMessage `json:"response_body,omitempty"`
 	// ResponseChunks holds the value of the "response_chunks" field.
 	ResponseChunks []objects.JSONRawMessage `json:"response_chunks,omitempty"`
+	// ChannelID holds the value of the "channel_id" field.
+	ChannelID int `json:"channel_id,omitempty"`
 	// Status holds the value of the "status" field.
 	Status request.Status `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestQuery when eager-loading is set.
-	Edges            RequestEdges `json:"edges"`
-	channel_requests *int
-	selectValues     sql.SelectValues
+	Edges        RequestEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // RequestEdges holds the relations/edges for other nodes in the graph.
@@ -60,11 +62,13 @@ type RequestEdges struct {
 	APIKey *APIKey `json:"api_key,omitempty"`
 	// Executions holds the value of the executions edge.
 	Executions []*RequestExecution `json:"executions,omitempty"`
+	// Channel holds the value of the channel edge.
+	Channel *Channel `json:"channel,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 	// totalCount holds the count of the edges above.
-	totalCount [3]map[string]int
+	totalCount [4]map[string]int
 
 	namedExecutions map[string][]*RequestExecution
 }
@@ -100,6 +104,17 @@ func (e RequestEdges) ExecutionsOrErr() ([]*RequestExecution, error) {
 	return nil, &NotLoadedError{edge: "executions"}
 }
 
+// ChannelOrErr returns the Channel value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e RequestEdges) ChannelOrErr() (*Channel, error) {
+	if e.Channel != nil {
+		return e.Channel, nil
+	} else if e.loadedTypes[3] {
+		return nil, &NotFoundError{label: channel.Label}
+	}
+	return nil, &NotLoadedError{edge: "channel"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Request) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -107,14 +122,12 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case request.FieldRequestBody, request.FieldResponseBody, request.FieldResponseChunks:
 			values[i] = new([]byte)
-		case request.FieldID, request.FieldDeletedAt, request.FieldUserID, request.FieldAPIKeyID:
+		case request.FieldID, request.FieldDeletedAt, request.FieldUserID, request.FieldAPIKeyID, request.FieldChannelID:
 			values[i] = new(sql.NullInt64)
 		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldStatus:
 			values[i] = new(sql.NullString)
 		case request.FieldCreatedAt, request.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case request.ForeignKeys[0]: // channel_requests
-			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -208,18 +221,17 @@ func (r *Request) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field response_chunks: %w", err)
 				}
 			}
+		case request.FieldChannelID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field channel_id", values[i])
+			} else if value.Valid {
+				r.ChannelID = int(value.Int64)
+			}
 		case request.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				r.Status = request.Status(value.String)
-			}
-		case request.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field channel_requests", value)
-			} else if value.Valid {
-				r.channel_requests = new(int)
-				*r.channel_requests = int(value.Int64)
 			}
 		default:
 			r.selectValues.Set(columns[i], values[i])
@@ -247,6 +259,11 @@ func (r *Request) QueryAPIKey() *APIKeyQuery {
 // QueryExecutions queries the "executions" edge of the Request entity.
 func (r *Request) QueryExecutions() *RequestExecutionQuery {
 	return NewRequestClient(r.config).QueryExecutions(r)
+}
+
+// QueryChannel queries the "channel" edge of the Request entity.
+func (r *Request) QueryChannel() *ChannelQuery {
+	return NewRequestClient(r.config).QueryChannel(r)
 }
 
 // Update returns a builder for updating this Request.
@@ -304,6 +321,9 @@ func (r *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("response_chunks=")
 	builder.WriteString(fmt.Sprintf("%v", r.ResponseChunks))
+	builder.WriteString(", ")
+	builder.WriteString("channel_id=")
+	builder.WriteString(fmt.Sprintf("%v", r.ChannelID))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", r.Status))

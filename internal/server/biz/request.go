@@ -121,6 +121,21 @@ func (s *RequestService) UpdateRequestCompleted(
 	return nil
 }
 
+// UpdateRequestChannelID updates request with channel ID after channel selection.
+func (s *RequestService) UpdateRequestChannelID(ctx context.Context, requestID int, channelID int) error {
+	client := ent.FromContext(ctx)
+
+	_, err := client.Request.UpdateOneID(requestID).
+		SetChannelID(channelID).
+		Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to update request channel ID", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
 // UpdateRequestFailed updates request status to failed.
 func (s *RequestService) UpdateRequestFailed(ctx context.Context, requestID int) error {
 	client := ent.FromContext(ctx)

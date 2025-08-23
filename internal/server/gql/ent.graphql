@@ -525,6 +525,7 @@ input CreateRequestInput {
   status: RequestStatus!
   userID: ID!
   apiKeyID: ID
+  channelID: ID
 }
 """
 CreateRoleInput is used for create Role object.
@@ -919,6 +920,7 @@ type Request implements Node {
   requestBody: JSONRawMessage!
   responseBody: JSONRawMessage
   responseChunks: [JSONRawMessage!]
+  channelID: ID
   status: RequestStatus!
   user: User!
   apiKey: APIKey
@@ -953,6 +955,7 @@ type Request implements Node {
     """
     where: RequestExecutionWhereInput
   ): RequestExecutionConnection!
+  channel: Channel
 }
 """
 A connection to a list of items.
@@ -1337,6 +1340,15 @@ input RequestWhereInput {
   formatEqualFold: String
   formatContainsFold: String
   """
+  channel_id field predicates
+  """
+  channelID: ID
+  channelIDNEQ: ID
+  channelIDIn: [ID!]
+  channelIDNotIn: [ID!]
+  channelIDIsNil: Boolean
+  channelIDNotNil: Boolean
+  """
   status field predicates
   """
   status: RequestStatus
@@ -1358,6 +1370,11 @@ input RequestWhereInput {
   """
   hasExecutions: Boolean
   hasExecutionsWith: [RequestExecutionWhereInput!]
+  """
+  channel edge predicates
+  """
+  hasChannel: Boolean
+  hasChannelWith: [ChannelWhereInput!]
 }
 type Role implements Node {
   id: ID!
@@ -1725,6 +1742,8 @@ input UpdateRequestInput {
   appendResponseChunks: [JSONRawMessageInput!]
   clearResponseChunks: Boolean
   status: RequestStatus
+  channelID: ID
+  clearChannel: Boolean
 }
 """
 UpdateRoleInput is used for update Role object.

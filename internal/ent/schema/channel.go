@@ -35,7 +35,8 @@ func (Channel) Indexes() []ent.Index {
 func (Channel) Fields() []ent.Field {
 	return []ent.Field{
 		field.Enum("type").
-			Values("openai",
+			Values(
+				"openai",
 				"anthropic",
 				"anthropic_aws",
 				"anthropic_gcp",

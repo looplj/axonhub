@@ -2,7 +2,7 @@
 
 import { useTranslation } from 'react-i18next'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
-import { useRequestsByChannel } from '../data/dashboard'
+import { useRequestsByModel } from '../data/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const COLORS = [
@@ -14,9 +14,9 @@ const COLORS = [
   'var(--chart-1)'
 ]
 
-export function RequestsByChannelChart() {
+export function RequestsByModelChart() {
   const { t } = useTranslation()
-  const { data: channelData, isLoading, error } = useRequestsByChannel()
+  const { data: modelData, isLoading, error } = useRequestsByModel()
 
   if (isLoading) {
     return (
@@ -30,24 +30,24 @@ export function RequestsByChannelChart() {
     return (
       <div className="h-[300px] flex items-center justify-center">
         <div className="text-red-500 text-sm">
-          {t('dashboard.charts.errorLoadingChannelData')} {error.message}
+          {t('dashboard.charts.errorLoadingModelData')} {error.message}
         </div>
       </div>
     )
   }
 
-  if (!channelData || channelData.length === 0) {
+  if (!modelData || modelData.length === 0) {
     return (
       <div className="h-[300px] flex items-center justify-center">
         <div className="text-muted-foreground text-sm">
-          {t('dashboard.charts.noChannelData')}
+          {t('dashboard.charts.noModelData')}
         </div>
       </div>
     )
   }
 
-  const data = channelData.map((item) => ({
-    name: item.channelName,
+  const data = modelData.map((item) => ({
+    name: item.modelId,
     value: item.count,
   }))
 
@@ -59,12 +59,11 @@ export function RequestsByChannelChart() {
           cx="50%"
           cy="50%"
           labelLine={false}
-          label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
           outerRadius={80}
           fill="#8884d8"
           dataKey="value"
         >
-          {data.map((_, index) => (
+          {data.map((_entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Pie>

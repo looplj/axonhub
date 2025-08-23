@@ -210,6 +210,19 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		p.state.RequestExec = requestExec
 	}
 
+	// Update request with channel ID after channel selection
+	if p.state.Request != nil && p.state.Request.ChannelID == 0 {
+		err := p.state.RequestService.UpdateRequestChannelID(
+			ctx,
+			p.state.Request.ID,
+			p.state.CurrentChannel.ID,
+		)
+		if err != nil {
+			log.Warn(ctx, "Failed to update request channel ID", log.Cause(err))
+			// Continue processing even if channel ID update fails
+		}
+	}
+
 	return channelRequest, nil
 }
 

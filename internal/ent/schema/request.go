@@ -30,6 +30,13 @@ func (Request) Indexes() []ent.Index {
 			StorageKey("requests_by_user_id"),
 		index.Fields("api_key_id").
 			StorageKey("requests_by_api_key_id"),
+		index.Fields("channel_id").
+			StorageKey("requests_by_channel_id"),
+		// Performance indexes for dashboard queries
+		index.Fields("created_at").
+			StorageKey("requests_by_created_at"),
+		index.Fields("status").
+			StorageKey("requests_by_status"),
 	}
 }
 
@@ -52,6 +59,7 @@ func (Request) Fields() []ent.Field {
 		field.JSON("response_body", objects.JSONRawMessage{}).Optional(),
 		// The response chunks to the user.
 		field.JSON("response_chunks", []objects.JSONRawMessage{}).Optional(),
+		field.Int("channel_id").Optional(),
 		// The status of the request.
 		field.Enum("status").Values("pending", "processing", "completed", "failed"),
 	}
@@ -71,6 +79,10 @@ func (Request) Edges() []ent.Edge {
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
 			),
+		edge.From("channel", Channel.Type).
+			Ref("requests").
+			Field("channel_id").
+			Unique(),
 	}
 }
 

@@ -18,8 +18,9 @@ import (
 // SystemUpdate is the builder for updating System entities.
 type SystemUpdate struct {
 	config
-	hooks    []Hook
-	mutation *SystemMutation
+	hooks     []Hook
+	mutation  *SystemMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the SystemUpdate builder.
@@ -130,6 +131,12 @@ func (su *SystemUpdate) defaults() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (su *SystemUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *SystemUpdate {
+	su.modifiers = append(su.modifiers, modifiers...)
+	return su
+}
+
 func (su *SystemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(system.Table, system.Columns, sqlgraph.NewFieldSpec(system.FieldID, field.TypeInt))
 	if ps := su.mutation.predicates; len(ps) > 0 {
@@ -154,6 +161,7 @@ func (su *SystemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := su.mutation.Value(); ok {
 		_spec.SetField(system.FieldValue, field.TypeString, value)
 	}
+	_spec.AddModifiers(su.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, su.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{system.Label}
@@ -169,9 +177,10 @@ func (su *SystemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // SystemUpdateOne is the builder for updating a single System entity.
 type SystemUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *SystemMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *SystemMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetUpdatedAt sets the "updated_at" field.
@@ -289,6 +298,12 @@ func (suo *SystemUpdateOne) defaults() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (suo *SystemUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *SystemUpdateOne {
+	suo.modifiers = append(suo.modifiers, modifiers...)
+	return suo
+}
+
 func (suo *SystemUpdateOne) sqlSave(ctx context.Context) (_node *System, err error) {
 	_spec := sqlgraph.NewUpdateSpec(system.Table, system.Columns, sqlgraph.NewFieldSpec(system.FieldID, field.TypeInt))
 	id, ok := suo.mutation.ID()
@@ -330,6 +345,7 @@ func (suo *SystemUpdateOne) sqlSave(ctx context.Context) (_node *System, err err
 	if value, ok := suo.mutation.Value(); ok {
 		_spec.SetField(system.FieldValue, field.TypeString, value)
 	}
+	_spec.AddModifiers(suo.modifiers...)
 	_node = &System{config: suo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

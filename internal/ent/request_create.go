@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -140,6 +141,20 @@ func (rc *RequestCreate) SetResponseChunks(orm []objects.JSONRawMessage) *Reques
 	return rc
 }
 
+// SetChannelID sets the "channel_id" field.
+func (rc *RequestCreate) SetChannelID(i int) *RequestCreate {
+	rc.mutation.SetChannelID(i)
+	return rc
+}
+
+// SetNillableChannelID sets the "channel_id" field if the given value is not nil.
+func (rc *RequestCreate) SetNillableChannelID(i *int) *RequestCreate {
+	if i != nil {
+		rc.SetChannelID(*i)
+	}
+	return rc
+}
+
 // SetStatus sets the "status" field.
 func (rc *RequestCreate) SetStatus(r request.Status) *RequestCreate {
 	rc.mutation.SetStatus(r)
@@ -169,6 +184,11 @@ func (rc *RequestCreate) AddExecutions(r ...*RequestExecution) *RequestCreate {
 		ids[i] = r[i].ID
 	}
 	return rc.AddExecutionIDs(ids...)
+}
+
+// SetChannel sets the "channel" edge to the Channel entity.
+func (rc *RequestCreate) SetChannel(c *Channel) *RequestCreate {
+	return rc.SetChannelID(c.ID)
 }
 
 // Mutation returns the RequestMutation object of the builder.
@@ -396,6 +416,23 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := rc.mutation.ChannelIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   request.ChannelTable,
+			Columns: []string{request.ChannelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.ChannelID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	return _node, _spec
 }
 
@@ -511,6 +548,24 @@ func (u *RequestUpsert) UpdateResponseChunks() *RequestUpsert {
 // ClearResponseChunks clears the value of the "response_chunks" field.
 func (u *RequestUpsert) ClearResponseChunks() *RequestUpsert {
 	u.SetNull(request.FieldResponseChunks)
+	return u
+}
+
+// SetChannelID sets the "channel_id" field.
+func (u *RequestUpsert) SetChannelID(v int) *RequestUpsert {
+	u.Set(request.FieldChannelID, v)
+	return u
+}
+
+// UpdateChannelID sets the "channel_id" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateChannelID() *RequestUpsert {
+	u.SetExcluded(request.FieldChannelID)
+	return u
+}
+
+// ClearChannelID clears the value of the "channel_id" field.
+func (u *RequestUpsert) ClearChannelID() *RequestUpsert {
+	u.SetNull(request.FieldChannelID)
 	return u
 }
 
@@ -663,6 +718,27 @@ func (u *RequestUpsertOne) UpdateResponseChunks() *RequestUpsertOne {
 func (u *RequestUpsertOne) ClearResponseChunks() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearResponseChunks()
+	})
+}
+
+// SetChannelID sets the "channel_id" field.
+func (u *RequestUpsertOne) SetChannelID(v int) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetChannelID(v)
+	})
+}
+
+// UpdateChannelID sets the "channel_id" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateChannelID() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateChannelID()
+	})
+}
+
+// ClearChannelID clears the value of the "channel_id" field.
+func (u *RequestUpsertOne) ClearChannelID() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearChannelID()
 	})
 }
 
@@ -983,6 +1059,27 @@ func (u *RequestUpsertBulk) UpdateResponseChunks() *RequestUpsertBulk {
 func (u *RequestUpsertBulk) ClearResponseChunks() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearResponseChunks()
+	})
+}
+
+// SetChannelID sets the "channel_id" field.
+func (u *RequestUpsertBulk) SetChannelID(v int) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetChannelID(v)
+	})
+}
+
+// UpdateChannelID sets the "channel_id" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateChannelID() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateChannelID()
+	})
+}
+
+// ClearChannelID clears the value of the "channel_id" field.
+func (u *RequestUpsertBulk) ClearChannelID() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearChannelID()
 	})
 }
 

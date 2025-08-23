@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -21,8 +22,9 @@ import (
 // RequestUpdate is the builder for updating Request entities.
 type RequestUpdate struct {
 	config
-	hooks    []Hook
-	mutation *RequestMutation
+	hooks     []Hook
+	mutation  *RequestMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the RequestUpdate builder.
@@ -94,6 +96,26 @@ func (ru *RequestUpdate) ClearResponseChunks() *RequestUpdate {
 	return ru
 }
 
+// SetChannelID sets the "channel_id" field.
+func (ru *RequestUpdate) SetChannelID(i int) *RequestUpdate {
+	ru.mutation.SetChannelID(i)
+	return ru
+}
+
+// SetNillableChannelID sets the "channel_id" field if the given value is not nil.
+func (ru *RequestUpdate) SetNillableChannelID(i *int) *RequestUpdate {
+	if i != nil {
+		ru.SetChannelID(*i)
+	}
+	return ru
+}
+
+// ClearChannelID clears the value of the "channel_id" field.
+func (ru *RequestUpdate) ClearChannelID() *RequestUpdate {
+	ru.mutation.ClearChannelID()
+	return ru
+}
+
 // SetStatus sets the "status" field.
 func (ru *RequestUpdate) SetStatus(r request.Status) *RequestUpdate {
 	ru.mutation.SetStatus(r)
@@ -123,6 +145,11 @@ func (ru *RequestUpdate) AddExecutions(r ...*RequestExecution) *RequestUpdate {
 	return ru.AddExecutionIDs(ids...)
 }
 
+// SetChannel sets the "channel" edge to the Channel entity.
+func (ru *RequestUpdate) SetChannel(c *Channel) *RequestUpdate {
+	return ru.SetChannelID(c.ID)
+}
+
 // Mutation returns the RequestMutation object of the builder.
 func (ru *RequestUpdate) Mutation() *RequestMutation {
 	return ru.mutation
@@ -147,6 +174,12 @@ func (ru *RequestUpdate) RemoveExecutions(r ...*RequestExecution) *RequestUpdate
 		ids[i] = r[i].ID
 	}
 	return ru.RemoveExecutionIDs(ids...)
+}
+
+// ClearChannel clears the "channel" edge to the Channel entity.
+func (ru *RequestUpdate) ClearChannel() *RequestUpdate {
+	ru.mutation.ClearChannel()
+	return ru
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -202,6 +235,12 @@ func (ru *RequestUpdate) check() error {
 		return errors.New(`ent: clearing a required unique edge "Request.user"`)
 	}
 	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (ru *RequestUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestUpdate {
+	ru.modifiers = append(ru.modifiers, modifiers...)
+	return ru
 }
 
 func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
@@ -295,6 +334,36 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if ru.mutation.ChannelCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   request.ChannelTable,
+			Columns: []string{request.ChannelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ru.mutation.ChannelIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   request.ChannelTable,
+			Columns: []string{request.ChannelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	_spec.AddModifiers(ru.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, ru.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{request.Label}
@@ -310,9 +379,10 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // RequestUpdateOne is the builder for updating a single Request entity.
 type RequestUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *RequestMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *RequestMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetUpdatedAt sets the "updated_at" field.
@@ -378,6 +448,26 @@ func (ruo *RequestUpdateOne) ClearResponseChunks() *RequestUpdateOne {
 	return ruo
 }
 
+// SetChannelID sets the "channel_id" field.
+func (ruo *RequestUpdateOne) SetChannelID(i int) *RequestUpdateOne {
+	ruo.mutation.SetChannelID(i)
+	return ruo
+}
+
+// SetNillableChannelID sets the "channel_id" field if the given value is not nil.
+func (ruo *RequestUpdateOne) SetNillableChannelID(i *int) *RequestUpdateOne {
+	if i != nil {
+		ruo.SetChannelID(*i)
+	}
+	return ruo
+}
+
+// ClearChannelID clears the value of the "channel_id" field.
+func (ruo *RequestUpdateOne) ClearChannelID() *RequestUpdateOne {
+	ruo.mutation.ClearChannelID()
+	return ruo
+}
+
 // SetStatus sets the "status" field.
 func (ruo *RequestUpdateOne) SetStatus(r request.Status) *RequestUpdateOne {
 	ruo.mutation.SetStatus(r)
@@ -407,6 +497,11 @@ func (ruo *RequestUpdateOne) AddExecutions(r ...*RequestExecution) *RequestUpdat
 	return ruo.AddExecutionIDs(ids...)
 }
 
+// SetChannel sets the "channel" edge to the Channel entity.
+func (ruo *RequestUpdateOne) SetChannel(c *Channel) *RequestUpdateOne {
+	return ruo.SetChannelID(c.ID)
+}
+
 // Mutation returns the RequestMutation object of the builder.
 func (ruo *RequestUpdateOne) Mutation() *RequestMutation {
 	return ruo.mutation
@@ -431,6 +526,12 @@ func (ruo *RequestUpdateOne) RemoveExecutions(r ...*RequestExecution) *RequestUp
 		ids[i] = r[i].ID
 	}
 	return ruo.RemoveExecutionIDs(ids...)
+}
+
+// ClearChannel clears the "channel" edge to the Channel entity.
+func (ruo *RequestUpdateOne) ClearChannel() *RequestUpdateOne {
+	ruo.mutation.ClearChannel()
+	return ruo
 }
 
 // Where appends a list predicates to the RequestUpdate builder.
@@ -499,6 +600,12 @@ func (ruo *RequestUpdateOne) check() error {
 		return errors.New(`ent: clearing a required unique edge "Request.user"`)
 	}
 	return nil
+}
+
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (ruo *RequestUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestUpdateOne {
+	ruo.modifiers = append(ruo.modifiers, modifiers...)
+	return ruo
 }
 
 func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err error) {
@@ -609,6 +716,36 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if ruo.mutation.ChannelCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   request.ChannelTable,
+			Columns: []string{request.ChannelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ruo.mutation.ChannelIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   request.ChannelTable,
+			Columns: []string{request.ChannelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	_spec.AddModifiers(ruo.modifiers...)
 	_node = &Request{config: ruo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

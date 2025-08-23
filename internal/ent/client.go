@@ -889,6 +889,22 @@ func (c *RequestClient) QueryExecutions(r *Request) *RequestExecutionQuery {
 	return query
 }
 
+// QueryChannel queries the channel edge of a Request.
+func (c *RequestClient) QueryChannel(r *Request) *ChannelQuery {
+	query := (&ChannelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := r.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(request.Table, request.FieldID, id),
+			sqlgraph.To(channel.Table, channel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, request.ChannelTable, request.ChannelColumn),
+		)
+		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *RequestClient) Hooks() []Hook {
 	hooks := c.hooks.Request

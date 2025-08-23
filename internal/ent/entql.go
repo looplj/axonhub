@@ -105,6 +105,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldRequestBody:    {Type: field.TypeJSON, Column: request.FieldRequestBody},
 			request.FieldResponseBody:   {Type: field.TypeJSON, Column: request.FieldResponseBody},
 			request.FieldResponseChunks: {Type: field.TypeJSON, Column: request.FieldResponseChunks},
+			request.FieldChannelID:      {Type: field.TypeInt, Column: request.FieldChannelID},
 			request.FieldStatus:         {Type: field.TypeEnum, Column: request.FieldStatus},
 		},
 	}
@@ -278,6 +279,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		"Request",
 		"RequestExecution",
+	)
+	graph.MustAddE(
+		"channel",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   request.ChannelTable,
+			Columns: []string{request.ChannelColumn},
+			Bidi:    false,
+		},
+		"Request",
+		"Channel",
 	)
 	graph.MustAddE(
 		"request",
@@ -741,6 +754,11 @@ func (f *RequestFilter) WhereResponseChunks(p entql.BytesP) {
 	f.Where(p.Field(request.FieldResponseChunks))
 }
 
+// WhereChannelID applies the entql int predicate on the channel_id field.
+func (f *RequestFilter) WhereChannelID(p entql.IntP) {
+	f.Where(p.Field(request.FieldChannelID))
+}
+
 // WhereStatus applies the entql string predicate on the status field.
 func (f *RequestFilter) WhereStatus(p entql.StringP) {
 	f.Where(p.Field(request.FieldStatus))
@@ -782,6 +800,20 @@ func (f *RequestFilter) WhereHasExecutions() {
 // WhereHasExecutionsWith applies a predicate to check if query has an edge executions with a given conditions (other predicates).
 func (f *RequestFilter) WhereHasExecutionsWith(preds ...predicate.RequestExecution) {
 	f.Where(entql.HasEdgeWith("executions", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasChannel applies a predicate to check if query has an edge channel.
+func (f *RequestFilter) WhereHasChannel() {
+	f.Where(entql.HasEdge("channel"))
+}
+
+// WhereHasChannelWith applies a predicate to check if query has an edge channel with a given conditions (other predicates).
+func (f *RequestFilter) WhereHasChannelWith(preds ...predicate.Channel) {
+	f.Where(entql.HasEdgeWith("channel", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}

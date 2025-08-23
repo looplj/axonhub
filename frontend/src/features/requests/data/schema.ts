@@ -59,6 +59,8 @@ export const requestSchema = z.object({
   user: userSchema.partial().optional(),
   // apiKeyID: z.string().optional().nullable(),
   apiKey: apiKeySchema.partial().nullable().optional(),
+  // channelID: z.string().optional().nullable(),
+  channel: channelSchema.partial().nullable().optional(),
   source: requestSourceSchema,
   modelID: z.string(),
   requestBody: z.any(), // JSONRawMessage

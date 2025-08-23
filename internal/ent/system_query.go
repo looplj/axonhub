@@ -23,8 +23,8 @@ type SystemQuery struct {
 	order      []system.OrderOption
 	inters     []Interceptor
 	predicates []predicate.System
-	modifiers  []func(*sql.Selector)
 	loadTotal  []func(context.Context, []*System) error
+	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -254,8 +254,9 @@ func (sq *SystemQuery) Clone() *SystemQuery {
 		inters:     append([]Interceptor{}, sq.inters...),
 		predicates: append([]predicate.System{}, sq.predicates...),
 		// clone intermediate query.
-		sql:  sq.sql.Clone(),
-		path: sq.path,
+		sql:       sq.sql.Clone(),
+		path:      sq.path,
+		modifiers: append([]func(*sql.Selector){}, sq.modifiers...),
 	}
 }
 
@@ -439,6 +440,9 @@ func (sq *SystemQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if sq.ctx.Unique != nil && *sq.ctx.Unique {
 		selector.Distinct()
 	}
+	for _, m := range sq.modifiers {
+		m(selector)
+	}
 	for _, p := range sq.predicates {
 		p(selector)
 	}
@@ -454,6 +458,12 @@ func (sq *SystemQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (sq *SystemQuery) Modify(modifiers ...func(s *sql.Selector)) *SystemSelect {
+	sq.modifiers = append(sq.modifiers, modifiers...)
+	return sq.Select()
 }
 
 // SystemGroupBy is the group-by builder for System entities.
@@ -544,4 +554,10 @@ func (ss *SystemSelect) sqlScan(ctx context.Context, root *SystemQuery, v any) e
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (ss *SystemSelect) Modify(modifiers ...func(s *sql.Selector)) *SystemSelect {
+	ss.modifiers = append(ss.modifiers, modifiers...)
+	return ss
 }
