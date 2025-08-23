@@ -67,6 +67,29 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
   },
   {
+    accessorKey: 'source',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={t('requests.columns.source')} />
+    ),
+    enableSorting: false,
+    cell: ({ row }) => {
+      const source = row.getValue('source') as string
+      const sourceColors: Record<string, string> = {
+        api: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
+        playground: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
+        test: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800',
+      }
+      return (
+        <Badge className={sourceColors[source] || 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800'}>
+          {t(`requests.source.${source}`)}
+        </Badge>
+      )
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
+  },
+  {
     id: 'user',
     accessorFn: (row) => row.user?.id || '',
     header: ({ column }) => (

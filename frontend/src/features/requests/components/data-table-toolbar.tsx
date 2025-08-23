@@ -74,6 +74,21 @@ export function DataTableToolbar<TData>({
     },
   ]
 
+  const requestSources = [
+    {
+      value: 'api',
+      label: t('requests.source.api'),
+    },
+    {
+      value: 'playground', 
+      label: t('requests.source.playground'),
+    },
+    {
+      value: 'test',
+      label: t('requests.source.test'),
+    },
+  ]
+
   return (
     <div className='flex items-center justify-between'>
       <div className='flex flex-1 items-center space-x-2'>
@@ -90,6 +105,13 @@ export function DataTableToolbar<TData>({
             column={table.getColumn('status')}
             title={t('requests.filters.status')}
             options={requestStatuses}
+          />
+        )}
+        {table.getColumn('source') && (
+          <DataTableFacetedFilter
+            column={table.getColumn('source')}
+            title={t('requests.filters.source')}
+            options={requestSources}
           />
         )}
         {canViewUsers &&

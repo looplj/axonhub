@@ -45,6 +45,7 @@ function buildRequestsQuery(permissions: { canViewUsers: boolean; canViewApiKeys
             id
             createdAt
             updatedAt${userFields}${apiKeyFields}
+            source
             modelID
             requestBody
             responseBody
@@ -114,6 +115,7 @@ function buildRequestDetailQuery(permissions: { canViewUsers: boolean; canViewAp
           id
           createdAt
           updatedAt${userFields}${apiKeyFields}
+          source
           modelID
           requestBody
           responseBody

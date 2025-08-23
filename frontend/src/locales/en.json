@@ -655,6 +655,7 @@
       "id": "ID",
       "modelId": "Model ID",
       "status": "Status",
+      "source": "Source",
       "user": "User",
       "apiKey": "API Key",
       "requestBody": "Request Body",
@@ -671,6 +672,11 @@
       "completed": "Completed",
       "failed": "Failed"
     },
+    "source": {
+      "api": "API",
+      "playground": "Playground",
+      "test": "Test"
+    },
     "actions": {
       "openMenu": "Open menu",
       "viewDetails": "View Details",
@@ -681,6 +687,7 @@
     "filters": {
       "filterId": "Filter by ID...",
       "status": "Status",
+      "source": "Source",
       "user": "User",
       "reset": "Reset"
     },

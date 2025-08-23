@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -93,6 +94,15 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 		ctx := contexts.WithUser(c.Request.Context(), user)
 		c.Request = c.Request.WithContext(ctx)
 
+		c.Next()
+	}
+}
+
+// WithSource 中间件用于设置请求来源到 context 中.
+func WithSource(source request.Source) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := contexts.WithSource(c.Request.Context(), source)
+		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
 }

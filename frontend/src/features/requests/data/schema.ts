@@ -13,6 +13,14 @@ export const requestStatusSchema = z.enum([
 ])
 export type RequestStatus = z.infer<typeof requestStatusSchema>
 
+// Request Source
+export const requestSourceSchema = z.enum([
+  'api',
+  'playground',
+  'test',
+])
+export type RequestSource = z.infer<typeof requestSourceSchema>
+
 // Request Execution Status
 export const requestExecutionStatusSchema = z.enum([
   'pending',
@@ -51,6 +59,7 @@ export const requestSchema = z.object({
   user: userSchema.partial().optional(),
   // apiKeyID: z.string().optional().nullable(),
   apiKey: apiKeySchema.partial().nullable().optional(),
+  source: requestSourceSchema,
   modelID: z.string(),
   requestBody: z.any(), // JSONRawMessage
   responseBody: z.any().nullable(), // JSONRawMessage

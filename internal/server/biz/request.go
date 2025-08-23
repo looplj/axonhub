@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -41,11 +42,15 @@ func (s *RequestService) CreateRequest(
 		return nil, err
 	}
 
+	// Get source from context, default to API if not present
+	source := contexts.GetSourceOrDefault(ctx, request.SourceAPI)
+
 	client := ent.FromContext(ctx)
 	mut := client.Request.Create().
 		SetUser(user).
 		SetModelID(llmRequest.Model).
 		SetFormat(format).
+		SetSource(source).
 		SetStatus(request.StatusProcessing).
 		SetRequestBody(requestBodyBytes)
 

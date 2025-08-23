@@ -5,6 +5,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/server/api"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gql"
@@ -46,11 +47,12 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
 		})
 
-		adminGroup.POST("/v1/chat", middleware.WithTimeout(server.config.LLMRequestTimeout), handlers.AiSDK.ChatCompletion)
+		adminGroup.POST("/v1/chat", middleware.WithTimeout(server.config.LLMRequestTimeout), middleware.WithSource(request.SourcePlayground), handlers.AiSDK.ChatCompletion)
 	}
 
 	apiGroup := server.Group("/v1", middleware.WithTimeout(server.config.LLMRequestTimeout))
 	apiGroup.Use(middleware.WithAPIKeyAuth(auth))
+	apiGroup.Use(middleware.WithSource(request.SourceAPI))
 	{
 		apiGroup.POST("/messages", handlers.Anthropic.CreateMessage)
 		apiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)

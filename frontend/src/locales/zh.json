@@ -687,6 +687,7 @@
       "id": "ID",
       "modelId": "模型ID",
       "status": "状态",
+      "source": "来源",
       "user": "用户",
       "apiKey": "API密钥",
       "requestBody": "请求体",
@@ -703,6 +704,11 @@
       "completed": "已完成",
       "failed": "失败"
     },
+    "source": {
+      "api": "API",
+      "playground": "测试场",
+      "test": "测试"
+    },
     "actions": {
       "openMenu": "打开菜单",
       "viewDetails": "查看详情",
@@ -713,6 +719,7 @@
     "filters": {
       "filterId": "按ID筛选...",
       "status": "状态",
+      "source": "来源",
       "user": "用户",
       "reset": "重置"
     },

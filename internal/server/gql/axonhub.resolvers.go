@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -77,6 +78,9 @@ func (r *mutationResolver) UpdateChannelStatus(ctx context.Context, id objects.G
 
 // TestChannel is the resolver for the testChannel field.
 func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInput) (*TestChannelPayload, error) {
+	// Set test source context for test channel requests
+	ctx = contexts.WithSource(ctx, request.SourceTest)
+
 	processor := chat.NewTestChannelProcessor(r.channelService, r.requestService, r.httpClient, input.ChannelID)
 
 	result, err := processor.TestChannel(ctx, input.ChannelID, input.ModelID)
