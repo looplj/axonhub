@@ -38,9 +38,15 @@ interface DataTableProps {
   pageInfo?: ChannelConnection['pageInfo']
   pageSize: number
   totalCount?: number
+  nameFilter: string
+  typeFilter: string[]
+  statusFilter: string[]
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
+  onNameFilterChange: (filter: string) => void
+  onTypeFilterChange: (filters: string[]) => void
+  onStatusFilterChange: (filters: string[]) => void
 }
 
 export function ChannelsTable({ 
@@ -49,14 +55,61 @@ export function ChannelsTable({
   pageInfo,
   pageSize,
   totalCount,
+  nameFilter,
+  typeFilter,
+  statusFilter,
   onNextPage,
   onPreviousPage,
-  onPageSizeChange
+  onPageSizeChange,
+  onNameFilterChange,
+  onTypeFilterChange,
+  onStatusFilterChange
 }: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
+
+  // Initialize column filters based on server state
+  const initialColumnFilters: ColumnFiltersState = []
+  if (nameFilter) {
+    initialColumnFilters.push({ id: 'name', value: nameFilter })
+  }
+  if (typeFilter.length > 0) {
+    initialColumnFilters.push({ id: 'type', value: typeFilter })
+  }
+  if (statusFilter.length > 0) {
+    initialColumnFilters.push({ id: 'status', value: statusFilter })
+  }
+
+  // Sync filters with the server state
+  const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
+    setColumnFilters(newFilters)
+    
+    // Find and sync filters with the server
+    const nameFilterValue = newFilters.find((filter) => filter.id === 'name')?.value as string
+    const typeFilterValue = newFilters.find((filter) => filter.id === 'type')?.value as string[]
+    const statusFilterValue = newFilters.find((filter) => filter.id === 'status')?.value as string[]
+    
+    // Handle name filter - only update if changed
+    const newNameFilter = nameFilterValue || ''
+    if (newNameFilter !== nameFilter) {
+      onNameFilterChange(newNameFilter)
+    }
+    
+    // Handle type filter - only update if changed
+    const newTypeFilter = Array.isArray(typeFilterValue) ? typeFilterValue : []
+    if (JSON.stringify(newTypeFilter.sort()) !== JSON.stringify(typeFilter.sort())) {
+      onTypeFilterChange(newTypeFilter)
+    }
+    
+    // Handle status filter - only update if changed
+    const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : []
+    if (JSON.stringify(newStatusFilter.sort()) !== JSON.stringify(statusFilter.sort())) {
+      onStatusFilterChange(newStatusFilter)
+    }
+  }
 
   const table = useReactTable({
     data,
@@ -65,19 +118,21 @@ export function ChannelsTable({
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters,
+      columnFilters: columnFilters.length === 0 && (nameFilter || typeFilter.length > 0 || statusFilter.length > 0) ? initialColumnFilters : columnFilters,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: handleColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    // Enable server-side pagination and filtering
     manualPagination: true,
+    manualFiltering: true, // Enable manual filtering for server-side filtering
   })
 
   return (

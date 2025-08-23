@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDebounce } from '@/hooks/use-debounce'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -16,10 +17,36 @@ function ChannelsContent() {
   const { t } = useTranslation()
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
+  const [nameFilter, setNameFilter] = useState<string>('')
+  const [typeFilter, setTypeFilter] = useState<string[]>([])
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  
+  // Debounce the name filter to avoid excessive API calls
+  const debouncedNameFilter = useDebounce(nameFilter, 300)
+  
+  // Build where clause with filters
+  const whereClause = (() => {
+    const where: Record<string, string | string[]> = {}
+    if (debouncedNameFilter) {
+      where.nameContainsFold = debouncedNameFilter
+    }
+    if (typeFilter.length > 0) {
+      where.typeIn = typeFilter
+    }
+    if (statusFilter.length > 0) {
+      where.statusIn = statusFilter
+    }
+    return Object.keys(where).length > 0 ? where : undefined
+  })()
   
   const { data, isLoading, error } = useChannels({
     first: pageSize,
     after: cursor,
+    where: whereClause,
+    orderBy: {
+      field: 'CREATED_AT',
+      direction: 'DESC',
+    },
   })
 
   const handleNextPage = () => {
@@ -37,6 +64,21 @@ function ChannelsContent() {
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize)
     setCursor(undefined) // Reset to first page
+  }
+
+  const handleNameFilterChange = (filter: string) => {
+    setNameFilter(filter)
+    setCursor(undefined) // Reset to first page when filter changes
+  }
+
+  const handleTypeFilterChange = (filters: string[]) => {
+    setTypeFilter(filters)
+    setCursor(undefined) // Reset to first page when filter changes
+  }
+
+  const handleStatusFilterChange = (filters: string[]) => {
+    setStatusFilter(filters)
+    setCursor(undefined) // Reset to first page when filter changes
   }
 
   const columns = createColumns(t)
@@ -58,9 +100,15 @@ function ChannelsContent() {
           pageInfo={data?.pageInfo}
           pageSize={pageSize}
           totalCount={data?.totalCount}
+          nameFilter={nameFilter}
+          typeFilter={typeFilter}
+          statusFilter={statusFilter}
           onNextPage={handleNextPage}
           onPreviousPage={handlePreviousPage}
           onPageSizeChange={handlePageSizeChange}
+          onNameFilterChange={handleNameFilterChange}
+          onTypeFilterChange={handleTypeFilterChange}
+          onStatusFilterChange={handleStatusFilterChange}
         />
       )}
     </div>

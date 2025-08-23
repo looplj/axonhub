@@ -27,6 +27,14 @@ export function DataTableToolbar<TData>({
       label: t('channels.types.anthropic'),
     },
     {
+      value: 'anthropic_aws' as ChannelType,
+      label: t('channels.types.anthropic_aws'),
+    },
+    {
+      value: 'anthropic_gcp' as ChannelType,
+      label: t('channels.types.anthropic_gcp'),
+    },
+    {
       value: 'gemini' as ChannelType,
       label: t('channels.types.gemini'),
     },
@@ -41,6 +49,25 @@ export function DataTableToolbar<TData>({
     {
       value: 'kimi' as ChannelType,
       label: t('channels.types.kimi'),
+    },
+    {
+      value: 'anthropic_fake' as ChannelType,
+      label: t('channels.types.anthropic_fake'),
+    },
+    {
+      value: 'openai_fake' as ChannelType,
+      label: t('channels.types.openai_fake'),
+    },
+  ]
+
+  const channelStatuses = [
+    {
+      value: 'enabled',
+      label: t('channels.status.enabled'),
+    },
+    {
+      value: 'disabled',
+      label: t('channels.status.disabled'),
     },
   ]
 
@@ -60,6 +87,13 @@ export function DataTableToolbar<TData>({
             column={table.getColumn('type')}
             title={t('channels.filters.type')}
             options={channelTypes}
+          />
+        )}
+        {table.getColumn('status') && (
+          <DataTableFacetedFilter
+            column={table.getColumn('status')}
+            title={t('channels.filters.status')}
+            options={channelStatuses}
           />
         )}
         {isFiltered && (

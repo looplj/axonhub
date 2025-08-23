@@ -27,6 +27,10 @@ The rules for AxonHub
 
 2. We use the pnpm as the package manager, can run `pnpm dev` to start the development server
 
+3. Use graphql input to filter the data in stead of filter in the frontend.
+
+4. search filter should use debounce to avoid too many requests.
+
 
 ## Login
 
