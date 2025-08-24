@@ -97,8 +97,11 @@ func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInp
 
 // BulkImportChannels is the resolver for the bulkImportChannels field.
 func (r *mutationResolver) BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*BulkImportChannelsResult, error) {
-	var createdChannels []*ent.Channel
-	var errors []string
+	var (
+		createdChannels []*ent.Channel
+		errors          []string
+	)
+
 	created := 0
 	failed := 0
 
@@ -108,6 +111,7 @@ func (r *mutationResolver) BulkImportChannels(ctx context.Context, input BulkImp
 		if err := channel.TypeValidator(channelType); err != nil {
 			errors = append(errors, fmt.Sprintf("Row %d: Invalid channel type '%s'", i+1, item.Type))
 			failed++
+
 			continue
 		}
 
@@ -115,12 +119,14 @@ func (r *mutationResolver) BulkImportChannels(ctx context.Context, input BulkImp
 		if item.BaseURL == nil || *item.BaseURL == "" {
 			errors = append(errors, fmt.Sprintf("Row %d (%s): Base URL is required", i+1, item.Name))
 			failed++
+
 			continue
 		}
 
 		if item.APIKey == nil || *item.APIKey == "" {
 			errors = append(errors, fmt.Sprintf("Row %d (%s): API Key is required", i+1, item.Name))
 			failed++
+
 			continue
 		}
 
@@ -142,6 +148,7 @@ func (r *mutationResolver) BulkImportChannels(ctx context.Context, input BulkImp
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("Row %d (%s): %s", i+1, item.Name, err.Error()))
 			failed++
+
 			continue
 		}
 

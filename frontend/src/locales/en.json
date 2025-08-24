@@ -498,7 +498,7 @@
         "formatDescription": "Format: type,name,baseURL,apiKey,supportedModels,defaultTestModel",
         "supportedModelsNote": "Use | to separate multiple models",
         "requiredFieldsNote": "Note: baseURL and apiKey are required fields",
-        "supportedTypes": "Supported types: openai, anthropic, anthropic_aws, anthropic_gcp, gemini, deepseek, doubao, kimi",
+        "supportedTypes": "Supported types: openai, anthropic, deepseek, doubao, kimi",
         "inputLabel": "Import Data",
         "inputPlaceholder": "Enter channel data to import, one per line...",
         "previewButton": "Preview Import Data",

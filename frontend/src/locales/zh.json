@@ -533,7 +533,7 @@
         "formatDescription": "格式：type,name,baseURL,apiKey,supportedModels,defaultTestModel",
         "supportedModelsNote": "使用 | 分隔多个模型",
         "requiredFieldsNote": "注意：baseURL 和 apiKey 为必填字段",
-        "supportedTypes": "支持的类型：openai, anthropic, anthropic_aws, anthropic_gcp, gemini, deepseek, doubao, kimi",
+        "supportedTypes": "支持的类型：openai, anthropic, deepseek, doubao, kimi",
         "inputLabel": "导入数据",
         "inputPlaceholder": "请输入要导入的渠道数据，每行一个...",
         "previewButton": "预览导入数据",
