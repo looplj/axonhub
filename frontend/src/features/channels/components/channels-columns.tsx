@@ -59,7 +59,7 @@ const getChannelTypeConfig = (
   },
   deepseek: {
     label: t('channels.types.deepseek'),
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: DeepSeek,
   },
   doubao: {
