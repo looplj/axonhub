@@ -16,7 +16,7 @@ export const channelTypeSchema = z.enum([
 export type ChannelType = z.infer<typeof channelTypeSchema>
 
 // Channel Status
-export const channelStatusSchema = z.enum(['enabled', 'disabled'])
+export const channelStatusSchema = z.enum(['enabled', 'disabled', 'archived'])
 export type ChannelStatus = z.infer<typeof channelStatusSchema>
 
 // Model Mapping

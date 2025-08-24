@@ -422,7 +422,8 @@
     },
     "status": {
       "enabled": "Enabled",
-      "disabled": "Disabled"
+      "disabled": "Disabled",
+      "archived": "Archived"
     },
     "types": {
       "openai": "OpenAI",
@@ -442,6 +443,7 @@
       "delete": "Delete",
       "enable": "Enable",
       "disable": "Disable",
+      "archive": "Archive",
       "test": "Test",
       "settings": "Settings"
     },
@@ -461,6 +463,8 @@
       "updateSuccess": "Channel updated successfully",
       "updateError": "Update failed: {{error}}",
       "statusUpdateSuccess": "Channel status updated to {{status}}",
+      "archiveSuccess": "Channel archived successfully",
+      "archiveError": "Archive failed: {{error}}",
       "statusUpdateError": "Status update failed: {{error}}",
       "testSuccess": "Channel test successful ({{latency}}s latency)",
       "testError": "Channel test failed: {{error}}",
@@ -631,6 +635,13 @@
           "description": "Are you sure you want to disable channel \"{{name}}\"? The channel will be unavailable after disabling.",
           "confirmText": "Disable",
           "button": "Disable"
+        },
+        "archive": {
+          "title": "Archive Channel",
+          "description": "Are you sure you want to archive channel \"{{name}}\"? Archived channels are hidden by default and will not appear in the channel list unless the archived filter is explicitly selected.",
+          "warning": "This channel will be hidden from the default view. You can view archived channels by selecting the 'Archived' status filter.",
+          "confirmText": "Archive",
+          "button": "Archive"
         }
       },
       "settings": {

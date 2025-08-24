@@ -69,6 +69,10 @@ export function DataTableToolbar<TData>({
       value: 'disabled',
       label: t('channels.status.disabled'),
     },
+    {
+      value: 'archived',
+      label: t('channels.status.archived'),
+    },
   ]
 
   return (

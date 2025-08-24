@@ -226,11 +226,29 @@ export const createColumns = (
       ),
       cell: ({ row }) => {
         const status = row.getValue('status') as string
+        const getBadgeVariant = () => {
+          switch (status) {
+            case 'enabled':
+              return 'default'
+            case 'archived':
+              return 'outline'
+            default:
+              return 'secondary'
+          }
+        }
+        const getStatusText = () => {
+          switch (status) {
+            case 'enabled':
+              return t('channels.status.enabled')
+            case 'archived':
+              return t('channels.status.archived')
+            default:
+              return t('channels.status.disabled')
+          }
+        }
         return (
-          <Badge variant={status === 'enabled' ? 'default' : 'secondary'}>
-            {status === 'enabled'
-              ? t('channels.status.enabled')
-              : t('channels.status.disabled')}
+          <Badge variant={getBadgeVariant()}>
+            {getStatusText()}
           </Badge>
         )
       },

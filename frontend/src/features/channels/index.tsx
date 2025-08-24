@@ -35,11 +35,14 @@ function ChannelsContent() {
     }
     if (statusFilter.length > 0) {
       where.statusIn = statusFilter
+    } else {
+      // By default, exclude archived channels when no status filter is applied
+      where.statusIn = ['enabled', 'disabled']
     }
     return Object.keys(where).length > 0 ? where : undefined
   })()
   
-  const { data, isLoading, error } = useChannels({
+  const { data, isLoading: _isLoading, error: _error } = useChannels({
     first: pageSize,
     after: cursor,
     where: whereClause,

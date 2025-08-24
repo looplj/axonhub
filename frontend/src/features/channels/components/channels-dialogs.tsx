@@ -2,6 +2,7 @@ import { useChannels } from '../context/channels-context'
 import { ChannelsActionDialog } from './channels-action-dialog'
 import { ChannelsSettingsDialog } from './channels-settings-dialog'
 import { ChannelsStatusDialog } from './channels-status-dialog'
+import { ChannelsArchiveDialog } from './channels-archive-dialog'
 import { ChannelsTestDialog } from './channels-test-dialog'
 import { ChannelsBulkImportDialog } from './channels-bulk-import-dialog'
 
@@ -63,6 +64,18 @@ export function ChannelsDialogs() {
             open={open === 'status'}
             onOpenChange={() => {
               setOpen('status')
+              setTimeout(() => {
+                setCurrentRow(null)
+              }, 500)
+            }}
+            currentRow={currentRow}
+          />
+
+          <ChannelsArchiveDialog
+            key={`channel-archive-${currentRow.id}`}
+            open={open === 'archive'}
+            onOpenChange={() => {
+              setOpen('archive')
               setTimeout(() => {
                 setCurrentRow(null)
               }, 500)

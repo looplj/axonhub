@@ -264,7 +264,7 @@ export function useUpdateChannelStatus() {
       status,
     }: {
       id: string
-      status: 'enabled' | 'disabled'
+      status: 'enabled' | 'disabled' | 'archived'
     }) => {
       const data = await graphqlRequest<{ updateChannelStatus: boolean }>(
         UPDATE_CHANNEL_STATUS_MUTATION,
@@ -274,11 +274,26 @@ export function useUpdateChannelStatus() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] })
-      const statusText = variables.status === 'enabled' ? t('channels.status.enabled') : t('channels.status.disabled')
-      toast.success(t('channels.messages.statusUpdateSuccess', { status: statusText }))
+      const statusText = variables.status === 'enabled' 
+        ? t('channels.status.enabled') 
+        : variables.status === 'archived'
+          ? t('channels.status.archived')
+          : t('channels.status.disabled')
+      
+      const messageKey = variables.status === 'archived' 
+        ? 'channels.messages.archiveSuccess' 
+        : 'channels.messages.statusUpdateSuccess'
+      
+      toast.success(variables.status === 'archived' 
+        ? t(messageKey)
+        : t(messageKey, { status: statusText })
+      )
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.statusUpdateError', { error: error.message }))
+    onError: (error, variables) => {
+      const errorKey = variables.status === 'archived' 
+        ? 'channels.messages.archiveError' 
+        : 'channels.messages.statusUpdateError'
+      toast.error(t(errorKey, { error: error.message }))
     },
   })
 }

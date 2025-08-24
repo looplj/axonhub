@@ -54,7 +54,7 @@ func (Channel) Fields() []ent.Field {
 			Immutable(),
 		field.String("base_url").Optional(),
 		field.String("name"),
-		field.Enum("status").Values("enabled", "disabled").Default("enabled"),
+		field.Enum("status").Values("enabled", "disabled", "archived").Default("disabled"),
 		field.JSON("credentials", &objects.ChannelCredentials{}).Sensitive().Default(&objects.ChannelCredentials{}),
 		field.Strings("supported_models"),
 		field.String("default_test_model"),

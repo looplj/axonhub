@@ -456,7 +456,8 @@
     },
     "status": {
       "enabled": "启用",
-      "disabled": "禁用"
+      "disabled": "禁用",
+      "archived": "已归档"
     },
     "types": {
       "openai": "OpenAI",
@@ -476,6 +477,7 @@
       "delete": "删除",
       "enable": "启用",
       "disable": "禁用",
+      "archive": "归档",
       "test": "测试",
       "settings": "设置"
     },
@@ -489,6 +491,8 @@
       "updateSuccess": "渠道更新成功",
       "updateError": "更新失败：{{error}}",
       "statusUpdateSuccess": "渠道状态已更新为 {{status}}",
+      "archiveSuccess": "渠道归档成功",
+      "archiveError": "归档失败：{{error}}",
       "statusUpdateError": "状态更新失败：{{error}}",
       "testSuccess": "渠道测试成功（延迟 {{latency}}秒）",
       "testError": "渠道测试失败：{{error}}",
@@ -666,6 +670,13 @@
           "description": "确定要禁用频道 \"{{name}}\" 吗？禁用后该渠道将无法使用。",
           "button": "禁用",
           "confirmText": "禁用"
+        },
+        "archive": {
+          "title": "归档渠道",
+          "description": "确定要归档渠道 \"{{name}}\" 吗？归档的渠道默认隐藏，除非明确选择了归档状态筛选器，否则不会出现在渠道列表中。",
+          "warning": "此渠道将从默认视图中隐藏。您可以通过选择\"已归档\"状态筛选器来查看归档的渠道。",
+          "confirmText": "归档",
+          "button": "归档"
         }
       },
       "settings": {

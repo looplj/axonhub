@@ -149,13 +149,14 @@ func TypeValidator(_type Type) error {
 // Status defines the type for the "status" enum field.
 type Status string
 
-// StatusEnabled is the default value of the Status enum.
-const DefaultStatus = StatusEnabled
+// StatusDisabled is the default value of the Status enum.
+const DefaultStatus = StatusDisabled
 
 // Status values.
 const (
 	StatusEnabled  Status = "enabled"
 	StatusDisabled Status = "disabled"
+	StatusArchived Status = "archived"
 )
 
 func (s Status) String() string {
@@ -165,7 +166,7 @@ func (s Status) String() string {
 // StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
 func StatusValidator(s Status) error {
 	switch s {
-	case StatusEnabled, StatusDisabled:
+	case StatusEnabled, StatusDisabled, StatusArchived:
 		return nil
 	default:
 		return fmt.Errorf("channel: invalid enum value for status field: %q", s)

@@ -337,6 +337,7 @@ ChannelStatus is enum for the field status
 enum ChannelStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/channel.Status") {
   enabled
   disabled
+  archived
 }
 """
 ChannelType is enum for the field type

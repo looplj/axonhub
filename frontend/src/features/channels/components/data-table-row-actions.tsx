@@ -1,6 +1,6 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { Row } from '@tanstack/react-table'
-import { IconEdit, IconToggleLeft, IconToggleRight, IconSettings } from '@tabler/icons-react'
+import { IconEdit, IconToggleLeft, IconToggleRight, IconSettings, IconArchive } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
@@ -62,6 +62,18 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             {row.original.status === 'enabled' ? <IconToggleLeft size={16} className="mr-2" /> : <IconToggleRight size={16} className="mr-2" />}
             {row.original.status === 'enabled' ? t('channels.actions.disable') : t('channels.actions.enable')}
           </DropdownMenuItem>
+          {row.original.status !== 'archived' && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(row.original)
+                setOpen('archive')
+              }}
+              className="text-orange-500!"
+            >
+              <IconArchive size={16} className="mr-2" />
+              {t('channels.actions.archive')}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </>

@@ -55,7 +55,7 @@ var (
 		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "anthropic", "anthropic_aws", "anthropic_gcp", "deepseek", "deepseek_anrhropic", "doubao", "kimi", "kimi_anrhropic", "zai", "zhipu", "anthropic_fake", "openai_fake"}},
 		{Name: "base_url", Type: field.TypeString, Nullable: true},
 		{Name: "name", Type: field.TypeString},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled"}, Default: "enabled"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "disabled"},
 		{Name: "credentials", Type: field.TypeJSON},
 		{Name: "supported_models", Type: field.TypeJSON},
 		{Name: "default_test_model", Type: field.TypeString},
