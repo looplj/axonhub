@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -13,6 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { useTranslation } from 'react-i18next'
 import {
   Table,
   TableBody,
@@ -34,6 +35,7 @@ declare module '@tanstack/react-table' {
 
 interface DataTableProps {
   columns: ColumnDef<Channel>[]
+  loading?: boolean
   data: Channel[]
   pageInfo?: ChannelConnection['pageInfo']
   pageSize: number
@@ -49,9 +51,10 @@ interface DataTableProps {
   onStatusFilterChange: (filters: string[]) => void
 }
 
-export function ChannelsTable({ 
-  columns, 
-  data, 
+export function ChannelsTable({
+  columns,
+  loading,
+  data,
   pageInfo,
   pageSize,
   totalCount,
@@ -63,50 +66,71 @@ export function ChannelsTable({
   onPageSizeChange,
   onNameFilterChange,
   onTypeFilterChange,
-  onStatusFilterChange
+  onStatusFilterChange,
 }: DataTableProps) {
+  const { t } = useTranslation()
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
 
-  // Initialize column filters based on server state
-  const initialColumnFilters: ColumnFiltersState = []
-  if (nameFilter) {
-    initialColumnFilters.push({ id: 'name', value: nameFilter })
-  }
-  if (typeFilter.length > 0) {
-    initialColumnFilters.push({ id: 'type', value: typeFilter })
-  }
-  if (statusFilter.length > 0) {
-    initialColumnFilters.push({ id: 'status', value: statusFilter })
-  }
+  // Sync server state to local column filters using useEffect
+  useEffect(() => {
+    const newColumnFilters: ColumnFiltersState = []
 
-  // Sync filters with the server state
-  const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
-    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
+    if (nameFilter) {
+      newColumnFilters.push({ id: 'name', value: nameFilter })
+    }
+    if (typeFilter.length > 0) {
+      newColumnFilters.push({ id: 'type', value: typeFilter })
+    }
+    if (statusFilter.length > 0) {
+      newColumnFilters.push({ id: 'status', value: statusFilter })
+    }
+
+    setColumnFilters(newColumnFilters)
+  }, [nameFilter, typeFilter, statusFilter])
+
+  // Handle column filter changes and sync with server
+  const handleColumnFiltersChange = (
+    updater:
+      | ColumnFiltersState
+      | ((prev: ColumnFiltersState) => ColumnFiltersState)
+  ) => {
+    const newFilters =
+      typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
-    
-    // Find and sync filters with the server
-    const nameFilterValue = newFilters.find((filter) => filter.id === 'name')?.value as string
-    const typeFilterValue = newFilters.find((filter) => filter.id === 'type')?.value as string[]
-    const statusFilterValue = newFilters.find((filter) => filter.id === 'status')?.value as string[]
-    
-    // Handle name filter - only update if changed
+
+    // Extract filter values
+    const nameFilterValue = newFilters.find((filter) => filter.id === 'name')
+      ?.value as string
+    const typeFilterValue = newFilters.find((filter) => filter.id === 'type')
+      ?.value as string[]
+    const statusFilterValue = newFilters.find(
+      (filter) => filter.id === 'status'
+    )?.value as string[]
+
+    // Update server filters only if changed
     const newNameFilter = nameFilterValue || ''
+    const newTypeFilter = Array.isArray(typeFilterValue) ? typeFilterValue : []
+    const newStatusFilter = Array.isArray(statusFilterValue)
+      ? statusFilterValue
+      : []
+
     if (newNameFilter !== nameFilter) {
       onNameFilterChange(newNameFilter)
     }
-    
-    // Handle type filter - only update if changed
-    const newTypeFilter = Array.isArray(typeFilterValue) ? typeFilterValue : []
-    if (JSON.stringify(newTypeFilter.sort()) !== JSON.stringify(typeFilter.sort())) {
+
+    if (
+      JSON.stringify(newTypeFilter.sort()) !== JSON.stringify(typeFilter.sort())
+    ) {
       onTypeFilterChange(newTypeFilter)
     }
-    
-    // Handle status filter - only update if changed
-    const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : []
-    if (JSON.stringify(newStatusFilter.sort()) !== JSON.stringify(statusFilter.sort())) {
+
+    if (
+      JSON.stringify(newStatusFilter.sort()) !==
+      JSON.stringify(statusFilter.sort())
+    ) {
       onStatusFilterChange(newStatusFilter)
     }
   }
@@ -118,7 +142,7 @@ export function ChannelsTable({
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters: columnFilters.length === 0 && (nameFilter || typeFilter.length > 0 || statusFilter.length > 0) ? initialColumnFilters : columnFilters,
+      columnFilters,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
@@ -163,7 +187,16 @@ export function ChannelsTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
+                >
+                  {t('loading')}
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -189,7 +222,7 @@ export function ChannelsTable({
                   colSpan={columns.length}
                   className='h-24 text-center'
                 >
-                  暂无数据
+                  {t('noData')}
                 </TableCell>
               </TableRow>
             )}

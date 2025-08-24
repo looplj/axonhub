@@ -240,7 +240,7 @@ export default function Playground() {
                   <SelectTrigger className='h-10'>
                     <SelectValue
                       placeholder={
-                        channelsLoading ? t('playground.loading') : t('playground.settings.selectModel')
+                        channelsLoading ? t('loading') : t('playground.settings.selectModel')
                       }
                     />
                   </SelectTrigger>
@@ -271,14 +271,14 @@ export default function Playground() {
                       ))
                     ) : (
                       <SelectItem value='gpt-4o' disabled>
-                        {channelsLoading ? t('playground.loading') : t('playground.errors.noChannelsAvailable')}
+                        {channelsLoading ? t('loading') : t('playground.errors.noChannelsAvailable')}
                       </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
                 {channelsLoading && (
                   <p className='text-muted-foreground text-xs'>
-                    {t('playground.loading')}...
+                    {t('loading')}...
                   </p>
                 )}
                 {!channelsLoading && allModels.length > 0 && (

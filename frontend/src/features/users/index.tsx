@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
+import { LanguageSwitch } from '@/components/language-switch'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { LanguageSwitch } from '@/components/language-switch'
 import { createColumns } from './components/users-columns'
 import { UsersDialogs } from './components/users-dialogs'
 import { UsersPrimaryButtons } from './components/users-primary-buttons'
@@ -17,14 +17,14 @@ function UsersContent() {
   const { t } = useTranslation()
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
-  
+
   // Filter states
   const [nameFilter, setNameFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [roleFilter, setRoleFilter] = useState<string[]>([])
-  
+
   const debouncedNameFilter = useDebounce(nameFilter, 300)
-  
+
   // Build where clause for API filtering
   const whereClause = (() => {
     const where: Record<string, string | string[]> = {}
@@ -40,7 +40,7 @@ function UsersContent() {
     }
     return Object.keys(where).length > 0 ? where : undefined
   })()
-  
+
   const { data, isLoading, error } = useUsers({
     first: pageSize,
     after: cursor,
@@ -71,38 +71,29 @@ function UsersContent() {
 
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-      {isLoading ? (
-        <div className='flex items-center justify-center h-32'>
-          <div className='text-muted-foreground'>{t('users.loading')}</div>
-        </div>
-      ) : error ? (
-        <div className='flex items-center justify-center h-32'>
-          <div className='text-destructive'>{t('users.loadError', { message: error.message })}</div>
-        </div>
-      ) : (
-        <UsersTable 
-          data={data?.edges?.map(edge => edge.node) || []} 
-          columns={createColumns(t)}
-          pageInfo={data?.pageInfo}
-          pageSize={pageSize}
-          onNextPage={handleNextPage}
-          onPreviousPage={handlePreviousPage}
-          onPageSizeChange={handlePageSizeChange}
-          nameFilter={nameFilter}
-          statusFilter={statusFilter}
-          roleFilter={roleFilter}
-          onNameFilterChange={setNameFilter}
-          onStatusFilterChange={setStatusFilter}
-          onRoleFilterChange={setRoleFilter}
-        />
-      )}
-    </div>
+      <UsersTable
+        data={data?.edges?.map((edge) => edge.node) || []}
+        columns={createColumns(t)}
+        loading={isLoading}
+        pageInfo={data?.pageInfo}
+        pageSize={pageSize}
+        onNextPage={handleNextPage}
+        onPreviousPage={handlePreviousPage}
+        onPageSizeChange={handlePageSizeChange}
+        nameFilter={nameFilter}
+        statusFilter={statusFilter}
+        roleFilter={roleFilter}
+        onNameFilterChange={setNameFilter}
+        onStatusFilterChange={setStatusFilter}
+        onRoleFilterChange={setRoleFilter}
+      />
+      </div>
   )
 }
 
 export default function UsersManagement() {
   const { t } = useTranslation()
-  
+
   return (
     <UsersProvider>
       <Header fixed>
@@ -117,10 +108,10 @@ export default function UsersManagement() {
       <Main>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>{t('users.title')}</h2>
-            <p className='text-muted-foreground'>
-              {t('users.description')}
-            </p>
+            <h2 className='text-2xl font-bold tracking-tight'>
+              {t('users.title')}
+            </h2>
+            <p className='text-muted-foreground'>{t('users.description')}</p>
           </div>
           <UsersPrimaryButtons />
         </div>

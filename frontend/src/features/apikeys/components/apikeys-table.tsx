@@ -34,6 +34,7 @@ declare module '@tanstack/react-table' {
 interface DataTableProps {
   columns: ColumnDef<ApiKey>[]
   data: ApiKey[]
+  loading: boolean
   pageInfo?: ApiKeyConnection['pageInfo']
   pageSize: number
   totalCount?: number
@@ -49,9 +50,10 @@ interface DataTableProps {
   onResetFilters?: () => void
 }
 
-export function ApiKeysTable({ 
-  columns, 
-  data, 
+export function ApiKeysTable({
+  columns,
+  data,
+  loading,
   pageInfo,
   pageSize,
   totalCount,
@@ -64,7 +66,7 @@ export function ApiKeysTable({
   onNameFilterChange,
   onStatusFilterChange,
   onUserFilterChange,
-  onResetFilters
+  onResetFilters,
 }: DataTableProps) {
   const { t } = useTranslation()
   const [rowSelection, setRowSelection] = useState({})
@@ -87,28 +89,41 @@ export function ApiKeysTable({
     setColumnFilters(newFilters)
   }, [nameFilter, statusFilter, userFilter])
 
-  const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
-    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
+  const handleColumnFiltersChange = (
+    updater:
+      | ColumnFiltersState
+      | ((prev: ColumnFiltersState) => ColumnFiltersState)
+  ) => {
+    const newFilters =
+      typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
-    
+
     // Extract filter values
-    const nameFilterValue = newFilters.find(f => f.id === 'name')?.value
-    const statusFilterValue = newFilters.find(f => f.id === 'status')?.value
-    const userFilterValue = newFilters.find(f => f.id === 'user')?.value
-    
+    const nameFilterValue = newFilters.find((f) => f.id === 'name')?.value
+    const statusFilterValue = newFilters.find((f) => f.id === 'status')?.value
+    const userFilterValue = newFilters.find((f) => f.id === 'user')?.value
+
     // Only update if values actually change to prevent reset issues
-    const newNameFilter = typeof nameFilterValue === 'string' ? nameFilterValue : ''
+    const newNameFilter =
+      typeof nameFilterValue === 'string' ? nameFilterValue : ''
     if (newNameFilter !== nameFilter) {
       onNameFilterChange(newNameFilter)
     }
-    
-    const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : []
-    if (JSON.stringify(newStatusFilter.sort()) !== JSON.stringify(statusFilter.sort())) {
+
+    const newStatusFilter = Array.isArray(statusFilterValue)
+      ? statusFilterValue
+      : []
+    if (
+      JSON.stringify(newStatusFilter.sort()) !==
+      JSON.stringify(statusFilter.sort())
+    ) {
       onStatusFilterChange(newStatusFilter)
     }
-    
+
     const newUserFilter = Array.isArray(userFilterValue) ? userFilterValue : []
-    if (JSON.stringify(newUserFilter.sort()) !== JSON.stringify(userFilter.sort())) {
+    if (
+      JSON.stringify(newUserFilter.sort()) !== JSON.stringify(userFilter.sort())
+    ) {
       onUserFilterChange(newUserFilter)
     }
   }
@@ -162,7 +177,16 @@ export function ApiKeysTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
+                >
+                  {t('loading')}
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

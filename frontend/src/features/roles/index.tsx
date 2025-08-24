@@ -3,11 +3,11 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
+import { LanguageSwitch } from '@/components/language-switch'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { LanguageSwitch } from '@/components/language-switch'
 import { RolesDialogs } from './components/roles-action-dialog'
 import { createColumns } from './components/roles-columns'
 import { RolesPrimaryButtons } from './components/roles-primary-buttons'
@@ -19,27 +19,27 @@ function RolesContent() {
   const { t } = useTranslation()
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
-  
+
   // Filter states - combined search for name or code
   const [searchFilter, setSearchFilter] = useState<string>('')
-  
+
   const debouncedSearchFilter = useDebounce(searchFilter, 300)
-  
+
   // Build where clause for API filtering with OR logic
   const whereClause = (() => {
     if (!debouncedSearchFilter) {
       return undefined
     }
-    
+
     // Use OR logic to search in both name and code fields
     return {
       or: [
         { nameContainsFold: debouncedSearchFilter },
-        { codeContainsFold: debouncedSearchFilter }
-      ]
+        { codeContainsFold: debouncedSearchFilter },
+      ],
     }
   })()
-  
+
   const { data, isLoading, error } = useRoles({
     first: pageSize,
     after: cursor,
@@ -70,35 +70,26 @@ function RolesContent() {
 
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-      {isLoading ? (
-        <div className='flex items-center justify-center h-32'>
-          <div className='text-muted-foreground'>{t('roles.loading')}</div>
-        </div>
-      ) : error ? (
-        <div className='flex items-center justify-center h-32'>
-          <div className='text-destructive'>{t('roles.loadError')} {error.message}</div>
-        </div>
-      ) : (
-        <RolesTable 
-            columns={createColumns(t)} 
-            data={data?.edges?.map(edge => edge.node) || []}
-            pageInfo={data?.pageInfo}
-            pageSize={pageSize}
-            totalCount={data?.totalCount}
-            onNextPage={handleNextPage}
-            onPreviousPage={handlePreviousPage}
-            onPageSizeChange={handlePageSizeChange}
-            searchFilter={searchFilter}
-            onSearchFilterChange={setSearchFilter}
-          />
-      )}
+      <RolesTable
+        columns={createColumns(t)}
+        data={data?.edges?.map((edge) => edge.node) || []}
+        loading={isLoading}
+        pageInfo={data?.pageInfo}
+        pageSize={pageSize}
+        totalCount={data?.totalCount}
+        onNextPage={handleNextPage}
+        onPreviousPage={handlePreviousPage}
+        onPageSizeChange={handlePageSizeChange}
+        searchFilter={searchFilter}
+        onSearchFilterChange={setSearchFilter}
+      />
     </div>
   )
 }
 
 export default function RolesPage() {
   const { t } = useTranslation()
-  
+
   return (
     <RolesProvider>
       <Header fixed>
@@ -113,10 +104,10 @@ export default function RolesPage() {
       <Main>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>{t('roles.title')}</h2>
-            <p className='text-muted-foreground'>
-              {t('roles.description')}
-            </p>
+            <h2 className='text-2xl font-bold tracking-tight'>
+              {t('roles.title')}
+            </h2>
+            <p className='text-muted-foreground'>{t('roles.description')}</p>
           </div>
           <RolesPrimaryButtons />
         </div>

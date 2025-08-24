@@ -141,7 +141,7 @@ export default function ProfileForm() {
   }
 
   if (isLoading) {
-    return <div>{t('profile.loading')}</div>
+    return <div>{t('loading')}</div>
   }
 
   return (

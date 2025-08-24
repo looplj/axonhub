@@ -101,7 +101,7 @@ export function SystemSettings() {
       <div className='flex h-32 items-center justify-center'>
         <Loader2 className='h-6 w-6 animate-spin' />
         <span className='text-muted-foreground ml-2'>
-          {t('system.loading')}
+          {t('loading')}
         </span>
       </div>
     )

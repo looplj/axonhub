@@ -85,16 +85,8 @@ function ChannelsContent() {
 
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-      {isLoading ? (
-        <div className='flex items-center justify-center h-32'>
-          <div className='text-muted-foreground'>{t('channels.loading')}</div>
-        </div>
-      ) : error ? (
-        <div className='flex items-center justify-center h-32'>
-          <div className='text-destructive'>{t('channels.loadError')} {error.message}</div>
-        </div>
-      ) : (
         <ChannelsTable 
+          // loading={isLoading}
           data={data?.edges?.map(edge => edge.node) || []} 
           columns={columns}
           pageInfo={data?.pageInfo}
@@ -110,7 +102,6 @@ function ChannelsContent() {
           onTypeFilterChange={handleTypeFilterChange}
           onStatusFilterChange={handleStatusFilterChange}
         />
-      )}
     </div>
   )
 }

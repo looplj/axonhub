@@ -88,7 +88,6 @@
   "users": {
     "title": "用户管理",
     "description": "管理系统用户和权限配置。",
-    "loading": "加载中...",
     "loadError": "加载失败:",
     "noResults": "无结果。",
     "inviteUser": "邀请用户",
@@ -233,7 +232,6 @@
   "apikeys": {
     "title": "API 密钥管理",
     "description": "管理系统 API 密钥和访问权限。",
-    "loading": "加载中...",
     "loadError": "加载失败:",
     "noResults": "无结果。",
     "createApiKey": "创建 API Key",
@@ -367,7 +365,6 @@
   "roles": {
     "title": "角色管理",
     "description": "管理系统角色和权限配置。",
-    "loading": "加载中...",
     "loadError": "加载失败:",
     "noResults": "无结果。",
     "createRole": "新建角色",
@@ -438,7 +435,6 @@
     "view": "视图",
     "toggleColumns": "切换列",
     "description": "管理您的 AI 模型渠道和配置。",
-    "loading": "加载中...",
     "loadError": "加载失败:",
     "noResults": "无结果。",
     "addChannel": "添加渠道",
@@ -731,7 +727,6 @@
   "requests": {
     "title": "请求日志",
     "description": "查看和管理 LLM 调用请求日志",
-    "loading": "加载中...",
     "loadError": "加载失败:",
     "noResults": "暂无数据",
     "refresh": "刷新",
@@ -822,7 +817,6 @@
   "dashboard": {
     "title": "仪表板",
     "description": "系统概览和统计信息。",
-    "loading": "加载中...",
     "loadError": "加载仪表板失败:",
     "noData": "暂无数据",
     "cards": {
@@ -882,7 +876,6 @@
       "clear": "清除聊天",
       "noMessages": "没有消息可重试"
     },
-    "loading": "加载中",
     "errors": {
       "noChannelsAvailable": "没有可用的模型"
     },
@@ -908,7 +901,6 @@
     },
     "title": "个人资料",
     "description": "这是其他人在网站上看到您的方式。",
-    "loading": "加载中...",
     "form": {
       "fields": {
         "firstName": {
@@ -988,6 +980,8 @@
   },
   "loading": "加载中...",
   "noData": "暂无数据",
+  "view": "视图",
+  "toggleColumns": "切换列",
   "error": "错误",
   "success": "成功",
   "cancel": "取消",
@@ -997,6 +991,9 @@
   "create": "创建",
   "update": "更新",
   "common": {
+    "selectedItems": "已选择 {{count}} 项",
+    "noResultsFound": "未找到结果",
+    "clearFilters": "清除筛选",
     "errors": {
       "sessionExpired": "会话已过期！",
       "sessionExpiredSignIn": "会话已过期，请重新登录。",

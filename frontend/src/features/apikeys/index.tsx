@@ -18,14 +18,14 @@ function ApiKeysContent() {
   const { t } = useTranslation()
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
-  
+
   // Filter states - following the same pattern as roles and users
   const [nameFilter, setNameFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [userFilter, setUserFilter] = useState<string[]>([])
-  
+
   const debouncedNameFilter = useDebounce(nameFilter, 300)
-  
+
   // Build where clause for API filtering
   const whereClause = (() => {
     const where: Record<string, string | string[]> = {}
@@ -78,35 +78,25 @@ function ApiKeysContent() {
 
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-      {isLoading ? (
-        <div className='flex h-32 items-center justify-center'>
-          <div className='text-muted-foreground'>{t('apikeys.loading')}</div>
-        </div>
-      ) : error ? (
-        <div className='flex h-32 items-center justify-center'>
-          <div className='text-destructive'>
-            {t('apikeys.loadError')} {error.message}
-          </div>
-        </div>
-      ) : (
-        <ApiKeysTable
-          data={data?.edges?.map((edge) => edge.node) || []}
-          columns={createColumns(t)}
-          pageInfo={data?.pageInfo}
-          pageSize={pageSize}
-          totalCount={data?.totalCount}
-          nameFilter={nameFilter}
-          statusFilter={statusFilter}
-          userFilter={userFilter}
-          onNextPage={handleNextPage}
-          onPreviousPage={handlePreviousPage}
-          onPageSizeChange={handlePageSizeChange}
-          onNameFilterChange={setNameFilter}
-          onStatusFilterChange={setStatusFilter}
-          onUserFilterChange={setUserFilter}
-          onResetFilters={handleResetFilters}
-        />
-      )}
+      <ApiKeysTable
+        data={data?.edges?.map((edge) => edge.node) || []}
+        loading={isLoading}
+
+        columns={createColumns(t)}
+        pageInfo={data?.pageInfo}
+        pageSize={pageSize}
+        totalCount={data?.totalCount}
+        nameFilter={nameFilter}
+        statusFilter={statusFilter}
+        userFilter={userFilter}
+        onNextPage={handleNextPage}
+        onPreviousPage={handlePreviousPage}
+        onPageSizeChange={handlePageSizeChange}
+        onNameFilterChange={setNameFilter}
+        onStatusFilterChange={setStatusFilter}
+        onUserFilterChange={setUserFilter}
+        onResetFilters={handleResetFilters}
+      />
     </div>
   )
 }

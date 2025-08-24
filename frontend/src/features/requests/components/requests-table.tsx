@@ -26,6 +26,7 @@ import { DataTableToolbar } from './data-table-toolbar'
 import { ServerSidePagination } from '@/components/server-side-pagination'
 import { useRequestsColumns } from './requests-columns'
 import { useTranslation } from 'react-i18next'
+import { Spinner } from '@/components/spinner'
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

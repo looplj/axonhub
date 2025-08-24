@@ -55,7 +55,6 @@
   "users": {
     "title": "User Management",
     "description": "Manage system users and permission configurations.",
-    "loading": "Loading...",
     "loadError": "Load failed:",
     "noResults": "No results.",
     "inviteUser": "Invite User",
@@ -201,7 +200,6 @@
   "apikeys": {
     "title": "API Key Management",
     "description": "Manage system API keys and access permissions.",
-    "loading": "Loading...",
     "loadError": "Load failed:",
     "noResults": "No results.",
     "createApiKey": "Create API Key",
@@ -335,7 +333,6 @@
   "roles": {
     "title": "Role Management",
     "description": "Manage system roles and permission configurations.",
-    "loading": "Loading...",
     "loadError": "Load failed:",
     "noResults": "No results.",
     "createRole": "Create Role",
@@ -403,10 +400,7 @@
   },
   "channels": {
     "title": "Channel Management",
-    "view": "View",
-    "toggleColumns": "Toggle columns",
     "description": "Manage your AI model channels and configurations.",
-    "loading": "Loading...",
     "loadError": "Load failed:",
     "noResults": "No results.",
     "addChannel": "Add Channel",
@@ -698,8 +692,7 @@
   "requests": {
     "title": "Request Logs",
     "description": "View and manage LLM call request logs",
-    "loading": "Loading...",
-    "loadError": "Load failed:",
+      "loadError": "Load failed:",
     "noResults": "No data",
     "refresh": "Refresh",
     "columns": {
@@ -789,7 +782,6 @@
   "dashboard": {
     "title": "Dashboard",
     "description": "System overview and statistics.",
-    "loading": "Loading...",
     "loadError": "Error loading dashboard:",
     "noData": "No data available",
     "cards": {
@@ -849,7 +841,6 @@
       "clear": "Clear Chat",
       "noMessages": "No messages to retry"
     },
-    "loading": "Loading",
     "errors": {
       "noChannelsAvailable": "No models available"
     },
@@ -875,7 +866,6 @@
     },
     "title": "Profile",
     "description": "This is how others will see you on the site.",
-    "loading": "Loading...",
     "form": {
       "fields": {
         "firstName": {
@@ -955,6 +945,8 @@
   },
   "loading": "Loading...",
   "noData": "No data available",
+  "view": "View",
+  "toggleColumns": "Toggle columns",
   "error": "Error",
   "success": "Success",
   "cancel": "Cancel",
@@ -964,6 +956,9 @@
   "create": "Create",
   "update": "Update",
   "common": {
+    "selectedItems": "{{count}} selected",
+    "noResultsFound": "No results found",
+    "clearFilters": "Clear filters",
     "errors": {
       "sessionExpired": "Session expired!",
       "sessionExpiredSignIn": "Session expired. Please sign in again.",

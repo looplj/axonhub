@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -12,6 +11,7 @@ import {
   getFacetedUniqueValues,
   useReactTable,
 } from '@tanstack/react-table'
+import { useTranslation } from 'react-i18next'
 import {
   Table,
   TableBody,
@@ -34,6 +34,7 @@ declare module '@tanstack/react-table' {
 interface DataTableProps {
   columns: ColumnDef<User>[]
   data: User[]
+  loading?: boolean
   pageInfo?: UserConnection['pageInfo']
   pageSize: number
   totalCount?: number
@@ -48,9 +49,10 @@ interface DataTableProps {
   onRoleFilterChange: (value: string[]) => void
 }
 
-export function UsersTable({ 
-  columns, 
-  data, 
+export function UsersTable({
+  columns,
+  data,
+  loading,
   pageInfo,
   pageSize,
   totalCount,
@@ -62,7 +64,7 @@ export function UsersTable({
   roleFilter,
   onNameFilterChange,
   onStatusFilterChange,
-  onRoleFilterChange
+  onRoleFilterChange,
 }: DataTableProps) {
   const { t } = useTranslation()
   const [rowSelection, setRowSelection] = useState({})
@@ -85,28 +87,41 @@ export function UsersTable({
     setColumnFilters(newFilters)
   }, [nameFilter, statusFilter, roleFilter])
 
-  const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
-    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
+  const handleColumnFiltersChange = (
+    updater:
+      | ColumnFiltersState
+      | ((prev: ColumnFiltersState) => ColumnFiltersState)
+  ) => {
+    const newFilters =
+      typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
-    
+
     // Extract filter values
-    const nameFilterValue = newFilters.find(f => f.id === 'firstName')?.value
-    const statusFilterValue = newFilters.find(f => f.id === 'status')?.value
-    const roleFilterValue = newFilters.find(f => f.id === 'role')?.value
-    
+    const nameFilterValue = newFilters.find((f) => f.id === 'firstName')?.value
+    const statusFilterValue = newFilters.find((f) => f.id === 'status')?.value
+    const roleFilterValue = newFilters.find((f) => f.id === 'role')?.value
+
     // Only update if values actually change to prevent reset issues
-    const newNameFilter = typeof nameFilterValue === 'string' ? nameFilterValue : ''
+    const newNameFilter =
+      typeof nameFilterValue === 'string' ? nameFilterValue : ''
     if (newNameFilter !== nameFilter) {
       onNameFilterChange(newNameFilter)
     }
-    
-    const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : []
-    if (JSON.stringify(newStatusFilter.sort()) !== JSON.stringify(statusFilter.sort())) {
+
+    const newStatusFilter = Array.isArray(statusFilterValue)
+      ? statusFilterValue
+      : []
+    if (
+      JSON.stringify(newStatusFilter.sort()) !==
+      JSON.stringify(statusFilter.sort())
+    ) {
       onStatusFilterChange(newStatusFilter)
     }
-    
+
     const newRoleFilter = Array.isArray(roleFilterValue) ? roleFilterValue : []
-    if (JSON.stringify(newRoleFilter.sort()) !== JSON.stringify(roleFilter.sort())) {
+    if (
+      JSON.stringify(newRoleFilter.sort()) !== JSON.stringify(roleFilter.sort())
+    ) {
       onRoleFilterChange(newRoleFilter)
     }
   }
@@ -133,7 +148,7 @@ export function UsersTable({
   })
 
   return (
-    <div className='space-y-4' data-testid="users-table">
+    <div className='space-y-4' data-testid='users-table'>
       <DataTableToolbar table={table} />
       <div className='rounded-md border'>
         <Table>
@@ -160,7 +175,16 @@ export function UsersTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
+                >
+                  {t('loading')}
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -202,7 +226,7 @@ export function UsersTable({
         onNextPage={onNextPage}
         onPreviousPage={onPreviousPage}
         onPageSizeChange={onPageSizeChange}
-        data-testid="pagination"
+        data-testid='pagination'
       />
     </div>
   )

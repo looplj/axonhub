@@ -11,6 +11,7 @@ import {
   getFacetedUniqueValues,
   useReactTable,
 } from '@tanstack/react-table'
+import { t } from 'i18next'
 import {
   Table,
   TableBody,
@@ -32,6 +33,7 @@ declare module '@tanstack/react-table' {
 
 interface DataTableProps {
   columns: ColumnDef<Role>[]
+  loading?: boolean
   data: Role[]
   pageInfo?: RoleConnection['pageInfo']
   pageSize: number
@@ -43,9 +45,10 @@ interface DataTableProps {
   onSearchFilterChange: (value: string) => void
 }
 
-export function RolesTable({ 
-  columns, 
+export function RolesTable({
+  columns,
   data,
+  loading,
   pageInfo,
   pageSize,
   totalCount,
@@ -53,7 +56,7 @@ export function RolesTable({
   onPreviousPage,
   onPageSizeChange,
   searchFilter,
-  onSearchFilterChange
+  onSearchFilterChange,
 }: DataTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -70,15 +73,21 @@ export function RolesTable({
     setColumnFilters(newFilters)
   }, [searchFilter])
 
-  const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
-    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
+  const handleColumnFiltersChange = (
+    updater:
+      | ColumnFiltersState
+      | ((prev: ColumnFiltersState) => ColumnFiltersState)
+  ) => {
+    const newFilters =
+      typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
-    
+
     // Extract search filter value
-    const searchFilterValue = newFilters.find(f => f.id === 'search')?.value
-    
+    const searchFilterValue = newFilters.find((f) => f.id === 'search')?.value
+
     // Only update if values actually change to prevent reset issues
-    const newSearchFilter = typeof searchFilterValue === 'string' ? searchFilterValue : ''
+    const newSearchFilter =
+      typeof searchFilterValue === 'string' ? searchFilterValue : ''
     if (newSearchFilter !== searchFilter) {
       onSearchFilterChange(newSearchFilter)
     }
@@ -106,7 +115,7 @@ export function RolesTable({
   })
 
   return (
-    <div className='space-y-4' data-testid="roles-table">
+    <div className='space-y-4' data-testid='roles-table'>
       <DataTableToolbar table={table} />
       <div className='rounded-md border'>
         <Table>
@@ -133,7 +142,16 @@ export function RolesTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
+                >
+                  {t('loading')}
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -175,7 +193,7 @@ export function RolesTable({
         onNextPage={onNextPage}
         onPreviousPage={onPreviousPage}
         onPageSizeChange={onPageSizeChange}
-        data-testid="pagination"
+        data-testid='pagination'
       />
     </div>
   )
