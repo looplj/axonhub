@@ -93,11 +93,33 @@ type TestChannelPayload {
   error: String
 }
 
+input BulkImportChannelItem {
+  type: String!
+  name: String!
+  baseURL: String
+  apiKey: String
+  supportedModels: [String!]!
+  defaultTestModel: String!
+}
+
+input BulkImportChannelsInput {
+  channels: [BulkImportChannelItem!]!
+}
+
+type BulkImportChannelsResult {
+  success: Boolean!
+  created: Int!
+  failed: Int!
+  errors: [String!]
+  channels: [Channel!]!
+}
+
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
   updateChannelStatus(id: ID!, status: ChannelStatus!): Channel!
   testChannel(input: TestChannelInput!): TestChannelPayload!
+  bulkImportChannels(input: BulkImportChannelsInput!): BulkImportChannelsResult!
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!

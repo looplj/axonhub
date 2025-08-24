@@ -7,6 +7,27 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
+type BulkImportChannelItem struct {
+	Type             string   `json:"type"`
+	Name             string   `json:"name"`
+	BaseURL          *string  `json:"baseURL,omitempty"`
+	APIKey           *string  `json:"apiKey,omitempty"`
+	SupportedModels  []string `json:"supportedModels"`
+	DefaultTestModel string   `json:"defaultTestModel"`
+}
+
+type BulkImportChannelsInput struct {
+	Channels []*BulkImportChannelItem `json:"channels"`
+}
+
+type BulkImportChannelsResult struct {
+	Success  bool           `json:"success"`
+	Created  int            `json:"created"`
+	Failed   int            `json:"failed"`
+	Errors   []string       `json:"errors,omitempty"`
+	Channels []*ent.Channel `json:"channels"`
+}
+
 type DailyRequestStats struct {
 	Date  string `json:"date"`
 	Count int    `json:"count"`

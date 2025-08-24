@@ -3,6 +3,7 @@ import { ChannelsActionDialog } from './channels-action-dialog'
 import { ChannelsSettingsDialog } from './channels-settings-dialog'
 import { ChannelsStatusDialog } from './channels-status-dialog'
 import { ChannelsTestDialog } from './channels-test-dialog'
+import { ChannelsBulkImportDialog } from './channels-bulk-import-dialog'
 
 export function ChannelsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = useChannels()
@@ -12,6 +13,11 @@ export function ChannelsDialogs() {
         key='channel-add'
         open={open === 'add'}
         onOpenChange={() => setOpen('add')}
+      />
+
+      <ChannelsBulkImportDialog
+        isOpen={open === 'bulkImport'}
+        onClose={() => setOpen(null)}
       />
 
       {currentRow && (

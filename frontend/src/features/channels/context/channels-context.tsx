@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import useDialogState from '@/hooks/use-dialog-state'
 import { Channel } from '../data/schema'
 
-type ChannelsDialogType = 'add' | 'edit' | 'delete' | 'settings' | 'status' | 'test'
+type ChannelsDialogType = 'add' | 'edit' | 'delete' | 'settings' | 'status' | 'test' | 'bulkImport'
 
 interface ChannelsContextType {
   open: ChannelsDialogType | null

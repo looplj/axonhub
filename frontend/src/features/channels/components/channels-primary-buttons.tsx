@@ -1,4 +1,4 @@
-import { IconPlus, IconSettings } from '@tabler/icons-react'
+import { IconPlus, IconUpload } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { useChannels } from '../context/channels-context'
@@ -9,6 +9,14 @@ export function ChannelsPrimaryButtons() {
   
   return (
     <div className='flex gap-2'>
+      <Button
+        variant='outline'
+        className='space-x-1'
+        onClick={() => setOpen('bulkImport')}
+      >
+        <span>{t('channels.importChannels', '批量导入')}</span> <IconUpload size={18} />
+      </Button>
+      
       {/* <Button
         variant='outline'
         className='space-x-1'

@@ -442,6 +442,7 @@
     "loadError": "加载失败:",
     "noResults": "无结果。",
     "addChannel": "添加渠道",
+    "importChannels": "批量导入",
     "settings": "设置",
     "filterChannels": "筛选渠道...",
     "columns": {
@@ -495,7 +496,10 @@
       "statusUpdateError": "状态更新失败：{{error}}",
       "testSuccess": "渠道测试成功（延迟 {{latency}}秒）",
       "testError": "渠道测试失败：{{error}}",
-      "testUnknownError": "发生未知测试错误"
+      "testUnknownError": "发生未知测试错误",
+      "bulkImportSuccess": "成功导入 {{created}} 个渠道",
+      "bulkImportPartialError": "导入 {{created}} 个渠道成功，{{failed}} 个失败",
+      "bulkImportError": "批量导入失败：{{error}}"
     },
     "filters": {
       "type": "类型",
@@ -525,6 +529,42 @@
         "testSuccess": "✅ 成功",
         "testFailed": "❌ 失败",
         "notStarted": "未开始"
+      },
+      "bulkImport": {
+        "button": "批量导入",
+        "title": "批量导入渠道",
+        "description": "从 CSV 数据批量导入渠道。每行一个渠道，逗号分隔字段。",
+        "formatDescription": "格式：type,name,baseURL,apiKey,supportedModels,defaultTestModel",
+        "supportedModelsNote": "使用 | 分隔多个模型",
+        "requiredFieldsNote": "注意：baseURL 和 apiKey 为必填字段",
+        "supportedTypes": "支持的类型：openai, anthropic, anthropic_aws, anthropic_gcp, gemini, deepseek, doubao, kimi",
+        "inputLabel": "导入数据",
+        "inputPlaceholder": "请输入要导入的渠道数据，每行一个...",
+        "previewButton": "预览导入数据",
+        "previewTitle": "预览结果",
+        "validRecords": "{{count}} 个有效记录",
+        "errors": "{{count}} 个错误",
+        "validChannels": "有效的渠道",
+        "importButton": "导入 {{count}} 个渠道",
+        "cancel": "取消",
+        "importing": "导入中...",
+        "formatTitle": "格式说明",
+        "formatNote": "使用 | 分隔多个模型",
+        "exampleData": "示例数据",
+        "errorMessages": "错误信息",
+        "invalidFormat": "第 {{line}} 行: 格式错误，应为: type,name,baseURL,apiKey,supportedModels,defaultTestModel",
+        "unsupportedType": "第 {{line}} 行: 不支持的 channel type \"{{type}}\"",
+        "baseUrlRequired": "第 {{line}} 行: Base URL 不能为空",
+        "apiKeyRequired": "第 {{line}} 行: API Key 不能为空",
+        "duplicateName": "第 {{line}} 行: 渠道名称 \"{{name}}\" 重复。每个渠道必须有唯一的名称",
+        "duplicateNameWithExisting": "第 {{line}} 行: 渠道名称 \"{{name}}\" 在服务器上已存在。每个渠道必须有唯一的名称",
+        "validationError": "第 {{line}} 行 ({{name}}): {{error}}",
+        "fieldLabels": {
+          "baseUrl": "Base URL",
+          "apiKey": "API Key",
+          "supportedModels": "支持的模型",
+          "defaultTestModel": "默认测试模型"
+        }
       },
       "fields": {
         "name": {

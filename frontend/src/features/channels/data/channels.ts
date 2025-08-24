@@ -10,6 +10,9 @@ import {
   UpdateChannelInput,
   channelConnectionSchema,
   channelSchema,
+  BulkImportChannelsInput,
+  BulkImportChannelsResult,
+  bulkImportChannelsResultSchema,
 } from './schema'
 
 // GraphQL queries and mutations
@@ -120,12 +123,40 @@ const TEST_CHANNEL_MUTATION = `
   }
 `
 
+const BULK_IMPORT_CHANNELS_MUTATION = `
+  mutation BulkImportChannels($input: BulkImportChannelsInput!) {
+    bulkImportChannels(input: $input) {
+      success
+      created
+      failed
+      errors
+      channels {
+        id
+        createdAt
+        updatedAt
+        type
+        baseURL
+        name
+        status
+        supportedModels
+        defaultTestModel
+        settings {
+          modelMappings {
+            from
+            to
+          }
+        }
+      }
+    }
+  }
+`
+
 // Query hooks
 export function useChannels(variables?: {
   first?: number
   after?: string
   orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
-  where?: Record<string, any>
+  where?: Record<string, unknown>
 }) {
   const { handleError } = useErrorHandler()
 
@@ -241,7 +272,7 @@ export function useUpdateChannelStatus() {
       )
       return data.updateChannelStatus
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] })
       const statusText = variables.status === 'enabled' ? t('channels.status.enabled') : t('channels.status.disabled')
       toast.success(t('channels.messages.statusUpdateSuccess', { status: statusText }))
@@ -288,6 +319,66 @@ export function useTestChannel() {
     onError: (error) => {
       // Handle GraphQL/network errors
       toast.error(t('channels.messages.testError', { error: error.message }))
+    },
+  })
+}
+
+export function useAllChannelNames() {
+  const { handleError } = useErrorHandler()
+
+  return useQuery({
+    queryKey: ['channelNames'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ channels: ChannelConnection }>(
+          CHANNELS_QUERY,
+          {
+            first: 1000, // Get a large number to capture all existing channels
+            orderBy: {
+              field: 'CREATED_AT',
+              direction: 'ASC'
+            }
+          }
+        )
+        const channelConnection = channelConnectionSchema.parse(data?.channels)
+        return channelConnection.edges?.map(edge => edge.node.name) || []
+      } catch (error) {
+        handleError(error, 'Failed to load existing channel names')
+        throw error
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
+export function useBulkImportChannels() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async (input: BulkImportChannelsInput) => {
+      const data = await graphqlRequest<{ bulkImportChannels: BulkImportChannelsResult }>(
+        BULK_IMPORT_CHANNELS_MUTATION,
+        { input }
+      )
+      return bulkImportChannelsResultSchema.parse(data.bulkImportChannels)
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] })
+      
+      if (data.success) {
+        toast.success(t('channels.messages.bulkImportSuccess', { 
+          created: data.created 
+        }))
+      } else {
+        toast.error(t('channels.messages.bulkImportPartialError', {
+          created: data.created,
+          failed: data.failed
+        }))
+      }
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.bulkImportError', { error: error.message }))
     },
   })
 }

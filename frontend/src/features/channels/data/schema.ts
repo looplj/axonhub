@@ -167,3 +167,34 @@ export const channelConnectionSchema = z.object({
   totalCount: z.number(),
 })
 export type ChannelConnection = z.infer<typeof channelConnectionSchema>
+
+// Bulk Import Schemas
+export const bulkImportChannelItemSchema = z.object({
+  type: channelTypeSchema,
+  name: z.string().min(1, '名称不能为空'),
+  baseURL: z.string().url('请输入有效的 URL').min(1, 'Base URL 不能为空'),
+  apiKey: z.string().min(1, 'API Key 不能为空'),
+  supportedModels: z.array(z.string()).min(1, '至少选择一个支持的模型'),
+  defaultTestModel: z.string().min(1, '请选择默认测试模型'),
+})
+export type BulkImportChannelItem = z.infer<typeof bulkImportChannelItemSchema>
+
+export const bulkImportChannelsInputSchema = z.object({
+  channels: z.array(bulkImportChannelItemSchema).min(1, '至少需要一个 channel'),
+})
+export type BulkImportChannelsInput = z.infer<typeof bulkImportChannelsInputSchema>
+
+export const bulkImportChannelsResultSchema = z.object({
+  success: z.boolean(),
+  created: z.number(),
+  failed: z.number(),
+  errors: z.array(z.string()).optional().nullable(),
+  channels: z.array(channelSchema).nullable(),
+})
+export type BulkImportChannelsResult = z.infer<typeof bulkImportChannelsResultSchema>
+
+// Raw text input for bulk import
+export const bulkImportTextSchema = z.object({
+  text: z.string().min(1, '请输入要导入的数据'),
+})
+export type BulkImportText = z.infer<typeof bulkImportTextSchema>

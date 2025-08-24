@@ -95,6 +95,71 @@ func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInp
 	}, nil
 }
 
+// BulkImportChannels is the resolver for the bulkImportChannels field.
+func (r *mutationResolver) BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*BulkImportChannelsResult, error) {
+	var createdChannels []*ent.Channel
+	var errors []string
+	created := 0
+	failed := 0
+
+	for i, item := range input.Channels {
+		// Validate channel type
+		channelType := channel.Type(item.Type)
+		if err := channel.TypeValidator(channelType); err != nil {
+			errors = append(errors, fmt.Sprintf("Row %d: Invalid channel type '%s'", i+1, item.Type))
+			failed++
+			continue
+		}
+
+		// Validate required fields
+		if item.BaseURL == nil || *item.BaseURL == "" {
+			errors = append(errors, fmt.Sprintf("Row %d (%s): Base URL is required", i+1, item.Name))
+			failed++
+			continue
+		}
+
+		if item.APIKey == nil || *item.APIKey == "" {
+			errors = append(errors, fmt.Sprintf("Row %d (%s): API Key is required", i+1, item.Name))
+			failed++
+			continue
+		}
+
+		// Prepare credentials (API key is now required)
+		credentials := &objects.ChannelCredentials{
+			APIKey: *item.APIKey,
+		}
+
+		// Create the channel (baseURL is now required)
+		channelBuilder := r.client.Channel.Create().
+			SetType(channelType).
+			SetName(item.Name).
+			SetBaseURL(*item.BaseURL).
+			SetCredentials(credentials).
+			SetSupportedModels(item.SupportedModels).
+			SetDefaultTestModel(item.DefaultTestModel)
+
+		channel, err := channelBuilder.Save(ctx)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Row %d (%s): %s", i+1, item.Name, err.Error()))
+			failed++
+			continue
+		}
+
+		createdChannels = append(createdChannels, channel)
+		created++
+	}
+
+	success := failed == 0
+
+	return &BulkImportChannelsResult{
+		Success:  success,
+		Created:  created,
+		Failed:   failed,
+		Errors:   errors,
+		Channels: createdChannels,
+	}, nil
+}
+
 // CreateAPIKey is the resolver for the createAPIKey field.
 func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error) {
 	// Get current user from context

@@ -410,6 +410,7 @@
     "loadError": "Load failed:",
     "noResults": "No results.",
     "addChannel": "Add Channel",
+    "importChannels": "Bulk Import",
     "settings": "Settings",
     "filterChannels": "Filter channels...",
     "columns": {
@@ -469,7 +470,10 @@
       "statusUpdateError": "Status update failed: {{error}}",
       "testSuccess": "Channel test successful ({{latency}}s latency)",
       "testError": "Channel test failed: {{error}}",
-      "testUnknownError": "Unknown test error occurred"
+      "testUnknownError": "Unknown test error occurred",
+      "bulkImportSuccess": "Successfully imported {{created}} channels",
+      "bulkImportPartialError": "Imported {{created}} channels, {{failed}} failed",
+      "bulkImportError": "Bulk import failed: {{error}}"
     },
     "dialogs": {
       "create": {
@@ -493,6 +497,41 @@
         "testSuccess": "✅ Success",
         "testFailed": "❌ Failed",
         "notStarted": "Not started"
+      },
+      "bulkImport": {
+        "title": "Bulk Import Channels",
+        "description": "Import multiple channels from CSV data. One channel per line, comma-separated fields.",
+        "formatDescription": "Format: type,name,baseURL,apiKey,supportedModels,defaultTestModel",
+        "supportedModelsNote": "Use | to separate multiple models",
+        "requiredFieldsNote": "Note: baseURL and apiKey are required fields",
+        "supportedTypes": "Supported types: openai, anthropic, anthropic_aws, anthropic_gcp, gemini, deepseek, doubao, kimi",
+        "inputLabel": "Import Data",
+        "inputPlaceholder": "Enter channel data to import, one per line...",
+        "previewButton": "Preview Import Data",
+        "previewTitle": "Preview Results",
+        "validRecords": "{{count}} valid records",
+        "errors": "{{count}} errors",
+        "validChannels": "Valid Channels",
+        "importButton": "Import {{count}} Channels",
+        "cancel": "Cancel",
+        "importing": "Importing...",
+        "formatTitle": "Format Instructions",
+        "formatNote": "Use | to separate multiple models",
+        "exampleData": "Example Data",
+        "errorMessages": "Error Messages",
+        "invalidFormat": "Line {{line}}: Invalid format, should be: type,name,baseURL,apiKey,supportedModels,defaultTestModel",
+        "unsupportedType": "Line {{line}}: Unsupported channel type \"{{type}}\"",
+        "baseUrlRequired": "Line {{line}}: Base URL cannot be empty",
+        "apiKeyRequired": "Line {{line}}: API Key cannot be empty",
+        "duplicateName": "Line {{line}}: Channel name \"{{name}}\" is duplicate. Each channel must have a unique name",
+        "duplicateNameWithExisting": "Line {{line}}: Channel name \"{{name}}\" already exists on server. Each channel must have a unique name",
+        "validationError": "Line {{line}} ({{name}}): {{error}}",
+        "fieldLabels": {
+          "baseUrl": "Base URL",
+          "apiKey": "API Key",
+          "supportedModels": "Supported Models",
+          "defaultTestModel": "Default Test Model"
+        }
       },
       "fields": {
         "name": {
