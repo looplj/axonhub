@@ -19,11 +19,17 @@ type mockFilterMutation struct {
 
 	wherePCalled bool
 	wherePFuncs  []func(*sql.Selector)
+	userID       int
+	userIDExists bool
 }
 
 func (m *mockFilterMutation) WhereP(ps ...func(*sql.Selector)) {
 	m.wherePCalled = true
 	m.wherePFuncs = append(m.wherePFuncs, ps...)
+}
+
+func (m *mockFilterMutation) UserID() (int, bool) {
+	return m.userID, m.userIDExists
 }
 
 func (m *mockFilterMutation) Op() ent.Op {
@@ -32,6 +38,34 @@ func (m *mockFilterMutation) Op() ent.Op {
 
 func (m *mockFilterMutation) Type() string {
 	return "MockFilterMutation"
+}
+
+// Mock mutation for update operations.
+type mockUpdateMutation struct {
+	ent.Mutation
+
+	op           ent.Op
+	wherePCalled bool
+	wherePFuncs  []func(*sql.Selector)
+	userID       int
+	userIDExists bool
+}
+
+func (m *mockUpdateMutation) WhereP(ps ...func(*sql.Selector)) {
+	m.wherePCalled = true
+	m.wherePFuncs = append(m.wherePFuncs, ps...)
+}
+
+func (m *mockUpdateMutation) UserID() (int, bool) {
+	return m.userID, m.userIDExists
+}
+
+func (m *mockUpdateMutation) Op() ent.Op {
+	return m.op
+}
+
+func (m *mockUpdateMutation) Type() string {
+	return "MockUpdateMutation"
 }
 
 // Mock mutation for other tests.
@@ -103,11 +137,12 @@ func TestUserOwnedQueryRule(t *testing.T) {
 
 func TestUserOwnedMutationRule(t *testing.T) {
 	tests := []struct {
-		name        string
-		ctx         context.Context
-		mutation    ent.Mutation
-		expectError bool
-		expectSkip  bool
+		name         string
+		ctx          context.Context
+		mutation     ent.Mutation
+		expectError  bool
+		expectSkip   bool
+		expectWhereP bool
 	}{
 		{
 			name:        "no user in context",
@@ -117,11 +152,38 @@ func TestUserOwnedMutationRule(t *testing.T) {
 			expectSkip:  false,
 		},
 		{
-			name: "valid user with filter mutation",
+			name: "valid user with filter mutation - create with matching user ID",
 			ctx: contexts.WithUser(context.Background(), &ent.User{
 				ID: 123,
 			}),
-			mutation:    &mockFilterMutation{},
+			mutation: &mockFilterMutation{
+				userID:       123,
+				userIDExists: true,
+			},
+			expectError: false,
+			expectSkip:  false,
+		},
+		{
+			name: "valid user with filter mutation - update operation",
+			ctx: contexts.WithUser(context.Background(), &ent.User{
+				ID: 123,
+			}),
+			mutation: &mockUpdateMutation{
+				op: ent.OpUpdateOne,
+			},
+			expectError:  false,
+			expectSkip:   false,
+			expectWhereP: true,
+		},
+		{
+			name: "valid user with filter mutation - create with non-matching user ID",
+			ctx: contexts.WithUser(context.Background(), &ent.User{
+				ID: 123,
+			}),
+			mutation: &mockFilterMutation{
+				userID:       456,
+				userIDExists: true,
+			},
 			expectError: false,
 			expectSkip:  true,
 		},
@@ -149,8 +211,16 @@ func TestUserOwnedMutationRule(t *testing.T) {
 				if !errors.Is(err, privacy.Skip) {
 					t.Errorf("expected privacy.Skip, got %v", err)
 				}
-				// Verify that WhereP was called
-				if mockMutation, ok := tt.mutation.(*mockFilterMutation); ok {
+			} else {
+				// Expect Allow
+				if !errors.Is(err, privacy.Allow) {
+					t.Errorf("expected privacy.Allow, got %v", err)
+				}
+			}
+
+			// Check WhereP was called when expected
+			if tt.expectWhereP {
+				if mockMutation, ok := tt.mutation.(*mockUpdateMutation); ok {
 					if !mockMutation.wherePCalled {
 						t.Error("expected WhereP to be called")
 					}

@@ -105,8 +105,8 @@ func (Request) Policy() ent.Policy {
 		Mutation: scopes.MutationPolicy{
 			scopes.APIKeyScopeMutationRule(scopes.ScopeWriteRequests),
 			scopes.OwnerRule(), // owner 用户可以修改所有请求
-			scopes.UserWriteScopeRule(scopes.ScopeWriteRequests),      // 需要 requests 写入权限
-			scopes.APIKeyScopeMutationRule(scopes.ScopeWriteRequests), // 需要 requests 写入权限
+			scopes.UserWriteScopeRule(scopes.ScopeWriteRequests), // 需要 requests 写入权限
+			scopes.UserOwnedMutationRule(),
 		},
 	}
 }

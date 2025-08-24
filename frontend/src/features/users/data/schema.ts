@@ -9,11 +9,11 @@ export const userSchema = z.object({
   updatedAt: z.string(),
   email: z.string(),
   status: userStatusSchema,
-  preferLanguage: z.string(),
-  firstName: z.string(),
-  lastName: z.string(),
-  isOwner: z.boolean(),
-  scopes: z.array(z.string()).nullable().optional(),
+  preferLanguage: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  isOwner: z.boolean().optional(),
+  scopes: z.array(z.string()).optional().nullable(),
   roles: z.object({
     edges: z.array(z.object({
       node: z.object({

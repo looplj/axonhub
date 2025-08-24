@@ -254,3 +254,209 @@ func TestPolicy_Structure(t *testing.T) {
 	mutationErr := policy.Mutation.EvalMutation(ctx, nil)
 	require.ErrorIs(t, mutationErr, privacy.Allow)
 }
+
+func TestPolicy_EvalQuery(t *testing.T) {
+	tests := []struct {
+		name     string
+		policy   Policy
+		expected error
+	}{
+		{
+			name: "policy with allow query rule should allow",
+			policy: Policy{
+				Query: QueryPolicy{
+					mockQueryRule{decision: privacy.Allow},
+				},
+			},
+			expected: privacy.Allow,
+		},
+		{
+			name: "policy with deny query rule should deny",
+			policy: Policy{
+				Query: QueryPolicy{
+					mockQueryRule{decision: privacy.Deny},
+				},
+			},
+			expected: privacy.Deny,
+		},
+		{
+			name: "policy with skip query rule should deny by default",
+			policy: Policy{
+				Query: QueryPolicy{
+					mockQueryRule{decision: privacy.Skip},
+				},
+			},
+			expected: privacy.Deny,
+		},
+		{
+			name: "policy with empty query rules should deny by default",
+			policy: Policy{
+				Query: QueryPolicy{},
+			},
+			expected: privacy.Deny,
+		},
+		{
+			name: "policy with multiple query rules - first allow wins",
+			policy: Policy{
+				Query: QueryPolicy{
+					mockQueryRule{decision: privacy.Allow},
+					mockQueryRule{decision: privacy.Deny},
+				},
+			},
+			expected: privacy.Allow,
+		},
+		{
+			name: "policy with multiple query rules - skip then allow",
+			policy: Policy{
+				Query: QueryPolicy{
+					mockQueryRule{decision: privacy.Skip},
+					mockQueryRule{decision: privacy.Allow},
+				},
+			},
+			expected: privacy.Allow,
+		},
+		{
+			name: "policy with custom error should return custom error",
+			policy: Policy{
+				Query: QueryPolicy{
+					mockQueryRule{decision: errors.New("custom query error")},
+				},
+			},
+			expected: errors.New("custom query error"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			err := tt.policy.EvalQuery(ctx, nil)
+
+			if tt.expected == nil {
+				require.NoError(t, err)
+			} else if errors.Is(tt.expected, privacy.Allow) {
+				require.ErrorIs(t, err, privacy.Allow)
+			} else if errors.Is(tt.expected, privacy.Deny) {
+				require.ErrorIs(t, err, privacy.Deny)
+			} else if errors.Is(tt.expected, privacy.Skip) {
+				require.ErrorIs(t, err, privacy.Skip)
+			} else {
+				require.EqualError(t, err, tt.expected.Error())
+			}
+		})
+	}
+}
+
+func TestPolicy_EvalMutation(t *testing.T) {
+	tests := []struct {
+		name     string
+		policy   Policy
+		expected error
+	}{
+		{
+			name: "policy with allow mutation rule should allow",
+			policy: Policy{
+				Mutation: MutationPolicy{
+					mockMutationRule{decision: privacy.Allow},
+				},
+			},
+			expected: privacy.Allow,
+		},
+		{
+			name: "policy with deny mutation rule should deny",
+			policy: Policy{
+				Mutation: MutationPolicy{
+					mockMutationRule{decision: privacy.Deny},
+				},
+			},
+			expected: privacy.Deny,
+		},
+		{
+			name: "policy with skip mutation rule should deny by default",
+			policy: Policy{
+				Mutation: MutationPolicy{
+					mockMutationRule{decision: privacy.Skip},
+				},
+			},
+			expected: privacy.Deny,
+		},
+		{
+			name: "policy with empty mutation rules should deny by default",
+			policy: Policy{
+				Mutation: MutationPolicy{},
+			},
+			expected: privacy.Deny,
+		},
+		{
+			name: "policy with multiple mutation rules - first allow wins",
+			policy: Policy{
+				Mutation: MutationPolicy{
+					mockMutationRule{decision: privacy.Allow},
+					mockMutationRule{decision: privacy.Deny},
+				},
+			},
+			expected: privacy.Allow,
+		},
+		{
+			name: "policy with multiple mutation rules - skip then allow",
+			policy: Policy{
+				Mutation: MutationPolicy{
+					mockMutationRule{decision: privacy.Skip},
+					mockMutationRule{decision: privacy.Allow},
+				},
+			},
+			expected: privacy.Allow,
+		},
+		{
+			name: "policy with custom error should return custom error",
+			policy: Policy{
+				Mutation: MutationPolicy{
+					mockMutationRule{decision: errors.New("custom mutation error")},
+				},
+			},
+			expected: errors.New("custom mutation error"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			err := tt.policy.EvalMutation(ctx, nil)
+
+			if tt.expected == nil {
+				require.NoError(t, err)
+			} else if errors.Is(tt.expected, privacy.Allow) {
+				require.ErrorIs(t, err, privacy.Allow)
+			} else if errors.Is(tt.expected, privacy.Deny) {
+				require.ErrorIs(t, err, privacy.Deny)
+			} else if errors.Is(tt.expected, privacy.Skip) {
+				require.ErrorIs(t, err, privacy.Skip)
+			} else {
+				require.EqualError(t, err, tt.expected.Error())
+			}
+		})
+	}
+}
+
+func TestPolicy_Complete(t *testing.T) {
+	// Test a complete policy with both query and mutation rules
+	policy := Policy{
+		Query: QueryPolicy{
+			mockQueryRule{decision: privacy.Allow},
+			mockQueryRule{decision: privacy.Deny}, // Should not be reached
+		},
+		Mutation: MutationPolicy{
+			mockMutationRule{decision: privacy.Skip},
+			mockMutationRule{decision: privacy.Allow},
+		},
+	}
+
+	ctx := context.Background()
+
+	// Test query evaluation
+	queryErr := policy.EvalQuery(ctx, nil)
+	require.ErrorIs(t, queryErr, privacy.Allow)
+
+	// Test mutation evaluation
+	mutationErr := policy.EvalMutation(ctx, nil)
+	require.ErrorIs(t, mutationErr, privacy.Allow)
+}

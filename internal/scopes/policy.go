@@ -6,6 +6,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/log"
 )
 
 type (
@@ -35,8 +36,12 @@ func (p Policy) EvalMutation(ctx context.Context, m ent.Mutation) error {
 // EvalQuery evaluates a query against a query policy.
 // Like the ent privacy package, but will deny by default.
 func (policies QueryPolicy) EvalQuery(ctx context.Context, q ent.Query) error {
-	for _, policy := range policies {
-		switch decision := policy.EvalQuery(ctx, q); {
+	for idx, policy := range policies {
+		decision := policy.EvalQuery(ctx, q)
+
+		log.Debug(ctx, "query policy decision", log.Int("policy_index", idx), log.Any("decision", decision))
+
+		switch {
 		case decision == nil || errors.Is(decision, privacy.Skip):
 			continue
 		default:
@@ -50,8 +55,12 @@ func (policies QueryPolicy) EvalQuery(ctx context.Context, q ent.Query) error {
 // EvalMutation evaluates a mutation against a mutation policy.
 // Like the ent privacy package, but will deny by default.
 func (policies MutationPolicy) EvalMutation(ctx context.Context, m ent.Mutation) error {
-	for _, policy := range policies {
-		switch decision := policy.EvalMutation(ctx, m); {
+	for idx, policy := range policies {
+		decision := policy.EvalMutation(ctx, m)
+
+		log.Debug(ctx, "mutation policy decision", log.Int("policy_index", idx), log.Any("decision", decision))
+
+		switch {
 		case decision == nil || errors.Is(decision, privacy.Skip):
 			continue
 		default:

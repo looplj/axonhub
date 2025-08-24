@@ -62,6 +62,7 @@ export const USER_QUERY = `
       firstName
       lastName
       isOwner
+      preferLanguage
       scopes
       roles {
         edges {
@@ -86,6 +87,7 @@ export const CREATE_USER_MUTATION = `
       firstName
       lastName
       isOwner
+      preferLanguage
       scopes
       roles {
         edges {
@@ -110,6 +112,7 @@ export const UPDATE_USER_MUTATION = `
       firstName
       lastName
       isOwner
+      preferLanguage
       scopes
       roles {
         edges {
@@ -134,6 +137,7 @@ export const UPDATE_USER_STATUS_MUTATION = `
       firstName
       lastName
       isOwner
+      preferLanguage
       scopes
       roles {
         edges {
