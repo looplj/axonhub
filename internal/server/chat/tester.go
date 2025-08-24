@@ -32,7 +32,7 @@ func NewTestChannelProcessor(
 ) *TestChannelProcessor {
 	return &TestChannelProcessor{
 		ChatCompletionProcessor: &ChatCompletionProcessor{
-			ChannelSelector: NewTestChannelSelector(channelService, channelID),
+			ChannelSelector: NewSpecifiedChannelSelector(channelService, channelID),
 			Inbound:         openai.NewInboundTransformer(),
 			RequestService:  requestService,
 			PipelineFactory: pipeline.NewFactory(httpClient),

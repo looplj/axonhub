@@ -1,12 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import {
-  IconTrash,
-  IconCopy,
-  IconRefresh,
-  IconVolume,
-} from '@tabler/icons-react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { IconTrash, IconRefresh } from '@tabler/icons-react'
 import { useChat } from '@ai-sdk/react'
-import { useAuth } from '@clerk/clerk-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
@@ -25,10 +19,13 @@ import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useChannels } from '@/features/channels/data/channels'
+import type { Channel } from '@/features/channels/data/schema'
 
 export default function Playground() {
   const { t } = useTranslation()
+  const [selectedGroupModel, setSelectedGroupModel] = useState('')
   const [model, setModel] = useState('gpt-4o')
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(null)
   const [temperature, setTemperature] = useState(0.7)
   const [maxTokens, setMaxTokens] = useState(1000)
   const [systemPrompt, setSystemPrompt] = useState(
@@ -39,6 +36,9 @@ export default function Playground() {
   const { data: channelsData, isLoading: channelsLoading } = useChannels({
     first: 100,
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
+    where: {
+      statusIn: ['enabled', 'disabled'],
+    },
   })
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -54,7 +54,7 @@ export default function Playground() {
     setMessages,
   } = useChat({
     // streamProtocol: 'text',
-    api: '/admin/v1/chat',
+    api: '/admin/v1/playground/chat',
     initialMessages: [],
     credentials: 'include',
     headers: {
@@ -67,6 +67,21 @@ export default function Playground() {
       max_tokens: maxTokens,
       system: systemPrompt,
     },
+    fetch: async (
+      input: string | URL | globalThis.Request,
+      init?: RequestInit
+    ) => {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      //@ts-ignore
+      if (input.headers) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        //@ts-ignore
+        input.headers.set('X-Channel-ID', selectedChannel)
+      } else {
+        input = input + '?channel_id=' + selectedChannel
+      }
+      return fetch(input, init)
+    },
   })
   const isLoading = status === 'submitted' || status === 'streaming'
 
@@ -76,13 +91,6 @@ export default function Playground() {
       inputRef.current.focus()
     }
   }, [])
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit(e as any)
-    }
-  }
 
   const handleClear = useCallback(() => {
     setMessages([])
@@ -131,31 +139,38 @@ export default function Playground() {
   }
 
   // 获取按 channel 分组的模型列表
-  const getGroupedModels = () => {
+  const groupedModels = useMemo(() => {
     if (!channelsData?.edges) return []
 
     const channelGroups = channelsData.edges.map((edge) => ({
       channelName: edge.node.name,
       channelType: edge.node.type,
       models: edge.node.supportedModels.map((model) => ({
-        value: model,
+        value: edge.node.id + '|' + model,
         label: model,
         channel: edge.node,
       })),
     }))
 
     return channelGroups.filter((group) => group.models.length > 0)
-  }
+  }, [channelsData])
 
   // 获取扁平化的模型列表（用于搜索）
-  const getAllModels = () => {
+  const allModels = useMemo(() => {
     if (!channelsData?.edges) return []
 
     const models = new Set<string>()
-    const modelMap = new Map<string, any>()
+    const modelMap = new Map<
+      string,
+      {
+        value: string
+        label: string
+        channel: Channel
+      }
+    >()
 
     channelsData.edges.forEach((edge) => {
-      edge.node.supportedModels.forEach((model) => {
+      edge.node.supportedModels.forEach((model: string) => {
         if (!models.has(model)) {
           models.add(model)
           modelMap.set(model, {
@@ -168,37 +183,24 @@ export default function Playground() {
     })
 
     return Array.from(models).map((model) => modelMap.get(model)!)
-  }
+  }, [channelsData])
 
-  const groupedModels = getGroupedModels()
-  const allModels = getAllModels()
+  // 处理模型选择，同时设置对应的 channel
+  const handleModelChange = useCallback(
+    (newModel: string) => {
+      setSelectedGroupModel(newModel)
+      const parts = newModel.split('|')
+      setModel(parts[1])
+      setSelectedChannel(parts[0])
+    },
+    [setSelectedGroupModel, setModel, setSelectedChannel]
+  )
 
-  // Message action buttons configuration
-  const messageActions = [
-    {
-      icon: IconCopy,
-      label: t('playground.actions.copy'),
-      action: (content: string) => {
-        navigator.clipboard.writeText(content)
-      },
-    },
-    {
-      icon: IconRefresh,
-      label: t('playground.actions.regenerate'),
-      action: () => {
-        // TODO: Implement regenerate functionality
-        console.log('Regenerate message')
-      },
-    },
-    {
-      icon: IconVolume,
-      label: t('playground.actions.readAloud'),
-      action: () => {
-        // TODO: Implement text-to-speech
-        console.log('Read aloud')
-      },
-    },
-  ]
+  useEffect(() => {
+    if (!selectedGroupModel) {
+      handleModelChange(groupedModels[0].models[0].value)
+    }
+  }, [groupedModels, handleModelChange])
 
   // 处理消息评分和重试
   const handleRateResponse = (
@@ -208,10 +210,8 @@ export default function Playground() {
     if (rating === 'thumbs-down') {
       // 当用户点击 thumbs-down 时，触发重试
       handleRetryFromMessage(messageId)
-    } else {
-      // 处理 thumbs-up（可以添加其他逻辑）
-      console.log(`Message ${messageId} rated: ${rating}`)
     }
+    // 处理 thumbs-up 可以在这里添加其他逻辑
   }
 
   return (
@@ -220,7 +220,9 @@ export default function Playground() {
         {/* Settings Sidebar */}
         <div className='bg-muted/40 flex w-80 flex-col border-r'>
           <div className='border-b p-6'>
-            <h1 className='text-2xl font-bold tracking-tight'>{t('playground.title')}</h1>
+            <h1 className='text-2xl font-bold tracking-tight'>
+              {t('playground.title')}
+            </h1>
             <p className='text-muted-foreground mt-2 text-sm leading-relaxed'>
               {t('playground.description')}
             </p>
@@ -233,14 +235,16 @@ export default function Playground() {
                   {t('playground.settings.model')}
                 </Label>
                 <Select
-                  value={model}
-                  onValueChange={setModel}
+                  value={selectedGroupModel}
+                  onValueChange={handleModelChange}
                   disabled={channelsLoading}
                 >
                   <SelectTrigger className='h-10'>
                     <SelectValue
                       placeholder={
-                        channelsLoading ? t('loading') : t('playground.settings.selectModel')
+                        channelsLoading
+                          ? t('loading')
+                          : t('playground.settings.selectModel')
                       }
                     />
                   </SelectTrigger>
@@ -271,7 +275,9 @@ export default function Playground() {
                       ))
                     ) : (
                       <SelectItem value='gpt-4o' disabled>
-                        {channelsLoading ? t('loading') : t('playground.errors.noChannelsAvailable')}
+                        {channelsLoading
+                          ? t('loading')
+                          : t('playground.errors.noChannelsAvailable')}
                       </SelectItem>
                     )}
                   </SelectContent>
@@ -285,7 +291,7 @@ export default function Playground() {
                   <p className='text-muted-foreground text-xs'>
                     {t('playground.modelsAvailable', {
                       count: allModels.length,
-                      channels: groupedModels.length
+                      channels: groupedModels.length,
                     })}
                   </p>
                 )}

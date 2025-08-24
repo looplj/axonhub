@@ -5,6 +5,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/chat"
 )
 
@@ -49,7 +50,6 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 		}
 
 		c.Data(resp.StatusCode, contentType, resp.Body)
-
 		return
 	}
 
@@ -69,37 +69,41 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 		c.Header("Connection", "keep-alive")
 		c.Header("Access-Control-Allow-Origin", "*")
 
-		clientDisconnected := false
+		writeSSEStream(c, result.ChatCompletionStream)
+	}
+}
 
-		defer func() {
-			if clientDisconnected {
-				log.Warn(ctx, "Client disconnected")
-			}
-		}()
+func writeSSEStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent]) {
+	ctx := c.Request.Context()
+	clientDisconnected := false
 
-		clientGone := c.Writer.CloseNotify()
+	defer func() {
+		if clientDisconnected {
+			log.Warn(ctx, "Client disconnected")
+		}
+	}()
 
-		for {
-			select {
-			case <-clientGone:
-				clientDisconnected = true
+	clientGone := c.Writer.CloseNotify()
 
-				log.Warn(ctx, "Client disconnected")
-				// continue to read the rest of the stream to collect stream.
-			default:
-				if result.ChatCompletionStream.Next() {
-					cur := result.ChatCompletionStream.Current()
-					c.SSEvent(cur.Type, cur.Data)
-					log.Debug(ctx, "stream event", log.Any("event", cur))
-					c.Writer.Flush()
-				} else {
-					if result.ChatCompletionStream.Err() != nil {
-						log.Error(ctx, "Error in stream", log.Cause(result.ChatCompletionStream.Err()))
-						c.SSEvent("error", result.ChatCompletionStream.Err())
-					}
+	for {
+		select {
+		case <-clientGone:
+			clientDisconnected = true
 
-					return
+			log.Warn(ctx, "Client disconnected")
+			// continue to read the rest of the stream to collect stream.
+		default:
+			if stream.Next() {
+				cur := stream.Current()
+				c.SSEvent(cur.Type, cur.Data)
+				log.Debug(ctx, "write stream event", log.Any("event", cur))
+				c.Writer.Flush()
+			} else {
+				if stream.Err() != nil {
+					log.Error(ctx, "Error in stream", log.Cause(stream.Err()))
+					c.SSEvent("error", stream.Err())
 				}
+				return
 			}
 		}
 	}

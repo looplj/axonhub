@@ -1,7 +1,6 @@
 package api
 
 import (
-	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -33,11 +32,6 @@ func (e *AiSdkErrorHandler) HandlerError(c *gin.Context, err error) {
 			Message: err.Error(),
 		},
 	})
-}
-
-func (e *AiSdkErrorHandler) HandleStreamError(c *gin.Context, err error) {
-	// For AI SDK streaming, we write the error directly to the response
-	_, _ = c.Writer.Write([]byte("3:" + `"` + err.Error() + `"` + "\n"))
 }
 
 type AiSdkHandlersParams struct {
@@ -110,34 +104,6 @@ func (handlers *AiSDKHandlers) ChatCompletion(c *gin.Context) {
 		c.Header("X-Vercel-AI-Data-Stream", "v1")
 		c.Status(http.StatusOK)
 
-		disconnected := c.Stream(func(w io.Writer) bool {
-			if result.ChatCompletionStream.Next() {
-				cur := result.ChatCompletionStream.Current()
-				log.Debug(ctx, "stream event", log.Any("event", cur))
-
-				// Write AI SDK format data directly to the response
-				if cur.Data != nil {
-					_, _ = w.Write(cur.Data)
-					// _, _ = w.Write([]byte("\n\n"))
-				}
-
-				return true
-			}
-
-			return false
-		})
-
-		if disconnected {
-			log.Warn(ctx, "Client disconnected")
-		}
-
-		err := result.ChatCompletionStream.Err()
-		if err != nil {
-			log.Error(ctx, "Error in stream", log.Cause(err))
-
-			if !disconnected {
-				handlers.ErrorHandler.HandleStreamError(c, err)
-			}
-		}
+		writeAITextStream(c, result.ChatCompletionStream)
 	}
 }

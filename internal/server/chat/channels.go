@@ -28,20 +28,20 @@ func (s *DefaultChannelSelector) Select(ctx context.Context, req *llm.Request) (
 	return s.ChannelService.ChooseChannels(ctx, req)
 }
 
-// TestChannelSelector allows selecting specific channels (including disabled ones) for testing.
-type TestChannelSelector struct {
+// SpecifiedChannelSelector allows selecting specific channels (including disabled ones) for testing.
+type SpecifiedChannelSelector struct {
 	ChannelService *biz.ChannelService
 	ChannelID      objects.GUID
 }
 
-func NewTestChannelSelector(channelService *biz.ChannelService, channelID objects.GUID) *TestChannelSelector {
-	return &TestChannelSelector{
+func NewSpecifiedChannelSelector(channelService *biz.ChannelService, channelID objects.GUID) *SpecifiedChannelSelector {
+	return &SpecifiedChannelSelector{
 		ChannelService: channelService,
 		ChannelID:      channelID,
 	}
 }
 
-func (s *TestChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
+func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
 	channel, err := s.ChannelService.GetChannelForTest(ctx, s.ChannelID.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel for test: %w", err)

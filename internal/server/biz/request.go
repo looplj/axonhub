@@ -6,6 +6,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/llm"
@@ -209,11 +210,11 @@ func (s *RequestService) AppendRequestExecutionChunk(
 	executionID int,
 	chunk *httpclient.StreamEvent,
 ) error {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	// Check if chunk storage is enabled
 	storeChunks, err := s.SystemService.StoreChunks(ctx)
 	if err != nil {
 		log.Warn(ctx, "Failed to get StoreChunks setting, defaulting to false", log.Cause(err))
-
 		storeChunks = false
 	}
 
@@ -250,7 +251,7 @@ func (s *RequestService) AppendRequestChunk(
 	requestID int,
 	chunk *httpclient.StreamEvent,
 ) error {
-	// Check if chunk storage is enabled
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	storeChunks, err := s.SystemService.StoreChunks(ctx)
 	if err != nil {
 		log.Warn(ctx, "Failed to get StoreChunks setting, defaulting to false", log.Cause(err))

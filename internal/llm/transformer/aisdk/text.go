@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
@@ -208,6 +209,8 @@ func (t *TextTransformer) TransformStreamChunk(
 
 	// Process each choice
 	for _, choice := range chunk.Choices {
+		log.Debug(ctx, "Processing choice for ai text", log.Any("choice", choice))
+
 		// Handle text content - Format: 0:"text"\n
 		if choice.Delta != nil && choice.Delta.Content.Content != nil &&
 			*choice.Delta.Content.Content != "" {

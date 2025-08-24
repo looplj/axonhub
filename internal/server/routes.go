@@ -15,12 +15,13 @@ import (
 type Handlers struct {
 	fx.In
 
-	Graphql   *gql.GraphqlHandler
-	OpenAI    *api.OpenAIHandlers
-	Anthropic *api.AnthropicHandlers
-	AiSDK     *api.AiSDKHandlers
-	System    *api.SystemHandlers
-	Auth      *api.AuthHandlers
+	Graphql    *gql.GraphqlHandler
+	OpenAI     *api.OpenAIHandlers
+	Anthropic  *api.AnthropicHandlers
+	AiSDK      *api.AiSDKHandlers
+	Playground *api.PlaygroundHandlers
+	System     *api.SystemHandlers
+	Auth       *api.AuthHandlers
 }
 
 func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, client *ent.Client) {
@@ -48,6 +49,8 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 		})
 
 		adminGroup.POST("/v1/chat", middleware.WithTimeout(server.config.LLMRequestTimeout), middleware.WithSource(request.SourcePlayground), handlers.AiSDK.ChatCompletion)
+		// Playground API with channel specification support
+		adminGroup.POST("/v1/playground/chat", middleware.WithTimeout(server.config.LLMRequestTimeout), middleware.WithSource(request.SourcePlayground), handlers.Playground.ChatCompletion)
 	}
 
 	apiGroup := server.Group("/v1", middleware.WithTimeout(server.config.LLMRequestTimeout))
