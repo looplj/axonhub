@@ -197,10 +197,10 @@ export default function Playground() {
   )
 
   useEffect(() => {
-    if (!selectedGroupModel) {
+    if (!selectedGroupModel && groupedModels.length > 0 && groupedModels[0].models.length > 0) {
       handleModelChange(groupedModels[0].models[0].value)
     }
-  }, [groupedModels, handleModelChange])
+  }, [groupedModels, handleModelChange, selectedGroupModel])
 
   // 处理消息评分和重试
   const handleRateResponse = (
