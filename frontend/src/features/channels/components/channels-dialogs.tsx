@@ -5,6 +5,7 @@ import { ChannelsStatusDialog } from './channels-status-dialog'
 import { ChannelsArchiveDialog } from './channels-archive-dialog'
 import { ChannelsTestDialog } from './channels-test-dialog'
 import { ChannelsBulkImportDialog } from './channels-bulk-import-dialog'
+import { ChannelsBulkOrderingDialog } from './channels-bulk-ordering-dialog'
 
 export function ChannelsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = useChannels()
@@ -19,6 +20,11 @@ export function ChannelsDialogs() {
       <ChannelsBulkImportDialog
         isOpen={open === 'bulkImport'}
         onClose={() => setOpen(null)}
+      />
+
+      <ChannelsBulkOrderingDialog
+        open={open === 'bulkOrdering'}
+        onOpenChange={(isOpen) => setOpen(isOpen ? 'bulkOrdering' : null)}
       />
 
       {currentRow && (

@@ -33,6 +33,21 @@ type BulkImportChannelsResult struct {
 	Channels []*ent.Channel `json:"channels"`
 }
 
+type BulkUpdateChannelOrderingInput struct {
+	Channels []*ChannelOrderingItem `json:"channels"`
+}
+
+type BulkUpdateChannelOrderingResult struct {
+	Success  bool           `json:"success"`
+	Updated  int            `json:"updated"`
+	Channels []*ent.Channel `json:"channels"`
+}
+
+type ChannelOrderingItem struct {
+	ID             objects.GUID `json:"id"`
+	OrderingWeight int          `json:"orderingWeight"`
+}
+
 type DailyRequestStats struct {
 	Date  string `json:"date"`
 	Count int    `json:"count"`

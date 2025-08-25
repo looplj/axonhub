@@ -152,6 +152,27 @@ func (cu *ChannelUpdate) ClearSettings() *ChannelUpdate {
 	return cu
 }
 
+// SetOrderingWeight sets the "ordering_weight" field.
+func (cu *ChannelUpdate) SetOrderingWeight(i int) *ChannelUpdate {
+	cu.mutation.ResetOrderingWeight()
+	cu.mutation.SetOrderingWeight(i)
+	return cu
+}
+
+// SetNillableOrderingWeight sets the "ordering_weight" field if the given value is not nil.
+func (cu *ChannelUpdate) SetNillableOrderingWeight(i *int) *ChannelUpdate {
+	if i != nil {
+		cu.SetOrderingWeight(*i)
+	}
+	return cu
+}
+
+// AddOrderingWeight adds i to the "ordering_weight" field.
+func (cu *ChannelUpdate) AddOrderingWeight(i int) *ChannelUpdate {
+	cu.mutation.AddOrderingWeight(i)
+	return cu
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (cu *ChannelUpdate) AddRequestIDs(ids ...int) *ChannelUpdate {
 	cu.mutation.AddRequestIDs(ids...)
@@ -339,6 +360,12 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if cu.mutation.SettingsCleared() {
 		_spec.ClearField(channel.FieldSettings, field.TypeJSON)
+	}
+	if value, ok := cu.mutation.OrderingWeight(); ok {
+		_spec.SetField(channel.FieldOrderingWeight, field.TypeInt, value)
+	}
+	if value, ok := cu.mutation.AddedOrderingWeight(); ok {
+		_spec.AddField(channel.FieldOrderingWeight, field.TypeInt, value)
 	}
 	if cu.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -571,6 +598,27 @@ func (cuo *ChannelUpdateOne) ClearSettings() *ChannelUpdateOne {
 	return cuo
 }
 
+// SetOrderingWeight sets the "ordering_weight" field.
+func (cuo *ChannelUpdateOne) SetOrderingWeight(i int) *ChannelUpdateOne {
+	cuo.mutation.ResetOrderingWeight()
+	cuo.mutation.SetOrderingWeight(i)
+	return cuo
+}
+
+// SetNillableOrderingWeight sets the "ordering_weight" field if the given value is not nil.
+func (cuo *ChannelUpdateOne) SetNillableOrderingWeight(i *int) *ChannelUpdateOne {
+	if i != nil {
+		cuo.SetOrderingWeight(*i)
+	}
+	return cuo
+}
+
+// AddOrderingWeight adds i to the "ordering_weight" field.
+func (cuo *ChannelUpdateOne) AddOrderingWeight(i int) *ChannelUpdateOne {
+	cuo.mutation.AddOrderingWeight(i)
+	return cuo
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (cuo *ChannelUpdateOne) AddRequestIDs(ids ...int) *ChannelUpdateOne {
 	cuo.mutation.AddRequestIDs(ids...)
@@ -788,6 +836,12 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 	}
 	if cuo.mutation.SettingsCleared() {
 		_spec.ClearField(channel.FieldSettings, field.TypeJSON)
+	}
+	if value, ok := cuo.mutation.OrderingWeight(); ok {
+		_spec.SetField(channel.FieldOrderingWeight, field.TypeInt, value)
+	}
+	if value, ok := cuo.mutation.AddedOrderingWeight(); ok {
+		_spec.AddField(channel.FieldOrderingWeight, field.TypeInt, value)
 	}
 	if cuo.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{

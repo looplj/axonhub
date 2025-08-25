@@ -107,6 +107,10 @@ func init() {
 	channelDescSettings := channelFields[7].Descriptor()
 	// channel.DefaultSettings holds the default value on creation for the settings field.
 	channel.DefaultSettings = channelDescSettings.Default.(*objects.ChannelSettings)
+	// channelDescOrderingWeight is the schema descriptor for ordering_weight field.
+	channelDescOrderingWeight := channelFields[8].Descriptor()
+	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
+	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
 	job.Policy = privacy.NewPolicies(schema.Job{})
 	job.Hooks[0] = func(next ent.Mutator) ent.Mutator {
 		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {

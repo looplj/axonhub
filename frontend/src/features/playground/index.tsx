@@ -35,7 +35,7 @@ export default function Playground() {
   // 获取 channels 数据
   const { data: channelsData, isLoading: channelsLoading } = useChannels({
     first: 100,
-    orderBy: { field: 'CREATED_AT', direction: 'DESC' },
+    orderBy: { field: 'ORDERING_WEIGHT', direction: 'DESC' },
     where: {
       statusIn: ['enabled', 'disabled'],
     },

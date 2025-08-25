@@ -7,8 +7,6 @@ export function useErrorHandler() {
   const { t } = useTranslation()
   
   const handleError = useCallback((error: unknown, context?: string) => {
-    console.error('Error occurred:', error)
-
     let errorMessage = t('common.errors.unknownError')
     
     if (error instanceof ZodError) {

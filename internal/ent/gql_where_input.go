@@ -538,6 +538,16 @@ type ChannelWhereInput struct {
 	DefaultTestModelEqualFold    *string  `json:"defaultTestModelEqualFold,omitempty"`
 	DefaultTestModelContainsFold *string  `json:"defaultTestModelContainsFold,omitempty"`
 
+	// "ordering_weight" field predicates.
+	OrderingWeight      *int  `json:"orderingWeight,omitempty"`
+	OrderingWeightNEQ   *int  `json:"orderingWeightNEQ,omitempty"`
+	OrderingWeightIn    []int `json:"orderingWeightIn,omitempty"`
+	OrderingWeightNotIn []int `json:"orderingWeightNotIn,omitempty"`
+	OrderingWeightGT    *int  `json:"orderingWeightGT,omitempty"`
+	OrderingWeightGTE   *int  `json:"orderingWeightGTE,omitempty"`
+	OrderingWeightLT    *int  `json:"orderingWeightLT,omitempty"`
+	OrderingWeightLTE   *int  `json:"orderingWeightLTE,omitempty"`
+
 	// "requests" edge predicates.
 	HasRequests     *bool                `json:"hasRequests,omitempty"`
 	HasRequestsWith []*RequestWhereInput `json:"hasRequestsWith,omitempty"`
@@ -860,6 +870,30 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 	}
 	if i.DefaultTestModelContainsFold != nil {
 		predicates = append(predicates, channel.DefaultTestModelContainsFold(*i.DefaultTestModelContainsFold))
+	}
+	if i.OrderingWeight != nil {
+		predicates = append(predicates, channel.OrderingWeightEQ(*i.OrderingWeight))
+	}
+	if i.OrderingWeightNEQ != nil {
+		predicates = append(predicates, channel.OrderingWeightNEQ(*i.OrderingWeightNEQ))
+	}
+	if len(i.OrderingWeightIn) > 0 {
+		predicates = append(predicates, channel.OrderingWeightIn(i.OrderingWeightIn...))
+	}
+	if len(i.OrderingWeightNotIn) > 0 {
+		predicates = append(predicates, channel.OrderingWeightNotIn(i.OrderingWeightNotIn...))
+	}
+	if i.OrderingWeightGT != nil {
+		predicates = append(predicates, channel.OrderingWeightGT(*i.OrderingWeightGT))
+	}
+	if i.OrderingWeightGTE != nil {
+		predicates = append(predicates, channel.OrderingWeightGTE(*i.OrderingWeightGTE))
+	}
+	if i.OrderingWeightLT != nil {
+		predicates = append(predicates, channel.OrderingWeightLT(*i.OrderingWeightLT))
+	}
+	if i.OrderingWeightLTE != nil {
+		predicates = append(predicates, channel.OrderingWeightLTE(*i.OrderingWeightLTE))
 	}
 
 	if i.HasRequests != nil {

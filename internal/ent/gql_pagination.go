@@ -624,6 +624,20 @@ var (
 			}
 		},
 	}
+	// ChannelOrderFieldOrderingWeight orders Channel by ordering_weight.
+	ChannelOrderFieldOrderingWeight = &ChannelOrderField{
+		Value: func(c *Channel) (ent.Value, error) {
+			return c.OrderingWeight, nil
+		},
+		column: channel.FieldOrderingWeight,
+		toTerm: channel.ByOrderingWeight,
+		toCursor: func(c *Channel) Cursor {
+			return Cursor{
+				ID:    c.ID,
+				Value: c.OrderingWeight,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -632,6 +646,8 @@ func (f ChannelOrderField) String() string {
 	switch f.column {
 	case ChannelOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case ChannelOrderFieldOrderingWeight.column:
+		str = "ORDERING_WEIGHT"
 	}
 	return str
 }
@@ -650,6 +666,8 @@ func (f *ChannelOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *ChannelOrderFieldCreatedAt
+	case "ORDERING_WEIGHT":
+		*f = *ChannelOrderFieldOrderingWeight
 	default:
 		return fmt.Errorf("%s is not a valid ChannelOrderField", str)
 	}

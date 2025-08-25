@@ -439,6 +439,7 @@
     "noResults": "无结果。",
     "addChannel": "添加渠道",
     "importChannels": "批量导入",
+    "orderChannels": "批量排序",
     "settings": "设置",
     "filterChannels": "筛选渠道...",
     "columns": {
@@ -499,7 +500,9 @@
       "testUnknownError": "发生未知测试错误",
       "bulkImportSuccess": "成功导入 {{created}} 个渠道",
       "bulkImportPartialError": "导入 {{created}} 个渠道成功，{{failed}} 个失败",
-      "bulkImportError": "批量导入失败：{{error}}"
+      "bulkImportError": "批量导入失败：{{error}}",
+      "orderingUpdateSuccess": "成功更新了 {{updated}} 个渠道的排序",
+      "orderingUpdateError": "更新渠道排序失败：{{error}}"
     },
     "filters": {
       "type": "类型",
@@ -693,6 +696,16 @@
           "targetModel": "目标模型名称",
           "noMappings": "暂无模型映射配置"
         }
+      },
+      "bulkOrdering": {
+        "title": "批量渠道排序",
+        "description": "拖拽重新排列渠道。优先级高的渠道将优先显示。",
+        "dragHint": "拖拽渠道重新排序",
+        "saveButton": "保存排序",
+        "saving": "保存中...",
+        "cancel": "取消",
+        "orderingWeight": "优先级",
+        "noChannels": "没有可用于排序的渠道"
       }
     }
   },
@@ -1005,6 +1018,12 @@
     "selectedItems": "已选择 {{count}} 项",
     "noResultsFound": "未找到结果",
     "clearFilters": "清除筛选",
+    "loading": "加载中",
+    "saving": "保存中",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "dragging": "拖拽中",
+    "unsavedChanges": "您有未保存的更改",
     "errors": {
       "sessionExpired": "会话已过期！",
       "sessionExpiredSignIn": "会话已过期，请重新登录。",

@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"entgo.io/ent/privacy"
-
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 

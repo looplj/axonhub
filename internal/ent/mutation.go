@@ -979,6 +979,8 @@ type ChannelMutation struct {
 	appendsupported_models []string
 	default_test_model     *string
 	settings               **objects.ChannelSettings
+	ordering_weight        *int
+	addordering_weight     *int
 	clearedFields          map[string]struct{}
 	requests               map[int]struct{}
 	removedrequests        map[int]struct{}
@@ -1546,6 +1548,62 @@ func (m *ChannelMutation) ResetSettings() {
 	delete(m.clearedFields, channel.FieldSettings)
 }
 
+// SetOrderingWeight sets the "ordering_weight" field.
+func (m *ChannelMutation) SetOrderingWeight(i int) {
+	m.ordering_weight = &i
+	m.addordering_weight = nil
+}
+
+// OrderingWeight returns the value of the "ordering_weight" field in the mutation.
+func (m *ChannelMutation) OrderingWeight() (r int, exists bool) {
+	v := m.ordering_weight
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOrderingWeight returns the old "ordering_weight" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldOrderingWeight(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOrderingWeight is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOrderingWeight requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOrderingWeight: %w", err)
+	}
+	return oldValue.OrderingWeight, nil
+}
+
+// AddOrderingWeight adds i to the "ordering_weight" field.
+func (m *ChannelMutation) AddOrderingWeight(i int) {
+	if m.addordering_weight != nil {
+		*m.addordering_weight += i
+	} else {
+		m.addordering_weight = &i
+	}
+}
+
+// AddedOrderingWeight returns the value that was added to the "ordering_weight" field in this mutation.
+func (m *ChannelMutation) AddedOrderingWeight() (r int, exists bool) {
+	v := m.addordering_weight
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetOrderingWeight resets all changes to the "ordering_weight" field.
+func (m *ChannelMutation) ResetOrderingWeight() {
+	m.ordering_weight = nil
+	m.addordering_weight = nil
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by ids.
 func (m *ChannelMutation) AddRequestIDs(ids ...int) {
 	if m.requests == nil {
@@ -1688,7 +1746,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -1722,6 +1780,9 @@ func (m *ChannelMutation) Fields() []string {
 	if m.settings != nil {
 		fields = append(fields, channel.FieldSettings)
 	}
+	if m.ordering_weight != nil {
+		fields = append(fields, channel.FieldOrderingWeight)
+	}
 	return fields
 }
 
@@ -1752,6 +1813,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.DefaultTestModel()
 	case channel.FieldSettings:
 		return m.Settings()
+	case channel.FieldOrderingWeight:
+		return m.OrderingWeight()
 	}
 	return nil, false
 }
@@ -1783,6 +1846,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldDefaultTestModel(ctx)
 	case channel.FieldSettings:
 		return m.OldSettings(ctx)
+	case channel.FieldOrderingWeight:
+		return m.OldOrderingWeight(ctx)
 	}
 	return nil, fmt.Errorf("unknown Channel field %s", name)
 }
@@ -1869,6 +1934,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetSettings(v)
 		return nil
+	case channel.FieldOrderingWeight:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOrderingWeight(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Channel field %s", name)
 }
@@ -1880,6 +1952,9 @@ func (m *ChannelMutation) AddedFields() []string {
 	if m.adddeleted_at != nil {
 		fields = append(fields, channel.FieldDeletedAt)
 	}
+	if m.addordering_weight != nil {
+		fields = append(fields, channel.FieldOrderingWeight)
+	}
 	return fields
 }
 
@@ -1890,6 +1965,8 @@ func (m *ChannelMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case channel.FieldDeletedAt:
 		return m.AddedDeletedAt()
+	case channel.FieldOrderingWeight:
+		return m.AddedOrderingWeight()
 	}
 	return nil, false
 }
@@ -1905,6 +1982,13 @@ func (m *ChannelMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddDeletedAt(v)
+		return nil
+	case channel.FieldOrderingWeight:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddOrderingWeight(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Channel numeric field %s", name)
@@ -1980,6 +2064,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldSettings:
 		m.ResetSettings()
+		return nil
+	case channel.FieldOrderingWeight:
+		m.ResetOrderingWeight()
 		return nil
 	}
 	return fmt.Errorf("unknown Channel field %s", name)

@@ -492,6 +492,11 @@ func (cq *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, channel.FieldSettings)
 				fieldSeen[channel.FieldSettings] = struct{}{}
 			}
+		case "orderingWeight":
+			if _, ok := fieldSeen[channel.FieldOrderingWeight]; !ok {
+				selectedFields = append(selectedFields, channel.FieldOrderingWeight)
+				fieldSeen[channel.FieldOrderingWeight] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:

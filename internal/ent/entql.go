@@ -65,6 +65,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channel.FieldSupportedModels:  {Type: field.TypeJSON, Column: channel.FieldSupportedModels},
 			channel.FieldDefaultTestModel: {Type: field.TypeString, Column: channel.FieldDefaultTestModel},
 			channel.FieldSettings:         {Type: field.TypeJSON, Column: channel.FieldSettings},
+			channel.FieldOrderingWeight:   {Type: field.TypeInt, Column: channel.FieldOrderingWeight},
 		},
 	}
 	graph.Nodes[2] = &sqlgraph.Node{
@@ -574,6 +575,11 @@ func (f *ChannelFilter) WhereDefaultTestModel(p entql.StringP) {
 // WhereSettings applies the entql json.RawMessage predicate on the settings field.
 func (f *ChannelFilter) WhereSettings(p entql.BytesP) {
 	f.Where(p.Field(channel.FieldSettings))
+}
+
+// WhereOrderingWeight applies the entql int predicate on the ordering_weight field.
+func (f *ChannelFilter) WhereOrderingWeight(p entql.IntP) {
+	f.Where(p.Field(channel.FieldOrderingWeight))
 }
 
 // WhereHasRequests applies a predicate to check if query has an edge requests.

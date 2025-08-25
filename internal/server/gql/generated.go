@@ -106,6 +106,12 @@ type ComplexityRoot struct {
 		Success  func(childComplexity int) int
 	}
 
+	BulkUpdateChannelOrderingResult struct {
+		Channels func(childComplexity int) int
+		Success  func(childComplexity int) int
+		Updated  func(childComplexity int) int
+	}
+
 	Channel struct {
 		BaseURL          func(childComplexity int) int
 		CreatedAt        func(childComplexity int) int
@@ -114,6 +120,7 @@ type ComplexityRoot struct {
 		Executions       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestExecutionOrder, where *ent.RequestExecutionWhereInput) int
 		ID               func(childComplexity int) int
 		Name             func(childComplexity int) int
+		OrderingWeight   func(childComplexity int) int
 		Requests         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
 		Settings         func(childComplexity int) int
 		Status           func(childComplexity int) int
@@ -189,23 +196,24 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		BulkImportChannels   func(childComplexity int, input BulkImportChannelsInput) int
-		CreateAPIKey         func(childComplexity int, input ent.CreateAPIKeyInput) int
-		CreateChannel        func(childComplexity int, input ent.CreateChannelInput) int
-		CreateRole           func(childComplexity int, input ent.CreateRoleInput) int
-		CreateUser           func(childComplexity int, input ent.CreateUserInput) int
-		InitializeSystem     func(childComplexity int, input InitializeSystemInput) int
-		SignIn               func(childComplexity int, input SignInInput) int
-		TestChannel          func(childComplexity int, input TestChannelInput) int
-		UpdateAPIKey         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
-		UpdateAPIKeyStatus   func(childComplexity int, id objects.GUID, status apikey.Status) int
-		UpdateChannel        func(childComplexity int, id objects.GUID, input ent.UpdateChannelInput) int
-		UpdateChannelStatus  func(childComplexity int, id objects.GUID, status channel.Status) int
-		UpdateMe             func(childComplexity int, input UpdateMeInput) int
-		UpdateRole           func(childComplexity int, id objects.GUID, input ent.UpdateRoleInput) int
-		UpdateSystemSettings func(childComplexity int, input UpdateSystemSettingsInput) int
-		UpdateUser           func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
-		UpdateUserStatus     func(childComplexity int, id objects.GUID, status user.Status) int
+		BulkImportChannels        func(childComplexity int, input BulkImportChannelsInput) int
+		BulkUpdateChannelOrdering func(childComplexity int, input BulkUpdateChannelOrderingInput) int
+		CreateAPIKey              func(childComplexity int, input ent.CreateAPIKeyInput) int
+		CreateChannel             func(childComplexity int, input ent.CreateChannelInput) int
+		CreateRole                func(childComplexity int, input ent.CreateRoleInput) int
+		CreateUser                func(childComplexity int, input ent.CreateUserInput) int
+		InitializeSystem          func(childComplexity int, input InitializeSystemInput) int
+		SignIn                    func(childComplexity int, input SignInInput) int
+		TestChannel               func(childComplexity int, input TestChannelInput) int
+		UpdateAPIKey              func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
+		UpdateAPIKeyStatus        func(childComplexity int, id objects.GUID, status apikey.Status) int
+		UpdateChannel             func(childComplexity int, id objects.GUID, input ent.UpdateChannelInput) int
+		UpdateChannelStatus       func(childComplexity int, id objects.GUID, status channel.Status) int
+		UpdateMe                  func(childComplexity int, input UpdateMeInput) int
+		UpdateRole                func(childComplexity int, id objects.GUID, input ent.UpdateRoleInput) int
+		UpdateSystemSettings      func(childComplexity int, input UpdateSystemSettingsInput) int
+		UpdateUser                func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
+		UpdateUserStatus          func(childComplexity int, id objects.GUID, status user.Status) int
 	}
 
 	PageInfo struct {
@@ -447,6 +455,7 @@ type MutationResolver interface {
 	UpdateChannelStatus(ctx context.Context, id objects.GUID, status channel.Status) (*ent.Channel, error)
 	TestChannel(ctx context.Context, input TestChannelInput) (*TestChannelPayload, error)
 	BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*BulkImportChannelsResult, error)
+	BulkUpdateChannelOrdering(ctx context.Context, input BulkUpdateChannelOrderingInput) (*BulkUpdateChannelOrderingResult, error)
 	CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error)
 	UpdateAPIKey(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyInput) (*ent.APIKey, error)
 	UpdateAPIKeyStatus(ctx context.Context, id objects.GUID, status apikey.Status) (*ent.APIKey, error)
@@ -703,6 +712,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.BulkImportChannelsResult.Success(childComplexity), true
 
+	case "BulkUpdateChannelOrderingResult.channels":
+		if e.complexity.BulkUpdateChannelOrderingResult.Channels == nil {
+			break
+		}
+
+		return e.complexity.BulkUpdateChannelOrderingResult.Channels(childComplexity), true
+
+	case "BulkUpdateChannelOrderingResult.success":
+		if e.complexity.BulkUpdateChannelOrderingResult.Success == nil {
+			break
+		}
+
+		return e.complexity.BulkUpdateChannelOrderingResult.Success(childComplexity), true
+
+	case "BulkUpdateChannelOrderingResult.updated":
+		if e.complexity.BulkUpdateChannelOrderingResult.Updated == nil {
+			break
+		}
+
+		return e.complexity.BulkUpdateChannelOrderingResult.Updated(childComplexity), true
+
 	case "Channel.baseURL":
 		if e.complexity.Channel.BaseURL == nil {
 			break
@@ -756,6 +786,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Channel.Name(childComplexity), true
+
+	case "Channel.orderingWeight":
+		if e.complexity.Channel.OrderingWeight == nil {
+			break
+		}
+
+		return e.complexity.Channel.OrderingWeight(childComplexity), true
 
 	case "Channel.requests":
 		if e.complexity.Channel.Requests == nil {
@@ -1046,6 +1083,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.BulkImportChannels(childComplexity, args["input"].(BulkImportChannelsInput)), true
+
+	case "Mutation.bulkUpdateChannelOrdering":
+		if e.complexity.Mutation.BulkUpdateChannelOrdering == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_bulkUpdateChannelOrdering_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BulkUpdateChannelOrdering(childComplexity, args["input"].(BulkUpdateChannelOrderingInput)), true
 
 	case "Mutation.createAPIKey":
 		if e.complexity.Mutation.CreateAPIKey == nil {
@@ -2307,8 +2356,10 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAWSCredentialInput,
 		ec.unmarshalInputBulkImportChannelItem,
 		ec.unmarshalInputBulkImportChannelsInput,
+		ec.unmarshalInputBulkUpdateChannelOrderingInput,
 		ec.unmarshalInputChannelCredentialsInput,
 		ec.unmarshalInputChannelOrder,
+		ec.unmarshalInputChannelOrderingItem,
 		ec.unmarshalInputChannelSettingsInput,
 		ec.unmarshalInputChannelWhereInput,
 		ec.unmarshalInputCreateAPIKeyInput,
@@ -2916,6 +2967,34 @@ func (ec *executionContext) field_Mutation_bulkImportChannels_argsInput(
 	}
 
 	var zeroVal BulkImportChannelsInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_bulkUpdateChannelOrdering_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_bulkUpdateChannelOrdering_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_bulkUpdateChannelOrdering_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (BulkUpdateChannelOrderingInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal BulkUpdateChannelOrderingInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNBulkUpdateChannelOrderingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkUpdateChannelOrderingInput(ctx, tmp)
+	}
+
+	var zeroVal BulkUpdateChannelOrderingInput
 	return zeroVal, nil
 }
 
@@ -6552,6 +6631,170 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_channels(_ con
 				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
 			case "settings":
 				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "requests":
+				return ec.fieldContext_Channel_requests(ctx, field)
+			case "executions":
+				return ec.fieldContext_Channel_executions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BulkUpdateChannelOrderingResult_success(ctx context.Context, field graphql.CollectedField, obj *BulkUpdateChannelOrderingResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BulkUpdateChannelOrderingResult_success(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Success, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BulkUpdateChannelOrderingResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BulkUpdateChannelOrderingResult_updated(ctx context.Context, field graphql.CollectedField, obj *BulkUpdateChannelOrderingResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BulkUpdateChannelOrderingResult_updated(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Updated, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_updated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BulkUpdateChannelOrderingResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BulkUpdateChannelOrderingResult_channels(ctx context.Context, field graphql.CollectedField, obj *BulkUpdateChannelOrderingResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BulkUpdateChannelOrderingResult_channels(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Channels, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.Channel)
+	fc.Result = res
+	return ec.marshalNChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_channels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BulkUpdateChannelOrderingResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Channel_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Channel_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Channel_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_Channel_deletedAt(ctx, field)
+			case "type":
+				return ec.fieldContext_Channel_type(ctx, field)
+			case "baseURL":
+				return ec.fieldContext_Channel_baseURL(ctx, field)
+			case "name":
+				return ec.fieldContext_Channel_name(ctx, field)
+			case "status":
+				return ec.fieldContext_Channel_status(ctx, field)
+			case "supportedModels":
+				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "defaultTestModel":
+				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
+			case "settings":
+				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -7045,6 +7288,50 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Channel_orderingWeight(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Channel_orderingWeight(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OrderingWeight, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Channel_orderingWeight(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Channel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Channel_requests(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Channel_requests(ctx, field)
 	if err != nil {
@@ -7513,6 +7800,8 @@ func (ec *executionContext) fieldContext_ChannelEdge_node(_ context.Context, fie
 				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
 			case "settings":
 				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -8755,6 +9044,8 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
 			case "settings":
 				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -8838,6 +9129,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Cont
 				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
 			case "settings":
 				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -8921,6 +9214,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelStatus(ctx contex
 				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
 			case "settings":
 				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -9069,6 +9364,69 @@ func (ec *executionContext) fieldContext_Mutation_bulkImportChannels(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_bulkImportChannels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_bulkUpdateChannelOrdering(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_bulkUpdateChannelOrdering(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().BulkUpdateChannelOrdering(rctx, fc.Args["input"].(BulkUpdateChannelOrderingInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*BulkUpdateChannelOrderingResult)
+	fc.Result = res
+	return ec.marshalNBulkUpdateChannelOrderingResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkUpdateChannelOrderingResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_bulkUpdateChannelOrdering(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_BulkUpdateChannelOrderingResult_success(ctx, field)
+			case "updated":
+				return ec.fieldContext_BulkUpdateChannelOrderingResult_updated(ctx, field)
+			case "channels":
+				return ec.fieldContext_BulkUpdateChannelOrderingResult_channels(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BulkUpdateChannelOrderingResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_bulkUpdateChannelOrdering_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -12181,6 +12539,8 @@ func (ec *executionContext) fieldContext_Request_channel(_ context.Context, fiel
 				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
 			case "settings":
 				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -13166,6 +13526,8 @@ func (ec *executionContext) fieldContext_RequestExecution_channel(_ context.Cont
 				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
 			case "settings":
 				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -19621,6 +19983,33 @@ func (ec *executionContext) unmarshalInputBulkImportChannelsInput(ctx context.Co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputBulkUpdateChannelOrderingInput(ctx context.Context, obj any) (BulkUpdateChannelOrderingInput, error) {
+	var it BulkUpdateChannelOrderingInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"channels"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "channels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channels"))
+			data, err := ec.unmarshalNChannelOrderingItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelOrderingItemᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Channels = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Context, obj any) (objects.ChannelCredentials, error) {
 	var it objects.ChannelCredentials
 	asMap := map[string]any{}
@@ -19700,6 +20089,40 @@ func (ec *executionContext) unmarshalInputChannelOrder(ctx context.Context, obj 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChannelOrderingItem(ctx context.Context, obj any) (ChannelOrderingItem, error) {
+	var it ChannelOrderingItem
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "orderingWeight"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "orderingWeight":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeight"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeight = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Context, obj any) (objects.ChannelSettings, error) {
 	var it objects.ChannelSettings
 	asMap := map[string]any{}
@@ -19734,7 +20157,7 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLIsNil", "baseURLNotNil", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLIsNil", "baseURLNotNil", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "orderingWeight", "orderingWeightNEQ", "orderingWeightIn", "orderingWeightNotIn", "orderingWeightGT", "orderingWeightGTE", "orderingWeightLT", "orderingWeightLTE", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -20361,6 +20784,62 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.DefaultTestModelContainsFold = data
+		case "orderingWeight":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeight"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeight = data
+		case "orderingWeightNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeightNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeightNEQ = data
+		case "orderingWeightIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeightIn"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeightIn = data
+		case "orderingWeightNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeightNotIn"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeightNotIn = data
+		case "orderingWeightGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeightGT"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeightGT = data
+		case "orderingWeightGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeightGTE"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeightGTE = data
+		case "orderingWeightLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeightLT"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeightLT = data
+		case "orderingWeightLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeightLTE"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeightLTE = data
 		case "hasRequests":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasRequests"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -20443,7 +20922,7 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"createdAt", "updatedAt", "type", "baseURL", "name", "status", "credentials", "supportedModels", "defaultTestModel", "settings"}
+	fieldsInOrder := [...]string{"createdAt", "updatedAt", "type", "baseURL", "name", "status", "credentials", "supportedModels", "defaultTestModel", "settings", "orderingWeight"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -20520,6 +20999,13 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.Settings = data
+		case "orderingWeight":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeight"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeight = data
 		}
 	}
 
@@ -24073,7 +24559,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"updatedAt", "baseURL", "clearBaseURL", "name", "status", "credentials", "supportedModels", "appendSupportedModels", "defaultTestModel", "settings", "clearSettings"}
+	fieldsInOrder := [...]string{"updatedAt", "baseURL", "clearBaseURL", "name", "status", "credentials", "supportedModels", "appendSupportedModels", "defaultTestModel", "settings", "clearSettings", "orderingWeight"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -24157,6 +24643,13 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.ClearSettings = data
+		case "orderingWeight":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeight"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderingWeight = data
 		}
 	}
 
@@ -26001,6 +26494,55 @@ func (ec *executionContext) _BulkImportChannelsResult(ctx context.Context, sel a
 	return out
 }
 
+var bulkUpdateChannelOrderingResultImplementors = []string{"BulkUpdateChannelOrderingResult"}
+
+func (ec *executionContext) _BulkUpdateChannelOrderingResult(ctx context.Context, sel ast.SelectionSet, obj *BulkUpdateChannelOrderingResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bulkUpdateChannelOrderingResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BulkUpdateChannelOrderingResult")
+		case "success":
+			out.Values[i] = ec._BulkUpdateChannelOrderingResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updated":
+			out.Values[i] = ec._BulkUpdateChannelOrderingResult_updated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channels":
+			out.Values[i] = ec._BulkUpdateChannelOrderingResult_channels(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var channelImplementors = []string{"Channel", "Node"}
 
 func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, obj *ent.Channel) graphql.Marshaler {
@@ -26092,6 +26634,11 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "settings":
 			out.Values[i] = ec._Channel_settings(ctx, field, obj)
+		case "orderingWeight":
+			out.Values[i] = ec._Channel_orderingWeight(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "requests":
 			field := field
 
@@ -26780,6 +27327,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "bulkImportChannels":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_bulkImportChannels(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bulkUpdateChannelOrdering":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_bulkUpdateChannelOrdering(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -29824,6 +30378,25 @@ func (ec *executionContext) marshalNBulkImportChannelsResult2ᚖgithubᚗcomᚋl
 	return ec._BulkImportChannelsResult(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNBulkUpdateChannelOrderingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkUpdateChannelOrderingInput(ctx context.Context, v any) (BulkUpdateChannelOrderingInput, error) {
+	res, err := ec.unmarshalInputBulkUpdateChannelOrderingInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBulkUpdateChannelOrderingResult2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkUpdateChannelOrderingResult(ctx context.Context, sel ast.SelectionSet, v BulkUpdateChannelOrderingResult) graphql.Marshaler {
+	return ec._BulkUpdateChannelOrderingResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBulkUpdateChannelOrderingResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkUpdateChannelOrderingResult(ctx context.Context, sel ast.SelectionSet, v *BulkUpdateChannelOrderingResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BulkUpdateChannelOrderingResult(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNChannel2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannel(ctx context.Context, sel ast.SelectionSet, v ent.Channel) graphql.Marshaler {
 	return ec._Channel(ctx, sel, &v)
 }
@@ -29910,6 +30483,26 @@ func (ec *executionContext) marshalNChannelOrderField2ᚖgithubᚗcomᚋlooplj�
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalNChannelOrderingItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelOrderingItemᚄ(ctx context.Context, v any) ([]*ChannelOrderingItem, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*ChannelOrderingItem, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNChannelOrderingItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelOrderingItem(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNChannelOrderingItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelOrderingItem(ctx context.Context, v any) (*ChannelOrderingItem, error) {
+	res, err := ec.unmarshalInputChannelOrderingItem(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNChannelStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelᚐStatus(ctx context.Context, v any) (channel.Status, error) {

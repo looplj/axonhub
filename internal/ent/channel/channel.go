@@ -41,6 +41,8 @@ const (
 	FieldDefaultTestModel = "default_test_model"
 	// FieldSettings holds the string denoting the settings field in the database.
 	FieldSettings = "settings"
+	// FieldOrderingWeight holds the string denoting the ordering_weight field in the database.
+	FieldOrderingWeight = "ordering_weight"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
 	EdgeRequests = "requests"
 	// EdgeExecutions holds the string denoting the executions edge name in mutations.
@@ -77,6 +79,7 @@ var Columns = []string{
 	FieldSupportedModels,
 	FieldDefaultTestModel,
 	FieldSettings,
+	FieldOrderingWeight,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -110,6 +113,8 @@ var (
 	DefaultCredentials *objects.ChannelCredentials
 	// DefaultSettings holds the default value on creation for the "settings" field.
 	DefaultSettings *objects.ChannelSettings
+	// DefaultOrderingWeight holds the default value on creation for the "ordering_weight" field.
+	DefaultOrderingWeight int
 )
 
 // Type defines the type for the "type" enum field.
@@ -219,6 +224,11 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 // ByDefaultTestModel orders the results by the default_test_model field.
 func ByDefaultTestModel(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDefaultTestModel, opts...).ToFunc()
+}
+
+// ByOrderingWeight orders the results by the ordering_weight field.
+func ByOrderingWeight(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOrderingWeight, opts...).ToFunc()
 }
 
 // ByRequestsCount orders the results by requests count.

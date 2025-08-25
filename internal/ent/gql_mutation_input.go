@@ -75,6 +75,7 @@ type CreateChannelInput struct {
 	SupportedModels  []string
 	DefaultTestModel string
 	Settings         *objects.ChannelSettings
+	OrderingWeight   *int
 }
 
 // Mutate applies the CreateChannelInput on the ChannelMutation builder.
@@ -103,6 +104,9 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 	if v := i.Settings; v != nil {
 		m.SetSettings(v)
 	}
+	if v := i.OrderingWeight; v != nil {
+		m.SetOrderingWeight(*v)
+	}
 }
 
 // SetInput applies the change-set in the CreateChannelInput on the ChannelCreate builder.
@@ -124,6 +128,7 @@ type UpdateChannelInput struct {
 	DefaultTestModel      *string
 	ClearSettings         bool
 	Settings              *objects.ChannelSettings
+	OrderingWeight        *int
 }
 
 // Mutate applies the UpdateChannelInput on the ChannelMutation builder.
@@ -160,6 +165,9 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.Settings; v != nil {
 		m.SetSettings(v)
+	}
+	if v := i.OrderingWeight; v != nil {
+		m.SetOrderingWeight(*v)
 	}
 }
 

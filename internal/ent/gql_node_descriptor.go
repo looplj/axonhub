@@ -137,7 +137,7 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     c.ID,
 		Type:   "Channel",
-		Fields: make([]*Field, 11),
+		Fields: make([]*Field, 12),
 		Edges:  make([]*Edge, 2),
 	}
 	var buf []byte
@@ -227,6 +227,14 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 	node.Fields[10] = &Field{
 		Type:  "*objects.ChannelSettings",
 		Name:  "settings",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(c.OrderingWeight); err != nil {
+		return nil, err
+	}
+	node.Fields[11] = &Field{
+		Type:  "int",
+		Name:  "ordering_weight",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{

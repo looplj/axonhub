@@ -85,6 +85,11 @@ func DefaultTestModel(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldDefaultTestModel, v))
 }
 
+// OrderingWeight applies equality check predicate on the "ordering_weight" field. It's identical to OrderingWeightEQ.
+func OrderingWeight(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldEQ(FieldOrderingWeight, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldCreatedAt, v))
@@ -458,6 +463,46 @@ func SettingsIsNil() predicate.Channel {
 // SettingsNotNil applies the NotNil predicate on the "settings" field.
 func SettingsNotNil() predicate.Channel {
 	return predicate.Channel(sql.FieldNotNull(FieldSettings))
+}
+
+// OrderingWeightEQ applies the EQ predicate on the "ordering_weight" field.
+func OrderingWeightEQ(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldEQ(FieldOrderingWeight, v))
+}
+
+// OrderingWeightNEQ applies the NEQ predicate on the "ordering_weight" field.
+func OrderingWeightNEQ(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldNEQ(FieldOrderingWeight, v))
+}
+
+// OrderingWeightIn applies the In predicate on the "ordering_weight" field.
+func OrderingWeightIn(vs ...int) predicate.Channel {
+	return predicate.Channel(sql.FieldIn(FieldOrderingWeight, vs...))
+}
+
+// OrderingWeightNotIn applies the NotIn predicate on the "ordering_weight" field.
+func OrderingWeightNotIn(vs ...int) predicate.Channel {
+	return predicate.Channel(sql.FieldNotIn(FieldOrderingWeight, vs...))
+}
+
+// OrderingWeightGT applies the GT predicate on the "ordering_weight" field.
+func OrderingWeightGT(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldGT(FieldOrderingWeight, v))
+}
+
+// OrderingWeightGTE applies the GTE predicate on the "ordering_weight" field.
+func OrderingWeightGTE(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldGTE(FieldOrderingWeight, v))
+}
+
+// OrderingWeightLT applies the LT predicate on the "ordering_weight" field.
+func OrderingWeightLT(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldLT(FieldOrderingWeight, v))
+}
+
+// OrderingWeightLTE applies the LTE predicate on the "ordering_weight" field.
+func OrderingWeightLTE(v int) predicate.Channel {
+	return predicate.Channel(sql.FieldLTE(FieldOrderingWeight, v))
 }
 
 // HasRequests applies the HasEdge predicate on the "requests" edge.

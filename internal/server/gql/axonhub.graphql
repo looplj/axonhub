@@ -114,12 +114,28 @@ type BulkImportChannelsResult {
   channels: [Channel!]!
 }
 
+input ChannelOrderingItem {
+  id: ID!
+  orderingWeight: Int!
+}
+
+input BulkUpdateChannelOrderingInput {
+  channels: [ChannelOrderingItem!]!
+}
+
+type BulkUpdateChannelOrderingResult {
+  success: Boolean!
+  updated: Int!
+  channels: [Channel!]!
+}
+
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
   updateChannelStatus(id: ID!, status: ChannelStatus!): Channel!
   testChannel(input: TestChannelInput!): TestChannelPayload!
   bulkImportChannels(input: BulkImportChannelsInput!): BulkImportChannelsResult!
+  bulkUpdateChannelOrdering(input: BulkUpdateChannelOrderingInput!): BulkUpdateChannelOrderingResult!
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!

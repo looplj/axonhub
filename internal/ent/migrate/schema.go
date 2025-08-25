@@ -60,6 +60,7 @@ var (
 		{Name: "supported_models", Type: field.TypeJSON},
 		{Name: "default_test_model", Type: field.TypeString},
 		{Name: "settings", Type: field.TypeJSON, Nullable: true},
+		{Name: "ordering_weight", Type: field.TypeInt, Default: 0},
 	}
 	// ChannelsTable holds the schema information for the "channels" table.
 	ChannelsTable = &schema.Table{

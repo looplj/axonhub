@@ -41,6 +41,8 @@ type Channel struct {
 	DefaultTestModel string `json:"default_test_model,omitempty"`
 	// Settings holds the value of the "settings" field.
 	Settings *objects.ChannelSettings `json:"settings,omitempty"`
+	// Ordering weight for display sorting
+	OrderingWeight int `json:"ordering_weight,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChannelQuery when eager-loading is set.
 	Edges        ChannelEdges `json:"edges"`
@@ -88,7 +90,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case channel.FieldCredentials, channel.FieldSupportedModels, channel.FieldSettings:
 			values[i] = new([]byte)
-		case channel.FieldID, channel.FieldDeletedAt:
+		case channel.FieldID, channel.FieldDeletedAt, channel.FieldOrderingWeight:
 			values[i] = new(sql.NullInt64)
 		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldDefaultTestModel:
 			values[i] = new(sql.NullString)
@@ -187,6 +189,12 @@ func (c *Channel) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field settings: %w", err)
 				}
 			}
+		case channel.FieldOrderingWeight:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field ordering_weight", values[i])
+			} else if value.Valid {
+				c.OrderingWeight = int(value.Int64)
+			}
 		default:
 			c.selectValues.Set(columns[i], values[i])
 		}
@@ -264,6 +272,9 @@ func (c *Channel) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("settings=")
 	builder.WriteString(fmt.Sprintf("%v", c.Settings))
+	builder.WriteString(", ")
+	builder.WriteString("ordering_weight=")
+	builder.WriteString(fmt.Sprintf("%v", c.OrderingWeight))
 	builder.WriteByte(')')
 	return builder.String()
 }

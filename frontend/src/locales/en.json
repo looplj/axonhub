@@ -405,6 +405,7 @@
     "noResults": "No results.",
     "addChannel": "Add Channel",
     "importChannels": "Bulk Import",
+    "orderChannels": "Bulk Ordering",
     "settings": "Settings",
     "filterChannels": "Filter channels...",
     "columns": {
@@ -471,7 +472,9 @@
       "testUnknownError": "Unknown test error occurred",
       "bulkImportSuccess": "Successfully imported {{created}} channels",
       "bulkImportPartialError": "Imported {{created}} channels, {{failed}} failed",
-      "bulkImportError": "Bulk import failed: {{error}}"
+      "bulkImportError": "Bulk import failed: {{error}}",
+      "orderingUpdateSuccess": "Successfully updated ordering for {{updated}} channels",
+      "orderingUpdateError": "Failed to update channel ordering: {{error}}"
     },
     "dialogs": {
       "create": {
@@ -658,6 +661,16 @@
           "targetModel": "Target Model Name",
           "noMappings": "No model mapping configuration"
         }
+      },
+      "bulkOrdering": {
+        "title": "Bulk Channel Ordering",
+        "description": "Drag and drop to reorder channels. Higher priority channels will be displayed first.",
+        "dragHint": "Drag channels to reorder them",
+        "saveButton": "Save Order",
+        "saving": "Saving...",
+        "cancel": "Cancel",
+        "orderingWeight": "Priority",
+        "noChannels": "No channels available for ordering"
       }
     }
   },
@@ -970,6 +983,12 @@
     "selectedItems": "{{count}} selected",
     "noResultsFound": "No results found",
     "clearFilters": "Clear filters",
+    "loading": "Loading",
+    "saving": "Saving",
+    "moveUp": "Move Up",
+    "moveDown": "Move Down",
+    "dragging": "Dragging",
+    "unsavedChanges": "You have unsaved changes",
     "errors": {
       "sessionExpired": "Session expired!",
       "sessionExpiredSignIn": "Session expired. Please sign in again.",

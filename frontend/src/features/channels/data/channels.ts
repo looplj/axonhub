@@ -13,6 +13,10 @@ import {
   BulkImportChannelsInput,
   BulkImportChannelsResult,
   bulkImportChannelsResultSchema,
+  BulkUpdateChannelOrderingInput,
+  BulkUpdateChannelOrderingResult,
+  bulkUpdateChannelOrderingResultSchema,
+  channelOrderingConnectionSchema,
 } from './schema'
 
 // GraphQL queries and mutations
@@ -41,6 +45,7 @@ const CHANNELS_QUERY = `
               to
             }
           }
+          orderingWeight
 
         }
         cursor
@@ -75,7 +80,7 @@ const CREATE_CHANNEL_MUTATION = `
           to
         }
       }
-
+      orderingWeight
     }
   }
 `
@@ -98,7 +103,7 @@ const UPDATE_CHANNEL_MUTATION = `
           to
         }
       }
-
+      orderingWeight
     }
   }
 `
@@ -151,11 +156,56 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
   }
 `
 
+const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
+  mutation BulkUpdateChannelOrdering($input: BulkUpdateChannelOrderingInput!) {
+    bulkUpdateChannelOrdering(input: $input) {
+      success
+      updated
+      channels {
+        id
+        createdAt
+        updatedAt
+        type
+        baseURL
+        name
+        status
+        supportedModels
+        defaultTestModel
+        orderingWeight
+        settings {
+          modelMappings {
+            from
+            to
+          }
+        }
+      }
+    }
+  }
+`
+
+const ALL_CHANNELS_QUERY = `
+  query GetAllChannels {
+    channels(first: 1000, orderBy: { field: ORDERING_WEIGHT, direction: DESC }) {
+      totalCount
+      edges {
+        node {
+          id
+          name
+          type
+          status
+          baseURL
+          orderingWeight
+        }
+      }
+    }
+  }
+`
+
 // Query hooks
 export function useChannels(variables?: {
   first?: number
   after?: string
-  orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
+  orderBy?: { field: 'CREATED_AT' | 'ORDERING_WEIGHT'; direction: 'ASC' | 'DESC' }
   where?: Record<string, unknown>
 }) {
   const { handleError } = useErrorHandler()
@@ -274,24 +324,24 @@ export function useUpdateChannelStatus() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] })
-      const statusText = variables.status === 'enabled' 
-        ? t('channels.status.enabled') 
+      const statusText = variables.status === 'enabled'
+        ? t('channels.status.enabled')
         : variables.status === 'archived'
           ? t('channels.status.archived')
           : t('channels.status.disabled')
-      
-      const messageKey = variables.status === 'archived' 
-        ? 'channels.messages.archiveSuccess' 
+
+      const messageKey = variables.status === 'archived'
+        ? 'channels.messages.archiveSuccess'
         : 'channels.messages.statusUpdateSuccess'
-      
-      toast.success(variables.status === 'archived' 
+
+      toast.success(variables.status === 'archived'
         ? t(messageKey)
         : t(messageKey, { status: statusText })
       )
     },
     onError: (error, variables) => {
-      const errorKey = variables.status === 'archived' 
-        ? 'channels.messages.archiveError' 
+      const errorKey = variables.status === 'archived'
+        ? 'channels.messages.archiveError'
         : 'channels.messages.statusUpdateError'
       toast.error(t(errorKey, { error: error.message }))
     },
@@ -309,13 +359,13 @@ export function useTestChannel() {
       channelID: string
       modelID?: string
     }) => {
-      const data = await graphqlRequest<{ 
-        testChannel: { 
+      const data = await graphqlRequest<{
+        testChannel: {
           latency: number
           success: boolean
           message?: string | null
           error?: string | null
-        } 
+        }
       }>(
         TEST_CHANNEL_MUTATION,
         { input: { channelID, modelID } }
@@ -380,10 +430,10 @@ export function useBulkImportChannels() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] })
-      
+
       if (data.success) {
-        toast.success(t('channels.messages.bulkImportSuccess', { 
-          created: data.created 
+        toast.success(t('channels.messages.bulkImportSuccess', {
+          created: data.created
         }))
       } else {
         toast.error(t('channels.messages.bulkImportPartialError', {
@@ -394,6 +444,51 @@ export function useBulkImportChannels() {
     },
     onError: (error) => {
       toast.error(t('channels.messages.bulkImportError', { error: error.message }))
+    },
+  })
+}
+
+export function useAllChannelsForOrdering(options?: { enabled?: boolean }) {
+  const { handleError } = useErrorHandler()
+
+  return useQuery({
+    queryKey: ['allChannelsForOrdering'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ channels: ChannelConnection }>(
+          ALL_CHANNELS_QUERY
+        )
+        return channelOrderingConnectionSchema.parse(data?.channels)
+      } catch (error) {
+        handleError(error, '获取渠道排序数据')
+        throw error
+      }
+    },
+    enabled: options?.enabled !== false, // Default to true, only disable if explicitly set to false
+  })
+}
+
+export function useBulkUpdateChannelOrdering() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async (input: BulkUpdateChannelOrderingInput) => {
+      const data = await graphqlRequest<{ bulkUpdateChannelOrdering: BulkUpdateChannelOrderingResult }>(
+        BULK_UPDATE_CHANNEL_ORDERING_MUTATION,
+        { input }
+      )
+      return bulkUpdateChannelOrderingResultSchema.parse(data.bulkUpdateChannelOrdering)
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] })
+      queryClient.invalidateQueries({ queryKey: ['allChannelsForOrdering'] })
+      toast.success(t('channels.messages.orderingUpdateSuccess', {
+        updated: data.updated
+      }))
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.orderingUpdateError', { error: error.message }))
     },
   })
 }

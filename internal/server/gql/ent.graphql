@@ -219,6 +219,10 @@ type Channel implements Node {
   supportedModels: [String!]!
   defaultTestModel: String!
   settings: ChannelSettings
+  """
+  Ordering weight for display sorting
+  """
+  orderingWeight: Int!
   requests(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -330,6 +334,7 @@ Properties by which Channel connections can be ordered.
 """
 enum ChannelOrderField {
   CREATED_AT
+  ORDERING_WEIGHT
 }
 """
 ChannelStatus is enum for the field status
@@ -474,6 +479,17 @@ input ChannelWhereInput {
   defaultTestModelEqualFold: String
   defaultTestModelContainsFold: String
   """
+  ordering_weight field predicates
+  """
+  orderingWeight: Int
+  orderingWeightNEQ: Int
+  orderingWeightIn: [Int!]
+  orderingWeightNotIn: [Int!]
+  orderingWeightGT: Int
+  orderingWeightGTE: Int
+  orderingWeightLT: Int
+  orderingWeightLTE: Int
+  """
   requests edge predicates
   """
   hasRequests: Boolean
@@ -508,6 +524,10 @@ input CreateChannelInput {
   supportedModels: [String!]!
   defaultTestModel: String!
   settings: ChannelSettingsInput
+  """
+  Ordering weight for display sorting
+  """
+  orderingWeight: Int
 }
 """
 CreateRequestInput is used for create Request object.
@@ -1728,6 +1748,10 @@ input UpdateChannelInput {
   defaultTestModel: String
   settings: ChannelSettingsInput
   clearSettings: Boolean
+  """
+  Ordering weight for display sorting
+  """
+  orderingWeight: Int
 }
 """
 UpdateRequestInput is used for update Request object.

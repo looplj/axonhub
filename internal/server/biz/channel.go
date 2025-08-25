@@ -102,7 +102,10 @@ func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {
 func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	entities, err := svc.Ent.Channel.Query().Where(channel.StatusEQ(channel.StatusEnabled)).All(ctx)
+	entities, err := svc.Ent.Channel.Query().
+		Where(channel.StatusEQ(channel.StatusEnabled)).
+		Order(ent.Desc(channel.FieldOrderingWeight)).
+		All(ctx)
 	if err != nil {
 		return err
 	}
@@ -287,4 +290,46 @@ func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int)
 		Channel:  entity,
 		Outbound: outboundTransformer,
 	}, nil
+}
+
+// BulkUpdateChannelOrdering updates the ordering weight for multiple channels in a single transaction
+func (svc *ChannelService) BulkUpdateChannelOrdering(ctx context.Context, updates []struct {
+	ID             int
+	OrderingWeight int
+}) ([]*ent.Channel, error) {
+	tx, err := svc.Ent.Tx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	updatedChannels := make([]*ent.Channel, 0, len(updates))
+
+	for _, update := range updates {
+		channel, err := tx.Channel.
+			UpdateOneID(update.ID).
+			SetOrderingWeight(update.OrderingWeight).
+			Save(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update channel %d: %w", update.ID, err)
+		}
+		updatedChannels = append(updatedChannels, channel)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Reload channels to ensure the in-memory cache reflects the new ordering
+	go func() {
+		if reloadErr := svc.loadChannels(context.Background()); reloadErr != nil {
+			log.Error(context.Background(), "failed to reload channels after ordering update", log.Cause(reloadErr))
+		}
+	}()
+
+	return updatedChannels, nil
 }

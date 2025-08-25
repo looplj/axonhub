@@ -131,6 +131,20 @@ func (cc *ChannelCreate) SetSettings(os *objects.ChannelSettings) *ChannelCreate
 	return cc
 }
 
+// SetOrderingWeight sets the "ordering_weight" field.
+func (cc *ChannelCreate) SetOrderingWeight(i int) *ChannelCreate {
+	cc.mutation.SetOrderingWeight(i)
+	return cc
+}
+
+// SetNillableOrderingWeight sets the "ordering_weight" field if the given value is not nil.
+func (cc *ChannelCreate) SetNillableOrderingWeight(i *int) *ChannelCreate {
+	if i != nil {
+		cc.SetOrderingWeight(*i)
+	}
+	return cc
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (cc *ChannelCreate) AddRequestIDs(ids ...int) *ChannelCreate {
 	cc.mutation.AddRequestIDs(ids...)
@@ -228,6 +242,10 @@ func (cc *ChannelCreate) defaults() error {
 		v := channel.DefaultSettings
 		cc.mutation.SetSettings(v)
 	}
+	if _, ok := cc.mutation.OrderingWeight(); !ok {
+		v := channel.DefaultOrderingWeight
+		cc.mutation.SetOrderingWeight(v)
+	}
 	return nil
 }
 
@@ -269,6 +287,9 @@ func (cc *ChannelCreate) check() error {
 	}
 	if _, ok := cc.mutation.DefaultTestModel(); !ok {
 		return &ValidationError{Name: "default_test_model", err: errors.New(`ent: missing required field "Channel.default_test_model"`)}
+	}
+	if _, ok := cc.mutation.OrderingWeight(); !ok {
+		return &ValidationError{Name: "ordering_weight", err: errors.New(`ent: missing required field "Channel.ordering_weight"`)}
 	}
 	return nil
 }
@@ -340,6 +361,10 @@ func (cc *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := cc.mutation.Settings(); ok {
 		_spec.SetField(channel.FieldSettings, field.TypeJSON, value)
 		_node.Settings = value
+	}
+	if value, ok := cc.mutation.OrderingWeight(); ok {
+		_spec.SetField(channel.FieldOrderingWeight, field.TypeInt, value)
+		_node.OrderingWeight = value
 	}
 	if nodes := cc.mutation.RequestsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -551,6 +576,24 @@ func (u *ChannelUpsert) ClearSettings() *ChannelUpsert {
 	return u
 }
 
+// SetOrderingWeight sets the "ordering_weight" field.
+func (u *ChannelUpsert) SetOrderingWeight(v int) *ChannelUpsert {
+	u.Set(channel.FieldOrderingWeight, v)
+	return u
+}
+
+// UpdateOrderingWeight sets the "ordering_weight" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateOrderingWeight() *ChannelUpsert {
+	u.SetExcluded(channel.FieldOrderingWeight)
+	return u
+}
+
+// AddOrderingWeight adds v to the "ordering_weight" field.
+func (u *ChannelUpsert) AddOrderingWeight(v int) *ChannelUpsert {
+	u.Add(channel.FieldOrderingWeight, v)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -743,6 +786,27 @@ func (u *ChannelUpsertOne) UpdateSettings() *ChannelUpsertOne {
 func (u *ChannelUpsertOne) ClearSettings() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.ClearSettings()
+	})
+}
+
+// SetOrderingWeight sets the "ordering_weight" field.
+func (u *ChannelUpsertOne) SetOrderingWeight(v int) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetOrderingWeight(v)
+	})
+}
+
+// AddOrderingWeight adds v to the "ordering_weight" field.
+func (u *ChannelUpsertOne) AddOrderingWeight(v int) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.AddOrderingWeight(v)
+	})
+}
+
+// UpdateOrderingWeight sets the "ordering_weight" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateOrderingWeight() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateOrderingWeight()
 	})
 }
 
@@ -1104,6 +1168,27 @@ func (u *ChannelUpsertBulk) UpdateSettings() *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) ClearSettings() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.ClearSettings()
+	})
+}
+
+// SetOrderingWeight sets the "ordering_weight" field.
+func (u *ChannelUpsertBulk) SetOrderingWeight(v int) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetOrderingWeight(v)
+	})
+}
+
+// AddOrderingWeight adds v to the "ordering_weight" field.
+func (u *ChannelUpsertBulk) AddOrderingWeight(v int) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.AddOrderingWeight(v)
+	})
+}
+
+// UpdateOrderingWeight sets the "ordering_weight" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateOrderingWeight() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateOrderingWeight()
 	})
 }
 
