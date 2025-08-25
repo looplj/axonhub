@@ -24,6 +24,11 @@ type SystemSettings {
   brandLogo: String
 }
 
+type BrandSettings {
+  name: String
+  logo: String
+}
+
 input UpdateSystemSettingsInput {
   storeChunks: Boolean
   brandName: String
@@ -39,4 +44,5 @@ extend type Mutation {
 extend type Query {
   systemStatus: SystemStatus!
   systemSettings: SystemSettings!
+  brandSettings: BrandSettings!
 }

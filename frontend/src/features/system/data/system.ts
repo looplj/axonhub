@@ -21,6 +21,15 @@ const UPDATE_SYSTEM_SETTINGS_MUTATION = `
   }
 `
 
+const BRAND_SETTINGS_QUERY = `
+  query BrandSettings {
+    brandSettings {
+      name
+      logo
+    }
+  }
+`
+
 // Types
 export interface SystemSettings {
   storeChunks: boolean
@@ -32,6 +41,11 @@ export interface UpdateSystemSettingsInput {
   storeChunks?: boolean
   brandName?: string
   brandLogo?: string
+}
+
+export interface BrandSettings {
+  name?: string
+  logo?: string
 }
 
 // Hooks
@@ -54,6 +68,25 @@ export function useSystemSettings() {
   })
 }
 
+export function useBrandSettings() {
+  const { handleError } = useErrorHandler()
+  
+  return useQuery({
+    queryKey: ['brandSettings'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ brandSettings: BrandSettings }>(
+          BRAND_SETTINGS_QUERY
+        )
+        return data.brandSettings
+      } catch (error) {
+        handleError(error, '获取品牌设置')
+        throw error
+      }
+    },
+  })
+}
+
 export function useUpdateSystemSettings() {
   const queryClient = useQueryClient()
   
@@ -67,6 +100,7 @@ export function useUpdateSystemSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['systemSettings'] })
+      queryClient.invalidateQueries({ queryKey: ['brandSettings'] })
       toast.success(i18n.t('common.success.systemUpdated'))
     },
     onError: (error: any) => {

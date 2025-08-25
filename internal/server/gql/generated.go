@@ -93,6 +93,11 @@ type ComplexityRoot struct {
 		SecretAccessKey func(childComplexity int) int
 	}
 
+	BrandSettings struct {
+		Logo func(childComplexity int) int
+		Name func(childComplexity int) int
+	}
+
 	BulkImportChannelsResult struct {
 		Channels func(childComplexity int) int
 		Created  func(childComplexity int) int
@@ -213,6 +218,7 @@ type ComplexityRoot struct {
 	Query struct {
 		APIKeys               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) int
 		AllScopes             func(childComplexity int) int
+		BrandSettings         func(childComplexity int) int
 		Channels              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
 		DailyRequestStats     func(childComplexity int, days *int) int
 		DashboardOverview     func(childComplexity int) int
@@ -472,6 +478,7 @@ type QueryResolver interface {
 	Me(ctx context.Context) (*UserInfo, error)
 	SystemStatus(ctx context.Context) (*SystemStatus, error)
 	SystemSettings(ctx context.Context) (*SystemSettings, error)
+	BrandSettings(ctx context.Context) (*BrandSettings, error)
 }
 type RequestResolver interface {
 	ID(ctx context.Context, obj *ent.Request) (*objects.GUID, error)
@@ -646,6 +653,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AWSCredential.SecretAccessKey(childComplexity), true
+
+	case "BrandSettings.logo":
+		if e.complexity.BrandSettings.Logo == nil {
+			break
+		}
+
+		return e.complexity.BrandSettings.Logo(childComplexity), true
+
+	case "BrandSettings.name":
+		if e.complexity.BrandSettings.Name == nil {
+			break
+		}
+
+		return e.complexity.BrandSettings.Name(childComplexity), true
 
 	case "BulkImportChannelsResult.channels":
 		if e.complexity.BulkImportChannelsResult.Channels == nil {
@@ -1264,6 +1285,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.AllScopes(childComplexity), true
+
+	case "Query.brandSettings":
+		if e.complexity.Query.BrandSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.BrandSettings(childComplexity), true
 
 	case "Query.channels":
 		if e.complexity.Query.Channels == nil {
@@ -6208,6 +6236,88 @@ func (ec *executionContext) fieldContext_AWSCredential_region(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _BrandSettings_name(ctx context.Context, field graphql.CollectedField, obj *BrandSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BrandSettings_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BrandSettings_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BrandSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BrandSettings_logo(ctx context.Context, field graphql.CollectedField, obj *BrandSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BrandSettings_logo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Logo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BrandSettings_logo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BrandSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _BulkImportChannelsResult_success(ctx context.Context, field graphql.CollectedField, obj *BulkImportChannelsResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_BulkImportChannelsResult_success(ctx, field)
 	if err != nil {
@@ -11021,6 +11131,56 @@ func (ec *executionContext) fieldContext_Query_systemSettings(_ context.Context,
 				return ec.fieldContext_SystemSettings_brandLogo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SystemSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_brandSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_brandSettings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().BrandSettings(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*BrandSettings)
+	fc.Result = res
+	return ec.marshalNBrandSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBrandSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_brandSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_BrandSettings_name(ctx, field)
+			case "logo":
+				return ec.fieldContext_BrandSettings_logo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BrandSettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -25747,6 +25907,44 @@ func (ec *executionContext) _AWSCredential(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var brandSettingsImplementors = []string{"BrandSettings"}
+
+func (ec *executionContext) _BrandSettings(ctx context.Context, sel ast.SelectionSet, obj *BrandSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, brandSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BrandSettings")
+		case "name":
+			out.Values[i] = ec._BrandSettings_name(ctx, field, obj)
+		case "logo":
+			out.Values[i] = ec._BrandSettings_logo(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var bulkImportChannelsResultImplementors = []string{"BulkImportChannelsResult"}
 
 func (ec *executionContext) _BulkImportChannelsResult(ctx context.Context, sel ast.SelectionSet, obj *BulkImportChannelsResult) graphql.Marshaler {
@@ -27119,6 +27317,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_systemSettings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "brandSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_brandSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -29549,6 +29769,20 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNBrandSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBrandSettings(ctx context.Context, sel ast.SelectionSet, v BrandSettings) graphql.Marshaler {
+	return ec._BrandSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBrandSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBrandSettings(ctx context.Context, sel ast.SelectionSet, v *BrandSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BrandSettings(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNBulkImportChannelItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkImportChannelItemᚄ(ctx context.Context, v any) ([]*BulkImportChannelItem, error) {

@@ -7,6 +7,11 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
+type BrandSettings struct {
+	Name *string `json:"name,omitempty"`
+	Logo *string `json:"logo,omitempty"`
+}
+
 type BulkImportChannelItem struct {
 	Type             string   `json:"type"`
 	Name             string   `json:"name"`

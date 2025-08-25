@@ -50,7 +50,12 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 
 		adminGroup.POST("/v1/chat", middleware.WithTimeout(server.config.LLMRequestTimeout), middleware.WithSource(request.SourcePlayground), handlers.AiSDK.ChatCompletion)
 		// Playground API with channel specification support
-		adminGroup.POST("/v1/playground/chat", middleware.WithTimeout(server.config.LLMRequestTimeout), middleware.WithSource(request.SourcePlayground), handlers.Playground.ChatCompletion)
+		adminGroup.POST(
+			"/v1/playground/chat",
+			middleware.WithTimeout(server.config.LLMRequestTimeout),
+			middleware.WithSource(request.SourcePlayground),
+			handlers.Playground.ChatCompletion,
+		)
 	}
 
 	apiGroup := server.Group("/v1", middleware.WithTimeout(server.config.LLMRequestTimeout))

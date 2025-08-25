@@ -15,7 +15,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { useSystemSettings } from '@/features/system/data/system'
+import { useBrandSettings } from '@/features/system/data/system'
 import { useTranslation } from 'react-i18next'
 
 export function TeamSwitcher({
@@ -29,11 +29,11 @@ export function TeamSwitcher({
 }) {
   const { isMobile } = useSidebar()
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
-  const { data: systemSettings } = useSystemSettings()
+  const { data: brandSettings } = useBrandSettings()
   const { t } = useTranslation()
   
   // Use brand name if available, otherwise fall back to team name
-  const displayName = systemSettings?.brandName || activeTeam?.name || 'AxonHub'
+  const displayName = brandSettings?.name || activeTeam?.name || 'AxonHub'
   
   // Only show dropdown if there are multiple teams
   const showDropdown = teams.length > 1
@@ -49,9 +49,9 @@ export function TeamSwitcher({
                 className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
               >
                 <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden'>
-                  {systemSettings?.brandLogo ? (
+                  {brandSettings?.logo ? (
                     <img
-                      src={systemSettings.brandLogo}
+                      src={brandSettings.logo}
                       alt='Brand Logo'
                       className='size-8 object-cover'
                     />
@@ -99,9 +99,9 @@ export function TeamSwitcher({
             className='cursor-default'
           >
             <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden'>
-              {systemSettings?.brandLogo ? (
+              {brandSettings?.logo ? (
                 <img
-                  src={systemSettings.brandLogo}
+                  src={brandSettings.logo}
                   alt='Brand Logo'
                   className='size-8 object-cover'
                 />

@@ -50,6 +50,7 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 		}
 
 		c.Data(resp.StatusCode, contentType, resp.Body)
+
 		return
 	}
 
@@ -103,6 +104,7 @@ func writeSSEStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEven
 					log.Error(ctx, "Error in stream", log.Cause(stream.Err()))
 					c.SSEvent("error", stream.Err())
 				}
+
 				return
 			}
 		}

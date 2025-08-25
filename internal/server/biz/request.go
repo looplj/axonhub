@@ -215,6 +215,7 @@ func (s *RequestService) AppendRequestExecutionChunk(
 	storeChunks, err := s.SystemService.StoreChunks(ctx)
 	if err != nil {
 		log.Warn(ctx, "Failed to get StoreChunks setting, defaulting to false", log.Cause(err))
+
 		storeChunks = false
 	}
 
@@ -252,6 +253,7 @@ func (s *RequestService) AppendRequestChunk(
 	chunk *httpclient.StreamEvent,
 ) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
 	storeChunks, err := s.SystemService.StoreChunks(ctx)
 	if err != nil {
 		log.Warn(ctx, "Failed to get StoreChunks setting, defaulting to false", log.Cause(err))

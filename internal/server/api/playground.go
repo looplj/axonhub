@@ -66,7 +66,7 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 	}
 }
 
-// ChatCompletion handles playground chat completion requests with optional channel specification
+// ChatCompletion handles playground chat completion requests with optional channel specification.
 func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -80,6 +80,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 	if channelIDStr == "" {
 		channelIDStr = c.GetHeader("X-Channel-ID")
 	}
+
 	log.Debug(ctx, "Received request", log.Any("request", genericReq), log.String("channel_id", channelIDStr))
 
 	var processor *chat.ChatCompletionProcessor
@@ -122,6 +123,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 		}
 
 		c.Data(resp.StatusCode, contentType, resp.Body)
+
 		return
 	}
 
@@ -176,6 +178,7 @@ func writeAITextStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 					log.Error(ctx, "Error in stream", log.Cause(err))
 					_, _ = c.Writer.Write([]byte("3:" + `"` + err.Error() + `"` + "\n"))
 				}
+
 				return
 			}
 		}

@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"entgo.io/ent/privacy"
+
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -122,5 +124,25 @@ func (r *queryResolver) SystemSettings(ctx context.Context) (*SystemSettings, er
 		StoreChunks: storeChunks,
 		BrandName:   &brandName,
 		BrandLogo:   &brandLogo,
+	}, nil
+}
+
+// BrandSettings is the resolver for the brandSettings field.
+func (r *queryResolver) BrandSettings(ctx context.Context) (*BrandSettings, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	brandName, err := r.systemService.BrandName(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get brand name: %w", err)
+	}
+
+	brandLogo, err := r.systemService.BrandLogo(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get brand logo: %w", err)
+	}
+
+	return &BrandSettings{
+		Name: &brandName,
+		Logo: &brandLogo,
 	}, nil
 }
