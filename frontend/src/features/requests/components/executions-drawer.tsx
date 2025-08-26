@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/sheet'
 import { RequestExecution } from '../data/schema'
 import { useChannels } from '@/features/channels/data'
-import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
+import { useRequestPermissions } from '../../../gql/useRequestPermissions'
 import { getStatusColor } from './help'
 
 interface ExecutionsDrawerProps {

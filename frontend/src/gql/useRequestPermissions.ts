@@ -11,13 +11,13 @@ export interface RequestPermissions {
 export function useRequestPermissions(): RequestPermissions {
   const { user: authUser } = useAuthStore((state) => state.auth)
   const { data: meData } = useMe()
-  
+
   // Use data from me query if available, otherwise fall back to auth store
   const user = meData || authUser
-  const userScopes = user?.scopes || []
   const isOwner = user?.isOwner || false
 
   const permissions = useMemo(() => {
+    const userScopes = user?.scopes || []
     // Owner用户拥有所有权限
     if (isOwner || userScopes.includes('*')) {
       return {
@@ -32,7 +32,7 @@ export function useRequestPermissions(): RequestPermissions {
       canViewApiKeys: userScopes.includes('read_api_keys'),
       canViewChannels: userScopes.includes('read_channels'),
     }
-  }, [userScopes, isOwner])
+  }, [user, isOwner])
 
   return permissions
 }

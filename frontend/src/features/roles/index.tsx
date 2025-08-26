@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
+import { usePermissions } from '@/hooks/usePermissions'
 import { LanguageSwitch } from '@/components/language-switch'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -17,6 +18,7 @@ import { useRoles } from './data/roles'
 
 function RolesContent() {
   const { t } = useTranslation()
+  const { rolePermissions } = usePermissions()
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
 
@@ -24,6 +26,12 @@ function RolesContent() {
   const [searchFilter, setSearchFilter] = useState<string>('')
 
   const debouncedSearchFilter = useDebounce(searchFilter, 300)
+
+  // Memoize columns to prevent infinite re-renders
+  const columns = useMemo(
+    () => createColumns(t, rolePermissions.canWrite),
+    [t, rolePermissions.canWrite]
+  )
 
   // Build where clause for API filtering with OR logic
   const whereClause = (() => {
@@ -40,7 +48,7 @@ function RolesContent() {
     }
   })()
 
-  const { data, isLoading, error } = useRoles({
+  const { data, isLoading, error: _error } = useRoles({
     first: pageSize,
     after: cursor,
     where: whereClause,
@@ -71,7 +79,7 @@ function RolesContent() {
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
       <RolesTable
-        columns={createColumns(t)}
+        columns={columns}
         data={data?.edges?.map((edge) => edge.node) || []}
         loading={isLoading}
         pageInfo={data?.pageInfo}

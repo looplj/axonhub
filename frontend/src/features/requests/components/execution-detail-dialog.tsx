@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { RequestExecution } from '../data/schema'
 import { useTranslation } from 'react-i18next'
-import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
+import { useRequestPermissions } from '../../../gql/useRequestPermissions'
 import { getStatusColor } from './help'
 
 interface ExecutionDetailDialogProps {

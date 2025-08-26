@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { usePermissions } from '@/hooks/usePermissions'
 import { Role } from '../data/schema'
 import { useRolesContext } from '../context/roles-context'
 
@@ -21,6 +22,12 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { t } = useTranslation()
   const role = row.original
   const { setEditingRole, setDeletingRole } = useRolesContext()
+  const { rolePermissions } = usePermissions()
+  
+  // Don't show menu if user has no permissions
+  if (!rolePermissions.canWrite) {
+    return null
+  }
 
   return (
     <DropdownMenu>
@@ -34,18 +41,29 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[160px]'>
-        <DropdownMenuItem onClick={() => setEditingRole(role)}>
-          <IconEdit className='mr-2 h-4 w-4' />
-          {t('roles.actions.edit')}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => setDeletingRole(role)}
-          className='text-destructive focus:text-destructive'
-        >
-          <IconTrash className='mr-2 h-4 w-4' />
-          {t('roles.actions.delete')}
-        </DropdownMenuItem>
+        {/* Edit - requires write permission */}
+        {rolePermissions.canEdit && (
+          <DropdownMenuItem onClick={() => setEditingRole(role)}>
+            <IconEdit className='mr-2 h-4 w-4' />
+            {t('roles.actions.edit')}
+          </DropdownMenuItem>
+        )}
+        
+        {/* Separator only if there are both edit and delete actions */}
+        {rolePermissions.canEdit && rolePermissions.canDelete && (
+          <DropdownMenuSeparator />
+        )}
+        
+        {/* Delete - requires write permission */}
+        {rolePermissions.canDelete && (
+          <DropdownMenuItem
+            onClick={() => setDeletingRole(role)}
+            className='text-destructive focus:text-destructive'
+          >
+            <IconTrash className='mr-2 h-4 w-4' />
+            {t('roles.actions.delete')}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

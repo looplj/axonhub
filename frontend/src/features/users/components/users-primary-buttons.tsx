@@ -1,6 +1,7 @@
-import { IconMailPlus, IconUserPlus } from '@tabler/icons-react'
+import { IconUserPlus } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { PermissionGuard } from '@/components/permission-guard'
 import { useUsers } from '../context/users-context'
 
 export function UsersPrimaryButtons() {
@@ -8,16 +9,25 @@ export function UsersPrimaryButtons() {
   const { setOpen } = useUsers()
   return (
     <div className='flex gap-2'>
-      {/* <Button
-        variant='outline'
-        className='space-x-1'
-        onClick={() => setOpen('invite')}
-      >
-        <span>{t('users.inviteUser')}</span> <IconMailPlus size={18} />
-      </Button> */}
-      <Button className='space-x-1' onClick={() => setOpen('add')}>
-        <span>{t('users.addUser')}</span> <IconUserPlus size={18} />
-      </Button>
+      {/* Invite User - commented out for now
+      // Note: Add IconMailPlus import when enabling this feature
+      <PermissionGuard requiredScope='write_users'>
+        <Button
+          variant='outline'
+          className='space-x-1'
+          onClick={() => setOpen('invite')}
+        >
+          <span>{t('users.inviteUser')}</span> <IconMailPlus size={18} />
+        </Button>
+      </PermissionGuard>
+      */}
+      
+      {/* Add User - requires write_users permission */}
+      <PermissionGuard requiredScope='write_users'>
+        <Button className='space-x-1' onClick={() => setOpen('add')}>
+          <span>{t('users.addUser')}</span> <IconUserPlus size={18} />
+        </Button>
+      </PermissionGuard>
     </div>
   )
 }

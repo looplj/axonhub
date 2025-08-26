@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useRequestsContext } from '../context'
-import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
+import { useRequestPermissions } from '../../../gql/useRequestPermissions'
 import { Request, RequestStatus } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { getStatusColor } from './help'

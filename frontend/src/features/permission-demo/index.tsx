@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useAuthStore } from '@/stores/authStore'
 import { useRoutePermissions } from '@/hooks/useRoutePermissions'
-import { routeConfigs } from '@/config/routes'
+import { routeConfigs } from '@/routes/_authenticated/permission'
 import { IconShield, IconEye, IconEyeOff, IconLock, IconLockOpen, IconRefresh } from '@tabler/icons-react'
 
 // 演示用的本地存储键

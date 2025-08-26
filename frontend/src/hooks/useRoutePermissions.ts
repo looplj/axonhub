@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useAuthStore } from '@/stores/authStore'
 import { useMe } from '@/features/auth/data/auth'
-import { routeConfigs, hasRouteAccess, hasGroupAccess, type RouteConfig, type RouteGroup } from '@/config/routes'
+import { routeConfigs, hasRouteAccess, hasGroupAccess, type RouteConfig, type RouteGroup } from '@/routes/_authenticated/permission'
 import { type NavGroup, type NavItem } from '@/components/layout/types'
 
 export function useRoutePermissions() {

@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
+import { usePermissions } from '@/hooks/usePermissions'
 import { LanguageSwitch } from '@/components/language-switch'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -15,6 +16,7 @@ import { useUsers } from './data/users'
 
 function UsersContent() {
   const { t } = useTranslation()
+  const { userPermissions } = usePermissions()
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
 
@@ -24,6 +26,12 @@ function UsersContent() {
   const [roleFilter, setRoleFilter] = useState<string[]>([])
 
   const debouncedNameFilter = useDebounce(nameFilter, 300)
+
+  // Memoize columns to prevent infinite re-renders
+  const columns = useMemo(
+    () => createColumns(t, userPermissions.canWrite),
+    [t, userPermissions.canWrite]
+  )
 
   // Build where clause for API filtering
   const whereClause = (() => {
@@ -41,7 +49,7 @@ function UsersContent() {
     return Object.keys(where).length > 0 ? where : undefined
   })()
 
-  const { data, isLoading, error } = useUsers({
+  const { data, isLoading, error: _error } = useUsers({
     first: pageSize,
     after: cursor,
     where: whereClause,
@@ -73,7 +81,7 @@ function UsersContent() {
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
       <UsersTable
         data={data?.edges?.map((edge) => edge.node) || []}
-        columns={createColumns(t)}
+        columns={columns}
         loading={isLoading}
         pageInfo={data?.pageInfo}
         pageSize={pageSize}
