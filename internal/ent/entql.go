@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 
 	"entgo.io/ent/dialect/sql"
@@ -21,7 +22,7 @@ import (
 
 // schemaGraph holds a representation of ent/schema at runtime.
 var schemaGraph = func() *sqlgraph.Schema {
-	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 8)}
+	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 9)}
 	graph.Nodes[0] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   apikey.Table,
@@ -174,6 +175,37 @@ var schemaGraph = func() *sqlgraph.Schema {
 	}
 	graph.Nodes[7] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
+			Table:   usagelog.Table,
+			Columns: usagelog.Columns,
+			ID: &sqlgraph.FieldSpec{
+				Type:   field.TypeInt,
+				Column: usagelog.FieldID,
+			},
+		},
+		Type: "UsageLog",
+		Fields: map[string]*sqlgraph.FieldSpec{
+			usagelog.FieldCreatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldCreatedAt},
+			usagelog.FieldUpdatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldUpdatedAt},
+			usagelog.FieldDeletedAt:                          {Type: field.TypeInt, Column: usagelog.FieldDeletedAt},
+			usagelog.FieldUserID:                             {Type: field.TypeInt, Column: usagelog.FieldUserID},
+			usagelog.FieldRequestID:                          {Type: field.TypeInt, Column: usagelog.FieldRequestID},
+			usagelog.FieldChannelID:                          {Type: field.TypeInt, Column: usagelog.FieldChannelID},
+			usagelog.FieldModelID:                            {Type: field.TypeString, Column: usagelog.FieldModelID},
+			usagelog.FieldPromptTokens:                       {Type: field.TypeInt, Column: usagelog.FieldPromptTokens},
+			usagelog.FieldCompletionTokens:                   {Type: field.TypeInt, Column: usagelog.FieldCompletionTokens},
+			usagelog.FieldTotalTokens:                        {Type: field.TypeInt, Column: usagelog.FieldTotalTokens},
+			usagelog.FieldPromptAudioTokens:                  {Type: field.TypeInt, Column: usagelog.FieldPromptAudioTokens},
+			usagelog.FieldPromptCachedTokens:                 {Type: field.TypeInt, Column: usagelog.FieldPromptCachedTokens},
+			usagelog.FieldCompletionAudioTokens:              {Type: field.TypeInt, Column: usagelog.FieldCompletionAudioTokens},
+			usagelog.FieldCompletionReasoningTokens:          {Type: field.TypeInt, Column: usagelog.FieldCompletionReasoningTokens},
+			usagelog.FieldCompletionAcceptedPredictionTokens: {Type: field.TypeInt, Column: usagelog.FieldCompletionAcceptedPredictionTokens},
+			usagelog.FieldCompletionRejectedPredictionTokens: {Type: field.TypeInt, Column: usagelog.FieldCompletionRejectedPredictionTokens},
+			usagelog.FieldSource:                             {Type: field.TypeEnum, Column: usagelog.FieldSource},
+			usagelog.FieldFormat:                             {Type: field.TypeString, Column: usagelog.FieldFormat},
+		},
+	}
+	graph.Nodes[8] = &sqlgraph.Node{
+		NodeSpec: sqlgraph.NodeSpec{
 			Table:   user.Table,
 			Columns: user.Columns,
 			ID: &sqlgraph.FieldSpec{
@@ -246,6 +278,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"RequestExecution",
 	)
 	graph.MustAddE(
+		"usage_logs",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.UsageLogsTable,
+			Columns: []string{channel.UsageLogsColumn},
+			Bidi:    false,
+		},
+		"Channel",
+		"UsageLog",
+	)
+	graph.MustAddE(
 		"user",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -294,6 +338,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"Channel",
 	)
 	graph.MustAddE(
+		"usage_logs",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.UsageLogsTable,
+			Columns: []string{request.UsageLogsColumn},
+			Bidi:    false,
+		},
+		"Request",
+		"UsageLog",
+	)
+	graph.MustAddE(
 		"request",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -330,6 +386,42 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"User",
 	)
 	graph.MustAddE(
+		"user",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   usagelog.UserTable,
+			Columns: []string{usagelog.UserColumn},
+			Bidi:    false,
+		},
+		"UsageLog",
+		"User",
+	)
+	graph.MustAddE(
+		"request",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   usagelog.RequestTable,
+			Columns: []string{usagelog.RequestColumn},
+			Bidi:    false,
+		},
+		"UsageLog",
+		"Request",
+	)
+	graph.MustAddE(
+		"channel",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   usagelog.ChannelTable,
+			Columns: []string{usagelog.ChannelColumn},
+			Bidi:    false,
+		},
+		"UsageLog",
+		"Channel",
+	)
+	graph.MustAddE(
 		"requests",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -364,6 +456,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		"User",
 		"Role",
+	)
+	graph.MustAddE(
+		"usage_logs",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.UsageLogsTable,
+			Columns: []string{user.UsageLogsColumn},
+			Bidi:    false,
+		},
+		"User",
+		"UsageLog",
 	)
 	return graph
 }()
@@ -610,6 +714,20 @@ func (f *ChannelFilter) WhereHasExecutionsWith(preds ...predicate.RequestExecuti
 	})))
 }
 
+// WhereHasUsageLogs applies a predicate to check if query has an edge usage_logs.
+func (f *ChannelFilter) WhereHasUsageLogs() {
+	f.Where(entql.HasEdge("usage_logs"))
+}
+
+// WhereHasUsageLogsWith applies a predicate to check if query has an edge usage_logs with a given conditions (other predicates).
+func (f *ChannelFilter) WhereHasUsageLogsWith(preds ...predicate.UsageLog) {
+	f.Where(entql.HasEdgeWith("usage_logs", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
 // addPredicate implements the predicateAdder interface.
 func (jq *JobQuery) addPredicate(pred func(s *sql.Selector)) {
 	jq.predicates = append(jq.predicates, pred)
@@ -820,6 +938,20 @@ func (f *RequestFilter) WhereHasChannel() {
 // WhereHasChannelWith applies a predicate to check if query has an edge channel with a given conditions (other predicates).
 func (f *RequestFilter) WhereHasChannelWith(preds ...predicate.Channel) {
 	f.Where(entql.HasEdgeWith("channel", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasUsageLogs applies a predicate to check if query has an edge usage_logs.
+func (f *RequestFilter) WhereHasUsageLogs() {
+	f.Where(entql.HasEdge("usage_logs"))
+}
+
+// WhereHasUsageLogsWith applies a predicate to check if query has an edge usage_logs with a given conditions (other predicates).
+func (f *RequestFilter) WhereHasUsageLogsWith(preds ...predicate.UsageLog) {
+	f.Where(entql.HasEdgeWith("usage_logs", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
@@ -1104,6 +1236,178 @@ func (f *SystemFilter) WhereValue(p entql.StringP) {
 }
 
 // addPredicate implements the predicateAdder interface.
+func (ulq *UsageLogQuery) addPredicate(pred func(s *sql.Selector)) {
+	ulq.predicates = append(ulq.predicates, pred)
+}
+
+// Filter returns a Filter implementation to apply filters on the UsageLogQuery builder.
+func (ulq *UsageLogQuery) Filter() *UsageLogFilter {
+	return &UsageLogFilter{config: ulq.config, predicateAdder: ulq}
+}
+
+// addPredicate implements the predicateAdder interface.
+func (m *UsageLogMutation) addPredicate(pred func(s *sql.Selector)) {
+	m.predicates = append(m.predicates, pred)
+}
+
+// Filter returns an entql.Where implementation to apply filters on the UsageLogMutation builder.
+func (m *UsageLogMutation) Filter() *UsageLogFilter {
+	return &UsageLogFilter{config: m.config, predicateAdder: m}
+}
+
+// UsageLogFilter provides a generic filtering capability at runtime for UsageLogQuery.
+type UsageLogFilter struct {
+	predicateAdder
+	config
+}
+
+// Where applies the entql predicate on the query filter.
+func (f *UsageLogFilter) Where(p entql.P) {
+	f.addPredicate(func(s *sql.Selector) {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[7].Type, p, s); err != nil {
+			s.AddError(err)
+		}
+	})
+}
+
+// WhereID applies the entql int predicate on the id field.
+func (f *UsageLogFilter) WhereID(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldID))
+}
+
+// WhereCreatedAt applies the entql time.Time predicate on the created_at field.
+func (f *UsageLogFilter) WhereCreatedAt(p entql.TimeP) {
+	f.Where(p.Field(usagelog.FieldCreatedAt))
+}
+
+// WhereUpdatedAt applies the entql time.Time predicate on the updated_at field.
+func (f *UsageLogFilter) WhereUpdatedAt(p entql.TimeP) {
+	f.Where(p.Field(usagelog.FieldUpdatedAt))
+}
+
+// WhereDeletedAt applies the entql int predicate on the deleted_at field.
+func (f *UsageLogFilter) WhereDeletedAt(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldDeletedAt))
+}
+
+// WhereUserID applies the entql int predicate on the user_id field.
+func (f *UsageLogFilter) WhereUserID(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldUserID))
+}
+
+// WhereRequestID applies the entql int predicate on the request_id field.
+func (f *UsageLogFilter) WhereRequestID(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldRequestID))
+}
+
+// WhereChannelID applies the entql int predicate on the channel_id field.
+func (f *UsageLogFilter) WhereChannelID(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldChannelID))
+}
+
+// WhereModelID applies the entql string predicate on the model_id field.
+func (f *UsageLogFilter) WhereModelID(p entql.StringP) {
+	f.Where(p.Field(usagelog.FieldModelID))
+}
+
+// WherePromptTokens applies the entql int predicate on the prompt_tokens field.
+func (f *UsageLogFilter) WherePromptTokens(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldPromptTokens))
+}
+
+// WhereCompletionTokens applies the entql int predicate on the completion_tokens field.
+func (f *UsageLogFilter) WhereCompletionTokens(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldCompletionTokens))
+}
+
+// WhereTotalTokens applies the entql int predicate on the total_tokens field.
+func (f *UsageLogFilter) WhereTotalTokens(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldTotalTokens))
+}
+
+// WherePromptAudioTokens applies the entql int predicate on the prompt_audio_tokens field.
+func (f *UsageLogFilter) WherePromptAudioTokens(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldPromptAudioTokens))
+}
+
+// WherePromptCachedTokens applies the entql int predicate on the prompt_cached_tokens field.
+func (f *UsageLogFilter) WherePromptCachedTokens(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldPromptCachedTokens))
+}
+
+// WhereCompletionAudioTokens applies the entql int predicate on the completion_audio_tokens field.
+func (f *UsageLogFilter) WhereCompletionAudioTokens(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldCompletionAudioTokens))
+}
+
+// WhereCompletionReasoningTokens applies the entql int predicate on the completion_reasoning_tokens field.
+func (f *UsageLogFilter) WhereCompletionReasoningTokens(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldCompletionReasoningTokens))
+}
+
+// WhereCompletionAcceptedPredictionTokens applies the entql int predicate on the completion_accepted_prediction_tokens field.
+func (f *UsageLogFilter) WhereCompletionAcceptedPredictionTokens(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldCompletionAcceptedPredictionTokens))
+}
+
+// WhereCompletionRejectedPredictionTokens applies the entql int predicate on the completion_rejected_prediction_tokens field.
+func (f *UsageLogFilter) WhereCompletionRejectedPredictionTokens(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldCompletionRejectedPredictionTokens))
+}
+
+// WhereSource applies the entql string predicate on the source field.
+func (f *UsageLogFilter) WhereSource(p entql.StringP) {
+	f.Where(p.Field(usagelog.FieldSource))
+}
+
+// WhereFormat applies the entql string predicate on the format field.
+func (f *UsageLogFilter) WhereFormat(p entql.StringP) {
+	f.Where(p.Field(usagelog.FieldFormat))
+}
+
+// WhereHasUser applies a predicate to check if query has an edge user.
+func (f *UsageLogFilter) WhereHasUser() {
+	f.Where(entql.HasEdge("user"))
+}
+
+// WhereHasUserWith applies a predicate to check if query has an edge user with a given conditions (other predicates).
+func (f *UsageLogFilter) WhereHasUserWith(preds ...predicate.User) {
+	f.Where(entql.HasEdgeWith("user", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasRequest applies a predicate to check if query has an edge request.
+func (f *UsageLogFilter) WhereHasRequest() {
+	f.Where(entql.HasEdge("request"))
+}
+
+// WhereHasRequestWith applies a predicate to check if query has an edge request with a given conditions (other predicates).
+func (f *UsageLogFilter) WhereHasRequestWith(preds ...predicate.Request) {
+	f.Where(entql.HasEdgeWith("request", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasChannel applies a predicate to check if query has an edge channel.
+func (f *UsageLogFilter) WhereHasChannel() {
+	f.Where(entql.HasEdge("channel"))
+}
+
+// WhereHasChannelWith applies a predicate to check if query has an edge channel with a given conditions (other predicates).
+func (f *UsageLogFilter) WhereHasChannelWith(preds ...predicate.Channel) {
+	f.Where(entql.HasEdgeWith("channel", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// addPredicate implements the predicateAdder interface.
 func (uq *UserQuery) addPredicate(pred func(s *sql.Selector)) {
 	uq.predicates = append(uq.predicates, pred)
 }
@@ -1132,7 +1436,7 @@ type UserFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[7].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[8].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -1239,6 +1543,20 @@ func (f *UserFilter) WhereHasRoles() {
 // WhereHasRolesWith applies a predicate to check if query has an edge roles with a given conditions (other predicates).
 func (f *UserFilter) WhereHasRolesWith(preds ...predicate.Role) {
 	f.Where(entql.HasEdgeWith("roles", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasUsageLogs applies a predicate to check if query has an edge usage_logs.
+func (f *UserFilter) WhereHasUsageLogs() {
+	f.Where(entql.HasEdge("usage_logs"))
+}
+
+// WhereHasUsageLogsWith applies a predicate to check if query has an edge usage_logs with a given conditions (other predicates).
+func (f *UserFilter) WhereHasUsageLogsWith(preds ...predicate.UsageLog) {
+	f.Where(entql.HasEdgeWith("usage_logs", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}

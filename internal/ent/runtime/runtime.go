@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/schema"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 
@@ -252,6 +253,81 @@ func init() {
 	systemDescDeletedAt := systemMixinFields1[0].Descriptor()
 	// system.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	system.DefaultDeletedAt = systemDescDeletedAt.Default.(int)
+	usagelogMixin := schema.UsageLog{}.Mixin()
+	usagelog.Policy = privacy.NewPolicies(schema.UsageLog{})
+	usagelog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := usagelog.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	usagelogMixinHooks1 := usagelogMixin[1].Hooks()
+
+	usagelog.Hooks[1] = usagelogMixinHooks1[0]
+	usagelogMixinInters1 := usagelogMixin[1].Interceptors()
+	usagelog.Interceptors[0] = usagelogMixinInters1[0]
+	usagelogMixinFields0 := usagelogMixin[0].Fields()
+	_ = usagelogMixinFields0
+	usagelogMixinFields1 := usagelogMixin[1].Fields()
+	_ = usagelogMixinFields1
+	usagelogFields := schema.UsageLog{}.Fields()
+	_ = usagelogFields
+	// usagelogDescCreatedAt is the schema descriptor for created_at field.
+	usagelogDescCreatedAt := usagelogMixinFields0[0].Descriptor()
+	// usagelog.DefaultCreatedAt holds the default value on creation for the created_at field.
+	usagelog.DefaultCreatedAt = usagelogDescCreatedAt.Default.(func() time.Time)
+	// usagelogDescUpdatedAt is the schema descriptor for updated_at field.
+	usagelogDescUpdatedAt := usagelogMixinFields0[1].Descriptor()
+	// usagelog.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	usagelog.DefaultUpdatedAt = usagelogDescUpdatedAt.Default.(func() time.Time)
+	// usagelog.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	usagelog.UpdateDefaultUpdatedAt = usagelogDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// usagelogDescDeletedAt is the schema descriptor for deleted_at field.
+	usagelogDescDeletedAt := usagelogMixinFields1[0].Descriptor()
+	// usagelog.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	usagelog.DefaultDeletedAt = usagelogDescDeletedAt.Default.(int)
+	// usagelogDescPromptTokens is the schema descriptor for prompt_tokens field.
+	usagelogDescPromptTokens := usagelogFields[4].Descriptor()
+	// usagelog.DefaultPromptTokens holds the default value on creation for the prompt_tokens field.
+	usagelog.DefaultPromptTokens = usagelogDescPromptTokens.Default.(int)
+	// usagelogDescCompletionTokens is the schema descriptor for completion_tokens field.
+	usagelogDescCompletionTokens := usagelogFields[5].Descriptor()
+	// usagelog.DefaultCompletionTokens holds the default value on creation for the completion_tokens field.
+	usagelog.DefaultCompletionTokens = usagelogDescCompletionTokens.Default.(int)
+	// usagelogDescTotalTokens is the schema descriptor for total_tokens field.
+	usagelogDescTotalTokens := usagelogFields[6].Descriptor()
+	// usagelog.DefaultTotalTokens holds the default value on creation for the total_tokens field.
+	usagelog.DefaultTotalTokens = usagelogDescTotalTokens.Default.(int)
+	// usagelogDescPromptAudioTokens is the schema descriptor for prompt_audio_tokens field.
+	usagelogDescPromptAudioTokens := usagelogFields[7].Descriptor()
+	// usagelog.DefaultPromptAudioTokens holds the default value on creation for the prompt_audio_tokens field.
+	usagelog.DefaultPromptAudioTokens = usagelogDescPromptAudioTokens.Default.(int)
+	// usagelogDescPromptCachedTokens is the schema descriptor for prompt_cached_tokens field.
+	usagelogDescPromptCachedTokens := usagelogFields[8].Descriptor()
+	// usagelog.DefaultPromptCachedTokens holds the default value on creation for the prompt_cached_tokens field.
+	usagelog.DefaultPromptCachedTokens = usagelogDescPromptCachedTokens.Default.(int)
+	// usagelogDescCompletionAudioTokens is the schema descriptor for completion_audio_tokens field.
+	usagelogDescCompletionAudioTokens := usagelogFields[9].Descriptor()
+	// usagelog.DefaultCompletionAudioTokens holds the default value on creation for the completion_audio_tokens field.
+	usagelog.DefaultCompletionAudioTokens = usagelogDescCompletionAudioTokens.Default.(int)
+	// usagelogDescCompletionReasoningTokens is the schema descriptor for completion_reasoning_tokens field.
+	usagelogDescCompletionReasoningTokens := usagelogFields[10].Descriptor()
+	// usagelog.DefaultCompletionReasoningTokens holds the default value on creation for the completion_reasoning_tokens field.
+	usagelog.DefaultCompletionReasoningTokens = usagelogDescCompletionReasoningTokens.Default.(int)
+	// usagelogDescCompletionAcceptedPredictionTokens is the schema descriptor for completion_accepted_prediction_tokens field.
+	usagelogDescCompletionAcceptedPredictionTokens := usagelogFields[11].Descriptor()
+	// usagelog.DefaultCompletionAcceptedPredictionTokens holds the default value on creation for the completion_accepted_prediction_tokens field.
+	usagelog.DefaultCompletionAcceptedPredictionTokens = usagelogDescCompletionAcceptedPredictionTokens.Default.(int)
+	// usagelogDescCompletionRejectedPredictionTokens is the schema descriptor for completion_rejected_prediction_tokens field.
+	usagelogDescCompletionRejectedPredictionTokens := usagelogFields[12].Descriptor()
+	// usagelog.DefaultCompletionRejectedPredictionTokens holds the default value on creation for the completion_rejected_prediction_tokens field.
+	usagelog.DefaultCompletionRejectedPredictionTokens = usagelogDescCompletionRejectedPredictionTokens.Default.(int)
+	// usagelogDescFormat is the schema descriptor for format field.
+	usagelogDescFormat := usagelogFields[14].Descriptor()
+	// usagelog.DefaultFormat holds the default value on creation for the format field.
+	usagelog.DefaultFormat = usagelogDescFormat.Default.(string)
 	userMixin := schema.User{}.Mixin()
 	user.Policy = privacy.NewPolicies(schema.User{})
 	user.Hooks[0] = func(next ent.Mutator) ent.Mutator {

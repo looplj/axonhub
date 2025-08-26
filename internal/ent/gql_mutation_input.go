@@ -7,6 +7,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -439,6 +440,174 @@ func (c *SystemUpdate) SetInput(i UpdateSystemInput) *SystemUpdate {
 
 // SetInput applies the change-set in the UpdateSystemInput on the SystemUpdateOne builder.
 func (c *SystemUpdateOne) SetInput(i UpdateSystemInput) *SystemUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateUsageLogInput represents a mutation input for creating usagelogs.
+type CreateUsageLogInput struct {
+	CreatedAt                          *time.Time
+	UpdatedAt                          *time.Time
+	ModelID                            string
+	PromptTokens                       *int
+	CompletionTokens                   *int
+	TotalTokens                        *int
+	PromptAudioTokens                  *int
+	PromptCachedTokens                 *int
+	CompletionAudioTokens              *int
+	CompletionReasoningTokens          *int
+	CompletionAcceptedPredictionTokens *int
+	CompletionRejectedPredictionTokens *int
+	Source                             *usagelog.Source
+	Format                             *string
+	UserID                             int
+	RequestID                          int
+	ChannelID                          *int
+}
+
+// Mutate applies the CreateUsageLogInput on the UsageLogMutation builder.
+func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
+	m.SetModelID(i.ModelID)
+	if v := i.PromptTokens; v != nil {
+		m.SetPromptTokens(*v)
+	}
+	if v := i.CompletionTokens; v != nil {
+		m.SetCompletionTokens(*v)
+	}
+	if v := i.TotalTokens; v != nil {
+		m.SetTotalTokens(*v)
+	}
+	if v := i.PromptAudioTokens; v != nil {
+		m.SetPromptAudioTokens(*v)
+	}
+	if v := i.PromptCachedTokens; v != nil {
+		m.SetPromptCachedTokens(*v)
+	}
+	if v := i.CompletionAudioTokens; v != nil {
+		m.SetCompletionAudioTokens(*v)
+	}
+	if v := i.CompletionReasoningTokens; v != nil {
+		m.SetCompletionReasoningTokens(*v)
+	}
+	if v := i.CompletionAcceptedPredictionTokens; v != nil {
+		m.SetCompletionAcceptedPredictionTokens(*v)
+	}
+	if v := i.CompletionRejectedPredictionTokens; v != nil {
+		m.SetCompletionRejectedPredictionTokens(*v)
+	}
+	if v := i.Source; v != nil {
+		m.SetSource(*v)
+	}
+	if v := i.Format; v != nil {
+		m.SetFormat(*v)
+	}
+	m.SetUserID(i.UserID)
+	m.SetRequestID(i.RequestID)
+	if v := i.ChannelID; v != nil {
+		m.SetChannelID(*v)
+	}
+}
+
+// SetInput applies the change-set in the CreateUsageLogInput on the UsageLogCreate builder.
+func (c *UsageLogCreate) SetInput(i CreateUsageLogInput) *UsageLogCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateUsageLogInput represents a mutation input for updating usagelogs.
+type UpdateUsageLogInput struct {
+	UpdatedAt                               *time.Time
+	PromptTokens                            *int
+	CompletionTokens                        *int
+	TotalTokens                             *int
+	ClearPromptAudioTokens                  bool
+	PromptAudioTokens                       *int
+	ClearPromptCachedTokens                 bool
+	PromptCachedTokens                      *int
+	ClearCompletionAudioTokens              bool
+	CompletionAudioTokens                   *int
+	ClearCompletionReasoningTokens          bool
+	CompletionReasoningTokens               *int
+	ClearCompletionAcceptedPredictionTokens bool
+	CompletionAcceptedPredictionTokens      *int
+	ClearCompletionRejectedPredictionTokens bool
+	CompletionRejectedPredictionTokens      *int
+	ClearChannel                            bool
+	ChannelID                               *int
+}
+
+// Mutate applies the UpdateUsageLogInput on the UsageLogMutation builder.
+func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
+	if v := i.PromptTokens; v != nil {
+		m.SetPromptTokens(*v)
+	}
+	if v := i.CompletionTokens; v != nil {
+		m.SetCompletionTokens(*v)
+	}
+	if v := i.TotalTokens; v != nil {
+		m.SetTotalTokens(*v)
+	}
+	if i.ClearPromptAudioTokens {
+		m.ClearPromptAudioTokens()
+	}
+	if v := i.PromptAudioTokens; v != nil {
+		m.SetPromptAudioTokens(*v)
+	}
+	if i.ClearPromptCachedTokens {
+		m.ClearPromptCachedTokens()
+	}
+	if v := i.PromptCachedTokens; v != nil {
+		m.SetPromptCachedTokens(*v)
+	}
+	if i.ClearCompletionAudioTokens {
+		m.ClearCompletionAudioTokens()
+	}
+	if v := i.CompletionAudioTokens; v != nil {
+		m.SetCompletionAudioTokens(*v)
+	}
+	if i.ClearCompletionReasoningTokens {
+		m.ClearCompletionReasoningTokens()
+	}
+	if v := i.CompletionReasoningTokens; v != nil {
+		m.SetCompletionReasoningTokens(*v)
+	}
+	if i.ClearCompletionAcceptedPredictionTokens {
+		m.ClearCompletionAcceptedPredictionTokens()
+	}
+	if v := i.CompletionAcceptedPredictionTokens; v != nil {
+		m.SetCompletionAcceptedPredictionTokens(*v)
+	}
+	if i.ClearCompletionRejectedPredictionTokens {
+		m.ClearCompletionRejectedPredictionTokens()
+	}
+	if v := i.CompletionRejectedPredictionTokens; v != nil {
+		m.SetCompletionRejectedPredictionTokens(*v)
+	}
+	if i.ClearChannel {
+		m.ClearChannel()
+	}
+	if v := i.ChannelID; v != nil {
+		m.SetChannelID(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateUsageLogInput on the UsageLogUpdate builder.
+func (c *UsageLogUpdate) SetInput(i UpdateUsageLogInput) *UsageLogUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateUsageLogInput on the UsageLogUpdateOne builder.
+func (c *UsageLogUpdateOne) SetInput(i UpdateUsageLogInput) *UsageLogUpdateOne {
 	i.Mutate(c.Mutation())
 	return c
 }

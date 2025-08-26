@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -203,6 +204,21 @@ func (cu *ChannelUpdate) AddExecutions(r ...*RequestExecution) *ChannelUpdate {
 	return cu.AddExecutionIDs(ids...)
 }
 
+// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
+func (cu *ChannelUpdate) AddUsageLogIDs(ids ...int) *ChannelUpdate {
+	cu.mutation.AddUsageLogIDs(ids...)
+	return cu
+}
+
+// AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
+func (cu *ChannelUpdate) AddUsageLogs(u ...*UsageLog) *ChannelUpdate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return cu.AddUsageLogIDs(ids...)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (cu *ChannelUpdate) Mutation() *ChannelMutation {
 	return cu.mutation
@@ -248,6 +264,27 @@ func (cu *ChannelUpdate) RemoveExecutions(r ...*RequestExecution) *ChannelUpdate
 		ids[i] = r[i].ID
 	}
 	return cu.RemoveExecutionIDs(ids...)
+}
+
+// ClearUsageLogs clears all "usage_logs" edges to the UsageLog entity.
+func (cu *ChannelUpdate) ClearUsageLogs() *ChannelUpdate {
+	cu.mutation.ClearUsageLogs()
+	return cu
+}
+
+// RemoveUsageLogIDs removes the "usage_logs" edge to UsageLog entities by IDs.
+func (cu *ChannelUpdate) RemoveUsageLogIDs(ids ...int) *ChannelUpdate {
+	cu.mutation.RemoveUsageLogIDs(ids...)
+	return cu
+}
+
+// RemoveUsageLogs removes "usage_logs" edges to UsageLog entities.
+func (cu *ChannelUpdate) RemoveUsageLogs(u ...*UsageLog) *ChannelUpdate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return cu.RemoveUsageLogIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -457,6 +494,51 @@ func (cu *ChannelUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if cu.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.UsageLogsTable,
+			Columns: []string{channel.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cu.mutation.RemovedUsageLogsIDs(); len(nodes) > 0 && !cu.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.UsageLogsTable,
+			Columns: []string{channel.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cu.mutation.UsageLogsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.UsageLogsTable,
+			Columns: []string{channel.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.AddModifiers(cu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, cu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -649,6 +731,21 @@ func (cuo *ChannelUpdateOne) AddExecutions(r ...*RequestExecution) *ChannelUpdat
 	return cuo.AddExecutionIDs(ids...)
 }
 
+// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
+func (cuo *ChannelUpdateOne) AddUsageLogIDs(ids ...int) *ChannelUpdateOne {
+	cuo.mutation.AddUsageLogIDs(ids...)
+	return cuo
+}
+
+// AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
+func (cuo *ChannelUpdateOne) AddUsageLogs(u ...*UsageLog) *ChannelUpdateOne {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return cuo.AddUsageLogIDs(ids...)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (cuo *ChannelUpdateOne) Mutation() *ChannelMutation {
 	return cuo.mutation
@@ -694,6 +791,27 @@ func (cuo *ChannelUpdateOne) RemoveExecutions(r ...*RequestExecution) *ChannelUp
 		ids[i] = r[i].ID
 	}
 	return cuo.RemoveExecutionIDs(ids...)
+}
+
+// ClearUsageLogs clears all "usage_logs" edges to the UsageLog entity.
+func (cuo *ChannelUpdateOne) ClearUsageLogs() *ChannelUpdateOne {
+	cuo.mutation.ClearUsageLogs()
+	return cuo
+}
+
+// RemoveUsageLogIDs removes the "usage_logs" edge to UsageLog entities by IDs.
+func (cuo *ChannelUpdateOne) RemoveUsageLogIDs(ids ...int) *ChannelUpdateOne {
+	cuo.mutation.RemoveUsageLogIDs(ids...)
+	return cuo
+}
+
+// RemoveUsageLogs removes "usage_logs" edges to UsageLog entities.
+func (cuo *ChannelUpdateOne) RemoveUsageLogs(u ...*UsageLog) *ChannelUpdateOne {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return cuo.RemoveUsageLogIDs(ids...)
 }
 
 // Where appends a list predicates to the ChannelUpdate builder.
@@ -926,6 +1044,51 @@ func (cuo *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err e
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if cuo.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.UsageLogsTable,
+			Columns: []string{channel.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cuo.mutation.RemovedUsageLogsIDs(); len(nodes) > 0 && !cuo.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.UsageLogsTable,
+			Columns: []string{channel.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cuo.mutation.UsageLogsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   channel.UsageLogsTable,
+			Columns: []string{channel.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

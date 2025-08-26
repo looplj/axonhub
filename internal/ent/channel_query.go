@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 )
 
 // ChannelQuery is the builder for querying Channel entities.
@@ -28,10 +29,12 @@ type ChannelQuery struct {
 	predicates          []predicate.Channel
 	withRequests        *RequestQuery
 	withExecutions      *RequestExecutionQuery
+	withUsageLogs       *UsageLogQuery
 	loadTotal           []func(context.Context, []*Channel) error
 	modifiers           []func(*sql.Selector)
 	withNamedRequests   map[string]*RequestQuery
 	withNamedExecutions map[string]*RequestExecutionQuery
+	withNamedUsageLogs  map[string]*UsageLogQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -105,6 +108,28 @@ func (cq *ChannelQuery) QueryExecutions() *RequestExecutionQuery {
 			sqlgraph.From(channel.Table, channel.FieldID, selector),
 			sqlgraph.To(requestexecution.Table, requestexecution.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, channel.ExecutionsTable, channel.ExecutionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(cq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryUsageLogs chains the current query on the "usage_logs" edge.
+func (cq *ChannelQuery) QueryUsageLogs() *UsageLogQuery {
+	query := (&UsageLogClient{config: cq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := cq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := cq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, selector),
+			sqlgraph.To(usagelog.Table, usagelog.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, channel.UsageLogsTable, channel.UsageLogsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(cq.driver.Dialect(), step)
 		return fromU, nil
@@ -306,6 +331,7 @@ func (cq *ChannelQuery) Clone() *ChannelQuery {
 		predicates:     append([]predicate.Channel{}, cq.predicates...),
 		withRequests:   cq.withRequests.Clone(),
 		withExecutions: cq.withExecutions.Clone(),
+		withUsageLogs:  cq.withUsageLogs.Clone(),
 		// clone intermediate query.
 		sql:       cq.sql.Clone(),
 		path:      cq.path,
@@ -332,6 +358,17 @@ func (cq *ChannelQuery) WithExecutions(opts ...func(*RequestExecutionQuery)) *Ch
 		opt(query)
 	}
 	cq.withExecutions = query
+	return cq
+}
+
+// WithUsageLogs tells the query-builder to eager-load the nodes that are connected to
+// the "usage_logs" edge. The optional arguments are used to configure the query builder of the edge.
+func (cq *ChannelQuery) WithUsageLogs(opts ...func(*UsageLogQuery)) *ChannelQuery {
+	query := (&UsageLogClient{config: cq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	cq.withUsageLogs = query
 	return cq
 }
 
@@ -419,9 +456,10 @@ func (cq *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 	var (
 		nodes       = []*Channel{}
 		_spec       = cq.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			cq.withRequests != nil,
 			cq.withExecutions != nil,
+			cq.withUsageLogs != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -459,6 +497,13 @@ func (cq *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 			return nil, err
 		}
 	}
+	if query := cq.withUsageLogs; query != nil {
+		if err := cq.loadUsageLogs(ctx, query, nodes,
+			func(n *Channel) { n.Edges.UsageLogs = []*UsageLog{} },
+			func(n *Channel, e *UsageLog) { n.Edges.UsageLogs = append(n.Edges.UsageLogs, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range cq.withNamedRequests {
 		if err := cq.loadRequests(ctx, query, nodes,
 			func(n *Channel) { n.appendNamedRequests(name) },
@@ -470,6 +515,13 @@ func (cq *ChannelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Chan
 		if err := cq.loadExecutions(ctx, query, nodes,
 			func(n *Channel) { n.appendNamedExecutions(name) },
 			func(n *Channel, e *RequestExecution) { n.appendNamedExecutions(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range cq.withNamedUsageLogs {
+		if err := cq.loadUsageLogs(ctx, query, nodes,
+			func(n *Channel) { n.appendNamedUsageLogs(name) },
+			func(n *Channel, e *UsageLog) { n.appendNamedUsageLogs(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -526,6 +578,36 @@ func (cq *ChannelQuery) loadExecutions(ctx context.Context, query *RequestExecut
 	}
 	query.Where(predicate.RequestExecution(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(channel.ExecutionsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ChannelID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "channel_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (cq *ChannelQuery) loadUsageLogs(ctx context.Context, query *UsageLogQuery, nodes []*Channel, init func(*Channel), assign func(*Channel, *UsageLog)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Channel)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(usagelog.FieldChannelID)
+	}
+	query.Where(predicate.UsageLog(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(channel.UsageLogsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -660,6 +742,20 @@ func (cq *ChannelQuery) WithNamedExecutions(name string, opts ...func(*RequestEx
 		cq.withNamedExecutions = make(map[string]*RequestExecutionQuery)
 	}
 	cq.withNamedExecutions[name] = query
+	return cq
+}
+
+// WithNamedUsageLogs tells the query-builder to eager-load the nodes that are connected to the "usage_logs"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (cq *ChannelQuery) WithNamedUsageLogs(name string, opts ...func(*UsageLogQuery)) *ChannelQuery {
+	query := (&UsageLogClient{config: cq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if cq.withNamedUsageLogs == nil {
+		cq.withNamedUsageLogs = make(map[string]*UsageLogQuery)
+	}
+	cq.withNamedUsageLogs[name] = query
 	return cq
 }
 

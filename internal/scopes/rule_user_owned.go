@@ -61,14 +61,14 @@ func (userOwnedMutationRule) EvalMutation(ctx context.Context, m ent.Mutation) e
 		case ent.OpCreate:
 			userId, ok := mutation.UserID()
 			if !ok {
-				return privacy.Skipf("User %d can only modify their own API Keys", user.ID)
+				return privacy.Skipf("User %d can only modify their own data", user.ID)
 			}
 
 			if userId != user.ID {
-				return privacy.Skipf("User %d can only modify their own API Keys", user.ID)
+				return privacy.Skipf("User %d can only modify their own data", user.ID)
 			}
 
-			return privacy.Allowf("User %d can modify their own API Keys", user.ID)
+			return privacy.Allowf("User %d can modify their own data", user.ID)
 		case ent.OpUpdateOne:
 			_, ok := mutation.UserID()
 			if ok {
@@ -79,28 +79,39 @@ func (userOwnedMutationRule) EvalMutation(ctx context.Context, m ent.Mutation) e
 				s.Where(sql.EQ("user_id", user.ID))
 			})
 
-			return privacy.Allowf("User %d can modify their own API Keys", user.ID)
+			return privacy.Allowf("User %d can modify their own data", user.ID)
 		case ent.OpDeleteOne:
 			mutation.WhereP(func(s *sql.Selector) {
 				s.Where(sql.EQ("user_id", user.ID))
 			})
 
-			return privacy.Allowf("User %d can delete their own API Keys", user.ID)
+			return privacy.Allowf("User %d can delete their own data", user.ID)
 		case ent.OpDelete:
 			mutation.WhereP(func(s *sql.Selector) {
 				s.Where(sql.EQ("user_id", user.ID))
 			})
 
-			return privacy.Allowf("User %d can delete their own API Keys", user.ID)
+			return privacy.Allowf("User %d can delete their own data", user.ID)
 		case ent.OpUpdate:
 			mutation.WhereP(func(s *sql.Selector) {
 				s.Where(sql.EQ("user_id", user.ID))
 			})
 
-			return privacy.Allowf("User %d can update their own API Keys", user.ID)
+			return privacy.Allowf("User %d can update their own data", user.ID)
 		default:
 			return privacy.Denyf("Unsupported operation %s", mutation.Op())
 		}
+	case *ent.UserMutation:
+		userId, ok := mutation.ID()
+		if !ok {
+			return privacy.Skipf("User %d can only modify their own data", user.ID)
+		}
+
+		if userId != user.ID {
+			return privacy.Skipf("User %d can only modify their own data", user.ID)
+		}
+
+		return privacy.Allowf("User %d can modify their own data", user.ID)
 	default:
 		return privacy.Denyf("Unsupported mutation type %T", m)
 	}

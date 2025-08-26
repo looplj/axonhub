@@ -94,7 +94,18 @@ func (r *queryResolver) Roles(ctx context.Context, after *entgql.Cursor[int], fi
 
 // Systems is the resolver for the systems field.
 func (r *queryResolver) Systems(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) (*ent.SystemConnection, error) {
-	panic(fmt.Errorf("not implemented: Systems - systems"))
+	return r.client.System.Query().Paginate(ctx, after, first, before, last,
+		ent.WithSystemOrder(orderBy),
+		ent.WithSystemFilter(where.Filter),
+	)
+}
+
+// UsageLogs is the resolver for the usageLogs field.
+func (r *queryResolver) UsageLogs(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) (*ent.UsageLogConnection, error) {
+	return r.client.UsageLog.Query().Paginate(ctx, after, first, before, last,
+		ent.WithUsageLogOrder(orderBy),
+		ent.WithUsageLogFilter(where.Filter),
+	)
 }
 
 // Users is the resolver for the users field.
@@ -183,6 +194,38 @@ func (r *systemResolver) ID(ctx context.Context, obj *ent.System) (*objects.GUID
 }
 
 // ID is the resolver for the id field.
+func (r *usageLogResolver) ID(ctx context.Context, obj *ent.UsageLog) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: "UsageLog",
+		ID:   obj.ID,
+	}, nil
+}
+
+// UserID is the resolver for the userID field.
+func (r *usageLogResolver) UserID(ctx context.Context, obj *ent.UsageLog) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: "User",
+		ID:   obj.UserID,
+	}, nil
+}
+
+// RequestID is the resolver for the requestID field.
+func (r *usageLogResolver) RequestID(ctx context.Context, obj *ent.UsageLog) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: "Request",
+		ID:   obj.RequestID,
+	}, nil
+}
+
+// ChannelID is the resolver for the channelID field.
+func (r *usageLogResolver) ChannelID(ctx context.Context, obj *ent.UsageLog) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: "Channel",
+		ID:   obj.ChannelID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *userResolver) ID(ctx context.Context, obj *ent.User) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: "User",
@@ -214,6 +257,9 @@ func (r *Resolver) Role() RoleResolver { return &roleResolver{r} }
 // System returns SystemResolver implementation.
 func (r *Resolver) System() SystemResolver { return &systemResolver{r} }
 
+// UsageLog returns UsageLogResolver implementation.
+func (r *Resolver) UsageLog() UsageLogResolver { return &usageLogResolver{r} }
+
 // User returns UserResolver implementation.
 func (r *Resolver) User() UserResolver { return &userResolver{r} }
 
@@ -225,4 +271,5 @@ type requestResolver struct{ *Resolver }
 type requestExecutionResolver struct{ *Resolver }
 type roleResolver struct{ *Resolver }
 type systemResolver struct{ *Resolver }
+type usageLogResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }

@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 )
 
@@ -32,9 +33,11 @@ type RequestQuery struct {
 	withAPIKey          *APIKeyQuery
 	withExecutions      *RequestExecutionQuery
 	withChannel         *ChannelQuery
+	withUsageLogs       *UsageLogQuery
 	loadTotal           []func(context.Context, []*Request) error
 	modifiers           []func(*sql.Selector)
 	withNamedExecutions map[string]*RequestExecutionQuery
+	withNamedUsageLogs  map[string]*UsageLogQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -152,6 +155,28 @@ func (rq *RequestQuery) QueryChannel() *ChannelQuery {
 			sqlgraph.From(request.Table, request.FieldID, selector),
 			sqlgraph.To(channel.Table, channel.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, request.ChannelTable, request.ChannelColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(rq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryUsageLogs chains the current query on the "usage_logs" edge.
+func (rq *RequestQuery) QueryUsageLogs() *UsageLogQuery {
+	query := (&UsageLogClient{config: rq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := rq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := rq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(request.Table, request.FieldID, selector),
+			sqlgraph.To(usagelog.Table, usagelog.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, request.UsageLogsTable, request.UsageLogsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(rq.driver.Dialect(), step)
 		return fromU, nil
@@ -355,6 +380,7 @@ func (rq *RequestQuery) Clone() *RequestQuery {
 		withAPIKey:     rq.withAPIKey.Clone(),
 		withExecutions: rq.withExecutions.Clone(),
 		withChannel:    rq.withChannel.Clone(),
+		withUsageLogs:  rq.withUsageLogs.Clone(),
 		// clone intermediate query.
 		sql:       rq.sql.Clone(),
 		path:      rq.path,
@@ -403,6 +429,17 @@ func (rq *RequestQuery) WithChannel(opts ...func(*ChannelQuery)) *RequestQuery {
 		opt(query)
 	}
 	rq.withChannel = query
+	return rq
+}
+
+// WithUsageLogs tells the query-builder to eager-load the nodes that are connected to
+// the "usage_logs" edge. The optional arguments are used to configure the query builder of the edge.
+func (rq *RequestQuery) WithUsageLogs(opts ...func(*UsageLogQuery)) *RequestQuery {
+	query := (&UsageLogClient{config: rq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	rq.withUsageLogs = query
 	return rq
 }
 
@@ -490,11 +527,12 @@ func (rq *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Requ
 	var (
 		nodes       = []*Request{}
 		_spec       = rq.querySpec()
-		loadedTypes = [4]bool{
+		loadedTypes = [5]bool{
 			rq.withUser != nil,
 			rq.withAPIKey != nil,
 			rq.withExecutions != nil,
 			rq.withChannel != nil,
+			rq.withUsageLogs != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -543,10 +581,24 @@ func (rq *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Requ
 			return nil, err
 		}
 	}
+	if query := rq.withUsageLogs; query != nil {
+		if err := rq.loadUsageLogs(ctx, query, nodes,
+			func(n *Request) { n.Edges.UsageLogs = []*UsageLog{} },
+			func(n *Request, e *UsageLog) { n.Edges.UsageLogs = append(n.Edges.UsageLogs, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range rq.withNamedExecutions {
 		if err := rq.loadExecutions(ctx, query, nodes,
 			func(n *Request) { n.appendNamedExecutions(name) },
 			func(n *Request, e *RequestExecution) { n.appendNamedExecutions(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range rq.withNamedUsageLogs {
+		if err := rq.loadUsageLogs(ctx, query, nodes,
+			func(n *Request) { n.appendNamedUsageLogs(name) },
+			func(n *Request, e *UsageLog) { n.appendNamedUsageLogs(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -675,6 +727,36 @@ func (rq *RequestQuery) loadChannel(ctx context.Context, query *ChannelQuery, no
 	}
 	return nil
 }
+func (rq *RequestQuery) loadUsageLogs(ctx context.Context, query *UsageLogQuery, nodes []*Request, init func(*Request), assign func(*Request, *UsageLog)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Request)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(usagelog.FieldRequestID)
+	}
+	query.Where(predicate.UsageLog(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(request.UsageLogsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.RequestID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "request_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
 
 func (rq *RequestQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := rq.querySpec()
@@ -789,6 +871,20 @@ func (rq *RequestQuery) WithNamedExecutions(name string, opts ...func(*RequestEx
 		rq.withNamedExecutions = make(map[string]*RequestExecutionQuery)
 	}
 	rq.withNamedExecutions[name] = query
+	return rq
+}
+
+// WithNamedUsageLogs tells the query-builder to eager-load the nodes that are connected to the "usage_logs"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (rq *RequestQuery) WithNamedUsageLogs(name string, opts ...func(*UsageLogQuery)) *RequestQuery {
+	query := (&UsageLogClient{config: rq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if rq.withNamedUsageLogs == nil {
+		rq.withNamedUsageLogs = make(map[string]*UsageLogQuery)
+	}
+	rq.withNamedUsageLogs[name] = query
 	return rq
 }
 

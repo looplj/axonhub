@@ -83,6 +83,11 @@ func (Request) Edges() []ent.Edge {
 			Ref("requests").
 			Field("channel_id").
 			Unique(),
+		edge.To("usage_logs", UsageLog.Type).
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entgql.RelayConnection(),
+			),
 	}
 }
 

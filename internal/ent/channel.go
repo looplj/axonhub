@@ -55,14 +55,17 @@ type ChannelEdges struct {
 	Requests []*Request `json:"requests,omitempty"`
 	// Executions holds the value of the executions edge.
 	Executions []*RequestExecution `json:"executions,omitempty"`
+	// UsageLogs holds the value of the usage_logs edge.
+	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 	// totalCount holds the count of the edges above.
-	totalCount [2]map[string]int
+	totalCount [3]map[string]int
 
 	namedRequests   map[string][]*Request
 	namedExecutions map[string][]*RequestExecution
+	namedUsageLogs  map[string][]*UsageLog
 }
 
 // RequestsOrErr returns the Requests value or an error if the edge
@@ -81,6 +84,15 @@ func (e ChannelEdges) ExecutionsOrErr() ([]*RequestExecution, error) {
 		return e.Executions, nil
 	}
 	return nil, &NotLoadedError{edge: "executions"}
+}
+
+// UsageLogsOrErr returns the UsageLogs value or an error if the edge
+// was not loaded in eager-loading.
+func (e ChannelEdges) UsageLogsOrErr() ([]*UsageLog, error) {
+	if e.loadedTypes[2] {
+		return e.UsageLogs, nil
+	}
+	return nil, &NotLoadedError{edge: "usage_logs"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -218,6 +230,11 @@ func (c *Channel) QueryExecutions() *RequestExecutionQuery {
 	return NewChannelClient(c.config).QueryExecutions(c)
 }
 
+// QueryUsageLogs queries the "usage_logs" edge of the Channel entity.
+func (c *Channel) QueryUsageLogs() *UsageLogQuery {
+	return NewChannelClient(c.config).QueryUsageLogs(c)
+}
+
 // Update returns a builder for updating this Channel.
 // Note that you need to call Channel.Unwrap() before calling this method if this Channel
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -324,6 +341,30 @@ func (c *Channel) appendNamedExecutions(name string, edges ...*RequestExecution)
 		c.Edges.namedExecutions[name] = []*RequestExecution{}
 	} else {
 		c.Edges.namedExecutions[name] = append(c.Edges.namedExecutions[name], edges...)
+	}
+}
+
+// NamedUsageLogs returns the UsageLogs named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (c *Channel) NamedUsageLogs(name string) ([]*UsageLog, error) {
+	if c.Edges.namedUsageLogs == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := c.Edges.namedUsageLogs[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (c *Channel) appendNamedUsageLogs(name string, edges ...*UsageLog) {
+	if c.Edges.namedUsageLogs == nil {
+		c.Edges.namedUsageLogs = make(map[string][]*UsageLog)
+	}
+	if len(edges) == 0 {
+		c.Edges.namedUsageLogs[name] = []*UsageLog{}
+	} else {
+		c.Edges.namedUsageLogs[name] = append(c.Edges.namedUsageLogs[name], edges...)
 	}
 }
 

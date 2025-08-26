@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 )
 
@@ -442,6 +443,95 @@ func (cq *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			cq.WithNamedExecutions(alias, func(wq *RequestExecutionQuery) {
 				*wq = *query
 			})
+
+		case "usageLogs":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&UsageLogClient{config: cq.config}).Query()
+			)
+			args := newUsageLogPaginateArgs(fieldArgs(ctx, new(UsageLogWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newUsageLogPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					cq.loadTotal = append(cq.loadTotal, func(ctx context.Context, nodes []*Channel) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"channel_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(channel.UsageLogsColumn), ids...))
+						})
+						if err := query.GroupBy(channel.UsageLogsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[2] == nil {
+								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[2][alias] = n
+						}
+						return nil
+					})
+				} else {
+					cq.loadTotal = append(cq.loadTotal, func(_ context.Context, nodes []*Channel) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.UsageLogs)
+							if nodes[i].Edges.totalCount[2] == nil {
+								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[2][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, usagelogImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(channel.UsageLogsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			cq.WithNamedUsageLogs(alias, func(wq *UsageLogQuery) {
+				*wq = *query
+			})
 		case "createdAt":
 			if _, ok := fieldSeen[channel.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, channel.FieldCreatedAt)
@@ -792,6 +882,95 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldChannelID)
 				fieldSeen[request.FieldChannelID] = struct{}{}
 			}
+
+		case "usageLogs":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&UsageLogClient{config: rq.config}).Query()
+			)
+			args := newUsageLogPaginateArgs(fieldArgs(ctx, new(UsageLogWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newUsageLogPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					rq.loadTotal = append(rq.loadTotal, func(ctx context.Context, nodes []*Request) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"request_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(request.UsageLogsColumn), ids...))
+						})
+						if err := query.GroupBy(request.UsageLogsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				} else {
+					rq.loadTotal = append(rq.loadTotal, func(_ context.Context, nodes []*Request) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.UsageLogs)
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, usagelogImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(request.UsageLogsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			rq.WithNamedUsageLogs(alias, func(wq *UsageLogQuery) {
+				*wq = *query
+			})
 		case "createdAt":
 			if _, ok := fieldSeen[request.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, request.FieldCreatedAt)
@@ -1411,6 +1590,225 @@ func newSystemPaginateArgs(rv map[string]any) *systemPaginateArgs {
 }
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (ulq *UsageLogQuery) CollectFields(ctx context.Context, satisfies ...string) (*UsageLogQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return ulq, nil
+	}
+	if err := ulq.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return ulq, nil
+}
+
+func (ulq *UsageLogQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(usagelog.Columns))
+		selectedFields = []string{usagelog.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "user":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&UserClient{config: ulq.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, userImplementors)...); err != nil {
+				return err
+			}
+			ulq.withUser = query
+			if _, ok := fieldSeen[usagelog.FieldUserID]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldUserID)
+				fieldSeen[usagelog.FieldUserID] = struct{}{}
+			}
+
+		case "request":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&RequestClient{config: ulq.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, requestImplementors)...); err != nil {
+				return err
+			}
+			ulq.withRequest = query
+			if _, ok := fieldSeen[usagelog.FieldRequestID]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldRequestID)
+				fieldSeen[usagelog.FieldRequestID] = struct{}{}
+			}
+
+		case "channel":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ChannelClient{config: ulq.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, channelImplementors)...); err != nil {
+				return err
+			}
+			ulq.withChannel = query
+			if _, ok := fieldSeen[usagelog.FieldChannelID]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldChannelID)
+				fieldSeen[usagelog.FieldChannelID] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[usagelog.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldCreatedAt)
+				fieldSeen[usagelog.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[usagelog.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldUpdatedAt)
+				fieldSeen[usagelog.FieldUpdatedAt] = struct{}{}
+			}
+		case "deletedAt":
+			if _, ok := fieldSeen[usagelog.FieldDeletedAt]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldDeletedAt)
+				fieldSeen[usagelog.FieldDeletedAt] = struct{}{}
+			}
+		case "userID":
+			if _, ok := fieldSeen[usagelog.FieldUserID]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldUserID)
+				fieldSeen[usagelog.FieldUserID] = struct{}{}
+			}
+		case "requestID":
+			if _, ok := fieldSeen[usagelog.FieldRequestID]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldRequestID)
+				fieldSeen[usagelog.FieldRequestID] = struct{}{}
+			}
+		case "channelID":
+			if _, ok := fieldSeen[usagelog.FieldChannelID]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldChannelID)
+				fieldSeen[usagelog.FieldChannelID] = struct{}{}
+			}
+		case "modelID":
+			if _, ok := fieldSeen[usagelog.FieldModelID]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldModelID)
+				fieldSeen[usagelog.FieldModelID] = struct{}{}
+			}
+		case "promptTokens":
+			if _, ok := fieldSeen[usagelog.FieldPromptTokens]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldPromptTokens)
+				fieldSeen[usagelog.FieldPromptTokens] = struct{}{}
+			}
+		case "completionTokens":
+			if _, ok := fieldSeen[usagelog.FieldCompletionTokens]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldCompletionTokens)
+				fieldSeen[usagelog.FieldCompletionTokens] = struct{}{}
+			}
+		case "totalTokens":
+			if _, ok := fieldSeen[usagelog.FieldTotalTokens]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldTotalTokens)
+				fieldSeen[usagelog.FieldTotalTokens] = struct{}{}
+			}
+		case "promptAudioTokens":
+			if _, ok := fieldSeen[usagelog.FieldPromptAudioTokens]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldPromptAudioTokens)
+				fieldSeen[usagelog.FieldPromptAudioTokens] = struct{}{}
+			}
+		case "promptCachedTokens":
+			if _, ok := fieldSeen[usagelog.FieldPromptCachedTokens]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldPromptCachedTokens)
+				fieldSeen[usagelog.FieldPromptCachedTokens] = struct{}{}
+			}
+		case "completionAudioTokens":
+			if _, ok := fieldSeen[usagelog.FieldCompletionAudioTokens]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldCompletionAudioTokens)
+				fieldSeen[usagelog.FieldCompletionAudioTokens] = struct{}{}
+			}
+		case "completionReasoningTokens":
+			if _, ok := fieldSeen[usagelog.FieldCompletionReasoningTokens]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldCompletionReasoningTokens)
+				fieldSeen[usagelog.FieldCompletionReasoningTokens] = struct{}{}
+			}
+		case "completionAcceptedPredictionTokens":
+			if _, ok := fieldSeen[usagelog.FieldCompletionAcceptedPredictionTokens]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldCompletionAcceptedPredictionTokens)
+				fieldSeen[usagelog.FieldCompletionAcceptedPredictionTokens] = struct{}{}
+			}
+		case "completionRejectedPredictionTokens":
+			if _, ok := fieldSeen[usagelog.FieldCompletionRejectedPredictionTokens]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldCompletionRejectedPredictionTokens)
+				fieldSeen[usagelog.FieldCompletionRejectedPredictionTokens] = struct{}{}
+			}
+		case "source":
+			if _, ok := fieldSeen[usagelog.FieldSource]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldSource)
+				fieldSeen[usagelog.FieldSource] = struct{}{}
+			}
+		case "format":
+			if _, ok := fieldSeen[usagelog.FieldFormat]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldFormat)
+				fieldSeen[usagelog.FieldFormat] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		ulq.Select(selectedFields...)
+	}
+	return nil
+}
+
+type usagelogPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []UsageLogPaginateOption
+}
+
+func newUsageLogPaginateArgs(rv map[string]any) *usagelogPaginateArgs {
+	args := &usagelogPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &UsageLogOrder{Field: &UsageLogOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithUsageLogOrder(order))
+			}
+		case *UsageLogOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithUsageLogOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*UsageLogWhereInput); ok {
+		args.opts = append(args.opts, WithUsageLogFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
 func (uq *UserQuery) CollectFields(ctx context.Context, satisfies ...string) (*UserQuery, error) {
 	fc := graphql.GetFieldContext(ctx)
 	if fc == nil {
@@ -1700,6 +2098,95 @@ func (uq *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 				query = pager.applyOrder(query)
 			}
 			uq.WithNamedRoles(alias, func(wq *RoleQuery) {
+				*wq = *query
+			})
+
+		case "usageLogs":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&UsageLogClient{config: uq.config}).Query()
+			)
+			args := newUsageLogPaginateArgs(fieldArgs(ctx, new(UsageLogWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newUsageLogPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					uq.loadTotal = append(uq.loadTotal, func(ctx context.Context, nodes []*User) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"user_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(user.UsageLogsColumn), ids...))
+						})
+						if err := query.GroupBy(user.UsageLogsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[3] == nil {
+								nodes[i].Edges.totalCount[3] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[3][alias] = n
+						}
+						return nil
+					})
+				} else {
+					uq.loadTotal = append(uq.loadTotal, func(_ context.Context, nodes []*User) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.UsageLogs)
+							if nodes[i].Edges.totalCount[3] == nil {
+								nodes[i].Edges.totalCount[3] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[3][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, usagelogImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(user.UsageLogsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			uq.WithNamedUsageLogs(alias, func(wq *UsageLogQuery) {
 				*wq = *query
 			})
 		case "createdAt":

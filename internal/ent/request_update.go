@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -150,6 +151,21 @@ func (ru *RequestUpdate) SetChannel(c *Channel) *RequestUpdate {
 	return ru.SetChannelID(c.ID)
 }
 
+// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
+func (ru *RequestUpdate) AddUsageLogIDs(ids ...int) *RequestUpdate {
+	ru.mutation.AddUsageLogIDs(ids...)
+	return ru
+}
+
+// AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
+func (ru *RequestUpdate) AddUsageLogs(u ...*UsageLog) *RequestUpdate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return ru.AddUsageLogIDs(ids...)
+}
+
 // Mutation returns the RequestMutation object of the builder.
 func (ru *RequestUpdate) Mutation() *RequestMutation {
 	return ru.mutation
@@ -180,6 +196,27 @@ func (ru *RequestUpdate) RemoveExecutions(r ...*RequestExecution) *RequestUpdate
 func (ru *RequestUpdate) ClearChannel() *RequestUpdate {
 	ru.mutation.ClearChannel()
 	return ru
+}
+
+// ClearUsageLogs clears all "usage_logs" edges to the UsageLog entity.
+func (ru *RequestUpdate) ClearUsageLogs() *RequestUpdate {
+	ru.mutation.ClearUsageLogs()
+	return ru
+}
+
+// RemoveUsageLogIDs removes the "usage_logs" edge to UsageLog entities by IDs.
+func (ru *RequestUpdate) RemoveUsageLogIDs(ids ...int) *RequestUpdate {
+	ru.mutation.RemoveUsageLogIDs(ids...)
+	return ru
+}
+
+// RemoveUsageLogs removes "usage_logs" edges to UsageLog entities.
+func (ru *RequestUpdate) RemoveUsageLogs(u ...*UsageLog) *RequestUpdate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return ru.RemoveUsageLogIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -363,6 +400,51 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if ru.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.UsageLogsTable,
+			Columns: []string{request.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ru.mutation.RemovedUsageLogsIDs(); len(nodes) > 0 && !ru.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.UsageLogsTable,
+			Columns: []string{request.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ru.mutation.UsageLogsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.UsageLogsTable,
+			Columns: []string{request.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.AddModifiers(ru.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, ru.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -502,6 +584,21 @@ func (ruo *RequestUpdateOne) SetChannel(c *Channel) *RequestUpdateOne {
 	return ruo.SetChannelID(c.ID)
 }
 
+// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
+func (ruo *RequestUpdateOne) AddUsageLogIDs(ids ...int) *RequestUpdateOne {
+	ruo.mutation.AddUsageLogIDs(ids...)
+	return ruo
+}
+
+// AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
+func (ruo *RequestUpdateOne) AddUsageLogs(u ...*UsageLog) *RequestUpdateOne {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return ruo.AddUsageLogIDs(ids...)
+}
+
 // Mutation returns the RequestMutation object of the builder.
 func (ruo *RequestUpdateOne) Mutation() *RequestMutation {
 	return ruo.mutation
@@ -532,6 +629,27 @@ func (ruo *RequestUpdateOne) RemoveExecutions(r ...*RequestExecution) *RequestUp
 func (ruo *RequestUpdateOne) ClearChannel() *RequestUpdateOne {
 	ruo.mutation.ClearChannel()
 	return ruo
+}
+
+// ClearUsageLogs clears all "usage_logs" edges to the UsageLog entity.
+func (ruo *RequestUpdateOne) ClearUsageLogs() *RequestUpdateOne {
+	ruo.mutation.ClearUsageLogs()
+	return ruo
+}
+
+// RemoveUsageLogIDs removes the "usage_logs" edge to UsageLog entities by IDs.
+func (ruo *RequestUpdateOne) RemoveUsageLogIDs(ids ...int) *RequestUpdateOne {
+	ruo.mutation.RemoveUsageLogIDs(ids...)
+	return ruo
+}
+
+// RemoveUsageLogs removes "usage_logs" edges to UsageLog entities.
+func (ruo *RequestUpdateOne) RemoveUsageLogs(u ...*UsageLog) *RequestUpdateOne {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return ruo.RemoveUsageLogIDs(ids...)
 }
 
 // Where appends a list predicates to the RequestUpdate builder.
@@ -738,6 +856,51 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(channel.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if ruo.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.UsageLogsTable,
+			Columns: []string{request.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ruo.mutation.RemovedUsageLogsIDs(); len(nodes) > 0 && !ruo.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.UsageLogsTable,
+			Columns: []string{request.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ruo.mutation.UsageLogsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.UsageLogsTable,
+			Columns: []string{request.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

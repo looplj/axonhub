@@ -292,15 +292,17 @@ func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int)
 	}, nil
 }
 
-// BulkUpdateChannelOrdering updates the ordering weight for multiple channels in a single transaction
+// BulkUpdateChannelOrdering updates the ordering weight for multiple channels in a single transaction.
 func (svc *ChannelService) BulkUpdateChannelOrdering(ctx context.Context, updates []struct {
 	ID             int
 	OrderingWeight int
-}) ([]*ent.Channel, error) {
+},
+) ([]*ent.Channel, error) {
 	tx, err := svc.Ent.Tx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start transaction: %w", err)
 	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
@@ -317,6 +319,7 @@ func (svc *ChannelService) BulkUpdateChannelOrdering(ctx context.Context, update
 		if err != nil {
 			return nil, fmt.Errorf("failed to update channel %d: %w", update.ID, err)
 		}
+
 		updatedChannels = append(updatedChannels, channel)
 	}
 

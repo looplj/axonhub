@@ -79,6 +79,27 @@ func (c *Channel) Executions(
 	return c.QueryExecutions().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (c *Channel) UsageLogs(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UsageLogOrder, where *UsageLogWhereInput,
+) (*UsageLogConnection, error) {
+	opts := []UsageLogPaginateOption{
+		WithUsageLogOrder(orderBy),
+		WithUsageLogFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := c.Edges.totalCount[2][alias]
+	if nodes, err := c.NamedUsageLogs(alias); err == nil || hasTotalCount {
+		pager, err := newUsageLogPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &UsageLogConnection{Edges: []*UsageLogEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return c.QueryUsageLogs().Paginate(ctx, after, first, before, last, opts...)
+}
+
 func (r *Request) User(ctx context.Context) (*User, error) {
 	result, err := r.Edges.UserOrErr()
 	if IsNotLoaded(err) {
@@ -124,6 +145,27 @@ func (r *Request) Channel(ctx context.Context) (*Channel, error) {
 	return result, MaskNotFound(err)
 }
 
+func (r *Request) UsageLogs(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UsageLogOrder, where *UsageLogWhereInput,
+) (*UsageLogConnection, error) {
+	opts := []UsageLogPaginateOption{
+		WithUsageLogOrder(orderBy),
+		WithUsageLogFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := r.Edges.totalCount[4][alias]
+	if nodes, err := r.NamedUsageLogs(alias); err == nil || hasTotalCount {
+		pager, err := newUsageLogPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &UsageLogConnection{Edges: []*UsageLogEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return r.QueryUsageLogs().Paginate(ctx, after, first, before, last, opts...)
+}
+
 func (re *RequestExecution) Request(ctx context.Context) (*Request, error) {
 	result, err := re.Edges.RequestOrErr()
 	if IsNotLoaded(err) {
@@ -159,6 +201,30 @@ func (r *Role) Users(
 		return conn, nil
 	}
 	return r.QueryUsers().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (ul *UsageLog) User(ctx context.Context) (*User, error) {
+	result, err := ul.Edges.UserOrErr()
+	if IsNotLoaded(err) {
+		result, err = ul.QueryUser().Only(ctx)
+	}
+	return result, err
+}
+
+func (ul *UsageLog) Request(ctx context.Context) (*Request, error) {
+	result, err := ul.Edges.RequestOrErr()
+	if IsNotLoaded(err) {
+		result, err = ul.QueryRequest().Only(ctx)
+	}
+	return result, err
+}
+
+func (ul *UsageLog) Channel(ctx context.Context) (*Channel, error) {
+	result, err := ul.Edges.ChannelOrErr()
+	if IsNotLoaded(err) {
+		result, err = ul.QueryChannel().Only(ctx)
+	}
+	return result, MaskNotFound(err)
 }
 
 func (u *User) Requests(
@@ -222,4 +288,25 @@ func (u *User) Roles(
 		return conn, nil
 	}
 	return u.QueryRoles().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (u *User) UsageLogs(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UsageLogOrder, where *UsageLogWhereInput,
+) (*UsageLogConnection, error) {
+	opts := []UsageLogPaginateOption{
+		WithUsageLogOrder(orderBy),
+		WithUsageLogFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := u.Edges.totalCount[3][alias]
+	if nodes, err := u.NamedUsageLogs(alias); err == nil || hasTotalCount {
+		pager, err := newUsageLogPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &UsageLogConnection{Edges: []*UsageLogEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return u.QueryUsageLogs().Paginate(ctx, after, first, before, last, opts...)
 }

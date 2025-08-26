@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 )
 
@@ -87,6 +88,7 @@ func checkColumn(table, column string) error {
 			requestexecution.Table: requestexecution.ValidColumn,
 			role.Table:             role.ValidColumn,
 			system.Table:           system.ValidColumn,
+			usagelog.Table:         usagelog.ValidColumn,
 			user.Table:             user.ValidColumn,
 		})
 	})

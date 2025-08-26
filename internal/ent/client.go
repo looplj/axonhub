@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 )
 
@@ -44,6 +45,8 @@ type Client struct {
 	Role *RoleClient
 	// System is the client for interacting with the System builders.
 	System *SystemClient
+	// UsageLog is the client for interacting with the UsageLog builders.
+	UsageLog *UsageLogClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 	// additional fields for node api
@@ -66,6 +69,7 @@ func (c *Client) init() {
 	c.RequestExecution = NewRequestExecutionClient(c.config)
 	c.Role = NewRoleClient(c.config)
 	c.System = NewSystemClient(c.config)
+	c.UsageLog = NewUsageLogClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -166,6 +170,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		RequestExecution: NewRequestExecutionClient(cfg),
 		Role:             NewRoleClient(cfg),
 		System:           NewSystemClient(cfg),
+		UsageLog:         NewUsageLogClient(cfg),
 		User:             NewUserClient(cfg),
 	}, nil
 }
@@ -193,6 +198,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		RequestExecution: NewRequestExecutionClient(cfg),
 		Role:             NewRoleClient(cfg),
 		System:           NewSystemClient(cfg),
+		UsageLog:         NewUsageLogClient(cfg),
 		User:             NewUserClient(cfg),
 	}, nil
 }
@@ -224,7 +230,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.APIKey, c.Channel, c.Job, c.Request, c.RequestExecution, c.Role, c.System,
-		c.User,
+		c.UsageLog, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -235,7 +241,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.APIKey, c.Channel, c.Job, c.Request, c.RequestExecution, c.Role, c.System,
-		c.User,
+		c.UsageLog, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -258,6 +264,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Role.mutate(ctx, m)
 	case *SystemMutation:
 		return c.System.mutate(ctx, m)
+	case *UsageLogMutation:
+		return c.UsageLog.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
@@ -565,6 +573,22 @@ func (c *ChannelClient) QueryExecutions(ch *Channel) *RequestExecutionQuery {
 			sqlgraph.From(channel.Table, channel.FieldID, id),
 			sqlgraph.To(requestexecution.Table, requestexecution.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, channel.ExecutionsTable, channel.ExecutionsColumn),
+		)
+		fromV = sqlgraph.Neighbors(ch.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryUsageLogs queries the usage_logs edge of a Channel.
+func (c *ChannelClient) QueryUsageLogs(ch *Channel) *UsageLogQuery {
+	query := (&UsageLogClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ch.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, id),
+			sqlgraph.To(usagelog.Table, usagelog.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, channel.UsageLogsTable, channel.UsageLogsColumn),
 		)
 		fromV = sqlgraph.Neighbors(ch.driver.Dialect(), step)
 		return fromV, nil
@@ -898,6 +922,22 @@ func (c *RequestClient) QueryChannel(r *Request) *ChannelQuery {
 			sqlgraph.From(request.Table, request.FieldID, id),
 			sqlgraph.To(channel.Table, channel.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, request.ChannelTable, request.ChannelColumn),
+		)
+		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryUsageLogs queries the usage_logs edge of a Request.
+func (c *RequestClient) QueryUsageLogs(r *Request) *UsageLogQuery {
+	query := (&UsageLogClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := r.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(request.Table, request.FieldID, id),
+			sqlgraph.To(usagelog.Table, usagelog.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, request.UsageLogsTable, request.UsageLogsColumn),
 		)
 		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
 		return fromV, nil
@@ -1383,6 +1423,189 @@ func (c *SystemClient) mutate(ctx context.Context, m *SystemMutation) (Value, er
 	}
 }
 
+// UsageLogClient is a client for the UsageLog schema.
+type UsageLogClient struct {
+	config
+}
+
+// NewUsageLogClient returns a client for the UsageLog from the given config.
+func NewUsageLogClient(c config) *UsageLogClient {
+	return &UsageLogClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `usagelog.Hooks(f(g(h())))`.
+func (c *UsageLogClient) Use(hooks ...Hook) {
+	c.hooks.UsageLog = append(c.hooks.UsageLog, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `usagelog.Intercept(f(g(h())))`.
+func (c *UsageLogClient) Intercept(interceptors ...Interceptor) {
+	c.inters.UsageLog = append(c.inters.UsageLog, interceptors...)
+}
+
+// Create returns a builder for creating a UsageLog entity.
+func (c *UsageLogClient) Create() *UsageLogCreate {
+	mutation := newUsageLogMutation(c.config, OpCreate)
+	return &UsageLogCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of UsageLog entities.
+func (c *UsageLogClient) CreateBulk(builders ...*UsageLogCreate) *UsageLogCreateBulk {
+	return &UsageLogCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *UsageLogClient) MapCreateBulk(slice any, setFunc func(*UsageLogCreate, int)) *UsageLogCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &UsageLogCreateBulk{err: fmt.Errorf("calling to UsageLogClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*UsageLogCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &UsageLogCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for UsageLog.
+func (c *UsageLogClient) Update() *UsageLogUpdate {
+	mutation := newUsageLogMutation(c.config, OpUpdate)
+	return &UsageLogUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *UsageLogClient) UpdateOne(ul *UsageLog) *UsageLogUpdateOne {
+	mutation := newUsageLogMutation(c.config, OpUpdateOne, withUsageLog(ul))
+	return &UsageLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *UsageLogClient) UpdateOneID(id int) *UsageLogUpdateOne {
+	mutation := newUsageLogMutation(c.config, OpUpdateOne, withUsageLogID(id))
+	return &UsageLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for UsageLog.
+func (c *UsageLogClient) Delete() *UsageLogDelete {
+	mutation := newUsageLogMutation(c.config, OpDelete)
+	return &UsageLogDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *UsageLogClient) DeleteOne(ul *UsageLog) *UsageLogDeleteOne {
+	return c.DeleteOneID(ul.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *UsageLogClient) DeleteOneID(id int) *UsageLogDeleteOne {
+	builder := c.Delete().Where(usagelog.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &UsageLogDeleteOne{builder}
+}
+
+// Query returns a query builder for UsageLog.
+func (c *UsageLogClient) Query() *UsageLogQuery {
+	return &UsageLogQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeUsageLog},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a UsageLog entity by its id.
+func (c *UsageLogClient) Get(ctx context.Context, id int) (*UsageLog, error) {
+	return c.Query().Where(usagelog.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *UsageLogClient) GetX(ctx context.Context, id int) *UsageLog {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a UsageLog.
+func (c *UsageLogClient) QueryUser(ul *UsageLog) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ul.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(usagelog.Table, usagelog.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.UserTable, usagelog.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(ul.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRequest queries the request edge of a UsageLog.
+func (c *UsageLogClient) QueryRequest(ul *UsageLog) *RequestQuery {
+	query := (&RequestClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ul.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(usagelog.Table, usagelog.FieldID, id),
+			sqlgraph.To(request.Table, request.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.RequestTable, usagelog.RequestColumn),
+		)
+		fromV = sqlgraph.Neighbors(ul.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryChannel queries the channel edge of a UsageLog.
+func (c *UsageLogClient) QueryChannel(ul *UsageLog) *ChannelQuery {
+	query := (&ChannelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := ul.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(usagelog.Table, usagelog.FieldID, id),
+			sqlgraph.To(channel.Table, channel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.ChannelTable, usagelog.ChannelColumn),
+		)
+		fromV = sqlgraph.Neighbors(ul.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *UsageLogClient) Hooks() []Hook {
+	hooks := c.hooks.UsageLog
+	return append(hooks[:len(hooks):len(hooks)], usagelog.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *UsageLogClient) Interceptors() []Interceptor {
+	inters := c.inters.UsageLog
+	return append(inters[:len(inters):len(inters)], usagelog.Interceptors[:]...)
+}
+
+func (c *UsageLogClient) mutate(ctx context.Context, m *UsageLogMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&UsageLogCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&UsageLogUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&UsageLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&UsageLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown UsageLog mutation op: %q", m.Op())
+	}
+}
+
 // UserClient is a client for the User schema.
 type UserClient struct {
 	config
@@ -1539,6 +1762,22 @@ func (c *UserClient) QueryRoles(u *User) *RoleQuery {
 	return query
 }
 
+// QueryUsageLogs queries the usage_logs edge of a User.
+func (c *UserClient) QueryUsageLogs(u *User) *UsageLogQuery {
+	query := (&UsageLogClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(usagelog.Table, usagelog.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.UsageLogsTable, user.UsageLogsColumn),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	hooks := c.hooks.User
@@ -1569,10 +1808,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, Channel, Job, Request, RequestExecution, Role, System, User []ent.Hook
+		APIKey, Channel, Job, Request, RequestExecution, Role, System, UsageLog,
+		User []ent.Hook
 	}
 	inters struct {
-		APIKey, Channel, Job, Request, RequestExecution, Role, System,
+		APIKey, Channel, Job, Request, RequestExecution, Role, System, UsageLog,
 		User []ent.Interceptor
 	}
 )

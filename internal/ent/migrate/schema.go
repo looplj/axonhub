@@ -251,6 +251,91 @@ var (
 		Columns:    SystemsColumns,
 		PrimaryKey: []*schema.Column{SystemsColumns[0]},
 	}
+	// UsageLogsColumns holds the columns for the "usage_logs" table.
+	UsageLogsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "model_id", Type: field.TypeString},
+		{Name: "prompt_tokens", Type: field.TypeInt, Default: 0},
+		{Name: "completion_tokens", Type: field.TypeInt, Default: 0},
+		{Name: "total_tokens", Type: field.TypeInt, Default: 0},
+		{Name: "prompt_audio_tokens", Type: field.TypeInt, Nullable: true, Default: 0},
+		{Name: "prompt_cached_tokens", Type: field.TypeInt, Nullable: true, Default: 0},
+		{Name: "completion_audio_tokens", Type: field.TypeInt, Nullable: true, Default: 0},
+		{Name: "completion_reasoning_tokens", Type: field.TypeInt, Nullable: true, Default: 0},
+		{Name: "completion_accepted_prediction_tokens", Type: field.TypeInt, Nullable: true, Default: 0},
+		{Name: "completion_rejected_prediction_tokens", Type: field.TypeInt, Nullable: true, Default: 0},
+		{Name: "source", Type: field.TypeEnum, Enums: []string{"api", "playground", "test"}, Default: "api"},
+		{Name: "format", Type: field.TypeString, Default: "openai/chat_completions"},
+		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
+		{Name: "request_id", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt},
+	}
+	// UsageLogsTable holds the schema information for the "usage_logs" table.
+	UsageLogsTable = &schema.Table{
+		Name:       "usage_logs",
+		Columns:    UsageLogsColumns,
+		PrimaryKey: []*schema.Column{UsageLogsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "usage_logs_channels_usage_logs",
+				Columns:    []*schema.Column{UsageLogsColumns[16]},
+				RefColumns: []*schema.Column{ChannelsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "usage_logs_requests_usage_logs",
+				Columns:    []*schema.Column{UsageLogsColumns[17]},
+				RefColumns: []*schema.Column{RequestsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "usage_logs_users_usage_logs",
+				Columns:    []*schema.Column{UsageLogsColumns[18]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "usage_logs_by_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[18]},
+			},
+			{
+				Name:    "usage_logs_by_request_id",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[17]},
+			},
+			{
+				Name:    "usage_logs_by_channel_id",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[16]},
+			},
+			{
+				Name:    "usage_logs_by_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[1]},
+			},
+			{
+				Name:    "usage_logs_by_model_id",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[4]},
+			},
+			{
+				Name:    "usage_logs_by_user_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[18], UsageLogsColumns[1]},
+			},
+			{
+				Name:    "usage_logs_by_channel_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[16], UsageLogsColumns[1]},
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -307,6 +392,7 @@ var (
 		RequestExecutionsTable,
 		RolesTable,
 		SystemsTable,
+		UsageLogsTable,
 		UsersTable,
 		UserRolesTable,
 	}
@@ -319,6 +405,9 @@ func init() {
 	RequestsTable.ForeignKeys[2].RefTable = UsersTable
 	RequestExecutionsTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestExecutionsTable.ForeignKeys[1].RefTable = RequestsTable
+	UsageLogsTable.ForeignKeys[0].RefTable = ChannelsTable
+	UsageLogsTable.ForeignKeys[1].RefTable = RequestsTable
+	UsageLogsTable.ForeignKeys[2].RefTable = UsersTable
 	UserRolesTable.ForeignKeys[0].RefTable = UsersTable
 	UserRolesTable.ForeignKeys[1].RefTable = RolesTable
 }

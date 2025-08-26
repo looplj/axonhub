@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 )
 
@@ -2145,6 +2146,302 @@ func (s *System) ToEdge(order *SystemOrder) *SystemEdge {
 	return &SystemEdge{
 		Node:   s,
 		Cursor: order.Field.toCursor(s),
+	}
+}
+
+// UsageLogEdge is the edge representation of UsageLog.
+type UsageLogEdge struct {
+	Node   *UsageLog `json:"node"`
+	Cursor Cursor    `json:"cursor"`
+}
+
+// UsageLogConnection is the connection containing edges to UsageLog.
+type UsageLogConnection struct {
+	Edges      []*UsageLogEdge `json:"edges"`
+	PageInfo   PageInfo        `json:"pageInfo"`
+	TotalCount int             `json:"totalCount"`
+}
+
+func (c *UsageLogConnection) build(nodes []*UsageLog, pager *usagelogPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *UsageLog
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *UsageLog {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *UsageLog {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*UsageLogEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &UsageLogEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// UsageLogPaginateOption enables pagination customization.
+type UsageLogPaginateOption func(*usagelogPager) error
+
+// WithUsageLogOrder configures pagination ordering.
+func WithUsageLogOrder(order *UsageLogOrder) UsageLogPaginateOption {
+	if order == nil {
+		order = DefaultUsageLogOrder
+	}
+	o := *order
+	return func(pager *usagelogPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultUsageLogOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithUsageLogFilter configures pagination filter.
+func WithUsageLogFilter(filter func(*UsageLogQuery) (*UsageLogQuery, error)) UsageLogPaginateOption {
+	return func(pager *usagelogPager) error {
+		if filter == nil {
+			return errors.New("UsageLogQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type usagelogPager struct {
+	reverse bool
+	order   *UsageLogOrder
+	filter  func(*UsageLogQuery) (*UsageLogQuery, error)
+}
+
+func newUsageLogPager(opts []UsageLogPaginateOption, reverse bool) (*usagelogPager, error) {
+	pager := &usagelogPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultUsageLogOrder
+	}
+	return pager, nil
+}
+
+func (p *usagelogPager) applyFilter(query *UsageLogQuery) (*UsageLogQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *usagelogPager) toCursor(ul *UsageLog) Cursor {
+	return p.order.Field.toCursor(ul)
+}
+
+func (p *usagelogPager) applyCursors(query *UsageLogQuery, after, before *Cursor) (*UsageLogQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultUsageLogOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *usagelogPager) applyOrder(query *UsageLogQuery) *UsageLogQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultUsageLogOrder.Field {
+		query = query.Order(DefaultUsageLogOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *usagelogPager) orderExpr(query *UsageLogQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultUsageLogOrder.Field {
+			b.Comma().Ident(DefaultUsageLogOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to UsageLog.
+func (ul *UsageLogQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...UsageLogPaginateOption,
+) (*UsageLogConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newUsageLogPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if ul, err = pager.applyFilter(ul); err != nil {
+		return nil, err
+	}
+	conn := &UsageLogConnection{Edges: []*UsageLogEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := ul.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if ul, err = pager.applyCursors(ul, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		ul.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := ul.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	ul = pager.applyOrder(ul)
+	nodes, err := ul.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// UsageLogOrderFieldCreatedAt orders UsageLog by created_at.
+	UsageLogOrderFieldCreatedAt = &UsageLogOrderField{
+		Value: func(ul *UsageLog) (ent.Value, error) {
+			return ul.CreatedAt, nil
+		},
+		column: usagelog.FieldCreatedAt,
+		toTerm: usagelog.ByCreatedAt,
+		toCursor: func(ul *UsageLog) Cursor {
+			return Cursor{
+				ID:    ul.ID,
+				Value: ul.CreatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f UsageLogOrderField) String() string {
+	var str string
+	switch f.column {
+	case UsageLogOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f UsageLogOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *UsageLogOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("UsageLogOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *UsageLogOrderFieldCreatedAt
+	default:
+		return fmt.Errorf("%s is not a valid UsageLogOrderField", str)
+	}
+	return nil
+}
+
+// UsageLogOrderField defines the ordering field of UsageLog.
+type UsageLogOrderField struct {
+	// Value extracts the ordering value from the given UsageLog.
+	Value    func(*UsageLog) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) usagelog.OrderOption
+	toCursor func(*UsageLog) Cursor
+}
+
+// UsageLogOrder defines the ordering of UsageLog.
+type UsageLogOrder struct {
+	Direction OrderDirection      `json:"direction"`
+	Field     *UsageLogOrderField `json:"field"`
+}
+
+// DefaultUsageLogOrder is the default ordering of UsageLog.
+var DefaultUsageLogOrder = &UsageLogOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &UsageLogOrderField{
+		Value: func(ul *UsageLog) (ent.Value, error) {
+			return ul.ID, nil
+		},
+		column: usagelog.FieldID,
+		toTerm: usagelog.ByID,
+		toCursor: func(ul *UsageLog) Cursor {
+			return Cursor{ID: ul.ID}
+		},
+	},
+}
+
+// ToEdge converts UsageLog into UsageLogEdge.
+func (ul *UsageLog) ToEdge(order *UsageLogOrder) *UsageLogEdge {
+	if order == nil {
+		order = DefaultUsageLogOrder
+	}
+	return &UsageLogEdge{
+		Node:   ul,
+		Cursor: order.Field.toCursor(ul),
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -189,6 +190,21 @@ func (rc *RequestCreate) AddExecutions(r ...*RequestExecution) *RequestCreate {
 // SetChannel sets the "channel" edge to the Channel entity.
 func (rc *RequestCreate) SetChannel(c *Channel) *RequestCreate {
 	return rc.SetChannelID(c.ID)
+}
+
+// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
+func (rc *RequestCreate) AddUsageLogIDs(ids ...int) *RequestCreate {
+	rc.mutation.AddUsageLogIDs(ids...)
+	return rc
+}
+
+// AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
+func (rc *RequestCreate) AddUsageLogs(u ...*UsageLog) *RequestCreate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return rc.AddUsageLogIDs(ids...)
 }
 
 // Mutation returns the RequestMutation object of the builder.
@@ -431,6 +447,22 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.ChannelID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := rc.mutation.UsageLogsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.UsageLogsTable,
+			Columns: []string{request.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

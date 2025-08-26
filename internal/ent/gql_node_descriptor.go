@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 )
 
@@ -138,7 +139,7 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 		ID:     c.ID,
 		Type:   "Channel",
 		Fields: make([]*Field, 12),
-		Edges:  make([]*Edge, 2),
+		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(c.CreatedAt); err != nil {
@@ -257,6 +258,16 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if err != nil {
 		return nil, err
 	}
+	node.Edges[2] = &Edge{
+		Type: "UsageLog",
+		Name: "usage_logs",
+	}
+	err = c.QueryUsageLogs().
+		Select(usagelog.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
 	return node, nil
 }
 
@@ -302,7 +313,7 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 		ID:     r.ID,
 		Type:   "Request",
 		Fields: make([]*Field, 13),
-		Edges:  make([]*Edge, 4),
+		Edges:  make([]*Edge, 5),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(r.CreatedAt); err != nil {
@@ -446,6 +457,16 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 	err = r.QueryChannel().
 		Select(channel.FieldID).
 		Scan(ctx, &node.Edges[3].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[4] = &Edge{
+		Type: "UsageLog",
+		Name: "usage_logs",
+	}
+	err = r.QueryUsageLogs().
+		Select(usagelog.FieldID).
+		Scan(ctx, &node.Edges[4].IDs)
 	if err != nil {
 		return nil, err
 	}
@@ -703,12 +724,198 @@ func (s *System) Node(ctx context.Context) (node *Node, err error) {
 }
 
 // Node implements Noder interface
+func (ul *UsageLog) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     ul.ID,
+		Type:   "UsageLog",
+		Fields: make([]*Field, 18),
+		Edges:  make([]*Edge, 3),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(ul.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.DeletedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "deleted_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.UserID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "user_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.RequestID); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "int",
+		Name:  "request_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.ChannelID); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "int",
+		Name:  "channel_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.ModelID); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "string",
+		Name:  "model_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.PromptTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "int",
+		Name:  "prompt_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.CompletionTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "int",
+		Name:  "completion_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.TotalTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "int",
+		Name:  "total_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.PromptAudioTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[10] = &Field{
+		Type:  "int",
+		Name:  "prompt_audio_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.PromptCachedTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[11] = &Field{
+		Type:  "int",
+		Name:  "prompt_cached_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.CompletionAudioTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[12] = &Field{
+		Type:  "int",
+		Name:  "completion_audio_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.CompletionReasoningTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[13] = &Field{
+		Type:  "int",
+		Name:  "completion_reasoning_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.CompletionAcceptedPredictionTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[14] = &Field{
+		Type:  "int",
+		Name:  "completion_accepted_prediction_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.CompletionRejectedPredictionTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[15] = &Field{
+		Type:  "int",
+		Name:  "completion_rejected_prediction_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.Source); err != nil {
+		return nil, err
+	}
+	node.Fields[16] = &Field{
+		Type:  "usagelog.Source",
+		Name:  "source",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ul.Format); err != nil {
+		return nil, err
+	}
+	node.Fields[17] = &Field{
+		Type:  "string",
+		Name:  "format",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "User",
+		Name: "user",
+	}
+	err = ul.QueryUser().
+		Select(user.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "Request",
+		Name: "request",
+	}
+	err = ul.QueryRequest().
+		Select(request.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "Channel",
+		Name: "channel",
+	}
+	err = ul.QueryChannel().
+		Select(channel.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
 func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     u.ID,
 		Type:   "User",
 		Fields: make([]*Field, 12),
-		Edges:  make([]*Edge, 3),
+		Edges:  make([]*Edge, 4),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(u.CreatedAt); err != nil {
@@ -834,6 +1041,16 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	err = u.QueryRoles().
 		Select(role.FieldID).
 		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[3] = &Edge{
+		Type: "UsageLog",
+		Name: "usage_logs",
+	}
+	err = u.QueryUsageLogs().
+		Select(usagelog.FieldID).
+		Scan(ctx, &node.Edges[3].IDs)
 	if err != nil {
 		return nil, err
 	}

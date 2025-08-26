@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"golang.org/x/sync/semaphore"
 )
@@ -65,6 +66,11 @@ var systemImplementors = []string{"System", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*System) IsNode() {}
+
+var usagelogImplementors = []string{"UsageLog", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*UsageLog) IsNode() {}
 
 var userImplementors = []string{"User", "Node"}
 
@@ -188,6 +194,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(system.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, systemImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case usagelog.Table:
+		query := c.UsageLog.Query().
+			Where(usagelog.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, usagelogImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -374,6 +389,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.System.Query().
 			Where(system.IDIn(ids...))
 		query, err := query.CollectFields(ctx, systemImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case usagelog.Table:
+		query := c.UsageLog.Query().
+			Where(usagelog.IDIn(ids...))
+		query, err := query.CollectFields(ctx, usagelogImplementors...)
 		if err != nil {
 			return nil, err
 		}

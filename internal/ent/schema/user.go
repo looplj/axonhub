@@ -59,6 +59,11 @@ func (User) Edges() []ent.Edge {
 			Annotations(
 				entgql.RelayConnection(),
 			),
+		edge.To("usage_logs", UsageLog.Type).
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entgql.RelayConnection(),
+			),
 	}
 }
 
@@ -76,10 +81,12 @@ func (User) Policy() ent.Policy {
 		Query: scopes.QueryPolicy{
 			scopes.OwnerRule(), // owner 用户可以访问所有用户
 			scopes.UserReadScopeRule(scopes.ScopeReadUsers), // 需要 users 读取权限
+			scopes.UserOwnedQueryRule(),                     // 用户可以查询自己的信息
 		},
 		Mutation: scopes.MutationPolicy{
 			scopes.OwnerRule(), // owner 用户可以修改所有用户
 			scopes.UserWriteScopeRule(scopes.ScopeWriteUsers), // 需要 users 写入权限
+			scopes.UserOwnedMutationRule(),                    // 用户可以修改自己的信息
 		},
 	}
 }
