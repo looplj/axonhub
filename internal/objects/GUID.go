@@ -16,7 +16,7 @@ type GUID struct {
 }
 
 func (guid GUID) MarshalGQL(w io.Writer) {
-	_, _ = io.WriteString(w, strconv.Quote(fmt.Sprintf("gid://%s/%d", guid.Type, guid.ID)))
+	_, _ = io.WriteString(w, strconv.Quote(fmt.Sprintf("gid://axonhub/%s/%d", guid.Type, guid.ID)))
 }
 
 func (guid *GUID) UnmarshalGQL(v any) error {
@@ -29,11 +29,11 @@ func (guid *GUID) UnmarshalGQL(v any) error {
 		return errors.New("guid is empty")
 	}
 
-	if !strings.HasPrefix(str, "gid://") {
-		return errors.New("guid must start with gid://")
+	if !strings.HasPrefix(str, "gid://axonhub/") {
+		return errors.New("guid must start with gid://axonhub/")
 	}
 
-	str = str[6:]
+	str = str[14:] // Remove "gid://axonhub/" prefix
 
 	idx := strings.Index(str, "/")
 	if idx == -1 {
@@ -64,6 +64,8 @@ func ParseGUID(str string) (GUID, error) {
 	return guid, nil
 }
 
+// ConvertGUIDToInt converts a GUID to an int id.
+// TODO: validate the type from the context.
 func ConvertGUIDToInt(guid GUID) (int, error) {
 	return guid.ID, nil
 }

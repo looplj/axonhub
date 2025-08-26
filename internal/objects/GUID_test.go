@@ -22,7 +22,7 @@ func TestGUID_MarshalGQL(t *testing.T) {
 				Type: "type",
 				UUID: 1,
 			},
-			wantW: `"gid://type/1"`,
+			wantW: `"gid://axonhub/type/1"`,
 		},
 	}
 	for _, tt := range tests {
@@ -64,7 +64,7 @@ func TestGUID_UnmarshalGQL(t *testing.T) {
 				ID:   1,
 			},
 			args: args{
-				v: "gid://type/1",
+				v: "gid://axonhub/type/1",
 			},
 		},
 		{
@@ -85,7 +85,7 @@ func TestGUID_UnmarshalGQL(t *testing.T) {
 				ID:   0,
 			},
 			args: args{
-				v: "gid://type/invalid",
+				v: "gid://axonhub/type/invalid",
 			},
 			wantErr: true,
 		},
@@ -97,6 +97,28 @@ func TestGUID_UnmarshalGQL(t *testing.T) {
 			},
 			args: args{
 				v: "guid://invalid/1",
+			},
+			wantErr: true,
+		},
+		{
+			name: "old format should fail",
+			fields: fields{
+				Type: "type",
+				ID:   0,
+			},
+			args: args{
+				v: "gid://type/1",
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing axonhub namespace",
+			fields: fields{
+				Type: "type",
+				ID:   0,
+			},
+			args: args{
+				v: "gid://other/type/1",
 			},
 			wantErr: true,
 		},

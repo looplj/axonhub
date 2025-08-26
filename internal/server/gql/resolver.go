@@ -8,15 +8,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-var guidTypeToNodeType = map[string]string{
-	"APIKey":  "api_keys",
-	"User":    "users",
-	"Channel": "channels",
-	"Job":     "jobs",
-	"Request": "requests",
-	"Role":    "roles",
-}
-
 // This file will not be regenerated automatically.
 //
 // It serves as dependency injection for your app, add any dependencies you require here.
