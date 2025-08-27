@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { useMe } from '@/features/auth/data/auth'
 import { useUsers } from '@/features/users/data/users'
 import { RequestStatus } from '../data/schema'
-import { DataTableFacetedFilter } from './data-table-faceted-filter'
+import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { DataTableViewOptions } from './data-table-view-options'
 
 interface DataTableToolbarProps<TData> {

@@ -54,6 +54,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
     },
     {
       id: 'user',
+      accessorKey: 'user',
       header: ({ column }) => (
         <DataTableColumnHeader 
           column={column} 
@@ -100,6 +101,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
     },
     {
       id: 'channel',
+      accessorKey: 'channel',
       header: ({ column }) => (
         <DataTableColumnHeader 
           column={column} 
@@ -156,12 +158,12 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
         return (
           <div className='text-sm space-y-1'>
             <div className='flex items-center gap-1'>
-              <span className='text-xs text-muted-foreground'>总计:</span>
+              <span className='text-xs text-muted-foreground'>{t('usageLogs.columns.totalLabel')}</span>
               <span className='font-medium'>{usage.totalTokens.toLocaleString()}</span>
             </div>
             <div className='flex items-center gap-2 text-xs text-muted-foreground'>
-              <span>输入: {usage.promptTokens.toLocaleString()}</span>
-              <span>输出: {usage.completionTokens.toLocaleString()}</span>
+              <span>{t('usageLogs.columns.inputLabel')} {usage.promptTokens.toLocaleString()}</span>
+              <span>{t('usageLogs.columns.outputLabel')} {usage.completionTokens.toLocaleString()}</span>
             </div>
           </div>
         )
@@ -170,6 +172,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
     },
     {
       id: 'source',
+      accessorKey: 'source',
       header: ({ column }) => (
         <DataTableColumnHeader 
           column={column} 

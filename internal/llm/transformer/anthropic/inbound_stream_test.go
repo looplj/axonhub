@@ -291,7 +291,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 
 			// Test aggregation
-			aggregatedBytes, err := transformer.AggregateStreamChunks(t.Context(), actualEvents)
+			aggregatedBytes, _, err := transformer.AggregateStreamChunks(t.Context(), actualEvents)
 			require.NoError(t, err)
 
 			var aggregatedResp Message

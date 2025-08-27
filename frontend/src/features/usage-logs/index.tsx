@@ -28,10 +28,7 @@ function UsageLogsContent() {
     const where: any = {}
     
     if (userFilter) {
-      const userId = extractNumberID(userFilter)
-      if (userId) {
-        where.userID = parseInt(userId)
-      }
+        where.userID = parseInt(userFilter)
     }
     
     if (sourceFilter.length > 0) {
@@ -39,7 +36,7 @@ function UsageLogsContent() {
     }
     
     if (channelFilter.length > 0) {
-      where.channelIDIn = channelFilter.map(id => extractNumberID(id)).filter(Boolean).map(Number)
+      where.channelIDIn = channelFilter;
     }
     
     return Object.keys(where).length > 0 ? where : undefined

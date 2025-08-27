@@ -333,7 +333,7 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := transformer.AggregateStreamChunks(t.Context(), tt.chunks)
+			resp, _, err := transformer.AggregateStreamChunks(t.Context(), tt.chunks)
 
 			if tt.wantErr {
 				if err == nil {

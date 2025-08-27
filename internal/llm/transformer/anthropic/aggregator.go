@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/samber/lo"
+	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
-func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, error) {
+func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, *llm.Usage, error) {
 	if len(chunks) == 0 {
-		return nil, errors.New("empty stream chunks")
+		return nil, nil, errors.New("empty stream chunks")
 	}
 
 	var (
@@ -168,5 +170,14 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		}
 	}
 
-	return json.Marshal(message)
+	data, err := json.Marshal(message)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Convert and return usage if available
+	if usage != nil {
+		return data, lo.ToPtr(convertUsage(*usage)), nil
+	}
+	return data, nil, nil
 }

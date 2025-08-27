@@ -278,7 +278,7 @@ func (t *OutboundTransformer) TransformResponse(
 func (t *OutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
-) ([]byte, error) {
+) ([]byte, *llm.Usage, error) {
 	return AggregateStreamChunks(ctx, chunks)
 }
 

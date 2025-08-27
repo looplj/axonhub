@@ -82,7 +82,7 @@ func TestOutboundTransformer_StreamTransformation_WithTestData_Stop(t *testing.T
 	}
 
 	// // Test aggregation as well
-	aggregatedBytes, err := AggregateStreamChunks(t.Context(), streamEvents)
+	aggregatedBytes, _, err := AggregateStreamChunks(t.Context(), streamEvents)
 	require.NoError(t, err)
 
 	var aggregatedResp Message

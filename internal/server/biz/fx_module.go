@@ -9,4 +9,5 @@ var Module = fx.Module("biz",
 	fx.Provide(NewAuthService),
 	fx.Provide(NewChannelService),
 	fx.Provide(NewRequestService),
+	fx.Provide(NewUsageLogService),
 )

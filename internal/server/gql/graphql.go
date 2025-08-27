@@ -13,6 +13,15 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/job"
+	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -51,4 +60,16 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 		Graphql:    gqlSrv,
 		Playground: playground.Handler("AxonHub", "/admin/graphql"),
 	}
+}
+
+var guidTypeToNodeType = map[string]string{
+	ent.TypeUser:             user.Table,
+	ent.TypeAPIKey:           apikey.Table,
+	ent.TypeChannel:          channel.Table,
+	ent.TypeJob:              job.Table,
+	ent.TypeRequest:          request.Table,
+	ent.TypeRequestExecution: requestexecution.Table,
+	ent.TypeRole:             role.Table,
+	ent.TypeSystem:           system.Table,
+	ent.TypeUsageLog:         usagelog.Table,
 }

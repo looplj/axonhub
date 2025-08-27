@@ -295,8 +295,9 @@ func (t *TextTransformer) TransformStreamChunk(
 func (t *TextTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
-) ([]byte, error) {
-	return []byte(`{}`), nil
+) ([]byte, *llm.Usage, error) {
+	//TODO: support.
+	return []byte(`{}`), nil, nil
 }
 
 func (t *TextTransformer) TransformError(ctx context.Context, rawErr *llm.ResponseError) *httpclient.Error {
@@ -308,69 +309,3 @@ func (t *TextTransformer) TransformError(ctx context.Context, rawErr *llm.Respon
 		Body:       body,
 	}
 }
-
-// // AggregateStreamChunks aggregates streaming response chunks into a complete response.
-// func (t *InboundTransformer) AggregateStreamChunks(
-// 	ctx context.Context,
-// 	chunks []*llm.Response,
-// ) ([]byte, error) {
-// 	if len(chunks) == 0 {
-// 		return []byte(""), nil
-// 	}
-
-// 	// For AI SDK inbound, we aggregate the unified response chunks into AI SDK data stream format
-// 	var (
-// 		aggregatedContent strings.Builder
-// 		lastChunk         *llm.Response
-// 	)
-
-// 	for _, chunk := range chunks {
-// 		if chunk == nil {
-// 			continue
-// 		}
-
-// 		// Extract content from the chunk
-// 		if len(chunk.Choices) > 0 && chunk.Choices[0].Message != nil {
-// 			if chunk.Choices[0].Message.Content.Content != nil {
-// 				aggregatedContent.WriteString(*chunk.Choices[0].Message.Content.Content)
-// 			}
-// 		} else if len(chunk.Choices) > 0 && chunk.Choices[0].Delta != nil {
-// 			if chunk.Choices[0].Delta.Content.Content != nil {
-// 				aggregatedContent.WriteString(*chunk.Choices[0].Delta.Content.Content)
-// 			}
-// 		}
-
-// 		// Keep the last chunk for metadata
-// 		lastChunk = chunk
-// 	}
-
-// 	// Create AI SDK data stream format for the complete response
-// 	var streamData []string
-
-// 	// Add the complete text content
-// 	if aggregatedContent.Len() > 0 {
-// 		textData := map[string]interface{}{
-// 			"text": aggregatedContent.String(),
-// 		}
-// 		textJSON, _ := json.Marshal(textData)
-// 		streamData = append(streamData, fmt.Sprintf("0:%s\n", string(textJSON)))
-// 	}
-
-// 	// Add finish reason and usage if available
-// 	if lastChunk != nil {
-// 		finishData := map[string]interface{}{
-// 			"finishReason": "stop",
-// 		}
-// 		if lastChunk.Usage != nil {
-// 			finishData["usage"] = lastChunk.Usage
-// 		}
-
-// 		finishJSON, _ := json.Marshal(finishData)
-// 		streamData = append(streamData, fmt.Sprintf("e:%s\n", string(finishJSON)))
-// 	}
-
-// 	// Join all stream data
-// 	eventData := strings.Join(streamData, "")
-
-// 	return []byte(eventData), nil
-// }

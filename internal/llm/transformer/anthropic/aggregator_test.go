@@ -122,7 +122,7 @@ func TestAggregateStreamChunks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resultBytes, err := AggregateStreamChunks(t.Context(), tt.chunks)
+			resultBytes, _, err := AggregateStreamChunks(t.Context(), tt.chunks)
 			tt.assertErr(t, err)
 
 			if tt.expected == "" {
@@ -816,7 +816,7 @@ func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				resultBytes, err := AggregateStreamChunks(t.Context(), tt.chunks)
+				resultBytes, _, err := AggregateStreamChunks(t.Context(), tt.chunks)
 				if tt.expectError {
 					require.Error(t, err)
 
@@ -873,7 +873,7 @@ func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 			require.NoError(t, err)
 
 			// Run the aggregation
-			resultBytes, err := AggregateStreamChunks(t.Context(), streamData)
+			resultBytes, _, err := AggregateStreamChunks(t.Context(), streamData)
 			require.NoError(t, err)
 			require.NotNil(t, resultBytes)
 

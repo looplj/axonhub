@@ -123,9 +123,10 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 					log.String("type", c.Type.String()),
 					log.Cause(err),
 				)
-
 				continue
 			}
+
+			log.Debug(ctx, "created openai outbound transformer", log.String("channel", c.Name))
 
 			channels = append(channels, &Channel{
 				Channel:  c,
@@ -137,6 +138,8 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				log.Warn(ctx, "failed to create anthropic outbound transformer", log.Cause(err))
 				continue
 			}
+
+			log.Debug(ctx, "created anthropic outbound transformer", log.String("channel", c.Name))
 
 			channels = append(channels, &Channel{
 				Channel:  c,
@@ -155,6 +158,8 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				log.Warn(ctx, "failed to create anthropic aws outbound transformer", log.Cause(err))
 				continue
 			}
+
+			log.Debug(ctx, "created anthropic aws outbound transformer", log.String("channel", c.Name))
 
 			channels = append(channels, &Channel{
 				Channel:  c,
@@ -179,6 +184,8 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				continue
 			}
 
+			log.Debug(ctx, "created anthropic vertex outbound transformer", log.String("channel", c.Name))
+
 			channels = append(channels, &Channel{
 				Channel:  c,
 				Outbound: transformer,
@@ -187,6 +194,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 			// For anthropic_fake, we use the fake transformer for testing
 			fakeTransformer := anthropic.NewFakeTransformer()
 
+			log.Debug(ctx, "created anthropic fake outbound transformer", log.String("channel", c.Name))
 			channels = append(channels, &Channel{
 				Channel:  c,
 				Outbound: fakeTransformer,
@@ -197,6 +205,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				Channel:  c,
 				Outbound: fakeTransformer,
 			})
+			log.Debug(ctx, "created openai fake outbound transformer", log.String("channel", c.Name))
 		}
 	}
 

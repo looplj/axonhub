@@ -18,13 +18,15 @@ import (
 
 // RequestService handles request and request execution operations.
 type RequestService struct {
-	SystemService *SystemService
+	SystemService   *SystemService
+	UsageLogService *UsageLogService
 }
 
 // NewRequestService creates a new RequestService.
-func NewRequestService(systemService *SystemService) *RequestService {
+func NewRequestService(systemService *SystemService, usageLogService *UsageLogService) *RequestService {
 	return &RequestService{
-		SystemService: systemService,
+		SystemService:   systemService,
+		UsageLogService: usageLogService,
 	}
 }
 

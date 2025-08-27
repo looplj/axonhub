@@ -19,11 +19,15 @@ import (
 //
 //nolint:containedctx // Checked.
 type OutboundPersistentStream struct {
-	ctx            context.Context
-	stream         streams.Stream[*httpclient.StreamEvent]
-	request        *ent.Request
-	requestExec    *ent.RequestExecution
-	requestService *biz.RequestService
+	ctx context.Context
+
+	RequestService  *biz.RequestService
+	UsageLogService *biz.UsageLogService
+
+	stream      streams.Stream[*httpclient.StreamEvent]
+	request     *ent.Request
+	requestExec *ent.RequestExecution
+
 	transformer    transformer.Outbound
 	responseChunks []*httpclient.StreamEvent
 	closed         bool
@@ -37,17 +41,19 @@ func NewOutboundPersistentStream(
 	request *ent.Request,
 	requestExec *ent.RequestExecution,
 	requestService *biz.RequestService,
+	usageLogService *biz.UsageLogService,
 	outboundTransformer transformer.Outbound,
 ) *OutboundPersistentStream {
 	return &OutboundPersistentStream{
-		ctx:            ctx,
-		stream:         stream,
-		request:        request,
-		requestExec:    requestExec,
-		requestService: requestService,
-		transformer:    outboundTransformer,
-		responseChunks: make([]*httpclient.StreamEvent, 0),
-		closed:         false,
+		ctx:             ctx,
+		stream:          stream,
+		request:         request,
+		requestExec:     requestExec,
+		RequestService:  requestService,
+		UsageLogService: usageLogService,
+		transformer:     outboundTransformer,
+		responseChunks:  make([]*httpclient.StreamEvent, 0),
+		closed:          false,
 	}
 }
 
@@ -60,7 +66,7 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	if event != nil {
 		ts.responseChunks = append(ts.responseChunks, event)
 
-		err := ts.requestService.AppendRequestExecutionChunk(
+		err := ts.RequestService.AppendRequestExecutionChunk(
 			ts.ctx,
 			ts.requestExec.ID,
 			event,
@@ -89,8 +95,9 @@ func (ts *OutboundPersistentStream) Close() error {
 
 	streamErr := ts.stream.Err()
 	if streamErr != nil {
+		ctx = context.WithoutCancel(ctx)
 		if ts.requestExec != nil {
-			err := ts.requestService.UpdateRequestExecutionFailed(
+			err := ts.RequestService.UpdateRequestExecutionFailed(
 				ctx,
 				ts.requestExec.ID,
 				streamErr.Error(),
@@ -108,13 +115,14 @@ func (ts *OutboundPersistentStream) Close() error {
 
 	// Update request execution with aggregated chunks
 	if ts.requestExec != nil {
-		responseBody, err := ts.transformer.AggregateStreamChunks(ctx, ts.responseChunks)
+		ctx = context.WithoutCancel(ctx)
+		responseBody, usage, err := ts.transformer.AggregateStreamChunks(ctx, ts.responseChunks)
 		if err != nil {
 			log.Warn(ctx, "Failed to aggregate chunks using transformer", log.Cause(err))
 			return ts.stream.Close()
 		}
 
-		err = ts.requestService.UpdateRequestExecutionCompletd(
+		err = ts.RequestService.UpdateRequestExecutionCompletd(
 			ctx,
 			ts.requestExec.ID,
 			responseBody,
@@ -125,6 +133,14 @@ func (ts *OutboundPersistentStream) Close() error {
 				"Failed to update request execution with chunks, trying basic completion",
 				log.Cause(err),
 			)
+		}
+
+		// Try to create usage log from aggregated response
+		if usage != nil {
+			_, err = ts.UsageLogService.CreateUsageLogFromRequest(ctx, ts.request, ts.requestExec, usage)
+			if err != nil {
+				log.Warn(ctx, "Failed to create usage log from request", log.Cause(err))
+			}
 		}
 	}
 
@@ -254,6 +270,15 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 		}
 	}
 
+	// Update request with usage log if we have a request and response with usage data
+	if p.state.Request != nil && llmResp != nil {
+		usage := llmResp.Usage
+		_, err = p.state.UsageLogService.CreateUsageLogFromRequest(ctx, p.state.Request, p.state.RequestExec, usage)
+		if err != nil {
+			log.Warn(ctx, "Failed to create usage log from request", log.Cause(err))
+		}
+	}
+
 	return llmResp, nil
 }
 
@@ -264,6 +289,7 @@ func (p *PersistentOutboundTransformer) TransformStream(ctx context.Context, str
 		p.state.Request,
 		p.state.RequestExec,
 		p.state.RequestService,
+		p.state.UsageLogService,
 		p.wrapped, // Pass the wrapped outbound transformer for chunk aggregation
 	)
 
@@ -273,7 +299,7 @@ func (p *PersistentOutboundTransformer) TransformStream(ctx context.Context, str
 func (p *PersistentOutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
-) ([]byte, error) {
+) ([]byte, *llm.Usage, error) {
 	return p.wrapped.AggregateStreamChunks(ctx, chunks)
 }
 

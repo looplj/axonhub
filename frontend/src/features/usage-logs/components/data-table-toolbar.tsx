@@ -1,25 +1,21 @@
+import { useMemo } from 'react'
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { Table } from '@tanstack/react-table'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-
-import { DataTableFacetedFilter } from './data-table-faceted-filter'
-import { DataTableViewOptions } from './data-table-view-options'
-import { UsageLogSource } from '../data/schema'
+import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions'
-import { useUsers } from '../../users/data/users'
 import { useChannels } from '../../channels/data'
+import { useUsers } from '../../users/data/users'
+import { UsageLogSource } from '../data/schema'
+import { DataTableViewOptions } from './data-table-view-options'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
 }
 
-export function DataTableToolbar<TData>({
-  table,
-}: DataTableToolbarProps<TData>) {
+export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const permissions = useUsageLogPermissions()
   const { canViewUsers, canViewChannels } = permissions
@@ -39,10 +35,12 @@ export function DataTableToolbar<TData>({
 
   // Fetch channels data if user has permission
   const { data: channelsData } = useChannels(
-    canViewChannels ? {
-      first: 100,
-      orderBy: { field: 'CREATED_AT', direction: 'DESC' },
-    } : undefined
+    canViewChannels
+      ? {
+          first: 100,
+          orderBy: { field: 'CREATED_AT', direction: 'DESC' },
+        }
+      : undefined
   )
 
   // Prepare user options for filter
@@ -86,9 +84,7 @@ export function DataTableToolbar<TData>({
         <Input
           placeholder={t('usageLogs.filters.filterId')}
           value={(table.getColumn('id')?.getFilterValue() as string) ?? ''}
-          onChange={(event) =>
-            table.getColumn('id')?.setFilterValue(event.target.value)
-          }
+          onChange={(event) => table.getColumn('id')?.setFilterValue(event.target.value)}
           className='h-8 w-[150px] lg:w-[250px]'
         />
         {table.getColumn('source') && (
@@ -98,32 +94,22 @@ export function DataTableToolbar<TData>({
             options={usageLogSources}
           />
         )}
-        {canViewUsers &&
-          table.getColumn('user') &&
-          userOptions.length > 0 &&
-          usersData?.edges && (
-            <DataTableFacetedFilter
-              column={table.getColumn('user')}
-              title={t('usageLogs.filters.user')}
-              options={userOptions}
-            />
-          )}
-        {canViewChannels &&
-          table.getColumn('channel') &&
-          channelOptions.length > 0 &&
-          channelsData?.edges && (
-            <DataTableFacetedFilter
-              column={table.getColumn('channel')}
-              title={t('usageLogs.filters.channel')}
-              options={channelOptions}
-            />
-          )}
+        {canViewUsers && table.getColumn('user') && userOptions.length > 0 && usersData?.edges && (
+          <DataTableFacetedFilter
+            column={table.getColumn('user')}
+            title={t('usageLogs.filters.user')}
+            options={userOptions}
+          />
+        )}
+        {canViewChannels && table.getColumn('channel') && channelOptions.length > 0 && channelsData?.edges && (
+          <DataTableFacetedFilter
+            column={table.getColumn('channel')}
+            title={t('usageLogs.filters.channel')}
+            options={channelOptions}
+          />
+        )}
         {isFiltered && (
-          <Button
-            variant='ghost'
-            onClick={() => table.resetColumnFilters()}
-            className='h-8 px-2 lg:px-3'
-          >
+          <Button variant='ghost' onClick={() => table.resetColumnFilters()} className='h-8 px-2 lg:px-3'>
             {t('usageLogs.filters.reset')}
             <Cross2Icon className='ml-2 h-4 w-4' />
           </Button>

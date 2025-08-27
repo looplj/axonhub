@@ -129,7 +129,7 @@ func (t *InboundTransformer) TransformStreamChunk(
 func (t *InboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
-) ([]byte, error) {
+) ([]byte, *llm.Usage, error) {
 	return AggregateStreamChunks(ctx, chunks)
 }
 

@@ -29,9 +29,9 @@ func userOwnedQueryFilter(ctx context.Context, q privacy.Filter) error {
 	switch q := q.(type) {
 	case UserOwnedFilter:
 		q.WhereUserID(entql.IntEQ(user.ID))
-		return privacy.Allowf("User %d can query their own API Keys", user.ID)
+		return privacy.Allowf("User %d can query their own data", user.ID)
 	default:
-		return privacy.Skipf("User %d can only query their own API Keys", user.ID)
+		return privacy.Skipf("User %d can only query their own data", user.ID)
 	}
 }
 

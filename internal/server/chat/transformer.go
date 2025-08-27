@@ -15,6 +15,7 @@ type PersistenceState struct {
 	User   *ent.User
 
 	RequestService  *biz.RequestService
+	UsageLogService *biz.UsageLogService
 	ChannelSelector ChannelSelector
 
 	Request     *ent.Request

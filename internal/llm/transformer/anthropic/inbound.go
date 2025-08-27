@@ -209,7 +209,7 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 	}, nil
 }
 
-func (t *InboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, error) {
+func (t *InboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, *llm.Usage, error) {
 	return AggregateStreamChunks(ctx, chunks)
 }
 

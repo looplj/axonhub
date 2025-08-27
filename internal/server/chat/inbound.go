@@ -105,7 +105,7 @@ func (ts *InboundPersistentStream) Close() error {
 
 	// Update main request with aggregated response
 	if ts.request != nil {
-		responseBody, err := ts.transformer.AggregateStreamChunks(ctx, ts.responseChunks)
+		responseBody, _, err := ts.transformer.AggregateStreamChunks(ctx, ts.responseChunks)
 		if err != nil {
 			log.Warn(ctx, "Failed to aggregate chunks for main request", log.Cause(err))
 		} else {
@@ -193,6 +193,6 @@ func (p *PersistentInboundTransformer) TransformStream(ctx context.Context, stre
 	return persistentStream, nil
 }
 
-func (p *PersistentInboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, error) {
+func (p *PersistentInboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, *llm.Usage, error) {
 	return p.wrapped.AggregateStreamChunks(ctx, chunks)
 }
