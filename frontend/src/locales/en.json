@@ -13,6 +13,7 @@
       "roles": "Roles",
       "system": "System",
       "requests": "Requests",
+      "usageLogs": "Usage Logs",
       "apiKeys": "API Keys",
       "playground": "Playground",
       "profile": "Profile"
@@ -800,6 +801,79 @@
       "executionsDrawer": {
         "title": "Execution List",
         "noExecutions": "No execution records"
+      }
+    }
+  },
+  "usageLogs": {
+    "title": "Usage Logs",
+    "description": "View and analyze AI model usage and token consumption",
+    "loadError": "Load failed:",
+    "noResults": "No data",
+    "refresh": "Refresh",
+    "columns": {
+      "id": "ID",
+      "user": "User",
+      "requestId": "Request ID",
+      "channel": "Channel",
+      "modelId": "Model ID",
+      "promptTokens": "Prompt Tokens",
+      "completionTokens": "Completion Tokens",
+      "totalTokens": "Total Tokens",
+      "promptAudioTokens": "Prompt Audio Tokens",
+      "promptCachedTokens": "Prompt Cached Tokens",
+      "completionAudioTokens": "Completion Audio Tokens",
+      "completionReasoningTokens": "Completion Reasoning Tokens",
+      "source": "Source",
+      "format": "Format",
+      "createdAt": "Created At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "unknown": "Unknown"
+    },
+    "source": {
+      "api": "API",
+      "playground": "Playground",
+      "test": "Test"
+    },
+    "actions": {
+      "openMenu": "Open menu",
+      "viewDetails": "View Details",
+      "copy": "Copy"
+    },
+    "filters": {
+      "filterId": "Filter by ID...",
+      "source": "Source",
+      "user": "User",
+      "channel": "Channel",
+      "model": "Model",
+      "reset": "Reset"
+    },
+    "dialogs": {
+      "usageDetail": {
+        "title": "Usage Details",
+        "tabs": {
+          "overview": "Overview",
+          "tokens": "Token Usage",
+          "advanced": "Advanced Tokens"
+        },
+        "fields": {
+          "userId": "User ID",
+          "requestId": "Request ID",
+          "channelId": "Channel ID",
+          "modelId": "Model ID",
+          "source": "Source",
+          "format": "Format",
+          "createdAt": "Created At"
+        },
+        "tokenDetails": {
+          "basic": "Basic Token Usage",
+          "audio": "Audio Tokens",
+          "cached": "Cached Tokens",
+          "reasoning": "Reasoning Tokens",
+          "prediction": "Prediction Tokens"
+        },
+        "notFound": "Usage log not found"
       }
     }
   },

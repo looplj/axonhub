@@ -113,6 +113,11 @@ export function useSidebarData(): SidebarData {
           icon: IconBrowserCheck,
         } as NavLink,
         {
+          title: t('sidebar.items.usageLogs'),
+          url: '/usage-logs',
+          icon: IconBrowserCheck,
+        } as NavLink,
+        {
           title: t('sidebar.items.apiKeys'),
           url: '/api-keys',
           icon: IconPackages,
