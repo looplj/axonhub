@@ -160,7 +160,7 @@ func TestPipeline_OpenAI_to_Anthropic(t *testing.T) {
 		ID:   "msg_123",
 		Type: "message",
 		Role: "assistant",
-		Content: []anthropic.ContentBlock{
+		Content: []anthropic.MessageContentBlock{
 			{
 				Type: "text",
 				Text: "Hello! I'm Claude, how can I assist you today?",
@@ -374,7 +374,7 @@ func TestPipeline_Anthropic_to_Anthropic(t *testing.T) {
 		ID:   "msg_789",
 		Type: "message",
 		Role: "assistant",
-		Content: []anthropic.ContentBlock{
+		Content: []anthropic.MessageContentBlock{
 			{
 				Type: "text",
 				Text: "Hello! I'm Claude, nice to meet you!",

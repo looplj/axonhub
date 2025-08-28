@@ -125,7 +125,7 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 				ID:   "msg_test_123",
 				Type: "message",
 				Role: "assistant",
-				Content: []ContentBlock{
+				Content: []MessageContentBlock{
 					{
 						Type: "text",
 						Text: "This is a test response from Claude.",

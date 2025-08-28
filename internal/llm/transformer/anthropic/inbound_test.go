@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -1179,14 +1180,14 @@ func TestAnthropicMessageContent_MarshalUnmarshal(t *testing.T) {
 		{
 			name: "string content",
 			content: MessageContent{
-				Content: func() *string { s := "Hello, world!"; return &s }(),
+				Content: lo.ToPtr("Hello, world!"),
 			},
 			jsonStr: `"Hello, world!"`,
 		},
 		{
 			name: "array content",
 			content: MessageContent{
-				MultipleContent: []ContentBlock{
+				MultipleContent: []MessageContentBlock{
 					{
 						Type: "text",
 						Text: "Hello",

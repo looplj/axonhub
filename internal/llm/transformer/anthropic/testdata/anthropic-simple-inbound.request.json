@@ -1,0 +1,17 @@
+{
+  "model": "claude-3-sonnet-20240229",
+  "max_tokens": 1024,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hello, Claude! How are you today?"
+        }
+      ]
+    }
+  ],
+  "temperature": 0.7,
+  "stop_sequences": ["Human:", "Assistant:"]
+}

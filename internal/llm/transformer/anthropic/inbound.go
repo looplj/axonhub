@@ -46,7 +46,6 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 	}
 
 	var anthropicReq MessageRequest
-
 	err := json.Unmarshal(httpReq.Body, &anthropicReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode anthropic request: %w", err)
@@ -122,12 +121,16 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 			Role: msg.Role,
 		}
 
+		var hasContent bool
+
 		// Convert content
 		if msg.Content.Content != nil {
 			chatMsg.Content = llm.MessageContent{
 				Content: msg.Content.Content,
 			}
+			hasContent = true
 		} else if len(msg.Content.MultipleContent) > 0 {
+			// Handle multimodal content
 			contentParts := make([]llm.MessageContentPart, 0, len(msg.Content.MultipleContent))
 			for _, block := range msg.Content.MultipleContent {
 				switch block.Type {
@@ -136,6 +139,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 						Type: "text",
 						Text: &block.Text,
 					})
+					hasContent = true
 				case "image":
 					if block.Source != nil {
 						if block.Source.Type == "base64" {
@@ -155,19 +159,72 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 								},
 							})
 						}
+						hasContent = true
+					}
+				case "tool_result":
+					content, err := json.Marshal(block.Content)
+					if err != nil {
+						return nil, fmt.Errorf("failed to marshal tool result: %w", err)
+					}
+					messages = append(messages, llm.Message{
+						Role:       "tool",
+						ToolCallID: block.ToolUseID,
+						Content: llm.MessageContent{
+							Content: lo.ToPtr(string(content)),
+						},
+					})
+				case "tool_use":
+					chatMsg.ToolCalls = append(chatMsg.ToolCalls, llm.ToolCall{
+						ID:   block.ID,
+						Type: "function",
+						Function: llm.FunctionCall{
+							Name:      lo.FromPtr(block.Name),
+							Arguments: string(block.Input),
+						},
+					})
+					hasContent = true
+				}
+
+				// Check if it's a simple text-only message (single text block)
+				if len(contentParts) == 1 && contentParts[0].Type == "text" {
+					// Convert single text block to simple content format for compatibility
+					chatMsg.Content = llm.MessageContent{
+						Content: contentParts[0].Text,
+					}
+					hasContent = true
+				} else {
+					chatMsg.Content = llm.MessageContent{
+						MultipleContent: contentParts,
 					}
 				}
 			}
+		}
 
-			chatMsg.Content = llm.MessageContent{
-				MultipleContent: contentParts,
-			}
+		if !hasContent {
+			continue
 		}
 
 		messages = append(messages, chatMsg)
 	}
 
 	chatReq.Messages = messages
+
+	// Convert tools
+	if len(anthropicReq.Tools) > 0 {
+		tools := make([]llm.Tool, 0, len(anthropicReq.Tools))
+		for _, tool := range anthropicReq.Tools {
+			llmTool := llm.Tool{
+				Type: "function",
+				Function: llm.Function{
+					Name:        tool.Name,
+					Description: tool.Description,
+					Parameters:  tool.InputSchema,
+				},
+			}
+			tools = append(tools, llmTool)
+		}
+		chatReq.Tools = tools
+	}
 
 	// Convert stop sequences
 	if len(anthropicReq.StopSequences) > 0 {

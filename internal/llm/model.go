@@ -300,16 +300,20 @@ type MessageContent struct {
 }
 
 func (c MessageContent) MarshalJSON() ([]byte, error) {
+	if len(c.MultipleContent) > 0 {
+		if len(c.MultipleContent) == 1 && c.MultipleContent[0].Type == "text" {
+			return json.Marshal(c.MultipleContent[0].Text)
+		}
+		return json.Marshal(c.MultipleContent)
+	}
 	if c.Content != nil {
 		return json.Marshal(c.Content)
 	}
-
-	return json.Marshal(c.MultipleContent)
+	return []byte(`""`), nil
 }
 
 func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	var str string
-
 	err := json.Unmarshal(data, &str)
 	if err == nil {
 		c.Content = &str

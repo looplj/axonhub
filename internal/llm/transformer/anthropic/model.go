@@ -106,7 +106,6 @@ func (s *SystemPrompt) MarshalJSON() ([]byte, error) {
 
 func (s *SystemPrompt) UnmarshalJSON(data []byte) error {
 	var str string
-
 	err := json.Unmarshal(data, &str)
 	if err == nil {
 		s.Prompt = &str
@@ -114,13 +113,11 @@ func (s *SystemPrompt) UnmarshalJSON(data []byte) error {
 	}
 
 	var parts []SystemPromptPart
-
 	err = json.Unmarshal(data, &parts)
 	if err == nil {
 		s.MultiplePrompts = parts
 		return nil
 	}
-
 	return fmt.Errorf("invalid system prompt format")
 }
 
@@ -173,8 +170,8 @@ type MessageParam struct {
 
 // MessageContent supports both string and array formats.
 type MessageContent struct {
-	Content         *string        `json:"content,omitempty"`
-	MultipleContent []ContentBlock `json:"multiple_content,omitempty"`
+	Content         *string               `json:"content,omitempty"`
+	MultipleContent []MessageContentBlock `json:"multiple_content,omitempty"`
 }
 
 func (c MessageContent) MarshalJSON() ([]byte, error) {
@@ -186,13 +183,11 @@ func (c MessageContent) MarshalJSON() ([]byte, error) {
 }
 
 func (c *MessageContent) UnmarshalJSON(data []byte) error {
-	// Handle null values
 	if string(data) == "null" {
 		return fmt.Errorf("content cannot be null")
 	}
 
-	var blocks []ContentBlock
-
+	var blocks []MessageContentBlock
 	err := json.Unmarshal(data, &blocks)
 	if err == nil {
 		c.MultipleContent = blocks
@@ -200,19 +195,17 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	}
 
 	var str string
-
 	err = json.Unmarshal(data, &str)
 	if err == nil {
 		c.Content = &str
 		return nil
 	}
-
 	return fmt.Errorf("invalid content type")
 }
 
-// ContentBlock represents different types of content blocks.
-type ContentBlock struct {
-	// Any of "text", "image", "thinking", "redacted_thinking", "tool_use", "server_tool_use".
+// MessageContentBlock represents different types of content blocks.
+type MessageContentBlock struct {
+	// Any of "text", "image", "thinking", "redacted_thinking", "tool_use", "server_tool_use", "tool_result".
 	Type string `json:"type"`
 
 	// Text will be present if type is "text".
@@ -232,26 +225,17 @@ type ContentBlock struct {
 
 	// Tool use request
 	// tool_use or server_tool_use
-	ID    string          `json:"id,omitempty"`
-	Name  *string         `json:"name,omitempty"`
-	Input json.RawMessage `json:"input,omitempty"`
+	ID           string          `json:"id,omitempty"`
+	Name         *string         `json:"name,omitempty"`
+	Input        json.RawMessage `json:"input,omitempty"`
+	CacheControl *CacheControl   `json:"cache_control,omitempty"`
 
 	// Tool result fields
-	ToolUseID *string             `json:"tool_use_id,omitempty"`
-	Content   []ToolResultContent `json:"content,omitempty"`
-	IsError   *bool               `json:"is_error,omitempty"`
-}
-
-type ToolResultContent struct {
-	// Type is the type of content.
-	// Available values: text, image
-	Type string `json:"type"`
-
-	// Text will be present if type is "text".
-	Text *string `json:"text,omitempty"`
-
-	// Source will be present if type is "image".
-	Source *ImageSource `json:"source,omitempty"`
+	ToolUseID *string `json:"tool_use_id,omitempty"`
+	// The content of the tool result.
+	// Type can be "text" or "image".
+	Content *MessageContent `json:"content,omitempty"`
+	IsError *bool           `json:"is_error,omitempty"`
 }
 
 // ImageSource represents image source for Anthropic.
@@ -285,7 +269,7 @@ type StreamEvent struct {
 	Index *int64 `json:"index,omitempty"`
 
 	// ContentBlock will be present if type is "content_block_start".
-	ContentBlock *ContentBlock `json:"content_block,omitempty"`
+	ContentBlock *MessageContentBlock `json:"content_block,omitempty"`
 
 	// Delta will be present if type is "message_delta" or "content_block_delta".
 	Delta *StreamDelta `json:"delta,omitempty"`
@@ -323,21 +307,21 @@ type StreamDelta struct {
 
 // StreamMessage represents the message part of a stream event.
 type StreamMessage struct {
-	ID      string         `json:"id"`
-	Type    string         `json:"type"`
-	Role    string         `json:"role"`
-	Content []ContentBlock `json:"content"`
-	Model   string         `json:"model"`
-	Usage   *Usage         `json:"usage,omitempty"`
+	ID      string                `json:"id"`
+	Type    string                `json:"type"`
+	Role    string                `json:"role"`
+	Content []MessageContentBlock `json:"content"`
+	Model   string                `json:"model"`
+	Usage   *Usage                `json:"usage,omitempty"`
 }
 
 // Message represents the Anthropic Messages API response format.
 type Message struct {
-	ID      string         `json:"id"`
-	Type    string         `json:"type"`
-	Role    string         `json:"role"`
-	Content []ContentBlock `json:"content"`
-	Model   string         `json:"model"`
+	ID      string                `json:"id"`
+	Type    string                `json:"type"`
+	Role    string                `json:"role"`
+	Content []MessageContentBlock `json:"content"`
+	Model   string                `json:"model"`
 	// Any of "end_turn", "max_tokens", "stop_sequence", "tool_use", "pause_turn",
 	// "refusal".
 	StopReason *string `json:"stop_reason,omitempty"`

@@ -111,7 +111,7 @@ func (s *anthropicInboundStream) Next() bool {
 				Type:    "message",
 				Role:    "assistant",
 				Model:   s.model,
-				Content: []ContentBlock{},
+				Content: []MessageContentBlock{},
 				Usage:   usage,
 			},
 		}
@@ -154,7 +154,7 @@ func (s *anthropicInboundStream) Next() bool {
 				streamEvent := StreamEvent{
 					Type:  "content_block_start",
 					Index: &s.contentIndex,
-					ContentBlock: &ContentBlock{
+					ContentBlock: &MessageContentBlock{
 						Type:      "thinking",
 						Thinking:  "",
 						Signature: "",
@@ -247,7 +247,7 @@ func (s *anthropicInboundStream) Next() bool {
 				streamEvent := StreamEvent{
 					Type:  "content_block_start",
 					Index: &s.contentIndex,
-					ContentBlock: &ContentBlock{
+					ContentBlock: &MessageContentBlock{
 						Type: "text",
 						Text: "",
 					},
@@ -331,7 +331,7 @@ func (s *anthropicInboundStream) Next() bool {
 					streamEvent := StreamEvent{
 						Type:  "content_block_start",
 						Index: &s.contentIndex,
-						ContentBlock: &ContentBlock{
+						ContentBlock: &MessageContentBlock{
 							Type:  "tool_use",
 							ID:    deltaToolCall.ID,
 							Name:  &deltaToolCall.Function.Name,

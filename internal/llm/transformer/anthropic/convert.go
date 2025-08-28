@@ -92,12 +92,12 @@ func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 }
 
 func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
-	blocks := make([]ContentBlock, 0, len(msg.Content.MultipleContent))
+	blocks := make([]MessageContentBlock, 0, len(msg.Content.MultipleContent))
 	for _, part := range msg.Content.MultipleContent {
 		switch part.Type {
 		case "text":
 			if part.Text != nil {
-				blocks = append(blocks, ContentBlock{
+				blocks = append(blocks, MessageContentBlock{
 					Type: "text",
 					Text: *part.Text,
 				})
@@ -113,7 +113,7 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 						headerParts := strings.Split(parts[0], ";")
 						if len(headerParts) >= 2 {
 							mediaType := strings.TrimPrefix(headerParts[0], "data:")
-							blocks = append(blocks, ContentBlock{
+							blocks = append(blocks, MessageContentBlock{
 								Type: "image",
 								Source: &ImageSource{
 									Type:      "base64",
@@ -124,7 +124,7 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 						}
 					}
 				} else {
-					blocks = append(blocks, ContentBlock{
+					blocks = append(blocks, MessageContentBlock{
 						Type: "image",
 						Source: &ImageSource{
 							Type: "url",
@@ -336,11 +336,11 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 		}
 
 		if message != nil {
-			var contentBlocks []ContentBlock
+			var contentBlocks []MessageContentBlock
 
 			// Handle reasoning content (thinking) first if present
 			if message.ReasoningContent != nil && *message.ReasoningContent != "" {
-				contentBlocks = append(contentBlocks, ContentBlock{
+				contentBlocks = append(contentBlocks, MessageContentBlock{
 					Type:     "thinking",
 					Thinking: *message.ReasoningContent,
 				})
@@ -348,7 +348,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 
 			// Handle regular content
 			if message.Content.Content != nil {
-				contentBlocks = append(contentBlocks, ContentBlock{
+				contentBlocks = append(contentBlocks, MessageContentBlock{
 					Type: "text",
 					Text: *message.Content.Content,
 				})
@@ -357,7 +357,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 					switch part.Type {
 					case "text":
 						if part.Text != nil {
-							contentBlocks = append(contentBlocks, ContentBlock{
+							contentBlocks = append(contentBlocks, MessageContentBlock{
 								Type: "text",
 								Text: *part.Text,
 							})
@@ -373,7 +373,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 									headerParts := strings.Split(parts[0], ";")
 									if len(headerParts) >= 2 {
 										mediaType := strings.TrimPrefix(headerParts[0], "data:")
-										contentBlocks = append(contentBlocks, ContentBlock{
+										contentBlocks = append(contentBlocks, MessageContentBlock{
 											Type: "image",
 											Source: &ImageSource{
 												Type:      "base64",
@@ -384,7 +384,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 									}
 								}
 							} else {
-								contentBlocks = append(contentBlocks, ContentBlock{
+								contentBlocks = append(contentBlocks, MessageContentBlock{
 									Type: "image",
 									Source: &ImageSource{
 										Type: "url",
@@ -416,7 +416,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 						input = json.RawMessage("{}")
 					}
 
-					contentBlocks = append(contentBlocks, ContentBlock{
+					contentBlocks = append(contentBlocks, MessageContentBlock{
 						Type:  "tool_use",
 						ID:    toolCall.ID,
 						Name:  &toolCall.Function.Name,

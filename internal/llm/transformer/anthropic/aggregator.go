@@ -17,7 +17,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 	var (
 		messageStart  *StreamEvent
-		contentBlocks []ContentBlock
+		contentBlocks []MessageContentBlock
 		usage         *Usage
 		stopReason    *string
 	)
@@ -53,7 +53,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				index := int(*event.Index)
 				// Ensure we have enough content blocks
 				for len(contentBlocks) <= index {
-					contentBlocks = append(contentBlocks, ContentBlock{Type: "text", Text: ""})
+					contentBlocks = append(contentBlocks, MessageContentBlock{Type: "text", Text: ""})
 				}
 
 				if event.Delta != nil {
@@ -136,7 +136,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	if messageStart != nil {
 		// Ensure we have at least one content block
 		if len(contentBlocks) == 0 {
-			contentBlocks = []ContentBlock{
+			contentBlocks = []MessageContentBlock{
 				{Type: "text", Text: ""},
 			}
 		}
@@ -153,7 +153,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	} else {
 		// Ensure we have at least one content block
 		if len(contentBlocks) == 0 {
-			contentBlocks = []ContentBlock{
+			contentBlocks = []MessageContentBlock{
 				{Type: "text", Text: ""},
 			}
 		}

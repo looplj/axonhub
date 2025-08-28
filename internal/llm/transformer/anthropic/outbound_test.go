@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xtest"
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
@@ -831,6 +832,96 @@ func TestOutboundTransformer_TransformError(t *testing.T) {
 			require.NotNil(t, result)
 			require.Equal(t, tt.expected.Detail.Type, result.Detail.Type)
 			require.Equal(t, tt.expected.Detail.Message, result.Detail.Message)
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
+	tests := []struct {
+		name        string
+		requestFile string
+		validate    func(t *testing.T, result *httpclient.Request, expectedReq *llm.Request)
+	}{
+		{
+			name:        "tool use request transformation",
+			requestFile: "llm-tool.request.json",
+			validate: func(t *testing.T, result *httpclient.Request, expectedReq *llm.Request) {
+				t.Helper()
+				
+				// Verify basic HTTP request properties
+				require.Equal(t, http.MethodPost, result.Method)
+				require.Equal(t, "https://api.anthropic.com/v1/messages", result.URL)
+				require.Equal(t, "application/json", result.Headers.Get("Content-Type"))
+				require.Equal(t, "2023-06-01", result.Headers.Get("Anthropic-Version"))
+				require.NotEmpty(t, result.Body)
+				
+				// Verify auth
+				require.NotNil(t, result.Auth)
+				require.Equal(t, "api_key", result.Auth.Type)
+				require.Equal(t, "test-api-key", result.Auth.APIKey)
+				
+				// Parse the transformed Anthropic request
+				var anthropicReq MessageRequest
+				err := json.Unmarshal(result.Body, &anthropicReq)
+				require.NoError(t, err)
+				
+				// Verify model and max_tokens
+				require.Equal(t, expectedReq.Model, anthropicReq.Model)
+				require.Equal(t, *expectedReq.MaxTokens, anthropicReq.MaxTokens)
+				
+				// Verify messages
+				require.Len(t, anthropicReq.Messages, len(expectedReq.Messages))
+				require.Equal(t, expectedReq.Messages[0].Role, anthropicReq.Messages[0].Role)
+				
+				// Verify tools transformation
+				require.NotNil(t, anthropicReq.Tools)
+				require.Len(t, anthropicReq.Tools, len(expectedReq.Tools))
+				
+				// Verify first tool (get_coordinates)
+				require.Equal(t, "get_coordinates", anthropicReq.Tools[0].Name)
+				require.Equal(t, "Accepts a place as an address, then returns the latitude and longitude coordinates.", anthropicReq.Tools[0].Description)
+				
+				// Verify tool input schema
+				var schema map[string]interface{}
+				err = json.Unmarshal(anthropicReq.Tools[0].InputSchema, &schema)
+				require.NoError(t, err)
+				require.Equal(t, "object", schema["type"])
+				
+				properties, ok := schema["properties"].(map[string]interface{})
+				require.True(t, ok)
+				location, ok := properties["location"].(map[string]interface{})
+				require.True(t, ok)
+				require.Equal(t, "string", location["type"])
+				require.Equal(t, "The location to look up.", location["description"])
+				
+				// Verify second tool (get_temperature_unit)
+				require.Equal(t, "get_temperature_unit", anthropicReq.Tools[1].Name)
+				
+				// Verify third tool (get_weather)
+				require.Equal(t, "get_weather", anthropicReq.Tools[2].Name)
+				require.Equal(t, "Get the weather at a specific location", anthropicReq.Tools[2].Description)
+			},
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Load the test request data
+			var expectedReq llm.Request
+			err := xtest.LoadTestData(t, tt.requestFile, &expectedReq)
+			require.NoError(t, err)
+			
+			// Create transformer
+			transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+			require.NoError(t, err)
+			
+			// Transform the request
+			result, err := transformer.TransformRequest(t.Context(), &expectedReq)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			
+			// Run validation
+			tt.validate(t, result, &expectedReq)
 		})
 	}
 }

@@ -14,7 +14,7 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 		ID:   "msg_123",
 		Type: "message",
 		Role: "assistant",
-		Content: []ContentBlock{
+		Content: []MessageContentBlock{
 			{
 				Type: "text",
 				Text: "Hello! How can I help you?",
@@ -66,7 +66,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:      "msg_empty",
 				Type:    "message",
 				Role:    "assistant",
-				Content: []ContentBlock{},
+				Content: []MessageContentBlock{},
 				Model:   "claude-3-sonnet-20240229",
 			},
 			validate: func(t *testing.T, result *llm.Response) {
@@ -86,7 +86,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_multi",
 				Type: "message",
 				Role: "assistant",
-				Content: []ContentBlock{
+				Content: []MessageContentBlock{
 					{Type: "text", Text: "Hello"},
 					{Type: "text", Text: " world!"},
 					{Type: "text", Text: " How are you?"},
@@ -110,7 +110,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_mixed",
 				Type: "message",
 				Role: "assistant",
-				Content: []ContentBlock{
+				Content: []MessageContentBlock{
 					{Type: "text", Text: "Check this image: "},
 					{Type: "image", Source: &ImageSource{
 						Type:      "base64",
@@ -137,7 +137,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_tool",
 				Type: "message",
 				Role: "assistant",
-				Content: []ContentBlock{
+				Content: []MessageContentBlock{
 					{
 						Type: "text",
 						Text: "I'll help you with that calculation.",
@@ -172,7 +172,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 					ID:      "msg_stop",
 					Type:    "message",
 					Role:    "assistant",
-					Content: []ContentBlock{{Type: "text", Text: "Test"}},
+					Content: []MessageContentBlock{{Type: "text", Text: "Test"}},
 					Model:   "claude-3-sonnet-20240229",
 				}
 			}(),
@@ -193,7 +193,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 						ID:         "msg_stop",
 						Type:       "message",
 						Role:       "assistant",
-						Content:    []ContentBlock{{Type: "text", Text: "Test"}},
+						Content:    []MessageContentBlock{{Type: "text", Text: "Test"}},
 						Model:      "claude-3-sonnet-20240229",
 						StopReason: func() *string { s := anthropicReason; return &s }(),
 					}
@@ -213,7 +213,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_cache",
 				Type: "message",
 				Role: "assistant",
-				Content: []ContentBlock{
+				Content: []MessageContentBlock{
 					{Type: "text", Text: "Cached response"},
 				},
 				Model: "claude-3-sonnet-20240229",
@@ -244,7 +244,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_detailed",
 				Type: "message",
 				Role: "assistant",
-				Content: []ContentBlock{
+				Content: []MessageContentBlock{
 					{Type: "text", Text: "Detailed response"},
 				},
 				Model: "claude-3-sonnet-20240229",
@@ -276,7 +276,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:   "msg_no_cache",
 				Type: "message",
 				Role: "assistant",
-				Content: []ContentBlock{
+				Content: []MessageContentBlock{
 					{Type: "text", Text: "No cache response"},
 				},
 				Model: "claude-3-sonnet-20240229",
@@ -306,7 +306,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				ID:      "msg_nusage",
 				Type:    "message",
 				Role:    "assistant",
-				Content: []ContentBlock{{Type: "text", Text: "No usage"}},
+				Content: []MessageContentBlock{{Type: "text", Text: "No usage"}},
 				Model:   "claude-3-sonnet-20240229",
 				Usage:   nil,
 			},
@@ -427,7 +427,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 					{
 						Role: "user",
 						Content: MessageContent{
-							MultipleContent: []ContentBlock{
+							MultipleContent: []MessageContentBlock{
 								{
 									Type: "text",
 									Text: "What's in this image?",
@@ -492,7 +492,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 					{
 						Role: "user",
 						Content: MessageContent{
-							MultipleContent: []ContentBlock{
+							MultipleContent: []MessageContentBlock{
 								{
 									Type: "text",
 									Text: "Compare these two images:",

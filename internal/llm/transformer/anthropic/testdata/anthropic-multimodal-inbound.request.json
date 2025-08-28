@@ -1,0 +1,24 @@
+{
+  "model": "claude-3-sonnet-20240229",
+  "max_tokens": 1024,
+  "system": "You are a helpful assistant that can analyze images.",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "What's in this image?"
+        },
+        {
+          "type": "image",
+          "source": {
+            "type": "base64",
+            "media_type": "image/jpeg",
+            "data": "/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1JFQVR"
+          }
+        }
+      ]
+    }
+  ]
+}
