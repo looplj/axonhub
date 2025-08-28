@@ -3,8 +3,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@custom-variant dark (&:is(.dark *));
-
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -1099,4 +1097,103 @@
     radial-gradient(circle at 25% 25%, rgba(0, 255, 157, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 75% 75%, rgba(255, 46, 77, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 50% 50%, rgba(240, 240, 240, 0.05) 0%, transparent 50%);
+}
+
+/* ===== STARRY COLOR SCHEME - Deep Blue Space Theme ===== */
+.starry {
+  --background: oklch(0.1200 0.0800 240.0000); /* Deep space blue */
+  --foreground: oklch(0.9500 0.0200 220.0000); /* Bright blue-white */
+  --card: oklch(0.1500 0.0600 235.0000); /* Slightly lighter space blue */
+  --card-foreground: oklch(0.9200 0.0300 215.0000);
+  --popover: oklch(0.1800 0.0700 238.0000);
+  --popover-foreground: oklch(0.9200 0.0300 215.0000);
+  --primary: oklch(0.6500 0.2200 210.0000); /* Bright cyan-blue */
+  --primary-foreground: oklch(0.0800 0.0400 240.0000);
+  --secondary: oklch(0.2000 0.0500 235.0000); /* Medium space blue */
+  --secondary-foreground: oklch(0.8800 0.0400 220.0000);
+  --muted: oklch(0.1600 0.0400 240.0000); /* Muted deep blue */
+  --muted-foreground: oklch(0.7000 0.0600 215.0000);
+  --accent: oklch(0.7200 0.1800 200.0000); /* Bright sky blue accent */
+  --accent-foreground: oklch(0.1000 0.0500 240.0000);
+  --destructive: oklch(0.6000 0.2500 15.0000); /* Warm red for contrast */
+  --destructive-foreground: oklch(0.9500 0.0200 220.0000);
+  --border: oklch(0.2500 0.0800 235.0000); /* Subtle blue border */
+  --input: oklch(0.1800 0.0600 238.0000); /* Input background */
+  --ring: oklch(0.6500 0.2200 210.0000); /* Focus ring matches primary */
+  --chart-1: oklch(0.6500 0.2200 210.0000); /* Bright cyan-blue */
+  --chart-2: oklch(0.7200 0.1800 200.0000); /* Sky blue */
+  --chart-3: oklch(0.5800 0.2000 195.0000); /* Medium blue */
+  --chart-4: oklch(0.8000 0.1500 185.0000); /* Light blue */
+  --chart-5: oklch(0.4500 0.1800 225.0000); /* Deep blue */
+  --sidebar: oklch(0.1000 0.0900 242.0000); /* Darker sidebar */
+  --sidebar-foreground: oklch(0.9000 0.0400 218.0000);
+  --sidebar-primary: oklch(0.6500 0.2200 210.0000);
+  --sidebar-primary-foreground: oklch(0.0800 0.0400 240.0000);
+  --sidebar-accent: oklch(0.2200 0.0600 235.0000);
+  --sidebar-accent-foreground: oklch(0.8500 0.0500 220.0000);
+  --sidebar-border: oklch(0.2000 0.0700 238.0000);
+  --sidebar-ring: oklch(0.6500 0.2200 210.0000);
+  --font-sans: 'Inter', 'SF Pro Display', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'SF Pro Display', ui-serif, Georgia, Cambria, serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --radius: 0.75rem; /* Slightly more rounded for modern feel */
+  --shadow-2xs: 0 2px 8px 0px rgba(0, 100, 255, 0.08);
+  --shadow-xs: 0 2px 8px 0px rgba(0, 100, 255, 0.08);
+  --shadow-sm: 0 4px 12px 0px rgba(0, 100, 255, 0.12), 0 2px 4px -1px rgba(0, 100, 255, 0.08);
+  --shadow: 0 4px 12px 0px rgba(0, 100, 255, 0.12), 0 2px 4px -1px rgba(0, 100, 255, 0.08);
+  --shadow-md: 0 6px 16px 0px rgba(0, 100, 255, 0.15), 0 4px 8px -2px rgba(0, 100, 255, 0.10);
+  --shadow-lg: 0 8px 24px 0px rgba(0, 100, 255, 0.18), 0 6px 12px -4px rgba(0, 100, 255, 0.12);
+  --shadow-xl: 0 12px 32px 0px rgba(0, 100, 255, 0.20), 0 8px 16px -6px rgba(0, 100, 255, 0.15);
+  --shadow-2xl: 0 16px 48px 0px rgba(0, 100, 255, 0.25);
+  --tracking-normal: -0.01em; /* Slightly tighter letter spacing */
+  --spacing: 0.25rem;
+}
+
+.dark.starry {
+  --background: oklch(0.0800 0.1000 245.0000); /* Deeper space background */
+  --foreground: oklch(0.9700 0.0300 210.0000); /* Brighter foreground */
+  --card: oklch(0.1200 0.0800 240.0000); /* Card background */
+  --card-foreground: oklch(0.9500 0.0300 215.0000);
+  --popover: oklch(0.1500 0.0900 242.0000);
+  --popover-foreground: oklch(0.9400 0.0400 218.0000);
+  --primary: oklch(0.7000 0.2500 205.0000); /* Brighter primary for dark mode */
+  --primary-foreground: oklch(0.0600 0.0500 245.0000);
+  --secondary: oklch(0.1800 0.0700 240.0000);
+  --secondary-foreground: oklch(0.9000 0.0400 220.0000);
+  --muted: oklch(0.1400 0.0600 242.0000);
+  --muted-foreground: oklch(0.7500 0.0700 215.0000);
+  --accent: oklch(0.7800 0.2000 195.0000); /* Bright accent for dark mode */
+  --accent-foreground: oklch(0.0800 0.0600 245.0000);
+  --destructive: oklch(0.6500 0.2800 20.0000);
+  --destructive-foreground: oklch(0.9700 0.0300 210.0000);
+  --border: oklch(0.2200 0.0900 238.0000);
+  --input: oklch(0.1600 0.0800 240.0000);
+  --ring: oklch(0.7000 0.2500 205.0000);
+  --chart-1: oklch(0.7000 0.2500 205.0000);
+  --chart-2: oklch(0.7800 0.2000 195.0000);
+  --chart-3: oklch(0.6200 0.2200 190.0000);
+  --chart-4: oklch(0.8500 0.1800 180.0000);
+  --chart-5: oklch(0.5000 0.2000 230.0000);
+  --sidebar: oklch(0.0600 0.1100 248.0000); /* Even darker sidebar */
+  --sidebar-foreground: oklch(0.9200 0.0500 218.0000);
+  --sidebar-primary: oklch(0.7000 0.2500 205.0000);
+  --sidebar-primary-foreground: oklch(0.0600 0.0500 245.0000);
+  --sidebar-accent: oklch(0.2000 0.0800 240.0000);
+  --sidebar-accent-foreground: oklch(0.8800 0.0600 220.0000);
+  --sidebar-border: oklch(0.1800 0.0900 242.0000);
+  --sidebar-ring: oklch(0.7000 0.2500 205.0000);
+  --font-sans: 'Inter', 'SF Pro Display', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'SF Pro Display', ui-serif, Georgia, Cambria, serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --radius: 0.75rem;
+  --shadow-2xs: 0 2px 8px 0px rgba(0, 150, 255, 0.12);
+  --shadow-xs: 0 2px 8px 0px rgba(0, 150, 255, 0.12);
+  --shadow-sm: 0 4px 12px 0px rgba(0, 150, 255, 0.18), 0 2px 4px -1px rgba(0, 150, 255, 0.12);
+  --shadow: 0 4px 12px 0px rgba(0, 150, 255, 0.18), 0 2px 4px -1px rgba(0, 150, 255, 0.12);
+  --shadow-md: 0 6px 16px 0px rgba(0, 150, 255, 0.22), 0 4px 8px -2px rgba(0, 150, 255, 0.15);
+  --shadow-lg: 0 8px 24px 0px rgba(0, 150, 255, 0.25), 0 6px 12px -4px rgba(0, 150, 255, 0.18);
+  --shadow-xl: 0 12px 32px 0px rgba(0, 150, 255, 0.28), 0 8px 16px -6px rgba(0, 150, 255, 0.20);
+  --shadow-2xl: 0 16px 48px 0px rgba(0, 150, 255, 0.35);
+  --tracking-normal: -0.01em;
+  --spacing: 0.25rem;
 }

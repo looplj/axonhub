@@ -28,6 +28,7 @@ export function ThemeSwitch() {
     { name: 'black', label: t('theme.colors.black'), color: 'bg-black' },
     { name: 'cream', label: t('theme.colors.cream'), color: 'bg-amber-100' },
     { name: 'claude', label: t('theme.colors.claude'), color: 'bg-amber-600' },
+    { name: 'starry', label: t('theme.colors.starry'), color: 'bg-blue-600' },
   ] as const
 
   /* Update theme-color meta tag when theme is updated */

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
 type Theme = 'dark' | 'light' | 'system'
-type ColorScheme = 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'black' | 'cream' | 'claude'
+type ColorScheme = 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'black' | 'cream' | 'claude' | 'starry'
 
 type ThemeProviderProps = {
   children: React.ReactNode
@@ -48,7 +48,7 @@ export function ThemeProvider({
 
     const applyTheme = (theme: Theme, colorScheme: ColorScheme) => {
       // Remove existing theme and color scheme classes
-      root.classList.remove('light', 'dark', 'blue', 'green', 'purple', 'orange', 'red', 'black', 'cream', 'claude')
+      root.classList.remove('light', 'dark', 'blue', 'green', 'purple', 'orange', 'red', 'black', 'cream', 'claude', 'starry')
       
       const systemTheme = mediaQuery.matches ? 'dark' : 'light'
       const effectiveTheme = theme === 'system' ? systemTheme : theme
