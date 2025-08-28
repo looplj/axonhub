@@ -130,9 +130,26 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
       }
 
       if (isEdit && currentRow) {
+        // For edit mode, only include credentials if user actually entered new values
+        const updateInput = { ...dataWithModels }
+        
+        // Check if any credential fields have actual values
+        const hasApiKey = values.credentials?.apiKey && values.credentials.apiKey.trim() !== ''
+        const hasAwsCredentials = values.credentials?.aws?.accessKeyID && values.credentials.aws.accessKeyID.trim() !== '' &&
+                                  values.credentials?.aws?.secretAccessKey && values.credentials.aws.secretAccessKey.trim() !== '' &&
+                                  values.credentials?.aws?.region && values.credentials.aws.region.trim() !== ''
+        const hasGcpCredentials = values.credentials?.gcp?.region && values.credentials.gcp.region.trim() !== '' &&
+                                  values.credentials?.gcp?.projectID && values.credentials.gcp.projectID.trim() !== '' &&
+                                  values.credentials?.gcp?.jsonData && values.credentials.gcp.jsonData.trim() !== ''
+        
+        // Only include credentials if user provided new values
+        if (!hasApiKey && !hasAwsCredentials && !hasGcpCredentials) {
+          delete updateInput.credentials
+        }
+
         await updateChannel.mutateAsync({
           id: currentRow.id,
-          input: dataWithModels,
+          input: updateInput,
         })
       } else {
         await createChannel.mutateAsync(dataWithModels as any)
