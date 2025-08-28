@@ -5,6 +5,7 @@ import { ColumnDef } from '@tanstack/react-table'
 import { zhCN, enUS } from 'date-fns/locale'
 import { Eye, MoreHorizontal, FileText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from '@tanstack/react-router'
 import { extractNumberID } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -145,18 +146,14 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       <DataTableColumnHeader column={column} title={t('requests.columns.requestBody')} />
     ),
     cell: ({ row }) => {
-      const { setJsonViewerOpen, setJsonViewerData } = useRequestsContext()
+      const navigate = useNavigate()
 
-      const handleViewRequestBody = () => {
-        setJsonViewerData({
-          title: t('requests.dialogs.jsonViewer.requestBody'),
-          data: row.original.requestBody,
-        })
-        setJsonViewerOpen(true)
+      const handleViewRequest = () => {
+        navigate({ to: '/requests/$requestId', params: { requestId: row.original.id } })
       }
 
       return (
-        <Button variant='outline' size='sm' onClick={handleViewRequestBody}>
+        <Button variant='outline' size='sm' onClick={handleViewRequest}>
           <FileText className='mr-2 h-4 w-4' />
           {t('requests.actions.viewRequest')}
         </Button>
@@ -169,21 +166,17 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       <DataTableColumnHeader column={column} title={t('requests.columns.responseBody')} />
     ),
     cell: ({ row }) => {
-      const { setJsonViewerOpen, setJsonViewerData } = useRequestsContext()
+      const navigate = useNavigate()
 
-      const handleViewResponseBody = () => {
-        setJsonViewerData({
-          title: t('requests.dialogs.jsonViewer.responseBody'),
-          data: row.original.responseBody,
-        })
-        setJsonViewerOpen(true)
+      const handleViewResponse = () => {
+        navigate({ to: '/requests/$requestId', params: { requestId: row.original.id } })
       }
 
       return (
         <Button
           variant='outline'
           size='sm'
-          onClick={handleViewResponseBody}
+          onClick={handleViewResponse}
           disabled={!row.original.responseBody}
         >
           <FileText className='mr-2 h-4 w-4' />

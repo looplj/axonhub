@@ -795,6 +795,16 @@
       "user": "用户",
       "reset": "重置"
     },
+    "detail": {
+      "title": "请求详情",
+      "overview": "概览",
+      "tabs": {
+        "request": "请求",
+        "response": "响应",
+        "executions": "执行记录"
+      },
+      "noResponse": "暂无响应数据"
+    },
     "dialogs": {
       "jsonViewer": {
         "requestBody": "请求体",
@@ -1098,6 +1108,7 @@
     "clearFilters": "清除筛选",
     "loading": "加载中",
     "saving": "保存中",
+    "back": "返回",
     "moveUp": "上移",
     "moveDown": "下移",
     "dragging": "拖拽中",

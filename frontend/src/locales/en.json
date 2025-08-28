@@ -760,6 +760,16 @@
       "user": "User",
       "reset": "Reset"
     },
+    "detail": {
+      "title": "Request Details",
+      "overview": "Overview",
+      "tabs": {
+        "request": "Request",
+        "response": "Response",
+        "executions": "Executions"
+      },
+      "noResponse": "No response data"
+    },
     "dialogs": {
       "jsonViewer": {
         "requestBody": "Request Body",
@@ -1062,6 +1072,7 @@
     "noResultsFound": "No results found",
     "clearFilters": "Clear filters",
     "loading": "Loading",
+    "back": "Back",
     "saving": "Saving",
     "moveUp": "Move Up",
     "moveDown": "Move Down",
