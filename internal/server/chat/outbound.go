@@ -95,15 +95,16 @@ func (ts *OutboundPersistentStream) Close() error {
 
 	streamErr := ts.stream.Err()
 	if streamErr != nil {
-		ctx = context.WithoutCancel(ctx)
+		// Use context without cancellation to ensure persistence even if client canceled
+		persistCtx := context.WithoutCancel(ctx)
 		if ts.requestExec != nil {
 			err := ts.RequestService.UpdateRequestExecutionFailed(
-				ctx,
+				persistCtx,
 				ts.requestExec.ID,
 				streamErr.Error(),
 			)
 			if err != nil {
-				log.Warn(ctx, "Failed to update request execution status to failed", log.Cause(err))
+				log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(err))
 			}
 		}
 
@@ -115,21 +116,22 @@ func (ts *OutboundPersistentStream) Close() error {
 
 	// Update request execution with aggregated chunks
 	if ts.requestExec != nil {
-		ctx = context.WithoutCancel(ctx)
-		responseBody, usage, err := ts.transformer.AggregateStreamChunks(ctx, ts.responseChunks)
+		// Use context without cancellation to ensure persistence even if client canceled
+		persistCtx := context.WithoutCancel(ctx)
+		responseBody, usage, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
 		if err != nil {
-			log.Warn(ctx, "Failed to aggregate chunks using transformer", log.Cause(err))
+			log.Warn(persistCtx, "Failed to aggregate chunks using transformer", log.Cause(err))
 			return ts.stream.Close()
 		}
 
 		err = ts.RequestService.UpdateRequestExecutionCompletd(
-			ctx,
+			persistCtx,
 			ts.requestExec.ID,
 			responseBody,
 		)
 		if err != nil {
 			log.Warn(
-				ctx,
+				persistCtx,
 				"Failed to update request execution with chunks, trying basic completion",
 				log.Cause(err),
 			)
@@ -137,9 +139,9 @@ func (ts *OutboundPersistentStream) Close() error {
 
 		// Try to create usage log from aggregated response
 		if usage != nil {
-			_, err = ts.UsageLogService.CreateUsageLogFromRequest(ctx, ts.request, ts.requestExec, usage)
+			_, err = ts.UsageLogService.CreateUsageLogFromRequest(persistCtx, ts.request, ts.requestExec, usage)
 			if err != nil {
-				log.Warn(ctx, "Failed to create usage log from request", log.Cause(err))
+				log.Warn(persistCtx, "Failed to create usage log from request", log.Cause(err))
 			}
 		}
 	}
@@ -246,13 +248,15 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 	llmResp, err := p.wrapped.TransformResponse(ctx, response)
 	if err != nil {
 		if p.state.RequestExec != nil {
+			// Use context without cancellation to ensure persistence even if client canceled
+			persistCtx := context.WithoutCancel(ctx)
 			innerErr := p.state.RequestService.UpdateRequestExecutionFailed(
-				ctx,
+				persistCtx,
 				p.state.RequestExec.ID,
 				err.Error(),
 			)
 			if innerErr != nil {
-				log.Warn(ctx, "Failed to update request execution status to failed", log.Cause(innerErr))
+				log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(innerErr))
 			}
 		}
 
@@ -260,22 +264,26 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 	}
 
 	if p.state.RequestExec != nil {
+		// Use context without cancellation to ensure persistence even if client canceled
+		persistCtx := context.WithoutCancel(ctx)
 		err = p.state.RequestService.UpdateRequestExecutionCompleted(
-			ctx,
+			persistCtx,
 			p.state.RequestExec.ID,
 			response.Body,
 		)
 		if err != nil {
-			log.Warn(ctx, "Failed to update request execution status to completed", log.Cause(err))
+			log.Warn(persistCtx, "Failed to update request execution status to completed", log.Cause(err))
 		}
 	}
 
 	// Update request with usage log if we have a request and response with usage data
+	// Use context without cancellation to ensure persistence even if client canceled
 	if p.state.Request != nil && llmResp != nil {
+		persistCtx := context.WithoutCancel(ctx)
 		usage := llmResp.Usage
-		_, err = p.state.UsageLogService.CreateUsageLogFromRequest(ctx, p.state.Request, p.state.RequestExec, usage)
+		_, err = p.state.UsageLogService.CreateUsageLogFromRequest(persistCtx, p.state.Request, p.state.RequestExec, usage)
 		if err != nil {
-			log.Warn(ctx, "Failed to create usage log from request", log.Cause(err))
+			log.Warn(persistCtx, "Failed to create usage log from request", log.Cause(err))
 		}
 	}
 

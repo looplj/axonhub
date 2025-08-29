@@ -90,10 +90,12 @@ func (ts *InboundPersistentStream) Close() error {
 		// Stream had an error - update both request execution and main request
 		log.Warn(ctx, "Stream completed with error", log.Cause(streamErr))
 
+		// Use context without cancellation to ensure persistence even if client canceled
 		if ts.request != nil {
-			err := ts.requestService.UpdateRequestFailed(ctx, ts.request.ID)
+			persistCtx := context.WithoutCancel(ctx)
+			err := ts.requestService.UpdateRequestFailed(persistCtx, ts.request.ID)
 			if err != nil {
-				log.Warn(ctx, "Failed to update request status to failed", log.Cause(err))
+				log.Warn(persistCtx, "Failed to update request status to failed", log.Cause(err))
 			}
 		}
 
@@ -104,14 +106,16 @@ func (ts *InboundPersistentStream) Close() error {
 	log.Debug(ctx, "Stream completed successfully, performing final persistence")
 
 	// Update main request with aggregated response
+	// Use context without cancellation to ensure persistence even if client canceled
 	if ts.request != nil {
-		responseBody, _, err := ts.transformer.AggregateStreamChunks(ctx, ts.responseChunks)
+		persistCtx := context.WithoutCancel(ctx)
+		responseBody, _, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
 		if err != nil {
-			log.Warn(ctx, "Failed to aggregate chunks for main request", log.Cause(err))
+			log.Warn(persistCtx, "Failed to aggregate chunks for main request", log.Cause(err))
 		} else {
-			err = ts.requestService.UpdateRequestCompleted(ctx, ts.request.ID, responseBody)
+			err = ts.requestService.UpdateRequestCompleted(persistCtx, ts.request.ID, responseBody)
 			if err != nil {
-				log.Warn(ctx, "Failed to update request status to completed", log.Cause(err))
+				log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
 			}
 		}
 	}
@@ -166,9 +170,11 @@ func (p *PersistentInboundTransformer) TransformResponse(ctx context.Context, re
 	}
 
 	if p.state.Request != nil {
-		err = p.state.RequestService.UpdateRequestCompleted(ctx, p.state.Request.ID, finalResp.Body)
+		// Use context without cancellation to ensure persistence even if client canceled
+		persistCtx := context.WithoutCancel(ctx)
+		err = p.state.RequestService.UpdateRequestCompleted(persistCtx, p.state.Request.ID, finalResp.Body)
 		if err != nil {
-			log.Warn(ctx, "Failed to update request status to completed", log.Cause(err))
+			log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
 		}
 	}
 
