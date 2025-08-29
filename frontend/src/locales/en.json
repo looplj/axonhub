@@ -718,7 +718,7 @@
   "requests": {
     "title": "Request Logs",
     "description": "View and manage LLM call request logs",
-      "loadError": "Load failed:",
+    "loadError": "Load failed:",
     "noResults": "No data",
     "refresh": "Refresh",
     "columns": {
@@ -767,7 +767,8 @@
       "tabs": {
         "request": "Request",
         "response": "Response",
-        "executions": "Executions"
+        "executions": "Executions",
+        "usage": "Usage"
       },
       "noResponse": "No response data"
     },

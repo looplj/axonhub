@@ -15,7 +15,9 @@ import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { JsonViewer } from '@/components/json-tree-view'
 import { useRequest, useRequestExecutions } from '../data'
+import { useUsageLogs } from '../../usage-logs/data/usage-logs'
 import { getStatusColor } from './help'
 
 export default function RequestDetailPage() {
@@ -26,6 +28,10 @@ export default function RequestDetailPage() {
 
   const { data: request, isLoading } = useRequest(requestId)
   const { data: executions } = useRequestExecutions(requestId)
+  const { data: usageLogs } = useUsageLogs({
+    where: { requestID: requestId },
+    orderBy: { field: 'CREATED_AT', direction: 'DESC' }
+  })
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -195,7 +201,7 @@ export default function RequestDetailPage() {
             <CardContent className='p-0'>
               <Tabs defaultValue='request' className='w-full'>
                 <div className='bg-muted/20 border-b px-6 pt-6'>
-                  <TabsList className='bg-background grid w-full grid-cols-3'>
+                  <TabsList className='bg-background grid w-full grid-cols-4'>
                     <TabsTrigger
                       value='request'
                       className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
@@ -213,6 +219,12 @@ export default function RequestDetailPage() {
                       className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                     >
                       {t('requests.detail.tabs.executions')}
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value='usage'
+                      className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                    >
+                      {t('requests.detail.tabs.usage')}
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -234,10 +246,13 @@ export default function RequestDetailPage() {
                         {t('requests.dialogs.jsonViewer.copy')}
                       </Button>
                     </div>
-                    <div className='bg-muted/20 h-[500px] w-full rounded-lg border overflow-auto'>
-                      <pre className='p-6 text-sm leading-relaxed whitespace-pre font-mono'>
-                        <code className='text-foreground'>{formatJson(request.requestBody)}</code>
-                      </pre>
+                    <div className='bg-muted/20 h-[500px] w-full rounded-lg border overflow-auto p-4'>
+                      <JsonViewer 
+                        data={request.requestBody} 
+                        rootName="" 
+                        defaultExpanded={true}
+                        className="text-sm"
+                      />
                     </div>
                   </div>
                 </TabsContent>
@@ -261,10 +276,13 @@ export default function RequestDetailPage() {
                       </Button>
                     </div>
                     {request.responseBody ? (
-                      <div className='bg-muted/20 h-[500px] w-full rounded-lg border overflow-auto'>
-                        <pre className='p-6 text-sm leading-relaxed whitespace-pre font-mono'>
-                          <code className='text-foreground'>{formatJson(request.responseBody)}</code>
-                        </pre>
+                      <div className='bg-muted/20 h-[500px] w-full rounded-lg border overflow-auto p-4'>
+                        <JsonViewer 
+                          data={request.responseBody} 
+                          rootName="" 
+                          defaultExpanded={true}
+                          className="text-sm"
+                        />
                       </div>
                     ) : (
                       <div className='bg-muted/20 flex h-[500px] w-full items-center justify-center rounded-lg border'>
@@ -352,10 +370,13 @@ export default function RequestDetailPage() {
                                       {t('requests.dialogs.jsonViewer.copy')}
                                     </Button>
                                   </div>
-                                  <div className='bg-background h-64 w-full rounded-lg border overflow-auto'>
-                                    <pre className='p-4 text-sm leading-relaxed whitespace-pre font-mono'>
-                                      <code className='text-foreground'>{formatJson(execution.requestBody)}</code>
-                                    </pre>
+                                  <div className='bg-background h-64 w-full rounded-lg border overflow-auto p-3'>
+                                    <JsonViewer 
+                                      data={execution.requestBody} 
+                                      rootName="" 
+                                      defaultExpanded={false}
+                                      className="text-xs"
+                                    />
                                   </div>
                                 </div>
                               )}
@@ -377,10 +398,13 @@ export default function RequestDetailPage() {
                                       {t('requests.dialogs.jsonViewer.copy')}
                                     </Button>
                                   </div>
-                                  <div className='bg-background h-64 w-full rounded-lg border overflow-auto'>
-                                    <pre className='p-4 text-sm leading-relaxed whitespace-pre font-mono'>
-                                      <code className='text-foreground'>{formatJson(execution.responseBody)}</code>
-                                    </pre>
+                                  <div className='bg-background h-64 w-full rounded-lg border overflow-auto p-3'>
+                                    <JsonViewer 
+                                      data={execution.responseBody} 
+                                      rootName="" 
+                                      defaultExpanded={false}
+                                      className="text-xs"
+                                    />
                                   </div>
                                 </div>
                               )}
@@ -395,6 +419,135 @@ export default function RequestDetailPage() {
                         <FileText className='text-muted-foreground mx-auto h-16 w-16' />
                         <p className='text-muted-foreground text-lg'>
                           {t('requests.dialogs.requestDetail.noExecutions')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value='usage' className='space-y-6 p-6'>
+                  {usageLogs && usageLogs.edges.length > 0 ? (
+                    <div className='space-y-6'>
+                      {usageLogs.edges.map((edge: any, index: number) => {
+                        const usage = edge.node
+                        const cachedTokens = usage.promptCachedTokens || 0
+                        const hasCache = cachedTokens > 0
+                        const cacheHitRate = hasCache ? ((cachedTokens / usage.promptTokens) * 100).toFixed(1) : 0
+                        
+                        return (
+                          <Card key={usage.id} className='bg-muted/20 border-0 shadow-sm'>
+                            <CardHeader className='pb-4'>
+                              <div className='flex items-center justify-between'>
+                                <h5 className='flex items-center gap-2 text-base font-semibold'>
+                                  <div className='bg-primary/10 text-primary flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold'>
+                                    {index + 1}
+                                  </div>
+                                  {t('requests.detail.tabs.usage', { index: index + 1 })}
+                                </h5>
+                                <Badge className='bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' variant='secondary'>
+                                  {t(`usageLogs.source.${usage.source}`)}
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className='space-y-6'>
+                              {/* Token Usage Grid */}
+                              <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4'>
+                                <div className='bg-background space-y-2 rounded-lg border p-3'>
+                                  <span className='text-xs text-muted-foreground font-medium'>
+                                    {t('usageLogs.columns.inputLabel')}
+                                  </span>
+                                  <p className='text-lg font-semibold text-blue-600 dark:text-blue-400'>
+                                    {usage.promptTokens.toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className='bg-background space-y-2 rounded-lg border p-3'>
+                                  <span className='text-xs text-muted-foreground font-medium'>
+                                    {t('usageLogs.columns.outputLabel')}
+                                  </span>
+                                  <p className='text-lg font-semibold text-green-600 dark:text-green-400'>
+                                    {usage.completionTokens.toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className='bg-background space-y-2 rounded-lg border p-3'>
+                                  <span className='text-xs text-muted-foreground font-medium'>
+                                    {t('usageLogs.columns.totalTokens')}
+                                  </span>
+                                  <p className='text-lg font-semibold text-slate-600 dark:text-slate-400'>
+                                    {usage.totalTokens.toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className='bg-background space-y-2 rounded-lg border p-3'>
+                                  <span className='text-xs text-muted-foreground font-medium'>
+                                    {t('usageLogs.columns.cacheTokens')}
+                                  </span>
+                                  <div className='space-y-1'>
+                                    <div className='flex items-center gap-1'>
+                                      <span className={`text-xs font-medium ${
+                                        hasCache 
+                                          ? 'text-green-600 dark:text-green-400' 
+                                          : 'text-muted-foreground'
+                                      }`}>
+                                        {hasCache ? '✓' : '—'}
+                                      </span>
+                                      <span className='text-lg font-semibold text-purple-600 dark:text-purple-400'>
+                                        {cachedTokens.toLocaleString()}
+                                      </span>
+                                    </div>
+                                    {hasCache && (
+                                      <div className='text-xs text-muted-foreground'>
+                                        {t('usageLogs.columns.cacheHitRate', { rate: cacheHitRate })}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Additional Token Types */}
+                              {(usage.completionReasoningTokens > 0 || usage.promptAudioTokens > 0 || usage.completionAudioTokens > 0) && (
+                                <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
+                                  {usage.completionReasoningTokens > 0 && (
+                                    <div className='bg-background space-y-2 rounded-lg border p-3'>
+                                      <span className='text-xs text-muted-foreground font-medium'>
+                                        {t('requests.detail.usage.reasoningTokens')}
+                                      </span>
+                                      <p className='text-lg font-semibold text-orange-600 dark:text-orange-400'>
+                                        {usage.completionReasoningTokens.toLocaleString()}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {usage.promptAudioTokens > 0 && (
+                                    <div className='bg-background space-y-2 rounded-lg border p-3'>
+                                      <span className='text-xs text-muted-foreground font-medium'>
+                                        Audio Input
+                                      </span>
+                                      <p className='text-lg font-semibold text-cyan-600 dark:text-cyan-400'>
+                                        {usage.promptAudioTokens.toLocaleString()}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {usage.completionAudioTokens > 0 && (
+                                    <div className='bg-background space-y-2 rounded-lg border p-3'>
+                                      <span className='text-xs text-muted-foreground font-medium'>
+                                        Audio Output
+                                      </span>
+                                      <p className='text-lg font-semibold text-teal-600 dark:text-teal-400'>
+                                        {usage.completionAudioTokens.toLocaleString()}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className='py-16 text-center'>
+                      <div className='space-y-4'>
+                        <Database className='text-muted-foreground mx-auto h-16 w-16' />
+                        <p className='text-muted-foreground text-lg'>
+                          {t('requests.detail.usage.noUsage')}
                         </p>
                       </div>
                     </div>

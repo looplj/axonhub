@@ -831,7 +831,8 @@
           "overview": "概览",
           "request": "请求",
           "response": "响应",
-          "executions": "执行记录"
+          "executions": "执行记录",
+          "usage": "用量信息"
         },
         "fields": {
           "userId": "用户ID",
