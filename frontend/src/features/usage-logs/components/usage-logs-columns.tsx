@@ -171,6 +171,48 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
       enableSorting: false,
     },
     {
+      id: 'cacheTokens',
+      header: ({ column }) => (
+        <DataTableColumnHeader 
+          column={column} 
+          title={t('usageLogs.columns.cacheTokens')} 
+        />
+      ),
+      cell: ({ row }) => {
+        const usage = row.original
+        const cachedTokens = usage.promptCachedTokens || 0
+        const hasCache = cachedTokens > 0
+        
+        return (
+          <div className='text-sm space-y-1'>
+            <div className='flex items-center gap-1'>
+              <span className={`text-xs font-medium ${
+                hasCache 
+                  ? 'text-green-600 dark:text-green-400' 
+                  : 'text-muted-foreground'
+              }`}>
+                {hasCache ? '✓' : '—'}
+              </span>
+              <span className='font-medium'>{cachedTokens.toLocaleString()}</span>
+            </div>
+            {hasCache && (
+              <div className='text-xs text-muted-foreground'>
+                {t('usageLogs.columns.cacheHitRate', {
+                  rate: ((cachedTokens / usage.promptTokens) * 100).toFixed(1)
+                })}
+              </div>
+            )}
+          </div>
+        )
+      },
+      enableSorting: true,
+      sortingFn: (rowA, rowB) => {
+        const a = rowA.original.promptCachedTokens || 0
+        const b = rowB.original.promptCachedTokens || 0
+        return a - b
+      },
+    },
+    {
       id: 'source',
       accessorKey: 'source',
       header: ({ column }) => (
