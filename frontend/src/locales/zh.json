@@ -1110,6 +1110,7 @@
   "edit": "编辑",
   "create": "创建",
   "update": "更新",
+  "errorMessage": "错误信息",
   "common": {
     "selectedItems": "已选择 {{count}} 项",
     "noResultsFound": "未找到结果",

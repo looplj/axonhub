@@ -336,6 +336,22 @@ func (p *PersistentOutboundTransformer) GetCurrentChannelOutbound() transformer.
 
 // NextChannel moves to the next available channel for retry.
 func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
+	// Before switching to the next channel, if we have a current request execution that failed,
+	// update its status to failed
+	if p.state.RequestExec != nil {
+		// Use context without cancellation to ensure persistence even if client canceled
+		persistCtx := context.WithoutCancel(ctx)
+
+		err := p.state.RequestService.UpdateRequestExecutionFailed(
+			persistCtx,
+			p.state.RequestExec.ID,
+			"Channel request failed, switching to next channel",
+		)
+		if err != nil {
+			log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(err))
+		}
+	}
+
 	p.state.ChannelIndex++
 	if p.state.ChannelIndex >= len(p.state.Channels) {
 		return errors.New("no more channels available for retry")

@@ -27,7 +27,9 @@ export default function RequestDetailPage() {
   const locale = i18n.language === 'zh' ? zhCN : enUS
 
   const { data: request, isLoading } = useRequest(requestId)
-  const { data: executions } = useRequestExecutions(requestId)
+  const { data: executions } = useRequestExecutions(requestId, {
+    orderBy: { field: 'CREATED_AT', direction: 'DESC' }
+  })
   const { data: usageLogs } = useUsageLogs({
     where: { requestID: requestId },
     orderBy: { field: 'CREATED_AT', direction: 'DESC' }
@@ -345,7 +347,7 @@ export default function RequestDetailPage() {
                                 <div className='bg-destructive/5 border-destructive/20 space-y-3 rounded-lg border p-4'>
                                   <span className='text-destructive flex items-center gap-2 text-sm font-semibold'>
                                     <FileText className='h-4 w-4' />
-                                    {t('requests.dialogs.requestDetail.fields.errorMessage')}
+                                    {t('common.errorMessage')}
                                   </span>
                                   <p className='text-destructive bg-destructive/10 rounded border p-3 text-sm'>
                                     {execution.errorMessage}

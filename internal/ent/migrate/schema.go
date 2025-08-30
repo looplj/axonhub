@@ -203,7 +203,7 @@ var (
 		Indexes: []*schema.Index{
 			{
 				Name:    "request_executions_by_request_id",
-				Unique:  true,
+				Unique:  false,
 				Columns: []*schema.Column{RequestExecutionsColumns[12]},
 			},
 			{

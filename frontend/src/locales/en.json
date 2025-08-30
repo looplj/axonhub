@@ -1086,6 +1086,7 @@
     "moveDown": "Move Down",
     "dragging": "Dragging",
     "unsavedChanges": "You have unsaved changes",
+    "errorMessage": "Error Message",
     "errors": {
       "sessionExpired": "Session expired!",
       "sessionExpiredSignIn": "Session expired. Please sign in again.",

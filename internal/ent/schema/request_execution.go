@@ -24,9 +24,7 @@ func (RequestExecution) Mixin() []ent.Mixin {
 func (RequestExecution) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("request_id").
-			StorageKey("request_executions_by_request_id").
-			Unique(),
-
+			StorageKey("request_executions_by_request_id"),
 		index.Fields("channel_id").
 			StorageKey("request_executions_by_channel_id_created_at"),
 	}
