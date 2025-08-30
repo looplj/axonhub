@@ -93,6 +93,7 @@ func (ts *InboundPersistentStream) Close() error {
 		// Use context without cancellation to ensure persistence even if client canceled
 		if ts.request != nil {
 			persistCtx := context.WithoutCancel(ctx)
+
 			err := ts.requestService.UpdateRequestFailed(persistCtx, ts.request.ID)
 			if err != nil {
 				log.Warn(persistCtx, "Failed to update request status to failed", log.Cause(err))
@@ -109,6 +110,7 @@ func (ts *InboundPersistentStream) Close() error {
 	// Use context without cancellation to ensure persistence even if client canceled
 	if ts.request != nil {
 		persistCtx := context.WithoutCancel(ctx)
+
 		responseBody, _, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to aggregate chunks for main request", log.Cause(err))
@@ -172,6 +174,7 @@ func (p *PersistentInboundTransformer) TransformResponse(ctx context.Context, re
 	if p.state.Request != nil {
 		// Use context without cancellation to ensure persistence even if client canceled
 		persistCtx := context.WithoutCancel(ctx)
+
 		err = p.state.RequestService.UpdateRequestCompleted(persistCtx, p.state.Request.ID, finalResp.Body)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))

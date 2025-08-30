@@ -72,6 +72,21 @@ const getChannelTypeConfig = (
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     icon: Moonshot,
   },
+  deepseek_anthropic: {
+    label: t('channels.types.deepseek_anthropic'),
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: DeepSeek,
+  },
+  kimi_anthropic: {
+    label: t('channels.types.kimi_anthropic'),
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    icon: Moonshot,
+  },
+  zhipu_anthropic: {
+    label: t('channels.types.zhipu_anthropic'),
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: Anthropic,
+  },
   anthropic_fake: {
     label: t('channels.types.anthropic_fake'),
     color: 'bg-gray-100 text-gray-800 border-gray-200',

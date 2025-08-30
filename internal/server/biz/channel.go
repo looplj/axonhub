@@ -123,6 +123,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 					log.String("type", c.Type.String()),
 					log.Cause(err),
 				)
+
 				continue
 			}
 
@@ -132,7 +133,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				Channel:  c,
 				Outbound: transformer,
 			})
-		case channel.TypeAnthropic:
+		case channel.TypeAnthropic, channel.TypeDeepseekAnrhropic, channel.TypeKimiAnrhropic:
 			transformer, err := anthropic.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 			if err != nil {
 				log.Warn(ctx, "failed to create anthropic outbound transformer", log.Cause(err))

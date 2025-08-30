@@ -388,8 +388,8 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   doubao
   kimi
   kimi_anrhropic
-  zai
   zhipu
+  zhipu_anrhropic
   anthropic_fake
   openai_fake
 }

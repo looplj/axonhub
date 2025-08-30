@@ -26,6 +26,7 @@ func TestMessageContent_MarshalJSON(t *testing.T) {
 		Content         *string
 		MultipleContent []MessageContentPart
 	}
+
 	tests := []struct {
 		name    string
 		fields  fields
@@ -66,11 +67,13 @@ func TestMessageContent_MarshalJSON(t *testing.T) {
 				Content:         tt.fields.Content,
 				MultipleContent: tt.fields.MultipleContent,
 			}
+
 			got, err := c.MarshalJSON()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MessageContent.MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if !reflect.DeepEqual(string(got), tt.want) {
 				t.Errorf("MessageContent.MarshalJSON() = %v, want %v", string(got), tt.want)
 			}

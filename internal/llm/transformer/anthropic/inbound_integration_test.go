@@ -152,6 +152,7 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Load the test request data as raw JSON
 			var anthropicReqData json.RawMessage
+
 			err := xtest.LoadTestData(t, tt.requestFile, &anthropicReqData)
 			require.NoError(t, err)
 

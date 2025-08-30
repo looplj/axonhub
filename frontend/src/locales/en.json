@@ -437,6 +437,9 @@
       "deepseek": "DeepSeek",
       "doubao": "Doubao",
       "kimi": "Kimi",
+      "deepseek_anthropic": "DeepSeek Anthropic",
+      "kimi_anthropic": "Kimi Anthropic",
+      "zhipu_anthropic": "Zhipu Anthropic",
       "anthropic_fake": "Anthropic Fake",
       "openai_fake": "OpenAI Fake"
     },
@@ -507,7 +510,7 @@
         "formatDescription": "Format: type,name,baseURL,apiKey,supportedModels,defaultTestModel",
         "supportedModelsNote": "Use | to separate multiple models",
         "requiredFieldsNote": "Note: baseURL and apiKey are required fields",
-        "supportedTypes": "Supported types: openai, anthropic, deepseek, doubao, kimi",
+        "supportedTypes": "Supported types: openai, anthropic, deepseek, doubao, kimi, deepseek_anthropic, kimi_anthropic, zhipu_anthropic",
         "inputLabel": "Import Data",
         "inputPlaceholder": "Enter channel data to import, one per line...",
         "previewButton": "Preview Import Data",

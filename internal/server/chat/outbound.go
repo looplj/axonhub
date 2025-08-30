@@ -118,6 +118,7 @@ func (ts *OutboundPersistentStream) Close() error {
 	if ts.requestExec != nil {
 		// Use context without cancellation to ensure persistence even if client canceled
 		persistCtx := context.WithoutCancel(ctx)
+
 		responseBody, usage, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to aggregate chunks using transformer", log.Cause(err))
@@ -250,6 +251,7 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 		if p.state.RequestExec != nil {
 			// Use context without cancellation to ensure persistence even if client canceled
 			persistCtx := context.WithoutCancel(ctx)
+
 			innerErr := p.state.RequestService.UpdateRequestExecutionFailed(
 				persistCtx,
 				p.state.RequestExec.ID,
@@ -266,6 +268,7 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 	if p.state.RequestExec != nil {
 		// Use context without cancellation to ensure persistence even if client canceled
 		persistCtx := context.WithoutCancel(ctx)
+
 		err = p.state.RequestService.UpdateRequestExecutionCompleted(
 			persistCtx,
 			p.state.RequestExec.ID,
@@ -281,6 +284,7 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 	if p.state.Request != nil && llmResp != nil {
 		persistCtx := context.WithoutCancel(ctx)
 		usage := llmResp.Usage
+
 		_, err = p.state.UsageLogService.CreateUsageLogFromRequest(persistCtx, p.state.Request, p.state.RequestExec, usage)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to create usage log from request", log.Cause(err))

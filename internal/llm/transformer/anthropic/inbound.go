@@ -26,6 +26,8 @@ func (t *InboundTransformer) APIFormat() llm.APIFormat {
 }
 
 // TransformRequest transforms Anthropic HTTP request to ChatCompletionRequest.
+//
+//nolint:maintidx
 func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("http request is nil")
@@ -46,6 +48,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 	}
 
 	var anthropicReq MessageRequest
+
 	err := json.Unmarshal(httpReq.Body, &anthropicReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode anthropic request: %w", err)
@@ -159,6 +162,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 								},
 							})
 						}
+
 						hasContent = true
 					}
 				case "tool_result":
@@ -166,6 +170,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 					if err != nil {
 						return nil, fmt.Errorf("failed to marshal tool result: %w", err)
 					}
+
 					messages = append(messages, llm.Message{
 						Role:       "tool",
 						ToolCallID: block.ToolUseID,
@@ -223,6 +228,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 			}
 			tools = append(tools, llmTool)
 		}
+
 		chatReq.Tools = tools
 	}
 

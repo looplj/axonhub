@@ -47,8 +47,12 @@ interface Props {
   deepseek: 'https://api.deepseek.com/v1',
   doubao: 'https://ark.cn-beijing.volces.com/api/v3',
   kimi: 'https://api.moonshot.cn/v1',
-  anthropic_fake: 'https://api.anthropic.com/v1',
-  openai_fake: 'https://api.openai.com/v1',
+  deepseek_anthropic: 'https://api.deepseek.com/v1',
+  kimi_anthropic: 'https://api.moonshot.cn/v1',
+  zhipu_anthropic: 'https://open.bigmodel.cn/api/paas/v4',
+  // Fake types are not allowed for creation
+  // anthropic_fake: 'https://api.anthropic.com/v1',
+  // openai_fake: 'https://api.openai.com/v1',
 }
 
 export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) {
@@ -71,9 +75,17 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     { value: 'deepseek', label: t('channels.types.deepseek') },
     { value: 'doubao', label: t('channels.types.doubao') },
     { value: 'kimi', label: t('channels.types.kimi') },
+    { value: 'deepseek_anthropic', label: t('channels.types.deepseek_anthropic') },
+    { value: 'kimi_anthropic', label: t('channels.types.kimi_anthropic') },
+    { value: 'zhipu_anthropic', label: t('channels.types.zhipu_anthropic') },
     { value: 'anthropic_fake', label: t('channels.types.anthropic_fake') },
     { value: 'openai_fake', label: t('channels.types.openai_fake') },
   ]
+
+  // Filter out fake types for new channels, but keep them for editing existing channels
+  const availableChannelTypes = isEdit 
+    ? channelTypes 
+    : channelTypes.filter(type => !type.value.endsWith('_fake'))
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema
   
@@ -225,7 +237,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                             form.setValue('baseURL', defaultBaseUrls[value])
                           }
                         }}
-                        items={channelTypes}
+                        items={availableChannelTypes}
                         placeholder={t('channels.dialogs.fields.type.description')}
                         className='col-span-4'
                         isControlled={true}

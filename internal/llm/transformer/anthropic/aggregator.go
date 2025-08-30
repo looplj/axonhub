@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -179,5 +180,6 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	if usage != nil {
 		return data, lo.ToPtr(convertUsage(*usage)), nil
 	}
+
 	return data, nil, nil
 }

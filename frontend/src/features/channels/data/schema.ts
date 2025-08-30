@@ -12,6 +12,9 @@ export const channelTypeSchema = z.enum([
   'kimi',
   'anthropic_fake',
   'openai_fake',
+  'deepseek_anthropic',
+  'kimi_anthropic',
+  'zhipu_anthropic',
 ])
 export type ChannelType = z.infer<typeof channelTypeSchema>
 

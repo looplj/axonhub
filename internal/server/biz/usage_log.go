@@ -58,6 +58,7 @@ func (s *UsageLogService) CreateUsageLog(
 		if usage.PromptTokensDetails.AudioTokens > 0 {
 			mut = mut.SetPromptAudioTokens(usage.PromptTokensDetails.AudioTokens)
 		}
+
 		if usage.PromptTokensDetails.CachedTokens > 0 {
 			mut = mut.SetPromptCachedTokens(usage.PromptTokensDetails.CachedTokens)
 		}
@@ -68,12 +69,15 @@ func (s *UsageLogService) CreateUsageLog(
 		if usage.CompletionTokensDetails.AudioTokens > 0 {
 			mut = mut.SetCompletionAudioTokens(usage.CompletionTokensDetails.AudioTokens)
 		}
+
 		if usage.CompletionTokensDetails.ReasoningTokens > 0 {
 			mut = mut.SetCompletionReasoningTokens(usage.CompletionTokensDetails.ReasoningTokens)
 		}
+
 		if usage.CompletionTokensDetails.AcceptedPredictionTokens > 0 {
 			mut = mut.SetCompletionAcceptedPredictionTokens(usage.CompletionTokensDetails.AcceptedPredictionTokens)
 		}
+
 		if usage.CompletionTokensDetails.RejectedPredictionTokens > 0 {
 			mut = mut.SetCompletionRejectedPredictionTokens(usage.CompletionTokensDetails.RejectedPredictionTokens)
 		}

@@ -71,6 +71,7 @@ linters:
     - err113
     - funcorder
     - noinlineerr
+    - nilnil
     
 
   # all available settings of specific linters
