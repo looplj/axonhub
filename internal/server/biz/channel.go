@@ -133,7 +133,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				Channel:  c,
 				Outbound: transformer,
 			})
-		case channel.TypeAnthropic, channel.TypeDeepseekAnrhropic, channel.TypeKimiAnrhropic:
+		case channel.TypeAnthropic, channel.TypeDeepseekAnthropic, channel.TypeKimiAnthropic, channel.TypeZhipuAnthropic:
 			transformer, err := anthropic.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 			if err != nil {
 				log.Warn(ctx, "failed to create anthropic outbound transformer", log.Cause(err))
@@ -253,7 +253,7 @@ func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int)
 		}
 
 		outboundTransformer = transformer
-	case channel.TypeAnthropic:
+	case channel.TypeAnthropic, channel.TypeDeepseekAnthropic, channel.TypeKimiAnthropic, channel.TypeZhipuAnthropic:
 		transformer, err := anthropic.NewOutboundTransformer(entity.BaseURL, entity.Credentials.APIKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create anthropic outbound transformer: %w", err)
