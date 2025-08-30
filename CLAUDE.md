@@ -155,3 +155,5 @@ pnpm test:headed  # Headed mode
 - Configurable persistence behavior
 - System options for controlling data storage
 - Improved error handling and recovery mechanisms
+- @internal/server/api/  Fix the stream not close when client closed
+- @internal/server/api/  Fix the stream not close when client closed

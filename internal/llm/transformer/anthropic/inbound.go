@@ -88,6 +88,10 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 		Temperature: anthropicReq.Temperature,
 		TopP:        anthropicReq.TopP,
 		Stream:      anthropicReq.Stream,
+		Metadata:    map[string]string{},
+	}
+	if anthropicReq.Metadata != nil {
+		chatReq.Metadata["user_id"] = anthropicReq.Metadata.UserID
 	}
 
 	// Convert messages
@@ -95,31 +99,28 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 
 	// Add system message if present
 	if anthropicReq.System != nil {
-		var systemContent *string
 		if anthropicReq.System.Prompt != nil {
-			systemContent = anthropicReq.System.Prompt
-		} else if len(anthropicReq.System.MultiplePrompts) > 0 {
-			// Join multiple system prompts
-			var systemText string
-			for _, prompt := range anthropicReq.System.MultiplePrompts {
-				systemText += prompt.Text + "\n"
-			}
-
-			systemContent = &systemText
-		}
-
-		if systemContent != nil {
+			systemContent := anthropicReq.System.Prompt
 			messages = append(messages, llm.Message{
 				Role: "system",
 				Content: llm.MessageContent{
 					Content: systemContent,
 				},
 			})
+		} else if len(anthropicReq.System.MultiplePrompts) > 0 {
+			for _, prompt := range anthropicReq.System.MultiplePrompts {
+				messages = append(messages, llm.Message{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: &prompt.Text,
+					},
+				})
+			}
 		}
 	}
 
 	// Convert Anthropic messages to ChatCompletionMessage
-	for _, msg := range anthropicReq.Messages {
+	for msgIndex, msg := range anthropicReq.Messages {
 		chatMsg := llm.Message{
 			Role: msg.Role,
 		}
@@ -133,7 +134,6 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 			}
 			hasContent = true
 		} else if len(msg.Content.MultipleContent) > 0 {
-			// Handle multimodal content
 			contentParts := make([]llm.MessageContentPart, 0, len(msg.Content.MultipleContent))
 			for _, block := range msg.Content.MultipleContent {
 				switch block.Type {
@@ -166,18 +166,18 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 						hasContent = true
 					}
 				case "tool_result":
-					content, err := json.Marshal(block.Content)
-					if err != nil {
-						return nil, fmt.Errorf("failed to marshal tool result: %w", err)
+					// TODO: support other result types
+					if block.Content.Content != nil {
+						messages = append(messages, llm.Message{
+							Role:         "tool",
+							MessageIndex: lo.ToPtr(msgIndex),
+							ToolCallID:   block.ToolUseID,
+							Content: llm.MessageContent{
+								Content: block.Content.Content,
+							},
+							ToolCallIsError: block.IsError,
+						})
 					}
-
-					messages = append(messages, llm.Message{
-						Role:       "tool",
-						ToolCallID: block.ToolUseID,
-						Content: llm.MessageContent{
-							Content: lo.ToPtr(string(content)),
-						},
-					})
 				case "tool_use":
 					chatMsg.ToolCalls = append(chatMsg.ToolCalls, llm.ToolCall{
 						ID:   block.ID,
@@ -189,18 +189,18 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 					})
 					hasContent = true
 				}
+			}
 
-				// Check if it's a simple text-only message (single text block)
-				if len(contentParts) == 1 && contentParts[0].Type == "text" {
-					// Convert single text block to simple content format for compatibility
-					chatMsg.Content = llm.MessageContent{
-						Content: contentParts[0].Text,
-					}
-					hasContent = true
-				} else {
-					chatMsg.Content = llm.MessageContent{
-						MultipleContent: contentParts,
-					}
+			// Check if it's a simple text-only message (single text block)
+			if len(contentParts) == 1 && contentParts[0].Type == "text" {
+				// Convert single text block to simple content format for compatibility
+				chatMsg.Content = llm.MessageContent{
+					Content: contentParts[0].Text,
+				}
+				hasContent = true
+			} else {
+				chatMsg.Content = llm.MessageContent{
+					MultipleContent: contentParts,
 				}
 			}
 		}

@@ -47,9 +47,7 @@ type MessageRequest struct {
 	TopP *float64 `json:"top_p,omitempty"`
 
 	// An object describing metadata about the request.
-	Metadata *struct {
-		UserID string `json:"user_id,omitempty"`
-	} `json:"metadata,omitempty"`
+	Metadata *AnthropicMetadata `json:"metadata,omitempty"`
 
 	// Determines whether to use priority capacity (if available) or standard capacity
 	// for this request.
@@ -84,6 +82,10 @@ type MessageRequest struct {
 
 	// Stream is an optional flag to enable streaming.
 	Stream *bool `json:"stream,omitempty"`
+}
+
+type AnthropicMetadata struct {
+	UserID string `json:"user_id,omitempty"`
 }
 
 type SystemPrompt struct {
@@ -126,8 +128,9 @@ func (s *SystemPrompt) UnmarshalJSON(data []byte) error {
 
 type SystemPromptPart struct {
 	// Type must be "text".
-	Type string `json:"type" validate:"required,oneof=text"`
-	Text string `json:"text" validate:"required"`
+	Type         string        `json:"type" validate:"required,oneof=text"`
+	Text         string        `json:"text" validate:"required"`
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
 }
 
 type Thinking struct {

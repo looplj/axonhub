@@ -4,7 +4,7 @@ go 1.24.4
 
 require (
 	github.com/go-openapi/inflect v0.21.2 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.28
 	go.uber.org/fx v1.24.0

@@ -104,6 +104,7 @@ node_modules/
 .tanstack
 .trae/tasks
 playwright-report/
+test-results
 .trae/summary/
 .claude
 .qoder

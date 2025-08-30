@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/llm"
 )
 
@@ -14,6 +16,14 @@ func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 		Temperature: chatReq.Temperature,
 		TopP:        chatReq.TopP,
 		Stream:      chatReq.Stream,
+		System:      convertAoAnthropicSystemPrompt(chatReq),
+	}
+	if chatReq.Metadata != nil {
+		if chatReq.Metadata["user_id"] != "" {
+			req.Metadata = &AnthropicMetadata{
+				UserID: chatReq.Metadata["user_id"],
+			}
+		}
 	}
 
 	// Set max_tokens (required for Anthropic)
@@ -46,35 +56,99 @@ func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 	// Convert messages
 	messages := make([]MessageParam, 0, len(chatReq.Messages))
 
+	processedToolMessageIndexes := make(map[int]bool)
+
 	for _, msg := range chatReq.Messages {
 		// Handle system messages separately
 		if msg.Role == "system" {
-			if msg.Content.Content != nil {
-				req.System = &SystemPrompt{
-					Prompt: msg.Content.Content,
+			continue
+		}
+
+		if msg.Role == "tool" {
+			// Simple tool call.
+			if msg.MessageIndex == nil {
+				messages = append(messages, MessageParam{
+					Role: "user",
+					Content: MessageContent{
+						MultipleContent: []MessageContentBlock{
+							{
+								Type:      "tool_result",
+								ToolUseID: msg.ToolCallID,
+								Content: &MessageContent{
+									Content: msg.Content.Content,
+								},
+							},
+						},
+					},
+				})
+			} else {
+				// Complex tool call.
+				if processedToolMessageIndexes[*msg.MessageIndex] {
+					continue
 				}
+
+				toolMsgs := lo.Filter(chatReq.Messages, func(item llm.Message, _ int) bool {
+					return item.MessageIndex != nil && *item.MessageIndex == *msg.MessageIndex
+				})
+				if len(toolMsgs) == 0 {
+					continue
+				}
+
+				messages = append(messages, MessageParam{
+					Role: "user",
+					Content: MessageContent{
+						MultipleContent: lo.Map(toolMsgs, func(item llm.Message, _ int) MessageContentBlock {
+							return MessageContentBlock{
+								Type:      "tool_result",
+								ToolUseID: item.ToolCallID,
+								Content: &MessageContent{
+									Content: item.Content.Content,
+								},
+								IsError: item.ToolCallIsError,
+							}
+						}),
+					},
+				})
+				processedToolMessageIndexes[*msg.MessageIndex] = true
 			}
 
 			continue
 		}
 
 		anthropicMsg := MessageParam{
-			Role: msg.Role,
+			Role: lo.Ternary(msg.Role == "assistant", "assistant", "user"),
 		}
 
-		// Convert content
-		if msg.Content.Content != nil {
-			anthropicMsg.Content = MessageContent{
-				Content: msg.Content.Content,
+		if len(msg.ToolCalls) > 0 {
+			var contextBlock *MessageContentBlock
+			if msg.Content.Content != nil {
+				contextBlock = &MessageContentBlock{
+					Type: "text",
+					Text: *msg.Content.Content,
+				}
 			}
-		} else if len(msg.Content.MultipleContent) > 0 {
-			content, ok := convertMultiplePartContent(msg)
-			if ok {
-				anthropicMsg.Content = content
+
+			content, _ := convertMultiplePartContent(msg)
+			if contextBlock != nil {
+				content.MultipleContent = append([]MessageContentBlock{*contextBlock}, content.MultipleContent...)
+			}
+
+			anthropicMsg.Content = content
+			messages = append(messages, anthropicMsg)
+		} else {
+			if msg.Content.Content != nil {
+				anthropicMsg.Content = MessageContent{
+					Content: msg.Content.Content,
+				}
+				messages = append(messages, anthropicMsg)
+			} else if len(msg.Content.MultipleContent) > 0 {
+				content, ok := convertMultiplePartContent(msg)
+				if ok {
+					anthropicMsg.Content = content
+					messages = append(messages, anthropicMsg)
+				}
 			}
 		}
-
-		messages = append(messages, anthropicMsg)
 	}
 
 	req.Messages = messages
@@ -89,6 +163,34 @@ func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 	}
 
 	return req
+}
+
+func convertAoAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
+	systemMessages := lo.Filter(chatReq.Messages, func(msg llm.Message, _ int) bool {
+		return msg.Role == "system"
+	})
+
+	switch len(systemMessages) {
+	case 0:
+		// Leave System as nil when there are no system messages
+		return nil
+	case 1:
+		return &SystemPrompt{
+			Prompt: systemMessages[0].Content.Content,
+		}
+	default:
+		return &SystemPrompt{
+			MultiplePrompts: lo.Map(systemMessages, func(msg llm.Message, _ int) SystemPromptPart {
+				return SystemPromptPart{
+					Type: "text",
+					Text: *msg.Content.Content,
+					CacheControl: &CacheControl{
+						Type: "ephemeral",
+					},
+				}
+			}),
+		}
+	}
 }
 
 func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
@@ -134,6 +236,18 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 				}
 			}
 		}
+	}
+
+	for _, toolCall := range msg.ToolCalls {
+		blocks = append(blocks, MessageContentBlock{
+			Type:  "tool_use",
+			ID:    toolCall.ID,
+			Name:  &toolCall.Function.Name,
+			Input: []byte(toolCall.Function.Arguments),
+			CacheControl: &CacheControl{
+				Type: "ephemeral",
+			},
+		})
 	}
 
 	if len(blocks) == 0 {

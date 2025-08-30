@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
@@ -90,6 +91,8 @@ type ChannelService struct {
 	Channels  []*Channel
 	Executors executors.ScheduledExecutor
 	Ent       *ent.Client
+	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
+	latestUpdate time.Time
 }
 
 func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {
@@ -101,6 +104,28 @@ func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {
 
 func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// 检查是否有 channels 被修改
+	latestUpdatedChannel, err := svc.Ent.Channel.Query().
+		Order(ent.Desc(channel.FieldUpdatedAt)).
+		First(ctx)
+	if err != nil && !ent.IsNotFound(err) {
+		return err
+	}
+
+	// 如果没有找到任何 channels，latestUpdate 会是 nil
+	if latestUpdatedChannel != nil {
+		// 如果最新的更新时间早于或等于我们记录的时间，说明没有新的修改
+		if !latestUpdatedChannel.UpdatedAt.After(svc.latestUpdate) {
+			log.Debug(ctx, "no new channels updated")
+			return nil
+		}
+		// 更新最新的修改时间记录
+		svc.latestUpdate = latestUpdatedChannel.UpdatedAt
+	} else {
+		// 如果没有 channels，确保 latestUpdate 是零值时间
+		svc.latestUpdate = time.Time{}
+	}
 
 	entities, err := svc.Ent.Channel.Query().
 		Where(channel.StatusEQ(channel.StatusEnabled)).

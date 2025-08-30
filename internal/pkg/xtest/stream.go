@@ -71,7 +71,7 @@ func LoadStreamChunks(t *testing.T, filename string) ([]*httpclient.StreamEvent,
 }
 
 // LoadTestData loads test data from a JSON file in testdata directory.
-func LoadTestData(t *testing.T, filename string, v interface{}) error {
+func LoadTestData(t *testing.T, filename string, v any) error {
 	t.Helper()
 
 	//nolint:gosec
