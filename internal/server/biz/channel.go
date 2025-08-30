@@ -36,7 +36,7 @@ func (c Channel) IsModelSupported(model string) bool {
 	}
 
 	for _, mapping := range c.Settings.ModelMappings {
-		if mapping.From == model {
+		if mapping.From == model && slices.Contains(c.SupportedModels, mapping.To) {
 			return true
 		}
 	}
@@ -54,7 +54,7 @@ func (c Channel) ChooseModel(model string) (string, error) {
 	}
 
 	for _, mapping := range c.Settings.ModelMappings {
-		if mapping.From == model {
+		if mapping.From == model && slices.Contains(c.SupportedModels, mapping.To) {
 			return mapping.To, nil
 		}
 	}

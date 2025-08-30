@@ -479,7 +479,9 @@
       "bulkImportPartialError": "Imported {{created}} channels, {{failed}} failed",
       "bulkImportError": "Bulk import failed: {{error}}",
       "orderingUpdateSuccess": "Successfully updated ordering for {{updated}} channels",
-      "orderingUpdateError": "Failed to update channel ordering: {{error}}"
+      "orderingUpdateError": "Failed to update channel ordering: {{error}}",
+      "pendingMappingWarning": "There are pending model mappings, please add them before saving.",
+      "duplicateMappingWarning": "Duplicate model mapping detected. Please remove the duplicate mapping before saving."
     },
     "dialogs": {
       "create": {

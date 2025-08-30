@@ -223,8 +223,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 name='type'
                 disabled={isEdit}
                 render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
+                  <FormItem className='grid grid-cols-8 items-center space-y-0 gap-x-6 gap-y-1'>
+                    <FormLabel className='col-span-2 text-right font-medium'>
                       {t('channels.dialogs.fields.type.label')}
                     </FormLabel>
                     <FormControl>
@@ -239,12 +239,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         }}
                         items={availableChannelTypes}
                         placeholder={t('channels.dialogs.fields.type.description')}
-                        className='col-span-4'
+                        className='col-span-6'
                         isControlled={true}
                         disabled={isEdit}
                       />
                     </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
+                    <FormMessage className='col-span-6 col-start-3' />
                   </FormItem>
                 )}
               />
@@ -253,19 +253,19 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 control={form.control}
                 name='name'
                 render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
+                  <FormItem className='grid grid-cols-8 items-center space-y-0 gap-x-6 gap-y-1'>
+                    <FormLabel className='col-span-2 text-right font-medium'>
                       {t('channels.dialogs.fields.name.label')}
                     </FormLabel>
                     <FormControl>
                       <Input
                         placeholder={t('channels.dialogs.fields.name.placeholder')}
-                        className='col-span-4'
+                        className='col-span-6'
                         autoComplete='off'
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
+                    <FormMessage className='col-span-6 col-start-3' />
                   </FormItem>
                 )}
               />
@@ -274,19 +274,19 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 control={form.control}
                 name='baseURL'
                 render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
+                  <FormItem className='grid grid-cols-8 items-center space-y-0 gap-x-6 gap-y-1'>
+                    <FormLabel className='col-span-2 text-right font-medium'>
                       {t('channels.dialogs.fields.baseURL.label')}
                     </FormLabel>
                     <FormControl>
                       <Input
                         placeholder={t('channels.dialogs.fields.baseURL.placeholder')}
-                        className='col-span-4'
+                        className='col-span-6'
                         autoComplete='off'
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
+                    <FormMessage className='col-span-6 col-start-3' />
                   </FormItem>
                 )}
               />
@@ -296,20 +296,20 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                   control={form.control}
                   name='credentials.apiKey'
                   render={({ field }) => (
-                    <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                      <FormLabel className='col-span-2 text-right'>
+                    <FormItem className='grid grid-cols-8 items-center space-y-0 gap-x-6 gap-y-1'>
+                      <FormLabel className='col-span-2 text-right font-medium'>
                         {t('channels.dialogs.fields.apiKey.label')}
                       </FormLabel>
                       <FormControl>
                         <Input
                           type='password'
                           placeholder={isEdit ? t('channels.dialogs.fields.apiKey.editPlaceholder') : t('channels.dialogs.fields.apiKey.placeholder')}
-                          className='col-span-4'
+                          className='col-span-6'
                           autoComplete='off'
                           {...field}
                         />
                       </FormControl>
-                      <FormMessage className='col-span-4 col-start-3' />
+                      <FormMessage className='col-span-6 col-start-3' />
                     </FormItem>
                   )}
                 />
@@ -321,20 +321,20 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     control={form.control}
                     name='credentials.aws.accessKeyID'
                     render={({ field }) => (
-                      <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                        <FormLabel className='col-span-2 text-right'>
+                      <FormItem className='grid grid-cols-8 items-center space-y-0 gap-x-6 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right font-medium'>
                           {t('channels.dialogs.fields.awsAccessKeyID.label')}
                         </FormLabel>
                         <FormControl>
                           <Input
                             type='password'
                             placeholder={t('channels.dialogs.fields.awsAccessKeyID.placeholder')}
-                            className='col-span-4'
+                            className='col-span-6'
                             autoComplete='off'
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className='col-span-4 col-start-3' />
+                        <FormMessage className='col-span-6 col-start-3' />
                       </FormItem>
                     )}
                   />
@@ -343,20 +343,20 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     control={form.control}
                     name='credentials.aws.secretAccessKey'
                     render={({ field }) => (
-                      <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                        <FormLabel className='col-span-2 text-right'>
+                      <FormItem className='grid grid-cols-8 items-center space-y-0 gap-x-6 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right font-medium'>
                           {t('channels.dialogs.fields.awsSecretAccessKey.label')}
                         </FormLabel>
                         <FormControl>
                           <Input
                             type='password'
                             placeholder={t('channels.dialogs.fields.awsSecretAccessKey.placeholder')}
-                            className='col-span-4'
+                            className='col-span-6'
                             autoComplete='off'
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className='col-span-4 col-start-3' />
+                        <FormMessage className='col-span-6 col-start-3' />
                       </FormItem>
                     )}
                   />
@@ -365,19 +365,19 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     control={form.control}
                     name='credentials.aws.region'
                     render={({ field }) => (
-                      <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                        <FormLabel className='col-span-2 text-right'>
+                      <FormItem className='grid grid-cols-8 items-center space-y-0 gap-x-6 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right font-medium'>
                           {t('channels.dialogs.fields.awsRegion.label')}
                         </FormLabel>
                         <FormControl>
                           <Input
                             placeholder={t('channels.dialogs.fields.awsRegion.placeholder')}
-                            className='col-span-4'
+                            className='col-span-6'
                             autoComplete='off'
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className='col-span-4 col-start-3' />
+                        <FormMessage className='col-span-6 col-start-3' />
                       </FormItem>
                     )}
                   />
@@ -390,19 +390,19 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     control={form.control}
                     name='credentials.gcp.region'
                     render={({ field }) => (
-                      <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                        <FormLabel className='col-span-2 text-right'>
+                      <FormItem className='grid grid-cols-8 items-center space-y-0 gap-x-6 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right font-medium'>
                           {t('channels.dialogs.fields.gcpRegion.label')}
                         </FormLabel>
                         <FormControl>
                           <Input
                             placeholder={t('channels.dialogs.fields.gcpRegion.placeholder')}
-                            className='col-span-4'
+                            className='col-span-6'
                             autoComplete='off'
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className='col-span-4 col-start-3' />
+                        <FormMessage className='col-span-6 col-start-3' />
                       </FormItem>
                     )}
                   />
@@ -411,19 +411,19 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     control={form.control}
                     name='credentials.gcp.projectID'
                     render={({ field }) => (
-                      <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                        <FormLabel className='col-span-2 text-right'>
+                      <FormItem className='grid grid-cols-8 items-center space-y-0 gap-x-6 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right font-medium'>
                           {t('channels.dialogs.fields.gcpProjectID.label')}
                         </FormLabel>
                         <FormControl>
                           <Input
                             placeholder={t('channels.dialogs.fields.gcpProjectID.placeholder')}
-                            className='col-span-4'
+                            className='col-span-6'
                             autoComplete='off'
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className='col-span-4 col-start-3' />
+                        <FormMessage className='col-span-6 col-start-3' />
                       </FormItem>
                     )}
                   />
@@ -432,29 +432,29 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     control={form.control}
                     name='credentials.gcp.jsonData'
                     render={({ field }) => (
-                      <FormItem className='grid grid-cols-6 items-start space-y-0 gap-x-4 gap-y-1'>
-                        <FormLabel className='col-span-2 text-right pt-2'>
+                      <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
+                        <FormLabel className='col-span-2 text-right font-medium pt-2'>
                           {t('channels.dialogs.fields.gcpJsonData.label')}
                         </FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder={`{\n  "type": "service_account",\n  "project_id": "project-123",\n  "private_key_id": "fdfd",\n  "private_key": "-----BEGIN PRIVATE KEY-----\\n-----END PRIVATE KEY-----\\n",\n  "client_email": "xxx@developer.gserviceaccount.com",\n  "client_id": "client_213123123",\n  "auth_uri": "https://accounts.google.com/o/oauth2/auth",\n  "token_uri": "https://oauth2.googleapis.com/token",\n  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",\n  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/xxx-compute%40developer.gserviceaccount.com",\n  "universe_domain": "googleapis.com"\n}`}
-                            className='col-span-4 min-h-[200px] font-mono text-xs resize-y'
+                            className='col-span-6 min-h-[200px] font-mono text-xs resize-y'
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className='col-span-4 col-start-3' />
+                        <FormMessage className='col-span-6 col-start-3' />
                       </FormItem>
                     )}
                   />
                 </>
               )}
 
-              <div className='grid grid-cols-6 items-start space-y-0 gap-x-4 gap-y-1'>
-                <label className='col-span-2 text-right text-sm font-medium'>
+              <div className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
+                <FormLabel className='col-span-2 text-right font-medium pt-2'>
                   {t('channels.dialogs.fields.supportedModels.label')}
-                </label>
-                <div className='col-span-4 space-y-2'>
+                </FormLabel>
+                <div className='col-span-6 space-y-2'>
                   <div className='flex gap-2'>
                     <Input
                       placeholder={t('channels.dialogs.fields.supportedModels.description')}
@@ -493,8 +493,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 control={form.control}
                 name='defaultTestModel'
                 render={({ field }) => (
-                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
-                    <FormLabel className='col-span-2 text-right'>
+                  <FormItem className='grid grid-cols-8 items-center space-y-0 gap-x-6 gap-y-1'>
+                    <FormLabel className='col-span-2 text-right font-medium'>
                       {t('channels.dialogs.fields.defaultTestModel.label')}
                     </FormLabel>
                     <FormControl>
@@ -503,12 +503,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         onValueChange={field.onChange}
                         items={supportedModels.map(model => ({ value: model, label: model }))}
                         placeholder={t('channels.dialogs.fields.defaultTestModel.description')}
-                        className='col-span-4'
+                        className='col-span-6'
                         disabled={supportedModels.length === 0}
                         isControlled={true}
                       />
                     </FormControl>
-                    <FormMessage className='col-span-4 col-start-3' />
+                    <FormMessage className='col-span-6 col-start-3' />
                   </FormItem>
                 )}
               />

@@ -507,7 +507,9 @@
       "bulkImportPartialError": "导入 {{created}} 个渠道成功，{{failed}} 个失败",
       "bulkImportError": "批量导入失败：{{error}}",
       "orderingUpdateSuccess": "成功更新了 {{updated}} 个渠道的排序",
-      "orderingUpdateError": "更新渠道排序失败：{{error}}"
+      "orderingUpdateError": "更新渠道排序失败：{{error}}",
+      "pendingMappingWarning": "有未添加的映射，请在保存前添加。",
+      "duplicateMappingWarning": "检测到重复的映射，请在保存前删除重复的映射。"
     },
     "filters": {
       "type": "类型",
