@@ -151,7 +151,7 @@ export default function RequestDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4'>
+              <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5'>
                 <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
                   <div className='flex items-center gap-2'>
                     <Database className='text-primary h-4 w-4' />
@@ -159,6 +159,16 @@ export default function RequestDetailPage() {
                   </div>
                   <p className='bg-background rounded border px-3 py-2 font-mono text-sm'>
                     {request.modelID || t('requests.columns.unknown')}
+                  </p>
+                </div>
+
+                <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
+                  <div className='flex items-center gap-2'>
+                    <Database className='text-primary h-4 w-4' />
+                    <span className='text-sm font-medium'>{t('requests.columns.channel')}</span>
+                  </div>
+                  <p className='bg-background rounded border px-3 py-2 font-mono text-sm'>
+                    {request.channel?.name || t('requests.columns.unknown')}
                   </p>
                 </div>
 

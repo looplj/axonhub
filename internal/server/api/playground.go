@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer/aisdk"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -91,12 +90,12 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 			return
 		}
 
-		processor = &chat.ChatCompletionProcessor{
-			ChannelSelector: chat.NewSpecifiedChannelSelector(handlers.ChannelService, channelID),
-			Inbound:         aisdk.NewTextTransformer(),
-			RequestService:  handlers.RequestService,
-			PipelineFactory: pipeline.NewFactory(handlers.HttpClient),
-		}
+		processor = chat.NewChatCompletionProcessorWithSelector(
+			chat.NewSpecifiedChannelSelector(handlers.ChannelService, channelID),
+			handlers.RequestService,
+			handlers.HttpClient,
+			aisdk.NewTextTransformer(),
+		)
 	} else {
 		// Use default processor with all available channels
 		processor = chat.NewChatCompletionProcessor(

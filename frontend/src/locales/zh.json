@@ -774,7 +774,9 @@
       "actions": "操作",
       "selectAll": "全选",
       "selectRow": "选择行",
-      "unknown": "未知"
+      "unknown": "未知",
+      "requestBody": "请求体",
+      "responseBody": "响应体"
     },
     "status": {
       "pending": "等待中",

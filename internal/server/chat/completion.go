@@ -5,6 +5,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/llm/decorator"
+	"github.com/looplj/axonhub/internal/llm/decorator/stream"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
@@ -20,10 +21,27 @@ func NewChatCompletionProcessor(
 	httpClient *httpclient.HttpClient,
 	inbound transformer.Inbound,
 ) *ChatCompletionProcessor {
+	return NewChatCompletionProcessorWithSelector(
+		NewDefaultChannelSelector(channelService),
+		requestService,
+		httpClient,
+		inbound,
+	)
+}
+
+func NewChatCompletionProcessorWithSelector(
+	channelSelector ChannelSelector,
+	requestService *biz.RequestService,
+	httpClient *httpclient.HttpClient,
+	inbound transformer.Inbound,
+) *ChatCompletionProcessor {
 	return &ChatCompletionProcessor{
-		ChannelSelector: NewDefaultChannelSelector(channelService),
+		ChannelSelector: channelSelector,
 		Inbound:         inbound,
 		RequestService:  requestService,
+		Decorators: []decorator.Decorator{
+			stream.EnsureUsage(),
+		},
 		PipelineFactory: pipeline.NewFactory(httpClient),
 	}
 }
@@ -32,7 +50,7 @@ type ChatCompletionProcessor struct {
 	ChannelSelector ChannelSelector
 	Inbound         transformer.Inbound
 	RequestService  *biz.RequestService
-	DecoratorChain  decorator.DecoratorChain
+	Decorators      []decorator.Decorator
 	PipelineFactory *pipeline.Factory
 }
 
@@ -61,6 +79,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		inbound,
 		outbound,
 		pipeline.WithRetry(3, 0),
+		pipeline.WithDecorators(processor.Decorators...),
 	)
 
 	result, err := pipe.Process(ctx, request)

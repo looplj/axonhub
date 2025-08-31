@@ -739,7 +739,9 @@
       "actions": "Actions",
       "selectAll": "Select all",
       "selectRow": "Select row",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "requestBody": "Request Body",
+      "responseBody": "Response Body"
     },
     "status": {
       "pending": "Pending",

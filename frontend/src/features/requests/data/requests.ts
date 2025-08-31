@@ -102,7 +102,13 @@ function buildRequestDetailQuery(permissions: { canViewUsers: boolean; canViewAp
             name
         }` : ''
   
-  const channelFields = permissions.canViewChannels ? `
+  const requestChannelFields = permissions.canViewChannels ? `
+          channel {
+            id
+            name
+          }` : ''
+  
+  const executionChannelFields = permissions.canViewChannels ? `
               channel {
                 id
                 name
@@ -114,7 +120,7 @@ function buildRequestDetailQuery(permissions: { canViewUsers: boolean; canViewAp
         ... on Request {
           id
           createdAt
-          updatedAt${userFields}${apiKeyFields}
+          updatedAt${userFields}${apiKeyFields}${requestChannelFields}
           source
           modelID
           requestBody
@@ -127,7 +133,7 @@ function buildRequestDetailQuery(permissions: { canViewUsers: boolean; canViewAp
                 createdAt
                 updatedAt
                 userID
-                requestID${channelFields}
+                requestID${executionChannelFields}
                 modelID
                 requestBody
                 responseBody
