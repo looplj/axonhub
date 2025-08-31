@@ -76,12 +76,14 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
         )
       },
       enableSorting: false,
-      filterFn: (row, id, value) => {
-        if (!permissions.canViewUsers) return false
+      filterFn: (row, _id, value) => {
+        // For client-side filtering, check if any of the selected users match
+        if (value.length === 0) return true // No filter applied
+        
         const user = row.original.user
         if (!user) return false
-        const searchText = `${user.firstName || ''} ${user.lastName || ''} ${user.email || ''}`.toLowerCase()
-        return searchText.includes(value.toLowerCase())
+        
+        return value.includes(user.id)
       },
     },
     {
@@ -120,11 +122,14 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
         )
       },
       enableSorting: false,
-      filterFn: (row, id, value) => {
-        if (!permissions.canViewChannels) return false
+      filterFn: (row, _id, value) => {
+        // For client-side filtering, check if any of the selected channels match
+        if (value.length === 0) return true // No filter applied
+        
         const channel = row.original.channel
         if (!channel) return false
-        return channel.name?.toLowerCase().includes(value.toLowerCase()) || false
+        
+        return value.includes(channel.id)
       },
     },
     {
@@ -141,8 +146,14 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
         </div>
       ),
       enableSorting: false,
-      filterFn: (row, id, value) => {
-        return row.original.modelID.toLowerCase().includes(value.toLowerCase())
+      filterFn: (row, _id, value) => {
+        // For client-side filtering, check if the model ID matches any of the selected values
+        if (value.length === 0) return true // No filter applied
+        
+        const modelID = row.original.modelID
+        return value.some((filterValue: string) => 
+          modelID.toLowerCase().includes(filterValue.toLowerCase())
+        )
       },
     },
     {
