@@ -1,6 +1,8 @@
 package xerrors
 
-import "errors"
+import (
+	"errors"
+)
 
 func As[T error](rawErr error) (T, bool) {
 	err := new(T)

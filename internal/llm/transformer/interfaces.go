@@ -24,7 +24,7 @@ type Inbound interface {
 	TransformStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*httpclient.StreamEvent], error)
 
 	// TransformError transforms the unified error response to HTTP error response.
-	TransformError(ctx context.Context, err *llm.ResponseError) *httpclient.Error
+	TransformError(ctx context.Context, err error) *httpclient.Error
 
 	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
 	// This method handles unified-specific streaming formats and converts the chunks to a the user request format complete response.

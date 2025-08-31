@@ -308,8 +308,7 @@ func TestChannelCustomizedExecutor_NonStreamingCustomExecutorError(t *testing.T)
 	result, err := pipeline.Process(ctx, request)
 	require.Error(t, err)
 	require.Nil(t, result)
-	// The error gets wrapped, so we check for the status code instead
-	require.Contains(t, err.Error(), "Internal Server Error")
+	require.Contains(t, err.Error(), "custom executor non-streaming error")
 
 	// Verify that CustomizeExecutor was called
 	require.True(t, mockCustomized.customizeExecutorCalled, "CustomizeExecutor should have been called")

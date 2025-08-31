@@ -198,14 +198,14 @@ func TestOutboundTransformer_TransformError(t *testing.T) {
 				StatusCode: http.StatusInternalServerError,
 				Body:       []byte("Internal server error"),
 			},
-			expectedErrMessage: "invalid character 'I' looking for beginning of value",
+			expectedErrMessage: "Internal Server Error",
 			expectedErrType:    "api_error",
 		},
 		{
 			name:               "nil error",
 			httpErr:            nil,
-			expectedErrMessage: "http error is nil",
-			expectedErrType:    "",
+			expectedErrMessage: "Internal Server Error",
+			expectedErrType:    "api_error",
 		},
 	}
 

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,27 +14,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/chat"
 )
 
-type AiSdkResponseError struct {
-	Error struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
-type AiSdkErrorHandler struct{}
-
-func (e *AiSdkErrorHandler) HandlerError(c *gin.Context, err error) {
-	c.JSON(500, &AiSdkResponseError{
-		Error: struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-		}{
-			Code:    "internal_error",
-			Message: err.Error(),
-		},
-	})
-}
-
 type AiSdkHandlersParams struct {
 	fx.In
 
@@ -44,7 +24,6 @@ type AiSdkHandlersParams struct {
 
 type AiSDKHandlers struct {
 	ChatCompletionProcessor *chat.ChatCompletionProcessor
-	ErrorHandler            *AiSdkErrorHandler
 }
 
 func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
@@ -55,7 +34,6 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 			params.HttpClient,
 			aisdk.NewTextTransformer(),
 		),
-		ErrorHandler: &AiSdkErrorHandler{},
 	}
 }
 
@@ -65,13 +43,19 @@ func (handlers *AiSDKHandlers) ChatCompletion(c *gin.Context) {
 	// Use ReadHTTPRequest to parse the request
 	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
 	if err != nil {
-		handlers.ErrorHandler.HandlerError(c, err)
+		log.Error(ctx, "Error reading HTTP request", log.Cause(err))
+		httpErr := handlers.ChatCompletionProcessor.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+
 		return
 	}
 
 	result, err := handlers.ChatCompletionProcessor.Process(ctx, genericReq)
 	if err != nil {
-		handlers.ErrorHandler.HandlerError(c, err)
+		log.Error(ctx, "Error processing chat completion", log.Cause(err))
+		httpErr := handlers.ChatCompletionProcessor.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+
 		return
 	}
 

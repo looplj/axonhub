@@ -494,7 +494,7 @@ func TestInboundTransformer_TransformError(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		err           *llm.ResponseError
+		err           error
 		expectedError *httpclient.Error
 	}{
 		{

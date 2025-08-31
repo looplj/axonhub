@@ -135,7 +135,7 @@ func (p *PersistentInboundTransformer) APIFormat() llm.APIFormat {
 	return p.wrapped.APIFormat()
 }
 
-func (p *PersistentInboundTransformer) TransformError(ctx context.Context, rawErr *llm.ResponseError) *httpclient.Error {
+func (p *PersistentInboundTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
 	return p.wrapped.TransformError(ctx, rawErr)
 }
 

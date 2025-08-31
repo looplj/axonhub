@@ -60,6 +60,14 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 	}
 
 	if rawResp.StatusCode >= 400 {
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "HTTP request failed",
+				log.String("method", rawReq.Method),
+				log.String("url", rawReq.URL.String()),
+				log.Any("status_code", rawResp.StatusCode),
+				log.String("body", string(body)))
+		}
+
 		return nil, &Error{
 			Method:     rawReq.Method,
 			URL:        rawReq.URL.String(),
@@ -114,6 +122,14 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		body, err := io.ReadAll(rawResp.Body)
 		if err != nil {
 			return nil, err
+		}
+
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "HTTP stream request failed",
+				log.String("method", rawReq.Method),
+				log.String("url", rawReq.URL.String()),
+				log.Any("status_code", rawResp.StatusCode),
+				log.String("body", string(body)))
 		}
 
 		return nil, &Error{

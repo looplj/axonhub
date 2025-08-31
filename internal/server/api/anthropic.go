@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/json"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
@@ -15,8 +17,18 @@ import (
 type AnthropicErrorHandler struct{}
 
 func (e *AnthropicErrorHandler) HandlerError(c *gin.Context, err error) {
+	if aErr, ok := xerrors.As[*httpclient.Error](err); ok {
+		c.JSON(aErr.StatusCode, json.RawMessage(aErr.Body))
+		return
+	}
+
 	if aErr, ok := xerrors.As[*llm.ResponseError](err); ok {
-		c.JSON(aErr.StatusCode, aErr)
+		c.JSON(aErr.StatusCode, anthropic.AnthropicErr{
+			StatusCode: aErr.StatusCode,
+			RequestID:  aErr.Detail.RequestID,
+			Message:    aErr.Error(),
+		})
+
 		return
 	}
 
@@ -48,7 +60,6 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 				params.HttpClient,
 				anthropic.NewInboundTransformer(),
 			),
-			ErrorHandler: &AnthropicErrorHandler{},
 		},
 	}
 }

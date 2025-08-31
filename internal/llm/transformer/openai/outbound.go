@@ -323,8 +323,8 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 		return &llm.ResponseError{
 			StatusCode: http.StatusInternalServerError,
 			Detail: llm.ErrorDetail{
-				Message: "http error is nil",
-				Type:    "",
+				Message: http.StatusText(http.StatusInternalServerError),
+				Type:    "api_error",
 			},
 		}
 	}
@@ -346,7 +346,7 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	return &llm.ResponseError{
 		StatusCode: rawErr.StatusCode,
 		Detail: llm.ErrorDetail{
-			Message: err.Error(),
+			Message: http.StatusText(http.StatusInternalServerError),
 			Type:    "api_error",
 		},
 	}

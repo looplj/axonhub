@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/json"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -9,14 +11,8 @@ import (
 	"github.com/looplj/axonhub/internal/server/chat"
 )
 
-type ChatCompletionErrorHandler interface {
-	// HandlerError handles error in non-stream response, should return the proper error format to client.
-	HandlerError(c *gin.Context, err error)
-}
-
 type ChatCompletionSSEHandlers struct {
 	ChatCompletionProcessor *chat.ChatCompletionProcessor
-	ErrorHandler            ChatCompletionErrorHandler
 }
 
 func NewChatCompletionHandlers(processor *chat.ChatCompletionProcessor) *ChatCompletionSSEHandlers {
@@ -31,13 +27,19 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 	// Use ReadHTTPRequest to parse the request
 	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
 	if err != nil {
-		handlers.ErrorHandler.HandlerError(c, err)
+		httpErr := handlers.ChatCompletionProcessor.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+
 		return
 	}
 
 	result, err := handlers.ChatCompletionProcessor.Process(ctx, genericReq)
 	if err != nil {
-		handlers.ErrorHandler.HandlerError(c, err)
+		log.Error(ctx, "Error processing chat completion", log.Cause(err))
+
+		httpErr := handlers.ChatCompletionProcessor.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+
 		return
 	}
 

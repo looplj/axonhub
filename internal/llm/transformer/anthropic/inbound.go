@@ -11,6 +11,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 // InboundTransformer implements transformer.Inbound for Anthropic format.
@@ -277,7 +278,7 @@ func (t *InboundTransformer) AggregateStreamChunks(ctx context.Context, chunks [
 }
 
 // TransformError transforms LLM error response to HTTP error response in Anthropic format.
-func (t *InboundTransformer) TransformError(ctx context.Context, rawErr *llm.ResponseError) *httpclient.Error {
+func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
 	if rawErr == nil {
 		return &httpclient.Error{
 			StatusCode: http.StatusInternalServerError,
@@ -286,10 +287,37 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr *llm.Res
 		}
 	}
 
+	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
+		aErr := &AnthropicErr{
+			StatusCode: llmErr.StatusCode,
+			Message:    llmErr.Detail.Message,
+			RequestID:  llmErr.Detail.RequestID,
+		}
+
+		body, err := json.Marshal(aErr)
+		if err != nil {
+			return &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Status:     http.StatusText(http.StatusInternalServerError),
+				Body:       []byte(`{"message":"internal server error","type":"internal_server_error"}`),
+			}
+		}
+
+		return &httpclient.Error{
+			StatusCode: llmErr.StatusCode,
+			Status:     http.StatusText(llmErr.StatusCode),
+			Body:       body,
+		}
+	}
+
+	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
+		return httpErr
+	}
+
 	aErr := &AnthropicErr{
-		StatusCode: rawErr.StatusCode,
-		Message:    rawErr.Detail.Message,
-		RequestID:  rawErr.Detail.RequestID,
+		StatusCode: http.StatusInternalServerError,
+		Message:    rawErr.Error(),
+		RequestID:  "",
 	}
 
 	body, err := json.Marshal(aErr)
@@ -302,8 +330,8 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr *llm.Res
 	}
 
 	return &httpclient.Error{
-		StatusCode: lo.Ternary(rawErr.StatusCode != 0, rawErr.StatusCode, http.StatusInternalServerError),
-		Status:     http.StatusText(rawErr.StatusCode),
+		StatusCode: http.StatusInternalServerError,
+		Status:     http.StatusText(http.StatusInternalServerError),
 		Body:       body,
 	}
 }

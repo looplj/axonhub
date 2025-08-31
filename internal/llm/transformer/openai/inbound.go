@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 // InboundTransformer implements transformer.Inbound for OpenAI format.
@@ -134,7 +135,7 @@ func (t *InboundTransformer) AggregateStreamChunks(
 }
 
 // TransformError transforms LLM error response to HTTP error response.
-func (t *InboundTransformer) TransformError(ctx context.Context, rawErr *llm.ResponseError) *httpclient.Error {
+func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
 	if rawErr == nil {
 		return &httpclient.Error{
 			StatusCode: http.StatusInternalServerError,
@@ -143,18 +144,30 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr *llm.Res
 		}
 	}
 
-	body, err := json.Marshal(rawErr)
-	if err != nil {
+	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
+		return httpErr
+	}
+
+	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
+		body, err := json.Marshal(llmErr)
+		if err != nil {
+			return &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Status:     http.StatusText(http.StatusInternalServerError),
+				Body:       []byte(`{"error":{"message":"internal server error","type":"internal_server_error"}}`),
+			}
+		}
+
 		return &httpclient.Error{
-			StatusCode: http.StatusInternalServerError,
-			Status:     http.StatusText(http.StatusInternalServerError),
-			Body:       []byte(`{"error":{"message":"internal server error","type":"internal_server_error"}}`),
+			StatusCode: llmErr.StatusCode,
+			Status:     http.StatusText(llmErr.StatusCode),
+			Body:       body,
 		}
 	}
 
 	return &httpclient.Error{
-		StatusCode: rawErr.StatusCode,
-		Status:     http.StatusText(rawErr.StatusCode),
-		Body:       body,
+		StatusCode: http.StatusInternalServerError,
+		Status:     http.StatusText(http.StatusInternalServerError),
+		Body:       []byte(fmt.Sprintf(`{"error":{"message":"%s","type":"internal_server_error"}}`, rawErr.Error())),
 	}
 }

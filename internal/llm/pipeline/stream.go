@@ -7,6 +7,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 // Process executes the streaming LLM pipeline
@@ -43,7 +44,10 @@ func (p *pipeline) stream(
 	// Step 3: Execute streaming HTTP request
 	outboundStream, err := executor.DoStream(ctx, httpReq)
 	if err != nil {
-		log.Error(ctx, "HTTP streaming request failed", log.Cause(err))
+		if httpErr, ok := xerrors.As[*httpclient.Error](err); ok {
+			return nil, p.Outbound.TransformError(ctx, httpErr)
+		}
+
 		return nil, err
 	}
 

@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 // TextTransformer implements the Inbound interface for AI SDK.
@@ -300,12 +301,30 @@ func (t *TextTransformer) AggregateStreamChunks(
 	return []byte(`{}`), nil, nil
 }
 
-func (t *TextTransformer) TransformError(ctx context.Context, rawErr *llm.ResponseError) *httpclient.Error {
-	body, _ := json.Marshal(rawErr)
+func (t *TextTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
+	if rawErr == nil {
+		return &httpclient.Error{
+			StatusCode: http.StatusInternalServerError,
+			Status:     http.StatusText(http.StatusInternalServerError),
+			Body:       []byte(`{"message":"internal server error","type":"internal_server_error"}`),
+		}
+	}
+
+	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
+		return httpErr
+	}
+
+	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
+		return &httpclient.Error{
+			StatusCode: llmErr.StatusCode,
+			Status:     http.StatusText(llmErr.StatusCode),
+			Body:       []byte(fmt.Sprintf(`{"message":"%s","type":"%s"}`, llmErr.Detail.Message, llmErr.Detail.Type)),
+		}
+	}
 
 	return &httpclient.Error{
-		StatusCode: rawErr.StatusCode,
-		Status:     "",
-		Body:       body,
+		StatusCode: http.StatusInternalServerError,
+		Status:     http.StatusText(http.StatusInternalServerError),
+		Body:       []byte(fmt.Sprintf(`{"message":"%s","type":"internal_server_error"}`, rawErr.Error())),
 	}
 }

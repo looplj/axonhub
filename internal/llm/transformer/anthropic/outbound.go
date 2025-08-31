@@ -368,8 +368,9 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 		return &llm.ResponseError{
 			StatusCode: rawErr.StatusCode,
 			Detail: llm.ErrorDetail{
-				Type:    "api_error",
-				Message: fmt.Sprintf("Request failed. Request_id: %s", aErr.RequestID),
+				Type:      "api_error",
+				Message:   fmt.Sprintf("Request failed. Request_id: %s", aErr.RequestID),
+				RequestID: aErr.RequestID,
 			},
 		}
 	}
@@ -377,11 +378,11 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	return &llm.ResponseError{
 		StatusCode: rawErr.StatusCode,
 		Detail: llm.ErrorDetail{
-			Message:   fmt.Sprintf("Request failed. Status_code: %d, body: %s", rawErr.StatusCode, string(rawErr.Body)),
+			Message:   string(rawErr.Body),
 			Type:      "api_error",
 			Code:      "",
 			Param:     "",
-			RequestID: aErr.RequestID,
+			RequestID: "",
 		},
 	}
 }

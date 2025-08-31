@@ -810,7 +810,7 @@ func TestOutboundTransformer_TransformError(t *testing.T) {
 			expected: &llm.ResponseError{
 				Detail: llm.ErrorDetail{
 					Type:    "api_error",
-					Message: "Request failed. Status_code: 500, body: internal server error",
+					Message: "internal server error",
 				},
 			},
 		},

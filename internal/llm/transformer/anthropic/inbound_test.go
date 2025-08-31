@@ -1132,12 +1132,13 @@ func TestInboundTransformer_TransformError(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		llmErr   *llm.ResponseError
+		llmErr   error
 		expected *httpclient.Error
 	}{
 		{
 			name: "generic error",
 			llmErr: &llm.ResponseError{
+				StatusCode: http.StatusInternalServerError,
 				Detail: llm.ErrorDetail{
 					Message:   "some error",
 					Type:      "test_error",

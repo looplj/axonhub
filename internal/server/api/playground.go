@@ -23,25 +23,6 @@ type PlaygroundResponseError struct {
 	} `json:"error"`
 }
 
-type PlaygroundErrorHandler struct{}
-
-func (e *PlaygroundErrorHandler) HandlerError(c *gin.Context, err error) {
-	c.JSON(500, &PlaygroundResponseError{
-		Error: struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-		}{
-			Code:    "internal_error",
-			Message: err.Error(),
-		},
-	})
-}
-
-func (e *PlaygroundErrorHandler) HandleStreamError(c *gin.Context, err error) {
-	// For playground streaming, we write the error directly to the response
-	_, _ = c.Writer.Write([]byte("3:" + `"` + err.Error() + `"` + "\n"))
-}
-
 type PlaygroundHandlersParams struct {
 	fx.In
 
@@ -54,7 +35,6 @@ type PlaygroundHandlers struct {
 	ChannelService *biz.ChannelService
 	RequestService *biz.RequestService
 	HttpClient     *httpclient.HttpClient
-	ErrorHandler   *PlaygroundErrorHandler
 }
 
 func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers {
@@ -62,7 +42,6 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 		ChannelService: params.ChannelService,
 		RequestService: params.RequestService,
 		HttpClient:     params.HttpClient,
-		ErrorHandler:   &PlaygroundErrorHandler{},
 	}
 }
 
@@ -72,7 +51,17 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 
 	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
 	if err != nil {
-		handlers.ErrorHandler.HandlerError(c, err)
+		log.Error(ctx, "Error reading HTTP request", log.Cause(err))
+		c.JSON(http.StatusBadRequest, PlaygroundResponseError{
+			Error: struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			}{
+				Code:    "bad_request",
+				Message: err.Error(),
+			},
+		})
+
 		return
 	}
 
@@ -88,7 +77,17 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 	if channelIDStr != "" {
 		channelID, err := objects.ParseGUID(channelIDStr)
 		if err != nil {
-			handlers.ErrorHandler.HandlerError(c, err)
+			log.Error(ctx, "Error parsing channel ID", log.Cause(err))
+			c.JSON(http.StatusBadRequest, PlaygroundResponseError{
+				Error: struct {
+					Code    string `json:"code"`
+					Message string `json:"message"`
+				}{
+					Code:    "bad_request",
+					Message: err.Error(),
+				},
+			})
+
 			return
 		}
 
@@ -110,7 +109,17 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 
 	result, err := processor.Process(ctx, genericReq)
 	if err != nil {
-		handlers.ErrorHandler.HandlerError(c, err)
+		log.Error(ctx, "Error processing chat completion", log.Cause(err))
+		c.JSON(http.StatusInternalServerError, PlaygroundResponseError{
+			Error: struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			}{
+				Code:    "internal_error",
+				Message: err.Error(),
+			},
+		})
+
 		return
 	}
 

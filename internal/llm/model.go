@@ -530,7 +530,7 @@ type ResponseError struct {
 	Detail     ErrorDetail `json:"error"`
 }
 
-func (e *ResponseError) Error() string {
+func (e ResponseError) Error() string {
 	return fmt.Sprintf("error: %s, code: %s, type: %s, param: %s, request_id: %s", e.Detail.Message, e.Detail.Code, e.Detail.Type, e.Detail.Param, e.Detail.RequestID)
 }
 
