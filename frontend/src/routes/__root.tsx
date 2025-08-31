@@ -18,7 +18,7 @@ export const Route = createRootRouteWithContext<{
         <InitializationGuard>
           <Outlet />
         </InitializationGuard>
-        <Toaster duration={50000} />
+        <Toaster duration={5000} />
         {import.meta.env.MODE === 'development' && (
           <>
             <ReactQueryDevtools buttonPosition='bottom-left' />
