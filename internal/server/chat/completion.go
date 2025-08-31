@@ -66,6 +66,33 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 	result, err := pipe.Process(ctx, request)
 	if err != nil {
 		log.Error(ctx, "Pipeline processing failed", log.Cause(err))
+
+		// Update request status to failed when all retries are exhausted
+		if outbound != nil {
+			persistCtx := context.WithoutCancel(ctx)
+
+			// Update the last request execution status to failed if it exists
+			// This ensures that when retry fails completely, the last execution is properly marked
+			if outbound.GetRequestExecution() != nil {
+				execUpdateErr := processor.RequestService.UpdateRequestExecutionFailed(
+					persistCtx,
+					outbound.GetRequestExecution().ID,
+					err.Error(),
+				)
+				if execUpdateErr != nil {
+					log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(execUpdateErr))
+				}
+			}
+
+			// Update the main request status to failed
+			if outbound.GetRequest() != nil {
+				updateErr := processor.RequestService.UpdateRequestFailed(persistCtx, outbound.GetRequest().ID)
+				if updateErr != nil {
+					log.Warn(persistCtx, "Failed to update request status to failed", log.Cause(updateErr))
+				}
+			}
+		}
+
 		return ChatCompletionResult{}, err
 	}
 
