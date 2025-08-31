@@ -207,6 +207,11 @@ export function useRequests(variables?: {
   where?: {
     userID?: string
     status?: string
+    source?: string
+    channelID?: string
+    channelIDIn?: string[]
+    statusIn?: string[]
+    sourceIn?: string[]
     [key: string]: any
   }
 }) {

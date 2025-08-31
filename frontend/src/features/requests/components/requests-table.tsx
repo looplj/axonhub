@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
-  ColumnDef,
   ColumnFiltersState,
   RowData,
   SortingState,
@@ -26,7 +25,6 @@ import { DataTableToolbar } from './data-table-toolbar'
 import { ServerSidePagination } from '@/components/server-side-pagination'
 import { useRequestsColumns } from './requests-columns'
 import { useTranslation } from 'react-i18next'
-import { Spinner } from '@/components/spinner'
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -44,12 +42,14 @@ interface RequestsTableProps {
   userFilter: string
   statusFilter: string[]
   sourceFilter: string[]
+  channelFilter: string[]
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
   onUserFilterChange: (filter: string) => void
   onStatusFilterChange: (filters: string[]) => void
   onSourceFilterChange: (filters: string[]) => void
+  onChannelFilterChange: (filters: string[]) => void
 }
 
 export function RequestsTable({
@@ -61,12 +61,14 @@ export function RequestsTable({
   userFilter,
   statusFilter,
   sourceFilter,
+  channelFilter,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
   onUserFilterChange,
   onStatusFilterChange,
   onSourceFilterChange,
+  onChannelFilterChange,
 }: RequestsTableProps) {
   const { t } = useTranslation()
   const requestsColumns = useRequestsColumns()
@@ -84,6 +86,7 @@ export function RequestsTable({
     const userFilterValue = newFilters.find((filter: any) => filter.id === 'user')?.value
     const statusFilterValue = newFilters.find((filter: any) => filter.id === 'status')?.value
     const sourceFilterValue = newFilters.find((filter: any) => filter.id === 'source')?.value
+    const channelFilterValue = newFilters.find((filter: any) => filter.id === 'channel')?.value
     
     // Handle user filter
     let userFilterString = ''
@@ -91,7 +94,7 @@ export function RequestsTable({
       if (Array.isArray(userFilterValue)) {
         userFilterString = userFilterValue.length > 0 ? userFilterValue[0] : ''
       } else {
-        userFilterString = userFilterValue
+        userFilterString = userFilterValue as string
       }
     }
     
@@ -110,6 +113,12 @@ export function RequestsTable({
     if (JSON.stringify(sourceFilterArray.sort()) !== JSON.stringify(sourceFilter.sort())) {
       onSourceFilterChange(sourceFilterArray)
     }
+    
+    // Handle channel filter
+    const channelFilterArray = Array.isArray(channelFilterValue) ? channelFilterValue : []
+    if (JSON.stringify(channelFilterArray.sort()) !== JSON.stringify(channelFilter.sort())) {
+      onChannelFilterChange(channelFilterArray)
+    }
   }
 
   // Initialize filters in column filters if they exist
@@ -123,15 +132,30 @@ export function RequestsTable({
   if (sourceFilter.length > 0) {
     initialColumnFilters.push({ id: 'source', value: sourceFilter })
   }
+  if (channelFilter.length > 0) {
+    initialColumnFilters.push({ id: 'channel', value: channelFilter })
+  }
+
+  // Filter data by channel on client-side since it's from executions
+  const filteredData = useMemo(() => {
+    if (channelFilter.length === 0) return data
+    
+    return data.filter(request => {
+      const execution = request.executions?.edges?.[0]?.node
+      const channel = execution?.channel
+      if (!channel) return false
+      return channelFilter.includes(channel.id)
+    })
+  }, [data, channelFilter])
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns: requestsColumns,
     state: {
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters: columnFilters.length === 0 && (userFilter || statusFilter.length > 0 || sourceFilter.length > 0) ? initialColumnFilters : columnFilters,
+      columnFilters: columnFilters.length === 0 && (userFilter || statusFilter.length > 0 || sourceFilter.length > 0 || channelFilter.length > 0) ? initialColumnFilters : columnFilters,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
@@ -221,7 +245,7 @@ export function RequestsTable({
       <ServerSidePagination
         pageInfo={pageInfo}
         pageSize={pageSize}
-        dataLength={data.length}
+        dataLength={filteredData.length}
         totalCount={totalCount}
         selectedRows={table.getFilteredSelectedRowModel().rows.length}
         onNextPage={onNextPage}

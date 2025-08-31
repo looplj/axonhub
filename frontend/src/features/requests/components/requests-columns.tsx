@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useRequestsContext } from '../context'
 import { useRequestPermissions } from '../../../gql/useRequestPermissions'
-import { Request, RequestStatus } from '../data/schema'
+import { Request } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { getStatusColor } from './help'
 
@@ -91,6 +91,51 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
   },
   {
+    id: 'channel',
+    accessorFn: (row) => row.executions?.edges?.[0]?.node?.channel?.id || '',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={t('requests.columns.channel')} />
+    ),
+    enableSorting: false,
+    cell: ({ row }) => {
+      if (!permissions.canViewChannels) {
+        return (
+          <div className='font-mono text-xs text-muted-foreground'>
+            -
+          </div>
+        )
+      }
+      
+      // 获取第一个 execution 的 channel 信息
+      const execution = row.original.executions?.edges?.[0]?.node
+      const channel = execution?.channel
+      
+      if (!channel) {
+        return (
+          <div className='font-mono text-xs text-muted-foreground'>
+            {t('requests.columns.unknown')}
+          </div>
+        )
+      }
+      
+      return (
+        <div className='font-mono text-xs'>
+          {channel.name}
+        </div>
+      )
+    },
+    filterFn: (row, _id, value) => {
+      // For client-side filtering, check if any of the selected channels match
+      if (value.length === 0) return true // No filter applied
+      
+      const execution = row.original.executions?.edges?.[0]?.node
+      const channel = execution?.channel
+      if (!channel) return false
+      
+      return value.includes(channel.id)
+    },
+  },
+  {
     id: 'user',
     accessorFn: (row) => row.user?.id || '',
     header: ({ column }) => (
@@ -141,46 +186,21 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
   },
   {
-    id: 'requestBody',
+    id: 'details',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={t('requests.columns.requestBody')} />
+      <DataTableColumnHeader column={column} title={t('requests.columns.details')} />
     ),
     cell: ({ row }) => {
       const navigate = useNavigate()
 
-      const handleViewRequest = () => {
+      const handleViewDetails = () => {
         navigate({ to: '/requests/$requestId', params: { requestId: row.original.id } })
       }
 
       return (
-        <Button variant='outline' size='sm' onClick={handleViewRequest}>
+        <Button variant='outline' size='sm' onClick={handleViewDetails}>
           <FileText className='mr-2 h-4 w-4' />
-          {t('requests.actions.viewRequest')}
-        </Button>
-      )
-    },
-  },
-  {
-    id: 'responseBody',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={t('requests.columns.responseBody')} />
-    ),
-    cell: ({ row }) => {
-      const navigate = useNavigate()
-
-      const handleViewResponse = () => {
-        navigate({ to: '/requests/$requestId', params: { requestId: row.original.id } })
-      }
-
-      return (
-        <Button
-          variant='outline'
-          size='sm'
-          onClick={handleViewResponse}
-          disabled={!row.original.responseBody}
-        >
-          <FileText className='mr-2 h-4 w-4' />
-          {t('requests.actions.viewResponse')}
+          {t('requests.actions.viewDetails')}
         </Button>
       )
     },

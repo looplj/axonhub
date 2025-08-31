@@ -29,6 +29,7 @@ function RequestsContent() {
   const [userFilter, setUserFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
+  const [channelFilter, setChannelFilter] = useState<string[]>([])
   
   // Build where clause with filters
   const whereClause = (() => {
@@ -41,6 +42,11 @@ function RequestsContent() {
     }
     if (sourceFilter.length > 0) {
       where.sourceIn = sourceFilter
+    }
+    if (channelFilter.length > 0) {
+      // Add channel filter - assuming the backend supports filtering by channel IDs
+      // This might need to be adjusted based on the actual GraphQL schema
+      where.channelIDIn = channelFilter
     }
     return Object.keys(where).length > 0 ? where : undefined
   })()
@@ -112,6 +118,11 @@ function RequestsContent() {
     setCursor(undefined) // Reset to first page when filtering
   }
 
+  const handleChannelFilterChange = (filters: string[]) => {
+    setChannelFilter(filters)
+    setCursor(undefined) // Reset to first page when filtering
+  }
+
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
       <RequestsTable
@@ -123,12 +134,14 @@ function RequestsContent() {
         userFilter={userFilter}
         statusFilter={statusFilter}
         sourceFilter={sourceFilter}
+        channelFilter={channelFilter}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
         onUserFilterChange={handleUserFilterChange}
         onStatusFilterChange={handleStatusFilterChange}
         onSourceFilterChange={handleSourceFilterChange}
+        onChannelFilterChange={handleChannelFilterChange}
       />
     </div>
   )
