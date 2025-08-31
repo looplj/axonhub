@@ -461,7 +461,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			}
 
 			// Handle regular content
-			if message.Content.Content != nil {
+			if message.Content.Content != nil && *message.Content.Content != "" {
 				contentBlocks = append(contentBlocks, MessageContentBlock{
 					Type: "text",
 					Text: *message.Content.Content,

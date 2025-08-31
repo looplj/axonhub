@@ -3,6 +3,7 @@ package aisdk
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	transformer "github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
@@ -66,7 +68,7 @@ func (t *TextTransformer) TransformRequest(
 
 	err := json.Unmarshal(req.Body, &aiSDKReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse AI SDK request: %w", err)
+		return nil, fmt.Errorf("%w: failed to parse AI SDK request: %w", transformer.ErrInvalidRequest, err)
 	}
 
 	// Convert to LLM request
@@ -312,6 +314,17 @@ func (t *TextTransformer) TransformError(ctx context.Context, rawErr error) *htt
 
 	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
 		return httpErr
+	}
+
+	// Handle validation errors
+	if errors.Is(rawErr, transformer.ErrInvalidRequest) {
+		return &httpclient.Error{
+			StatusCode: http.StatusBadRequest,
+			Status:     http.StatusText(http.StatusBadRequest),
+			Body: []byte(
+				fmt.Sprintf(`{"message":"%s","type":"invalid_request"}`, strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidRequest.Error()+": ")),
+			),
+		}
 	}
 
 	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {

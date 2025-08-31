@@ -3,11 +3,13 @@ package openai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/looplj/axonhub/internal/llm"
+	transformer "github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
@@ -31,11 +33,11 @@ func (t *InboundTransformer) TransformRequest(
 	httpReq *httpclient.Request,
 ) (*llm.Request, error) {
 	if httpReq == nil {
-		return nil, fmt.Errorf("http request is nil")
+		return nil, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)
 	}
 
 	if len(httpReq.Body) == 0 {
-		return nil, fmt.Errorf("request body is empty")
+		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
 	}
 
 	// Check content type
@@ -45,23 +47,23 @@ func (t *InboundTransformer) TransformRequest(
 	}
 
 	if !strings.Contains(strings.ToLower(contentType), "application/json") {
-		return nil, fmt.Errorf("unsupported content type: %s", contentType)
+		return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
 	}
 
 	var chatReq llm.Request
 
 	err := json.Unmarshal(httpReq.Body, &chatReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode openai request: %w", err)
+		return nil, fmt.Errorf("%w: failed to decode openai request: %w", transformer.ErrInvalidRequest, err)
 	}
 
 	// Validate required fields
 	if chatReq.Model == "" {
-		return nil, fmt.Errorf("model is required")
+		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
 	}
 
 	if len(chatReq.Messages) == 0 {
-		return nil, fmt.Errorf("messages are required")
+		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
 	return &chatReq, nil
@@ -146,6 +148,20 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 
 	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
 		return httpErr
+	}
+
+	// Handle validation errors
+	if errors.Is(rawErr, transformer.ErrInvalidRequest) {
+		return &httpclient.Error{
+			StatusCode: http.StatusBadRequest,
+			Status:     http.StatusText(http.StatusBadRequest),
+			Body: []byte(
+				fmt.Sprintf(
+					`{"error":{"message":"%s","type":"invalid_request_error"}}`,
+					strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidRequest.Error()+": "),
+				),
+			),
+		}
 	}
 
 	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {

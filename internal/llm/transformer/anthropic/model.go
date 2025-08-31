@@ -355,4 +355,5 @@ type AnthropicErr struct {
 	StatusCode int    `json:"-"`
 	RequestID  string `json:"request_id"`
 	Message    string `json:"message"`
+	Type       string `json:"type,omitempty"`
 }

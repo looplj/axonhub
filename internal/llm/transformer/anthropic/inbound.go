@@ -3,6 +3,7 @@ package anthropic
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	transformer "github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
@@ -31,11 +33,11 @@ func (t *InboundTransformer) APIFormat() llm.APIFormat {
 //nolint:maintidx
 func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
-		return nil, fmt.Errorf("http request is nil")
+		return nil, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)
 	}
 
 	if len(httpReq.Body) == 0 {
-		return nil, fmt.Errorf("request body is empty")
+		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
 	}
 
 	// Check content type
@@ -45,27 +47,27 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 	}
 
 	if !strings.Contains(strings.ToLower(contentType), "application/json") {
-		return nil, fmt.Errorf("unsupported content type: %s", contentType)
+		return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
 	}
 
 	var anthropicReq MessageRequest
 
 	err := json.Unmarshal(httpReq.Body, &anthropicReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode anthropic request: %w", err)
+		return nil, fmt.Errorf("%w: failed to decode anthropic request: %w", transformer.ErrInvalidRequest, err)
 	}
 
 	// Validate required fields
 	if anthropicReq.Model == "" {
-		return nil, fmt.Errorf("model is required")
+		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
 	}
 
 	if len(anthropicReq.Messages) == 0 {
-		return nil, fmt.Errorf("messages are required")
+		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
 	if anthropicReq.MaxTokens <= 0 {
-		return nil, fmt.Errorf("max_tokens is required and must be positive")
+		return nil, fmt.Errorf("%w: max_tokens is required and must be positive", transformer.ErrInvalidRequest)
 	}
 
 	// Validate system prompt format
@@ -75,7 +77,8 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 			for _, prompt := range anthropicReq.System.MultiplePrompts {
 				if prompt.Type != "text" {
 					return nil, fmt.Errorf(
-						"system prompt array must contain only text type elements",
+						"%w: system prompt array must contain only text type elements",
+						transformer.ErrInvalidRequest,
 					)
 				}
 			}
@@ -312,6 +315,31 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 
 	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
 		return httpErr
+	}
+
+	// Handle validation errors
+	if errors.Is(rawErr, transformer.ErrInvalidRequest) {
+		aErr := &AnthropicErr{
+			StatusCode: http.StatusBadRequest,
+			Message:    strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidRequest.Error()+": "),
+			RequestID:  "",
+			Type:       "invalid_request_error",
+		}
+
+		body, err := json.Marshal(aErr)
+		if err != nil {
+			return &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Status:     http.StatusText(http.StatusInternalServerError),
+				Body:       []byte(`{"message":"internal server error","type":"internal_server_error"}`),
+			}
+		}
+
+		return &httpclient.Error{
+			StatusCode: http.StatusBadRequest,
+			Status:     http.StatusText(http.StatusBadRequest),
+			Body:       body,
+		}
 	}
 
 	aErr := &AnthropicErr{
