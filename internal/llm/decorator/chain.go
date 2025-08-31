@@ -48,7 +48,7 @@ func (c *Chain) Remove(name string) {
 }
 
 // Execute applies all decorators in the chain to the request.
-func (c *Chain) Execute(ctx context.Context, request *llm.Request) (*llm.Request, error) {
+func (c *Chain) ExecuteRequest(ctx context.Context, request *llm.Request) (*llm.Request, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -58,13 +58,33 @@ func (c *Chain) Execute(ctx context.Context, request *llm.Request) (*llm.Request
 
 	// Apply each decorator in sequence
 	for _, decorator := range c.decorators {
-		currentRequest, err = decorator.Decorate(ctx, currentRequest)
+		currentRequest, err = decorator.DecorateRequest(ctx, currentRequest)
 		if err != nil {
 			return currentRequest, err
 		}
 	}
 
 	return currentRequest, nil
+}
+
+// ExecuteResponse applies all decorators in the chain to the response.
+func (c *Chain) ExecuteResponse(ctx context.Context, response *llm.Response) (*llm.Response, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	currentResponse := response
+
+	var err error
+
+	// Apply each decorator in sequence
+	for _, decorator := range c.decorators {
+		currentResponse, err = decorator.DecorateResponse(ctx, currentResponse)
+		if err != nil {
+			return currentResponse, err
+		}
+	}
+
+	return currentResponse, nil
 }
 
 // List returns all decorators in the chain.

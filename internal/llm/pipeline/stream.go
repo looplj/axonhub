@@ -21,7 +21,7 @@ func (p *pipeline) stream(
 		for _, dec := range p.decorators {
 			var err error
 
-			request, err = dec.Decorate(ctx, request)
+			request, err = dec.DecorateRequest(ctx, request)
 			if err != nil {
 				log.Error(ctx, "Failed to apply decorator", log.Cause(err))
 				return nil, err

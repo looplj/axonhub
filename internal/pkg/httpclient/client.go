@@ -77,6 +77,14 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		}
 	}
 
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "HTTP request success",
+			log.String("method", rawReq.Method),
+			log.String("url", rawReq.URL.String()),
+			log.Any("status_code", rawResp.StatusCode),
+			log.String("body", string(body)))
+	}
+
 	// Build generic response
 	response := &Response{
 		StatusCode:  rawResp.StatusCode,
