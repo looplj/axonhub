@@ -165,8 +165,9 @@ func writeAITextStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 		case <-clientGone:
 			clientDisconnected = true
 
-			log.Warn(ctx, "Client disconnected")
-			// continue to read the rest of the stream to collect stream.
+			log.Warn(ctx, "Client disconnected, stop streaming")
+
+			return
 		default:
 			if stream.Next() {
 				cur := stream.Current()
