@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"entgo.io/ent/dialect/sql"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
@@ -73,7 +74,7 @@ type InitializeSystemArgs struct {
 }
 
 // Initialize initializes the system with a secret key and sets the initialized flag.
-func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemArgs) error {
+func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemArgs) (err error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	// Check if system is already initialized
 	isInitialized, err := s.IsInitialized(ctx)
@@ -91,15 +92,24 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 		return fmt.Errorf("failed to generate secret key: %w", err)
 	}
 
-	tx := ent.FromContext(ctx)
+	db := ent.FromContext(ctx)
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+	ctx = ent.NewContext(ctx, tx.Client())
 
-	// Hash the owner password
 	hashedPassword, err := HashPassword(args.OwnerPassword)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	// Create the owner user
+	// Create owner user.
 	user, err := tx.User.Create().
 		SetEmail(args.OwnerEmail).
 		SetPassword(hashedPassword).
@@ -114,22 +124,26 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 
 	log.Info(ctx, "created owner user", zap.Int("user_id", user.ID))
 
-	// Set secret key
+	// Set secret key.
 	err = s.setSystemValue(ctx, SystemKeySecretKey, secretKey)
 	if err != nil {
 		return fmt.Errorf("failed to set secret key: %w", err)
 	}
 
-	// Set brand name
+	// Set brand name.
 	err = s.setSystemValue(ctx, SystemKeyBrandName, args.BrandName)
 	if err != nil {
 		return fmt.Errorf("failed to set brand name: %w", err)
 	}
 
-	// Set initialized flag
+	// Set initialized flag to true.
 	err = s.setSystemValue(ctx, SystemKeyInitialized, "true")
 	if err != nil {
 		return fmt.Errorf("failed to set initialized flag: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -230,7 +244,7 @@ func (s *SystemService) setSystemValue(
 	err := client.System.Create().
 		SetKey(key).
 		SetValue(value).
-		OnConflict().
+		OnConflict(sql.ConflictColumns("key")).
 		UpdateNewValues().
 		Exec(ctx)
 	if err != nil {
