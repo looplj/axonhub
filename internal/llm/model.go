@@ -501,6 +501,11 @@ type TopLogprob struct {
 	Bytes   []int   `json:"bytes,omitempty"`
 }
 
+type ResponseMeta struct {
+	ID    string `json:"id"`
+	Usage *Usage `json:"usage"`
+}
+
 // Usage Represents the total token usage per request to OpenAI.
 type Usage struct {
 	PromptTokens            int                      `json:"prompt_tokens"`

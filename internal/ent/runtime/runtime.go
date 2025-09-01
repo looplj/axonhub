@@ -176,7 +176,7 @@ func init() {
 	// requestexecution.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	requestexecution.UpdateDefaultUpdatedAt = requestexecutionDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// requestexecutionDescFormat is the schema descriptor for format field.
-	requestexecutionDescFormat := requestexecutionFields[4].Descriptor()
+	requestexecutionDescFormat := requestexecutionFields[5].Descriptor()
 	// requestexecution.DefaultFormat holds the default value on creation for the format field.
 	requestexecution.DefaultFormat = requestexecutionDescFormat.Default.(string)
 	roleMixin := schema.Role{}.Mixin()

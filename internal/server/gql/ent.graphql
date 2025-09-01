@@ -578,6 +578,7 @@ input CreateRequestInput {
   requestBody: JSONRawMessageInput!
   responseBody: JSONRawMessageInput
   responseChunks: [JSONRawMessageInput!]
+  externalID: String
   status: RequestStatus!
   userID: ID!
   apiKeyID: ID
@@ -1067,6 +1068,7 @@ type Request implements Node {
   responseBody: JSONRawMessage
   responseChunks: [JSONRawMessage!]
   channelID: ID
+  externalID: String
   status: RequestStatus!
   user: User!
   apiKey: APIKey
@@ -1171,6 +1173,7 @@ type RequestExecution implements Node {
   userID: Int!
   requestID: ID!
   channelID: ID!
+  externalID: String
   modelID: String!
   format: String!
   requestBody: JSONRawMessage!
@@ -1305,6 +1308,24 @@ input RequestExecutionWhereInput {
   channelIDNEQ: ID
   channelIDIn: [ID!]
   channelIDNotIn: [ID!]
+  """
+  external_id field predicates
+  """
+  externalID: String
+  externalIDNEQ: String
+  externalIDIn: [String!]
+  externalIDNotIn: [String!]
+  externalIDGT: String
+  externalIDGTE: String
+  externalIDLT: String
+  externalIDLTE: String
+  externalIDContains: String
+  externalIDHasPrefix: String
+  externalIDHasSuffix: String
+  externalIDIsNil: Boolean
+  externalIDNotNil: Boolean
+  externalIDEqualFold: String
+  externalIDContainsFold: String
   """
   model_id field predicates
   """
@@ -1525,6 +1546,24 @@ input RequestWhereInput {
   channelIDNotIn: [ID!]
   channelIDIsNil: Boolean
   channelIDNotNil: Boolean
+  """
+  external_id field predicates
+  """
+  externalID: String
+  externalIDNEQ: String
+  externalIDIn: [String!]
+  externalIDNotIn: [String!]
+  externalIDGT: String
+  externalIDGTE: String
+  externalIDLT: String
+  externalIDLTE: String
+  externalIDContains: String
+  externalIDHasPrefix: String
+  externalIDHasSuffix: String
+  externalIDIsNil: Boolean
+  externalIDNotNil: Boolean
+  externalIDEqualFold: String
+  externalIDContainsFold: String
   """
   status field predicates
   """
@@ -1927,6 +1966,8 @@ input UpdateRequestInput {
   responseChunks: [JSONRawMessageInput!]
   appendResponseChunks: [JSONRawMessageInput!]
   clearResponseChunks: Boolean
+  externalID: String
+  clearExternalID: Boolean
   status: RequestStatus
   channelID: ID
   clearChannel: Boolean

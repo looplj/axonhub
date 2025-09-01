@@ -31,6 +31,8 @@ type RequestExecution struct {
 	RequestID int `json:"request_id,omitempty"`
 	// ChannelID holds the value of the "channel_id" field.
 	ChannelID int `json:"channel_id,omitempty"`
+	// ExternalID holds the value of the "external_id" field.
+	ExternalID string `json:"external_id,omitempty"`
 	// ModelID holds the value of the "model_id" field.
 	ModelID string `json:"model_id,omitempty"`
 	// Format holds the value of the "format" field.
@@ -95,7 +97,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case requestexecution.FieldID, requestexecution.FieldUserID, requestexecution.FieldRequestID, requestexecution.FieldChannelID:
 			values[i] = new(sql.NullInt64)
-		case requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
+		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
 			values[i] = new(sql.NullString)
 		case requestexecution.FieldCreatedAt, requestexecution.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -149,6 +151,12 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field channel_id", values[i])
 			} else if value.Valid {
 				re.ChannelID = int(value.Int64)
+			}
+		case requestexecution.FieldExternalID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field external_id", values[i])
+			} else if value.Valid {
+				re.ExternalID = value.String
 			}
 		case requestexecution.FieldModelID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -258,6 +266,9 @@ func (re *RequestExecution) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("channel_id=")
 	builder.WriteString(fmt.Sprintf("%v", re.ChannelID))
+	builder.WriteString(", ")
+	builder.WriteString("external_id=")
+	builder.WriteString(re.ExternalID)
 	builder.WriteString(", ")
 	builder.WriteString("model_id=")
 	builder.WriteString(re.ModelID)

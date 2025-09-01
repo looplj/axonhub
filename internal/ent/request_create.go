@@ -156,6 +156,20 @@ func (rc *RequestCreate) SetNillableChannelID(i *int) *RequestCreate {
 	return rc
 }
 
+// SetExternalID sets the "external_id" field.
+func (rc *RequestCreate) SetExternalID(s string) *RequestCreate {
+	rc.mutation.SetExternalID(s)
+	return rc
+}
+
+// SetNillableExternalID sets the "external_id" field if the given value is not nil.
+func (rc *RequestCreate) SetNillableExternalID(s *string) *RequestCreate {
+	if s != nil {
+		rc.SetExternalID(*s)
+	}
+	return rc
+}
+
 // SetStatus sets the "status" field.
 func (rc *RequestCreate) SetStatus(r request.Status) *RequestCreate {
 	rc.mutation.SetStatus(r)
@@ -377,6 +391,10 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := rc.mutation.ResponseChunks(); ok {
 		_spec.SetField(request.FieldResponseChunks, field.TypeJSON, value)
 		_node.ResponseChunks = value
+	}
+	if value, ok := rc.mutation.ExternalID(); ok {
+		_spec.SetField(request.FieldExternalID, field.TypeString, value)
+		_node.ExternalID = value
 	}
 	if value, ok := rc.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
@@ -601,6 +619,24 @@ func (u *RequestUpsert) ClearChannelID() *RequestUpsert {
 	return u
 }
 
+// SetExternalID sets the "external_id" field.
+func (u *RequestUpsert) SetExternalID(v string) *RequestUpsert {
+	u.Set(request.FieldExternalID, v)
+	return u
+}
+
+// UpdateExternalID sets the "external_id" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateExternalID() *RequestUpsert {
+	u.SetExcluded(request.FieldExternalID)
+	return u
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (u *RequestUpsert) ClearExternalID() *RequestUpsert {
+	u.SetNull(request.FieldExternalID)
+	return u
+}
+
 // SetStatus sets the "status" field.
 func (u *RequestUpsert) SetStatus(v request.Status) *RequestUpsert {
 	u.Set(request.FieldStatus, v)
@@ -771,6 +807,27 @@ func (u *RequestUpsertOne) UpdateChannelID() *RequestUpsertOne {
 func (u *RequestUpsertOne) ClearChannelID() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearChannelID()
+	})
+}
+
+// SetExternalID sets the "external_id" field.
+func (u *RequestUpsertOne) SetExternalID(v string) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetExternalID(v)
+	})
+}
+
+// UpdateExternalID sets the "external_id" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateExternalID() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateExternalID()
+	})
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (u *RequestUpsertOne) ClearExternalID() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearExternalID()
 	})
 }
 
@@ -1112,6 +1169,27 @@ func (u *RequestUpsertBulk) UpdateChannelID() *RequestUpsertBulk {
 func (u *RequestUpsertBulk) ClearChannelID() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearChannelID()
+	})
+}
+
+// SetExternalID sets the "external_id" field.
+func (u *RequestUpsertBulk) SetExternalID(v string) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetExternalID(v)
+	})
+}
+
+// UpdateExternalID sets the "external_id" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateExternalID() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateExternalID()
+	})
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (u *RequestUpsertBulk) ClearExternalID() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearExternalID()
 	})
 }
 

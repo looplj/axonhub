@@ -37,6 +37,26 @@ func (reu *RequestExecutionUpdate) SetUpdatedAt(t time.Time) *RequestExecutionUp
 	return reu
 }
 
+// SetExternalID sets the "external_id" field.
+func (reu *RequestExecutionUpdate) SetExternalID(s string) *RequestExecutionUpdate {
+	reu.mutation.SetExternalID(s)
+	return reu
+}
+
+// SetNillableExternalID sets the "external_id" field if the given value is not nil.
+func (reu *RequestExecutionUpdate) SetNillableExternalID(s *string) *RequestExecutionUpdate {
+	if s != nil {
+		reu.SetExternalID(*s)
+	}
+	return reu
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (reu *RequestExecutionUpdate) ClearExternalID() *RequestExecutionUpdate {
+	reu.mutation.ClearExternalID()
+	return reu
+}
+
 // SetResponseBody sets the "response_body" field.
 func (reu *RequestExecutionUpdate) SetResponseBody(orm objects.JSONRawMessage) *RequestExecutionUpdate {
 	reu.mutation.SetResponseBody(orm)
@@ -185,6 +205,12 @@ func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err erro
 	if value, ok := reu.mutation.UpdatedAt(); ok {
 		_spec.SetField(requestexecution.FieldUpdatedAt, field.TypeTime, value)
 	}
+	if value, ok := reu.mutation.ExternalID(); ok {
+		_spec.SetField(requestexecution.FieldExternalID, field.TypeString, value)
+	}
+	if reu.mutation.ExternalIDCleared() {
+		_spec.ClearField(requestexecution.FieldExternalID, field.TypeString)
+	}
 	if value, ok := reu.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)
 	}
@@ -241,6 +267,26 @@ type RequestExecutionUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (reuo *RequestExecutionUpdateOne) SetUpdatedAt(t time.Time) *RequestExecutionUpdateOne {
 	reuo.mutation.SetUpdatedAt(t)
+	return reuo
+}
+
+// SetExternalID sets the "external_id" field.
+func (reuo *RequestExecutionUpdateOne) SetExternalID(s string) *RequestExecutionUpdateOne {
+	reuo.mutation.SetExternalID(s)
+	return reuo
+}
+
+// SetNillableExternalID sets the "external_id" field if the given value is not nil.
+func (reuo *RequestExecutionUpdateOne) SetNillableExternalID(s *string) *RequestExecutionUpdateOne {
+	if s != nil {
+		reuo.SetExternalID(*s)
+	}
+	return reuo
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (reuo *RequestExecutionUpdateOne) ClearExternalID() *RequestExecutionUpdateOne {
+	reuo.mutation.ClearExternalID()
 	return reuo
 }
 
@@ -421,6 +467,12 @@ func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Requ
 	}
 	if value, ok := reuo.mutation.UpdatedAt(); ok {
 		_spec.SetField(requestexecution.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := reuo.mutation.ExternalID(); ok {
+		_spec.SetField(requestexecution.FieldExternalID, field.TypeString, value)
+	}
+	if reuo.mutation.ExternalIDCleared() {
+		_spec.ClearField(requestexecution.FieldExternalID, field.TypeString)
 	}
 	if value, ok := reuo.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)

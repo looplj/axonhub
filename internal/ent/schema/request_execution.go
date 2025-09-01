@@ -35,6 +35,8 @@ func (RequestExecution) Fields() []ent.Field {
 		field.Int("user_id").Immutable(),
 		field.Int("request_id").Immutable(),
 		field.Int("channel_id").Immutable(),
+		// External ID for tracking requests in external systems
+		field.String("external_id").Optional(),
 		field.String("model_id").Immutable(),
 		//  The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
 		field.String("format").Immutable().Default("openai/chat_completions"),

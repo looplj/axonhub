@@ -298,9 +298,9 @@ func (t *TextTransformer) TransformStreamChunk(
 func (t *TextTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
-) ([]byte, *llm.Usage, error) {
+) ([]byte, llm.ResponseMeta, error) {
 	// TODO: support.
-	return []byte(`{}`), nil, nil
+	return []byte(`{}`), llm.ResponseMeta{}, nil
 }
 
 func (t *TextTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {

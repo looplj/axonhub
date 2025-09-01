@@ -102,6 +102,7 @@ func (s *RequestService) CreateRequestExecution(
 func (s *RequestService) UpdateRequestCompleted(
 	ctx context.Context,
 	requestID int,
+	externalId string,
 	responseBody any,
 ) error {
 	responseBodyBytes, err := xjson.Marshal(responseBody)
@@ -115,6 +116,7 @@ func (s *RequestService) UpdateRequestCompleted(
 	_, err = client.Request.UpdateOneID(requestID).
 		SetStatus(request.StatusCompleted).
 		SetResponseBody(responseBodyBytes).
+		SetExternalID(externalId).
 		Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request status to completed", log.Cause(err))
@@ -158,6 +160,7 @@ func (s *RequestService) UpdateRequestFailed(ctx context.Context, requestID int)
 func (s *RequestService) UpdateRequestExecutionCompleted(
 	ctx context.Context,
 	executionID int,
+	externalId string,
 	responseBody any,
 ) error {
 	responseBodyBytes, err := xjson.Marshal(responseBody)
@@ -170,6 +173,7 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 	_, err = client.RequestExecution.UpdateOneID(executionID).
 		SetStatus(requestexecution.StatusCompleted).
 		SetResponseBody(responseBodyBytes).
+		SetExternalID(externalId).
 		Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request execution status to completed", log.Cause(err))
@@ -294,6 +298,7 @@ func (s *RequestService) AppendRequestChunk(
 func (s *RequestService) UpdateRequestExecutionCompletd(
 	ctx context.Context,
 	executionID int,
+	externalID string,
 	responseBody any,
 ) error {
 	responseBodyBytes, err := xjson.Marshal(responseBody)
@@ -306,10 +311,41 @@ func (s *RequestService) UpdateRequestExecutionCompletd(
 
 	_, err = client.RequestExecution.UpdateOneID(executionID).
 		SetStatus(requestexecution.StatusCompleted).
+		SetExternalID(externalID).
 		SetResponseBody(responseBodyBytes).
 		Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request execution status to completed", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
+// UpdateRequestExternalID updates request with response ID.
+func (s *RequestService) UpdateRequestExternalID(ctx context.Context, requestID int, responseID string) error {
+	client := ent.FromContext(ctx)
+
+	_, err := client.Request.UpdateOneID(requestID).
+		SetExternalID(responseID).
+		Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to update request response ID", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
+// UpdateRequestExecutionResponseID updates request execution with response ID.
+func (s *RequestService) UpdateRequestExecutionResponseID(ctx context.Context, executionID int, responseID string) error {
+	client := ent.FromContext(ctx)
+
+	_, err := client.RequestExecution.UpdateOneID(executionID).
+		SetExternalID(responseID).
+		Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to update request execution response ID", log.Cause(err))
 		return err
 	}
 

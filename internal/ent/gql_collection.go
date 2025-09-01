@@ -1031,6 +1031,11 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldChannelID)
 				fieldSeen[request.FieldChannelID] = struct{}{}
 			}
+		case "externalID":
+			if _, ok := fieldSeen[request.FieldExternalID]; !ok {
+				selectedFields = append(selectedFields, request.FieldExternalID)
+				fieldSeen[request.FieldExternalID] = struct{}{}
+			}
 		case "status":
 			if _, ok := fieldSeen[request.FieldStatus]; !ok {
 				selectedFields = append(selectedFields, request.FieldStatus)
@@ -1174,6 +1179,11 @@ func (req *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool
 			if _, ok := fieldSeen[requestexecution.FieldChannelID]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldChannelID)
 				fieldSeen[requestexecution.FieldChannelID] = struct{}{}
+			}
+		case "externalID":
+			if _, ok := fieldSeen[requestexecution.FieldExternalID]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldExternalID)
+				fieldSeen[requestexecution.FieldExternalID] = struct{}{}
 			}
 		case "modelID":
 			if _, ok := fieldSeen[requestexecution.FieldModelID]; !ok {

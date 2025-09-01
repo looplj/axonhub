@@ -1336,6 +1336,23 @@ type RequestWhereInput struct {
 	ChannelIDIsNil  bool  `json:"channelIDIsNil,omitempty"`
 	ChannelIDNotNil bool  `json:"channelIDNotNil,omitempty"`
 
+	// "external_id" field predicates.
+	ExternalID             *string  `json:"externalID,omitempty"`
+	ExternalIDNEQ          *string  `json:"externalIDNEQ,omitempty"`
+	ExternalIDIn           []string `json:"externalIDIn,omitempty"`
+	ExternalIDNotIn        []string `json:"externalIDNotIn,omitempty"`
+	ExternalIDGT           *string  `json:"externalIDGT,omitempty"`
+	ExternalIDGTE          *string  `json:"externalIDGTE,omitempty"`
+	ExternalIDLT           *string  `json:"externalIDLT,omitempty"`
+	ExternalIDLTE          *string  `json:"externalIDLTE,omitempty"`
+	ExternalIDContains     *string  `json:"externalIDContains,omitempty"`
+	ExternalIDHasPrefix    *string  `json:"externalIDHasPrefix,omitempty"`
+	ExternalIDHasSuffix    *string  `json:"externalIDHasSuffix,omitempty"`
+	ExternalIDIsNil        bool     `json:"externalIDIsNil,omitempty"`
+	ExternalIDNotNil       bool     `json:"externalIDNotNil,omitempty"`
+	ExternalIDEqualFold    *string  `json:"externalIDEqualFold,omitempty"`
+	ExternalIDContainsFold *string  `json:"externalIDContainsFold,omitempty"`
+
 	// "status" field predicates.
 	Status      *request.Status  `json:"status,omitempty"`
 	StatusNEQ   *request.Status  `json:"statusNEQ,omitempty"`
@@ -1668,6 +1685,51 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	if i.ChannelIDNotNil {
 		predicates = append(predicates, request.ChannelIDNotNil())
 	}
+	if i.ExternalID != nil {
+		predicates = append(predicates, request.ExternalIDEQ(*i.ExternalID))
+	}
+	if i.ExternalIDNEQ != nil {
+		predicates = append(predicates, request.ExternalIDNEQ(*i.ExternalIDNEQ))
+	}
+	if len(i.ExternalIDIn) > 0 {
+		predicates = append(predicates, request.ExternalIDIn(i.ExternalIDIn...))
+	}
+	if len(i.ExternalIDNotIn) > 0 {
+		predicates = append(predicates, request.ExternalIDNotIn(i.ExternalIDNotIn...))
+	}
+	if i.ExternalIDGT != nil {
+		predicates = append(predicates, request.ExternalIDGT(*i.ExternalIDGT))
+	}
+	if i.ExternalIDGTE != nil {
+		predicates = append(predicates, request.ExternalIDGTE(*i.ExternalIDGTE))
+	}
+	if i.ExternalIDLT != nil {
+		predicates = append(predicates, request.ExternalIDLT(*i.ExternalIDLT))
+	}
+	if i.ExternalIDLTE != nil {
+		predicates = append(predicates, request.ExternalIDLTE(*i.ExternalIDLTE))
+	}
+	if i.ExternalIDContains != nil {
+		predicates = append(predicates, request.ExternalIDContains(*i.ExternalIDContains))
+	}
+	if i.ExternalIDHasPrefix != nil {
+		predicates = append(predicates, request.ExternalIDHasPrefix(*i.ExternalIDHasPrefix))
+	}
+	if i.ExternalIDHasSuffix != nil {
+		predicates = append(predicates, request.ExternalIDHasSuffix(*i.ExternalIDHasSuffix))
+	}
+	if i.ExternalIDIsNil {
+		predicates = append(predicates, request.ExternalIDIsNil())
+	}
+	if i.ExternalIDNotNil {
+		predicates = append(predicates, request.ExternalIDNotNil())
+	}
+	if i.ExternalIDEqualFold != nil {
+		predicates = append(predicates, request.ExternalIDEqualFold(*i.ExternalIDEqualFold))
+	}
+	if i.ExternalIDContainsFold != nil {
+		predicates = append(predicates, request.ExternalIDContainsFold(*i.ExternalIDContainsFold))
+	}
 	if i.Status != nil {
 		predicates = append(predicates, request.StatusEQ(*i.Status))
 	}
@@ -1839,6 +1901,23 @@ type RequestExecutionWhereInput struct {
 	ChannelIDNEQ   *int  `json:"channelIDNEQ,omitempty"`
 	ChannelIDIn    []int `json:"channelIDIn,omitempty"`
 	ChannelIDNotIn []int `json:"channelIDNotIn,omitempty"`
+
+	// "external_id" field predicates.
+	ExternalID             *string  `json:"externalID,omitempty"`
+	ExternalIDNEQ          *string  `json:"externalIDNEQ,omitempty"`
+	ExternalIDIn           []string `json:"externalIDIn,omitempty"`
+	ExternalIDNotIn        []string `json:"externalIDNotIn,omitempty"`
+	ExternalIDGT           *string  `json:"externalIDGT,omitempty"`
+	ExternalIDGTE          *string  `json:"externalIDGTE,omitempty"`
+	ExternalIDLT           *string  `json:"externalIDLT,omitempty"`
+	ExternalIDLTE          *string  `json:"externalIDLTE,omitempty"`
+	ExternalIDContains     *string  `json:"externalIDContains,omitempty"`
+	ExternalIDHasPrefix    *string  `json:"externalIDHasPrefix,omitempty"`
+	ExternalIDHasSuffix    *string  `json:"externalIDHasSuffix,omitempty"`
+	ExternalIDIsNil        bool     `json:"externalIDIsNil,omitempty"`
+	ExternalIDNotNil       bool     `json:"externalIDNotNil,omitempty"`
+	ExternalIDEqualFold    *string  `json:"externalIDEqualFold,omitempty"`
+	ExternalIDContainsFold *string  `json:"externalIDContainsFold,omitempty"`
 
 	// "model_id" field predicates.
 	ModelID             *string  `json:"modelID,omitempty"`
@@ -2092,6 +2171,51 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if len(i.ChannelIDNotIn) > 0 {
 		predicates = append(predicates, requestexecution.ChannelIDNotIn(i.ChannelIDNotIn...))
+	}
+	if i.ExternalID != nil {
+		predicates = append(predicates, requestexecution.ExternalIDEQ(*i.ExternalID))
+	}
+	if i.ExternalIDNEQ != nil {
+		predicates = append(predicates, requestexecution.ExternalIDNEQ(*i.ExternalIDNEQ))
+	}
+	if len(i.ExternalIDIn) > 0 {
+		predicates = append(predicates, requestexecution.ExternalIDIn(i.ExternalIDIn...))
+	}
+	if len(i.ExternalIDNotIn) > 0 {
+		predicates = append(predicates, requestexecution.ExternalIDNotIn(i.ExternalIDNotIn...))
+	}
+	if i.ExternalIDGT != nil {
+		predicates = append(predicates, requestexecution.ExternalIDGT(*i.ExternalIDGT))
+	}
+	if i.ExternalIDGTE != nil {
+		predicates = append(predicates, requestexecution.ExternalIDGTE(*i.ExternalIDGTE))
+	}
+	if i.ExternalIDLT != nil {
+		predicates = append(predicates, requestexecution.ExternalIDLT(*i.ExternalIDLT))
+	}
+	if i.ExternalIDLTE != nil {
+		predicates = append(predicates, requestexecution.ExternalIDLTE(*i.ExternalIDLTE))
+	}
+	if i.ExternalIDContains != nil {
+		predicates = append(predicates, requestexecution.ExternalIDContains(*i.ExternalIDContains))
+	}
+	if i.ExternalIDHasPrefix != nil {
+		predicates = append(predicates, requestexecution.ExternalIDHasPrefix(*i.ExternalIDHasPrefix))
+	}
+	if i.ExternalIDHasSuffix != nil {
+		predicates = append(predicates, requestexecution.ExternalIDHasSuffix(*i.ExternalIDHasSuffix))
+	}
+	if i.ExternalIDIsNil {
+		predicates = append(predicates, requestexecution.ExternalIDIsNil())
+	}
+	if i.ExternalIDNotNil {
+		predicates = append(predicates, requestexecution.ExternalIDNotNil())
+	}
+	if i.ExternalIDEqualFold != nil {
+		predicates = append(predicates, requestexecution.ExternalIDEqualFold(*i.ExternalIDEqualFold))
+	}
+	if i.ExternalIDContainsFold != nil {
+		predicates = append(predicates, requestexecution.ExternalIDContainsFold(*i.ExternalIDContainsFold))
 	}
 	if i.ModelID != nil {
 		predicates = append(predicates, requestexecution.ModelIDEQ(*i.ModelID))

@@ -42,6 +42,8 @@ const (
 	FieldResponseChunks = "response_chunks"
 	// FieldChannelID holds the string denoting the channel_id field in the database.
 	FieldChannelID = "channel_id"
+	// FieldExternalID holds the string denoting the external_id field in the database.
+	FieldExternalID = "external_id"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// EdgeUser holds the string denoting the user edge name in mutations.
@@ -108,6 +110,7 @@ var Columns = []string{
 	FieldResponseBody,
 	FieldResponseChunks,
 	FieldChannelID,
+	FieldExternalID,
 	FieldStatus,
 }
 
@@ -245,6 +248,11 @@ func ByFormat(opts ...sql.OrderTermOption) OrderOption {
 // ByChannelID orders the results by the channel_id field.
 func ByChannelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldChannelID, opts...).ToFunc()
+}
+
+// ByExternalID orders the results by the external_id field.
+func ByExternalID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldExternalID, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

@@ -60,6 +60,8 @@ func (Request) Fields() []ent.Field {
 		// The response chunks to the user.
 		field.JSON("response_chunks", []objects.JSONRawMessage{}).Optional(),
 		field.Int("channel_id").Optional(),
+		// External ID for tracking requests in external systems
+		field.String("external_id").Optional(),
 		// The status of the request.
 		field.Enum("status").Values("pending", "processing", "completed", "failed"),
 	}

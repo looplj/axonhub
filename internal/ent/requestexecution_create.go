@@ -71,6 +71,20 @@ func (rec *RequestExecutionCreate) SetChannelID(i int) *RequestExecutionCreate {
 	return rec
 }
 
+// SetExternalID sets the "external_id" field.
+func (rec *RequestExecutionCreate) SetExternalID(s string) *RequestExecutionCreate {
+	rec.mutation.SetExternalID(s)
+	return rec
+}
+
+// SetNillableExternalID sets the "external_id" field if the given value is not nil.
+func (rec *RequestExecutionCreate) SetNillableExternalID(s *string) *RequestExecutionCreate {
+	if s != nil {
+		rec.SetExternalID(*s)
+	}
+	return rec
+}
+
 // SetModelID sets the "model_id" field.
 func (rec *RequestExecutionCreate) SetModelID(s string) *RequestExecutionCreate {
 	rec.mutation.SetModelID(s)
@@ -267,6 +281,10 @@ func (rec *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cr
 		_spec.SetField(requestexecution.FieldUserID, field.TypeInt, value)
 		_node.UserID = value
 	}
+	if value, ok := rec.mutation.ExternalID(); ok {
+		_spec.SetField(requestexecution.FieldExternalID, field.TypeString, value)
+		_node.ExternalID = value
+	}
 	if value, ok := rec.mutation.ModelID(); ok {
 		_spec.SetField(requestexecution.FieldModelID, field.TypeString, value)
 		_node.ModelID = value
@@ -390,6 +408,24 @@ func (u *RequestExecutionUpsert) SetUpdatedAt(v time.Time) *RequestExecutionUpse
 // UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
 func (u *RequestExecutionUpsert) UpdateUpdatedAt() *RequestExecutionUpsert {
 	u.SetExcluded(requestexecution.FieldUpdatedAt)
+	return u
+}
+
+// SetExternalID sets the "external_id" field.
+func (u *RequestExecutionUpsert) SetExternalID(v string) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldExternalID, v)
+	return u
+}
+
+// UpdateExternalID sets the "external_id" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateExternalID() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldExternalID)
+	return u
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (u *RequestExecutionUpsert) ClearExternalID() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldExternalID)
 	return u
 }
 
@@ -533,6 +569,27 @@ func (u *RequestExecutionUpsertOne) SetUpdatedAt(v time.Time) *RequestExecutionU
 func (u *RequestExecutionUpsertOne) UpdateUpdatedAt() *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetExternalID sets the "external_id" field.
+func (u *RequestExecutionUpsertOne) SetExternalID(v string) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetExternalID(v)
+	})
+}
+
+// UpdateExternalID sets the "external_id" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateExternalID() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateExternalID()
+	})
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (u *RequestExecutionUpsertOne) ClearExternalID() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearExternalID()
 	})
 }
 
@@ -853,6 +910,27 @@ func (u *RequestExecutionUpsertBulk) SetUpdatedAt(v time.Time) *RequestExecution
 func (u *RequestExecutionUpsertBulk) UpdateUpdatedAt() *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetExternalID sets the "external_id" field.
+func (u *RequestExecutionUpsertBulk) SetExternalID(v string) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetExternalID(v)
+	})
+}
+
+// UpdateExternalID sets the "external_id" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateExternalID() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateExternalID()
+	})
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (u *RequestExecutionUpsertBulk) ClearExternalID() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearExternalID()
 	})
 }
 

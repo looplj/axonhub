@@ -11,9 +11,9 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
 
-func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, *llm.Usage, error) {
+func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	if len(chunks) == 0 {
-		return nil, nil, errors.New("empty stream chunks")
+		return nil, llm.ResponseMeta{}, errors.New("empty stream chunks")
 	}
 
 	var (
@@ -173,13 +173,18 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 	data, err := json.Marshal(message)
 	if err != nil {
-		return nil, nil, err
+		return nil, llm.ResponseMeta{}, err
 	}
 
 	// Convert and return usage if available
 	if usage != nil {
-		return data, lo.ToPtr(convertUsage(*usage)), nil
+		return data, llm.ResponseMeta{
+			ID:    message.ID,
+			Usage: lo.ToPtr(convertUsage(*usage)),
+		}, nil
 	}
 
-	return data, nil, nil
+	return data, llm.ResponseMeta{
+		ID: message.ID,
+	}, nil
 }

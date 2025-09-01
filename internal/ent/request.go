@@ -46,6 +46,8 @@ type Request struct {
 	ResponseChunks []objects.JSONRawMessage `json:"response_chunks,omitempty"`
 	// ChannelID holds the value of the "channel_id" field.
 	ChannelID int `json:"channel_id,omitempty"`
+	// ExternalID holds the value of the "external_id" field.
+	ExternalID string `json:"external_id,omitempty"`
 	// Status holds the value of the "status" field.
 	Status request.Status `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -136,7 +138,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case request.FieldID, request.FieldDeletedAt, request.FieldUserID, request.FieldAPIKeyID, request.FieldChannelID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldStatus:
+		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus:
 			values[i] = new(sql.NullString)
 		case request.FieldCreatedAt, request.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -238,6 +240,12 @@ func (r *Request) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field channel_id", values[i])
 			} else if value.Valid {
 				r.ChannelID = int(value.Int64)
+			}
+		case request.FieldExternalID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field external_id", values[i])
+			} else if value.Valid {
+				r.ExternalID = value.String
 			}
 		case request.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -341,6 +349,9 @@ func (r *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("channel_id=")
 	builder.WriteString(fmt.Sprintf("%v", r.ChannelID))
+	builder.WriteString(", ")
+	builder.WriteString("external_id=")
+	builder.WriteString(r.ExternalID)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", r.Status))

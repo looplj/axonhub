@@ -24,10 +24,10 @@ type choiceAggregator struct {
 }
 
 // AggregateStreamChunks aggregates OpenAI streaming response chunks into a complete response.
-func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, *llm.Usage, error) {
+func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	if len(chunks) == 0 {
 		data, err := json.Marshal(&llm.Response{})
-		return data, nil, err
+		return data, llm.ResponseMeta{}, err
 	}
 
 	var (
@@ -144,7 +144,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	// Create a complete ChatCompletionResponse based on the last chunk structure
 	if lastChunkResponse == nil {
 		data, err := json.Marshal(&llm.Response{})
-		return data, nil, err
+		return data, llm.ResponseMeta{}, err
 	}
 
 	choices := make([]llm.Choice, len(choicesAggs))
@@ -211,8 +211,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 	data, err := json.Marshal(response)
 	if err != nil {
-		return nil, nil, err
+		return nil, llm.ResponseMeta{}, err
 	}
 
-	return data, usage, nil
+	return data, llm.ResponseMeta{
+		ID:    response.ID,
+		Usage: usage,
+	}, nil
 }

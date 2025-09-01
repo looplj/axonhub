@@ -194,6 +194,7 @@ type CreateRequestInput struct {
 	RequestBody    objects.JSONRawMessage
 	ResponseBody   objects.JSONRawMessage
 	ResponseChunks []objects.JSONRawMessage
+	ExternalID     *string
 	Status         request.Status
 	UserID         int
 	APIKeyID       *int
@@ -224,6 +225,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	if v := i.ResponseChunks; v != nil {
 		m.SetResponseChunks(v)
 	}
+	if v := i.ExternalID; v != nil {
+		m.SetExternalID(*v)
+	}
 	m.SetStatus(i.Status)
 	m.SetUserID(i.UserID)
 	if v := i.APIKeyID; v != nil {
@@ -249,6 +253,8 @@ type UpdateRequestInput struct {
 	ClearResponseChunks  bool
 	ResponseChunks       []objects.JSONRawMessage
 	AppendResponseChunks []objects.JSONRawMessage
+	ClearExternalID      bool
+	ExternalID           *string
 	Status               *request.Status
 	ClearChannel         bool
 	ChannelID            *int
@@ -276,6 +282,12 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if i.AppendResponseChunks != nil {
 		m.AppendResponseChunks(i.ResponseChunks)
+	}
+	if i.ClearExternalID {
+		m.ClearExternalID()
+	}
+	if v := i.ExternalID; v != nil {
+		m.SetExternalID(*v)
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)

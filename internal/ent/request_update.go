@@ -117,6 +117,26 @@ func (ru *RequestUpdate) ClearChannelID() *RequestUpdate {
 	return ru
 }
 
+// SetExternalID sets the "external_id" field.
+func (ru *RequestUpdate) SetExternalID(s string) *RequestUpdate {
+	ru.mutation.SetExternalID(s)
+	return ru
+}
+
+// SetNillableExternalID sets the "external_id" field if the given value is not nil.
+func (ru *RequestUpdate) SetNillableExternalID(s *string) *RequestUpdate {
+	if s != nil {
+		ru.SetExternalID(*s)
+	}
+	return ru
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (ru *RequestUpdate) ClearExternalID() *RequestUpdate {
+	ru.mutation.ClearExternalID()
+	return ru
+}
+
 // SetStatus sets the "status" field.
 func (ru *RequestUpdate) SetStatus(r request.Status) *RequestUpdate {
 	ru.mutation.SetStatus(r)
@@ -322,6 +342,12 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if ru.mutation.ResponseChunksCleared() {
 		_spec.ClearField(request.FieldResponseChunks, field.TypeJSON)
+	}
+	if value, ok := ru.mutation.ExternalID(); ok {
+		_spec.SetField(request.FieldExternalID, field.TypeString, value)
+	}
+	if ru.mutation.ExternalIDCleared() {
+		_spec.ClearField(request.FieldExternalID, field.TypeString)
 	}
 	if value, ok := ru.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
@@ -547,6 +573,26 @@ func (ruo *RequestUpdateOne) SetNillableChannelID(i *int) *RequestUpdateOne {
 // ClearChannelID clears the value of the "channel_id" field.
 func (ruo *RequestUpdateOne) ClearChannelID() *RequestUpdateOne {
 	ruo.mutation.ClearChannelID()
+	return ruo
+}
+
+// SetExternalID sets the "external_id" field.
+func (ruo *RequestUpdateOne) SetExternalID(s string) *RequestUpdateOne {
+	ruo.mutation.SetExternalID(s)
+	return ruo
+}
+
+// SetNillableExternalID sets the "external_id" field if the given value is not nil.
+func (ruo *RequestUpdateOne) SetNillableExternalID(s *string) *RequestUpdateOne {
+	if s != nil {
+		ruo.SetExternalID(*s)
+	}
+	return ruo
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (ruo *RequestUpdateOne) ClearExternalID() *RequestUpdateOne {
+	ruo.mutation.ClearExternalID()
 	return ruo
 }
 
@@ -785,6 +831,12 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 	}
 	if ruo.mutation.ResponseChunksCleared() {
 		_spec.ClearField(request.FieldResponseChunks, field.TypeJSON)
+	}
+	if value, ok := ruo.mutation.ExternalID(); ok {
+		_spec.SetField(request.FieldExternalID, field.TypeString, value)
+	}
+	if ruo.mutation.ExternalIDCleared() {
+		_spec.ClearField(request.FieldExternalID, field.TypeString)
 	}
 	if value, ok := ruo.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)

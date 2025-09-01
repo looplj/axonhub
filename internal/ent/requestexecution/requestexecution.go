@@ -27,6 +27,8 @@ const (
 	FieldRequestID = "request_id"
 	// FieldChannelID holds the string denoting the channel_id field in the database.
 	FieldChannelID = "channel_id"
+	// FieldExternalID holds the string denoting the external_id field in the database.
+	FieldExternalID = "external_id"
 	// FieldModelID holds the string denoting the model_id field in the database.
 	FieldModelID = "model_id"
 	// FieldFormat holds the string denoting the format field in the database.
@@ -71,6 +73,7 @@ var Columns = []string{
 	FieldUserID,
 	FieldRequestID,
 	FieldChannelID,
+	FieldExternalID,
 	FieldModelID,
 	FieldFormat,
 	FieldRequestBody,
@@ -157,6 +160,11 @@ func ByRequestID(opts ...sql.OrderTermOption) OrderOption {
 // ByChannelID orders the results by the channel_id field.
 func ByChannelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldChannelID, opts...).ToFunc()
+}
+
+// ByExternalID orders the results by the external_id field.
+func ByExternalID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldExternalID, opts...).ToFunc()
 }
 
 // ByModelID orders the results by the model_id field.

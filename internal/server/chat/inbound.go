@@ -111,11 +111,11 @@ func (ts *InboundPersistentStream) Close() error {
 	if ts.request != nil {
 		persistCtx := context.WithoutCancel(ctx)
 
-		responseBody, _, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
+		responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to aggregate chunks for main request", log.Cause(err))
 		} else {
-			err = ts.requestService.UpdateRequestCompleted(persistCtx, ts.request.ID, responseBody)
+			err = ts.requestService.UpdateRequestCompleted(persistCtx, ts.request.ID, meta.ID, responseBody)
 			if err != nil {
 				log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
 			}
@@ -175,7 +175,7 @@ func (p *PersistentInboundTransformer) TransformResponse(ctx context.Context, re
 		// Use context without cancellation to ensure persistence even if client canceled
 		persistCtx := context.WithoutCancel(ctx)
 
-		err = p.state.RequestService.UpdateRequestCompleted(persistCtx, p.state.Request.ID, finalResp.Body)
+		err = p.state.RequestService.UpdateRequestCompleted(persistCtx, p.state.Request.ID, response.ID, finalResp.Body)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
 		}
@@ -202,6 +202,6 @@ func (p *PersistentInboundTransformer) TransformStream(ctx context.Context, stre
 	return persistentStream, nil
 }
 
-func (p *PersistentInboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, *llm.Usage, error) {
+func (p *PersistentInboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return p.wrapped.AggregateStreamChunks(ctx, chunks)
 }

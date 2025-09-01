@@ -119,7 +119,7 @@ func (ts *OutboundPersistentStream) Close() error {
 		// Use context without cancellation to ensure persistence even if client canceled
 		persistCtx := context.WithoutCancel(ctx)
 
-		responseBody, usage, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
+		responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to aggregate chunks using transformer", log.Cause(err))
 			return ts.stream.Close()
@@ -128,6 +128,7 @@ func (ts *OutboundPersistentStream) Close() error {
 		err = ts.RequestService.UpdateRequestExecutionCompletd(
 			persistCtx,
 			ts.requestExec.ID,
+			meta.ID,
 			responseBody,
 		)
 		if err != nil {
@@ -139,7 +140,7 @@ func (ts *OutboundPersistentStream) Close() error {
 		}
 
 		// Try to create usage log from aggregated response
-		if usage != nil {
+		if usage := meta.Usage; usage != nil {
 			_, err = ts.UsageLogService.CreateUsageLogFromRequest(persistCtx, ts.request, ts.requestExec, usage)
 			if err != nil {
 				log.Warn(persistCtx, "Failed to create usage log from request", log.Cause(err))
@@ -272,6 +273,7 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 		err = p.state.RequestService.UpdateRequestExecutionCompleted(
 			persistCtx,
 			p.state.RequestExec.ID,
+			llmResp.ID,
 			response.Body,
 		)
 		if err != nil {
@@ -311,7 +313,7 @@ func (p *PersistentOutboundTransformer) TransformStream(ctx context.Context, str
 func (p *PersistentOutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
-) ([]byte, *llm.Usage, error) {
+) ([]byte, llm.ResponseMeta, error) {
 	return p.wrapped.AggregateStreamChunks(ctx, chunks)
 }
 

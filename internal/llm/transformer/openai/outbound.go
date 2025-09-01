@@ -313,7 +313,7 @@ func (t *OutboundTransformer) GetConfig() *Config {
 func (t *OutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
-) ([]byte, *llm.Usage, error) {
+) ([]byte, llm.ResponseMeta, error) {
 	return AggregateStreamChunks(ctx, chunks)
 }
 

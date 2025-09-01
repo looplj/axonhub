@@ -2756,6 +2756,7 @@ type RequestMutation struct {
 	appendresponse_body   objects.JSONRawMessage
 	response_chunks       *[]objects.JSONRawMessage
 	appendresponse_chunks []objects.JSONRawMessage
+	external_id           *string
 	status                *request.Status
 	clearedFields         map[string]struct{}
 	user                  *int
@@ -3424,6 +3425,55 @@ func (m *RequestMutation) ResetChannelID() {
 	delete(m.clearedFields, request.FieldChannelID)
 }
 
+// SetExternalID sets the "external_id" field.
+func (m *RequestMutation) SetExternalID(s string) {
+	m.external_id = &s
+}
+
+// ExternalID returns the value of the "external_id" field in the mutation.
+func (m *RequestMutation) ExternalID() (r string, exists bool) {
+	v := m.external_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExternalID returns the old "external_id" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldExternalID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExternalID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExternalID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExternalID: %w", err)
+	}
+	return oldValue.ExternalID, nil
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (m *RequestMutation) ClearExternalID() {
+	m.external_id = nil
+	m.clearedFields[request.FieldExternalID] = struct{}{}
+}
+
+// ExternalIDCleared returns if the "external_id" field was cleared in this mutation.
+func (m *RequestMutation) ExternalIDCleared() bool {
+	_, ok := m.clearedFields[request.FieldExternalID]
+	return ok
+}
+
+// ResetExternalID resets all changes to the "external_id" field.
+func (m *RequestMutation) ResetExternalID() {
+	m.external_id = nil
+	delete(m.clearedFields, request.FieldExternalID)
+}
+
 // SetStatus sets the "status" field.
 func (m *RequestMutation) SetStatus(r request.Status) {
 	m.status = &r
@@ -3683,7 +3733,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 14)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -3720,6 +3770,9 @@ func (m *RequestMutation) Fields() []string {
 	if m.channel != nil {
 		fields = append(fields, request.FieldChannelID)
 	}
+	if m.external_id != nil {
+		fields = append(fields, request.FieldExternalID)
+	}
 	if m.status != nil {
 		fields = append(fields, request.FieldStatus)
 	}
@@ -3755,6 +3808,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.ResponseChunks()
 	case request.FieldChannelID:
 		return m.ChannelID()
+	case request.FieldExternalID:
+		return m.ExternalID()
 	case request.FieldStatus:
 		return m.Status()
 	}
@@ -3790,6 +3845,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldResponseChunks(ctx)
 	case request.FieldChannelID:
 		return m.OldChannelID(ctx)
+	case request.FieldExternalID:
+		return m.OldExternalID(ctx)
 	case request.FieldStatus:
 		return m.OldStatus(ctx)
 	}
@@ -3885,6 +3942,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetChannelID(v)
 		return nil
+	case request.FieldExternalID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExternalID(v)
+		return nil
 	case request.FieldStatus:
 		v, ok := value.(request.Status)
 		if !ok {
@@ -3949,6 +4013,9 @@ func (m *RequestMutation) ClearedFields() []string {
 	if m.FieldCleared(request.FieldChannelID) {
 		fields = append(fields, request.FieldChannelID)
 	}
+	if m.FieldCleared(request.FieldExternalID) {
+		fields = append(fields, request.FieldExternalID)
+	}
 	return fields
 }
 
@@ -3974,6 +4041,9 @@ func (m *RequestMutation) ClearField(name string) error {
 		return nil
 	case request.FieldChannelID:
 		m.ClearChannelID()
+		return nil
+	case request.FieldExternalID:
+		m.ClearExternalID()
 		return nil
 	}
 	return fmt.Errorf("unknown Request nullable field %s", name)
@@ -4018,6 +4088,9 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldChannelID:
 		m.ResetChannelID()
+		return nil
+	case request.FieldExternalID:
+		m.ResetExternalID()
 		return nil
 	case request.FieldStatus:
 		m.ResetStatus()
@@ -4200,6 +4273,7 @@ type RequestExecutionMutation struct {
 	updated_at            *time.Time
 	user_id               *int
 	adduser_id            *int
+	external_id           *string
 	model_id              *string
 	format                *string
 	request_body          *objects.JSONRawMessage
@@ -4516,6 +4590,55 @@ func (m *RequestExecutionMutation) OldChannelID(ctx context.Context) (v int, err
 // ResetChannelID resets all changes to the "channel_id" field.
 func (m *RequestExecutionMutation) ResetChannelID() {
 	m.channel = nil
+}
+
+// SetExternalID sets the "external_id" field.
+func (m *RequestExecutionMutation) SetExternalID(s string) {
+	m.external_id = &s
+}
+
+// ExternalID returns the value of the "external_id" field in the mutation.
+func (m *RequestExecutionMutation) ExternalID() (r string, exists bool) {
+	v := m.external_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExternalID returns the old "external_id" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldExternalID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExternalID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExternalID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExternalID: %w", err)
+	}
+	return oldValue.ExternalID, nil
+}
+
+// ClearExternalID clears the value of the "external_id" field.
+func (m *RequestExecutionMutation) ClearExternalID() {
+	m.external_id = nil
+	m.clearedFields[requestexecution.FieldExternalID] = struct{}{}
+}
+
+// ExternalIDCleared returns if the "external_id" field was cleared in this mutation.
+func (m *RequestExecutionMutation) ExternalIDCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldExternalID]
+	return ok
+}
+
+// ResetExternalID resets all changes to the "external_id" field.
+func (m *RequestExecutionMutation) ResetExternalID() {
+	m.external_id = nil
+	delete(m.clearedFields, requestexecution.FieldExternalID)
 }
 
 // SetModelID sets the "model_id" field.
@@ -4944,7 +5067,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -4959,6 +5082,9 @@ func (m *RequestExecutionMutation) Fields() []string {
 	}
 	if m.channel != nil {
 		fields = append(fields, requestexecution.FieldChannelID)
+	}
+	if m.external_id != nil {
+		fields = append(fields, requestexecution.FieldExternalID)
 	}
 	if m.model_id != nil {
 		fields = append(fields, requestexecution.FieldModelID)
@@ -4999,6 +5125,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.RequestID()
 	case requestexecution.FieldChannelID:
 		return m.ChannelID()
+	case requestexecution.FieldExternalID:
+		return m.ExternalID()
 	case requestexecution.FieldModelID:
 		return m.ModelID()
 	case requestexecution.FieldFormat:
@@ -5032,6 +5160,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldRequestID(ctx)
 	case requestexecution.FieldChannelID:
 		return m.OldChannelID(ctx)
+	case requestexecution.FieldExternalID:
+		return m.OldExternalID(ctx)
 	case requestexecution.FieldModelID:
 		return m.OldModelID(ctx)
 	case requestexecution.FieldFormat:
@@ -5089,6 +5219,13 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetChannelID(v)
+		return nil
+	case requestexecution.FieldExternalID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExternalID(v)
 		return nil
 	case requestexecution.FieldModelID:
 		v, ok := value.(string)
@@ -5184,6 +5321,9 @@ func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error 
 // mutation.
 func (m *RequestExecutionMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(requestexecution.FieldExternalID) {
+		fields = append(fields, requestexecution.FieldExternalID)
+	}
 	if m.FieldCleared(requestexecution.FieldResponseBody) {
 		fields = append(fields, requestexecution.FieldResponseBody)
 	}
@@ -5207,6 +5347,9 @@ func (m *RequestExecutionMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *RequestExecutionMutation) ClearField(name string) error {
 	switch name {
+	case requestexecution.FieldExternalID:
+		m.ClearExternalID()
+		return nil
 	case requestexecution.FieldResponseBody:
 		m.ClearResponseBody()
 		return nil
@@ -5238,6 +5381,9 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldChannelID:
 		m.ResetChannelID()
+		return nil
+	case requestexecution.FieldExternalID:
+		m.ResetExternalID()
 		return nil
 	case requestexecution.FieldModelID:
 		m.ResetModelID()
