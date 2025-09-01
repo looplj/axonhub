@@ -7,6 +7,10 @@ import (
 	"github.com/google/uuid"
 )
 
+type Config struct {
+	TraceHeader string `conf:"trace_header"`
+}
+
 // ContextKey 定义 context key 类型.
 type ContextKey string
 

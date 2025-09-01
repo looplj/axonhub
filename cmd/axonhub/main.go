@@ -9,13 +9,24 @@ import (
 	"github.com/looplj/axonhub/conf"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/server"
+	sdk "go.opentelemetry.io/otel/sdk/metric"
 )
 
 func main() {
 	server.Run(
 		fx.Provide(conf.Load),
-		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, ent *ent.Client) {
+		fx.Provide(metrics.NewProvider),
+		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, provider *sdk.MeterProvider, ent *ent.Client) {
+			lc.Append(fx.Hook{
+				OnStart: func(ctx context.Context) error {
+					return metrics.SetupMetrics(provider, server.Config.Name)
+				},
+				OnStop: func(ctx context.Context) error {
+					return provider.Shutdown(ctx)
+				},
+			})
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					go func() {

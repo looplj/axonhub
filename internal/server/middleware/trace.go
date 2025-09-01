@@ -6,15 +6,9 @@ import (
 	"github.com/looplj/axonhub/internal/tracing"
 )
 
-// TracingConfig holds configuration for the tracing middleware.
-type TracingConfig struct {
-	// TraceHeader is the header name for trace ID.
-	TraceHeader string
-}
-
 // WithTracing 中间件用于处理 trace ID.
 // 如果请求头中包含配置的 trace header，则使用该 ID，否则生成一个新的 trace ID.
-func WithTracing(config TracingConfig) gin.HandlerFunc {
+func WithTracing(config tracing.Config) gin.HandlerFunc {
 	// Use the configured trace header name, or default to "AH-Trace-Id"
 	traceHeader := config.TraceHeader
 	if traceHeader == "" {

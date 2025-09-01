@@ -8,7 +8,8 @@ server:
   base_path: ""                 # Base path for API routes (env: AXONHUB_SERVER_BASE_PATH)
   request_timeout: "30s"        # Request timeout duration (env: AXONHUB_SERVER_REQUEST_TIMEOUT)
   llm_request_timeout: "600s"   # LLM request timeout duration (env: AXONHUB_SERVER_LLM_REQUEST_TIMEOUT)
-  trace_header: "AH-Trace-Id"   # Trace ID header name (env: AXONHUB_SERVER_TRACE_HEADER)
+  trace:
+    trace_header: "AH-Trace-Id" # Trace ID header name (env: AXONHUB_SERVER_TRACE_HEADER)
   debug: false                  # Enable debug mode (env: AXONHUB_SERVER_DEBUG)
 
 # Database configuration
@@ -31,9 +32,16 @@ log:
   includes: []                  # Logger names to include (env: AXONHUB_LOG_INCLUDES)
   excludes: []                  # Logger names to exclude (env: AXONHUB_LOG_EXCLUDES)
 
+# Metrics configuration
+metrics:
+  enabled: false                 # Enable metrics collection (env: AXONHUB_METRICS_ENABLED)
+  exporter: 
+    type: "stdout"          # Metrics exporter type: prometheus, console (env: AXONHUB_METRICS_EXPORTER_TYPE)
+
 # Environment Variable Examples:
 # export AXONHUB_SERVER_PORT=8080
 # export AXONHUB_DB_DSN="postgres://user:pass@localhost/axonhub?sslmode=disable"
 # export AXONHUB_LOG_LEVEL="debug"
 # export AXONHUB_LOG_ENCODING="console"
 # export AXONHUB_SERVER_TRACE_HEADER="X-Trace-ID"
+# export AXONHUB_METRICS_ENABLED=false

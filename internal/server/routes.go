@@ -26,9 +26,10 @@ type Handlers struct {
 
 func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, client *ent.Client) {
 	server.Use(middleware.WithEntClient(client))
-	server.Use(middleware.WithTracing(middleware.TracingConfig{TraceHeader: server.config.TraceHeader}))
+	server.Use(middleware.WithTracing(server.Config.Trace))
+	server.Use(middleware.WithMetrics())
 
-	unAuthGroup := server.Group("/v1", middleware.WithTimeout(server.config.RequestTimeout))
+	unAuthGroup := server.Group("/v1", middleware.WithTimeout(server.Config.RequestTimeout))
 	{
 		// Favicon API - 不需要认证
 		unAuthGroup.GET("/favicon", handlers.System.GetFavicon)
@@ -43,24 +44,24 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 	adminGroup := server.Group("/admin", middleware.WithJWTAuth(auth))
 	// 管理员路由 - 使用 JWT 认证
 	{
-		adminGroup.GET("/playground", middleware.WithTimeout(server.config.RequestTimeout), func(c *gin.Context) {
+		adminGroup.GET("/playground", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {
 			handlers.Graphql.Playground.ServeHTTP(c.Writer, c.Request)
 		})
-		adminGroup.POST("/graphql", middleware.WithTimeout(server.config.RequestTimeout), func(c *gin.Context) {
+		adminGroup.POST("/graphql", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {
 			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
 		})
 
-		adminGroup.POST("/v1/chat", middleware.WithTimeout(server.config.LLMRequestTimeout), middleware.WithSource(request.SourcePlayground), handlers.AiSDK.ChatCompletion)
+		adminGroup.POST("/v1/chat", middleware.WithTimeout(server.Config.LLMRequestTimeout), middleware.WithSource(request.SourcePlayground), handlers.AiSDK.ChatCompletion)
 		// Playground API with channel specification support
 		adminGroup.POST(
 			"/v1/playground/chat",
-			middleware.WithTimeout(server.config.LLMRequestTimeout),
+			middleware.WithTimeout(server.Config.LLMRequestTimeout),
 			middleware.WithSource(request.SourcePlayground),
 			handlers.Playground.ChatCompletion,
 		)
 	}
 
-	apiGroup := server.Group("/v1", middleware.WithTimeout(server.config.LLMRequestTimeout))
+	apiGroup := server.Group("/v1", middleware.WithTimeout(server.Config.LLMRequestTimeout))
 	apiGroup.Use(middleware.WithAPIKeyAuth(auth))
 	apiGroup.Use(middleware.WithSource(request.SourceAPI))
 	{

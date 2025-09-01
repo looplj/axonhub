@@ -2,6 +2,8 @@ package server
 
 import (
 	"time"
+
+	"github.com/looplj/axonhub/internal/tracing"
 )
 
 type Config struct {
@@ -19,8 +21,7 @@ type Config struct {
 	// LLMRequestTimeout is the maximum duration for processing a request to LLM.
 	LLMRequestTimeout time.Duration `conf:"llm_request_timeout"`
 
-	// TraceHeader is the header name for trace ID.
-	TraceHeader string `conf:"trace_header"`
+	Trace tracing.Config `conf:"trace"`
 
 	Debug bool `conf:"debug"`
 }

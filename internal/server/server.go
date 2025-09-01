@@ -20,13 +20,12 @@ import (
 func New(config Config) *Server {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
-
 	if !config.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	return &Server{
-		config: config,
+		Config: config,
 		Engine: engine,
 	}
 }
@@ -34,7 +33,7 @@ func New(config Config) *Server {
 type Server struct {
 	*gin.Engine
 
-	config Config
+	Config Config
 	server *http.Server
 	addr   string
 }
@@ -43,15 +42,15 @@ func (srv *Server) Run() error {
 	log.Info(
 		context.Background(),
 		"run server",
-		log.String("name", srv.config.Name),
-		log.Int("port", srv.config.Port),
+		log.String("name", srv.Config.Name),
+		log.Int("port", srv.Config.Port),
 	)
-	addr := fmt.Sprintf("0.0.0.0:%d", srv.config.Port)
+	addr := fmt.Sprintf("0.0.0.0:%d", srv.Config.Port)
 	srv.server = &http.Server{
 		Addr:         addr,
 		Handler:      srv.Engine,
-		ReadTimeout:  srv.config.ReadTimeout,
-		WriteTimeout: srv.config.WriteTimeout,
+		ReadTimeout:  srv.Config.ReadTimeout,
+		WriteTimeout: srv.Config.WriteTimeout,
 	}
 	srv.addr = addr
 
@@ -74,7 +73,11 @@ func (srv *Server) Shutdown(ctx context.Context) error {
 func Run(opts ...fx.Option) {
 	var constructors []any
 
-	constructors = append(constructors, gql.NewGraphqlHandlers, New)
+	constructors = append(constructors,
+		gql.NewGraphqlHandlers,
+		New,
+	)
+
 	app := fx.New(
 		append([]fx.Option{
 			fx.NopLogger,

@@ -17,14 +17,16 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server"
 	"github.com/looplj/axonhub/internal/server/db"
+	"github.com/looplj/axonhub/internal/metrics"
 )
 
 type Config struct {
 	fx.Out
 
-	DB        db.Config     `conf:"db"`
-	Log       log.Config    `conf:"log"`
-	APIServer server.Config `conf:"server"`
+	DB        db.Config        `conf:"db"`
+	Log       log.Config       `conf:"log"`
+	APIServer server.Config    `conf:"server"`
+	Metrics   metrics.Config   `conf:"metrics"`
 }
 
 // Load loads configuration from YAML file and environment variables.
@@ -137,6 +139,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("log.encoding", "json")
 	v.SetDefault("log.includes", []string{})
 	v.SetDefault("log.excludes", []string{})
+
+	// Metrics defaults
+	v.SetDefault("metrics.enabled", true)
 }
 
 // parseLogLevel converts a string log level to zapcore.Level.

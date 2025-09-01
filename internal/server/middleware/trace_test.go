@@ -24,10 +24,10 @@ func TestWithTracing(t *testing.T) {
 	c.Request = req
 
 	// Apply the tracing middleware with default config
-	config := TracingConfig{
+	config := tracing.Config{
 		TraceHeader: "AH-Trace-Id",
 	}
-	
+
 	tracingMiddleware := WithTracing(config)
 	tracingMiddleware(c)
 
@@ -56,10 +56,10 @@ func TestWithTracingExistingHeader(t *testing.T) {
 	c.Request = req
 
 	// Apply the tracing middleware with default config
-	config := TracingConfig{
+	config := tracing.Config{
 		TraceHeader: "AH-Trace-Id",
 	}
-	
+
 	tracingMiddleware := WithTracing(config)
 	tracingMiddleware(c)
 
@@ -87,10 +87,10 @@ func TestWithTracingCustomHeader(t *testing.T) {
 	c.Request = req
 
 	// Apply the tracing middleware with custom header config
-	config := TracingConfig{
+	config := tracing.Config{
 		TraceHeader: "X-Custom-Trace-ID",
 	}
-	
+
 	tracingMiddleware := WithTracing(config)
 	tracingMiddleware(c)
 
@@ -117,8 +117,8 @@ func TestWithTracingEmptyConfig(t *testing.T) {
 	c.Request = req
 
 	// Apply the tracing middleware with empty config (should default to AH-Trace-Id)
-	config := TracingConfig{}
-	
+	config := tracing.Config{}
+
 	tracingMiddleware := WithTracing(config)
 	tracingMiddleware(c)
 
