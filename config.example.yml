@@ -8,6 +8,7 @@ server:
   base_path: ""                 # Base path for API routes (env: AXONHUB_SERVER_BASE_PATH)
   request_timeout: "30s"        # Request timeout duration (env: AXONHUB_SERVER_REQUEST_TIMEOUT)
   llm_request_timeout: "600s"   # LLM request timeout duration (env: AXONHUB_SERVER_LLM_REQUEST_TIMEOUT)
+  trace_header: "AH-Trace-Id"   # Trace ID header name (env: AXONHUB_SERVER_TRACE_HEADER)
   debug: false                  # Enable debug mode (env: AXONHUB_SERVER_DEBUG)
 
 # Database configuration
@@ -20,7 +21,6 @@ db:
 log:
   name: "axonhub"               # Logger name (env: AXONHUB_LOG_NAME)
   debug: false                  # Enable debug logging (env: AXONHUB_LOG_DEBUG)
-  skip_level: 1                 # Skip levels for caller info (env: AXONHUB_LOG_SKIP_LEVEL)
   level: "info"                 # Log level: debug, info, warn, error, panic, fatal (env: AXONHUB_LOG_LEVEL)
   level_key: "level"            # Key name for log level field (env: AXONHUB_LOG_LEVEL_KEY)
   time_key: "time"              # Key name for timestamp field (env: AXONHUB_LOG_TIME_KEY)
@@ -36,3 +36,4 @@ log:
 # export AXONHUB_DB_DSN="postgres://user:pass@localhost/axonhub?sslmode=disable"
 # export AXONHUB_LOG_LEVEL="debug"
 # export AXONHUB_LOG_ENCODING="console"
+# export AXONHUB_SERVER_TRACE_HEADER="X-Trace-ID"

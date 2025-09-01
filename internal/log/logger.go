@@ -134,7 +134,7 @@ func New(config Config) *Logger {
 	return &Logger{
 		config: config,
 		logger: zapLogger,
-		hooks:  []Hook{HookFunc(DefaultPreHook)},
+		hooks:  []Hook{HookFunc(contextFields), HookFunc(traceFields)},
 	}
 }
 

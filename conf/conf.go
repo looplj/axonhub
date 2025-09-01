@@ -115,7 +115,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.name", "AxonHub")
 	v.SetDefault("server.base_path", "")
 	v.SetDefault("server.request_timeout", "30s")
-	v.SetDefault("server.llm_request_timeout", "120s")
+	v.SetDefault("server.llm_request_timeout", "300s")
+	v.SetDefault("server.trace_header", "AH-Trace-Id")
 	v.SetDefault("server.debug", false)
 
 	// Database defaults

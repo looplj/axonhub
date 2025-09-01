@@ -26,6 +26,8 @@ type Handlers struct {
 
 func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, client *ent.Client) {
 	server.Use(middleware.WithEntClient(client))
+	server.Use(middleware.WithTracing(middleware.TracingConfig{TraceHeader: server.config.TraceHeader}))
+
 	unAuthGroup := server.Group("/v1", middleware.WithTimeout(server.config.RequestTimeout))
 	{
 		// Favicon API - 不需要认证

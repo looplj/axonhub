@@ -2,6 +2,9 @@ package log
 
 import (
 	"context"
+
+	"github.com/looplj/axonhub/internal/tracing"
+	"go.uber.org/zap"
 )
 
 type Hook interface {
@@ -22,7 +25,7 @@ func (f *fieldsHook) Apply(ctx context.Context, msg string, fields ...Field) []F
 	return append(f.fields, fields...)
 }
 
-func DefaultPreHook(ctx context.Context, msg string, fields ...Field) []Field {
+func contextFields(ctx context.Context, msg string, fields ...Field) []Field {
 	if ctx == nil {
 		return nil
 	}
@@ -33,6 +36,21 @@ func DefaultPreHook(ctx context.Context, msg string, fields ...Field) []Field {
 
 	if ts, ok := ctx.Deadline(); ok {
 		fields = append(fields, Time("context_deadline", ts))
+	}
+
+	return fields
+}
+
+// Apply adds trace ID to log entries if it exists in the context.
+func traceFields(ctx context.Context, msg string, fields ...zap.Field) []zap.Field {
+	if ctx == nil {
+		return fields
+	}
+
+	// Try to get trace ID from context
+	if traceID, ok := tracing.GetTraceID(ctx); ok {
+		// Add trace ID to fields
+		fields = append(fields, zap.String("trace_id", traceID.String()))
 	}
 
 	return fields

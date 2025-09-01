@@ -2,7 +2,6 @@ package log
 
 import (
 	"context"
-	"sync"
 
 	"dario.cat/mergo"
 	"go.uber.org/zap"
@@ -40,7 +39,6 @@ var globalConfig = Config{
 var (
 	globalLogger *Logger
 	globalHooks  []Hook
-	globalLock   sync.Mutex
 )
 
 func init() {
@@ -63,7 +61,7 @@ func SetGlobalConfig(cfg Config) {
 	if err != nil {
 		panic(err)
 	}
-
+	cfg.SkipLevel = 2
 	globalLogger = New(cfg)
 }
 
@@ -73,13 +71,6 @@ func Get(name string) *Logger {
 
 func GetGlobalLogger() *Logger {
 	return globalLogger
-}
-
-func AddHook(hook Hook) {
-	globalLock.Lock()
-	defer globalLock.Unlock()
-
-	globalHooks = append(globalHooks, hook)
 }
 
 func SetLevel(level Level) {
