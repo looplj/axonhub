@@ -5,15 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/kaptinlin/jsonrepair"
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
-
-	"github.com/kaptinlin/jsonrepair"
 )
 
+//nolint:maintidx // TODO: fix this.
 func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	if len(chunks) == 0 {
 		return nil, llm.ResponseMeta{}, errors.New("empty stream chunks")
@@ -132,10 +132,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		case "content_block_stop":
 			if event.Index != nil {
 				index := int(*event.Index)
+
 				block := contentBlocks[index]
 				if block.Type == "tool_use" {
 					if !json.Valid(block.Input) {
 						log.Warn(ctx, "invalid tool use input", log.String("input", string(block.Input)))
+
 						repaired, err := jsonrepair.JSONRepair(string(block.Input))
 						if err == nil {
 							block.Input = []byte(repaired)

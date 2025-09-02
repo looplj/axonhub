@@ -6,13 +6,14 @@ import (
 
 	"go.uber.org/fx"
 
+	sdk "go.opentelemetry.io/otel/sdk/metric"
+
 	"github.com/looplj/axonhub/conf"
 	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/server"
-	sdk "go.opentelemetry.io/otel/sdk/metric"
 )
 
 func main() {

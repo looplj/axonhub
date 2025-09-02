@@ -118,6 +118,7 @@ func (ts *InboundPersistentStream) Close() error {
 
 			dumper.DumpStreamEvents(persistCtx, ts.responseChunks, "response_chunks.json")
 		}
+
 		err = ts.requestService.UpdateRequestCompleted(persistCtx, ts.request.ID, meta.ID, responseBody)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))

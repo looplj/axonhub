@@ -9,14 +9,15 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
+
 	metric "go.opentelemetry.io/otel/metric"
 	sdk "go.opentelemetry.io/otel/sdk/metric"
 )
 
-// Meter is the global meter for the application
+// Meter is the global meter for the application.
 var Meter metric.Meter
 
-// NewProvider initializes the OpenTelemetry metrics provider
+// NewProvider initializes the OpenTelemetry metrics provider.
 func NewProvider(config Config) (*sdk.MeterProvider, error) {
 	ctx := context.Background()
 	// If metrics are disabled, create a no-op meter provider
@@ -24,11 +25,14 @@ func NewProvider(config Config) (*sdk.MeterProvider, error) {
 		meterProvider := sdk.NewMeterProvider()
 		otel.SetMeterProvider(meterProvider)
 		Meter = meterProvider.Meter("axonhub")
+
 		return meterProvider, nil
 	}
 
-	var exporter sdk.Exporter
-	var err error
+	var (
+		exporter sdk.Exporter
+		err      error
+	)
 
 	switch config.Exporter.Type {
 	case "stdout":
@@ -43,6 +47,7 @@ func NewProvider(config Config) (*sdk.MeterProvider, error) {
 		if config.Exporter.Insecure {
 			opts = append(opts, otlpmetricgrpc.WithInsecure())
 		}
+
 		exporter, err = otlpmetricgrpc.New(ctx, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create otlpgrpc exporter: %w", err)
@@ -54,6 +59,7 @@ func NewProvider(config Config) (*sdk.MeterProvider, error) {
 		if config.Exporter.Insecure {
 			opts = append(opts, otlpmetrichttp.WithInsecure())
 		}
+
 		exporter, err = otlpmetrichttp.New(ctx, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create otlphttp exporter: %w", err)

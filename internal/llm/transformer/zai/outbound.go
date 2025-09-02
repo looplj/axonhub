@@ -24,6 +24,7 @@ type Config struct {
 // OutboundTransformer implements transformer.Outbound for Zai format.
 type OutboundTransformer struct {
 	transformer.Outbound
+
 	BaseURL string
 	APIKey  string
 }
@@ -55,6 +56,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 
 type Request struct {
 	llm.Request
+
 	UserID    string `json:"user_id,omitempty"`
 	RequestID string `json:"request_id,omitempty"`
 }
@@ -81,7 +83,7 @@ func (t *OutboundTransformer) TransformRequest(
 		zaiReq.RequestID = string(traceID)
 	}
 
-	//zai request does not support metadata.
+	// zai request does not support metadata.
 	zaiReq.Metadata = nil
 
 	body, err := json.Marshal(zaiReq)

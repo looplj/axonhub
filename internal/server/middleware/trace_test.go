@@ -20,7 +20,7 @@ func TestWithTracing(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 
 	// Create a test request
-	req, _ := http.NewRequest("GET", "/", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/", nil)
 	c.Request = req
 
 	// Apply the tracing middleware with default config
@@ -32,7 +32,7 @@ func TestWithTracing(t *testing.T) {
 	tracingMiddleware(c)
 
 	// Check that the trace ID header is set
-	traceIDHeader := w.Header().Get("AH-Trace-Id")
+	traceIDHeader := w.Header().Get("Ah-Trace-Id")
 	assert.NotEmpty(t, traceIDHeader)
 	assert.Contains(t, traceIDHeader, "at-")
 
@@ -51,8 +51,8 @@ func TestWithTracingExistingHeader(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 
 	// Create a test request with an existing trace ID header
-	req, _ := http.NewRequest("GET", "/", nil)
-	req.Header.Set("AH-Trace-Id", "at-existing-trace-id")
+	req, _ := http.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Ah-Trace-Id", "at-existing-trace-id")
 	c.Request = req
 
 	// Apply the tracing middleware with default config
@@ -64,7 +64,7 @@ func TestWithTracingExistingHeader(t *testing.T) {
 	tracingMiddleware(c)
 
 	// Check that the trace ID header is preserved
-	traceIDHeader := w.Header().Get("AH-Trace-Id")
+	traceIDHeader := w.Header().Get("Ah-Trace-Id")
 	assert.Equal(t, "at-existing-trace-id", traceIDHeader)
 
 	// Check that the trace ID in the context matches the header
@@ -82,8 +82,8 @@ func TestWithTracingCustomHeader(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 
 	// Create a test request with a custom trace ID header
-	req, _ := http.NewRequest("GET", "/", nil)
-	req.Header.Set("X-Custom-Trace-ID", "at-custom-trace-id")
+	req, _ := http.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Custom-Trace-Id", "at-custom-trace-id")
 	c.Request = req
 
 	// Apply the tracing middleware with custom header config
@@ -95,7 +95,7 @@ func TestWithTracingCustomHeader(t *testing.T) {
 	tracingMiddleware(c)
 
 	// Check that the trace ID header is preserved
-	traceIDHeader := w.Header().Get("X-Custom-Trace-ID")
+	traceIDHeader := w.Header().Get("X-Custom-Trace-Id")
 	assert.Equal(t, "at-custom-trace-id", traceIDHeader)
 
 	// Check that the trace ID in the context matches the header
@@ -113,7 +113,7 @@ func TestWithTracingEmptyConfig(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 
 	// Create a test request
-	req, _ := http.NewRequest("GET", "/", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/", nil)
 	c.Request = req
 
 	// Apply the tracing middleware with empty config (should default to AH-Trace-Id)
@@ -123,7 +123,7 @@ func TestWithTracingEmptyConfig(t *testing.T) {
 	tracingMiddleware(c)
 
 	// Check that the trace ID header is set with default name
-	traceIDHeader := w.Header().Get("AH-Trace-Id")
+	traceIDHeader := w.Header().Get("Ah-Trace-Id")
 	assert.NotEmpty(t, traceIDHeader)
 	assert.Contains(t, traceIDHeader, "at-")
 

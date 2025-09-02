@@ -85,6 +85,7 @@ func (s *defaultSSEDecoder) Next() bool {
 		if errors.Is(err, io.EOF) {
 			log.Debug(s.ctx, "SSE stream closed")
 			_ = s.Close()
+
 			return false
 		}
 

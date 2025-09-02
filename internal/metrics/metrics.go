@@ -5,11 +5,12 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/otel/attribute"
+
 	metric "go.opentelemetry.io/otel/metric"
 	sdk "go.opentelemetry.io/otel/sdk/metric"
 )
 
-// _Metrics holds all the metrics for the server
+// _Metrics holds all the metrics for the server.
 type _Metrics struct {
 	// HTTP metrics
 	HTTPRequestCount    metric.Int64Counter
@@ -29,7 +30,7 @@ type _Metrics struct {
 
 var Metrics *_Metrics
 
-// SetupMetrics creates a new ServerMetrics instance
+// SetupMetrics creates a new ServerMetrics instance.
 func SetupMetrics(provider *sdk.MeterProvider, name string) error {
 	meter := provider.Meter(name)
 	Metrics = &_Metrics{}
@@ -43,6 +44,7 @@ func SetupMetrics(provider *sdk.MeterProvider, name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create http_request_count counter: %w", err)
 	}
+
 	Metrics.HTTPRequestCount = httpRequestCount
 
 	httpRequestDuration, err := meter.Float64Histogram(
@@ -53,6 +55,7 @@ func SetupMetrics(provider *sdk.MeterProvider, name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create http_request_duration_seconds histogram: %w", err)
 	}
+
 	Metrics.HTTPRequestDuration = httpRequestDuration
 
 	// GraphQL metrics
@@ -64,6 +67,7 @@ func SetupMetrics(provider *sdk.MeterProvider, name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create graphql_request_count counter: %w", err)
 	}
+
 	Metrics.GraphQLRequestCount = graphQLRequestCount
 
 	graphQLRequestDuration, err := meter.Float64Histogram(
@@ -74,6 +78,7 @@ func SetupMetrics(provider *sdk.MeterProvider, name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create graphql_request_duration_seconds histogram: %w", err)
 	}
+
 	Metrics.GraphQLRequestDuration = graphQLRequestDuration
 
 	// Chat metrics
@@ -85,6 +90,7 @@ func SetupMetrics(provider *sdk.MeterProvider, name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create chat_request_count counter: %w", err)
 	}
+
 	Metrics.ChatRequestCount = chatRequestCount
 
 	chatRequestDuration, err := meter.Float64Histogram(
@@ -95,6 +101,7 @@ func SetupMetrics(provider *sdk.MeterProvider, name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create chat_request_duration_seconds histogram: %w", err)
 	}
+
 	Metrics.ChatRequestDuration = chatRequestDuration
 
 	chatTokenCount, err := meter.Int64Counter(
@@ -105,6 +112,7 @@ func SetupMetrics(provider *sdk.MeterProvider, name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create chat_token_count counter: %w", err)
 	}
+
 	Metrics.ChatTokenCount = chatTokenCount
 
 	chatSuccessCount, err := meter.Int64Counter(
@@ -115,6 +123,7 @@ func SetupMetrics(provider *sdk.MeterProvider, name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create chat_success_count counter: %w", err)
 	}
+
 	Metrics.ChatSuccessCount = chatSuccessCount
 
 	chatFailureCount, err := meter.Int64Counter(
@@ -125,11 +134,13 @@ func SetupMetrics(provider *sdk.MeterProvider, name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create chat_failure_count counter: %w", err)
 	}
+
 	Metrics.ChatFailureCount = chatFailureCount
+
 	return nil
 }
 
-// RecordHTTPRequest records HTTP request metrics
+// RecordHTTPRequest records HTTP request metrics.
 func (sm *_Metrics) RecordHTTPRequest(ctx context.Context, method, path string, statusCode int, duration float64) {
 	labels := []attribute.KeyValue{
 		attribute.String("method", method),
@@ -141,7 +152,7 @@ func (sm *_Metrics) RecordHTTPRequest(ctx context.Context, method, path string, 
 	sm.HTTPRequestDuration.Record(ctx, duration, metric.WithAttributes(labels...))
 }
 
-// RecordGraphQLRequest records GraphQL request metrics
+// RecordGraphQLRequest records GraphQL request metrics.
 func (sm *_Metrics) RecordGraphQLRequest(ctx context.Context, operation string, duration float64) {
 	labels := []attribute.KeyValue{
 		attribute.String("operation", operation),
@@ -151,7 +162,7 @@ func (sm *_Metrics) RecordGraphQLRequest(ctx context.Context, operation string, 
 	sm.GraphQLRequestDuration.Record(ctx, duration, metric.WithAttributes(labels...))
 }
 
-// RecordChatRequest records chat request metrics
+// RecordChatRequest records chat request metrics.
 func (sm *_Metrics) RecordChatRequest(ctx context.Context, channelID, channelName string, duration float64, success bool, tokenCount int64) {
 	labels := []attribute.KeyValue{
 		attribute.String("channel_id", channelID),

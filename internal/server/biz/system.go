@@ -93,15 +93,18 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	}
 
 	db := ent.FromContext(ctx)
+
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
 		}
 	}()
+
 	ctx = ent.NewContext(ctx, tx.Client())
 
 	hashedPassword, err := HashPassword(args.OwnerPassword)

@@ -8,7 +8,7 @@ import (
 	"github.com/looplj/axonhub/internal/metrics"
 )
 
-// WithMetrics adds metrics collection to HTTP requests
+// WithMetrics adds metrics collection to HTTP requests.
 func WithMetrics() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()

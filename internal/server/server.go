@@ -20,6 +20,7 @@ import (
 func New(config Config) *Server {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
+
 	if !config.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}

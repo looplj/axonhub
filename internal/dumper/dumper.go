@@ -10,9 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/fx"
+
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"go.uber.org/fx"
 )
 
 // Dumper is responsible for dumping data to files when errors occur.
@@ -40,7 +41,7 @@ func (d *Dumper) DumpStruct(ctx context.Context, data any, filename string) {
 	defer d.mu.Unlock()
 
 	// Ensure dump directory exists
-	if err := os.MkdirAll(d.config.DumpPath, 0755); err != nil {
+	if err := os.MkdirAll(d.config.DumpPath, 0o750); err != nil {
 		d.logger.Error(ctx, "Failed to create dump directory", log.NamedError("error", err))
 		return
 	}
@@ -49,12 +50,18 @@ func (d *Dumper) DumpStruct(ctx context.Context, data any, filename string) {
 	timestamp := time.Now().Format("20060102_150405")
 	fullPath := filepath.Join(d.config.DumpPath, fmt.Sprintf("%s_%s.json", filename, timestamp))
 
+	//nolint:gosec // Checked.
 	file, err := os.Create(fullPath)
 	if err != nil {
 		d.logger.Error(ctx, "Failed to create dump file", log.NamedError("error", err), log.String("path", fullPath))
 		return
 	}
-	defer file.Close()
+
+	defer func() {
+		if err := file.Close(); err != nil {
+			d.logger.Error(ctx, "Failed to close dump file", log.NamedError("error", err), log.String("path", fullPath))
+		}
+	}()
 
 	// Marshal data to JSON
 	jsonData, err := json.MarshalIndent(data, "", "  ")
@@ -82,7 +89,7 @@ func (d *Dumper) DumpStreamEvents(ctx context.Context, events []*httpclient.Stre
 	defer d.mu.Unlock()
 
 	// Ensure dump directory exists
-	if err := os.MkdirAll(d.config.DumpPath, 0755); err != nil {
+	if err := os.MkdirAll(d.config.DumpPath, 0o750); err != nil {
 		d.logger.Error(ctx, "Failed to create dump directory", log.NamedError("error", err))
 		return
 	}
@@ -91,16 +98,27 @@ func (d *Dumper) DumpStreamEvents(ctx context.Context, events []*httpclient.Stre
 	timestamp := time.Now().Format("20060102_150405")
 	fullPath := filepath.Join(d.config.DumpPath, fmt.Sprintf("%s_%s.jsonl", filename, timestamp))
 
+	//nolint:gosec // Checked.
 	file, err := os.Create(fullPath)
 	if err != nil {
 		d.logger.Error(ctx, "Failed to create dump file", log.NamedError("error", err), log.String("path", fullPath))
 		return
 	}
-	defer file.Close()
+
+	defer func() {
+		if err := file.Close(); err != nil {
+			d.logger.Error(ctx, "Failed to close dump file", log.NamedError("error", err), log.String("path", fullPath))
+		}
+	}()
 
 	// Create a buffered writer for better performance
 	writer := bufio.NewWriter(file)
-	defer writer.Flush()
+
+	defer func() {
+		if err := writer.Flush(); err != nil {
+			d.logger.Error(ctx, "Failed to flush dump file", log.NamedError("error", err), log.String("path", fullPath))
+		}
+	}()
 
 	// Write each event as a JSON line
 	for i, event := range events {

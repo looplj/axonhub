@@ -3,8 +3,9 @@ package log
 import (
 	"context"
 
-	"github.com/looplj/axonhub/internal/tracing"
 	"go.uber.org/zap"
+
+	"github.com/looplj/axonhub/internal/tracing"
 )
 
 type Hook interface {

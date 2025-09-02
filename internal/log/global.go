@@ -61,6 +61,7 @@ func SetGlobalConfig(cfg Config) {
 	if err != nil {
 		panic(err)
 	}
+
 	cfg.SkipLevel = 2
 	globalLogger = New(cfg)
 }
