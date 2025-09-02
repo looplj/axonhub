@@ -9,7 +9,7 @@ server:
   request_timeout: "30s"        # Request timeout duration (env: AXONHUB_SERVER_REQUEST_TIMEOUT)
   llm_request_timeout: "600s"   # LLM request timeout duration (env: AXONHUB_SERVER_LLM_REQUEST_TIMEOUT)
   trace:
-    trace_header: "AH-Trace-Id" # Trace ID header name (env: AXONHUB_SERVER_TRACE_HEADER)
+    trace_header: "AH-Trace-Id" # Trace ID header name (env: AXONHUB_SERVER_TRACE_TRACE_HEADER)
   debug: false                  # Enable debug mode (env: AXONHUB_SERVER_DEBUG)
 
 # Database configuration

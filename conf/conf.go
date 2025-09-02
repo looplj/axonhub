@@ -24,11 +24,11 @@ import (
 type Config struct {
 	fx.Out
 
-	DB        db.Config       `conf:"db"`
-	Log       log.Config      `conf:"log"`
-	APIServer server.Config   `conf:"server"`
-	Metrics   metrics.Config  `conf:"metrics"`
-	Dumper    dumper.Config   `conf:"dumper"`
+	DB        db.Config      `conf:"db"`
+	Log       log.Config     `conf:"log"`
+	APIServer server.Config  `conf:"server"`
+	Metrics   metrics.Config `conf:"metrics"`
+	Dumper    dumper.Config  `conf:"dumper"`
 }
 
 // Load loads configuration from YAML file and environment variables.
@@ -120,7 +120,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.base_path", "")
 	v.SetDefault("server.request_timeout", "30s")
 	v.SetDefault("server.llm_request_timeout", "300s")
-	v.SetDefault("server.trace_header", "AH-Trace-Id")
+	v.SetDefault("server.trace.trace_header", "AH-Trace-Id")
 	v.SetDefault("server.debug", false)
 
 	// Database defaults

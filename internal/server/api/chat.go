@@ -96,6 +96,11 @@ func writeSSEStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEven
 			log.Warn(ctx, "Client disconnected, stopping stream")
 
 			return
+
+		case <-ctx.Done():
+			log.Warn(ctx, "Context done, stopping stream")
+
+			return
 		default:
 			if stream.Next() {
 				cur := stream.Current()

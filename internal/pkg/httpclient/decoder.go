@@ -70,6 +70,8 @@ func (s *defaultSSEDecoder) Next() bool {
 	// Check context cancellation
 	select {
 	case <-s.ctx.Done():
+		log.Debug(s.ctx, "SSE stream closed")
+
 		s.err = s.ctx.Err()
 		_ = s.Close()
 
@@ -81,7 +83,7 @@ func (s *defaultSSEDecoder) Next() bool {
 	event, err := s.sseStream.Recv()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			// End of stream
+			log.Debug(s.ctx, "SSE stream closed")
 			_ = s.Close()
 			return false
 		}

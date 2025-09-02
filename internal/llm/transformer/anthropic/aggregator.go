@@ -8,7 +8,10 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+
+	"github.com/kaptinlin/jsonrepair"
 )
 
 func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
@@ -123,6 +126,20 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 					if event.Usage.CacheReadInputTokens > 0 {
 						usage.CacheReadInputTokens = event.Usage.CacheReadInputTokens
+					}
+				}
+			}
+		case "content_block_stop":
+			if event.Index != nil {
+				index := int(*event.Index)
+				block := contentBlocks[index]
+				if block.Type == "tool_use" {
+					if !json.Valid(block.Input) {
+						log.Warn(ctx, "invalid tool use input", log.String("input", string(block.Input)))
+						repaired, err := jsonrepair.JSONRepair(string(block.Input))
+						if err == nil {
+							block.Input = []byte(repaired)
+						}
 					}
 				}
 			}

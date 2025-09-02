@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/streams"
@@ -20,9 +19,7 @@ type HttpClient struct {
 // NewHttpClient creates a new HTTP client.
 func NewHttpClient() *HttpClient {
 	return &HttpClient{
-		client: &http.Client{
-			Timeout: 5 * time.Minute,
-		},
+		client: &http.Client{},
 	}
 }
 
