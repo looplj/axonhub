@@ -15,18 +15,18 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/server"
 	"github.com/looplj/axonhub/internal/server/db"
-	"github.com/looplj/axonhub/internal/metrics"
 )
 
 type Config struct {
 	fx.Out
 
-	DB        db.Config        `conf:"db"`
-	Log       log.Config       `conf:"log"`
-	APIServer server.Config    `conf:"server"`
-	Metrics   metrics.Config   `conf:"metrics"`
+	DB        db.Config      `conf:"db"`
+	Log       log.Config     `conf:"log"`
+	APIServer server.Config  `conf:"server"`
+	Metrics   metrics.Config `conf:"metrics"`
 }
 
 // Load loads configuration from YAML file and environment variables.
@@ -141,7 +141,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("log.excludes", []string{})
 
 	// Metrics defaults
-	v.SetDefault("metrics.enabled", true)
+	v.SetDefault("metrics.enabled", false)
 }
 
 // parseLogLevel converts a string log level to zapcore.Level.
