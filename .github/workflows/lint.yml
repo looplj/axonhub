@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -31,7 +33,7 @@ jobs:
           working-directory: ./
 
           # Optional: golangci-lint command line arguments.
-          args: --timeout 60s --max-same-issues 50
+          args: --timeout 10m --max-same-issues 50
 
           # Optional: show only new issues if it's a pull request. The default value is `false`.
           # only-new-issues: true

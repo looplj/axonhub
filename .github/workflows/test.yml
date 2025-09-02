@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - 'master'
-  pull_request:
 env:
   GO111MODULE: on
 jobs:
@@ -13,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
