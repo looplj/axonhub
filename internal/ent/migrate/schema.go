@@ -52,7 +52,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "anthropic", "anthropic_aws", "anthropic_gcp", "deepseek", "deepseek_anthropic", "doubao", "kimi", "kimi_anthropic", "zhipu", "zhipu_anthropic", "anthropic_fake", "openai_fake"}},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "anthropic", "anthropic_aws", "anthropic_gcp", "deepseek", "deepseek_anthropic", "doubao", "kimi", "kimi_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake"}},
 		{Name: "base_url", Type: field.TypeString, Nullable: true},
 		{Name: "name", Type: field.TypeString},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "disabled"},

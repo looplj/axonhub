@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
+	"github.com/looplj/axonhub/internal/llm/transformer/zai"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
@@ -158,7 +159,20 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				Channel:  c,
 				Outbound: transformer,
 			})
-		case channel.TypeAnthropic, channel.TypeDeepseekAnthropic, channel.TypeKimiAnthropic, channel.TypeZhipuAnthropic:
+		case channel.TypeZai, channel.TypeZhipu:
+			transformer, err := zai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+			if err != nil {
+				log.Warn(ctx, "failed to create zai outbound transformer", log.Cause(err))
+				continue
+			}
+
+			log.Debug(ctx, "created zai outbound transformer", log.String("channel", c.Name))
+
+			channels = append(channels, &Channel{
+				Channel:  c,
+				Outbound: transformer,
+			})
+		case channel.TypeAnthropic, channel.TypeDeepseekAnthropic, channel.TypeKimiAnthropic, channel.TypeZhipuAnthropic, channel.TypeZaiAnthropic:
 			transformer, err := anthropic.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 			if err != nil {
 				log.Warn(ctx, "failed to create anthropic outbound transformer", log.Cause(err))

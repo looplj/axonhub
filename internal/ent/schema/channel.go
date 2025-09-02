@@ -47,7 +47,9 @@ func (Channel) Fields() []ent.Field {
 				"kimi",
 				"kimi_anthropic",
 				"zhipu",
+				"zai",
 				"zhipu_anthropic",
+				"zai_anthropic",
 				"anthropic_fake",
 				"openai_fake",
 			).

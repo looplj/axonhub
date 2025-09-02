@@ -8,6 +8,7 @@ import {
   DeepSeek,
   Doubao,
   Moonshot,
+  Zhipu,
 } from '@lobehub/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
@@ -72,6 +73,16 @@ const getChannelTypeConfig = (
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     icon: Moonshot,
   },
+  zhipu: {
+    label: t('channels.types.zhipu'),
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: Zhipu,
+  },
+  zai: {
+    label: t('channels.types.zai'),
+    color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    icon: Zhipu,
+  },
   deepseek_anthropic: {
     label: t('channels.types.deepseek_anthropic'),
     color: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -85,7 +96,12 @@ const getChannelTypeConfig = (
   zhipu_anthropic: {
     label: t('channels.types.zhipu_anthropic'),
     color: 'bg-purple-100 text-purple-800 border-purple-200',
-    icon: Anthropic,
+    icon: Zhipu,
+  },
+  zai_anthropic: {
+    label: t('channels.types.zai_anthropic'),
+    color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    icon: Zhipu,
   },
   anthropic_fake: {
     label: t('channels.types.anthropic_fake'),
