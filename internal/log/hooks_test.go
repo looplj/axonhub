@@ -27,7 +27,7 @@ func TestTraceHook(t *testing.T) {
 	assert.Len(t, fields, 0)
 
 	// Test with nil context
-	fields = hook.Apply(nil, "test message")
+	fields = hook.Apply(context.Background(), "test message")
 
 	assert.Len(t, fields, 0)
 }

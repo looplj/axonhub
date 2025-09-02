@@ -7,6 +7,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/conf"
+	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
@@ -18,6 +19,8 @@ func main() {
 	server.Run(
 		fx.Provide(conf.Load),
 		fx.Provide(metrics.NewProvider),
+		fx.Provide(dumper.New),
+		fx.Invoke(dumper.SetGlobal),
 		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, provider *sdk.MeterProvider, ent *ent.Client) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {

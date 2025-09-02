@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 
+	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
@@ -114,11 +115,12 @@ func (ts *InboundPersistentStream) Close() error {
 		responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to aggregate chunks for main request", log.Cause(err))
-		} else {
-			err = ts.requestService.UpdateRequestCompleted(persistCtx, ts.request.ID, meta.ID, responseBody)
-			if err != nil {
-				log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
-			}
+
+			dumper.DumpStreamEvents(persistCtx, ts.responseChunks, "response_chunks.json")
+		}
+		err = ts.requestService.UpdateRequestCompleted(persistCtx, ts.request.ID, meta.ID, responseBody)
+		if err != nil {
+			log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
 		}
 	}
 

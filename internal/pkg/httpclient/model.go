@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 
@@ -74,3 +75,17 @@ type StreamDecoder = streams.Stream[*StreamEvent]
 
 // StreamDecoderFactory is a function that creates a StreamDecoder from a ReadCloser.
 type StreamDecoderFactory func(ctx context.Context, rc io.ReadCloser) StreamDecoder
+
+type _StreamEventJSON struct {
+	LastEventID string `json:"last_event_id,omitempty"`
+	Type        string `json:"type"`
+	Data        string `json:"data"`
+}
+
+func EncodeStreamEventToJSON(event *StreamEvent) ([]byte, error) {
+	return json.Marshal(_StreamEventJSON{
+		LastEventID: event.LastEventID,
+		Type:        event.Type,
+		Data:        string(event.Data),
+	})
+}

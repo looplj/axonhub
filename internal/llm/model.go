@@ -410,7 +410,7 @@ type ToolCall struct {
 	// The type of the tool. Currently, only `function` is supported.
 	Type string `json:"type,omitempty"`
 
-	Function FunctionCall `json:"function,omitempty"`
+	Function FunctionCall `json:"function"`
 
 	// The index of the tool call in the list of tool calls.
 	Index int `json:"index,omitempty"`

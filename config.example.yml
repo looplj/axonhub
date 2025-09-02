@@ -41,6 +41,14 @@ metrics:
     insecure: true             # Enable insecure connection (env: AXONHUB_METRICS_EXPORTER_INSECURE)
     
 
+# Dumper configuration
+dumper:
+  enabled: false                 # Enable data dumping on errors (env: AXONHUB_DUMPER_ENABLED)
+  dump_path: "./dumps"           # Directory to dump data to (env: AXONHUB_DUMPER_DUMP_PATH)
+  max_size: 100                  # Maximum size of dump files in MB (env: AXONHUB_DUMPER_MAX_SIZE)
+  max_age: "24h"                 # Maximum age of dump files to keep (env: AXONHUB_DUMPER_MAX_AGE)
+  max_backups: 10                # Maximum number of old dump files to retain (env: AXONHUB_DUMPER_MAX_BACKUPS)
+
 # Environment Variable Examples:
 # export AXONHUB_SERVER_PORT=8080
 # export AXONHUB_DB_DSN="postgres://user:pass@localhost/axonhub?sslmode=disable"

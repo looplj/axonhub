@@ -14,6 +14,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/server"
@@ -23,10 +24,11 @@ import (
 type Config struct {
 	fx.Out
 
-	DB        db.Config      `conf:"db"`
-	Log       log.Config     `conf:"log"`
-	APIServer server.Config  `conf:"server"`
-	Metrics   metrics.Config `conf:"metrics"`
+	DB        db.Config       `conf:"db"`
+	Log       log.Config      `conf:"log"`
+	APIServer server.Config   `conf:"server"`
+	Metrics   metrics.Config  `conf:"metrics"`
+	Dumper    dumper.Config   `conf:"dumper"`
 }
 
 // Load loads configuration from YAML file and environment variables.
@@ -142,6 +144,13 @@ func setDefaults(v *viper.Viper) {
 
 	// Metrics defaults
 	v.SetDefault("metrics.enabled", false)
+
+	// Dumper defaults
+	v.SetDefault("dumper.enabled", false)
+	v.SetDefault("dumper.dump_path", "./dumps")
+	v.SetDefault("dumper.max_size", 100)
+	v.SetDefault("dumper.max_age", "24h")
+	v.SetDefault("dumper.max_backups", 10)
 }
 
 // parseLogLevel converts a string log level to zapcore.Level.
