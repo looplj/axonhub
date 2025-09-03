@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"

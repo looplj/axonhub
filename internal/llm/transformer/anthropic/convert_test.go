@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/llm"
 )
 
@@ -544,6 +545,7 @@ func Test_convertUsage(t *testing.T) {
 	type args struct {
 		usage Usage
 	}
+
 	tests := []struct {
 		name string
 		args args

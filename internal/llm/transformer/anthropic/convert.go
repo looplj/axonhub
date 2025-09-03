@@ -266,6 +266,7 @@ func convertUsage(usage Usage) llm.Usage {
 	if usage.CacheReadInputTokens > usage.InputTokens {
 		usage.InputTokens = usage.CacheReadInputTokens + usage.InputTokens
 	}
+
 	u := llm.Usage{
 		PromptTokens:     int(usage.InputTokens),
 		CompletionTokens: int(usage.OutputTokens),

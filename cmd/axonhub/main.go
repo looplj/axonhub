@@ -3,16 +3,15 @@ package main
 import (
 	"bytes"
 	"context"
-
 	"fmt"
 	"os"
 
-	"go.uber.org/fx"
-
 	"github.com/andreazorzetto/yh/highlight"
 	"github.com/hokaccha/go-prettyjson"
-	sdk "go.opentelemetry.io/otel/sdk/metric"
+	"go.uber.org/fx"
 	"gopkg.in/yaml.v3"
+
+	sdk "go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/looplj/axonhub/conf"
 	"github.com/looplj/axonhub/internal/dumper"
@@ -98,6 +97,7 @@ func handleConfigCommand() {
 
 func configPreview() {
 	format := "yml"
+
 	for i := 3; i < len(os.Args); i++ {
 		if os.Args[i] == "--format" || os.Args[i] == "-f" {
 			if i+1 < len(os.Args) {
@@ -113,6 +113,7 @@ func configPreview() {
 	}
 
 	var output string
+
 	switch format {
 	case "json":
 		b, err := prettyjson.Marshal(config)
@@ -120,6 +121,7 @@ func configPreview() {
 			fmt.Printf("Failed to preview config: %v\n", err)
 			os.Exit(1)
 		}
+
 		output = string(b)
 	case "yml", "yaml":
 		b, err := yaml.Marshal(config)
@@ -127,6 +129,7 @@ func configPreview() {
 			fmt.Printf("Failed to preview config: %v\n", err)
 			os.Exit(1)
 		}
+
 		output, err = highlight.Highlight(bytes.NewBuffer(b))
 		if err != nil {
 			fmt.Printf("Failed to preview config: %v\n", err)
@@ -146,6 +149,7 @@ func configValidate() {
 		fmt.Printf("Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
+
 	errors := validateConfig(config)
 
 	if len(errors) == 0 {
@@ -154,9 +158,11 @@ func configValidate() {
 	}
 
 	fmt.Println("Configuration validation failed:")
+
 	for _, err := range errors {
 		fmt.Printf("  - %s\n", err)
 	}
+
 	os.Exit(1)
 }
 
