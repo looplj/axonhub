@@ -10,18 +10,18 @@ import (
 
 // Config ...
 type Config struct {
-	Name        string   `conf:"name"`
-	Debug       bool     `conf:"debug"`
-	SkipLevel   int      `conf:"skip_level"`
-	Level       Level    `conf:"level"`
-	LevelKey    string   `conf:"level_key"`
-	TimeKey     string   `conf:"time_key"`
-	CallerKey   string   `conf:"caller_key"`
-	FunctionKey string   `conf:"function_key"`
-	NameKey     string   `conf:"name_key"`
-	Encoding    string   `conf:"encoding"`
-	Includes    []string `conf:"includes"`
-	Excludes    []string `conf:"excludes"`
+	Name        string   `conf:"name" yaml:"name" json:"name"`
+	Debug       bool     `conf:"debug" yaml:"debug" json:"debug"`
+	SkipLevel   int      `conf:"skip_level" yaml:"skip_level" json:"skip_level"`
+	Level       Level    `conf:"level" yaml:"level" json:"level"`
+	LevelKey    string   `conf:"level_key" yaml:"level_key" json:"level_key"`
+	TimeKey     string   `conf:"time_key" yaml:"time_key" json:"time_key"`
+	CallerKey   string   `conf:"caller_key" yaml:"caller_key" json:"caller_key"`
+	FunctionKey string   `conf:"function_key" yaml:"function_key" json:"function_key"`
+	NameKey     string   `conf:"name_key" yaml:"name_key" json:"name_key"`
+	Encoding    string   `conf:"encoding" yaml:"encoding" json:"encoding"`
+	Includes    []string `conf:"includes" yaml:"includes" json:"includes"`
+	Excludes    []string `conf:"excludes" yaml:"excludes" json:"excludes"`
 }
 
 type Logger struct {

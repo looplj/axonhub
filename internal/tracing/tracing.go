@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	TraceHeader string `conf:"trace_header"`
+	TraceHeader string `conf:"trace_header" yaml:"trace_header" json:"trace_header"`
 }
 
 // ContextKey 定义 context key 类型.

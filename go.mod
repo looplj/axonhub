@@ -20,6 +20,7 @@ require (
 	entgo.io/contrib v0.6.1-0.20250319063240-8a7f182943cb
 	entgo.io/ent v0.14.4
 	github.com/99designs/gqlgen v0.17.76
+	github.com/andreazorzetto/yh v0.4.0
 	github.com/aws/aws-sdk-go-v2 v1.38.0
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.0
 	github.com/aws/aws-sdk-go-v2/config v1.31.0
@@ -29,6 +30,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/golang-jwt/jwt/v5 v5.2.3
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/kaptinlin/jsonrepair v0.2.2
 	github.com/samber/lo v1.51.0
@@ -49,6 +51,7 @@ require (
 	golang.org/x/crypto v0.41.0
 	golang.org/x/oauth2 v0.30.0
 	google.golang.org/api v0.247.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 replace github.com/99designs/gqlgen => github.com/looplj/gqlgen v0.0.0-20250721163559-b09abcdca828
@@ -82,6 +85,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dubbogo/gost v1.14.1 // indirect
 	github.com/dubbogo/timer v0.1.0 // indirect
+	github.com/fatih/color v1.16.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
@@ -108,6 +112,7 @@ require (
 	github.com/k0kubun/pp v3.0.1+incompatible // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
@@ -124,7 +129,7 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
-	github.com/spf13/pflag v1.0.6 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
@@ -155,5 +160,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect
 	google.golang.org/grpc v1.75.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

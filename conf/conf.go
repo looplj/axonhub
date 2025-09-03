@@ -22,17 +22,17 @@ import (
 )
 
 type Config struct {
-	fx.Out
+	fx.Out `yaml:"-" json:"-"`
 
-	DB        db.Config      `conf:"db"`
-	Log       log.Config     `conf:"log"`
-	APIServer server.Config  `conf:"server"`
-	Metrics   metrics.Config `conf:"metrics"`
-	Dumper    dumper.Config  `conf:"dumper"`
+	DB        db.Config      `conf:"db" yaml:"db" json:"db"`
+	Log       log.Config     `conf:"log" yaml:"log" json:"log"`
+	APIServer server.Config  `conf:"server" yaml:"server" json:"server"`
+	Metrics   metrics.Config `conf:"metrics" yaml:"metrics" json:"metrics"`
+	Dumper    dumper.Config  `conf:"dumper" yaml:"dumper" json:"dumper"`
 }
 
 // Load loads configuration from YAML file and environment variables.
-func Load() Config {
+func Load() (Config, error) {
 	v := viper.New()
 
 	// Set config file name and paths
@@ -55,7 +55,7 @@ func Load() Config {
 	if err := v.ReadInConfig(); err != nil {
 		var configFileNotFoundError viper.ConfigFileNotFoundError
 		if errors.As(err, &configFileNotFoundError) {
-			panic(fmt.Errorf("failed to read config file: %w", err))
+			return Config{}, fmt.Errorf("failed to read config file: %w", err)
 		}
 		// Config file not found, use defaults and environment variables
 	}
@@ -65,7 +65,7 @@ func Load() Config {
 
 	logLevel, err := parseLogLevel(logLevelStr)
 	if err != nil {
-		panic(fmt.Errorf("invalid log level '%s': %w", logLevelStr, err))
+		return Config{}, fmt.Errorf("invalid log level '%s': %w", logLevelStr, err)
 	}
 	// Set the parsed log level back to viper for unmarshaling
 	v.Set("log.level", int(logLevel))
@@ -76,12 +76,12 @@ func Load() Config {
 		dc.DecodeHook = customizedDecodeHook
 		dc.TagName = "conf"
 	}); err != nil {
-		panic(fmt.Errorf("failed to unmarshal config: %w", err))
+		return Config{}, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	log.Info(context.Background(), "Config loaded successfully", log.Any("config", config))
+	log.Debug(context.Background(), "Config loaded successfully", log.Any("config", config))
 
-	return config
+	return config, nil
 }
 
 var (
