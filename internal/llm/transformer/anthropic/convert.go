@@ -261,6 +261,11 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 
 // convertUsage converts Anthropic Usage to unified Usage format.
 func convertUsage(usage Usage) llm.Usage {
+	// For some channel, like deepseek anthropic endpoint, the input tokens is greater than cache read input tokens, not same with anthropic official.
+	// I guess the input tokens include the cached tokens, so we handle it here.
+	if usage.CacheReadInputTokens > usage.InputTokens {
+		usage.InputTokens = usage.CacheReadInputTokens + usage.InputTokens
+	}
 	u := llm.Usage{
 		PromptTokens:     int(usage.InputTokens),
 		CompletionTokens: int(usage.OutputTokens),
@@ -370,32 +375,10 @@ func convertToChatCompletionResponse(anthropicResp *Message) *llm.Response {
 		ToolCalls: toolCalls,
 	}
 
-	// Convert finish reason
-	var finishReason *string
-
-	if anthropicResp.StopReason != nil {
-		switch *anthropicResp.StopReason {
-		case "end_turn":
-			reason := "stop"
-			finishReason = &reason
-		case "max_tokens":
-			reason := "length"
-			finishReason = &reason
-		case "stop_sequence":
-			reason := "stop"
-			finishReason = &reason
-		case "tool_use":
-			reason := "tool_calls"
-			finishReason = &reason
-		default:
-			finishReason = anthropicResp.StopReason
-		}
-	}
-
 	choice := llm.Choice{
 		Index:        0,
 		Message:      message,
-		FinishReason: finishReason,
+		FinishReason: convertFinishReason(anthropicResp.StopReason),
 	}
 
 	resp.Choices = []llm.Choice{choice}
@@ -427,6 +410,27 @@ func convertToChatCompletionResponse(anthropicResp *Message) *llm.Response {
 	}
 
 	return resp
+}
+
+func convertFinishReason(stopReason *string) *string {
+	if stopReason == nil {
+		return nil
+	}
+
+	switch *stopReason {
+	case "end_turn":
+		return lo.ToPtr("stop")
+	case "max_tokens":
+		return lo.ToPtr("length")
+	case "stop_sequence", "pause_turn":
+		return lo.ToPtr("stop")
+	case "tool_use":
+		return lo.ToPtr("tool_calls")
+	case "refusal":
+		return lo.ToPtr("content_filter")
+	default:
+		return stopReason
+	}
 }
 
 func convertToAnthropicResponse(chatResp *llm.Response) *Message {

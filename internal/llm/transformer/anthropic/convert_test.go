@@ -2,10 +2,10 @@ package anthropic
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
 	"github.com/looplj/axonhub/internal/llm"
 )
 
@@ -184,8 +184,8 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 					"max_tokens":    "length",
 					"stop_sequence": "stop",
 					"tool_use":      "tool_calls",
-					"pause_turn":    "pause_turn",
-					"refusal":       "refusal",
+					"pause_turn":    "stop",
+					"refusal":       "content_filter",
 				}
 
 				for anthropicReason, expectedReason := range stopReasons {
@@ -536,6 +536,65 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 			require.Equal(t, tt.expected.MaxTokens, result.MaxTokens)
 			require.Equal(t, tt.expected.System, result.System)
 			require.Equal(t, len(tt.expected.Messages), len(result.Messages))
+		})
+	}
+}
+
+func Test_convertUsage(t *testing.T) {
+	type args struct {
+		usage Usage
+	}
+	tests := []struct {
+		name string
+		args args
+		want llm.Usage
+	}{
+		{
+			name: "base case",
+			args: args{
+				usage: Usage{
+					InputTokens:              100,
+					OutputTokens:             50,
+					CacheCreationInputTokens: 20,
+					CacheReadInputTokens:     30,
+					ServiceTier:              "standard",
+				},
+			},
+			want: llm.Usage{
+				PromptTokens:     100,
+				CompletionTokens: 50,
+				TotalTokens:      150,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 30,
+				},
+			},
+		},
+		{
+			name: "cache read tokens greater than input tokens",
+			args: args{
+				usage: Usage{
+					InputTokens:              100,
+					OutputTokens:             50,
+					CacheCreationInputTokens: 20,
+					CacheReadInputTokens:     150,
+					ServiceTier:              "standard",
+				},
+			},
+			want: llm.Usage{
+				PromptTokens:     250,
+				CompletionTokens: 50,
+				TotalTokens:      300,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 150,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := convertUsage(tt.args.usage); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("convertUsage() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

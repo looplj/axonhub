@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/samber/lo"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
@@ -81,6 +82,13 @@ func (t *OutboundTransformer) TransformRequest(
 	if zaiReq.RequestID == "" {
 		traceID, _ := tracing.GetTraceID(ctx)
 		zaiReq.RequestID = string(traceID)
+	}
+
+	// zai only support auto tool choice.
+	if zaiReq.ToolChoice != nil {
+		zaiReq.ToolChoice = &llm.ToolChoice{
+			ToolChoice: lo.ToPtr("auto"),
+		}
 	}
 
 	// zai request does not support metadata.
