@@ -847,7 +847,9 @@
         },
         "fields": {
           "userId": "用户ID",
+          "userName": "用户名称",
           "apiKeyId": "API密钥ID",
+          "apiKeyName": "API密钥名称",
           "startTime": "开始时间",
           "endTime": "结束时间",
           "notStarted": "未开始"

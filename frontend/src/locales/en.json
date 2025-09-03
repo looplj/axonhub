@@ -812,7 +812,9 @@
         },
         "fields": {
           "userId": "User ID",
+          "userName": "User Name",
           "apiKeyId": "API Key ID",
+          "apiKeyName": "API Key Name",
           "startTime": "Start Time",
           "endTime": "End Time",
           "notStarted": "Not Started"

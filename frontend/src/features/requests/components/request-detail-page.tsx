@@ -122,7 +122,13 @@ export default function RequestDetailPage() {
               <h1 className='text-lg leading-none font-semibold'>
                 {t('requests.detail.title')} #{extractNumberID(request.id) || request.id}
               </h1>
-              <p className='text-muted-foreground mt-1 text-sm'>{request.modelID || t('requests.columns.unknown')}</p>
+              <div className='flex items-center gap-2 mt-1'>
+                <p className='text-muted-foreground text-sm'>{request.modelID || t('requests.columns.unknown')}</p>
+                <span className='text-muted-foreground text-xs'>•</span>
+                <p className='text-muted-foreground text-xs'>
+                  {format(new Date(request.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -151,17 +157,7 @@ export default function RequestDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5'>
-                <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
-                  <div className='flex items-center gap-2'>
-                    <Database className='text-primary h-4 w-4' />
-                    <span className='text-sm font-medium'>{t('requests.columns.modelId')}</span>
-                  </div>
-                  <p className='bg-background rounded border px-3 py-2 font-mono text-sm'>
-                    {request.modelID || t('requests.columns.unknown')}
-                  </p>
-                </div>
-
+              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
                 <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
                   <div className='flex items-center gap-2'>
                     <Database className='text-primary h-4 w-4' />
@@ -174,8 +170,18 @@ export default function RequestDetailPage() {
 
                 <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
                   <div className='flex items-center gap-2'>
+                    <Database className='text-primary h-4 w-4' />
+                    <span className='text-sm font-medium'>{t('requests.columns.modelId')}</span>
+                  </div>
+                  <p className='bg-background rounded border px-3 py-2 font-mono text-sm'>
+                    {request.modelID || t('requests.columns.unknown')}
+                  </p>
+                </div>
+
+                <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
+                  <div className='flex items-center gap-2'>
                     <User className='text-primary h-4 w-4' />
-                    <span className='text-sm font-medium'>{t('requests.dialogs.requestDetail.fields.userId')}</span>
+                    <span className='text-sm font-medium'>{t('requests.dialogs.requestDetail.fields.userName')}</span>
                   </div>
                   <p className='text-muted-foreground font-mono text-sm'>
                     {request.user
@@ -188,20 +194,10 @@ export default function RequestDetailPage() {
                 <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
                   <div className='flex items-center gap-2'>
                     <Key className='text-primary h-4 w-4' />
-                    <span className='text-sm font-medium'>{t('requests.dialogs.requestDetail.fields.apiKeyId')}</span>
+                    <span className='text-sm font-medium'>{t('requests.dialogs.requestDetail.fields.apiKeyName')}</span>
                   </div>
                   <p className='text-muted-foreground font-mono text-sm'>
                     {request.apiKey?.name || t('requests.columns.unknown')}
-                  </p>
-                </div>
-
-                <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
-                  <div className='flex items-center gap-2'>
-                    <Clock className='text-primary h-4 w-4' />
-                    <span className='text-sm font-medium'>{t('requests.columns.createdAt')}</span>
-                  </div>
-                  <p className='text-muted-foreground font-mono text-sm'>
-                    {format(new Date(request.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}
                   </p>
                 </div>
               </div>
