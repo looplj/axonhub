@@ -132,4 +132,5 @@ func (s *defaultSSEDecoder) Close() error {
 // init registers the default SSE decoder.
 func init() {
 	RegisterDecoder("text/event-stream", NewDefaultSSEDecoder)
+	RegisterDecoder("text/event-stream; charset=utf-8", NewDefaultSSEDecoder)
 }

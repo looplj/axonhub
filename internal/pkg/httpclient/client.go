@@ -39,6 +39,8 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
 	}
 
+	rawReq.Header.Set("Accept", "application/json")
+
 	rawResp, err := hc.client.Do(rawReq)
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
