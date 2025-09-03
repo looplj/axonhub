@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Test Status](https://github.com/looplj/axonhub/workflows/test/badge.svg)](https://github.com/looplj/axonhub/actions)
-[![Lint Status](https://github.com/looplj/axonhub/workflows/lint/badge.svg)](https://github.com/looplj/axonhub/actions)
+[![Test Status](https://github.com/looplj/axonhub/actions/workflows/test.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/test.yml)
+[![Lint Status](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
 [![Frontend Version](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
