@@ -147,6 +147,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 				log.String("type", c.Type.String()),
 				log.Cause(err),
 			)
+
 			continue
 		}
 
@@ -244,6 +245,7 @@ func (svc *ChannelService) buildChannel(
 		}, nil
 	case channel.TypeOpenaiFake:
 		fakeTransformer := openai.NewFakeTransformer()
+
 		return &Channel{
 			Channel:  c,
 			Outbound: fakeTransformer,

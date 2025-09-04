@@ -594,7 +594,7 @@ func Test_convertUsage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := convertUsage(tt.args.usage); !reflect.DeepEqual(got, tt.want) {
+			if got := convertToLlmUsage(tt.args.usage); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("convertUsage() = %v, want %v", got, tt.want)
 			}
 		})

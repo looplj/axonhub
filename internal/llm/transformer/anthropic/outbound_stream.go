@@ -144,7 +144,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			resp.Model = state.streamModel
 
 			if streamEvent.Message.Usage != nil {
-				state.streamUsage = lo.ToPtr(convertUsage(*streamEvent.Message.Usage))
+				state.streamUsage = lo.ToPtr(convertToLlmUsage(*streamEvent.Message.Usage))
 				resp.Usage = state.streamUsage
 			}
 
@@ -248,7 +248,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 	case "message_delta":
 		// Update stored usage if available (final usage information)
 		if streamEvent.Usage != nil {
-			usage := convertUsage(*streamEvent.Usage)
+			usage := convertToLlmUsage(*streamEvent.Usage)
 			if state.streamUsage != nil {
 				usage.PromptTokens = state.streamUsage.PromptTokens
 				if state.streamUsage.PromptTokensDetails != nil {

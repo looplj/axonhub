@@ -199,7 +199,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	if usage != nil {
 		return data, llm.ResponseMeta{
 			ID:    message.ID,
-			Usage: lo.ToPtr(convertUsage(*usage)),
+			Usage: lo.ToPtr(convertToLlmUsage(*usage)),
 		}, nil
 	}
 

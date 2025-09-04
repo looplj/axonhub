@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -260,7 +261,7 @@ func TestInboundTransformer_ThinkingTransform(t *testing.T) {
 			// Transform request
 			transformer := NewInboundTransformer()
 
-			chatReq, err := transformer.TransformRequest(nil, httpReq)
+			chatReq, err := transformer.TransformRequest(context.Background(), httpReq)
 			if err != nil {
 				t.Fatalf("Failed to transform request: %v", err)
 			}
@@ -343,7 +344,7 @@ func TestInboundTransformer_ThinkingWithOtherFields(t *testing.T) {
 
 	transformer := NewInboundTransformer()
 
-	chatReq, err := transformer.TransformRequest(nil, httpReq)
+	chatReq, err := transformer.TransformRequest(context.Background(), httpReq)
 	if err != nil {
 		t.Fatalf("Failed to transform request: %v", err)
 	}

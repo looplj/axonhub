@@ -58,7 +58,6 @@ func TestReasoningEffortToThinking(t *testing.T) {
 
 func TestZAIRequestWithThinking(t *testing.T) {
 	chatReq := &llm.Request{
-		Model:           "gpt-4",
 		ReasoningEffort: "high",
 		Messages: []llm.Message{
 			{
@@ -71,10 +70,7 @@ func TestZAIRequestWithThinking(t *testing.T) {
 	}
 
 	// Create a ZAI request structure to test the field assignment
-	zaiReq := Request{
-		Request: *chatReq,
-		UserID:  "test-user",
-	}
+	zaiReq := Request{}
 
 	// Manually test the thinking transformation logic
 	if chatReq.ReasoningEffort != "" {
