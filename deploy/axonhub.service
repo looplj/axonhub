@@ -1,0 +1,14 @@
+[Unit]
+Description=AxonHub AI Gateway
+After=network.target
+
+[Service]
+Type=simple
+User=axonhub
+WorkingDirectory=/opt/axonhub
+ExecStart=/opt/axonhub/axonhub
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
