@@ -39,6 +39,10 @@ type Config struct {
 	// API configuration
 	BaseURL string `json:"base_url,omitempty"` // Custom base URL (optional)
 	APIKey  string `json:"api_key,omitempty"`  // API key for direct Anthropic API
+
+	// Thinking configuration
+	// Maps ReasoningEffort values to Anthropic thinking budget tokens
+	ReasoningEffortToBudget map[string]int64 `json:"reasoning_effort_to_budget,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for Anthropic format.
@@ -149,7 +153,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert to Anthropic request format
-	anthropicReq := convertToAnthropicRequest(chatReq)
+	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, t.config)
 
 	// Apply platform-specific transformations
 	body, err := json.Marshal(anthropicReq)

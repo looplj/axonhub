@@ -59,8 +59,15 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 type Request struct {
 	llm.Request
 
-	UserID    string `json:"user_id,omitempty"`
-	RequestID string `json:"request_id,omitempty"`
+	UserID    string    `json:"user_id,omitempty"`
+	RequestID string    `json:"request_id,omitempty"`
+	Thinking  *Thinking `json:"thinking,omitempty"`
+}
+
+type Thinking struct {
+	// Enable or disable thinking.
+	// enabled | disabled.
+	Type string `json:"type"`
 }
 
 // TransformRequest transforms ChatCompletionRequest to Request.
@@ -94,6 +101,13 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// zai request does not support metadata.
 	zaiReq.Metadata = nil
+
+	// Convert ReasoningEffort to Thinking if present
+	if chatReq.ReasoningEffort != "" {
+		zaiReq.Thinking = &Thinking{
+			Type: "enabled",
+		}
+	}
 
 	body, err := json.Marshal(zaiReq)
 	if err != nil {

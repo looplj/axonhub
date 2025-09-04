@@ -10,7 +10,13 @@ import (
 )
 
 // convertToAnthropicRequest converts ChatCompletionRequest to Anthropic MessageRequest.
+// Deprecated: Use convertToAnthropicRequestWithConfig instead.
 func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
+	return convertToAnthropicRequestWithConfig(chatReq, nil)
+}
+
+// convertToAnthropicRequestWithConfig converts ChatCompletionRequest to Anthropic MessageRequest with config.
+func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
 	req := &MessageRequest{
 		Model:       chatReq.Model,
 		Temperature: chatReq.Temperature,
@@ -23,6 +29,14 @@ func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 			req.Metadata = &AnthropicMetadata{
 				UserID: chatReq.Metadata["user_id"],
 			}
+		}
+	}
+
+	// Convert ReasoningEffort to Thinking if present
+	if chatReq.ReasoningEffort != "" {
+		req.Thinking = &Thinking{
+			Type:         "enabled",
+			BudgetTokens: getThinkingBudgetTokensWithConfig(chatReq.ReasoningEffort, config),
 		}
 	}
 

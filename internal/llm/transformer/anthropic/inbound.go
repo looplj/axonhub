@@ -249,6 +249,11 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 		}
 	}
 
+	// Convert thinking configuration to reasoning effort
+	if anthropicReq.Thinking != nil && anthropicReq.Thinking.Type == "enabled" {
+		chatReq.ReasoningEffort = thinkingBudgetToReasoningEffort(anthropicReq.Thinking.BudgetTokens)
+	}
+
 	return chatReq, nil
 }
 

@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -139,119 +140,117 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	var channels []*Channel
 
 	for _, c := range entities {
-		//nolint:exhaustive // TODO SUPPORT.
-		switch c.Type {
-		case channel.TypeOpenai, channel.TypeDeepseek, channel.TypeDoubao, channel.TypeKimi:
-			transformer, err := openai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
-			if err != nil {
-				log.Warn(ctx, "failed to create outbound transformer",
-					log.String("channel", c.Name),
-					log.String("type", c.Type.String()),
-					log.Cause(err),
-				)
-
-				continue
-			}
-
-			log.Debug(ctx, "created openai outbound transformer", log.String("channel", c.Name))
-
-			channels = append(channels, &Channel{
-				Channel:  c,
-				Outbound: transformer,
-			})
-		case channel.TypeZai, channel.TypeZhipu:
-			transformer, err := zai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
-			if err != nil {
-				log.Warn(ctx, "failed to create zai outbound transformer", log.Cause(err))
-				continue
-			}
-
-			log.Debug(ctx, "created zai outbound transformer", log.String("channel", c.Name))
-
-			channels = append(channels, &Channel{
-				Channel:  c,
-				Outbound: transformer,
-			})
-		case channel.TypeAnthropic, channel.TypeDeepseekAnthropic, channel.TypeKimiAnthropic, channel.TypeZhipuAnthropic, channel.TypeZaiAnthropic:
-			transformer, err := anthropic.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
-			if err != nil {
-				log.Warn(ctx, "failed to create anthropic outbound transformer", log.Cause(err))
-				continue
-			}
-
-			log.Debug(ctx, "created anthropic outbound transformer", log.String("channel", c.Name))
-
-			channels = append(channels, &Channel{
-				Channel:  c,
-				Outbound: transformer,
-			})
-		case channel.TypeAnthropicAWS:
-			// For anthropic_aws, we need to create a transformer with AWS credentials
-			// The transformer will handle AWS Bedrock integration
-			transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-				Type:            anthropic.PlatformBedrock,
-				Region:          c.Credentials.AWS.Region,
-				AccessKeyID:     c.Credentials.AWS.AccessKeyID,
-				SecretAccessKey: c.Credentials.AWS.SecretAccessKey,
-			})
-			if err != nil {
-				log.Warn(ctx, "failed to create anthropic aws outbound transformer", log.Cause(err))
-				continue
-			}
-
-			log.Debug(ctx, "created anthropic aws outbound transformer", log.String("channel", c.Name))
-
-			channels = append(channels, &Channel{
-				Channel:  c,
-				Outbound: transformer,
-			})
-		case channel.TypeAnthropicGcp:
-			// For anthropic_vertex, we need to create a VertexTransformer with GCP credentials
-			// The transformer will handle Google Vertex AI integration
-			if c.Credentials.GCP == nil {
-				log.Warn(ctx, "GCP credentials are required for anthropic_vertex channel")
-				continue
-			}
-
-			transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-				Type:      anthropic.PlatformVertex,
-				Region:    c.Credentials.GCP.Region,
-				ProjectID: c.Credentials.GCP.ProjectID,
-				JSONData:  c.Credentials.GCP.JSONData,
-			})
-			if err != nil {
-				log.Warn(ctx, "failed to create anthropic vertex outbound transformer", log.Cause(err))
-				continue
-			}
-
-			log.Debug(ctx, "created anthropic vertex outbound transformer", log.String("channel", c.Name))
-
-			channels = append(channels, &Channel{
-				Channel:  c,
-				Outbound: transformer,
-			})
-		case channel.TypeAnthropicFake:
-			// For anthropic_fake, we use the fake transformer for testing
-			fakeTransformer := anthropic.NewFakeTransformer()
-
-			log.Debug(ctx, "created anthropic fake outbound transformer", log.String("channel", c.Name))
-			channels = append(channels, &Channel{
-				Channel:  c,
-				Outbound: fakeTransformer,
-			})
-		case channel.TypeOpenaiFake:
-			fakeTransformer := openai.NewFakeTransformer()
-			channels = append(channels, &Channel{
-				Channel:  c,
-				Outbound: fakeTransformer,
-			})
-			log.Debug(ctx, "created openai fake outbound transformer", log.String("channel", c.Name))
+		channel, err := svc.buildChannel(ctx, c)
+		if err != nil {
+			log.Warn(ctx, "failed to build channel",
+				log.String("channel", c.Name),
+				log.String("type", c.Type.String()),
+				log.Cause(err),
+			)
+			continue
 		}
+
+		log.Debug(ctx, "created outbound transformer", log.String("channel", c.Name), log.String("type", c.Type.String()))
+
+		channels = append(channels, channel)
 	}
 
 	svc.Channels = channels
 
 	return nil
+}
+
+func (svc *ChannelService) buildChannel(
+	ctx context.Context,
+	c *ent.Channel,
+) (*Channel, error) {
+	//nolint:exhaustive // TODO SUPPORT.
+	switch c.Type {
+	case channel.TypeOpenai, channel.TypeDeepseek, channel.TypeDoubao, channel.TypeKimi:
+		transformer, err := openai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:  c,
+			Outbound: transformer,
+		}, nil
+	case channel.TypeZai, channel.TypeZhipu:
+		transformer, err := zai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:  c,
+			Outbound: transformer,
+		}, nil
+	case channel.TypeAnthropic, channel.TypeDeepseekAnthropic, channel.TypeKimiAnthropic, channel.TypeZhipuAnthropic, channel.TypeZaiAnthropic:
+		transformer, err := anthropic.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:  c,
+			Outbound: transformer,
+		}, nil
+	case channel.TypeAnthropicAWS:
+		// For anthropic_aws, we need to create a transformer with AWS credentials
+		// The transformer will handle AWS Bedrock integration
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:            anthropic.PlatformBedrock,
+			Region:          c.Credentials.AWS.Region,
+			AccessKeyID:     c.Credentials.AWS.AccessKeyID,
+			SecretAccessKey: c.Credentials.AWS.SecretAccessKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:  c,
+			Outbound: transformer,
+		}, nil
+	case channel.TypeAnthropicGcp:
+		// For anthropic_vertex, we need to create a VertexTransformer with GCP credentials
+		// The transformer will handle Google Vertex AI integration
+		if c.Credentials.GCP == nil {
+			return nil, errors.New("GCP credentials are required for anthropic_vertex channel")
+		}
+
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:      anthropic.PlatformVertex,
+			Region:    c.Credentials.GCP.Region,
+			ProjectID: c.Credentials.GCP.ProjectID,
+			JSONData:  c.Credentials.GCP.JSONData,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:  c,
+			Outbound: transformer,
+		}, nil
+	case channel.TypeAnthropicFake:
+		// For anthropic_fake, we use the fake transformer for testing
+		fakeTransformer := anthropic.NewFakeTransformer()
+
+		return &Channel{
+			Channel:  c,
+			Outbound: fakeTransformer,
+		}, nil
+	case channel.TypeOpenaiFake:
+		fakeTransformer := openai.NewFakeTransformer()
+		return &Channel{
+			Channel:  c,
+			Outbound: fakeTransformer,
+		}, nil
+	default:
+		return nil, errors.New("unknown channel type")
+	}
 }
 
 func (svc *ChannelService) ChooseChannels(
@@ -280,65 +279,7 @@ func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int)
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
 
-	// Create the appropriate transformer based on channel type
-	var outboundTransformer transformer.Outbound
-
-	//nolint:exhaustive // TODO SUPPORT.
-	switch entity.Type {
-	case channel.TypeOpenai, channel.TypeDeepseek, channel.TypeDoubao, channel.TypeKimi:
-		transformer, err := openai.NewOutboundTransformer(entity.BaseURL, entity.Credentials.APIKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
-		}
-
-		outboundTransformer = transformer
-	case channel.TypeAnthropic, channel.TypeDeepseekAnthropic, channel.TypeKimiAnthropic, channel.TypeZhipuAnthropic:
-		transformer, err := anthropic.NewOutboundTransformer(entity.BaseURL, entity.Credentials.APIKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create anthropic outbound transformer: %w", err)
-		}
-
-		outboundTransformer = transformer
-	case channel.TypeAnthropicAWS:
-		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-			Type:            anthropic.PlatformBedrock,
-			Region:          entity.Credentials.AWS.Region,
-			AccessKeyID:     entity.Credentials.AWS.AccessKeyID,
-			SecretAccessKey: entity.Credentials.AWS.SecretAccessKey,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create anthropic aws outbound transformer: %w", err)
-		}
-
-		outboundTransformer = transformer
-	case channel.TypeAnthropicGcp:
-		if entity.Credentials.GCP == nil {
-			return nil, fmt.Errorf("GCP credentials are required for anthropic_vertex channel")
-		}
-
-		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-			Type:      anthropic.PlatformVertex,
-			Region:    entity.Credentials.GCP.Region,
-			ProjectID: entity.Credentials.GCP.ProjectID,
-			JSONData:  entity.Credentials.GCP.JSONData,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create anthropic vertex outbound transformer: %w", err)
-		}
-
-		outboundTransformer = transformer
-	case channel.TypeAnthropicFake:
-		outboundTransformer = anthropic.NewFakeTransformer()
-	case channel.TypeOpenaiFake:
-		outboundTransformer = openai.NewFakeTransformer()
-	default:
-		return nil, fmt.Errorf("unsupported channel type: %s", entity.Type)
-	}
-
-	return &Channel{
-		Channel:  entity,
-		Outbound: outboundTransformer,
-	}, nil
+	return svc.buildChannel(ctx, entity)
 }
 
 // BulkUpdateChannelOrdering updates the ordering weight for multiple channels in a single transaction.
