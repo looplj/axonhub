@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gql"
 	"github.com/looplj/axonhub/internal/server/middleware"
+	"github.com/looplj/axonhub/internal/server/static"
 )
 
 type Handlers struct {
@@ -25,6 +26,9 @@ type Handlers struct {
 }
 
 func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, client *ent.Client) {
+	// Serve static frontend files
+	server.NoRoute(static.Handler())
+
 	server.Use(middleware.WithEntClient(client))
 	server.Use(middleware.WithTracing(server.Config.Trace))
 	server.Use(middleware.WithMetrics())

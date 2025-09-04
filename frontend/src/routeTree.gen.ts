@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedPermissionRouteImport } from './routes/_authenticated/permission'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors404RouteImport } from './routes/(errors)/404'
@@ -49,6 +50,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPermissionRoute = AuthenticatedPermissionRouteImport.update({
+  id: '/permission',
+  path: '/permission',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const errors503Route = errors503RouteImport.update({
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/permission': typeof AuthenticatedPermissionRoute
   '/': typeof AuthenticatedIndexRoute
   '/requests/$requestId': typeof AuthenticatedRequestsRequestIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -261,6 +268,7 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/permission': typeof AuthenticatedPermissionRoute
   '/': typeof AuthenticatedIndexRoute
   '/requests/$requestId': typeof AuthenticatedRequestsRequestIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -296,6 +304,7 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
+  '/_authenticated/permission': typeof AuthenticatedPermissionRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/requests/$requestId': typeof AuthenticatedRequestsRequestIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/permission'
     | '/'
     | '/requests/$requestId'
     | '/settings/account'
@@ -363,6 +373,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/permission'
     | '/'
     | '/requests/$requestId'
     | '/settings/account'
@@ -397,6 +408,7 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
+    | '/_authenticated/permission'
     | '/_authenticated/'
     | '/_authenticated/requests/$requestId'
     | '/_authenticated/settings/account'
@@ -447,6 +459,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/permission': {
+      id: '/_authenticated/permission'
+      path: '/permission'
+      fullPath: '/permission'
+      preLoaderRoute: typeof AuthenticatedPermissionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/(errors)/503': {
@@ -687,6 +706,7 @@ const AuthenticatedSettingsRouteRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
+  AuthenticatedPermissionRoute: typeof AuthenticatedPermissionRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedRequestsRequestIdRoute: typeof AuthenticatedRequestsRequestIdRoute
   AuthenticatedApiKeysIndexRoute: typeof AuthenticatedApiKeysIndexRoute
@@ -706,6 +726,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
+  AuthenticatedPermissionRoute: AuthenticatedPermissionRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedRequestsRequestIdRoute: AuthenticatedRequestsRequestIdRoute,
   AuthenticatedApiKeysIndexRoute: AuthenticatedApiKeysIndexRoute,
