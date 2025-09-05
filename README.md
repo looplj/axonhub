@@ -54,12 +54,12 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 
 ### 🔧 接口格式支持 | API Format Support
 
-AxonHub 支持多种主流 AI API 格式：
-
-- ✅ **OpenAI API** - 完全兼容 OpenAI Chat/Completions API
-- ✅ **Anthropic API** - 支持 Claude Messages API
-- ⚠️ **AI SDK** - 支持 Vercel AI SDK 格式，部分支持
-- 🔄 **更多格式** - 持续增加新的 API 格式支持
+| 格式 Format | 状态 Status | 兼容性 Compatibility | 备注 Notes |
+|-------------|------------|---------------------|----------|
+| **OpenAI API** | ✅ Done | 完全兼容 | Chat/Completions API |
+| **Anthropic API** | ✅ Done | 完全支持 | Claude Messages API |
+| **AI SDK** | ⚠️ Partial | 部分支持 | Vercel AI SDK 格式 |
+| **更多格式** | 🔄 Ongoing | 持续增加 | 新的 API 格式支持 |
 
 ### 🤖 支持的供应商 | Supported Providers
 
@@ -73,7 +73,7 @@ AxonHub 支持多种主流 AI API 格式：
 | **字节豆包 (Doubao)** | ✅ Done | doubao-1.6, etc. | 完全支持 |
 | **AWS Bedrock** | 🔄 Testing | Claude on AWS | 通过 Bedrock 接入 |
 | **Google Cloud** | 🔄 Testing| Claude on GCP | 通过 Vertex AI 接入 |
-| **Gemini** | 🔄 Todo | Gemini 2.5, etc. | 未实现 |
+| **Gemini** | 📝 Todo | Gemini 2.5, etc. | 未实现 |
 
 ### 🏢 权限控制 | Permission Control
 
@@ -120,7 +120,7 @@ log:
   encoding: "json"
 ```
 
-详细配置说明请参考 [配置文档](.config.example.yml)。
+详细配置说明请参考 [配置文档](config.example.yml)。
 
 ### Docker Compose 部署
 
@@ -142,8 +142,6 @@ docker-compose ps
 ### VM 部署 | Virtual Machine Deployment
 
 #### 
-在 [Release 页面](https://github.com/looplj/axonhub/releases) 下载最新的可执行文件：
-
 ```bash
 # 克隆项目
 git clone https://github.com/looplj/axonhub.git

@@ -8,6 +8,9 @@
 !*.*
 !Makefile
 !LICENSE
+!Dockerfile
+!VERSION
+
 
 # Unignore all dirs
 !*/
@@ -111,6 +114,7 @@ test-results
 .claude
 .qoder
 dumps
+.builds
 
 config.yml
 internal/server/static/dist

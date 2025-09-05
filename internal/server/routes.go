@@ -45,6 +45,9 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 		unAuthGroup.POST("/auth/signin", handlers.Auth.SignIn)
 	}
 
+	// Health check endpoint - no authentication required
+	server.GET("/health", handlers.System.Health)
+
 	adminGroup := server.Group("/admin", middleware.WithJWTAuth(auth))
 	// 管理员路由 - 使用 JWT 认证
 	{

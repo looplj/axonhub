@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -33,6 +35,15 @@ type SystemHandlers struct {
 // SystemStatusResponse 系统状态响应.
 type SystemStatusResponse struct {
 	IsInitialized bool `json:"isInitialized"`
+}
+
+// HealthResponse 健康检查响应.
+type HealthResponse struct {
+	Status    string     `json:"status"`
+	Timestamp time.Time  `json:"timestamp"`
+	Version   string     `json:"version"`
+	Build     build.Info `json:"build"`
+	Uptime    string     `json:"uptime"`
 }
 
 // InitializeSystemRequest 系统初始化请求.
@@ -63,6 +74,19 @@ func (h *SystemHandlers) GetSystemStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, SystemStatusResponse{
 		IsInitialized: isInitialized,
+	})
+}
+
+// Health returns the application health status and build information.
+func (h *SystemHandlers) Health(c *gin.Context) {
+	buildInfo := build.GetBuildInfo()
+
+	c.JSON(http.StatusOK, HealthResponse{
+		Status:    "healthy",
+		Timestamp: time.Now(),
+		Version:   build.Version,
+		Build:     buildInfo,
+		Uptime:    buildInfo.Uptime,
 	})
 }
 

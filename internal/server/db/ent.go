@@ -8,13 +8,13 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "github.com/mattn/go-sqlite3"
 
 	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/migrate"
 	_ "github.com/looplj/axonhub/internal/ent/runtime"
+	_ "github.com/looplj/axonhub/internal/pkg/sqlite"
 )
 
 func NewEntClient(cfg Config) *ent.Client {
@@ -33,6 +33,16 @@ func NewEntClient(cfg Config) *ent.Client {
 		}
 
 		drv := entsql.OpenDB(dialect.Postgres, db)
+
+		opts = append(opts, ent.Driver(drv))
+		client = ent.NewClient(opts...)
+	case "sqlite3":
+		db, err := sql.Open("sqlite3", cfg.DSN)
+		if err != nil {
+			panic(err)
+		}
+
+		drv := entsql.OpenDB(dialect.SQLite, db)
 
 		opts = append(opts, ent.Driver(drv))
 		client = ent.NewClient(opts...)

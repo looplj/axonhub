@@ -54,7 +54,7 @@ func Load() (Config, error) {
 	// Read config file
 	if err := v.ReadInConfig(); err != nil {
 		var configFileNotFoundError viper.ConfigFileNotFoundError
-		if errors.As(err, &configFileNotFoundError) {
+		if !errors.As(err, &configFileNotFoundError) {
 			return Config{}, fmt.Errorf("failed to read config file: %w", err)
 		}
 		// Config file not found, use defaults and environment variables
@@ -65,6 +65,7 @@ func Load() (Config, error) {
 
 	logLevel, err := parseLogLevel(logLevelStr)
 	if err != nil {
+		println("Invalid log level, use default log level:", err.Error())
 		return Config{}, fmt.Errorf("invalid log level '%s': %w", logLevelStr, err)
 	}
 	// Set the parsed log level back to viper for unmarshaling
@@ -130,9 +131,11 @@ func setDefaults(v *viper.Viper) {
 
 	// Log defaults
 	v.SetDefault("log.name", "axonhub")
-	v.SetDefault("log.debug", false)
+	// v.SetDefault("log.debug", false)
+	v.SetDefault("log.debug", true)
 	v.SetDefault("log.skip_level", 1)
-	v.SetDefault("log.level", "info")
+	// v.SetDefault("log.level", "info")
+	v.SetDefault("log.level", "debug")
 	v.SetDefault("log.level_key", "level")
 	v.SetDefault("log.time_key", "time")
 	v.SetDefault("log.caller_key", "label")

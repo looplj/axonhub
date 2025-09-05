@@ -5,16 +5,16 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	_ "github.com/mattn/go-sqlite3"
-
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
-	_ "github.com/looplj/axonhub/internal/ent/runtime"
+	"github.com/looplj/axonhub/internal/server/db"
 )
 
 func TestSystemService_Initialize(t *testing.T) {
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := db.NewEntClient(db.Config{
+		Dialect: "sqlite3",
+		DSN:     "file:ent?mode=memory&cache=shared&_fk=1",
+	})
 	defer client.Close()
 
 	service := NewSystemService(SystemServiceParams{})
@@ -56,7 +56,10 @@ func TestSystemService_Initialize(t *testing.T) {
 }
 
 func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := db.NewEntClient(db.Config{
+		Dialect: "sqlite3",
+		DSN:     "file:ent?mode=memory&cache=shared&_fk=1",
+	})
 	defer client.Close()
 
 	service := NewSystemService(SystemServiceParams{})

@@ -9,6 +9,7 @@ import (
 	"github.com/andreazorzetto/yh/highlight"
 	"github.com/hokaccha/go-prettyjson"
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
 	"gopkg.in/yaml.v3"
 
 	sdk "go.opentelemetry.io/otel/sdk/metric"
@@ -36,8 +37,30 @@ func main() {
 	startServer()
 }
 
+type logger struct{}
+
+func (l *logger) LogEvent(event fxevent.Event) {
+	switch ev := event.(type) {
+	case *fxevent.OnStartExecuting:
+		log.Info(context.Background(), "Start executing", log.String("function_name", ev.FunctionName), log.String("caller_name", ev.CallerName))
+	case *fxevent.OnStartExecuted:
+		if ev.Err != nil {
+			log.Error(context.Background(), "Failed to start", log.String("function_name", ev.FunctionName), log.String("caller_name", ev.CallerName), log.String("error", ev.Err.Error()))
+		}
+	case *fxevent.OnStopExecuting:
+		log.Info(context.Background(), "Stop executing", log.String("function_name", ev.FunctionName), log.String("caller_name", ev.CallerName))
+	case *fxevent.OnStopExecuted:
+		if ev.Err != nil {
+			log.Error(context.Background(), "Failed to stop", log.String("function_name", ev.FunctionName), log.String("caller_name", ev.CallerName), log.String("error", ev.Err.Error()))
+		}
+	}
+}
+
 func startServer() {
 	server.Run(
+		fx.WithLogger(func() fxevent.Logger {
+			return &logger{}
+		}),
 		fx.Provide(conf.Load),
 		fx.Provide(metrics.NewProvider),
 		fx.Provide(dumper.New),
