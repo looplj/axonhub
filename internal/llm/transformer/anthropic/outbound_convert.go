@@ -78,7 +78,7 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 		}
 
 		if msg.Role == "tool" {
-			// Simple tool call.
+			// One tool call.
 			if msg.MessageIndex == nil {
 				messages = append(messages, MessageParam{
 					Role: "user",
@@ -95,7 +95,8 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 					},
 				})
 			} else {
-				// Complex tool call.
+				// Multiple tool calls.
+				// DeepSeek Anthropic require the request content be same with the response content, so we need to handle it.
 				if processedToolMessageIndexes[*msg.MessageIndex] {
 					continue
 				}
@@ -166,7 +167,6 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 
 	req.Messages = messages
 
-	// Convert stop sequences
 	if chatReq.Stop != nil {
 		if chatReq.Stop.Stop != nil {
 			req.StopSequences = []string{*chatReq.Stop.Stop}

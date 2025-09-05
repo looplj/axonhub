@@ -150,7 +150,8 @@ type ToolChoice struct {
 
 // Tool represents a tool definition for Anthropic API.
 type Tool struct {
-	Type         string          `json:"type"`
+	// Ensure the omitempty, otherwise it will be sent empty string to the API, will cause some providers ignore the tool.
+	Type         string          `json:"type,omitempty"`
 	Name         string          `json:"name"`
 	Description  string          `json:"description"`
 	InputSchema  json.RawMessage `json:"input_schema"`
