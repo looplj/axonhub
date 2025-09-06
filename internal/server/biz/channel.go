@@ -140,7 +140,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	var channels []*Channel
 
 	for _, c := range entities {
-		channel, err := svc.buildChannel(ctx, c)
+		channel, err := svc.buildChannel(c)
 		if err != nil {
 			log.Warn(ctx, "failed to build channel",
 				log.String("channel", c.Name),
@@ -161,13 +161,10 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	return nil
 }
 
-func (svc *ChannelService) buildChannel(
-	ctx context.Context,
-	c *ent.Channel,
-) (*Channel, error) {
-	//nolint:exhaustive // TODO SUPPORT.
+func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
+	//nolint:exhaustive // TODO SUPPORT more providers.
 	switch c.Type {
-	case channel.TypeOpenai, channel.TypeDeepseek, channel.TypeDoubao, channel.TypeKimi:
+	case channel.TypeOpenai, channel.TypeDeepseek, channel.TypeDoubao, channel.TypeMoonshot:
 		transformer, err := openai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -187,7 +184,7 @@ func (svc *ChannelService) buildChannel(
 			Channel:  c,
 			Outbound: transformer,
 		}, nil
-	case channel.TypeAnthropic, channel.TypeDeepseekAnthropic, channel.TypeKimiAnthropic, channel.TypeZhipuAnthropic, channel.TypeZaiAnthropic:
+	case channel.TypeAnthropic, channel.TypeDeepseekAnthropic, channel.TypeMoonshotAnthropic, channel.TypeZhipuAnthropic, channel.TypeZaiAnthropic:
 		transformer, err := anthropic.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -281,7 +278,7 @@ func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int)
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
 
-	return svc.buildChannel(ctx, entity)
+	return svc.buildChannel(entity)
 }
 
 // BulkUpdateChannelOrdering updates the ordering weight for multiple channels in a single transaction.

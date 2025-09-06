@@ -386,8 +386,8 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   deepseek
   deepseek_anthropic
   doubao
-  kimi
-  kimi_anthropic
+  moonshot
+  moonshot_anthropic
   zhipu
   zai
   zhipu_anthropic

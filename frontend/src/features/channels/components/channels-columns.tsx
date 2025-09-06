@@ -68,8 +68,8 @@ const getChannelTypeConfig = (
     color: 'bg-red-100 text-red-800 border-red-200',
     icon: Doubao,
   },
-  kimi: {
-    label: t('channels.types.kimi'),
+  moonshot: {
+    label: t('channels.types.moonshot'),
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     icon: Moonshot,
   },
@@ -88,8 +88,8 @@ const getChannelTypeConfig = (
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: DeepSeek,
   },
-  kimi_anthropic: {
-    label: t('channels.types.kimi_anthropic'),
+  moonshot_anthropic: {
+    label: t('channels.types.moonshot_anthropic'),
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     icon: Moonshot,
   },

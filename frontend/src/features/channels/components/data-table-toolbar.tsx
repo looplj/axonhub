@@ -47,8 +47,8 @@ export function DataTableToolbar<TData>({
       label: t('channels.types.doubao'),
     },
     {
-      value: 'kimi' as ChannelType,
-      label: t('channels.types.kimi'),
+      value: 'moonshot' as ChannelType,
+      label: t('channels.types.moonshot'),
     },
     {
       value: 'deepseek_anthropic' as ChannelType,
