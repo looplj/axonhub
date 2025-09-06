@@ -12,7 +12,6 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/job"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -646,83 +645,6 @@ func newChannelPaginateArgs(rv map[string]any) *channelPaginateArgs {
 	}
 	if v, ok := rv[whereField].(*ChannelWhereInput); ok {
 		args.opts = append(args.opts, WithChannelFilter(v.Filter))
-	}
-	return args
-}
-
-// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
-func (jq *JobQuery) CollectFields(ctx context.Context, satisfies ...string) (*JobQuery, error) {
-	fc := graphql.GetFieldContext(ctx)
-	if fc == nil {
-		return jq, nil
-	}
-	if err := jq.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
-		return nil, err
-	}
-	return jq, nil
-}
-
-func (jq *JobQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
-	path = append([]string(nil), path...)
-	var (
-		unknownSeen    bool
-		fieldSeen      = make(map[string]struct{}, len(job.Columns))
-		selectedFields = []string{job.FieldID}
-	)
-	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
-		switch field.Name {
-		case "ownerID":
-			if _, ok := fieldSeen[job.FieldOwnerID]; !ok {
-				selectedFields = append(selectedFields, job.FieldOwnerID)
-				fieldSeen[job.FieldOwnerID] = struct{}{}
-			}
-		case "type":
-			if _, ok := fieldSeen[job.FieldType]; !ok {
-				selectedFields = append(selectedFields, job.FieldType)
-				fieldSeen[job.FieldType] = struct{}{}
-			}
-		case "context":
-			if _, ok := fieldSeen[job.FieldContext]; !ok {
-				selectedFields = append(selectedFields, job.FieldContext)
-				fieldSeen[job.FieldContext] = struct{}{}
-			}
-		case "id":
-		case "__typename":
-		default:
-			unknownSeen = true
-		}
-	}
-	if !unknownSeen {
-		jq.Select(selectedFields...)
-	}
-	return nil
-}
-
-type jobPaginateArgs struct {
-	first, last   *int
-	after, before *Cursor
-	opts          []JobPaginateOption
-}
-
-func newJobPaginateArgs(rv map[string]any) *jobPaginateArgs {
-	args := &jobPaginateArgs{}
-	if rv == nil {
-		return args
-	}
-	if v := rv[firstField]; v != nil {
-		args.first = v.(*int)
-	}
-	if v := rv[lastField]; v != nil {
-		args.last = v.(*int)
-	}
-	if v := rv[afterField]; v != nil {
-		args.after = v.(*Cursor)
-	}
-	if v := rv[beforeField]; v != nil {
-		args.before = v.(*Cursor)
-	}
-	if v, ok := rv[whereField].(*JobWhereInput); ok {
-		args.opts = append(args.opts, WithJobFilter(v.Filter))
 	}
 	return args
 }

@@ -272,42 +272,6 @@ func (c *Channel) Node(ctx context.Context) (node *Node, err error) {
 }
 
 // Node implements Noder interface
-func (j *Job) Node(ctx context.Context) (node *Node, err error) {
-	node = &Node{
-		ID:     j.ID,
-		Type:   "Job",
-		Fields: make([]*Field, 3),
-		Edges:  make([]*Edge, 0),
-	}
-	var buf []byte
-	if buf, err = json.Marshal(j.OwnerID); err != nil {
-		return nil, err
-	}
-	node.Fields[0] = &Field{
-		Type:  "int",
-		Name:  "owner_id",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(j.Type); err != nil {
-		return nil, err
-	}
-	node.Fields[1] = &Field{
-		Type:  "string",
-		Name:  "type",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(j.Context); err != nil {
-		return nil, err
-	}
-	node.Fields[2] = &Field{
-		Type:  "string",
-		Name:  "context",
-		Value: string(buf),
-	}
-	return node, nil
-}
-
-// Node implements Noder interface
 func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     r.ID,

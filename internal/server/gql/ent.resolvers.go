@@ -37,14 +37,6 @@ func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (*objects.GU
 	}, nil
 }
 
-// ID is the resolver for the id field.
-func (r *jobResolver) ID(ctx context.Context, obj *ent.Job) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeJob,
-		ID:   obj.ID,
-	}, nil
-}
-
 // Node is the resolver for the node field.
 func (r *queryResolver) Node(ctx context.Context, id objects.GUID) (ent.Noder, error) {
 	typ, ok := guidTypeToNodeType[id.Type]
@@ -239,9 +231,6 @@ func (r *Resolver) APIKey() APIKeyResolver { return &aPIKeyResolver{r} }
 // Channel returns ChannelResolver implementation.
 func (r *Resolver) Channel() ChannelResolver { return &channelResolver{r} }
 
-// Job returns JobResolver implementation.
-func (r *Resolver) Job() JobResolver { return &jobResolver{r} }
-
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
@@ -265,7 +254,6 @@ func (r *Resolver) User() UserResolver { return &userResolver{r} }
 
 type aPIKeyResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
-type jobResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }
 type requestExecutionResolver struct{ *Resolver }

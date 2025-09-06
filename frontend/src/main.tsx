@@ -1,6 +1,5 @@
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
-import { AxiosError } from 'axios'
 import {
   QueryCache,
   QueryClient,
@@ -30,10 +29,11 @@ const queryClient = new QueryClient({
         if (failureCount >= 0 && import.meta.env.DEV) return false
         if (failureCount > 3 && import.meta.env.PROD) return false
 
-        return !(
-          error instanceof AxiosError &&
-          [401, 403].includes(error.response?.status ?? 0)
-        )
+        // For fetch API errors, we check if it's a Response object with status
+        const status = error instanceof Response ? error.status : 
+                      error && typeof error === 'object' && 'status' in error ? (error as any).status : 0;
+        
+        return ![401, 403,422].includes(status)
       },
       refetchOnWindowFocus: import.meta.env.PROD,
       staleTime: 10 * 1000, // 10s
@@ -42,30 +42,34 @@ const queryClient = new QueryClient({
       onError: (error) => {
         handleServerError(error)
 
-        if (error instanceof AxiosError) {
-          if (error.response?.status === 304) {
-            toast.error(i18n.t('common.errors.contentNotModified'))
-          }
+        // For fetch API errors, we check if it's a Response object with status
+        const status = error instanceof Response ? error.status : 
+                      error && typeof error === 'object' && 'status' in error ? (error as any).status : 0;
+        
+        if (status === 304) {
+          toast.error(i18n.t('common.errors.contentNotModified'))
         }
       },
     },
   },
   queryCache: new QueryCache({
     onError: (error) => {
-      if (error instanceof AxiosError) {
-        if (error.response?.status === 401) {
-          toast.error(i18n.t('common.errors.sessionExpired'))
-          useAuthStore.getState().auth.reset()
-          const redirect = `${router.history.location.href}`
-          router.navigate({ to: '/sign-in', search: { redirect } })
-        }
-        if (error.response?.status === 500) {
-          toast.error(i18n.t('common.errors.internalServerError'))
-          router.navigate({ to: '/500' })
-        }
-        if (error.response?.status === 403) {
-          // router.navigate("/forbidden", { replace: true });
-        }
+      // For fetch API errors, we check if it's a Response object with status
+      const status = error instanceof Response ? error.status : 
+                    error && typeof error === 'object' && 'status' in error ? (error as any).status : 0;
+      
+      if (status === 401) {
+        toast.error(i18n.t('common.errors.sessionExpired'))
+        useAuthStore.getState().auth.reset()
+        const redirect = `${router.history.location.href}`
+        router.navigate({ to: '/sign-in', search: { redirect } })
+      }
+      if (status === 500) {
+        toast.error(i18n.t('common.errors.internalServerError'))
+        router.navigate({ to: '/500' })
+      }
+      if (status === 403) {
+        // router.navigate("/forbidden", { replace: true });
       }
     },
   }),

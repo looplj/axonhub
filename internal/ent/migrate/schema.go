@@ -75,26 +75,6 @@ var (
 			},
 		},
 	}
-	// JobsColumns holds the columns for the "jobs" table.
-	JobsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "owner_id", Type: field.TypeInt},
-		{Name: "type", Type: field.TypeString},
-		{Name: "context", Type: field.TypeString},
-	}
-	// JobsTable holds the schema information for the "jobs" table.
-	JobsTable = &schema.Table{
-		Name:       "jobs",
-		Columns:    JobsColumns,
-		PrimaryKey: []*schema.Column{JobsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "jobs_by_owner_id_type",
-				Unique:  true,
-				Columns: []*schema.Column{JobsColumns[1], JobsColumns[2]},
-			},
-		},
-	}
 	// RequestsColumns holds the columns for the "requests" table.
 	RequestsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -389,7 +369,6 @@ var (
 	Tables = []*schema.Table{
 		APIKeysTable,
 		ChannelsTable,
-		JobsTable,
 		RequestsTable,
 		RequestExecutionsTable,
 		RolesTable,

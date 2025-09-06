@@ -159,30 +159,6 @@ func (f ChannelMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutatio
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ChannelMutation", m)
 }
 
-// The JobQueryRuleFunc type is an adapter to allow the use of ordinary
-// functions as a query rule.
-type JobQueryRuleFunc func(context.Context, *ent.JobQuery) error
-
-// EvalQuery return f(ctx, q).
-func (f JobQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
-	if q, ok := q.(*ent.JobQuery); ok {
-		return f(ctx, q)
-	}
-	return Denyf("ent/privacy: unexpected query type %T, expect *ent.JobQuery", q)
-}
-
-// The JobMutationRuleFunc type is an adapter to allow the use of ordinary
-// functions as a mutation rule.
-type JobMutationRuleFunc func(context.Context, *ent.JobMutation) error
-
-// EvalMutation calls f(ctx, m).
-func (f JobMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
-	if m, ok := m.(*ent.JobMutation); ok {
-		return f(ctx, m)
-	}
-	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.JobMutation", m)
-}
-
 // The RequestQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type RequestQueryRuleFunc func(context.Context, *ent.RequestQuery) error
@@ -366,8 +342,6 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.ChannelQuery:
 		return q.Filter(), nil
-	case *ent.JobQuery:
-		return q.Filter(), nil
 	case *ent.RequestQuery:
 		return q.Filter(), nil
 	case *ent.RequestExecutionQuery:
@@ -390,8 +364,6 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.APIKeyMutation:
 		return m.Filter(), nil
 	case *ent.ChannelMutation:
-		return m.Filter(), nil
-	case *ent.JobMutation:
 		return m.Filter(), nil
 	case *ent.RequestMutation:
 		return m.Filter(), nil
