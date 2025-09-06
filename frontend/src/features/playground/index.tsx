@@ -54,7 +54,7 @@ export default function Playground() {
     setMessages,
   } = useChat({
     // streamProtocol: 'text',
-    api: '/admin/v1/playground/chat',
+    api: '/admin/playground/chat',
     initialMessages: [],
     credentials: 'include',
     headers: {

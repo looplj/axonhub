@@ -33,16 +33,20 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 	server.Use(middleware.WithTracing(server.Config.Trace))
 	server.Use(middleware.WithMetrics())
 
-	unAuthGroup := server.Group("/v1", middleware.WithTimeout(server.Config.RequestTimeout))
+	publicGroup := server.Group("", middleware.WithTimeout(server.Config.RequestTimeout))
 	{
-		// Favicon API - 不需要认证
-		unAuthGroup.GET("/favicon", handlers.System.GetFavicon)
+		// Favicon API - DO NOT AUTH
+		publicGroup.GET("/favicon", handlers.System.GetFavicon)
+		publicGroup.GET("/favicon.ico", handlers.System.GetFavicon)
+	}
 
-		// 系统状态和初始化 API - 不需要认证
-		unAuthGroup.GET("/system/status", handlers.System.GetSystemStatus)
-		unAuthGroup.POST("/system/initialize", handlers.System.InitializeSystem)
-		// 用户登录 API - 不需要认证
-		unAuthGroup.POST("/auth/signin", handlers.Auth.SignIn)
+	unSecureAdminGroup := server.Group("/admin", middleware.WithTimeout(server.Config.RequestTimeout))
+	{
+		// System Status and Initialize - DO NOT AUTH
+		unSecureAdminGroup.GET("/system/status", handlers.System.GetSystemStatus)
+		unSecureAdminGroup.POST("/system/initialize", handlers.System.InitializeSystem)
+		// User Login - DO NOT AUTH
+		unSecureAdminGroup.POST("/auth/signin", handlers.Auth.SignIn)
 	}
 
 	// Health check endpoint - no authentication required
@@ -58,10 +62,9 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
 		})
 
-		adminGroup.POST("/v1/chat", middleware.WithTimeout(server.Config.LLMRequestTimeout), middleware.WithSource(request.SourcePlayground), handlers.AiSDK.ChatCompletion)
 		// Playground API with channel specification support
 		adminGroup.POST(
-			"/v1/playground/chat",
+			"/playground/chat",
 			middleware.WithTimeout(server.Config.LLMRequestTimeout),
 			middleware.WithSource(request.SourcePlayground),
 			handlers.Playground.ChatCompletion,
@@ -72,7 +75,13 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 	apiGroup.Use(middleware.WithAPIKeyAuth(auth))
 	apiGroup.Use(middleware.WithSource(request.SourceAPI))
 	{
-		apiGroup.POST("/messages", handlers.Anthropic.CreateMessage)
 		apiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)
+	}
+
+	anthropicGroup := server.Group("/anthropic/v1", middleware.WithTimeout(server.Config.LLMRequestTimeout))
+	anthropicGroup.Use(middleware.WithAPIKeyAuth(auth))
+	anthropicGroup.Use(middleware.WithSource(request.SourceAPI))
+	{
+		anthropicGroup.POST("/messages", handlers.Anthropic.CreateMessage)
 	}
 }

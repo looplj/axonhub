@@ -96,7 +96,7 @@ export async function apiRequest<T>(
 // System API endpoints
 export const systemApi = {
   getStatus: (): Promise<{ isInitialized: boolean }> =>
-    apiRequest('/v1/system/status'),
+    apiRequest('/admin/system/status'),
 
   initialize: (data: {
     ownerEmail: string
@@ -105,7 +105,7 @@ export const systemApi = {
     ownerLastName: string
     brandName: string
   }): Promise<{ success: boolean; message: string }> =>
-    apiRequest('/v1/system/initialize', {
+    apiRequest('/admin/system/initialize', {
       method: 'POST',
       body: data,
     }),
@@ -129,7 +129,7 @@ export const authApi = {
     }
     token: string
   }> =>
-    apiRequest('/v1/auth/signin', {
+    apiRequest('/admin/auth/signin', {
       method: 'POST',
       body: data,
     }),
