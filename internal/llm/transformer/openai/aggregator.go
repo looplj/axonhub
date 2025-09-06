@@ -31,8 +31,8 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	}
 
 	var (
-		lastChunkResponse *llm.Response
-		usage             *llm.Usage
+		lastChunkResponse *Response
+		usage             *Usage
 		systemFingerprint string
 		// Map to track choices by their index
 		choicesAggs = make(map[int]*choiceAggregator)
@@ -44,7 +44,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			continue
 		}
 
-		chunk, err := xjson.To[llm.Response](chunk.Data)
+		chunk, err := xjson.To[Response](chunk.Data)
 		if err != nil {
 			continue // Skip invalid chunks
 		}
@@ -206,7 +206,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		Created:           lastChunkResponse.Created,
 		SystemFingerprint: systemFingerprint,
 		Choices:           choices,
-		Usage:             usage,
+		Usage:             usage.ToLLMUsage(),
 	}
 
 	data, err := json.Marshal(response)
@@ -216,6 +216,6 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 	return data, llm.ResponseMeta{
 		ID:    response.ID,
-		Usage: usage,
+		Usage: usage.ToLLMUsage(),
 	}, nil
 }

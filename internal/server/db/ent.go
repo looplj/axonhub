@@ -55,6 +55,7 @@ func NewEntClient(cfg Config) *ent.Client {
 	default:
 		panic(fmt.Errorf("invalid dialect: %s", cfg.Dialect))
 	}
+
 	drv := entsql.OpenDB(dbDialect, sqlDB)
 	opts = append(opts, ent.Driver(drv))
 	client := ent.NewClient(opts...)
@@ -67,5 +68,6 @@ func NewEntClient(cfg Config) *ent.Client {
 	if err != nil {
 		panic(err)
 	}
+
 	return client
 }

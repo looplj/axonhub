@@ -187,14 +187,14 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	var chatResp llm.Response
+	var chatResp Response
 
 	err := json.Unmarshal(httpResp.Body, &chatResp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
 	}
 
-	return &chatResp, nil
+	return chatResp.ToLLMResponse(), nil
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
