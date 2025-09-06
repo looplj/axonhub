@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { useSystemStatus } from '@/features/auth/data/initialization'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useState } from 'react'
 
 interface InitializationGuardProps {
   children: React.ReactNode
@@ -10,6 +11,7 @@ interface InitializationGuardProps {
 export function InitializationGuard({ children }: InitializationGuardProps) {
   const router = useRouter()
   const { data: systemStatus, isLoading, error } = useSystemStatus()
+  const [isNavigating, setIsNavigating] = useState(false)
 
   useEffect(() => {
     // Only redirect if we have data and system is not initialized
@@ -17,7 +19,11 @@ export function InitializationGuard({ children }: InitializationGuardProps) {
       // Check if we're not already on the initialization page
       const currentPath = window.location.pathname
       if (currentPath !== '/initialization') {
-        router.navigate({ to: '/initialization' })
+        setIsNavigating(true)
+        //@ts-ignore
+        router.navigate({ to: '/initialization' }).finally(() => {
+          setIsNavigating(false)
+        })
       }
     }
   }, [systemStatus, router])
@@ -47,8 +53,18 @@ export function InitializationGuard({ children }: InitializationGuardProps) {
   }
 
   // If system is not initialized and we're not on initialization page, don't render children
-  if (systemStatus && !systemStatus.isInitialized && window.location.pathname !== '/initialization') {
-    return null
+  // But allow navigation to complete naturally
+  if ((systemStatus && !systemStatus.isInitialized && window.location.pathname !== '/initialization') || isNavigating) {
+    // Don't return null immediately - let the navigation complete
+    // The useEffect will handle the redirect
+    return (
+      <div className='flex h-screen items-center justify-center'>
+        <div className='space-y-4'>
+          <Skeleton className='h-8 w-48' />
+          <Skeleton className='h-4 w-32' />
+        </div>
+      </div>
+    )
   }
 
   return <>{children}</>

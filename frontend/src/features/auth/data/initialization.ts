@@ -1,8 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { systemApi } from '@/lib/api-client'
-import { useAuthStore } from '@/stores/authStore'
-import { toast } from 'sonner'
 import { useRouter } from '@tanstack/react-router'
+import { toast } from 'sonner'
+import { systemApi } from '@/lib/api-client'
 import i18n from '@/lib/i18n'
 
 export interface SystemStatus {
@@ -28,8 +27,10 @@ export function useSystemStatus() {
     queryFn: async (): Promise<SystemStatus> => {
       return await systemApi.getStatus()
     },
-    retry: false,
+    retry: 1, // Allow one retry to handle network hiccups on first load
+    retryDelay: 500, // Wait 500ms before retry
     refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   })
 }
 
@@ -43,7 +44,7 @@ export function useInitializeSystem() {
     onSuccess: (data) => {
       if (data.success) {
         toast.success(data.message)
-        
+
         // 初始化成功后跳转到登录页面
         router.navigate({ to: '/sign-in' })
       } else {
@@ -53,6 +54,6 @@ export function useInitializeSystem() {
     onError: (error: any) => {
       const errorMessage = error.message || i18n.t('common.errors.initializationFailed')
       toast.error(errorMessage)
-    }
+    },
   })
 }
