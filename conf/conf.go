@@ -131,11 +131,9 @@ func setDefaults(v *viper.Viper) {
 
 	// Log defaults
 	v.SetDefault("log.name", "axonhub")
-	// v.SetDefault("log.debug", false)
-	v.SetDefault("log.debug", true)
+	v.SetDefault("log.debug", false)
 	v.SetDefault("log.skip_level", 1)
-	// v.SetDefault("log.level", "info")
-	v.SetDefault("log.level", "debug")
+	v.SetDefault("log.level", "info")
 	v.SetDefault("log.level_key", "level")
 	v.SetDefault("log.time_key", "time")
 	v.SetDefault("log.caller_key", "label")

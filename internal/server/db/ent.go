@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"entgo.io/ent/dialect"
 
@@ -23,43 +24,42 @@ func NewEntClient(cfg Config) *ent.Client {
 		opts = append(opts, ent.Debug())
 	}
 
-	var client *ent.Client
+	var (
+		sqlDB     *sql.DB
+		dbDialect string
+		err       error
+	)
 
 	switch cfg.Dialect {
-	case "postgres":
-		db, err := sql.Open("pgx", cfg.DSN)
+	case "postgres", "pgx", "postgresdb", "pg", "postgresql":
+		sqlDB, err = sql.Open("pgx", cfg.DSN)
 		if err != nil {
 			panic(err)
 		}
 
-		drv := entsql.OpenDB(dialect.Postgres, db)
-
-		opts = append(opts, ent.Driver(drv))
-		client = ent.NewClient(opts...)
-	case "sqlite3":
-		db, err := sql.Open("sqlite3", cfg.DSN)
+		dbDialect = dialect.Postgres
+	case "sqlite3", "sqlite":
+		sqlDB, err = sql.Open("sqlite3", cfg.DSN)
 		if err != nil {
 			panic(err)
 		}
 
-		drv := entsql.OpenDB(dialect.SQLite, db)
+		dbDialect = dialect.SQLite
+	case "mysql", "tidb":
+		sqlDB, err = sql.Open("mysql", cfg.DSN)
+		if err != nil {
+			panic(err)
+		}
 
-		opts = append(opts, ent.Driver(drv))
-		client = ent.NewClient(opts...)
+		dbDialect = dialect.MySQL
 	default:
-		var err error
-
-		client, err = ent.Open(
-			cfg.Dialect,
-			cfg.DSN,
-			opts...,
-		)
-		if err != nil {
-			panic(err)
-		}
+		panic(fmt.Errorf("invalid dialect: %s", cfg.Dialect))
 	}
+	drv := entsql.OpenDB(dbDialect, sqlDB)
+	opts = append(opts, ent.Driver(drv))
+	client := ent.NewClient(opts...)
 
-	err := client.Schema.Create(
+	err = client.Schema.Create(
 		context.Background(),
 		migrate.WithGlobalUniqueID(false),
 		migrate.WithForeignKeys(false),
@@ -67,6 +67,5 @@ func NewEntClient(cfg Config) *ent.Client {
 	if err != nil {
 		panic(err)
 	}
-
 	return client
 }

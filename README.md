@@ -1,4 +1,8 @@
-# AxonHub - 统一 AI 网关系统 | Unified AI Gateway
+<div align="center">
+
+# AxonHub - Unified AI Gateway System
+
+</div>
 
 <div align="center">
 
@@ -9,100 +13,158 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
 
-[English](#english) | [中文](#中文)
+[English](README.md) | [中文](README.zh-CN.md)
 
 </div>
 
 ---
 
-## 📖 项目介绍 | Project Introduction
+## 📖 Project Introduction
 
-### 统一 AI 网关
+### Unified AI Gateway
 
-AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, AI SDK 兼容 API 层，通过转换器管道架构将请求转换到各种 AI 提供商。系统具备完整的追踪（Trace）能力，帮助企业更好地管理和监控 AI 服务使用情况。并且具备完善的测试覆盖，保障系统的稳定性和可靠性。
+AxonHub is a modern AI gateway system that provides a unified OpenAI, Anthropic, and AI SDK compatible API layer, transforming requests to various AI providers through a transformer pipeline architecture. The system features comprehensive tracing capabilities, helping enterprises better manage and monitor AI service usage. It also includes comprehensive test coverage to ensure system stability and reliability.
 
-### 解决的核心问题
+### Core Problems Solved
 
-| 问题 Problem | AxonHub 解决方案 Solution |
+| Problem | AxonHub Solution |
 |-------------|-------------------------|
-| **供应商锁定** Vendor Lock-in | 🔄 统一 API 接口，随时切换提供商 |
-| **可扩展性** Extensibility | 灵活的 transformer 架构，支持多种转换器 |
-| **服务中断** Service Outages | ⚡ 自动故障转移，多渠道冗余 |
-| **成本控制** Cost Control | 💰 智能路由，成本优化策略 |
-| **权限管理** Permission Management | 📊 完善的用户权限管理 |
-| **开发复杂性** Development Complexity | 🛠️ 单一 SDK，统一接口标准 |
+| **Vendor Lock-in** | 🔄 Unified API interface, switch providers anytime |
+| **Extensibility** | Flexible transformer architecture, supports multiple transformers |
+| **Service Outages** | ⚡ Automatic failover, multi-channel redundancy |
+| **Cost Control** | 💰 Intelligent routing, cost optimization strategies |
+| **Permission Management** | 📊 Comprehensive user permission management |
+| **Development Complexity** | 🛠️ Single SDK, unified interface standard |
 
 ---
 
-## 📚 文档 | Documentation
+## 📚 Documentation
 
 ### DeepWiki
-详细的技术文档、API 参考、架构设计等内容，可以访问 [AxonHub DeepWiki](http://deepwiki.com/looplj/axonhub)。
+For detailed technical documentation, API references, architecture design, and more, please visit [AxonHub DeepWiki](http://deepwiki.com/looplj/axonhub).
 
 ---
 
-## ⭐ 核心特性 | Core Features
+## ⭐ Core Features
 
-### 🌐 多提供商 AI 网关 | Multi-Provider AI Gateway
+### 📸 Screenshots
 
-| 特性 Feature | 技术实现 Implementation | 企业价值 Business Value |
+Here are some screenshots of AxonHub in action:
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="screenshots/axonhub-dashboard.png">
+        <img src="screenshots/axonhub-dashboard.png" alt="System Dashboard" width="250"/>
+      </a>
+      <br/>
+      System Dashboard
+    </td>
+    <td align="center">
+      <a href="screenshots/axonhub-channels.png">
+        <img src="screenshots/axonhub-channels.png" alt="Channel Management" width="250"/>
+      </a>
+      <br/>
+      Channel Management
+    </td>
+    <td align="center">
+      <a href="screenshots/axonhub-users.png">
+        <img src="screenshots/axonhub-users.png" alt="User Management" width="250"/>
+      </a>
+      <br/>
+      User Management
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="screenshots/axonhub-requests.png">
+        <img src="screenshots/axonhub-requests.png" alt="Request Monitoring" width="250"/>
+      </a>
+      <br/>
+      Request Monitoring
+    </td>
+    <td align="center">
+      <a href="screenshots/axonhub-ussge-logs.png">
+        <img src="screenshots/axonhub-ussge-logs.png" alt="Usage Logs" width="250"/>
+      </a>
+      <br/>
+      Usage Logs
+    </td>
+    <td align="center">
+      <a href="screenshots/axonhub-system.png">
+        <img src="screenshots/axonhub-system.png" alt="System Dashboard" width="250"/>
+      </a>
+      <br/>
+      System Setting
+    </td>
+  </tr>
+</table>
+
+---
+
+### 🌐 Multi-Provider AI Gateway
+
+| Feature | Technical Implementation | Business Value |
 |-------------|----------------------|---------------------|
-| **统一 API 接口** | OpenAI 兼容标准，零学习成本 | 避免供应商锁定，降低迁移风险 |
-| **智能路由** | 双向转换器架构，毫秒级切换 | 99.9% 可用性保证，业务连续性 |
-| **自动故障转移** | 多渠道级重试 + 负载均衡 | 服务中断时间 < 100ms |
-| **流式处理** | 原生 SSE 支持，实时响应 | 用户体验提升 60% |
+| **Unified API Interface** | OpenAI compatible standard, zero learning curve | Avoid vendor lock-in, reduce migration risk |
+| **Intelligent Routing** | Bidirectional transformer architecture, millisecond-level switching | 99.9% availability guarantee, business continuity |
+| **Automatic Failover** | Multi-channel retry + load balancing | Service interruption time < 100ms |
+| **Stream Processing** | Native SSE support, real-time response | 60% user experience improvement |
 
-### 🔧 接口格式支持 | API Format Support
+### 🔧 API Format Support
 
-| 格式 Format | 状态 Status | 兼容性 Compatibility | 备注 Notes |
+| Format | Status | Compatibility | Notes |
 |-------------|------------|---------------------|----------|
-| **OpenAI API** | ✅ Done | 完全兼容 | Chat/Completions API |
-| **Anthropic API** | ✅ Done | 完全支持 | Claude Messages API |
-| **AI SDK** | ⚠️ Partial | 部分支持 | Vercel AI SDK 格式 |
-| **更多格式** | 🔄 Ongoing | 持续增加 | 新的 API 格式支持 |
+| **OpenAI API** | ✅ Done | Fully compatible | Chat/Completions API |
+| **Anthropic API** | ✅ Done | Fully supported | Claude Messages API |
+| **AI SDK** | ⚠️ Partial | Partially supported | Vercel AI SDK format |
+| **More Formats** | 🔄 Ongoing | Continuously added | New API format support |
 
-### 🤖 支持的供应商 | Supported Providers
+### 🤖 Supported Providers
 
-| 提供商 Provider | 状态 Status | 支持的模型 Supported Models | 备注 Notes |
+| Provider | Status | Supported Models | Notes |
 |---------------|------------|---------------------------|----------|
-| **OpenAI** | ✅ Done | GPT-4, GPT-4o, GPT-5, etc. | 完全支持，包括流式响应 |
-| **Anthropic** | ✅ Done | Claude 4.0, Claude 4.1, etc. | 完全支持，包括思维链 |
-| **智谱 AI (Zhipu)** | ✅ Done | GLM-4.5, GLM-4.5-air, etc. | 完全支持 |
-| **月之暗面 (Kimi)** | ✅ Done | kimi-k2, etc. | 完全支持 |
-| **深度求索 (DeepSeek)** | ✅ Done | DeepSeek-V3.1, etc. | 完全支持 |
-| **字节豆包 (Doubao)** | ✅ Done | doubao-1.6, etc. | 完全支持 |
-| **AWS Bedrock** | 🔄 Testing | Claude on AWS | 通过 Bedrock 接入 |
-| **Google Cloud** | 🔄 Testing| Claude on GCP | 通过 Vertex AI 接入 |
-| **Gemini** | 📝 Todo | Gemini 2.5, etc. | 未实现 |
+| **OpenAI** | ✅ Done | GPT-4, GPT-4o, GPT-5, etc. | Fully supported, including streaming responses |
+| **Anthropic** | ✅ Done | Claude 4.0, Claude 4.1, etc. | Fully supported, including chain of thought |
+| **Zhipu AI** | ✅ Done | GLM-4.5, GLM-4.5-air, etc. | Fully supported |
+| **Moonshot AI (Kimi)** | ✅ Done | kimi-k2, etc. | Fully supported |
+| **DeepSeek** | ✅ Done | DeepSeek-V3.1, etc. | Fully supported |
+| **ByteDance Doubao** | ✅ Done | doubao-1.6, etc. | Fully supported |
+| **AWS Bedrock** | 🔄 Testing | Claude on AWS | Access via Bedrock |
+| **Google Cloud** | 🔄 Testing| Claude on GCP | Access via Vertex AI |
+| **Gemini** | 📝 Todo | Gemini 2.5, etc. | Not implemented |
 
-### 🏢 权限控制 | Permission Control
+### 🏢 Permission Control
 
-| 安全特性 Security | 实现方式 Implementation | 合规标准 Compliance |
-|-----------------|----------------------|-------------------|
-| **细粒度权限控制** | 基于角色的访问控制 (RBAC) | SOC2 Type II 就绪 |
-| **数据本地化** | 可配置数据存储策略 | 满足数据主权要求 |
-| **API 密钥管理** | JWT + 作用域控制 | 企业级安全标准 |
+| Security Feature | Implementation |   
+|-----------------|----------------------|
+| **Fine-grained Permission Control** | Role-based access control (RBAC) |
+| **Data Localization** | Configurable data storage policies |
+| **API Key Management** | JWT + scope control |
 
 ---
 
-## 🚀 部署指南 | Deployment Guide
-
-### 数据库支持 | Database Support
-
-AxonHub 支持多种数据库，满足不同规模的部署需求：
-
-| 数据库 | 支持版本 | 推荐场景 | 自动迁移 |
-|--------|----------|----------|----------|
-| **SQLite** | 3.0+ | 开发环境、小型部署 | ✅ 支持 |
-| **TiDB** | 6.0+ | 分布式部署、大规模 | ✅ 支持 |
-| **Neon DB** | - | 云原生部署 | ✅ 支持 |
-| **PostgreSQL** | 12+ | 生产环境、中大型部署 | ✅ 支持 |
-| **MySQL** | 8.0+ | 生产环境、传统企业 | ✅ 支持 |
 
 
-### 配置文件 | Configuration
+## 🚀 Deployment Guide
 
-AxonHub 使用 YAML 配置文件，支持环境变量覆盖：
+### Database Support
+
+AxonHub supports multiple databases to meet different scale deployment needs:
+
+| Database | Supported Versions | Recommended Scenario | Auto Migration | Links |
+|--------|----------|----------|----------|------|
+| **TiDB Cloud** | Starter | Serverless, Free tier, Auto Scale | ✅ Supported | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-starter/) |
+| **TiDB Cloud** | Dedicated | Distributed deployment, large scale | ✅ Supported | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-dedicated/) |
+| **TiDB** | V8.0+ | Distributed deployment, large scale | ✅ Supported | [TiDB](https://tidb.io/) |
+| **SQLite** | 3.0+ | Development environment, small deployments | ✅ Supported | [SQLite](https://www.sqlite.org/index.html) |
+| **Neon DB** | - | Serverless, Free tier, Auto Scale | ✅ Supported | [Neon DB](https://neon.com/) |
+| **PostgreSQL** | 15+ | Production environment, medium-large deployments | ✅ Supported | [PostgreSQL](https://www.postgresql.org/) |
+| **MySQL** | 8.0+ | Production environment, medium-large deployments | ✅ Supported | [MySQL](https://www.mysql.com/) |
+
+### Configuration
+
+AxonHub uses YAML configuration files with environment variable override support:
 
 ```yaml
 # config.yml
@@ -112,63 +174,72 @@ server:
   debug: false
 
 db:
-  dialect: "postgres"
-  dsn: "postgres://axonhub:password@localhost:5432/axonhub?sslmode=require"
+  dialect: "tidb"
+  dsn: "<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true"
 
 log:
   level: "info"
   encoding: "json"
 ```
 
-详细配置说明请参考 [配置文档](config.example.yml)。
+Environment variables:
+```bash
+AXONHUB_SERVER_PORT=8090
+AXONHUB_DB_DIALECT="tidb"
+AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true"
+AXONHUB_LOG_LEVEL=info
+```
 
-### Docker Compose 部署
+For detailed configuration instructions, please refer to [configuration documentation](config.example.yml).
+
+### Docker Compose Deployment
 
 ```bash
-# 克隆项目
+# Clone project
 git clone https://github.com/looplj/axonhub.git
 cd axonhub
 
-# 复制配置文件
-cp config.example.yml config.yml
+# Set environment variables
+export AXONHUB_DB_DIALECT="tidb"
+export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true"
 
-# 启动服务
+# Start services
 docker-compose up -d
 
-# 查看状态
+# Check status
 docker-compose ps
 ```
 
-### VM 部署 | Virtual Machine Deployment
+### Virtual Machine Deployment
 
-#### 
 ```bash
-# 克隆项目
+# Clone project
 git clone https://github.com/looplj/axonhub.git
 cd axonhub
 
-# 复制配置文件
-cp config.example.yml config.yml
+# Set environment variables
+export AXONHUB_DB_DIALECT="tidb"
+export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true"
 
-# 构建
+# Build
 make build
 
-# 配置文件检查
+# Configuration file check
 ./axonhub config check
 
-# 启动服务
+# Start service
 ./axonhub 
 ```
 
-#### Systemd 服务配置
+#### Systemd Service Configuration
 
-复制 `deploy/axonhub.service` 到 `/etc/systemd/system/axonhub.service`：
+Copy `deploy/axonhub.service` to `/etc/systemd/system/axonhub.service`:
 
 ```bash
 sudo cp deploy/axonhub.service /etc/systemd/system/axonhub.service
 ```
 
-启动服务：
+Start service:
 
 ```bash
 sudo systemctl daemon-reload
@@ -178,29 +249,29 @@ sudo systemctl enable axonhub
 
 ---
 
-## 📖 使用指南 | Usage Guide
+## 📖 Usage Guide
 
-### 1. 初始化设置 | Initial Setup
+### 1. Initial Setup
 
-1. **访问管理界面**
+1. **Access Management Interface**
    ```
    http://localhost:8090
    ```
 
-2. **配置 AI 提供商**
-   - 在管理界面中添加 API 密钥
-   - 测试连接确保配置正确
+2. **Configure AI Providers**
+   - Add API keys in the management interface
+   - Test connections to ensure correct configuration
 
-3. **创建用户和角色**
-   - 设置权限管理
-   - 分配适当的访问权限
+3. **Create Users and Roles**
+   - Set up permission management
+   - Assign appropriate access permissions
 
-### 2. Channel 配置 | Channel Configuration
+### 2. Channel Configuration
 
-在管理界面中配置 AI 提供商渠道：
+Configure AI provider channels in the management interface:
 
 ```yaml
-# OpenAI 渠道示例
+# OpenAI channel example
 name: "openai"
 type: "openai"
 base_url: "https://api.openai.com/v1"
@@ -209,29 +280,28 @@ credentials:
 supported_models: ["gpt-5", "gpt-4o"]
 ```
 
-#### 2.1 测试连接
+#### 2.1 Test Connection
 
-点击测试按钮，如果测试成功，说明配置正确。
+Click the test button. If the test is successful, the configuration is correct.
 
-#### 2.2 启用渠道
+#### 2.2 Enable Channel
 
-测试成功后，点击启用按钮，启用该渠道。
+After successful testing, click the enable button to activate the channel.
 
+### 3. Add Users
 
-### 3. 添加用户 | Add Users
+1. Create user accounts
+2. Assign roles and permissions
+3. Generate API keys
 
-1. 创建用户账户
-2. 分配角色和权限
-3. 生成 API 密钥
-
-### 4. API Key 使用 | API Key Usage
+### 4. API Key Usage
 
 ```bash
-# 设置环境变量
+# Set environment variables
 export OPENAI_API_KEY="your-axonhub-api-key"
 export OPENAI_BASE_URL="http://localhost:8090/v1"
 
-# 使用 curl 测试
+# Test with curl
 curl -X POST http://localhost:8090/v1/chat/completions \
   -H "Authorization: Bearer your-axonhub-api-key" \
   -H "Content-Type: application/json" \
@@ -241,7 +311,7 @@ curl -X POST http://localhost:8090/v1/chat/completions \
   }'
 ```
 
-### 5. 使用 SDK | SDK Usage
+### 5. SDK Usage
 
 #### Python SDK
 ```python
@@ -274,23 +344,24 @@ const completion = await openai.chat.completions.create({
 });
 ```
 
-### 6. Claude Code 使用 | Claude Code Integration
+### 6. Claude Code Integration
 
-在 Claude Code 中使用 AxonHub：
+Using AxonHub in Claude Code:
 
 ```bash
-# 设置 Claude Code 使用 AxonHub
+# Set Claude Code to use AxonHub
 export ANTHROPIC_API_KEY="your-axonhub-api-key"
 export ANTHROPIC_BASE_URL="http://localhost:8090"
 ```
 
 ---
 
-## 🛠️ 开发指南 | Development Guide
 
-### 架构设计 | Architecture Design
+## 🛠️ Development Guide
 
-AxonHub 采用高可扩展架构，支持多 AI 提供商和多模型切换：
+### Architecture Design
+
+AxonHub adopts a highly scalable architecture supporting multiple AI providers and model switching:
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -317,45 +388,44 @@ AxonHub 采用高可扩展架构，支持多 AI 提供商和多模型切换：
     └───────────┘        └───────────┘        └───────────┘
 ```
 
-
 Transformation Flow:
 
   Client Request → Inbound Transformer → Unified Request → Pipeline → Outbound Transformer → HTTP Client → Provider
 
-### 技术框架 | Technology Stack
+### Technology Stack
 
-#### 后端技术栈
-- **Go 1.24+** - 高性能后端
-- **Gin** - HTTP 框架
-- **Ent ORM** - 类型安全的 ORM
-- **GraphQL** - 灵活的 API 查询
-- **JWT** - 身份认证
+#### Backend Technology Stack
+- **Go 1.24+** - High-performance backend
+- **Gin** - HTTP framework
+- **Ent ORM** - Type-safe ORM
+- **GraphQL** - Flexible API queries
+- **JWT** - Authentication
 
-#### 前端技术栈
-- **React 19** - 现代 UI 框架
-- **TypeScript** - 类型安全
-- **Tailwind CSS** - 样式框架
-- **TanStack Router** - 文件路由
-- **Zustand** - 状态管理
+#### Frontend Technology Stack
+- **React 19** - Modern UI framework
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling framework
+- **TanStack Router** - File-based routing
+- **Zustand** - State management
 
-### 启动开发环境 | Development Setup
+### Development Environment Setup
 
 ```bash
-# 克隆项目
+# Clone project
 git clone https://github.com/looplj/axonhub.git
 cd axonhub
 
-# 启动后端
+# Start backend
 make build backend
 ./axonhub
 
-# 启动前端（新终端）
+# Start frontend (new terminal)
 cd frontend
 pnpm install
 pnpm dev
 ```
 
-### 构建项目 | Build Project
+### Build Project
 
 ```bash
 make build
@@ -363,27 +433,27 @@ make build
 
 ---
 
-## 🤝 致谢 | Acknowledgments
+## 🤝 Acknowledgments
 
-- 🙏 [musistudio/llms](https://github.com/musistudio/llms) - LLM 转换框架，灵感来源
-- 🎨 [satnaing/shadcn-admin](https://github.com/satnaing/shadcn-admin) - 管理界面模板
-- 🔧 [99designs/gqlgen](https://github.com/99designs/gqlgen) - GraphQL 代码生成
-- 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTP 框架
-- 🗄️ [ent/ent](https://github.com/ent/ent) - ORM 框架
+- 🙏 [musistudio/llms](https://github.com/musistudio/llms) - LLM transformation framework, source of inspiration
+- 🎨 [satnaing/shadcn-admin](https://github.com/satnaing/shadcn-admin) - Admin interface template
+- 🔧 [99designs/gqlgen](https://github.com/99designs/gqlgen) - GraphQL code generation
+- 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTP framework
+- 🗄️ [ent/ent](https://github.com/ent/ent) - ORM framework
 
 ---
 
-## 📄 许可证 | License
+## 📄 License
 
-本项目采用 MIT 许可证开源。详见 [LICENSE](LICENSE) 文件。
+This project is open source under the MIT License. See [LICENSE](LICENSE) file for details.
 
 ---
 
 <div align="center">
 
-**AxonHub** - 统一 AI 网关，让 AI 服务接入更简单
+**AxonHub** - Unified AI Gateway, making AI service integration simpler
 
-[🏠 官网](https://github.com/looplj/axonhub) • [📚 文档](https://deepwiki.com/looplj/axonhub) • [🐛 问题反馈](https://github.com/looplj/axonhub/issues)
+[🏠 Homepage](https://github.com/looplj/axonhub) • [📚 Documentation](https://deepwiki.com/looplj/axonhub) • [🐛 Issue Feedback](https://github.com/looplj/axonhub/issues)
 
 Built with ❤️ by the AxonHub team
 
