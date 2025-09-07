@@ -5,20 +5,18 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useMe } from '@/features/auth/data/auth'
-import { useUsers } from '@/features/users/data/users'
-import { useChannels } from '@/features/channels/data/channels'
-import { RequestStatus } from '../data/schema'
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
+import { useMe } from '@/features/auth/data/auth'
+import { useChannels } from '@/features/channels/data/channels'
+import { useUsers } from '@/features/users/data/users'
+import { RequestStatus } from '../data/schema'
 import { DataTableViewOptions } from './data-table-view-options'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
 }
 
-export function DataTableToolbar<TData>({
-  table,
-}: DataTableToolbarProps<TData>) {
+export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const isFiltered = table.getState().columnFilters.length > 0
 
@@ -31,15 +29,10 @@ export function DataTableToolbar<TData>({
 
   // Check if user has permission to view users and requests
   const canViewUsers =
-    isOwner ||
-    userScopes.includes('*') ||
-    (userScopes.includes('read_users') && userScopes.includes('read_requests'))
-    
+    isOwner || userScopes.includes('*') || (userScopes.includes('read_users') && userScopes.includes('read_requests'))
+
   // Check if user has permission to view channels
-  const canViewChannels =
-    isOwner ||
-    userScopes.includes('*') ||
-    userScopes.includes('read_channels')
+  const canViewChannels = isOwner || userScopes.includes('*') || userScopes.includes('read_channels')
 
   // Fetch users data if user has permission
   const { data: usersData } = useUsers(
@@ -108,7 +101,7 @@ export function DataTableToolbar<TData>({
       label: t('requests.source.api'),
     },
     {
-      value: 'playground', 
+      value: 'playground',
       label: t('requests.source.playground'),
     },
     {
@@ -123,9 +116,7 @@ export function DataTableToolbar<TData>({
         <Input
           placeholder={t('requests.filters.filterId')}
           value={(table.getColumn('id')?.getFilterValue() as string) ?? ''}
-          onChange={(event) =>
-            table.getColumn('id')?.setFilterValue(event.target.value)
-          }
+          onChange={(event) => table.getColumn('id')?.setFilterValue(event.target.value)}
           className='h-8 w-[150px] lg:w-[250px]'
         />
         {table.getColumn('status') && (
@@ -142,30 +133,22 @@ export function DataTableToolbar<TData>({
             options={requestSources}
           />
         )}
-        {canViewChannels &&
-          table.getColumn('channel') &&
-          channelOptions.length > 0 && (
-            <DataTableFacetedFilter
-              column={table.getColumn('channel')}
-              title={t('requests.filters.channel')}
-              options={channelOptions}
-            />
-          )}
-        {canViewUsers &&
-          table.getColumn('user') &&
-          userOptions.length > 0 && (
-            <DataTableFacetedFilter
-              column={table.getColumn('user')}
-              title={t('requests.filters.user')}
-              options={userOptions}
-            />
-          )}
+        {canViewChannels && table.getColumn('channel') && channelOptions.length > 0 && (
+          <DataTableFacetedFilter
+            column={table.getColumn('channel')}
+            title={t('requests.filters.channel')}
+            options={channelOptions}
+          />
+        )}
+        {canViewUsers && table.getColumn('user') && userOptions.length > 0 && (
+          <DataTableFacetedFilter
+            column={table.getColumn('user')}
+            title={t('requests.filters.user')}
+            options={userOptions}
+          />
+        )}
         {isFiltered && (
-          <Button
-            variant='ghost'
-            onClick={() => table.resetColumnFilters()}
-            className='h-8 px-2 lg:px-3'
-          >
+          <Button variant='ghost' onClick={() => table.resetColumnFilters()} className='h-8 px-2 lg:px-3'>
             {t('requests.filters.reset')}
             <Cross2Icon className='ml-2 h-4 w-4' />
           </Button>

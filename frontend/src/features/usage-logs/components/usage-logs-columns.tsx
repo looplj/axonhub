@@ -38,7 +38,8 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
   const locale = i18n.language === 'zh' ? zhCN : enUS
   const permissions = useUsageLogPermissions()
 
-  return [
+  // Define all columns
+  const columns: ColumnDef<UsageLog>[] = [
     {
       accessorKey: 'id',
       header: ({ column }) => (
@@ -52,7 +53,8 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
       enableSorting: true,
       enableHiding: false,
     },
-    {
+    // User column - only show if user has permission to view users
+    ...(permissions.canViewUsers ? [{
       id: 'user',
       accessorKey: 'user',
       header: ({ column }) => (
@@ -63,9 +65,6 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
       ),
       cell: ({ row }) => {
         const user = row.original.user
-        if (!permissions.canViewUsers || !user) {
-          return <span className='text-muted-foreground'>{t('usageLogs.columns.unknown')}</span>
-        }
         return (
           <div className='text-sm'>
             {user.firstName && user.lastName 
@@ -85,7 +84,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
         
         return value.includes(user.id)
       },
-    },
+    }] as ColumnDef<UsageLog>[] : []),
     {
       id: 'requestId',
       header: ({ column }) => (
@@ -101,7 +100,8 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
       ),
       enableSorting: false,
     },
-    {
+    // Channel column - only show if user has permission to view channels
+    ...(permissions.canViewChannels ? [{
       id: 'channel',
       accessorKey: 'channel',
       header: ({ column }) => (
@@ -112,9 +112,6 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
       ),
       cell: ({ row }) => {
         const channel = row.original.channel
-        if (!permissions.canViewChannels || !channel) {
-          return <span className='text-muted-foreground'>{t('usageLogs.columns.unknown')}</span>
-        }
         return (
           <div className='text-sm'>
             {channel.name || t('usageLogs.columns.unknown')}
@@ -131,7 +128,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
         
         return value.includes(channel.id)
       },
-    },
+    }] as ColumnDef<UsageLog>[] : []),
     {
       id: 'modelId',
       header: ({ column }) => (
@@ -292,4 +289,6 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
       },
     },
   ]
+
+  return columns
 }
