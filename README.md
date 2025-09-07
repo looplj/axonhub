@@ -9,7 +9,6 @@
 [![Test Status](https://github.com/looplj/axonhub/actions/workflows/test.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/test.yml)
 [![Lint Status](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
-[![Frontend Version](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
 
@@ -41,7 +40,7 @@ AxonHub is a modern AI gateway system that provides a unified OpenAI, Anthropic,
 ## 📚 Documentation
 
 ### DeepWiki
-For detailed technical documentation, API references, architecture design, and more, please visit [AxonHub DeepWiki](http://deepwiki.com/looplj/axonhub).
+For detailed technical documentation, API references, architecture design, and more, please visit [AxonHub DeepWiki](https://deepwiki.com/looplj/axonhub).
 
 ---
 
@@ -102,6 +101,18 @@ Here are some screenshots of AxonHub in action:
 
 ---
 
+### 🚀 Supported Features
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Chat Completion** | ✅ Done | Conversational interface |
+| **Planning** | 📝 Todo | Feature planning and design |
+| **Rerank** | 📝 Todo | Results ranking |
+| **Embedding** | 📝 Todo | Vector embedding generation |
+| **Realtime** | 📝 Todo | Live conversation capabilities |
+
+---
+
 ### 🌐 Multi-Provider AI Gateway
 
 | Feature | Technical Implementation | Business Value |
@@ -111,6 +122,8 @@ Here are some screenshots of AxonHub in action:
 | **Automatic Failover** | Multi-channel retry + load balancing | Service interruption time < 100ms |
 | **Stream Processing** | Native SSE support, real-time response | 60% user experience improvement |
 
+---
+
 ### 🔧 API Format Support
 
 | Format | Status | Compatibility | Notes |
@@ -119,6 +132,8 @@ Here are some screenshots of AxonHub in action:
 | **Anthropic API** | ✅ Done | Fully supported | Claude Messages API |
 | **AI SDK** | ⚠️ Partial | Partially supported | Vercel AI SDK format |
 | **More Formats** | 🔄 Ongoing | Continuously added | New API format support |
+
+---
 
 ### 🤖 Supported Providers
 
@@ -133,6 +148,8 @@ Here are some screenshots of AxonHub in action:
 | **AWS Bedrock** | 🔄 Testing | Claude on AWS | Access via Bedrock |
 | **Google Cloud** | 🔄 Testing| Claude on GCP | Access via Vertex AI |
 | **Gemini** | 📝 Todo | Gemini 2.5, etc. | Not implemented |
+
+---
 
 ### 🏢 Permission Control
 
@@ -157,10 +174,11 @@ AxonHub supports multiple databases to meet different scale deployment needs:
 | **TiDB Cloud** | Starter | Serverless, Free tier, Auto Scale | ✅ Supported | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-starter/) |
 | **TiDB Cloud** | Dedicated | Distributed deployment, large scale | ✅ Supported | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-dedicated/) |
 | **TiDB** | V8.0+ | Distributed deployment, large scale | ✅ Supported | [TiDB](https://tidb.io/) |
-| **SQLite** | 3.0+ | Development environment, small deployments | ✅ Supported | [SQLite](https://www.sqlite.org/index.html) |
 | **Neon DB** | - | Serverless, Free tier, Auto Scale | ✅ Supported | [Neon DB](https://neon.com/) |
 | **PostgreSQL** | 15+ | Production environment, medium-large deployments | ✅ Supported | [PostgreSQL](https://www.postgresql.org/) |
 | **MySQL** | 8.0+ | Production environment, medium-large deployments | ✅ Supported | [MySQL](https://www.mysql.com/) |
+| **SQLite** | 3.0+ | Development environment, small deployments | ✅ Supported | [SQLite](https://www.sqlite.org/index.html) |
+
 
 ### Configuration
 
@@ -311,7 +329,20 @@ curl -X POST http://localhost:8090/v1/chat/completions \
   }'
 ```
 
-### 5. SDK Usage
+
+### 5. Claude Code Integration
+
+Using AxonHub in Claude Code:
+
+```bash
+# Set Claude Code to use AxonHub
+export ANTHROPIC_API_KEY="your-axonhub-api-key"
+export ANTHROPIC_BASE_URL="http://localhost:8090"
+```
+
+---
+
+### 6. SDK Usage
 
 #### Python SDK
 ```python
@@ -344,17 +375,6 @@ const completion = await openai.chat.completions.create({
 });
 ```
 
-### 6. Claude Code Integration
-
-Using AxonHub in Claude Code:
-
-```bash
-# Set Claude Code to use AxonHub
-export ANTHROPIC_API_KEY="your-axonhub-api-key"
-export ANTHROPIC_BASE_URL="http://localhost:8090"
-```
-
----
 
 
 ## 🛠️ Development Guide
@@ -416,7 +436,7 @@ git clone https://github.com/looplj/axonhub.git
 cd axonhub
 
 # Start backend
-make build backend
+make build-backend
 ./axonhub
 
 # Start frontend (new terminal)

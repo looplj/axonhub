@@ -9,7 +9,6 @@
 [![Test Status](https://github.com/looplj/axonhub/actions/workflows/test.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/test.yml)
 [![Lint Status](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
-[![Frontend Version](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
 
@@ -41,7 +40,7 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 ## 📚 文档 | Documentation
 
 ### DeepWiki
-详细的技术文档、API 参考、架构设计等内容，可以访问 [AxonHub DeepWiki](http://deepwiki.com/looplj/axonhub)。
+详细的技术文档、API 参考、架构设计等内容，可以访问 [AxonHub DeepWiki](https://deepwiki.com/looplj/axonhub)。
 
 ---
 
@@ -102,6 +101,18 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 
 ---
 
+### 🚀 支持的功能 | Supported Features
+
+| 功能 | 状态 | 描述 |
+|---------|--------|-------------|
+| **文本生成（Chat Completion）** | ✅ Done | 对话交互接口 |
+| **规划（Planning）** | 📝 Todo | 功能规划与设计 |
+| **重排序（Rerank）** | 📝 Todo | 结果排序 |
+| **实时对话（Realtime）** | 📝 Todo | 实时对话功能 |
+| **嵌入（Embedding）** | 📝 Todo | 向量嵌入生成 |
+
+---
+
 ### 🌐 多提供商 AI 网关 | Multi-Provider AI Gateway
 
 | 特性 Feature | 技术实现 Implementation | 企业价值 Business Value |
@@ -111,6 +122,8 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 | **自动故障转移** | 多渠道级重试 + 负载均衡 | 服务中断时间 < 100ms |
 | **流式处理** | 原生 SSE 支持，实时响应 | 用户体验提升 60% |
 
+---
+
 ### 🔧 接口格式支持 | API Format Support
 
 | 格式 Format | 状态 Status | 兼容性 Compatibility | 备注 Notes |
@@ -119,6 +132,8 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 | **Anthropic API** | ✅ Done | 完全支持 | Claude Messages API |
 | **AI SDK** | ⚠️ Partial | 部分支持 | Vercel AI SDK 格式 |
 | **更多格式** | 🔄 Ongoing | 持续增加 | 新的 API 格式支持 |
+
+---
 
 ### 🤖 支持的供应商 | Supported Providers
 
@@ -133,6 +148,8 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 | **AWS Bedrock** | 🔄 Testing | Claude on AWS | 通过 Bedrock 接入 |
 | **Google Cloud** | 🔄 Testing| Claude on GCP | 通过 Vertex AI 接入 |
 | **Gemini** | 📝 Todo | Gemini 2.5, etc. | 未实现 |
+
+---
 
 ### 🏢 权限控制 | Permission Control
 
@@ -153,13 +170,13 @@ AxonHub 支持多种数据库，满足不同规模的部署需求：
 
 | 数据库 | 支持版本 | 推荐场景 | 自动迁移 | 链接 |
 |--------|----------|----------|----------|------|
-| **SQLite** | 3.0+ | 开发环境、小型部署 | ✅ 支持 | [SQLite](https://www.sqlite.org/index.html) |
 | **TiDB Cloud** | Starter | Serverless, Free tier, Auto Scale | ✅ 支持 | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-starter/) |
 | **TiDB Cloud** | Dedicated | 分布式部署、大规模 | ✅ 支持 | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-dedicated/) |
 | **TiDB** | V8.0+ | 分布式部署、大规模 | ✅ 支持 | [TiDB](https://tidb.io/) |
 | **Neon DB** | - | Serverless, Free tier, Auto Scale | ✅ 支持 | [Neon DB](https://neon.com/) |
 | **PostgreSQL** | 15+ | 生产环境、中大型部署 | ✅ 支持 | [PostgreSQL](https://www.postgresql.org/) |
 | **MySQL** | 8.0+ | 生产环境、中大型部署 | ✅ 支持 | [MySQL](https://www.mysql.com/) |
+| **SQLite** | 3.0+ | 开发环境、小型部署 | ✅ 支持 | [SQLite](https://www.sqlite.org/index.html) |
 
 
 ### 配置文件 | Configuration
@@ -312,7 +329,20 @@ curl -X POST http://localhost:8090/v1/chat/completions \
   }'
 ```
 
-### 5. 使用 SDK | SDK Usage
+
+### 5. Claude Code 使用 | Claude Code Integration
+
+在 Claude Code 中使用 AxonHub：
+
+```bash
+# 设置 Claude Code 使用 AxonHub
+export ANTHROPIC_API_KEY="your-axonhub-api-key"
+export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
+```
+
+---
+
+### 6. 使用 SDK | SDK Usage
 
 #### Python SDK
 ```python
@@ -345,17 +375,6 @@ const completion = await openai.chat.completions.create({
 });
 ```
 
-### 6. Claude Code 使用 | Claude Code Integration
-
-在 Claude Code 中使用 AxonHub：
-
-```bash
-# 设置 Claude Code 使用 AxonHub
-export ANTHROPIC_API_KEY="your-axonhub-api-key"
-export ANTHROPIC_BASE_URL="http://localhost:8090"
-```
-
----
 
 ## 🛠️ 开发指南 | Development Guide
 
@@ -417,7 +436,7 @@ git clone https://github.com/looplj/axonhub.git
 cd axonhub
 
 # 启动后端
-make build backend
+make build-backend
 ./axonhub
 
 # 启动前端（新终端）
