@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-//go:embed dist/*
+//go:embed all:dist/*
 var dist embed.FS
 
 var staticFS static.ServeFileSystem
