@@ -568,7 +568,8 @@
         "supportedModels": {
           "label": "Supported Models",
           "description": "List of models supported by this channel",
-          "required": "Please add at least one supported model"
+          "required": "Please add at least one supported model",
+          "defaultModelsLabel": "Quick Add Models"
         },
         "defaultTestModel": {
           "label": "Default Test Model",
@@ -625,7 +626,8 @@
         "testing": "Testing...",
         "save": "Save",
         "saving": "Saving...",
-        "add": "Add"
+        "add": "Add",
+        "addSelected": "Add Selected"
       },
 
       "status": {

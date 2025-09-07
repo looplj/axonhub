@@ -1,9 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -13,23 +16,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { SelectDropdown } from '@/components/select-dropdown'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import { X } from 'lucide-react'
-import { Channel, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
+import { SelectDropdown } from '@/components/select-dropdown'
 import { useCreateChannel, useUpdateChannel } from '../data/channels'
-import { useState } from 'react'
-
+import { Channel, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
 
 interface Props {
   currentRow?: Channel
@@ -37,8 +29,8 @@ interface Props {
   onOpenChange: (open: boolean) => void
 }
 
- // Default base URLs for different channel types
- const defaultBaseUrls: Record<string, string> = {
+// Default base URLs for different channel types
+const defaultBaseUrls: Record<string, string> = {
   openai: 'https://api.openai.com/v1',
   anthropic: 'https://api.anthropic.com/v1',
   anthropic_aws: 'https://bedrock-runtime.us-east-1.amazonaws.com',
@@ -58,17 +50,59 @@ interface Props {
   // openai_fake: 'https://api.openai.com/v1',
 }
 
+// Default models for different channel types
+const defaultModels: Record<string, string[]> = {
+  openai: ['gpt-3.5-turbo', `gpt-4.5`, 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
+  anthropic: [
+    'claude-opus-4-1',
+    'claude-opus-4-0',
+    'claude-sonnet-4-0',
+    'claude-3-7-sonnet-latest',
+    'claude-3-5-haiku-latest',
+  ],
+  anthropic_aws: [
+    'anthropic.claude-opus-4-1-20250805-v1:0',
+    'anthropic.claude-opus-4-20250514-v1:0',
+    'anthropic.claude-sonnet-4-20250514-v1:0',
+    'anthropic.claude-3-7-sonnet-20250219-v1:0',
+    'anthropic.claude-3-5-haiku-20241022-v1:0',
+  ],
+  anthropic_gcp: [
+    'claude-opus-4-1@20250805',
+    'claude-opus-4@20250514',
+    'claude-sonnet-4@20250514',
+    'claude-3-7-sonnet@20250219',
+    'claude-3-5-haiku@20241022',
+  ],
+  gemini: ['gemini-2.5-pro', 'gemini-2.5-flash'],
+  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+  doubao: ['doubao-seed-1.6', 'doubao-seed-1.6-flash'],
+  moonshot: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
+  zhipu: ['glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+  zai: ['glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+  deepseek_anthropic: ['deepseek-chat', 'deepseek-reasoner'],
+  moonshot_anthropic: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
+  zhipu_anthropic: ['glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+  zai_anthropic: ['glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+  anthropic_fake: [
+    'claude-opus-4-1',
+    'claude-opus-4-0',
+    'claude-sonnet-4-0',
+    'claude-3-7-sonnet-latest',
+    'claude-3-5-haiku-latest',
+  ],
+  openai_fake: ['gpt-3.5-turbo', `gpt-4.5`, 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
+}
+
 export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) {
   const { t } = useTranslation()
   const isEdit = !!currentRow
   const createChannel = useCreateChannel()
   const updateChannel = useUpdateChannel()
-  const [supportedModels, setSupportedModels] = useState<string[]>(
-    currentRow?.supportedModels || []
-  )
+  const [supportedModels, setSupportedModels] = useState<string[]>(currentRow?.supportedModels || [])
   const [newModel, setNewModel] = useState('')
+  const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([])
 
- 
   const channelTypes = [
     { value: 'openai', label: t('channels.types.openai') },
     { value: 'anthropic', label: t('channels.types.anthropic') },
@@ -89,55 +123,54 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
   ]
 
   // Filter out fake types for new channels, but keep them for editing existing channels
-  const availableChannelTypes = isEdit 
-    ? channelTypes 
-    : channelTypes.filter(type => !type.value.endsWith('_fake'))
+  const availableChannelTypes = isEdit ? channelTypes : channelTypes.filter((type) => !type.value.endsWith('_fake'))
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema
-  
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: isEdit && currentRow
-      ? {
-          type: currentRow.type,
-          baseURL: currentRow.baseURL,
-          name: currentRow.name,
-          supportedModels: currentRow.supportedModels,
-          defaultTestModel: currentRow.defaultTestModel,
-          credentials: { 
-            apiKey: '', // credentials字段是敏感字段，不从API返回
-            aws: {
-              accessKeyID: '',
-              secretAccessKey: '',
-              region: '',
+    defaultValues:
+      isEdit && currentRow
+        ? {
+            type: currentRow.type,
+            baseURL: currentRow.baseURL,
+            name: currentRow.name,
+            supportedModels: currentRow.supportedModels,
+            defaultTestModel: currentRow.defaultTestModel,
+            credentials: {
+              apiKey: '', // credentials字段是敏感字段，不从API返回
+              aws: {
+                accessKeyID: '',
+                secretAccessKey: '',
+                region: '',
+              },
+              gcp: {
+                region: '',
+                projectID: '',
+                jsonData: '',
+              },
             },
-            gcp: {
-              region: '',
-              projectID: '',
-              jsonData: '',
-            }
+          }
+        : {
+            type: 'openai',
+            baseURL: defaultBaseUrls.openai,
+            name: '',
+            credentials: {
+              apiKey: '',
+              aws: {
+                accessKeyID: '',
+                secretAccessKey: '',
+                region: '',
+              },
+              gcp: {
+                region: '',
+                projectID: '',
+                jsonData: '',
+              },
+            },
+            supportedModels: [],
+            defaultTestModel: '',
           },
-        }
-      : {
-          type: 'openai',
-          baseURL: defaultBaseUrls.openai,
-          name: '',
-          credentials: { 
-            apiKey: '',
-            aws: {
-              accessKeyID: '',
-              secretAccessKey: '',
-              region: '',
-            },
-            gcp: {
-              region: '',
-              projectID: '',
-              jsonData: '',
-            },
-          },
-          supportedModels: [],
-          defaultTestModel: '',
-        },
   })
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -150,16 +183,24 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
       if (isEdit && currentRow) {
         // For edit mode, only include credentials if user actually entered new values
         const updateInput = { ...dataWithModels }
-        
+
         // Check if any credential fields have actual values
         const hasApiKey = values.credentials?.apiKey && values.credentials.apiKey.trim() !== ''
-        const hasAwsCredentials = values.credentials?.aws?.accessKeyID && values.credentials.aws.accessKeyID.trim() !== '' &&
-                                  values.credentials?.aws?.secretAccessKey && values.credentials.aws.secretAccessKey.trim() !== '' &&
-                                  values.credentials?.aws?.region && values.credentials.aws.region.trim() !== ''
-        const hasGcpCredentials = values.credentials?.gcp?.region && values.credentials.gcp.region.trim() !== '' &&
-                                  values.credentials?.gcp?.projectID && values.credentials.gcp.projectID.trim() !== '' &&
-                                  values.credentials?.gcp?.jsonData && values.credentials.gcp.jsonData.trim() !== ''
-        
+        const hasAwsCredentials =
+          values.credentials?.aws?.accessKeyID &&
+          values.credentials.aws.accessKeyID.trim() !== '' &&
+          values.credentials?.aws?.secretAccessKey &&
+          values.credentials.aws.secretAccessKey.trim() !== '' &&
+          values.credentials?.aws?.region &&
+          values.credentials.aws.region.trim() !== ''
+        const hasGcpCredentials =
+          values.credentials?.gcp?.region &&
+          values.credentials.gcp.region.trim() !== '' &&
+          values.credentials?.gcp?.projectID &&
+          values.credentials.gcp.projectID.trim() !== '' &&
+          values.credentials?.gcp?.jsonData &&
+          values.credentials.gcp.jsonData.trim() !== ''
+
         // Only include credentials if user provided new values
         if (!hasApiKey && !hasAwsCredentials && !hasGcpCredentials) {
           delete updateInput.credentials
@@ -172,7 +213,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
       } else {
         await createChannel.mutateAsync(dataWithModels as any)
       }
-      
+
       form.reset()
       setSupportedModels([])
       onOpenChange(false)
@@ -189,13 +230,25 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
   }
 
   const removeModel = (model: string) => {
-    setSupportedModels(supportedModels.filter(m => m !== model))
+    setSupportedModels(supportedModels.filter((m) => m !== model))
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault()
       addModel()
+    }
+  }
+
+  const toggleDefaultModel = (model: string) => {
+    setSelectedDefaultModels((prev) => (prev.includes(model) ? prev.filter((m) => m !== model) : [...prev, model]))
+  }
+
+  const addSelectedDefaultModels = () => {
+    const newModels = selectedDefaultModels.filter((model) => !supportedModels.includes(model))
+    if (newModels.length > 0) {
+      setSupportedModels((prev) => [...prev, ...newModels])
+      setSelectedDefaultModels([])
     }
   }
 
@@ -206,11 +259,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
         if (!state) {
           form.reset()
           setSupportedModels(currentRow?.supportedModels || [])
+          setSelectedDefaultModels([])
         }
         onOpenChange(state)
       }}
     >
-      <DialogContent className='sm:max-w-4xl max-h-[90vh]'>
+      <DialogContent className='max-h-[90vh] sm:max-w-4xl'>
         <DialogHeader className='text-left'>
           <DialogTitle>{isEdit ? t('channels.dialogs.edit.title') : t('channels.dialogs.create.title')}</DialogTitle>
           <DialogDescription>
@@ -219,11 +273,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
         </DialogHeader>
         <div className='-mr-4 h-[36rem] w-full overflow-y-auto py-1 pr-4'>
           <Form {...form}>
-            <form
-              id='channel-form'
-              onSubmit={form.handleSubmit(onSubmit)}
-              className='space-y-4 p-0.5'
-            >
+            <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-4 p-0.5'>
               <FormField
                 control={form.control}
                 name='type'
@@ -309,7 +359,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                       <FormControl>
                         <Input
                           type='password'
-                          placeholder={isEdit ? t('channels.dialogs.fields.apiKey.editPlaceholder') : t('channels.dialogs.fields.apiKey.placeholder')}
+                          placeholder={
+                            isEdit
+                              ? t('channels.dialogs.fields.apiKey.editPlaceholder')
+                              : t('channels.dialogs.fields.apiKey.placeholder')
+                          }
                           className='col-span-6'
                           autoComplete='off'
                           {...field}
@@ -439,13 +493,13 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     name='credentials.gcp.jsonData'
                     render={({ field }) => (
                       <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
-                        <FormLabel className='col-span-2 text-right font-medium pt-2'>
+                        <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                           {t('channels.dialogs.fields.gcpJsonData.label')}
                         </FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder={`{\n  "type": "service_account",\n  "project_id": "project-123",\n  "private_key_id": "fdfd",\n  "private_key": "-----BEGIN PRIVATE KEY-----\\n-----END PRIVATE KEY-----\\n",\n  "client_email": "xxx@developer.gserviceaccount.com",\n  "client_id": "client_213123123",\n  "auth_uri": "https://accounts.google.com/o/oauth2/auth",\n  "token_uri": "https://oauth2.googleapis.com/token",\n  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",\n  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/xxx-compute%40developer.gserviceaccount.com",\n  "universe_domain": "googleapis.com"\n}`}
-                            className='col-span-6 min-h-[200px] font-mono text-xs resize-y'
+                            className='col-span-6 min-h-[200px] resize-y font-mono text-xs'
                             {...field}
                           />
                         </FormControl>
@@ -457,7 +511,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
               )}
 
               <div className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
-                <FormLabel className='col-span-2 text-right font-medium pt-2'>
+                <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                   {t('channels.dialogs.fields.supportedModels.label')}
                 </FormLabel>
                 <div className='col-span-6 space-y-2'>
@@ -473,6 +527,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                       {t('channels.dialogs.buttons.add')}
                     </Button>
                   </div>
+
                   <div className='flex flex-wrap gap-1'>
                     {supportedModels.map((model) => (
                       <Badge key={model} variant='secondary' className='text-xs'>
@@ -480,15 +535,48 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         <button
                           type='button'
                           onClick={() => removeModel(model)}
-                          className='ml-1 hover:text-destructive'
+                          className='hover:text-destructive ml-1'
                         >
                           <X size={12} />
                         </button>
                       </Badge>
                     ))}
                   </div>
+
+                  {/* Quick add models section */}
+                  {defaultModels[form.watch('type')] && defaultModels[form.watch('type')].length > 0 && (
+                    <div className='pt-3'>
+                      <div className='mb-2 flex items-center justify-between'>
+                        <span className='text-sm font-medium'>
+                          {t('channels.dialogs.fields.supportedModels.defaultModelsLabel', 'Quick Add Models')}
+                        </span>
+                        <Button
+                          type='button'
+                          onClick={addSelectedDefaultModels}
+                          size='sm'
+                          variant='outline'
+                          disabled={selectedDefaultModels.length === 0}
+                        >
+                          {t('channels.dialogs.buttons.addSelected', 'Add Selected')}
+                        </Button>
+                      </div>
+                      <div className='flex flex-wrap gap-2'>
+                        {defaultModels[form.watch('type')].map((model) => (
+                          <Badge
+                            key={model}
+                            variant={selectedDefaultModels.includes(model) ? 'default' : 'secondary'}
+                            className='cursor-pointer text-xs'
+                            onClick={() => toggleDefaultModel(model)}
+                          >
+                            {model}
+                            {selectedDefaultModels.includes(model) && <span className='ml-1'>✓</span>}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {supportedModels.length === 0 && (
-                    <p className='text-sm text-muted-foreground'>
+                    <p className='text-muted-foreground text-sm'>
                       {t('channels.dialogs.fields.supportedModels.required')}
                     </p>
                   )}
@@ -507,7 +595,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                       <SelectDropdown
                         defaultValue={field.value}
                         onValueChange={field.onChange}
-                        items={supportedModels.map(model => ({ value: model, label: model }))}
+                        items={supportedModels.map((model) => ({ value: model, label: model }))}
                         placeholder={t('channels.dialogs.fields.defaultTestModel.description')}
                         className='col-span-6'
                         disabled={supportedModels.length === 0}
@@ -525,16 +613,15 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
           <Button
             type='submit'
             form='channel-form'
-            disabled={
-              createChannel.isPending || 
-              updateChannel.isPending || 
-              supportedModels.length === 0
-            }
+            disabled={createChannel.isPending || updateChannel.isPending || supportedModels.length === 0}
           >
-            {createChannel.isPending || updateChannel.isPending 
-              ? (isEdit ? t('channels.dialogs.buttons.updating') : t('channels.dialogs.buttons.creating'))
-              : (isEdit ? t('channels.dialogs.buttons.update') : t('channels.dialogs.buttons.create'))
-            }
+            {createChannel.isPending || updateChannel.isPending
+              ? isEdit
+                ? t('channels.dialogs.buttons.updating')
+                : t('channels.dialogs.buttons.creating')
+              : isEdit
+                ? t('channels.dialogs.buttons.update')
+                : t('channels.dialogs.buttons.create')}
           </Button>
         </DialogFooter>
       </DialogContent>

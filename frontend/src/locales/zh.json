@@ -603,7 +603,8 @@
         "supportedModels": {
           "label": "支持的模型",
           "description": "此渠道支持的模型列表",
-          "required": "请至少添加一个支持的模型"
+          "required": "请至少添加一个支持的模型",
+          "defaultModelsLabel": "快速添加模型"
         },
         "defaultTestModel": {
           "label": "默认测试模型",
@@ -660,7 +661,8 @@
         "testing": "测试中...",
         "save": "保存",
         "saving": "保存中...",
-        "add": "添加"
+        "add": "添加",
+        "addSelected": "添加选中"
       },
 
       "status": {
