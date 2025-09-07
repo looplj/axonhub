@@ -402,8 +402,9 @@ AxonHub 采用高可扩展架构，支持多 AI 提供商和多模型切换：
           ┌──────────────────────┼──────────────────────┐
           │                      │                      │
     ┌─────▼─────┐        ┌─────▼─────┐        ┌─────▼─────┐
-    │  OpenAI   │        │ Anthropic │        │  ZhipuAI  │
-    │  Claude   │        │   Gemini  │        │   Kimi    │
+    │  OpenAI   │        │ Anthropic │        │  DeepSeek │
+    │  Claude   │        │   Gemini  │        │  Moonshot │
+    │           │        │           │        │   Zhipu   │
     └───────────┘        └───────────┘        └───────────┘
 ```
 

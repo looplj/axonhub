@@ -403,8 +403,9 @@ AxonHub adopts a highly scalable architecture supporting multiple AI providers a
           ┌──────────────────────┼──────────────────────┐
           │                      │                      │
     ┌─────▼─────┐        ┌─────▼─────┐        ┌─────▼─────┐
-    │  OpenAI   │        │ Anthropic │        │  ZhipuAI  │
-    │  Claude   │        │   Gemini  │        │   Kimi    │
+    │  OpenAI   │        │ Anthropic │        │  DeepSeek │
+    │  Claude   │        │   Gemini  │        │  Moonshot │
+    │           │        │           │        │   Zhipu   │
     └───────────┘        └───────────┘        └───────────┘
 ```
 
