@@ -312,37 +312,20 @@ After successful testing, click the enable button to activate the channel.
 2. Assign roles and permissions
 3. Generate API keys
 
-### 4. API Key Usage
 
-```bash
-# Set environment variables
-export OPENAI_API_KEY="your-axonhub-api-key"
-export OPENAI_BASE_URL="http://localhost:8090/v1"
-
-# Test with curl
-curl -X POST http://localhost:8090/v1/chat/completions \
-  -H "Authorization: Bearer your-axonhub-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-4",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
-```
-
-
-### 5. Claude Code Integration
+### 4. Claude Code Integration
 
 Using AxonHub in Claude Code:
 
 ```bash
 # Set Claude Code to use AxonHub
 export ANTHROPIC_API_KEY="your-axonhub-api-key"
-export ANTHROPIC_BASE_URL="http://localhost:8090"
+export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
 ```
 
 ---
 
-### 6. SDK Usage
+### 5. SDK Usage
 
 #### Python SDK
 ```python

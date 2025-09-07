@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { GripVertical } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -10,18 +8,14 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import {
-  useSortable,
-} from '@dnd-kit/sortable'
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-
+import { GripVertical } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -30,10 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-
 import { useAllChannelsForOrdering, useBulkUpdateChannelOrdering } from '../data/channels'
 import { ChannelOrderingItem } from '../data/schema'
 
@@ -44,20 +35,8 @@ interface ChannelOrderingItemProps {
   total: number
 }
 
-function ChannelOrderingItemComponent({ 
-  channel, 
-  orderingWeight,
-  index,
-  total
-}: ChannelOrderingItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: channel.id })
+function ChannelOrderingItemComponent({ channel, orderingWeight, index, total }: ChannelOrderingItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: channel.id })
   const { t } = useTranslation()
 
   const getTypeDisplayName = (type: string) => {
@@ -86,7 +65,10 @@ function ChannelOrderingItemComponent({
       doubao: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-400',
       kimi: 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950 dark:text-pink-400',
     }
-    return colors[type as keyof typeof colors] || 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-400'
+    return (
+      colors[type as keyof typeof colors] ||
+      'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-400'
+    )
   }
 
   const style = {
@@ -96,70 +78,64 @@ function ChannelOrderingItemComponent({
   }
 
   return (
-    <Card 
+    <Card
       ref={setNodeRef}
       style={style}
-      className={`group hover:shadow-md transition-all duration-200 border-muted/50 hover:border-muted bg-card ${
-        isDragging ? 'shadow-lg ring-2 ring-primary/20' : ''
+      className={`group border-muted/50 hover:border-muted bg-card transition-all duration-200 hover:shadow-md ${
+        isDragging ? 'ring-primary/20 shadow-lg ring-2' : ''
       }`}
     >
-      <CardContent className="p-1.5">
-        <div className="flex items-center gap-2">
+      <CardContent className='p-1.5'>
+        <div className='flex items-center gap-2'>
           {/* Drag Handle */}
-          <div 
-            className="flex items-center gap-2 cursor-grab active:cursor-grabbing min-w-[70px]"
+          <div
+            className='flex min-w-[70px] cursor-grab items-center gap-2 active:cursor-grabbing'
             {...attributes}
             {...listeners}
           >
-            <GripVertical className={`h-3 w-3 text-muted-foreground transition-all ${
-              isDragging ? 'text-primary' : 'opacity-40 group-hover:opacity-70'
-            }`} />
-            <div className="text-xs text-muted-foreground font-mono min-w-[40px] whitespace-nowrap text-center">
+            <GripVertical
+              className={`text-muted-foreground h-3 w-3 transition-all ${
+                isDragging ? 'text-primary' : 'opacity-40 group-hover:opacity-70'
+              }`}
+            />
+            <div className='text-muted-foreground min-w-[40px] text-center font-mono text-xs whitespace-nowrap'>
               {index + 1}/{total}
             </div>
           </div>
-          
+
           {/* Channel Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <h3 className="font-medium text-xs truncate text-foreground leading-tight">{channel.name}</h3>
-              <Badge 
-                variant="outline" 
-                className={`text-xs h-4 px-1 border ${getTypeColor(channel.type)}`}
-              >
+          <div className='min-w-0 flex-1'>
+            <div className='flex items-center gap-1.5'>
+              <h3 className='text-foreground truncate text-xs leading-tight font-medium'>{channel.name}</h3>
+              <Badge variant='outline' className={`h-4 border px-1 text-xs ${getTypeColor(channel.type)}`}>
                 {getTypeDisplayName(channel.type)}
               </Badge>
-              <Badge 
-                variant="outline" 
-                className={`text-xs h-4 px-1 border ${getStatusColor(channel.status)}`}
-              >
+              <Badge variant='outline' className={`h-4 border px-1 text-xs ${getStatusColor(channel.status)}`}>
                 {t(`channels.status.${channel.status}`)}
               </Badge>
             </div>
-            <div className="text-xs text-muted-foreground truncate font-mono bg-muted/20 px-1 py-0.5 rounded text-xs leading-tight">
+            <div className='text-muted-foreground bg-muted/20 truncate rounded px-1 py-0.5 font-mono text-xs leading-tight'>
               {channel.baseURL}
             </div>
           </div>
-          
+
           {/* Priority and Controls */}
-          <div className="flex items-center gap-1">
+          <div className='flex items-center gap-1'>
             {/* Priority Display */}
-            <div className="flex flex-col items-center">
-              <div className="text-xs text-muted-foreground font-medium leading-tight">
+            <div className='flex flex-col items-center'>
+              <div className='text-muted-foreground text-xs leading-tight font-medium'>
                 {t('channels.dialogs.bulkOrdering.orderingWeight')}
               </div>
-              <div className="font-mono text-xs font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded border">
+              <div className='bg-primary/10 text-primary rounded border px-1.5 py-0.5 font-mono text-xs font-bold'>
                 {orderingWeight}
               </div>
             </div>
-            
+
             {/* Drag Status Indicator */}
             {isDragging && (
-              <div className="flex flex-col items-center">
-                <div className="text-xs text-primary font-medium leading-tight">
-                  {t('common.dragging', 'Dragging')}
-                </div>
-                <div className="h-1.5 w-1.5 bg-primary rounded-full animate-pulse"></div>
+              <div className='flex flex-col items-center'>
+                <div className='text-primary text-xs leading-tight font-medium'>{t('common.dragging', 'Dragging')}</div>
+                <div className='bg-primary h-1.5 w-1.5 animate-pulse rounded-full'></div>
               </div>
             )}
           </div>
@@ -174,21 +150,20 @@ interface ChannelsBulkOrderingDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-export function ChannelsBulkOrderingDialog({
-  open,
-  onOpenChange,
-}: ChannelsBulkOrderingDialogProps) {
+export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkOrderingDialogProps) {
   const { t } = useTranslation()
-  
+
   // Only fetch channels when dialog is open (lazy loading)
   const { data: channelsData, isLoading } = useAllChannelsForOrdering({
     enabled: open, // Only fetch when dialog is open
   })
-  
+
   const bulkUpdateMutation = useBulkUpdateChannelOrdering()
 
   // Local state for ordering
-  const [orderedChannels, setOrderedChannels] = useState<Array<{ channel: ChannelOrderingItem; orderingWeight: number }>>([])
+  const [orderedChannels, setOrderedChannels] = useState<
+    Array<{ channel: ChannelOrderingItem; orderingWeight: number }>
+  >([])
   const [hasChanges, setHasChanges] = useState(false)
 
   // Initialize ordered channels when data loads
@@ -196,7 +171,7 @@ export function ChannelsBulkOrderingDialog({
     if (channelsData?.edges) {
       const channels = channelsData.edges.map((edge, index) => ({
         channel: edge.node,
-        orderingWeight: edge.node.orderingWeight || (channelsData.edges.length - index)
+        orderingWeight: edge.node.orderingWeight || channelsData.edges.length - index,
       }))
       // Sort by orderingWeight DESC (higher weight first)
       channels.sort((a, b) => b.orderingWeight - a.orderingWeight)
@@ -225,13 +200,13 @@ export function ChannelsBulkOrderingDialog({
         const newIndex = items.findIndex((item) => item.channel.id === over?.id)
 
         const newItems = arrayMove(items, oldIndex, newIndex)
-        
+
         // Recalculate ordering weights based on new positions
         const updatedItems = newItems.map((item, idx) => ({
           ...item,
-          orderingWeight: newItems.length - idx
+          orderingWeight: newItems.length - idx,
         }))
-        
+
         setHasChanges(true)
         return updatedItems
       })
@@ -240,7 +215,7 @@ export function ChannelsBulkOrderingDialog({
 
   const handleSave = async () => {
     try {
-      const updates = orderedChannels.map(item => ({
+      const updates = orderedChannels.map((item) => ({
         id: item.channel.id,
         orderingWeight: item.orderingWeight,
       }))
@@ -261,7 +236,7 @@ export function ChannelsBulkOrderingDialog({
     if (channelsData?.edges) {
       const channels = channelsData.edges.map((edge, index) => ({
         channel: edge.node,
-        orderingWeight: edge.node.orderingWeight || (channelsData.edges.length - index)
+        orderingWeight: edge.node.orderingWeight || channelsData.edges.length - index,
       }))
       channels.sort((a, b) => b.orderingWeight - a.orderingWeight)
       setOrderedChannels(channels)
@@ -272,68 +247,61 @@ export function ChannelsBulkOrderingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0 text-left">
-          <DialogTitle className="flex items-center gap-2">
-            <GripVertical className="h-5 w-5 text-muted-foreground" />
+      <DialogContent className='flex max-h-[90vh] flex-col sm:max-w-5xl'>
+        <DialogHeader className='flex-shrink-0 text-left'>
+          <DialogTitle className='flex items-center gap-2'>
+            <GripVertical className='text-muted-foreground h-5 w-5' />
             {t('channels.dialogs.bulkOrdering.title')}
           </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
+          <DialogDescription className='text-muted-foreground text-sm'>
             {t('channels.dialogs.bulkOrdering.description')}
           </DialogDescription>
         </DialogHeader>
 
-        <Separator className="flex-shrink-0" />
+        <Separator className='flex-shrink-0' />
 
-        <div className="-mr-4 h-[40rem] w-full overflow-y-auto py-1 pr-4 flex-1">
+        <div className='-mr-4 h-[40rem] w-full flex-1 overflow-y-auto py-1 pr-4'>
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="flex flex-col items-center gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <div className="text-sm text-muted-foreground">
-                  {t('common.loading', 'Loading')}...
-                </div>
+            <div className='flex items-center justify-center py-12'>
+              <div className='flex flex-col items-center gap-3'>
+                <div className='border-primary h-8 w-8 animate-spin rounded-full border-b-2'></div>
+                <div className='text-muted-foreground text-sm'>{t('common.loading', 'Loading')}...</div>
               </div>
             </div>
           ) : orderedChannels.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="flex flex-col items-center gap-3 text-center">
-                <GripVertical className="h-12 w-12 text-muted-foreground/30" />
-                <div className="text-sm text-muted-foreground">
-                  {t('channels.dialogs.bulkOrdering.noChannels')}
-                </div>
+            <div className='flex items-center justify-center py-12'>
+              <div className='flex flex-col items-center gap-3 text-center'>
+                <GripVertical className='text-muted-foreground/30 h-12 w-12' />
+                <div className='text-muted-foreground text-sm'>{t('channels.dialogs.bulkOrdering.noChannels')}</div>
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-4 h-full p-0.5">
+            <div className='flex h-full flex-col gap-4 p-0.5'>
               {/* Summary Header */}
-              <div className="flex items-center justify-between py-2 px-1">
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>
-                    {t('channels.dialogs.bulkOrdering.dragHint')}
-                  </span>
-                  <Badge variant="secondary" className="font-mono">
+              <div className='flex items-center justify-between px-1 py-2'>
+                <div className='text-muted-foreground flex items-center gap-4 text-sm'>
+                  <span>{t('channels.dialogs.bulkOrdering.dragHint')}</span>
+                  <Badge variant='secondary' className='font-mono'>
                     {orderedChannels.length} {orderedChannels.length === 1 ? 'channel' : 'channels'}
                   </Badge>
                   {hasChanges && (
-                    <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-950">
+                    <Badge
+                      variant='outline'
+                      className='border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400'
+                    >
                       {t('common.unsavedChanges', 'Unsaved changes')}
                     </Badge>
                   )}
                 </div>
               </div>
-              
+
               {/* Channels List */}
-              <DndContext 
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext 
-                  items={orderedChannels.map(item => item.channel.id)}
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext
+                  items={orderedChannels.map((item) => item.channel.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-1 flex-1">
+                  <div className='flex-1 space-y-1'>
                     {orderedChannels.map((item, index) => (
                       <ChannelOrderingItemComponent
                         key={item.channel.id}
@@ -350,28 +318,28 @@ export function ChannelsBulkOrderingDialog({
           )}
         </div>
 
-        <DialogFooter className="flex-shrink-0">
-          <div className="flex items-center justify-between w-full">
-            <div className="text-xs text-muted-foreground">
+        <DialogFooter className='flex-shrink-0'>
+          <div className='flex w-full items-center justify-between'>
+            <div className='text-muted-foreground text-xs'>
               {hasChanges && (
-                <span className="flex items-center gap-1">
-                  <div className="h-2 w-2 bg-amber-500 rounded-full"></div>
+                <span className='flex items-center gap-1'>
+                  <div className='h-2 w-2 rounded-full bg-amber-500'></div>
                   {t('common.unsavedChanges', 'You have unsaved changes')}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleCancel}>
+            <div className='flex items-center gap-2'>
+              <Button variant='outline' onClick={handleCancel}>
                 {t('channels.dialogs.bulkOrdering.cancel')}
               </Button>
-              <Button 
-                onClick={handleSave} 
+              <Button
+                onClick={handleSave}
                 disabled={!hasChanges || bulkUpdateMutation.isPending}
-                className="min-w-[120px]"
+                className='min-w-[120px]'
               >
                 {bulkUpdateMutation.isPending ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <div className='flex items-center gap-2'>
+                    <div className='h-4 w-4 animate-spin rounded-full border-b-2 border-white'></div>
                     {t('channels.dialogs.bulkOrdering.saving')}
                   </div>
                 ) : (

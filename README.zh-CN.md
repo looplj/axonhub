@@ -312,25 +312,7 @@ supported_models: ["gpt-5", "gpt-4o"]
 2. 分配角色和权限
 3. 生成 API 密钥
 
-### 4. API Key 使用 | API Key Usage
-
-```bash
-# 设置环境变量
-export OPENAI_API_KEY="your-axonhub-api-key"
-export OPENAI_BASE_URL="http://localhost:8090/v1"
-
-# 使用 curl 测试
-curl -X POST http://localhost:8090/v1/chat/completions \
-  -H "Authorization: Bearer your-axonhub-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-4",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
-```
-
-
-### 5. Claude Code 使用 | Claude Code Integration
+### 4. Claude Code 使用 | Claude Code Integration
 
 在 Claude Code 中使用 AxonHub：
 
@@ -342,7 +324,7 @@ export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
 
 ---
 
-### 6. 使用 SDK | SDK Usage
+### 5. 使用 SDK | SDK Usage
 
 #### Python SDK
 ```python

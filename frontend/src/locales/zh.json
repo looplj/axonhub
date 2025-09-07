@@ -582,7 +582,7 @@
       "fields": {
         "name": {
           "label": "渠道名称",
-          "placeholder": "我的 OpenAI 渠道",
+          "placeholder": "我的渠道",
           "description": "为此渠道设置一个易于识别的名称"
         },
         "type": {

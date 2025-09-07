@@ -547,7 +547,7 @@
       "fields": {
         "name": {
           "label": "Channel Name",
-          "placeholder": "My OpenAI Channel",
+          "placeholder": "My Channel",
           "description": "Set an easily recognizable name for this channel"
         },
         "type": {
