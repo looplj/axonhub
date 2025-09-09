@@ -55,9 +55,9 @@ require (
 	modernc.org/sqlite v1.38.2
 )
 
-replace github.com/99designs/gqlgen => github.com/looplj/gqlgen v0.0.0-20250721163559-b09abcdca828
+replace github.com/99designs/gqlgen => github.com/looplj/gqlgen v0.0.0-20250909124102-db2c98322361
 
-replace github.com/tmaxmax/go-sse => github.com/looplj/go-sse v0.0.0-20250727032219-ed497bf38e71
+replace github.com/tmaxmax/go-sse => github.com/looplj/go-sse v0.0.0-20250909130008-e74a1155bc3b
 
 require (
 	ariga.io/atlas v0.35.0 // indirect
@@ -155,10 +155,10 @@ require (
 	go.uber.org/dig v1.19.0 // indirect
 	golang.org/x/arch v0.19.0 // indirect
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
-	golang.org/x/mod v0.26.0 // indirect
+	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
-	golang.org/x/tools v0.35.0 // indirect
+	golang.org/x/tools v0.36.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250825161204-c5933d9347a5 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect

@@ -5,10 +5,14 @@ repos:
       - id: golangci-lint
         entry: golangci-lint run -vvv
 
-  - repo: https://github.com/looplj/pre-commit-golang
-    rev: v1.1.0
+  - repo: local
     hooks:
-      - id: go-test
+      - id: run-go-test
+        name: Run go test
+        entry: bash -c 'go test ./... --short'
+        language: system
+        types: [go]
+        pass_filenames: false
 
   - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
