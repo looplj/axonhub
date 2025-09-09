@@ -37,7 +37,6 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 	{
 		// Favicon API - DO NOT AUTH
 		publicGroup.GET("/favicon", handlers.System.GetFavicon)
-		publicGroup.GET("/favicon.ico", handlers.System.GetFavicon)
 	}
 
 	unSecureAdminGroup := server.Group("/admin", middleware.WithTimeout(server.Config.RequestTimeout))

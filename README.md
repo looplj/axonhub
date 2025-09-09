@@ -106,7 +106,7 @@ Here are some screenshots of AxonHub in action:
 | Feature | Status | Description |
 |---------|--------|-------------|
 | **Chat Completion** | ✅ Done | Conversational interface |
-| **Planning** | 📝 Todo | Feature planning and design |
+| **Image Generation** | 📝 Planning | Image generation |
 | **Rerank** | 📝 Todo | Results ranking |
 | **Embedding** | 📝 Todo | Vector embedding generation |
 | **Realtime** | 📝 Todo | Live conversation capabilities |

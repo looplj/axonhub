@@ -106,7 +106,7 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 | 功能 | 状态 | 描述 |
 |---------|--------|-------------|
 | **文本生成（Chat Completion）** | ✅ Done | 对话交互接口 |
-| **规划（Planning）** | 📝 Todo | 功能规划与设计 |
+| **图片生成（Image Generation）** | 📝 Todo | 图片生成 |
 | **重排序（Rerank）** | 📝 Todo | 结果排序 |
 | **实时对话（Realtime）** | 📝 Todo | 实时对话功能 |
 | **嵌入（Embedding）** | 📝 Todo | 向量嵌入生成 |

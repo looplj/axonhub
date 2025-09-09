@@ -78,7 +78,11 @@ export function useBrandSettings() {
         const data = await graphqlRequest<{ brandSettings: BrandSettings }>(
           BRAND_SETTINGS_QUERY
         )
-        return data.brandSettings
+        // If no custom logo is set, use the default logo
+        return {
+          ...data.brandSettings,
+          logo: data.brandSettings.logo || '/logo.jpg'
+        }
       } catch (error) {
         handleError(error, '获取品牌设置')
         throw error
