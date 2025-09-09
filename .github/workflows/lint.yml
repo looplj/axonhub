@@ -5,7 +5,11 @@ on:
   push:
     branches:
       - 'master'
+      - 'main'
   pull_request:
+    branches:
+      - 'master'
+      - 'main'
 env:
   GO111MODULE: on
 jobs:

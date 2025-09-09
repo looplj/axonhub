@@ -105,12 +105,14 @@ node_modules/
 # tasks/ 
 
 .kiro
+.windsurf
+.cursor
 .vercel
 .tanstack
 .trae/tasks
 playwright-report/
 test-results
-.trae/summary/
+.trae
 .claude
 .qoder
 dumps
