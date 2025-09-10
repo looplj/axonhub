@@ -44,31 +44,22 @@ export default function AuthLayout({ children }: Props) {
         <line x1='1920' y1='1080' x2='960' y2='540' stroke='url(#dataFlow)' strokeWidth='2' className='animate-data-flow animation-delay-3000' />
       </svg>
       
-      {/* Top Navigation */}
-      <nav className='relative z-50 flex items-center justify-between p-6'>
+      {/* Top Navigation (overlay) */}
+      <nav className='absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-6'>
         <div className='flex items-center space-x-3'>
-          <div className='relative'>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              className='h-8 w-8 text-[#00C77E]'
-            >
-              <path d='M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' />
-            </svg>
-          </div>
-          <h1 className='text-2xl font-bold text-[#00C77E] font-mono'>
+          <img
+            src='/logo.jpg'
+            alt='AxonHub logo'
+            className='h-8 w-8 rounded-sm shadow-sm ring-1 ring-emerald-400/20'
+          />
+          <h1 className='text-2xl font-semibold bg-gradient-to-r from-emerald-300 to-teal-200 bg-clip-text text-transparent'>
             AxonHub
           </h1>
         </div>
         
         <div className='flex items-center space-x-4'>
           <select
-            className='bg-transparent border border-[#00C77E]/30 text-[#F0F0F0] px-3 py-1 rounded text-sm hover-glow focus-particles'
+            className='bg-transparent border border-emerald-400/30 text-[#F0F0F0] px-3 py-1 rounded text-sm hover-glow focus-particles'
             value={i18n.language}
             onChange={(e) => i18n.changeLanguage(e.target.value)}
           >
@@ -78,43 +69,10 @@ export default function AuthLayout({ children }: Props) {
         </div>
       </nav>
       
-      {/* Main Content Area */}
-      <div className='relative z-10 flex min-h-[calc(100vh-88px)]'>
-        {/* Right Graphics Section */}
-        <div className='flex-1 flex items-center justify-center p-12 relative'>
-          {/* Tech Graphics Container */}
-          <div className='relative w-full max-w-lg h-96'>
-            {/* 3D Data Flow Network */}
-            <div className='absolute inset-0'>
-              {/* Central AI Chip */}
-              <div className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 border-2 border-[#00C77E] rounded-lg bg-[#00C77E]/10 animate-neon-pulse'>
-                <div className='w-full h-full flex items-center justify-center'>
-                  <div className='w-8 h-8 bg-[#00C77E] rounded animate-breathing-glow'></div>
-                </div>
-              </div>
-              
-              {/* Data Flow Nodes */}
-              <div className='absolute top-8 left-8 w-16 h-16 border border-[#00C77E]/50 rounded-full bg-[#00C77E]/5 animate-particle-float'></div>
-              <div className='absolute top-8 right-8 w-12 h-12 border border-[#FF2E4D]/50 rounded-full bg-[#FF2E4D]/5 animate-particle-float animation-delay-1000'></div>
-              <div className='absolute bottom-8 left-8 w-14 h-14 border border-[#00C77E]/50 rounded-full bg-[#00C77E]/5 animate-particle-float animation-delay-2000'></div>
-              <div className='absolute bottom-8 right-8 w-10 h-10 border border-[#FF2E4D]/50 rounded-full bg-[#FF2E4D]/5 animate-particle-float animation-delay-3000'></div>
-              {/* Radar Chart Overlay */}
-              <div className='absolute top-4 right-4 w-32 h-32 border border-[#00C77E]/30 rounded-full animate-grid-pulse'>
-                <div className='absolute inset-4 border border-[#00C77E]/20 rounded-full'></div>
-                <div className='absolute inset-8 border border-[#00C77E]/10 rounded-full'></div>
-                <div className='absolute top-1/2 left-0 w-full h-px bg-[#00C77E]/20'></div>
-                <div className='absolute top-0 left-1/2 w-px h-full bg-[#00C77E]/20'></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className='absolute inset-0 flex items-center justify-center z-20'>
-          <div className='w-full max-w-md'>
-            {children}
-          </div>
-        </div>
-      </div>
+      {/* Main Content Area - children control layout; full height since header overlays */}
+      <main className='relative z-10 min-h-screen'>
+        {children}
+      </main>
       
       {/* Micro-light Particles Background */}
       <div className='absolute inset-0 overflow-hidden pointer-events-none z-0'>

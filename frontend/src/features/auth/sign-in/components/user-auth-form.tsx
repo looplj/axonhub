@@ -67,17 +67,17 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           name='email'
           render={({ field }) => (
             <FormItem>
-              <FormLabel className='text-sm font-medium text-[#F0F0F0]'>
+              <FormLabel className='text-sm font-medium text-slate-700'>
                 {t('auth.signIn.form.email.label')}
               </FormLabel>
               <FormControl>
                 <Input
                   placeholder={t('auth.signIn.form.email.placeholder')}
-                  className='focus-particles hover-glow border-[#C0C0C0]/30 bg-[#1A1A1A]/50 text-[#F0F0F0] backdrop-blur-sm transition-all duration-300 placeholder:text-[#B0B0B0] focus:border-[#E8E8E8] focus:bg-[#1A1A1A]/70'
+                  className='border-slate-300 bg-white/70 text-slate-800 backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:bg-white focus:ring-2 focus:ring-slate-200'
                   {...field}
                 />
               </FormControl>
-              <FormMessage className='text-[#FF2E4D]' />
+              <FormMessage className='text-red-600' />
             </FormItem>
           )}
         />
@@ -88,12 +88,12 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           render={({ field }) => (
             <FormItem className='relative'>
               <div className='flex items-center justify-between'>
-                <FormLabel className='text-sm font-medium text-[#F0F0F0]'>
+                <FormLabel className='text-sm font-medium text-slate-700'>
                   {t('auth.signIn.form.password.label')}
                 </FormLabel>
                 <Link
                   to='/forgot-password'
-                  className='hover-glow text-sm font-medium text-[#C0C0C0] transition-colors hover:text-[#E0E0E0]'
+                  className='text-sm font-medium text-slate-500 transition-colors hover:text-slate-700 hover:underline'
                 >
                   {t('auth.signIn.links.forgotPassword')}
                 </Link>
@@ -101,11 +101,11 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
               <FormControl>
                 <PasswordInput
                   placeholder={t('auth.signIn.form.password.placeholder')}
-                  className='focus-particles hover-glow border-[#C0C0C0]/30 bg-[#1A1A1A]/50 text-[#F0F0F0] backdrop-blur-sm transition-all duration-300 placeholder:text-[#B0B0B0] focus:border-[#E8E8E8] focus:bg-[#1A1A1A]/70'
+                  className='border-slate-300 bg-white/70 text-slate-800 backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:bg-white focus:ring-2 focus:ring-slate-200'
                   {...field}
                 />
               </FormControl>
-              <FormMessage className='text-[#FF2E4D]' />
+              <FormMessage className='text-red-600' />
             </FormItem>
           )}
         />
@@ -121,14 +121,14 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 className='sr-only'
               />
               <div
-                className={`h-6 w-12 rounded-full border-2 transition-all duration-300 ${rememberMe ? 'border-[#C0C0C0] bg-[#C0C0C0]' : 'border-[#C0C0C0]/30 bg-[#2A2A2A]'}`}
+                className={`h-6 w-12 rounded-full border-2 transition-all duration-300 ${rememberMe ? 'border-slate-600 bg-slate-600' : 'border-slate-300 bg-slate-100'}`}
               >
                 <div
-                  className={`mt-0.5 h-4 w-4 rounded-full bg-[#1A1A1A] transition-transform duration-300 ${rememberMe ? 'ml-0.5 translate-x-6' : 'translate-x-0.5'}`}
+                  className={`mt-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${rememberMe ? 'ml-0.5 translate-x-6' : 'translate-x-0.5'}`}
                 ></div>
               </div>
             </div>
-            <span className='text-sm text-[#F0F0F0]'>
+            <span className='text-sm text-slate-700'>
               {t('auth.signIn.form.rememberMe')}
             </span>
           </label>
@@ -136,12 +136,12 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
 
         {/* Submit Button */}
         <Button
-          className='animate-breathing-glow mt-4 rounded-lg bg-[#FF2E4D] px-6 py-4 font-semibold text-[#F0F0F0] shadow-[0_0_20px_rgba(255,46,77,0.3)] transition-all duration-300 hover:bg-[#FF1A3D] hover:shadow-[0_0_30px_rgba(255,46,77,0.5)]'
+          className='mt-6 w-full rounded-lg bg-slate-800 px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:bg-slate-700 hover:shadow-xl focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50'
           disabled={signInMutation.isPending}
         >
           {signInMutation.isPending ? (
-            <div className='flex items-center gap-2'>
-              <div className='h-4 w-4 animate-spin rounded-full border-2 border-[#F0F0F0]/30 border-t-[#F0F0F0]'></div>
+            <div className='flex items-center justify-center gap-2'>
+              <div className='h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white'></div>
               {t('auth.signIn.form.signingIn')}
             </div>
           ) : (
