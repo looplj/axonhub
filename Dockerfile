@@ -16,7 +16,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-COPY --from=frontend-builder /build/dist /build/internal/server/static
+COPY --from=frontend-builder /build/dist /build/internal/server/static/dist
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
@@ -28,8 +28,12 @@ FROM alpine
 
 RUN apk upgrade --no-cache \
     && apk add --no-cache ca-certificates tzdata \
-    && update-ca-certificates
+    && update-ca-certificates \
+    && adduser -D -s /bin/sh axonhub
 
-COPY --from=backend-builder /build/axonhub /
+WORKDIR /app
+COPY --from=backend-builder /build/axonhub /app/axonhub
+
+USER axonhub
 EXPOSE 8090
-ENTRYPOINT ["/axonhub"]
+ENTRYPOINT ["/app/axonhub"]
