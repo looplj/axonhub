@@ -160,7 +160,8 @@
         "currentPasswordPlaceholder": "Enter current password",
         "newPasswordPlaceholder": "Enter new password",
         "confirmNewPasswordPlaceholder": "Confirm new password"
-      }
+      },
+      "passwordMismatch": "Passwords don't match"
     },
     "validation": {
       "firstNameRequired": "First name is required",

@@ -70,7 +70,6 @@ export const createUserInputSchema = z.object({
 
 // 修改密码的前端表单模式
 export const changePasswordFormSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
   newPassword: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
@@ -80,7 +79,6 @@ export const changePasswordFormSchema = z.object({
 
 // 修改密码的 API 输入模式
 export const changePasswordInputSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
   newPassword: z.string().min(6, "Password must be at least 6 characters"),
 });
 

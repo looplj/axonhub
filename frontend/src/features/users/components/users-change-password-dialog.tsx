@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { User, ChangePasswordInput, changePasswordFormSchema } from "../data/schema";
+import { graphqlRequest } from "@/gql/graphql";
+import { UPDATE_USER_MUTATION } from "@/gql/users";
 
 interface Props {
   currentRow?: User;
@@ -35,7 +37,6 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
   const form = useForm({
     resolver: zodResolver(changePasswordFormSchema),
     defaultValues: {
-      currentPassword: "",
       newPassword: "",
       confirmPassword: "",
     },
@@ -43,19 +44,27 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
 
   const onSubmit = async (values: any) => {
     try {
-      // 创建 API 输入，移除 confirmPassword
-      const changePasswordInput: ChangePasswordInput = {
-        currentPassword: values.currentPassword,
-        newPassword: values.newPassword,
-        // 注意：不包含 confirmPassword
-      };
-      
-      // TODO: 实现修改密码的 API 调用
-      console.log("Change password for user:", currentRow?.id, changePasswordInput);
-      
-      // 模拟 API 调用
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      // 验证新密码和确认密码是否匹配
+      if (values.newPassword !== values.confirmPassword) {
+        form.setError("confirmPassword", {
+          type: "manual",
+          message: t("users.form.passwordMismatch")
+        });
+        return;
+      }
+
+      if (!currentRow?.id) {
+        throw new Error("No user selected");
+      }
+
+      // 使用 GraphQL updateUser mutation 进行真正的密码修改
+      await graphqlRequest(UPDATE_USER_MUTATION, {
+        id: currentRow.id,
+        input: {
+          password: values.newPassword,
+        },
+      });
+
       toast.success(t("users.messages.passwordChangeSuccess"));
       form.reset();
       onOpenChange(false);
@@ -94,24 +103,6 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
           >
             <FormField
               control={form.control}
-              name="currentPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("users.form.currentPassword")}</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="password" 
-                      placeholder={t("users.form.currentPasswordPlaceholder")} 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
               name="newPassword"
               render={({ field }) => (
                 <FormItem>
@@ -119,7 +110,7 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
                   <FormControl>
                     <Input 
                       type="password" 
-                      placeholder={t("users.form.newPasswordPlaceholder")} 
+                      placeholder={t("users.form.placeholders.newPasswordPlaceholder")} 
                       {...field} 
                     />
                   </FormControl>
@@ -137,7 +128,7 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
                   <FormControl>
                     <Input 
                       type="password" 
-                      placeholder={t("users.form.confirmNewPasswordPlaceholder")} 
+                      placeholder={t("users.form.placeholders.confirmNewPasswordPlaceholder")} 
                       {...field} 
                     />
                   </FormControl>

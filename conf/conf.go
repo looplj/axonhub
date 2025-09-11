@@ -65,7 +65,6 @@ func Load() (Config, error) {
 
 	logLevel, err := parseLogLevel(logLevelStr)
 	if err != nil {
-		println("Invalid log level, use default log level:", err.Error())
 		return Config{}, fmt.Errorf("invalid log level '%s': %w", logLevelStr, err)
 	}
 	// Set the parsed log level back to viper for unmarshaling

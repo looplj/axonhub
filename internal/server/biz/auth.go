@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/log"
 )
 
 type AuthServiceParams struct {
@@ -40,12 +41,17 @@ func HashPassword(password string) (string, error) {
 		return "", fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	return string(hashedPassword), nil
+	return hex.EncodeToString(hashedPassword), nil
 }
 
 // VerifyPassword verifies a password against a hash.
 func VerifyPassword(hashedPassword, password string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	decodedHashedPassword, err := hex.DecodeString(hashedPassword)
+	if err != nil {
+		return fmt.Errorf("failed to decode hashed password: %w", err)
+	}
+
+	return bcrypt.CompareHashAndPassword(decodedHashedPassword, []byte(password))
 }
 
 // GenerateSecretKey generates a random secret key for JWT.
@@ -97,7 +103,13 @@ func (s *AuthService) AuthenticateUser(
 		WithRoles().
 		Only(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("invalid email or password: %w", ErrInvalidPassword)
+		if ent.IsNotFound(err) {
+			return nil, fmt.Errorf("invalid email or password: %w", ErrInvalidPassword)
+		}
+
+		log.Error(ctx, "failed to get user", log.Cause(err))
+
+		return nil, ErrInternal
 	}
 
 	// Verify password
@@ -109,8 +121,8 @@ func (s *AuthService) AuthenticateUser(
 	return user, nil
 }
 
-// ValidateJWTToken validates a JWT token and returns the user.
-func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) (*ent.User, error) {
+// AuthenticateJWTToken validates a JWT token and returns the user.
+func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString string) (*ent.User, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	secretKey, err := s.SystemService.SecretKey(ctx)
@@ -156,7 +168,7 @@ func (s *AuthService) ValidateJWTToken(ctx context.Context, tokenString string) 
 	return u, nil
 }
 
-func (s *AuthService) ValidateAPIKey(ctx context.Context, key string) (*ent.APIKey, error) {
+func (s *AuthService) AnthenticateAPIKey(ctx context.Context, key string) (*ent.APIKey, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	// 查询数据库验证 API key 是否存在
 	client := ent.FromContext(ctx)
