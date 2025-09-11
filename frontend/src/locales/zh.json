@@ -410,7 +410,7 @@
         "code": {
           "label": "角色代码",
           "placeholder": "admin",
-          "description": "唯一标识符，只能包含字母、数字和下划线"
+          "description": "唯一标识符"
         },
         "name": {
           "label": "角色名称",

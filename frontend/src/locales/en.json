@@ -378,7 +378,7 @@
         "code": {
           "label": "Role Code",
           "placeholder": "admin",
-          "description": "Unique identifier, can only contain letters, numbers and underscores"
+          "description": "Unique identifier"
         },
         "name": {
           "label": "Role Name",

@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { graphqlRequest } from '@/gql/graphql'
 import { ROLES_QUERY, ALL_SCOPES_QUERY } from '@/gql/roles'
-import { se } from 'date-fns/locale'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -287,26 +286,38 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                 <FormField
                   control={form.control}
                   name='firstName'
-                  render={({ field }) => (
+                  render={({ field, fieldState }) => (
                     <FormItem>
                       <FormLabel>{t('users.form.firstName')}</FormLabel>
                       <FormControl>
-                        <Input placeholder='John' {...field} />
+                        <Input 
+                          placeholder='John' 
+                          aria-invalid={!!fieldState.error}
+                          {...field} 
+                        />
                       </FormControl>
-                      <FormMessage />
+                      <div className='min-h-[1.25rem]'>
+                        <FormMessage />
+                      </div>
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
                   name='lastName'
-                  render={({ field }) => (
+                  render={({ field, fieldState }) => (
                     <FormItem>
                       <FormLabel>{t('users.form.lastName')}</FormLabel>
                       <FormControl>
-                        <Input placeholder='Doe' {...field} />
+                        <Input 
+                          placeholder='Doe' 
+                          aria-invalid={!!fieldState.error}
+                          {...field} 
+                        />
                       </FormControl>
-                      <FormMessage />
+                      <div className='min-h-[1.25rem]'>
+                        <FormMessage />
+                      </div>
                     </FormItem>
                   )}
                 />
@@ -315,13 +326,19 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
               <FormField
                 control={form.control}
                 name='email'
-                render={({ field }) => (
+                render={({ field, fieldState }) => (
                   <FormItem>
                     <FormLabel>{t('users.form.email')}</FormLabel>
                     <FormControl>
-                      <Input placeholder='john.doe@example.com' {...field} />
+                      <Input 
+                        placeholder='john.doe@example.com' 
+                        aria-invalid={!!fieldState.error}
+                        {...field} 
+                      />
                     </FormControl>
-                    <FormMessage />
+                    <div className='min-h-[1.25rem]'>
+                      <FormMessage />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -332,34 +349,40 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                   <FormField
                     control={form.control}
                     name='password'
-                    render={({ field }) => (
+                    render={({ field, fieldState }) => (
                       <FormItem>
                         <FormLabel>{t('users.form.password')}</FormLabel>
                         <FormControl>
                           <Input
                             type='password'
                             placeholder='Enter password'
+                            aria-invalid={!!fieldState.error}
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage />
+                        <div className='min-h-[1.25rem]'>
+                          <FormMessage />
+                        </div>
                       </FormItem>
                     )}
                   />
                   <FormField
                     control={form.control}
                     name='confirmPassword'
-                    render={({ field }) => (
+                    render={({ field, fieldState }) => (
                       <FormItem>
                         <FormLabel>{t('users.form.confirmPassword')}</FormLabel>
                         <FormControl>
                           <Input
                             type='password'
                             placeholder='Confirm password'
+                            aria-invalid={!!fieldState.error}
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage />
+                        <div className='min-h-[1.25rem]'>
+                          <FormMessage />
+                        </div>
                       </FormItem>
                     )}
                   />
