@@ -44,6 +44,12 @@ For detailed technical documentation, API references, architecture design, and m
 
 ---
 
+## 🎯 Demo
+
+Try AxonHub live at our [demo instance](https://axonhub.onrender.com)!
+
+---
+
 ## ⭐ Core Features
 
 ### 📸 Screenshots
@@ -162,6 +168,22 @@ Here are some screenshots of AxonHub in action:
 ---
 
 
+
+## 🚀 Quick Start
+
+### 1-click Deploy to Render
+
+Deploy AxonHub with 1-click on [Render](https://render.com) for free.
+
+<div>
+
+<a href="https://render.com/deploy?repo=https://github.com/looplj/axonhub">
+  <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render">
+</a>
+
+</div>
+
+---
 
 ## 🚀 Deployment Guide
 
@@ -444,6 +466,8 @@ make build
 - 🔧 [99designs/gqlgen](https://github.com/99designs/gqlgen) - GraphQL code generation
 - 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTP framework
 - 🗄️ [ent/ent](https://github.com/ent/ent) - ORM framework
+- ☁️ [Render](https://render.com) - Free cloud deployment platform for hosting our demo
+- 🗃️ [TiDB Cloud](https://www.pingcap.com/tidb-cloud/) - Serverless database platform for demo deployment
 
 ---
 
