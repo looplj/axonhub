@@ -150,7 +150,7 @@ export function InitializationForm({
         />
         <Button
           type='submit'
-          className='mt-2'
+          className='mt-6 w-full rounded-lg bg-slate-800 px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:bg-slate-700 hover:shadow-xl focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50'
           disabled={initializeSystemMutation.isPending}
         >
           {initializeSystemMutation.isPending
