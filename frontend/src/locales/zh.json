@@ -1213,6 +1213,10 @@
     "write_settings": "管理系统设置"
   },
   "auth": {
+    "brand": {
+      "title": "统一 AI 网关",
+      "description": "统一兼容 OpenAI/Anthropic 的 API，具备灵活的 Transformer 管道、智能路由与全链路追踪——为企业级可靠性而生。"
+    },
     "signIn": {
       "title": "登录到 AxonHub",
       "subtitle": "输入您的邮箱和密码以访问您的账户",
@@ -1245,6 +1249,9 @@
         "forgotPassword": "忘记密码？",
         "noAccount": "还没有账户？",
         "signUp": "注册"
+      },
+      "footer": {
+        "agreement": "登录即表示您同意我们的服务条款和隐私政策"
       }
     }
   }

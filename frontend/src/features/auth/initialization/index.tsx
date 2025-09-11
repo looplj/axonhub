@@ -13,6 +13,7 @@ export default function Initialization() {
       <TwoColumnAuth
         title={t('initialization.title')}
         description={t('initialization.description')}
+        rightMaxWidthClassName='max-w-2xl'
       >
         <InitializationForm />
       </TwoColumnAuth>

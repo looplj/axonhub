@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { LanguageSwitch } from '@/components/language-switch'
 
 interface Props {
   children: React.ReactNode
@@ -15,8 +15,7 @@ const particles = Array.from({ length: 80 }).map((_, i) => ({
 }));
 
 export default function AuthLayout({ children }: Props) {
-  const { i18n } = useTranslation()
-
+  
   return (
     <div className='relative min-h-screen overflow-hidden bg-[#1A1A1A] tech'>
       {/* Tech grid background */}
@@ -57,15 +56,8 @@ export default function AuthLayout({ children }: Props) {
           </h1>
         </div>
         
-        <div className='flex items-center space-x-4'>
-          <select
-            className='bg-transparent border border-emerald-400/30 text-[#F0F0F0] px-3 py-1 rounded text-sm hover-glow focus-particles'
-            value={i18n.language}
-            onChange={(e) => i18n.changeLanguage(e.target.value)}
-          >
-            <option value='zh' className='bg-[#1A1A1A] text-[#F0F0F0]'>中文</option>
-            <option value='en' className='bg-[#1A1A1A] text-[#F0F0F0]'>English</option>
-          </select>
+        <div className='flex items-center space-x-2'>
+          <LanguageSwitch />
         </div>
       </nav>
       

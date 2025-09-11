@@ -1171,6 +1171,10 @@
     "write_settings": "Manage system settings"
   },
   "auth": {
+    "brand": {
+      "title": "Unified AI Gateway",
+      "description": "Unified OpenAI/Anthropic compatible API with a flexible transformer pipeline, intelligent routing, and comprehensive tracing—built for enterprise reliability."
+    },
     "signIn": {
       "title": "Sign in to AxonHub",
       "subtitle": "Enter your email and password to access your account",
@@ -1203,6 +1207,9 @@
         "forgotPassword": "Forgot password?",
         "noAccount": "Don't have an account?",
         "signUp": "Sign up"
+      },
+      "footer": {
+        "agreement": "By signing in, you agree to our Terms of Service and Privacy Policy"
       }
     }
   }

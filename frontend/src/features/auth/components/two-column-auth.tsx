@@ -1,6 +1,7 @@
 import React from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import AutoRouterDiagram from '../sign-in/components/auto-router-diagram'
+import { useTranslation } from 'react-i18next'
 
 export interface TwoColumnAuthProps {
   title: React.ReactNode
@@ -23,6 +24,7 @@ export default function TwoColumnAuth({
   rightFooter,
   rightMaxWidthClassName = 'max-w-md',
 }: TwoColumnAuthProps) {
+  const { t } = useTranslation()
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Brand/Welcome Section */}
@@ -37,10 +39,10 @@ export default function TwoColumnAuth({
         <div className="relative z-10 flex flex-col justify-center px-12 py-16 text-white">
           <div className="w-full max-w-lg">
             <div className="mb-8">
-              <h1 className="text-4xl font-light mb-4 text-slate-100">Unified AI Gateway</h1>
+              <h1 className="text-4xl font-light mb-4 text-slate-100">{t('auth.brand.title')}</h1>
               <h2 className="text-5xl font-bold mb-6 bg-gradient-to-r from-emerald-300 to-teal-200 bg-clip-text text-transparent">AxonHub</h2>
               <p className="text-lg text-slate-300 leading-relaxed">
-                Unified OpenAI/Anthropic compatible API with a flexible transformer pipeline, intelligent routing, and comprehensive tracing—built for enterprise reliability.
+                {t('auth.brand.description')}
               </p>
             </div>
 

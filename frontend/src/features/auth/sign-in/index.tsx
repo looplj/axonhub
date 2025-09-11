@@ -16,7 +16,7 @@ export default function SignIn() {
         description={t('auth.signIn.subtitle')}
         rightFooter={
           <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-            By signing in, you agree to our Terms of Service and Privacy Policy
+            {t('auth.signIn.footer.agreement')}
           </p>
         }
       >
