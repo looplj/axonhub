@@ -64,15 +64,8 @@ func (r *mutationResolver) InitializeSystem(ctx context.Context, input Initializ
 	}, nil
 }
 
-// UpdateSystemSettings is the resolver for the updateSystemSettings field.
-func (r *mutationResolver) UpdateSystemSettings(ctx context.Context, input UpdateSystemSettingsInput) (bool, error) {
-	if input.StoreChunks != nil {
-		err := r.systemService.SetStoreChunks(ctx, *input.StoreChunks)
-		if err != nil {
-			return false, fmt.Errorf("failed to update store chunks setting: %w", err)
-		}
-	}
-
+// UpdateBrandSettings is the resolver for the updateBrandSettings field.
+func (r *mutationResolver) UpdateBrandSettings(ctx context.Context, input UpdateBrandSettingsInput) (bool, error) {
 	if input.BrandName != nil {
 		err := r.systemService.SetBrandName(ctx, *input.BrandName)
 		if err != nil {
@@ -90,6 +83,16 @@ func (r *mutationResolver) UpdateSystemSettings(ctx context.Context, input Updat
 	return true, nil
 }
 
+// UpdateStoragePolicy is the resolver for the updateStoragePolicy field.
+func (r *mutationResolver) UpdateStoragePolicy(ctx context.Context, input biz.StoragePolicy) (bool, error) {
+	err := r.systemService.SetStoragePolicy(ctx, &input)
+	if err != nil {
+		return false, fmt.Errorf("failed to update storage policy: %w", err)
+	}
+
+	return true, nil
+}
+
 // SystemStatus is the resolver for the systemStatus field.
 func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error) {
 	isInitialized, err := r.systemService.IsInitialized(ctx)
@@ -99,30 +102,6 @@ func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error)
 
 	return &SystemStatus{
 		IsInitialized: isInitialized,
-	}, nil
-}
-
-// SystemSettings is the resolver for the systemSettings field.
-func (r *queryResolver) SystemSettings(ctx context.Context) (*SystemSettings, error) {
-	storeChunks, err := r.systemService.StoreChunks(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get store chunks setting: %w", err)
-	}
-
-	brandName, err := r.systemService.BrandName(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get brand name setting: %w", err)
-	}
-
-	brandLogo, err := r.systemService.BrandLogo(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get brand logo setting: %w", err)
-	}
-
-	return &SystemSettings{
-		StoreChunks: storeChunks,
-		BrandName:   &brandName,
-		BrandLogo:   &brandLogo,
 	}, nil
 }
 
@@ -141,7 +120,12 @@ func (r *queryResolver) BrandSettings(ctx context.Context) (*BrandSettings, erro
 	}
 
 	return &BrandSettings{
-		Name: &brandName,
-		Logo: &brandLogo,
+		BrandName: &brandName,
+		BrandLogo: &brandLogo,
 	}, nil
+}
+
+// StoragePolicy is the resolver for the storagePolicy field.
+func (r *queryResolver) StoragePolicy(ctx context.Context) (*biz.StoragePolicy, error) {
+	return r.systemService.StoragePolicy(ctx)
 }

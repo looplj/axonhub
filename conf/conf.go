@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/server"
 	"github.com/looplj/axonhub/internal/server/db"
+	"github.com/looplj/axonhub/internal/server/gc"
 )
 
 type Config struct {
@@ -29,6 +30,7 @@ type Config struct {
 	APIServer server.Config  `conf:"server" yaml:"server" json:"server"`
 	Metrics   metrics.Config `conf:"metrics" yaml:"metrics" json:"metrics"`
 	Dumper    dumper.Config  `conf:"dumper" yaml:"dumper" json:"dumper"`
+	GC        gc.Config      `conf:"gc" yaml:"gc" json:"gc"`
 }
 
 // Load loads configuration from YAML file and environment variables.
@@ -151,6 +153,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("dumper.max_size", 100)
 	v.SetDefault("dumper.max_age", "24h")
 	v.SetDefault("dumper.max_backups", 10)
+
+	// GC defaults
+	v.SetDefault("gc.cron", "0 2 * * *") // Daily at 2:00 AM
 }
 
 // parseLogLevel converts a string log level to zapcore.Level.

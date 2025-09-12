@@ -2,10 +2,12 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
@@ -34,16 +36,31 @@ const (
 	// If set to true, the system will store chunks in the database.
 	// Default value is false.
 	SystemKeyStoreChunks = "requests_store_chunks"
+
+	// SystemKeyStoragePolicy is the key used to store the storage policy configuration.
+	// The value is JSON-encoded StoragePolicy struct.
+	SystemKeyStoragePolicy = "storage_policy"
 )
+
+// StoragePolicy represents the storage policy configuration.
+type StoragePolicy struct {
+	StoreChunks    bool            `json:"store_chunks"`
+	CleanupOptions []CleanupOption `json:"cleanup_options"`
+}
+
+// CleanupOption represents cleanup configuration for a specific resource type.
+type CleanupOption struct {
+	ResourceType string `json:"resource_type"`
+	Enabled      bool   `json:"enabled"`
+	CleanupDays  int    `json:"cleanup_days"`
+}
 
 type SystemServiceParams struct {
 	fx.In
 }
 
 func NewSystemService(params SystemServiceParams) *SystemService {
-	svc := &SystemService{}
-
-	return svc
+	return &SystemService{}
 }
 
 type SystemService struct{}
@@ -175,23 +192,12 @@ func (s *SystemService) SetSecretKey(ctx context.Context, secretKey string) erro
 
 // StoreChunks retrieves the store_chunks flag.
 func (s *SystemService) StoreChunks(ctx context.Context) (bool, error) {
-	client := ent.FromContext(ctx)
-
-	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyStoreChunks)).Only(ctx)
+	policy, err := s.StoragePolicy(ctx)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return false, nil
-		}
-
-		return false, fmt.Errorf("failed to get store_chunks flag: %w", err)
+		return false, fmt.Errorf("failed to get storage policy: %w", err)
 	}
 
-	return sys.Value == "true", nil
-}
-
-// SetStoreChunks sets the store_chunks flag.
-func (s *SystemService) SetStoreChunks(ctx context.Context, storeChunks bool) error {
-	return s.setSystemValue(ctx, SystemKeyStoreChunks, fmt.Sprintf("%t", storeChunks))
+	return policy.StoreChunks, nil
 }
 
 // BrandName retrieves the brand name.
@@ -255,4 +261,51 @@ func (s *SystemService) setSystemValue(
 	}
 
 	return nil
+}
+
+var defaultStoragePolicy = StoragePolicy{
+	StoreChunks: false,
+	CleanupOptions: []CleanupOption{
+		{
+			ResourceType: "requests",
+			Enabled:      false,
+			CleanupDays:  3,
+		},
+		{
+			ResourceType: "usage_logs",
+			Enabled:      false,
+			CleanupDays:  30,
+		},
+	},
+}
+
+// StoragePolicy retrieves the storage policy configuration.
+func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, error) {
+	client := ent.FromContext(ctx)
+
+	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyStoragePolicy)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultStoragePolicy), nil
+		}
+
+		return nil, fmt.Errorf("failed to get storage policy: %w", err)
+	}
+
+	var policy StoragePolicy
+	if err := json.Unmarshal([]byte(sys.Value), &policy); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal storage policy: %w", err)
+	}
+
+	return &policy, nil
+}
+
+// SetStoragePolicy sets the storage policy configuration.
+func (s *SystemService) SetStoragePolicy(ctx context.Context, policy *StoragePolicy) error {
+	jsonBytes, err := json.Marshal(policy)
+	if err != nil {
+		return fmt.Errorf("failed to marshal storage policy: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyStoragePolicy, string(jsonBytes))
 }

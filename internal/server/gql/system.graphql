@@ -18,31 +18,46 @@ type SystemStatus {
   isInitialized: Boolean!
 }
 
-type SystemSettings {
-  storeChunks: Boolean!
-  brandName: String
-  brandLogo: String
-}
-
 type BrandSettings {
-  name: String
-  logo: String
-}
-
-input UpdateSystemSettingsInput {
-  storeChunks: Boolean
   brandName: String
   brandLogo: String
+}
+
+type StoragePolicy {
+  storeChunks: Boolean!
+  cleanupOptions: [CleanupOption!]!
+}
+
+type CleanupOption {
+  resourceType: String!
+  enabled: Boolean!
+  cleanupDays: Int!
+}
+
+input UpdateBrandSettingsInput {
+  brandName: String
+  brandLogo: String
+}
+
+input UpdateStoragePolicyInput {
+  storeChunks: Boolean
+  cleanupOptions: [CleanupOptionInput!]
+}
+
+input CleanupOptionInput {
+  resourceType: String!
+  enabled: Boolean!
+  cleanupDays: Int!
 }
 
 extend type Mutation {
   initializeSystem(input: InitializeSystemInput!): InitializeSystemPayload!
-  updateSystemSettings(input: UpdateSystemSettingsInput!): Boolean!
+  updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
+  updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
 }
-
 
 extend type Query {
   systemStatus: SystemStatus!
-  systemSettings: SystemSettings!
   brandSettings: BrandSettings!
+  storagePolicy: StoragePolicy!
 }

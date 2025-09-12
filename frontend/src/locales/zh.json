@@ -726,12 +726,31 @@
     "title": "系统管理",
     "description": "管理系统配置和选项。",
     "loading": "加载系统设置...",
+    "tabs": {
+      "brand": "品牌",
+      "storage": "存储"
+    },
     "storage": {
       "title": "存储设置",
       "description": "配置系统如何处理和存储响应数据",
       "storeChunks": {
         "label": "存储响应块",
         "description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理"
+      },
+      "policy": {
+        "title": "存储策略",
+        "description": "配置存储策略和数据清理设置",
+        "storeChunks": {
+          "label": "存储响应块",
+          "description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理"
+        },
+        "cleanupOptions": "清理选项",
+        "cleanupDays": "清理周期",
+        "days": "天",
+        "resourceTypes": {
+          "requests": "请求日志",
+          "usage_logs": "使用日志"
+        }
       }
     },
     "general": {
@@ -1166,7 +1185,8 @@
       "modelCreated": "模型创建成功",
       "modelUpdated": "模型更新成功",
       "modelDeleted": "模型删除成功",
-      "systemSettingsUpdated": "系统设置更新成功"
+      "systemSettingsUpdated": "系统设置更新成功",
+      "systemUpdated": "系统设置更新成功"
     }
   },
   "initialization": {

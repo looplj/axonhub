@@ -33,7 +33,7 @@ export function TeamSwitcher({
   const { t } = useTranslation()
   
   // Use brand name if available, otherwise fall back to team name
-  const displayName = brandSettings?.name || activeTeam?.name || 'AxonHub'
+  const displayName = brandSettings?.brandName || activeTeam?.name || 'AxonHub'
   
   // Only show dropdown if there are multiple teams
   const showDropdown = teams.length > 1
@@ -49,9 +49,9 @@ export function TeamSwitcher({
                 className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
               >
                 <div className='bg-sidebar-primary flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden'>
-                  {brandSettings?.logo ? (
+                  {brandSettings?.brandLogo ? (
                     <img
-                      src={brandSettings.logo}
+                      src={brandSettings.brandLogo}
                       alt='Brand Logo'
                       className='size-8 object-cover'
                     />
@@ -99,9 +99,9 @@ export function TeamSwitcher({
             className='cursor-default'
           >
             <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden'>
-              {brandSettings?.logo ? (
+              {brandSettings?.brandLogo ? (
                 <img
-                  src={brandSettings.logo}
+                  src={brandSettings.brandLogo}
                   alt='Brand Logo'
                   className='size-8 object-cover'
                 />
