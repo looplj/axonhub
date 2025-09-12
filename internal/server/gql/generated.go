@@ -204,8 +204,6 @@ type ComplexityRoot struct {
 		CreateChannel             func(childComplexity int, input ent.CreateChannelInput) int
 		CreateRole                func(childComplexity int, input ent.CreateRoleInput) int
 		CreateUser                func(childComplexity int, input ent.CreateUserInput) int
-		InitializeSystem          func(childComplexity int, input InitializeSystemInput) int
-		SignIn                    func(childComplexity int, input SignInInput) int
 		TestChannel               func(childComplexity int, input TestChannelInput) int
 		UpdateAPIKey              func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
 		UpdateAPIKeyStatus        func(childComplexity int, id objects.GUID, status apikey.Status) int
@@ -504,9 +502,7 @@ type MutationResolver interface {
 	UpdateUserStatus(ctx context.Context, id objects.GUID, status user.Status) (*ent.User, error)
 	CreateRole(ctx context.Context, input ent.CreateRoleInput) (*ent.Role, error)
 	UpdateRole(ctx context.Context, id objects.GUID, input ent.UpdateRoleInput) (*ent.Role, error)
-	SignIn(ctx context.Context, input SignInInput) (*SignInPayload, error)
 	UpdateMe(ctx context.Context, input UpdateMeInput) (*ent.User, error)
-	InitializeSystem(ctx context.Context, input InitializeSystemInput) (*InitializeSystemPayload, error)
 	UpdateBrandSettings(ctx context.Context, input UpdateBrandSettingsInput) (bool, error)
 	UpdateStoragePolicy(ctx context.Context, input biz.StoragePolicy) (bool, error)
 }
@@ -1197,30 +1193,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CreateUser(childComplexity, args["input"].(ent.CreateUserInput)), true
-
-	case "Mutation.initializeSystem":
-		if e.complexity.Mutation.InitializeSystem == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_initializeSystem_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.InitializeSystem(childComplexity, args["input"].(InitializeSystemInput)), true
-
-	case "Mutation.signIn":
-		if e.complexity.Mutation.SignIn == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_signIn_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.SignIn(childComplexity, args["input"].(SignInInput)), true
 
 	case "Mutation.testChannel":
 		if e.complexity.Mutation.TestChannel == nil {
@@ -3019,28 +2991,6 @@ func (ec *executionContext) field_Mutation_createUser_args(ctx context.Context, 
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateUserInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateUserInput)
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_initializeSystem_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNInitializeSystemInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInitializeSystemInput)
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_signIn_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNSignInInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSignInInput)
 	if err != nil {
 		return nil, err
 	}
@@ -8487,67 +8437,6 @@ func (ec *executionContext) fieldContext_Mutation_updateRole(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_signIn(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_signIn(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SignIn(rctx, fc.Args["input"].(SignInInput))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*SignInPayload)
-	fc.Result = res
-	return ec.marshalNSignInPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSignInPayload(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_signIn(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "user":
-				return ec.fieldContext_SignInPayload_user(ctx, field)
-			case "token":
-				return ec.fieldContext_SignInPayload_token(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type SignInPayload", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_signIn_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_updateMe(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_updateMe(ctx, field)
 	if err != nil {
@@ -8631,71 +8520,6 @@ func (ec *executionContext) fieldContext_Mutation_updateMe(ctx context.Context, 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateMe_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_initializeSystem(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_initializeSystem(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().InitializeSystem(rctx, fc.Args["input"].(InitializeSystemInput))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*InitializeSystemPayload)
-	fc.Result = res
-	return ec.marshalNInitializeSystemPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInitializeSystemPayload(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_initializeSystem(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "success":
-				return ec.fieldContext_InitializeSystemPayload_success(ctx, field)
-			case "message":
-				return ec.fieldContext_InitializeSystemPayload_message(ctx, field)
-			case "user":
-				return ec.fieldContext_InitializeSystemPayload_user(ctx, field)
-			case "token":
-				return ec.fieldContext_InitializeSystemPayload_token(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type InitializeSystemPayload", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_initializeSystem_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -29050,23 +28874,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "signIn":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_signIn(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "updateMe":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateMe(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "initializeSystem":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_initializeSystem(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -32939,25 +32749,6 @@ func (ec *executionContext) marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinte
 	return v
 }
 
-func (ec *executionContext) unmarshalNInitializeSystemInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInitializeSystemInput(ctx context.Context, v any) (InitializeSystemInput, error) {
-	res, err := ec.unmarshalInputInitializeSystemInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNInitializeSystemPayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInitializeSystemPayload(ctx context.Context, sel ast.SelectionSet, v InitializeSystemPayload) graphql.Marshaler {
-	return ec._InitializeSystemPayload(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNInitializeSystemPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐInitializeSystemPayload(ctx context.Context, sel ast.SelectionSet, v *InitializeSystemPayload) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._InitializeSystemPayload(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {
 	res, err := graphql.UnmarshalInt(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -33436,25 +33227,6 @@ func (ec *executionContext) marshalNScopeInfo2ᚖgithubᚗcomᚋloopljᚋaxonhub
 		return graphql.Null
 	}
 	return ec._ScopeInfo(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNSignInInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSignInInput(ctx context.Context, v any) (SignInInput, error) {
-	res, err := ec.unmarshalInputSignInInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNSignInPayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSignInPayload(ctx context.Context, sel ast.SelectionSet, v SignInPayload) graphql.Marshaler {
-	return ec._SignInPayload(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNSignInPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSignInPayload(ctx context.Context, sel ast.SelectionSet, v *SignInPayload) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._SignInPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNStoragePolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐStoragePolicy(ctx context.Context, sel ast.SelectionSet, v biz.StoragePolicy) graphql.Marshaler {

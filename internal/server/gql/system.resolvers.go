@@ -12,58 +12,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// InitializeSystem is the resolver for the initializeSystem field.
-func (r *mutationResolver) InitializeSystem(ctx context.Context, input InitializeSystemInput) (*InitializeSystemPayload, error) {
-	// Check if system is already initialized
-	isInitialized, err := r.systemService.IsInitialized(ctx)
-	if err != nil {
-		return &InitializeSystemPayload{
-			Success: false,
-			Message: fmt.Sprintf("Failed to check initialization status: %v", err),
-		}, nil
-	}
-
-	if isInitialized {
-		return &InitializeSystemPayload{
-			Success: false,
-			Message: "System is already initialized",
-		}, nil
-	}
-
-	err = r.systemService.Initialize(ctx, &biz.InitializeSystemArgs{
-		OwnerEmail:     input.OwnerEmail,
-		OwnerPassword:  input.OwnerPassword,
-		OwnerFirstName: input.OwnerFirstName,
-		OwnerLastName:  input.OwnerLastName,
-		BrandName:      input.BrandName,
-	})
-	if err != nil {
-		return &InitializeSystemPayload{
-			Success: false,
-			Message: fmt.Sprintf("Failed to initialize system: %v", err),
-		}, nil
-	}
-
-	// Generate JWT token for the owner
-	token, err := r.SignIn(ctx, SignInInput{
-		Email:    input.OwnerEmail,
-		Password: input.OwnerPassword,
-	})
-	if err != nil {
-		return &InitializeSystemPayload{
-			Success: false,
-			Message: fmt.Sprintf("Failed to generate token: %v", err),
-		}, nil
-	}
-
-	return &InitializeSystemPayload{
-		Success: true,
-		Message: "System initialized successfully",
-		User:    token.User,
-		Token:   &token.Token,
-	}, nil
-}
-
 // UpdateBrandSettings is the resolver for the updateBrandSettings field.
 func (r *mutationResolver) UpdateBrandSettings(ctx context.Context, input UpdateBrandSettingsInput) (bool, error) {
 	if input.BrandName != nil {
