@@ -691,12 +691,31 @@
     "title": "System Management",
     "description": "Manage system configurations and options.",
     "loading": "Loading system settings...",
+    "tabs": {
+      "brand": "Brand",
+      "storage": "Storage"
+    },
     "storage": {
       "title": "Storage Settings",
       "description": "Configure how the system handles and stores response data",
       "storeChunks": {
         "label": "Store Response Chunks",
         "description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing"
+      },
+      "policy": {
+        "title": "Storage Policy",
+        "description": "Configure storage policies and data cleanup settings",
+        "storeChunks": {
+          "label": "Store Response Chunks",
+          "description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing"
+        },
+        "cleanupOptions": "Cleanup Options",
+        "cleanupDays": "Cleanup after",
+        "days": "days",
+        "resourceTypes": {
+          "requests": "Request Logs",
+          "usage_logs": "Usage Logs"
+        }
       }
     },
     "general": {
@@ -1124,7 +1143,8 @@
       "userDeleted": "User deleted successfully",
       "modelCreated": "Model created successfully",
       "modelUpdated": "Model updated successfully",
-      "modelDeleted": "Model deleted successfully"
+      "modelDeleted": "Model deleted successfully",
+      "systemUpdated": "System settings updated successfully"
     }
   },
   "initialization": {

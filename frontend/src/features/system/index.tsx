@@ -8,13 +8,13 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { LanguageSwitch } from '@/components/language-switch'
-import { SystemSettings } from './components/system-settings'
+import { SystemSettingsTabs } from './components/tabs'
 import SystemProvider from './context/system-context'
 
 function SystemContent() {
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-      <SystemSettings />
+      <SystemSettingsTabs />
     </div>
   )
 }

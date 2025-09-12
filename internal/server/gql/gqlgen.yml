@@ -83,6 +83,18 @@ models:
   ChannelCredentialsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelCredentials
+  StoragePolicy:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.StoragePolicy
+  CleanupOption:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.CleanupOption
+  UpdateStoragePolicyInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.StoragePolicy
+  CleanupOptionInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.CleanupOption
   AWSCredential:
     model:
       - github.com/looplj/axonhub/internal/objects.AWSCredential

@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/api"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/dependencies"
+	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/gql"
 )
 
@@ -72,9 +73,11 @@ func (srv *Server) Shutdown(ctx context.Context) error {
 }
 
 func Run(opts ...fx.Option) {
-	var constructors []any
-
-	constructors = append(constructors, gql.NewGraphqlHandlers, New)
+	constructors := []any{
+		gql.NewGraphqlHandlers,
+		gc.NewWorker,
+		New,
+	}
 
 	app := fx.New(
 		append([]fx.Option{
@@ -86,6 +89,16 @@ func Run(opts ...fx.Option) {
 			fx.Invoke(func(cfg log.Config) {
 				log.SetGlobalConfig(cfg)
 				slog.SetDefault(log.GetGlobalLogger().AsSlog())
+			}),
+			fx.Invoke(func(lc fx.Lifecycle, worker *gc.Worker) {
+				lc.Append(fx.Hook{
+					OnStart: func(ctx context.Context) error {
+						return worker.Start(ctx)
+					},
+					OnStop: func(ctx context.Context) error {
+						return worker.Stop(ctx)
+					},
+				})
 			}),
 			fx.Invoke(SetupRoutes),
 		}, opts...)...,
