@@ -48,6 +48,10 @@ For detailed technical documentation, API references, architecture design, and m
 
 Try AxonHub live at our [demo instance](https://axonhub.onrender.com)!
 
+### Demo Account
+- **Email**: demo@example.com
+- **Password**: 123456
+
 ---
 
 ## ⭐ Core Features
