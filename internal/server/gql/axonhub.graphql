@@ -147,6 +147,4 @@ type Mutation {
 
   createRole(input: CreateRoleInput!): Role!
   updateRole(id: ID!, input: UpdateRoleInput!): Role!
-
-  signIn(input: SignInInput!): SignInPayload!
 }

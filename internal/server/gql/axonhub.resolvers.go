@@ -366,26 +366,6 @@ func (r *mutationResolver) UpdateRole(ctx context.Context, id objects.GUID, inpu
 	return role, nil
 }
 
-// SignIn is the resolver for the signIn field.
-func (r *mutationResolver) SignIn(ctx context.Context, input SignInInput) (*SignInPayload, error) {
-	// Authenticate user
-	user, err := r.authService.AuthenticateUser(ctx, input.Email, input.Password)
-	if err != nil {
-		return nil, err
-	}
-
-	// Generate JWT token
-	token, err := r.authService.GenerateJWTToken(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-
-	return &SignInPayload{
-		User:  user,
-		Token: token,
-	}, nil
-}
-
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 

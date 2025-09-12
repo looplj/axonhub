@@ -51,7 +51,6 @@ input CleanupOptionInput {
 }
 
 extend type Mutation {
-  initializeSystem(input: InitializeSystemInput!): InitializeSystemPayload!
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
 }
