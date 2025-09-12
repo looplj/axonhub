@@ -8,8 +8,8 @@ import (
 )
 
 type BrandSettings struct {
-	Name *string `json:"name,omitempty"`
-	Logo *string `json:"logo,omitempty"`
+	BrandName *string `json:"brandName,omitempty"`
+	BrandLogo *string `json:"brandLogo,omitempty"`
 }
 
 type BulkImportChannelItem struct {
@@ -114,12 +114,6 @@ type SignInPayload struct {
 	Token string    `json:"token"`
 }
 
-type SystemSettings struct {
-	StoreChunks bool    `json:"storeChunks"`
-	BrandName   *string `json:"brandName,omitempty"`
-	BrandLogo   *string `json:"brandLogo,omitempty"`
-}
-
 type SystemStatus struct {
 	IsInitialized bool `json:"isInitialized"`
 }
@@ -143,18 +137,17 @@ type TopRequestsUsers struct {
 	RequestCount int          `json:"requestCount"`
 }
 
+type UpdateBrandSettingsInput struct {
+	BrandName *string `json:"brandName,omitempty"`
+	BrandLogo *string `json:"brandLogo,omitempty"`
+}
+
 type UpdateMeInput struct {
 	Email          *string `json:"email,omitempty"`
 	FirstName      *string `json:"firstName,omitempty"`
 	LastName       *string `json:"lastName,omitempty"`
 	PreferLanguage *string `json:"preferLanguage,omitempty"`
 	Avatar         *string `json:"avatar,omitempty"`
-}
-
-type UpdateSystemSettingsInput struct {
-	StoreChunks *bool   `json:"storeChunks,omitempty"`
-	BrandName   *string `json:"brandName,omitempty"`
-	BrandLogo   *string `json:"brandLogo,omitempty"`
 }
 
 type UserInfo struct {

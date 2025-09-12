@@ -49,6 +49,16 @@ dumper:
   max_age: "24h"                 # Maximum age of dump files to keep (env: AXONHUB_DUMPER_MAX_AGE)
   max_backups: 10                # Maximum number of old dump files to retain (env: AXONHUB_DUMPER_MAX_BACKUPS)
 
+# Garbage Collection configuration
+gc:
+  cron: "0 2 * * *"              # Cron expression for GC execution (env: AXONHUB_GC_CRON)
+                                 # This example runs daily at 2:00 AM
+                                 # Format: minute hour day month day_of_week
+                                 # Examples:
+                                 # "0 2 * * *"     - Daily at 2:00 AM
+                                 # "0 3 * * 0"     - Weekly on Sunday at 3:00 AM
+                                 # "0 4 1 * *"     - Monthly on 1st day at 4:00 AM
+
 # Environment Variable Examples:
 # export AXONHUB_SERVER_PORT=8080
 # export AXONHUB_DB_DSN="postgres://user:pass@localhost/axonhub?sslmode=disable"
@@ -56,3 +66,4 @@ dumper:
 # export AXONHUB_LOG_ENCODING="console"
 # export AXONHUB_SERVER_TRACE_HEADER="X-Trace-ID"
 # export AXONHUB_METRICS_ENABLED=false
+# export AXONHUB_GC_CRON="0 3 * * 0"  # Run weekly on Sunday at 3:00 AM
