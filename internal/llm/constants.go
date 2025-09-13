@@ -7,4 +7,5 @@ const (
 	APIFormatOpenAIResponse       APIFormat = "openai/response"
 	APIFormatAnthropicMessage     APIFormat = "anthropic/messages"
 	APIFormatAiSDKText            APIFormat = "aisdk/text"
+	APIFormatAiSDKDataStream      APIFormat = "aisdk/datastream"
 )

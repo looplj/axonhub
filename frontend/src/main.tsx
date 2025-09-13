@@ -19,6 +19,7 @@ import { routeTree } from './routeTree.gen'
 import './lib/i18n'
 import i18n from './lib/i18n'
 
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

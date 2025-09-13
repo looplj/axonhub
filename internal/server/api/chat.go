@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/looplj/axonhub/internal/llm/transformer/aisdk"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
@@ -66,10 +67,17 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 			}
 		}()
 
-		// Set SSE headers
-		c.Header("Content-Type", "text/event-stream")
-		c.Header("Cache-Control", "no-cache")
-		c.Header("Connection", "keep-alive")
+		// Set appropriate headers based on transformer type
+		if _, isDataStream := handlers.ChatCompletionProcessor.Inbound.(*aisdk.DataStreamTransformer); isDataStream {
+			// Set AI SDK data stream headers
+			aisdk.SetDataStreamHeaders(c.Writer.Header())
+		} else {
+			// Set SSE headers
+			c.Header("Content-Type", "text/event-stream")
+			c.Header("Cache-Control", "no-cache")
+			c.Header("Connection", "keep-alive")
+		}
+
 		c.Header("Access-Control-Allow-Origin", "*")
 
 		writeSSEStream(c, result.ChatCompletionStream)

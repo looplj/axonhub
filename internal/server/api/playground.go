@@ -10,7 +10,6 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/chat"
 )
@@ -94,7 +93,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 			chat.NewSpecifiedChannelSelector(handlers.ChannelService, channelID),
 			handlers.RequestService,
 			handlers.HttpClient,
-			aisdk.NewTextTransformer(),
+			aisdk.NewDataStreamTransformer(),
 		)
 	} else {
 		// Use default processor with all available channels
@@ -102,7 +101,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 			handlers.ChannelService,
 			handlers.RequestService,
 			handlers.HttpClient,
-			aisdk.NewTextTransformer(),
+			aisdk.NewDataStreamTransformer(),
 		)
 	}
 
@@ -145,51 +144,13 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 
 		// Set AI SDK data stream headers
 
-		c.Header("Content-Type", "text/plain; charset=utf-8")
+		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("X-Vercel-AI-Data-Stream", "v1")
 		c.Status(http.StatusOK)
 
-		writeAITextStream(c, result.ChatCompletionStream)
-	}
-}
-
-func writeAITextStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent]) {
-	ctx := c.Request.Context()
-	clientDisconnected := false
-
-	defer func() {
-		if clientDisconnected {
-			log.Warn(ctx, "Client disconnected")
-		}
-	}()
-
-	clientGone := c.Writer.CloseNotify()
-
-	for {
-		select {
-		case <-clientGone:
-			clientDisconnected = true
-
-			log.Warn(ctx, "Client disconnected, stop streaming")
-
-			return
-		default:
-			if stream.Next() {
-				cur := stream.Current()
-				_, _ = c.Writer.Write(cur.Data)
-				log.Debug(ctx, "write stream event", log.Any("event", cur))
-				c.Writer.Flush()
-			} else {
-				if err := stream.Err(); err != nil {
-					log.Error(ctx, "Error in stream", log.Cause(err))
-					_, _ = c.Writer.Write([]byte("3:" + `"` + err.Error() + `"` + "\n"))
-				}
-
-				return
-			}
-		}
+		writeSSEStream(c, result.ChatCompletionStream)
 	}
 }
