@@ -1,23 +1,28 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { IconTrash, IconRefresh } from '@tabler/icons-react'
+import { AIDevtools } from '@ai-sdk-tools/devtools'
 import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
+import { MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
-import { Chat } from '@/components/ui/chat'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from '@/components/ai-elements/conversation'
+import { Message, MessageContent } from '@/components/ai-elements/message'
+import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/components/ai-elements/prompt-input'
+import { Response } from '@/components/ai-elements/response'
 import { useChannels } from '@/features/channels/data/channels'
 import type { Channel } from '@/features/channels/data/schema'
 
@@ -28,9 +33,36 @@ export default function Playground() {
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null)
   const [temperature, setTemperature] = useState(0.7)
   const [maxTokens, setMaxTokens] = useState(1000)
-  const [systemPrompt, setSystemPrompt] = useState(
-    t('playground.settings.defaultSystemPrompt')
-  )
+  const [systemPrompt, setSystemPrompt] = useState(t('playground.settings.defaultSystemPrompt'))
+
+  // useRef hooks for direct access to current values
+  const modelRef = useRef(model)
+  const temperatureRef = useRef(temperature)
+  const maxTokensRef = useRef(maxTokens)
+  const systemPromptRef = useRef(systemPrompt)
+  const selectedChannelRef = useRef(selectedChannel)
+
+  // Keep refs synchronized with state
+  useEffect(() => {
+    modelRef.current = model
+  }, [model])
+
+  useEffect(() => {
+    temperatureRef.current = temperature
+  }, [temperature])
+
+  useEffect(() => {
+    maxTokensRef.current = maxTokens
+  }, [maxTokens])
+
+  useEffect(() => {
+    systemPromptRef.current = systemPrompt
+  }, [systemPrompt])
+
+  useEffect(() => {
+    selectedChannelRef.current = selectedChannel
+  }, [selectedChannel])
+
   const { accessToken } = useAuthStore((state) => state.auth)
   // 获取 channels 数据
   const { data: channelsData, isLoading: channelsLoading } = useChannels({
@@ -41,56 +73,41 @@ export default function Playground() {
     },
   })
 
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const [input, setInput] = useState('')
 
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    status,
-    reload,
-    stop,
-    setMessages,
-  } = useChat({
-    // streamProtocol: 'text',
-    api: '/admin/playground/chat',
-    initialMessages: [],
-    credentials: 'include',
-    headers: {
-      Authorization: 'Bearer ' + accessToken,
-    },
-    body: {
-      // stream: true,
-      model,
-      temperature,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-    },
-    fetch: async (
-      input: string | URL | globalThis.Request,
-      init?: RequestInit
-    ) => {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      //@ts-ignore
-      if (input.headers) {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        //@ts-ignore
-        input.headers.set('X-Channel-ID', selectedChannel)
-      } else {
-        input = input + '?channel_id=' + selectedChannel
-      }
-      return fetch(input, init)
-    },
+  const { messages, sendMessage, status, setMessages, regenerate } = useChat({
+    transport: new DefaultChatTransport({
+      api: '/admin/playground/chat',
+      credentials: 'include',
+      headers: () => {
+        return {
+          Authorization: 'Bearer ' + accessToken,
+          'X-Channel-ID': selectedChannelRef.current || '',
+        }
+      },
+      body: () => {
+        return {
+          model: modelRef.current,
+          temperature: temperatureRef.current,
+          max_tokens: maxTokensRef.current,
+          system: systemPromptRef.current,
+        }
+      },
+    }),
   })
   const isLoading = status === 'submitted' || status === 'streaming'
 
-  // Focus input on mount
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus()
-    }
-  }, [])
+  // Handle form submission
+  const handleSubmit = useCallback(
+    (message: { text?: string }, e: React.FormEvent) => {
+      e.preventDefault()
+      if (message.text?.trim()) {
+        sendMessage({ text: message.text })
+        setInput('')
+      }
+    },
+    [sendMessage, selectedChannel]
+  )
 
   const handleClear = useCallback(() => {
     setMessages([])
@@ -113,30 +130,15 @@ export default function Playground() {
       const newMessages = messages.slice(0, lastAssistantIndex)
       setMessages(newMessages)
 
-      // 使用 setTimeout 确保状态更新后再调用 reload
+      // 使用 setTimeout 确保状态更新后再调用 regenerate
       setTimeout(() => {
-        reload()
+        regenerate()
       }, 100)
     } else {
       // 如果没有助手消息，直接重新发送
-      reload()
+      regenerate()
     }
-  }, [messages, reload, setMessages])
-
-  // 重试特定消息
-  const handleRetryFromMessage = (messageId: string) => {
-    const messageIndex = messages.findIndex((msg) => msg.id === messageId)
-    if (messageIndex === -1) return
-
-    // 移除该消息及其之后的所有消息
-    const newMessages = messages.slice(0, messageIndex)
-    setMessages(newMessages)
-
-    // 使用 setTimeout 确保状态更新后再调用 reload
-    setTimeout(() => {
-      reload()
-    }, 100)
-  }
+  }, [messages, regenerate, setMessages])
 
   // 获取按 channel 分组的模型列表
   const groupedModels = useMemo(() => {
@@ -202,30 +204,29 @@ export default function Playground() {
     }
   }, [groupedModels, handleModelChange, selectedGroupModel])
 
-  // 处理消息评分和重试
-  const handleRateResponse = (
-    messageId: string,
-    rating: 'thumbs-up' | 'thumbs-down'
-  ) => {
-    if (rating === 'thumbs-down') {
-      // 当用户点击 thumbs-down 时，触发重试
-      handleRetryFromMessage(messageId)
-    }
-    // 处理 thumbs-up 可以在这里添加其他逻辑
-  }
-
   return (
     <TooltipProvider>
+      {/* {process.env.NODE_ENV === 'development' && (
+        <AIDevtools
+          config={{
+            enabled: true,
+            position: 'bottom',
+            theme: 'dark',
+            streamCapture: {
+              enabled: true,
+              endpoint: '/admin/playground/chat',
+              autoConnect: true,
+            },
+          }}
+          enabled={true}
+        />
+      )} */}
       <div className='bg-background flex h-screen w-full'>
         {/* Settings Sidebar */}
         <div className='bg-muted/40 flex w-80 flex-col border-r'>
           <div className='border-b p-6'>
-            <h1 className='text-2xl font-bold tracking-tight'>
-              {t('playground.title')}
-            </h1>
-            <p className='text-muted-foreground mt-2 text-sm leading-relaxed'>
-              {t('playground.description')}
-            </p>
+            <h1 className='text-2xl font-bold tracking-tight'>{t('playground.title')}</h1>
+            <p className='text-muted-foreground mt-2 text-sm leading-relaxed'>{t('playground.description')}</p>
           </div>
 
           <ScrollArea className='flex-1 p-6'>
@@ -234,19 +235,9 @@ export default function Playground() {
                 <Label htmlFor='model' className='text-sm font-semibold'>
                   {t('playground.settings.model')}
                 </Label>
-                <Select
-                  value={selectedGroupModel}
-                  onValueChange={handleModelChange}
-                  disabled={channelsLoading}
-                >
+                <Select value={selectedGroupModel} onValueChange={handleModelChange} disabled={channelsLoading}>
                   <SelectTrigger className='h-10'>
-                    <SelectValue
-                      placeholder={
-                        channelsLoading
-                          ? t('loading')
-                          : t('playground.settings.selectModel')
-                      }
-                    />
+                    <SelectValue placeholder={channelsLoading ? t('loading') : t('playground.settings.selectModel')} />
                   </SelectTrigger>
                   <SelectContent className='max-h-[300px]'>
                     {groupedModels.length > 0 ? (
@@ -257,17 +248,10 @@ export default function Playground() {
                             {group.channelName} ({group.channelType})
                           </div>
                           {group.models.map((modelOption) => (
-                            <SelectItem
-                              key={`${group.channelName}-${modelOption.value}`}
-                              value={modelOption.value}
-                            >
+                            <SelectItem key={`${group.channelName}-${modelOption.value}`} value={modelOption.value}>
                               <div className='flex flex-col items-start'>
-                                <span className='font-medium'>
-                                  {modelOption.label}
-                                </span>
-                                <span className='text-muted-foreground text-xs'>
-                                  {group.channelName}
-                                </span>
+                                <span className='font-medium'>{modelOption.label}</span>
+                                <span className='text-muted-foreground text-xs'>{group.channelName}</span>
                               </div>
                             </SelectItem>
                           ))}
@@ -275,18 +259,12 @@ export default function Playground() {
                       ))
                     ) : (
                       <SelectItem value='gpt-4o' disabled>
-                        {channelsLoading
-                          ? t('loading')
-                          : t('playground.errors.noChannelsAvailable')}
+                        {channelsLoading ? t('loading') : t('playground.errors.noChannelsAvailable')}
                       </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
-                {channelsLoading && (
-                  <p className='text-muted-foreground text-xs'>
-                    {t('loading')}...
-                  </p>
-                )}
+                {channelsLoading && <p className='text-muted-foreground text-xs'>{t('loading')}...</p>}
                 {!channelsLoading && allModels.length > 0 && (
                   <p className='text-muted-foreground text-xs'>
                     {t('playground.modelsAvailable', {
@@ -356,11 +334,7 @@ export default function Playground() {
               onClick={handleRetry}
               variant='outline'
               className='h-10 w-full'
-              disabled={
-                isLoading ||
-                messages.length === 0 ||
-                messages.every((msg) => msg.role !== 'assistant')
-              }
+              disabled={isLoading || messages.length === 0 || messages.every((msg) => msg.role !== 'assistant')}
             >
               <IconRefresh className='mr-2 h-4 w-4' />
               {isLoading
@@ -372,12 +346,7 @@ export default function Playground() {
                     : t('playground.chat.retry')}
             </Button>
 
-            <Button
-              onClick={handleClear}
-              variant='outline'
-              className='h-10 w-full'
-              disabled={isLoading}
-            >
+            <Button onClick={handleClear} variant='outline' className='h-10 w-full' disabled={isLoading}>
               <IconTrash className='mr-2 h-4 w-4' />
               {t('playground.chat.clear')}
             </Button>
@@ -385,18 +354,48 @@ export default function Playground() {
         </div>
 
         {/* Chat Area */}
-        <div className='flex flex-1 flex-col'>
-          <Chat
-            messages={messages}
-            input={input}
-            handleInputChange={handleInputChange}
-            handleSubmit={handleSubmit}
-            isGenerating={isLoading}
-            stop={stop}
-            setMessages={setMessages}
-            onRateResponse={handleRateResponse}
-            className='h-full p-6'
-          />
+        <div className='flex flex-1 flex-col p-6'>
+          <div className='flex h-full flex-col'>
+            <Conversation className='flex-1'>
+              <ConversationContent>
+                {messages.length === 0 ? (
+                  <ConversationEmptyState
+                    icon={<MessageSquare className='size-12' />}
+                    title={t('playground.chat.startConversation')}
+                    description={t('playground.chat.typeMessageBelow')}
+                  />
+                ) : (
+                  messages.map((message) => (
+                    <Message from={message.role} key={message.id}>
+                      <MessageContent>
+                        {message.parts?.map((part, index) => {
+                          if (part.type === 'text') {
+                            return <Response key={index}>{part.text}</Response>
+                          }
+                          return null
+                        })}
+                      </MessageContent>
+                    </Message>
+                  ))
+                )}
+              </ConversationContent>
+              <ConversationScrollButton />
+            </Conversation>
+
+            <PromptInput onSubmit={handleSubmit} className='mt-4 w-full'>
+              <PromptInputTextarea
+                value={input}
+                placeholder={t('playground.chat.typeMessage')}
+                onChange={(e) => setInput(e.currentTarget.value)}
+                className='pr-12'
+              />
+              <PromptInputSubmit
+                status={status === 'streaming' ? 'streaming' : 'ready'}
+                disabled={!input.trim()}
+                className='absolute right-1 bottom-1'
+              />
+            </PromptInput>
+          </div>
         </div>
       </div>
     </TooltipProvider>

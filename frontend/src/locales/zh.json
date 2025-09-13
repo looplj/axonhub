@@ -1024,6 +1024,9 @@
       "generating": "生成中...",
       "retry": "重试上次回复",
       "clear": "清除聊天",
+      "startConversation": "开始对话",
+      "typeMessageBelow": "在下方输入消息开始交流",
+      "typeMessage": "输入消息...",
       "noMessages": "没有消息可重试"
     },
     "errors": {

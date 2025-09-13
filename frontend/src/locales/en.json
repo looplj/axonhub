@@ -989,6 +989,9 @@
       "generating": "Generating...",
       "retry": "Retry Last Response",
       "clear": "Clear Chat",
+      "startConversation": "Start a conversation",
+      "typeMessageBelow": "Type your message below to begin",
+      "typeMessage": "Type a message...",
       "noMessages": "No messages to retry"
     },
     "errors": {
