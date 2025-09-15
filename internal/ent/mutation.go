@@ -57,6 +57,7 @@ type APIKeyMutation struct {
 	status          *apikey.Status
 	scopes          *[]string
 	appendscopes    []string
+	profiles        **objects.APIKeyProfiles
 	clearedFields   map[string]struct{}
 	user            *int
 	cleareduser     bool
@@ -503,6 +504,55 @@ func (m *APIKeyMutation) ResetScopes() {
 	delete(m.clearedFields, apikey.FieldScopes)
 }
 
+// SetProfiles sets the "profiles" field.
+func (m *APIKeyMutation) SetProfiles(okp *objects.APIKeyProfiles) {
+	m.profiles = &okp
+}
+
+// Profiles returns the value of the "profiles" field in the mutation.
+func (m *APIKeyMutation) Profiles() (r *objects.APIKeyProfiles, exists bool) {
+	v := m.profiles
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProfiles returns the old "profiles" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldProfiles(ctx context.Context) (v *objects.APIKeyProfiles, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProfiles is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProfiles requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProfiles: %w", err)
+	}
+	return oldValue.Profiles, nil
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (m *APIKeyMutation) ClearProfiles() {
+	m.profiles = nil
+	m.clearedFields[apikey.FieldProfiles] = struct{}{}
+}
+
+// ProfilesCleared returns if the "profiles" field was cleared in this mutation.
+func (m *APIKeyMutation) ProfilesCleared() bool {
+	_, ok := m.clearedFields[apikey.FieldProfiles]
+	return ok
+}
+
+// ResetProfiles resets all changes to the "profiles" field.
+func (m *APIKeyMutation) ResetProfiles() {
+	m.profiles = nil
+	delete(m.clearedFields, apikey.FieldProfiles)
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *APIKeyMutation) ClearUser() {
 	m.cleareduser = true
@@ -618,7 +668,7 @@ func (m *APIKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *APIKeyMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.created_at != nil {
 		fields = append(fields, apikey.FieldCreatedAt)
 	}
@@ -642,6 +692,9 @@ func (m *APIKeyMutation) Fields() []string {
 	}
 	if m.scopes != nil {
 		fields = append(fields, apikey.FieldScopes)
+	}
+	if m.profiles != nil {
+		fields = append(fields, apikey.FieldProfiles)
 	}
 	return fields
 }
@@ -667,6 +720,8 @@ func (m *APIKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.Status()
 	case apikey.FieldScopes:
 		return m.Scopes()
+	case apikey.FieldProfiles:
+		return m.Profiles()
 	}
 	return nil, false
 }
@@ -692,6 +747,8 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldStatus(ctx)
 	case apikey.FieldScopes:
 		return m.OldScopes(ctx)
+	case apikey.FieldProfiles:
+		return m.OldProfiles(ctx)
 	}
 	return nil, fmt.Errorf("unknown APIKey field %s", name)
 }
@@ -757,6 +814,13 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetScopes(v)
 		return nil
+	case apikey.FieldProfiles:
+		v, ok := value.(*objects.APIKeyProfiles)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProfiles(v)
+		return nil
 	}
 	return fmt.Errorf("unknown APIKey field %s", name)
 }
@@ -805,6 +869,9 @@ func (m *APIKeyMutation) ClearedFields() []string {
 	if m.FieldCleared(apikey.FieldScopes) {
 		fields = append(fields, apikey.FieldScopes)
 	}
+	if m.FieldCleared(apikey.FieldProfiles) {
+		fields = append(fields, apikey.FieldProfiles)
+	}
 	return fields
 }
 
@@ -821,6 +888,9 @@ func (m *APIKeyMutation) ClearField(name string) error {
 	switch name {
 	case apikey.FieldScopes:
 		m.ClearScopes()
+		return nil
+	case apikey.FieldProfiles:
+		m.ClearProfiles()
 		return nil
 	}
 	return fmt.Errorf("unknown APIKey nullable field %s", name)
@@ -853,6 +923,9 @@ func (m *APIKeyMutation) ResetField(name string) error {
 		return nil
 	case apikey.FieldScopes:
 		m.ResetScopes()
+		return nil
+	case apikey.FieldProfiles:
+		m.ResetProfiles()
 		return nil
 	}
 	return fmt.Errorf("unknown APIKey field %s", name)

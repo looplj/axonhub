@@ -9,7 +9,7 @@ type ModelMapping struct {
 }
 
 type ChannelSettings struct {
-	ModelMappings []ModelMapping
+	ModelMappings []ModelMapping `json:"modelMappings"`
 }
 
 type ChannelCredentials struct {

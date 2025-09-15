@@ -42,6 +42,7 @@ func NewChatCompletionProcessorWithSelector(
 		Decorators: []decorator.Decorator{
 			stream.EnsureUsage(),
 		},
+		ModelMapper:     NewModelMapper(),
 		PipelineFactory: pipeline.NewFactory(httpClient),
 	}
 }
@@ -52,6 +53,7 @@ type ChatCompletionProcessor struct {
 	RequestService  *biz.RequestService
 	Decorators      []decorator.Decorator
 	PipelineFactory *pipeline.Factory
+	ModelMapper     *ModelMapper
 }
 
 type ChatCompletionResult struct {
@@ -72,6 +74,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		apiKey,
 		user,
 		request,
+		processor.ModelMapper,
 		processor.ChannelSelector,
 	)
 

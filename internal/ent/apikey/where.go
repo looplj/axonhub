@@ -385,6 +385,16 @@ func ScopesNotNil() predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotNull(FieldScopes))
 }
 
+// ProfilesIsNil applies the IsNil predicate on the "profiles" field.
+func ProfilesIsNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldIsNull(FieldProfiles))
+}
+
+// ProfilesNotNil applies the NotNil predicate on the "profiles" field.
+func ProfilesNotNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldNotNull(FieldProfiles))
+}
+
 // HasUser applies the HasEdge predicate on the "user" edge.
 func HasUser() predicate.APIKey {
 	return predicate.APIKey(func(s *sql.Selector) {

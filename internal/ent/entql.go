@@ -41,6 +41,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			apikey.FieldName:      {Type: field.TypeString, Column: apikey.FieldName},
 			apikey.FieldStatus:    {Type: field.TypeEnum, Column: apikey.FieldStatus},
 			apikey.FieldScopes:    {Type: field.TypeJSON, Column: apikey.FieldScopes},
+			apikey.FieldProfiles:  {Type: field.TypeJSON, Column: apikey.FieldProfiles},
 		},
 	}
 	graph.Nodes[1] = &sqlgraph.Node{
@@ -541,6 +542,11 @@ func (f *APIKeyFilter) WhereStatus(p entql.StringP) {
 // WhereScopes applies the entql json.RawMessage predicate on the scopes field.
 func (f *APIKeyFilter) WhereScopes(p entql.BytesP) {
 	f.Where(p.Field(apikey.FieldScopes))
+}
+
+// WhereProfiles applies the entql json.RawMessage predicate on the profiles field.
+func (f *APIKeyFilter) WhereProfiles(p entql.BytesP) {
+	f.Where(p.Field(apikey.FieldProfiles))
 }
 
 // WhereHasUser applies a predicate to check if query has an edge user.

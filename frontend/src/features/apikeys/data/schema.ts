@@ -1,13 +1,6 @@
 import { z } from 'zod'
 import { userSchema } from '@/features/users/data/schema'
 
-// Validation message functions for i18n
-const getValidationMessages = () => ({
-  nameRequired: '名称不能为空',
-  userIdRequired: '用户ID不能为空', 
-  keyRequired: 'API Key不能为空',
-})
-
 // API Key Status
 export const apiKeyStatusSchema = z.enum(['enabled', 'disabled'])
 export type ApiKeyStatus = z.infer<typeof apiKeyStatusSchema>
@@ -21,6 +14,23 @@ export const apiKeySchema = z.object({
   key: z.string(),
   name: z.string(),
   status: apiKeyStatusSchema,
+  // Optional profiles for detailed view (may be omitted in list queries)
+  profiles: z
+    .object({
+      activeProfile: z.string(),
+      profiles: z.array(
+        z.object({
+          name: z.string(),
+          modelMappings: z.array(
+            z.object({
+              from: z.string(),
+              to: z.string(),
+            })
+          ),
+        })
+      ),
+    })
+    .optional(),
 })
 export type ApiKey = z.infer<typeof apiKeySchema>
 
@@ -67,3 +77,55 @@ export const updateApiKeyInputSchema = z.object({
   name: z.string().min(1, '名称不能为空').optional(),
 })
 export type UpdateApiKeyInput = z.infer<typeof updateApiKeyInputSchema>
+
+// Model Mapping schema
+export const modelMappingSchema = z.object({
+  from: z.string(),
+  to: z.string(),
+})
+export type ModelMapping = z.infer<typeof modelMappingSchema>
+
+// API Key Profile schema
+export const apiKeyProfileSchema = z.object({
+  name: z.string(),
+  modelMappings: z.array(modelMappingSchema),
+})
+export type ApiKeyProfile = z.infer<typeof apiKeyProfileSchema>
+
+// API Key Profiles schema
+export const apiKeyProfilesSchema = z.object({
+  activeProfile: z.string(),
+  profiles: z.array(apiKeyProfileSchema),
+})
+export type ApiKeyProfiles = z.infer<typeof apiKeyProfilesSchema>
+
+// Update API Key Profiles Input schema
+export const updateApiKeyProfilesInputSchema = z.object({
+  activeProfile: z.string(),
+  profiles: z.array(z.object({
+    name: z.string().min(1, 'Profile name is required'),
+    modelMappings: z.array(z.object({
+      from: z.string().min(1, 'Source model is required'),
+      to: z.string().min(1, 'Target model is required'),
+    })),
+  })),
+})
+export type UpdateApiKeyProfilesInput = z.infer<typeof updateApiKeyProfilesInputSchema>
+
+// Factory schema for i18n support
+export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => string) => z.object({
+  activeProfile: z.string().min(1, t('apikeys.validation.activeProfileRequired')),
+  profiles: z.array(z.object({
+    name: z.string().min(1, t('apikeys.validation.profileNameRequired')),
+    modelMappings: z.array(z.object({
+      from: z.string().min(1, t('apikeys.validation.sourceModelRequired')),
+      to: z.string().min(1, t('apikeys.validation.targetModelRequired')),
+    })),
+  })).min(1, t('apikeys.validation.atLeastOneProfile')),
+}).refine(
+  (data) => data.profiles.some(profile => profile.name === data.activeProfile),
+  {
+    message: t('apikeys.validation.activeProfileMustExist'),
+    path: ['activeProfile']
+  }
+)

@@ -9,6 +9,7 @@ type APIKey implements Node {
   key: String!
   name: String!
   status: APIKeyStatus!
+  profiles: APIKeyProfiles
   user: User!
   requests(
     """

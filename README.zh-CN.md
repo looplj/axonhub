@@ -332,6 +332,48 @@ export ANTHROPIC_API_KEY="your-axonhub-api-key"
 export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
 ```
 
+#### 4.1 模型配置文件功能 | Model Profiles Feature
+
+<table>
+  <tr align="center">
+    <td align="center">
+      <a href="screenshots/axonhub-profiles.png">
+        <img src="screenshots/axonhub-profiles.png" alt="Profiles Configuration Interface" width="250"/>
+      </a>
+    </td>
+  </tr>
+</table>
+
+AxonHub 引入了强大的模型配置文件功能，允许您为 API 密钥配置多个模型映射配置文件。此功能特别适用于以下场景：
+
+- **快速模型切换**：无需更改 API 密钥配置即可在不同模型间切换
+- **成本优化**：自动将昂贵的模型请求映射到更具成本效益的替代方案
+- **模型回退**：在某些模型不可用时配置回退映射
+
+#### 4.2 配置文件工作原理 | How Profiles Work
+
+当活动配置文件配置了模型映射时，系统将在 API 请求期间自动将请求的模型映射到目标模型。例如：
+
+- 请求 `claude-sonnet-20241022` → 实际使用 `deepseek-v3.1`（模型映射）
+- 使用正则表达式模式一次匹配多个模型
+
+#### 4.3 Claude Code + 配置文件工作流 | Claude Code + Profiles Workflow
+
+使用配置文件功能，您只需配置一次 Claude Code：
+
+1. **在 AxonHub 管理界面中配置您的 API 密钥配置文件**
+2. **为不同用例设置不同的供应商** (zhipu, deepseek, moonshot, etc.)
+3. **根据需要切换活动配置文件**，无需更改 Claude Code 配置
+4. **Claude Code 自动使用**活跃配置文件中的供应商
+
+这消除了在开发环境中不断切换 API 密钥或模型名称的需要。
+
+<!-- TODO: 添加配置文件配置界面截图 -->
+<!-- [截图：配置文件配置界面] -->
+
+<!-- TODO: 添加模型映射设置截图 -->
+<!-- [截图：模型映射设置] -->
+
 ---
 
 ### 5. 使用 SDK | SDK Usage

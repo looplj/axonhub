@@ -180,6 +180,11 @@ func (akq *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, apikey.FieldStatus)
 				fieldSeen[apikey.FieldStatus] = struct{}{}
 			}
+		case "profiles":
+			if _, ok := fieldSeen[apikey.FieldProfiles]; !ok {
+				selectedFields = append(selectedFields, apikey.FieldProfiles)
+				fieldSeen[apikey.FieldProfiles] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:

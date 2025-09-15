@@ -248,6 +248,18 @@ func (r *mutationResolver) UpdateAPIKeyStatus(ctx context.Context, id objects.GU
 	return apiKey, nil
 }
 
+// UpdateAPIKeyProfiles is the resolver for the updateAPIKeyProfiles field.
+func (r *mutationResolver) UpdateAPIKeyProfiles(ctx context.Context, id objects.GUID, input objects.APIKeyProfiles) (*ent.APIKey, error) {
+	apiKey, err := r.client.APIKey.UpdateOneID(id.ID).
+		SetProfiles(&input).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update API key profiles: %w", err)
+	}
+
+	return apiKey, nil
+}
+
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error) {
 	// Hash the password using our auth service
