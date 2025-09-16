@@ -26,8 +26,8 @@ export function BrandSettings() {
   const updateSettings = useUpdateBrandSettings()
   const { isLoading, setIsLoading } = useSystemContext()
 
-  const [brandName, setBrandName] = useState(settings?.brandName ?? '')
-  const [brandLogo, setBrandLogo] = useState(settings?.brandLogo ?? '')
+  const [brandName, setBrandName] = useState('')
+  const [brandLogo, setBrandLogo] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Update local state when settings are loaded
@@ -43,13 +43,13 @@ export function BrandSettings() {
     if (!file) return
 
     // Validate file type
-    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
       toast.error(t('system.general.brandLogo.invalidFormat'))
       return
     }
 
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
       toast.error(t('system.general.brandLogo.fileTooLarge'))
       return
     }
@@ -89,10 +89,10 @@ export function BrandSettings() {
     }
   }
 
-  const hasChanges =
-    settings &&
-    ((settings.brandName ?? '') !== brandName ||
-      (settings.brandLogo ?? '') !== brandLogo)
+  const hasChanges = settings ? (
+    (settings.brandName ?? '') !== brandName ||
+    (settings.brandLogo ?? '') !== brandLogo
+  ) : false
 
   if (isLoadingSettings) {
     return (
@@ -136,12 +136,15 @@ export function BrandSettings() {
               {t('system.general.brandLogo.label')}
             </Label>
             {brandLogo && (
-              <div className='flex justify-center mb-4 max-w-md'>
+              <div className='flex justify-start mb-4'>
                 <div className='relative'>
                   <img
                     src={brandLogo}
                     alt='Brand Logo Preview'
-                    className='w-60 h-60 object-cover rounded border'
+                    className='w-32 h-32 object-cover rounded-lg border shadow-sm'
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
                   />
                   <Button
                     type='button'
@@ -149,7 +152,7 @@ export function BrandSettings() {
                     size='sm'
                     onClick={handleRemoveLogo}
                     disabled={isLoading}
-                    className='absolute -top-2 -right-2 h-6 w-6 rounded-full p-0'
+                    className='absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 shadow-md'
                   >
                     <X className='h-3 w-3' />
                   </Button>
@@ -160,7 +163,7 @@ export function BrandSettings() {
               <input
                 ref={fileInputRef}
                 type='file'
-                accept='image/png,image/jpeg'
+                accept='image/png,image/jpeg,image/jpg,image/webp'
                 onChange={handleFileUpload}
                 className='hidden'
                 id='brand-logo'

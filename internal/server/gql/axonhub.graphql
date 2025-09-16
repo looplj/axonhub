@@ -129,6 +129,28 @@ type BulkUpdateChannelOrderingResult {
   channels: [Channel!]!
 }
 
+input UpdateAPIKeyProfilesInput {
+  activeProfile: String!
+  profiles: [APIKeyProfileInput!]
+}
+
+input APIKeyProfileInput {
+  name: String!
+  modelMappings: [ModelMappingInput!]
+}
+
+type APIKeyProfiles {
+  activeProfile: String!
+  profiles: [APIKeyProfile!]
+}
+
+type APIKeyProfile {
+  name: String!
+  modelMappings: [ModelMapping!]
+}
+
+
+
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
@@ -140,6 +162,7 @@ type Mutation {
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!
   updateAPIKeyStatus(id: ID!, status: APIKeyStatus!): APIKey!
+  updateAPIKeyProfiles(id: ID!, input: UpdateAPIKeyProfilesInput!): APIKey!
 
   createUser(input: CreateUserInput!): User!
   updateUser(id: ID!, input: UpdateUserInput!): User!

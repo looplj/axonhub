@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -25,7 +26,18 @@ func NewDefaultChannelSelector(channelService *biz.ChannelService) *DefaultChann
 }
 
 func (s *DefaultChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-	return s.ChannelService.ChooseChannels(ctx, req)
+	// The request model has already been mapped by the inbound transformer if needed
+	// Channel selection will use the mapped model for finding compatible channels
+	channels, err := s.ChannelService.ChooseChannels(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug(ctx, "Selected channels for model",
+		log.String("model", req.Model),
+		log.Int("channel_count", len(channels)))
+
+	return channels, nil
 }
 
 // SpecifiedChannelSelector allows selecting specific channels (including disabled ones) for testing.

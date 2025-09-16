@@ -9,6 +9,7 @@ import (
 	"entgo.io/ent/schema/index"
 
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -55,6 +56,12 @@ func (APIKey) Fields() []ent.Field {
 			).
 			Sensitive().
 			Optional(),
+		field.JSON("profiles", &objects.APIKeyProfiles{}).
+			Default(&objects.APIKeyProfiles{}).
+			Optional().
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 	}
 }
 

@@ -17,6 +17,7 @@ type PersistenceState struct {
 	RequestService  *biz.RequestService
 	UsageLogService *biz.UsageLogService
 	ChannelSelector ChannelSelector
+	ModelMapper     *ModelMapper
 
 	Request     *ent.Request
 	RequestExec *ent.RequestExecution
@@ -41,6 +42,7 @@ func NewPersistentTransformers(
 	apiKey *ent.APIKey,
 	user *ent.User,
 	httpRequest *httpclient.Request,
+	modelMapper *ModelMapper,
 ) (*PersistentInboundTransformer, *PersistentOutboundTransformer) {
 	return NewPersistentTransformersWithSelector(
 		ctx,
@@ -49,6 +51,7 @@ func NewPersistentTransformers(
 		apiKey,
 		user,
 		httpRequest,
+		modelMapper,
 		NewDefaultChannelSelector(channelService),
 	)
 }
@@ -61,6 +64,7 @@ func NewPersistentTransformersWithSelector(
 	apiKey *ent.APIKey,
 	user *ent.User,
 	httpRequest *httpclient.Request,
+	modelMapper *ModelMapper,
 	channelSelector ChannelSelector,
 ) (*PersistentInboundTransformer, *PersistentOutboundTransformer) {
 	state := &PersistenceState{
@@ -69,6 +73,7 @@ func NewPersistentTransformersWithSelector(
 		APIKey:          apiKey,
 		User:            user,
 		ChannelIndex:    0,
+		ModelMapper:     modelMapper,
 	}
 
 	return &PersistentInboundTransformer{

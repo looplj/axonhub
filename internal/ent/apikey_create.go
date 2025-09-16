@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // APIKeyCreate is the builder for creating a APIKey entity.
@@ -104,6 +105,12 @@ func (akc *APIKeyCreate) SetScopes(s []string) *APIKeyCreate {
 	return akc
 }
 
+// SetProfiles sets the "profiles" field.
+func (akc *APIKeyCreate) SetProfiles(okp *objects.APIKeyProfiles) *APIKeyCreate {
+	akc.mutation.SetProfiles(okp)
+	return akc
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (akc *APIKeyCreate) SetUser(u *User) *APIKeyCreate {
 	return akc.SetUserID(u.ID)
@@ -186,6 +193,10 @@ func (akc *APIKeyCreate) defaults() error {
 	if _, ok := akc.mutation.Scopes(); !ok {
 		v := apikey.DefaultScopes
 		akc.mutation.SetScopes(v)
+	}
+	if _, ok := akc.mutation.Profiles(); !ok {
+		v := apikey.DefaultProfiles
+		akc.mutation.SetProfiles(v)
 	}
 	return nil
 }
@@ -275,6 +286,10 @@ func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	if value, ok := akc.mutation.Scopes(); ok {
 		_spec.SetField(apikey.FieldScopes, field.TypeJSON, value)
 		_node.Scopes = value
+	}
+	if value, ok := akc.mutation.Profiles(); ok {
+		_spec.SetField(apikey.FieldProfiles, field.TypeJSON, value)
+		_node.Profiles = value
 	}
 	if nodes := akc.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -433,6 +448,24 @@ func (u *APIKeyUpsert) ClearScopes() *APIKeyUpsert {
 	return u
 }
 
+// SetProfiles sets the "profiles" field.
+func (u *APIKeyUpsert) SetProfiles(v *objects.APIKeyProfiles) *APIKeyUpsert {
+	u.Set(apikey.FieldProfiles, v)
+	return u
+}
+
+// UpdateProfiles sets the "profiles" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateProfiles() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldProfiles)
+	return u
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (u *APIKeyUpsert) ClearProfiles() *APIKeyUpsert {
+	u.SetNull(apikey.FieldProfiles)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -565,6 +598,27 @@ func (u *APIKeyUpsertOne) UpdateScopes() *APIKeyUpsertOne {
 func (u *APIKeyUpsertOne) ClearScopes() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearScopes()
+	})
+}
+
+// SetProfiles sets the "profiles" field.
+func (u *APIKeyUpsertOne) SetProfiles(v *objects.APIKeyProfiles) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetProfiles(v)
+	})
+}
+
+// UpdateProfiles sets the "profiles" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateProfiles() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateProfiles()
+	})
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (u *APIKeyUpsertOne) ClearProfiles() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.ClearProfiles()
 	})
 }
 
@@ -866,6 +920,27 @@ func (u *APIKeyUpsertBulk) UpdateScopes() *APIKeyUpsertBulk {
 func (u *APIKeyUpsertBulk) ClearScopes() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearScopes()
+	})
+}
+
+// SetProfiles sets the "profiles" field.
+func (u *APIKeyUpsertBulk) SetProfiles(v *objects.APIKeyProfiles) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetProfiles(v)
+	})
+}
+
+// UpdateProfiles sets the "profiles" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateProfiles() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateProfiles()
+	})
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (u *APIKeyUpsertBulk) ClearProfiles() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.ClearProfiles()
 	})
 }
 

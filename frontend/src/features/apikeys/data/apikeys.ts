@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { graphqlRequest } from '@/gql/graphql'
 import { useErrorHandler } from '@/hooks/use-error-handler'
 import { useRequestPermissions } from '../../../gql/useRequestPermissions'
-import type { ApiKey, ApiKeyConnection, CreateApiKeyInput, UpdateApiKeyInput } from './schema'
+import type { ApiKey, ApiKeyConnection, CreateApiKeyInput, UpdateApiKeyInput, UpdateApiKeyProfilesInput } from './schema'
 import { apiKeyConnectionSchema, apiKeySchema } from './schema'
 import { toast } from 'sonner'
 
@@ -52,15 +52,24 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
 
   return `
     query GetApiKey($id: ID!) {
-      apiKey(id: $id) {
+      node(id: $id) {
+        ... on APIKey {
         id
         createdAt
         updatedAt${userFields}
         key
         name
         status
+        profiles {
+          activeProfile
+          profiles {
+            name
+            modelMappings { from to }
+          }
+        }
       }
     }
+}
   `
 }
 
@@ -117,6 +126,16 @@ const UPDATE_APIKEY_STATUS_MUTATION = `
   }
 `
 
+const UPDATE_APIKEY_PROFILES_MUTATION = `
+  mutation UpdateAPIKeyProfiles($id: ID!, $input: UpdateAPIKeyProfilesInput!) {
+    updateAPIKeyProfiles(id: $id, input: $input) {
+      id
+      name
+      status
+    }
+  }
+`
+
 // React Query hooks
 export function useApiKeys(variables?: {
   first?: number
@@ -161,8 +180,8 @@ export function useApiKey(id: string) {
     queryFn: async () => {
       try {
         const query = buildApiKeyQuery(permissions)
-        const data = await graphqlRequest<{ apiKey: ApiKey }>(query, { id })
-        return apiKeySchema.parse(data.apiKey)
+        const data = await graphqlRequest<{ node: ApiKey }>(query, { id })
+        return apiKeySchema.parse(data.node)
       } catch (error) {
         handleError(error, t('apikeys.errors.fetchDetails'))
         throw error
@@ -233,6 +252,25 @@ export function useUpdateApiKeyStatus() {
     onError: (error) => {
       toast.error(t('apikeys.messages.statusUpdateError'))
       console.error('Update API Key status error:', error)
+    },
+  })
+}
+
+export function useUpdateApiKeyProfiles() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyProfilesInput }) => 
+      graphqlRequest<{ updateAPIKeyProfiles: ApiKey }>(UPDATE_APIKEY_PROFILES_MUTATION, { id, input }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
+      queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] })
+      toast.success(t('apikeys.messages.profilesUpdateSuccess'))
+    },
+    onError: (error) => {
+      toast.error(t('apikeys.messages.profilesUpdateError'))
+      console.error('Update API Key profiles error:', error)
     },
   })
 }

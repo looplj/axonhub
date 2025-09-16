@@ -51,7 +51,7 @@ const defaultBaseUrls: Record<string, string> = {
 }
 
 // Default models for different channel types
-const defaultModels: Record<string, string[]> = {
+export const defaultModels: Record<string, string[]> = {
   openai: ['gpt-3.5-turbo', `gpt-4.5`, 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
   anthropic: [
     'claude-opus-4-1',

@@ -42,7 +42,7 @@ func (ak *APIKey) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     ak.ID,
 		Type:   "APIKey",
-		Fields: make([]*Field, 8),
+		Fields: make([]*Field, 9),
 		Edges:  make([]*Edge, 2),
 	}
 	var buf []byte
@@ -108,6 +108,14 @@ func (ak *APIKey) Node(ctx context.Context) (node *Node, err error) {
 	node.Fields[7] = &Field{
 		Type:  "[]string",
 		Name:  "scopes",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(ak.Profiles); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "*objects.APIKeyProfiles",
+		Name:  "profiles",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{

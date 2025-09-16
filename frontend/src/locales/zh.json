@@ -258,6 +258,7 @@
     "actions": {
       "openMenu": "打开菜单",
       "edit": "编辑",
+      "profiles": "配置文件",
       "enable": "激活",
       "disable": "停用",
       "delete": "删除",
@@ -333,7 +334,9 @@
       "updateError": "更新 API Key 失败",
       "deleteSuccess": "API Key 删除成功",
       "statusUpdateSuccess": "API Key 状态已更新为 {{status}}",
-      "statusUpdateError": "状态更新失败"
+      "statusUpdateError": "状态更新失败",
+      "profilesUpdateSuccess": "配置文件更新成功",
+      "profilesUpdateError": "配置文件更新失败"
     },
     "errors": {
       "fetchData": "获取API密钥数据",
@@ -342,7 +345,10 @@
     "validation": {
       "nameRequired": "名称不能为空",
       "userIdRequired": "用户ID不能为空",
-      "keyRequired": "API Key不能为空"
+      "keyRequired": "API Key不能为空",
+      "profileNameRequired": "配置名称不能为空",
+      "sourceModelRequired": "原模型不能为空",
+      "targetModelRequired": "目标模型不能为空"
     },
     "filters": {
       "filterId": "按 ID 筛选...",
@@ -363,7 +369,24 @@
       "descending": "降序",
       "hide": "隐藏"
     },
-    "noData": "暂无数据"
+    "noData": "暂无数据",
+    "profiles": {
+      "title": "配置文件管理",
+      "description": "为以下 API Key {{name}} 配置模型映射, 当一个活动配置有模型映射配置时, 系统将自动在 API 请求时将请求模型映射到目标模型",
+      "profilesTitle": "配置文件",
+      "addProfile": "新增配置",
+      "modelMappings": "模型映射",
+      "addMapping": "新增映射",
+      "noMappings": "暂无模型映射",
+      "profileName": "配置名称",
+      "sourceModel": "原模型",
+      "targetModel": "目标模型",
+      "activeProfile": "生效配置",
+      "searchModels": "搜索模型",
+      "selectActiveProfile": "选择生效配置",
+      "noModelsFound": "未找到模型",
+      "regexSupported": "支持正则表达式"
+    }
   },
   "roles": {
     "title": "角色管理",
@@ -1149,6 +1172,8 @@
     "noResultsFound": "未找到结果",
     "clearFilters": "清除筛选",
     "loading": "加载中",
+    "cancel": "取消",
+    "save": "保存",
     "saving": "保存中",
     "back": "返回",
     "moveUp": "上移",

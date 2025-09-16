@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 const (
@@ -34,6 +35,8 @@ const (
 	FieldStatus = "status"
 	// FieldScopes holds the string denoting the scopes field in the database.
 	FieldScopes = "scopes"
+	// FieldProfiles holds the string denoting the profiles field in the database.
+	FieldProfiles = "profiles"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
@@ -67,6 +70,7 @@ var Columns = []string{
 	FieldName,
 	FieldStatus,
 	FieldScopes,
+	FieldProfiles,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -98,6 +102,8 @@ var (
 	DefaultDeletedAt int
 	// DefaultScopes holds the default value on creation for the "scopes" field.
 	DefaultScopes []string
+	// DefaultProfiles holds the default value on creation for the "profiles" field.
+	DefaultProfiles *objects.APIKeyProfiles
 )
 
 // Status defines the type for the "status" enum field.
