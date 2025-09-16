@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // APIKey is the model entity for the APIKey schema.
@@ -35,6 +36,8 @@ type APIKey struct {
 	Status apikey.Status `json:"status,omitempty"`
 	// API Key specific scopes: read_channels, write_requests, etc.
 	Scopes []string `json:"-"`
+	// Profiles holds the value of the "profiles" field.
+	Profiles *objects.APIKeyProfiles `json:"profiles,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the APIKeyQuery when eager-loading is set.
 	Edges        APIKeyEdges `json:"edges"`
@@ -81,7 +84,7 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case apikey.FieldScopes:
+		case apikey.FieldScopes, apikey.FieldProfiles:
 			values[i] = new([]byte)
 		case apikey.FieldID, apikey.FieldDeletedAt, apikey.FieldUserID:
 			values[i] = new(sql.NullInt64)
@@ -160,6 +163,14 @@ func (ak *APIKey) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field scopes: %w", err)
 				}
 			}
+		case apikey.FieldProfiles:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field profiles", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &ak.Profiles); err != nil {
+					return fmt.Errorf("unmarshal field profiles: %w", err)
+				}
+			}
 		default:
 			ak.selectValues.Set(columns[i], values[i])
 		}
@@ -228,6 +239,9 @@ func (ak *APIKey) String() string {
 	builder.WriteString(fmt.Sprintf("%v", ak.Status))
 	builder.WriteString(", ")
 	builder.WriteString("scopes=<sensitive>")
+	builder.WriteString(", ")
+	builder.WriteString("profiles=")
+	builder.WriteString(fmt.Sprintf("%v", ak.Profiles))
 	builder.WriteByte(')')
 	return builder.String()
 }

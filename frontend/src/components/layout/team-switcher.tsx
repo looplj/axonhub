@@ -31,10 +31,10 @@ export function TeamSwitcher({
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
   const { data: brandSettings } = useBrandSettings()
   const { t } = useTranslation()
-  
+
   // Use brand name if available, otherwise fall back to team name
   const displayName = brandSettings?.brandName || activeTeam?.name || 'AxonHub'
-  
+
   // Only show dropdown if there are multiple teams
   const showDropdown = teams.length > 1
 
@@ -54,9 +54,20 @@ export function TeamSwitcher({
                       src={brandSettings.brandLogo}
                       alt='Brand Logo'
                       className='size-8 object-cover'
+                      onError={(e) => {
+                        // Fallback to default logo on error
+                        e.currentTarget.src = "/logo.jpg"
+                      }}
                     />
                   ) : (
-                    <activeTeam.logo className='size-4' />
+                    <img
+                      src="/logo.jpg"
+                      alt='Default Logo'
+                      className='size-8 object-cover'
+                      onError={() => {
+                        // If default logo fails, we'll show a fallback in the next render
+                      }}
+                    />
                   )}
                 </div>
                 <div className='grid flex-1 text-left text-sm leading-tight'>
@@ -104,9 +115,20 @@ export function TeamSwitcher({
                   src={brandSettings.brandLogo}
                   alt='Brand Logo'
                   className='size-8 object-cover'
+                  onError={(e) => {
+                    // Fallback to default logo on error
+                    e.currentTarget.src = "/logo.jpg"
+                  }}
                 />
               ) : (
-                <activeTeam.logo className='size-4' />
+                <img
+                  src="/logo.jpg"
+                  alt='Default Logo'
+                  className='size-8 object-cover'
+                  onError={() => {
+                    // If default logo fails, we'll show a fallback in the next render
+                  }}
+                />
               )}
             </div>
             <div className='grid flex-1 text-left text-sm leading-tight'>

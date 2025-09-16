@@ -64,6 +64,10 @@ func init() {
 	apikeyDescScopes := apikeyFields[4].Descriptor()
 	// apikey.DefaultScopes holds the default value on creation for the scopes field.
 	apikey.DefaultScopes = apikeyDescScopes.Default.([]string)
+	// apikeyDescProfiles is the schema descriptor for profiles field.
+	apikeyDescProfiles := apikeyFields[5].Descriptor()
+	// apikey.DefaultProfiles holds the default value on creation for the profiles field.
+	apikey.DefaultProfiles = apikeyDescProfiles.Default.(*objects.APIKeyProfiles)
 	channelMixin := schema.Channel{}.Mixin()
 	channel.Policy = privacy.NewPolicies(schema.Channel{})
 	channel.Hooks[0] = func(next ent.Mutator) ent.Mutator {

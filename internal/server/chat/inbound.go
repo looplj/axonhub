@@ -149,6 +149,20 @@ func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, req
 		return nil, err
 	}
 
+	// Apply model mapping from API key profiles if active profile exists
+	if p.state.APIKey != nil {
+		originalModel := llmRequest.Model
+		mappedModel := p.state.ModelMapper.MapModel(ctx, p.state.APIKey, originalModel)
+
+		if mappedModel != originalModel {
+			llmRequest.Model = mappedModel
+			log.Debug(ctx, "Applied model mapping from API key profile",
+				log.String("api_key_name", p.state.APIKey.Name),
+				log.String("original_model", originalModel),
+				log.String("mapped_model", mappedModel))
+		}
+	}
+
 	if p.state.Request == nil {
 		request, err := p.state.RequestService.CreateRequest(
 			ctx,

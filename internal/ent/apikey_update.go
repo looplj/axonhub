@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // APIKeyUpdate is the builder for updating APIKey entities.
@@ -101,6 +102,18 @@ func (aku *APIKeyUpdate) AppendScopes(s []string) *APIKeyUpdate {
 // ClearScopes clears the value of the "scopes" field.
 func (aku *APIKeyUpdate) ClearScopes() *APIKeyUpdate {
 	aku.mutation.ClearScopes()
+	return aku
+}
+
+// SetProfiles sets the "profiles" field.
+func (aku *APIKeyUpdate) SetProfiles(okp *objects.APIKeyProfiles) *APIKeyUpdate {
+	aku.mutation.SetProfiles(okp)
+	return aku
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (aku *APIKeyUpdate) ClearProfiles() *APIKeyUpdate {
+	aku.mutation.ClearProfiles()
 	return aku
 }
 
@@ -244,6 +257,12 @@ func (aku *APIKeyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if aku.mutation.ScopesCleared() {
 		_spec.ClearField(apikey.FieldScopes, field.TypeJSON)
 	}
+	if value, ok := aku.mutation.Profiles(); ok {
+		_spec.SetField(apikey.FieldProfiles, field.TypeJSON, value)
+	}
+	if aku.mutation.ProfilesCleared() {
+		_spec.ClearField(apikey.FieldProfiles, field.TypeJSON)
+	}
 	if aku.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -381,6 +400,18 @@ func (akuo *APIKeyUpdateOne) AppendScopes(s []string) *APIKeyUpdateOne {
 // ClearScopes clears the value of the "scopes" field.
 func (akuo *APIKeyUpdateOne) ClearScopes() *APIKeyUpdateOne {
 	akuo.mutation.ClearScopes()
+	return akuo
+}
+
+// SetProfiles sets the "profiles" field.
+func (akuo *APIKeyUpdateOne) SetProfiles(okp *objects.APIKeyProfiles) *APIKeyUpdateOne {
+	akuo.mutation.SetProfiles(okp)
+	return akuo
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (akuo *APIKeyUpdateOne) ClearProfiles() *APIKeyUpdateOne {
+	akuo.mutation.ClearProfiles()
 	return akuo
 }
 
@@ -553,6 +584,12 @@ func (akuo *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err er
 	}
 	if akuo.mutation.ScopesCleared() {
 		_spec.ClearField(apikey.FieldScopes, field.TypeJSON)
+	}
+	if value, ok := akuo.mutation.Profiles(); ok {
+		_spec.SetField(apikey.FieldProfiles, field.TypeJSON, value)
+	}
+	if akuo.mutation.ProfilesCleared() {
+		_spec.ClearField(apikey.FieldProfiles, field.TypeJSON)
 	}
 	if akuo.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{

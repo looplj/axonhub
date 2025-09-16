@@ -349,6 +349,33 @@ export ANTHROPIC_API_KEY="your-axonhub-api-key"
 export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
 ```
 
+#### 4.1. Model Profiles Feature
+
+
+
+AxonHub introduces a powerful model profiles feature that allows you to configure multiple model mapping profiles for your API keys. This feature is particularly useful for scenarios where you need to:
+
+- **Quick Model Switching**: Switch between different models without changing your API key configuration
+- **Cost Optimization**: Map expensive model requests to more cost-effective alternatives automatically
+- **Model Fallback**: Configure fallback mappings when certain models are unavailable
+
+#### 4.2 How Profiles Work
+
+When an active profile has model mappings configured, the system will automatically map requested models to their target models during API requests. For example:
+
+- Request `claude-sonnet-20241022` → Actually use `deepseek-v3.1` (model mapping)
+- Use regex patterns to match multiple models at once
+
+#### 4.3 Claude Code + Profiles Workflow
+
+With the profiles feature, you only need to configure Claude Code once:
+
+1. **Configure your API key profiles** in the AxonHub management interface
+2. **Set up model mappings** for different providers (zhipu, deepseek, moonshot, etc.)
+3. **Switch active profiles** as needed without changing Claude Code configuration
+4. **Claude Code automatically uses** the model mappings from your active profile
+
+
 ---
 
 ### 5. SDK Usage

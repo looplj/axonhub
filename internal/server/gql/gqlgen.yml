@@ -95,6 +95,18 @@ models:
   CleanupOptionInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.CleanupOption
+  UpdateAPIKeyProfilesInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyProfiles
+  APIKeyProfileInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyProfile
+  APIKeyProfiles:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyProfiles    
+  APIKeyProfile:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyProfile
   AWSCredential:
     model:
       - github.com/looplj/axonhub/internal/objects.AWSCredential

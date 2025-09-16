@@ -226,6 +226,7 @@
     "actions": {
       "openMenu": "Open menu",
       "edit": "Edit",
+      "profiles": "Profiles",
       "enable": "Enable",
       "disable": "Disable",
       "delete": "Delete",
@@ -301,7 +302,9 @@
       "updateError": "Failed to update API Key",
       "deleteSuccess": "API Key deleted successfully",
       "statusUpdateSuccess": "API Key status updated to {{status}}",
-      "statusUpdateError": "Failed to update status"
+      "statusUpdateError": "Failed to update status",
+      "profilesUpdateSuccess": "Profiles updated successfully",
+      "profilesUpdateError": "Failed to update profiles"
     },
     "errors": {
       "fetchData": "Failed to fetch API key data",
@@ -310,7 +313,10 @@
     "validation": {
       "nameRequired": "Name is required",
       "userIdRequired": "User ID is required",
-      "keyRequired": "API Key is required"
+      "keyRequired": "API Key is required",
+      "profileNameRequired": "Profile name is required",
+      "sourceModelRequired": "Source model is required",
+      "targetModelRequired": "Target model is required"
     },
     "filters": {
       "filterId": "Filter by ID...",
@@ -331,7 +337,24 @@
       "descending": "Descending",
       "hide": "Hide"
     },
-    "noData": "No data available"
+    "noData": "No data available",
+    "profiles": {
+      "title": "API Key Profiles",
+      "description": "Configure model mapping profiles for {{name}}. When an active profile has model mappings configured, the system will automatically map requested models to their target models during API requests.",
+      "profilesTitle": "Profiles",
+      "addProfile": "Add Profile",
+      "modelMappings": "Model Mappings",
+      "addMapping": "Add Mapping",
+      "noMappings": "No model mappings configured",
+      "profileName": "Profile Name",
+      "sourceModel": "Source Model",
+      "targetModel": "Target Model",
+      "activeProfile": "Active Profile",
+      "searchModels": "Search Model",
+      "selectActiveProfile": "Select active profile",
+      "noModelsFound": "No models found",
+      "regexSupported": "Supports regular expressions"
+    }
   },
   "roles": {
     "title": "Role Management",
@@ -1113,8 +1136,10 @@
     "noResultsFound": "No results found",
     "clearFilters": "Clear filters",
     "loading": "Loading",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
     "back": "Back",
-    "saving": "Saving",
     "moveUp": "Move Up",
     "moveDown": "Move Down",
     "dragging": "Dragging",
