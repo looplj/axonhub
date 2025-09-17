@@ -14,10 +14,20 @@ NC='\033[0m' # No Color
 
 # Configuration
 SERVICE_NAME="axonhub"
-CONFIG_FILE="/etc/axonhub/config.yml"
+# Resolve non-root user's HOME when running via sudo
+if [[ -n "$SUDO_USER" && "$SUDO_USER" != "root" ]]; then
+    USER_HOME="$(eval echo ~${SUDO_USER})"
+    TARGET_USER="$SUDO_USER"
+else
+    USER_HOME="$HOME"
+    TARGET_USER="$USER"
+fi
+TARGET_GROUP="$(id -gn "$TARGET_USER" 2>/dev/null || echo "$TARGET_USER")"
+BASE_DIR="${USER_HOME}/.config/axonhub"
+CONFIG_FILE="${BASE_DIR}/config.yml"
 BINARY_PATH="/usr/local/bin/axonhub"
-PID_FILE="/var/run/axonhub.pid"
-LOG_FILE="/var/log/axonhub/axonhub.log"
+PID_FILE="${BASE_DIR}/axonhub.pid"
+LOG_FILE="${BASE_DIR}/axonhub.log"
 
 print_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -68,27 +78,24 @@ start_directly() {
         CONFIG_ARGS="--config $CONFIG_FILE"
     fi
     
-    # Create log directory if it doesn't exist
-    mkdir -p "$(dirname "$LOG_FILE")"
+    # Ensure base directory exists and is owned by target user
+    mkdir -p "$BASE_DIR"
+    chown "$TARGET_USER:$TARGET_GROUP" "$BASE_DIR" 2>/dev/null || true
     
     # Start AxonHub in background
     print_info "Starting AxonHub process..."
     
     if [[ $EUID -eq 0 ]]; then
-        # Running as root, switch to axonhub user if it exists
-        if id "axonhub" &>/dev/null; then
-            print_info "Running as axonhub user..."
-            sudo -u axonhub "$BINARY_PATH" $CONFIG_ARGS > "$LOG_FILE" 2>&1 &
-        else
-            print_warning "Running as root (not recommended for production)"
-            "$BINARY_PATH" $CONFIG_ARGS > "$LOG_FILE" 2>&1 &
-        fi
+        # Running with sudo/root; start as invoking user so files live under their HOME
+        print_info "Running as user: $TARGET_USER"
+        sudo -u "$TARGET_USER" bash -c "mkdir -p '$BASE_DIR'; \"$BINARY_PATH\" $CONFIG_ARGS >> '$LOG_FILE' 2>&1 & echo \$! > '$PID_FILE'"
+        local pid
+        pid=$(cat "$PID_FILE" 2>/dev/null || true)
     else
         "$BINARY_PATH" $CONFIG_ARGS > "$LOG_FILE" 2>&1 &
+        local pid=$!
+        echo "$pid" > "$PID_FILE"
     fi
-    
-    local pid=$!
-    echo "$pid" > "$PID_FILE"
     
     # Wait a moment and check if process is still running
     sleep 2
@@ -101,7 +108,7 @@ start_directly() {
         echo "  • Config: ${CONFIG_FILE:-"default"}"
         echo "  • Web interface: http://localhost:8090"
         echo
-        print_info "To stop AxonHub: ./deploy/stop.sh"
+        print_info "To stop AxonHub: ./stop.sh"
         print_info "To view logs: tail -f $LOG_FILE"
     else
         print_error "AxonHub failed to start"

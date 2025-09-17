@@ -14,9 +14,16 @@ NC='\033[0m' # No Color
 
 # Configuration
 INSTALL_DIR="/usr/local/bin"
-CONFIG_DIR="/etc/axonhub"
-DATA_DIR="/var/lib/axonhub"
-LOG_DIR="/var/log/axonhub"
+# Resolve non-root user's HOME when running via sudo
+if [[ -n "$SUDO_USER" && "$SUDO_USER" != "root" ]]; then
+    USER_HOME="$(eval echo ~${SUDO_USER})"
+else
+    USER_HOME="$HOME"
+fi
+BASE_DIR="${USER_HOME}/.config/axonhub"
+CONFIG_DIR="${BASE_DIR}"
+DATA_DIR="${BASE_DIR}"
+LOG_DIR="${BASE_DIR}"
 SERVICE_USER="axonhub"
 
 # GitHub repository
@@ -209,15 +216,12 @@ setup_directories() {
     # Create directories
     mkdir -p "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR"
     
-    # Set ownership and permissions (no custom user)
-    local os=$(uname -s | tr '[:upper:]' '[:lower:]')
-    if [[ "$os" == "darwin" ]]; then
-        chown root:wheel "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR" 2>/dev/null || true
-    else
-        chown root:root "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR" 2>/dev/null || true
-    fi
-    chmod 755 "$CONFIG_DIR"
-    chmod 755 "$DATA_DIR" "$LOG_DIR"
+    # Set ownership and permissions to invoking user
+    local target_user="${SUDO_USER:-$USER}"
+    local target_group
+    target_group="$(id -gn "$target_user" 2>/dev/null || echo "$target_user")"
+    chown -R "$target_user:$target_group" "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR" 2>/dev/null || true
+    chmod 755 "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR"
 }
 
 install_binary() {
@@ -244,28 +248,26 @@ create_default_config() {
     if [[ ! -f "$config_file" ]]; then
         print_info "Creating default configuration..."
         
-        cat > "$config_file" << 'EOF'
+        cat > "$config_file" << EOF
 server:
   port: 8090
   name: "AxonHub"
   debug: false
 
 db:
-  dialect: "sqlite"
-  dsn: "/var/lib/axonhub/axonhub.db"
+  dialect: "sqlite3"
+  dsn: "${BASE_DIR}/axonhub.db?cache=shared&_fk=1&journal_mode=WAL"
 
 log:
   level: "info"
-  encoding: "console"
-  output: "/var/log/axonhub/axonhub.log"
+  encoding: "json"
+  output: "${BASE_DIR}/axonhub.log"
 EOF
         
-        local os=$(uname -s | tr '[:upper:]' '[:lower:]')
-        if [[ "$os" == "darwin" ]]; then
-            chown root:wheel "$config_file" 2>/dev/null || true
-        else
-            chown root:root "$config_file" 2>/dev/null || true
-        fi
+        local target_user="${SUDO_USER:-$USER}"
+        local target_group
+        target_group="$(id -gn "$target_user" 2>/dev/null || echo "$target_user")"
+        chown "$target_user:$target_group" "$config_file" 2>/dev/null || true
         chmod 644 "$config_file"
         
         print_success "Default configuration created at $config_file"
@@ -325,7 +327,7 @@ main() {
     print_success "AxonHub installation completed!"
     echo
     print_info "Next steps:"
-    echo "  1. Edit configuration: sudo nano $CONFIG_DIR/config.yml"
+    echo "  1. Edit configuration: nano $CONFIG_DIR/config.yml"
     echo "  2. Start AxonHub: ./start.sh"
     echo "  3. Stop AxonHub: ./stop.sh"
     echo "  4. View logs: tail -f $LOG_DIR/axonhub.log"

@@ -14,7 +14,14 @@ NC='\033[0m' # No Color
 
 # Configuration
 SERVICE_NAME="axonhub"
-PID_FILE="/var/run/axonhub.pid"
+# Resolve non-root user's HOME when running via sudo
+if [[ -n "$SUDO_USER" && "$SUDO_USER" != "root" ]]; then
+    USER_HOME="$(eval echo ~${SUDO_USER})"
+else
+    USER_HOME="$HOME"
+fi
+BASE_DIR="${USER_HOME}/.config/axonhub"
+PID_FILE="${BASE_DIR}/axonhub.pid"
 PROCESS_NAME="axonhub"
 
 print_info() {

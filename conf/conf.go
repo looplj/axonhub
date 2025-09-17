@@ -41,9 +41,9 @@ func Load() (Config, error) {
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
 	v.AddConfigPath(".")
-	v.AddConfigPath("./conf")
 	v.AddConfigPath("/etc/axonhub/")
-	v.AddConfigPath("$HOME/.axonhub")
+	v.AddConfigPath("$HOME/.config/axonhub/")
+	v.AddConfigPath("./conf")
 
 	// Enable environment variable support
 	v.AutomaticEnv()
