@@ -9,7 +9,7 @@ before:
     - go mod tidy
 
 builds:
-  - id: build-
+  - id: build
     main: ./cmd/axonhub
     binary: axonhub
     hooks:
