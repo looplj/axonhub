@@ -6,7 +6,7 @@ dist: .builds
 
 before:
   hooks:
-    - cd deploy && chmod +x *.sh
+    - /bin/sh -c 'cd deploy && chmod +x *.sh'
     - make build-frontend
     - go mod tidy
 
