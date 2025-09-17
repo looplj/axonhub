@@ -34,17 +34,11 @@ jobs:
         run: pnpm install
         working-directory: frontend
 
-      - name: Build frontend
-        run: pnpm build
-        working-directory: frontend
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: stable
           cache: true
-
-
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
