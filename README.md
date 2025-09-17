@@ -211,13 +211,13 @@ Perfect for individual developers and small teams. No complex configuration requ
   
    # Run directly - default SQLite database
    # Install AxonHub to system
-   ./deploy/install.sh
+   ./install.sh
 
    # Start AxonHub service
-   ./deploy/start.sh
+   ./start.sh
 
    # Stop AxonHub service
-   ./deploy/stop.sh
+   ./stop.sh
    ```
 
 3. **Access the application**

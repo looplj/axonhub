@@ -194,13 +194,13 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
    
    # 直接运行 - 默认使用 SQLite 数据库
    # 安装 AxonHub 到系统
-   ./deploy/install.sh
+   ./install.sh
 
    # 启动 AxonHub 服务
-   ./deploy/start.sh
+   ./start.sh
 
    # 停止 AxonHub 服务
-   ./deploy/stop.sh
+   ./stop.sh
    ```
 
 3. **访问应用**

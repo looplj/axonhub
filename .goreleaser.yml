@@ -6,7 +6,7 @@ dist: .builds
 
 before:
   hooks:
-    - cd deploy && chmod +x *.sh
+    - /bin/sh -c 'cd deploy && chmod +x *.sh'
     - make build-frontend
     - go mod tidy
 
@@ -52,9 +52,12 @@ archives:
     files:
       - LICENSE
       - CHANGELOG.md
-      - deploy/install.sh
-      - deploy/start.sh
-      - deploy/stop.sh
+      - src: deploy/install.sh
+        dst: install.sh
+      - src: deploy/start.sh
+        dst: start.sh
+      - src: deploy/stop.sh
+        dst: stop.sh
 
 checksum:
   name_template: 'checksums.txt'
