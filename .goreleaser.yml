@@ -6,15 +6,14 @@ dist: .builds
 
 before:
   hooks:
+    - /bin/sh -c 'cd deploy && chmod +x *.sh'
+    - make build-frontend
     - go mod tidy
 
 builds:
-  - id: build-
+  - id: build
     main: ./cmd/axonhub
     binary: axonhub
-    hooks:
-      pre:
-        - make build-frontend
     ldflags:
       - -s -w -X github.com/looplj/axonhub/internal/build.Version={{ .Version }}
     env:
@@ -26,7 +25,7 @@ builds:
     goarch:
       - amd64
       - arm64
-      - ppc64le
+      - loong64
     goarm:
       - 7
     ignore:
@@ -35,13 +34,13 @@ builds:
       - goos: windows
         goarch: s390x
       - goos: windows
-        goarch: ppc64le
+        goarch: loong64
       - goos: darwin
         goarch: arm
       - goos: darwin
         goarch: s390x
       - goos: darwin
-        goarch: ppc64le
+        goarch: loong64
 
 release:
   draft: true
@@ -53,6 +52,12 @@ archives:
     files:
       - LICENSE
       - CHANGELOG.md
+      - src: deploy/install.sh
+        dst: install.sh
+      - src: deploy/start.sh
+        dst: start.sh
+      - src: deploy/stop.sh
+        dst: stop.sh
 
 checksum:
   name_template: 'checksums.txt'

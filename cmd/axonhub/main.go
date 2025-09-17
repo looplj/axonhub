@@ -15,6 +15,7 @@ import (
 	sdk "go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/looplj/axonhub/conf"
+	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
@@ -27,6 +28,9 @@ func main() {
 		switch os.Args[1] {
 		case "config":
 			handleConfigCommand()
+			return
+		case "version", "--version", "-v":
+			showVersion()
 			return
 		case "help", "--help", "-h":
 			showHelp()
@@ -214,8 +218,13 @@ func showHelp() {
 	fmt.Println("  axonhub                    Start the server (default)")
 	fmt.Println("  axonhub config preview     Preview configuration")
 	fmt.Println("  axonhub config validate    Validate configuration")
+	fmt.Println("  axonhub version            Show version")
 	fmt.Println("  axonhub help               Show this help message")
 	fmt.Println("")
 	fmt.Println("Options:")
 	fmt.Println("  -f, --format FORMAT       Output format for config preview (yml, json)")
+}
+
+func showVersion() {
+	fmt.Println(build.Version)
 }
