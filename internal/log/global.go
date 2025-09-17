@@ -20,6 +20,14 @@ var defaultConfig = Config{
 	Encoding:  "json",
 	Includes:  []string{},
 	Excludes:  []string{},
+	Output:    "file",
+	File: FileConfig{
+		Path:       "logs/axonhub.log",
+		MaxSize:    100,
+		MaxAge:     30,
+		MaxBackups: 10,
+		LocalTime:  true,
+	},
 }
 
 var globalConfig = Config{
@@ -34,6 +42,14 @@ var globalConfig = Config{
 	Encoding:  "json",
 	Includes:  []string{},
 	Excludes:  []string{},
+	Output:    "file",
+	File: FileConfig{
+		Path:       "logs/axonhub.log",
+		MaxSize:    100,
+		MaxAge:     30,
+		MaxBackups: 10,
+		LocalTime:  true,
+	},
 }
 
 var (
