@@ -31,6 +31,13 @@ log:
   encoding: "json"              # Log encoding: json, console, console_json (env: AXONHUB_LOG_ENCODING)
   includes: []                  # Logger names to include (env: AXONHUB_LOG_INCLUDES)
   excludes: []                  # Logger names to exclude (env: AXONHUB_LOG_EXCLUDES)
+  output: "stdio"               # Output target: file or stdio (env: AXONHUB_LOG_OUTPUT)
+  file:                        # File-based logging configuration (env prefix: AXONHUB_LOG_FILE_*)
+    path: "logs/axonhub.log"   # Log file path (env: AXONHUB_LOG_FILE_PATH)
+    max_size: 100              # Max size in MB before rotation (env: AXONHUB_LOG_FILE_MAX_SIZE)
+    max_age: 30                # Max age in days to retain (env: AXONHUB_LOG_FILE_MAX_AGE)
+    max_backups: 10            # Max number of old log files to retain (env: AXONHUB_LOG_FILE_MAX_BACKUPS)
+    local_time: true           # Use local time for rotated files (env: AXONHUB_LOG_FILE_LOCAL_TIME)
 
 # Metrics configuration
 metrics:
@@ -64,6 +71,11 @@ gc:
 # export AXONHUB_DB_DSN="postgres://user:pass@localhost/axonhub?sslmode=disable"
 # export AXONHUB_LOG_LEVEL="debug"
 # export AXONHUB_LOG_ENCODING="console"
+# export AXONHUB_LOG_OUTPUT="stdio"  # or "file"
+# export AXONHUB_LOG_FILE_PATH="/var/log/axonhub/axonhub.log"
+# export AXONHUB_LOG_FILE_MAX_SIZE=200
+# export AXONHUB_LOG_FILE_MAX_AGE=14
+# export AXONHUB_LOG_FILE_MAX_BACKUPS=7
 # export AXONHUB_SERVER_TRACE_HEADER="X-Trace-ID"
 # export AXONHUB_METRICS_ENABLED=false
 # export AXONHUB_GC_CRON="0 3 * * 0"  # Run weekly on Sunday at 3:00 AM

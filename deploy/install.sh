@@ -400,7 +400,13 @@ db:
 log:
   level: "info"
   encoding: "json"
-  output: "${BASE_DIR}/axonhub.log"
+  output: "file"
+  file:
+    path: "${BASE_DIR}/logs/axonhub.log"
+    max_size: 100
+    max_age: 30
+    max_backups: 10
+    local_time: true
 EOF
         
         local target_user="${SUDO_USER:-$USER}"

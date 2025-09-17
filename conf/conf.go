@@ -143,6 +143,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("log.encoding", "json")
 	v.SetDefault("log.includes", []string{})
 	v.SetDefault("log.excludes", []string{})
+	v.SetDefault("log.output", "stdio")
+	v.SetDefault("log.file.path", "logs/axonhub.log")
+	v.SetDefault("log.file.max_size", 100)   // MB
+	v.SetDefault("log.file.max_age", 30)     // days
+	v.SetDefault("log.file.max_backups", 10) // files
+	v.SetDefault("log.file.local_time", true)
 
 	// Metrics defaults
 	v.SetDefault("metrics.enabled", false)
