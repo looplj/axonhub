@@ -191,22 +191,61 @@ Deploy AxonHub with 1-click on [Render](https://render.com) for free.
 
 ## 🚀 Deployment Guide
 
-### Database Support
+### 💻 Personal Computer Deployment
+
+Perfect for individual developers and small teams. No complex configuration required.
+
+#### Quick Download & Run
+
+1. **Download the latest release** from [GitHub Releases](https://github.com/looplj/axonhub/releases)
+   - Choose the appropriate version for your operating system:
+
+2. **Extract and run**
+   ```bash
+   # Extract the downloaded file
+   unzip axonhub_*.zip
+   cd axonhub_*
+   
+   # Add execution permissions (only for Linux/macOS)
+   chmod +x axonhub
+  
+   # Run directly - default SQLite database
+   # Install AxonHub to system
+   ./install.sh
+
+   # Start AxonHub service
+   ./start.sh
+
+   # Stop AxonHub service
+   ./stop.sh
+   ```
+
+3. **Access the application**
+   ```
+   http://localhost:8090
+   ```
+
+---
+
+### 🖥️ Server Deployment
+
+For production environments, high availability, and enterprise deployments.
+
+#### Database Support
 
 AxonHub supports multiple databases to meet different scale deployment needs:
 
 | Database | Supported Versions | Recommended Scenario | Auto Migration | Links |
 |--------|----------|----------|----------|------|
+| **SQLite** | 3.0+ | Development environment, small deployments | ✅ Supported | [SQLite](https://www.sqlite.org/index.html) |
 | **TiDB Cloud** | Starter | Serverless, Free tier, Auto Scale | ✅ Supported | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-starter/) |
 | **TiDB Cloud** | Dedicated | Distributed deployment, large scale | ✅ Supported | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-dedicated/) |
 | **TiDB** | V8.0+ | Distributed deployment, large scale | ✅ Supported | [TiDB](https://tidb.io/) |
 | **Neon DB** | - | Serverless, Free tier, Auto Scale | ✅ Supported | [Neon DB](https://neon.com/) |
 | **PostgreSQL** | 15+ | Production environment, medium-large deployments | ✅ Supported | [PostgreSQL](https://www.postgresql.org/) |
 | **MySQL** | 8.0+ | Production environment, medium-large deployments | ✅ Supported | [MySQL](https://www.mysql.com/) |
-| **SQLite** | 3.0+ | Development environment, small deployments | ✅ Supported | [SQLite](https://www.sqlite.org/index.html) |
 
-
-### Configuration
+#### Configuration
 
 AxonHub uses YAML configuration files with environment variable override support:
 
@@ -236,7 +275,7 @@ AXONHUB_LOG_LEVEL=info
 
 For detailed configuration instructions, please refer to [configuration documentation](config.example.yml).
 
-### Docker Compose Deployment
+#### Docker Compose Deployment
 
 ```bash
 # Clone project
@@ -254,7 +293,7 @@ docker-compose up -d
 docker-compose ps
 ```
 
-### Virtual Machine Deployment
+#### Virtual Machine Deployment
 
 ```bash
 # Clone project
@@ -275,20 +314,16 @@ make build
 ./axonhub 
 ```
 
-#### Systemd Service Configuration
+#### Process Management
 
-Copy `deploy/axonhub.service` to `/etc/systemd/system/axonhub.service`:
-
-```bash
-sudo cp deploy/axonhub.service /etc/systemd/system/axonhub.service
-```
-
-Start service:
+For simplicity, we recommend managing AxonHub with the helper scripts:
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl start axonhub
-sudo systemctl enable axonhub
+# Start
+./deploy/start.sh
+
+# Stop
+./deploy/stop.sh
 ```
 
 ---

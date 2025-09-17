@@ -174,22 +174,61 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 
 ## 🚀 部署指南 | Deployment Guide
 
-### 数据库支持 | Database Support
+### 💻 个人电脑部署 | Personal Computer Deployment
+
+适合个人开发者和小团队使用，无需复杂配置。
+
+#### 快速下载运行 | Quick Download & Run
+
+1. **下载最新版本** 从 [GitHub Releases](https://github.com/looplj/axonhub/releases)
+   - 选择适合您操作系统的版本：
+
+2. **解压并运行**
+   ```bash
+   # 解压下载的文件
+   unzip axonhub_*.zip
+   cd axonhub_*
+   
+   # 添加执行权限 (仅限 Linux/macOS)
+   chmod +x axonhub
+   
+   # 直接运行 - 默认使用 SQLite 数据库
+   # 安装 AxonHub 到系统
+   ./install.sh
+
+   # 启动 AxonHub 服务
+   ./start.sh
+
+   # 停止 AxonHub 服务
+   ./stop.sh
+   ```
+
+3. **访问应用**
+   ```
+   http://localhost:8090
+   ```
+
+---
+
+### 🖥️ 服务器部署 | Server Deployment
+
+适用于生产环境、高可用性和企业级部署。
+
+#### 数据库支持 | Database Support
 
 AxonHub 支持多种数据库，满足不同规模的部署需求：
 
 | 数据库 | 支持版本 | 推荐场景 | 自动迁移 | 链接 |
 |--------|----------|----------|----------|------|
+| **SQLite** | 3.0+ | 开发环境、小型部署 | ✅ 支持 | [SQLite](https://www.sqlite.org/index.html) |
 | **TiDB Cloud** | Starter | Serverless, Free tier, Auto Scale | ✅ 支持 | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-starter/) |
 | **TiDB Cloud** | Dedicated | 分布式部署、大规模 | ✅ 支持 | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-dedicated/) |
 | **TiDB** | V8.0+ | 分布式部署、大规模 | ✅ 支持 | [TiDB](https://tidb.io/) |
 | **Neon DB** | - | Serverless, Free tier, Auto Scale | ✅ 支持 | [Neon DB](https://neon.com/) |
 | **PostgreSQL** | 15+ | 生产环境、中大型部署 | ✅ 支持 | [PostgreSQL](https://www.postgresql.org/) |
 | **MySQL** | 8.0+ | 生产环境、中大型部署 | ✅ 支持 | [MySQL](https://www.mysql.com/) |
-| **SQLite** | 3.0+ | 开发环境、小型部署 | ✅ 支持 | [SQLite](https://www.sqlite.org/index.html) |
 
-
-### 配置文件 | Configuration
+#### 配置文件 | Configuration
 
 AxonHub 使用 YAML 配置文件，支持环境变量覆盖：
 
@@ -209,25 +248,26 @@ log:
   encoding: "json"
 ```
 
-```环境变量
+环境变量：
+```bash
 AXONHUB_SERVER_PORT=8090
 AXONHUB_DB_DIALECT="tidb"
-AXONHUB_DB_DSN=<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true
+AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true"
 AXONHUB_LOG_LEVEL=info
 ```
 
 详细配置说明请参考 [配置文档](config.example.yml)。
 
-### Docker Compose 部署
+#### Docker Compose 部署
 
 ```bash
 # 克隆项目
 git clone https://github.com/looplj/axonhub.git
 cd axonhub
 
-# 复制配置文件
+# 设置环境变量
 export AXONHUB_DB_DIALECT="tidb"
-export AXONHUB_DB_DSN=<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true
+export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true"
 
 # 启动服务
 docker-compose up -d
@@ -236,9 +276,8 @@ docker-compose up -d
 docker-compose ps
 ```
 
-### VM 部署 | Virtual Machine Deployment
+#### 虚拟机部署 | Virtual Machine Deployment
 
-#### 
 ```bash
 # 克隆项目
 git clone https://github.com/looplj/axonhub.git
@@ -246,7 +285,7 @@ cd axonhub
 
 # 设置环境变量
 export AXONHUB_DB_DIALECT="tidb"
-export AXONHUB_DB_DSN=<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true
+export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true"
 
 # 构建
 make build
@@ -258,20 +297,16 @@ make build
 ./axonhub 
 ```
 
-#### Systemd 服务配置
+#### 进程管理 | Process Management
 
-复制 `deploy/axonhub.service` 到 `/etc/systemd/system/axonhub.service`：
-
-```bash
-sudo cp deploy/axonhub.service /etc/systemd/system/axonhub.service
-```
-
-启动服务：
+为简化使用，推荐使用辅助脚本进行管理：
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl start axonhub
-sudo systemctl enable axonhub
+# 启动 Start
+./deploy/start.sh
+
+# 停止 Stop
+./deploy/stop.sh
 ```
 
 ---
