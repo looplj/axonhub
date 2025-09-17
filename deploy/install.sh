@@ -30,6 +30,11 @@ SERVICE_USER="axonhub"
 REPO="looplj/axonhub"
 GITHUB_API="https://api.github.com/repos/${REPO}"
 
+# CLI options (default: exclude beta/rc)
+INCLUDE_BETA="false"
+INCLUDE_RC="false"
+VERBOSE="false"
+
 print_info() {
     echo -e "${BLUE}[INFO]${NC} $1" 1>&2
 }
@@ -58,6 +63,33 @@ print_warning() {
 
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1" 1>&2
+}
+
+# Verbose logger
+debug() {
+    if [[ "$VERBOSE" == "true" ]]; then
+        echo -e "${YELLOW}[DEBUG]${NC} $1" 1>&2
+    fi
+}
+
+usage() {
+    cat 1>&2 <<EOF
+AxonHub Installer
+
+Usage:
+  sudo ./install.sh [options] [version]
+
+Options:
+  -b, --beta       Consider beta pre-releases when resolving latest version
+  -r, --rc         Consider release-candidate (rc) pre-releases when resolving latest version
+  -v, --verbose    Print extra debug logs
+  -h, --help       Show this help and exit
+
+Notes:
+  - By default, beta/rc versions are filtered out and the latest stable release is used.
+  - If a version is provided (e.g., v1.2.3), flags are ignored and that version is used.
+  - If both --beta and --rc are provided, the newest matching pre-release is selected.
+EOF
 }
 
 check_root() {
@@ -122,7 +154,85 @@ get_latest_release() {
         exit 1
     fi
     
+    debug "Selected tag: $tag_name"
     echo "$tag_name"
+}
+
+# Get the latest version based on flags (default stable; with --beta/--rc select matching pre-releases)
+get_latest_version() {
+    local include_beta="$1"
+    local include_rc="$2"
+
+    # Default path: stable-only
+    if [[ "$include_beta" != "true" && "$include_rc" != "true" ]]; then
+        get_latest_release
+        return
+    fi
+
+    print_info "Fetching releases to determine latest version (beta=${include_beta}, rc=${include_rc})..."
+
+    local json tag_name pattern
+    tag_name=""
+    if [[ "$include_beta" == "true" && "$include_rc" == "true" ]]; then
+        pattern='-beta|-rc'
+    elif [[ "$include_beta" == "true" ]]; then
+        pattern='-beta'
+    else
+        pattern='-rc'
+    fi
+
+    if json=$(curl_gh "${GITHUB_API}/releases?per_page=100" 2>/dev/null); then
+        local tags pairs
+        if command -v jq >/dev/null 2>&1; then
+            tags=$(echo "$json" | jq -r '.[] | select(.draft==false) | .tag_name')
+        else
+            tags=$(echo "$json" | grep -oE '"tag_name"\s*:\s*"[^"]+"' | sed -E 's/.*"tag_name"\s*:\s*"([^"]+)".*/\1/')
+        fi
+
+        debug "Fetched release tags (first 20): $(printf '%s\n' "$tags" | head -n20 | tr '\n' ' ')"
+
+        # Build pairs of cleaned|original, where cleaned strips any prefix before the semantic version
+        pairs=$(printf '%s\n' "$tags" | awk '{
+            orig=$0;
+            cleaned=orig;
+            if (match(cleaned,/(v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z\.\-]+)*)$/,m)) {
+                cleaned=m[1];
+            }
+            print cleaned"|"orig
+        }')
+
+        # Filter by pattern on the cleaned part and semver-sort to pick the highest; return original tag
+        local best
+        best=$(printf '%s\n' "$pairs" |
+            awk -F'|' -v pat="$pattern" '$1 ~ pat {print $0}' |
+            awk -F'|' '{ t=$1; sub(/^v/,"",t); print t"|"$2 }' |
+            sort -t '|' -k1,1V | tail -n1 | cut -d'|' -f2)
+
+        tag_name="$best"
+    fi
+
+    if [[ -z "$tag_name" ]]; then
+        print_warning "No matching pre-release found; falling back to latest stable release."
+        tag_name=$(get_latest_release)
+    fi
+
+    echo "$tag_name"
+}
+
+# Normalize version by removing a leading 'v'
+normalize_version() {
+    local v="$1"
+    v="${v#v}"
+    echo "$v"
+}
+
+# Return 0 (true) if $1 < $2 in semantic version order, using sort -V
+version_lt() {
+    local a b first
+    a=$(normalize_version "$1")
+    b=$(normalize_version "$2")
+    first=$(printf '%s\n' "$a" "$b" | sort -V | head -n1)
+    [[ "$first" == "$a" && "$a" != "$b" ]]
 }
 
 # Get asset download url for a given version and platform (e.g., darwin_arm64), prefer .zip
@@ -132,21 +242,50 @@ get_asset_download_url() {
     local url=""
     
     print_info "Resolving asset download URL for ${version} (${platform})..."
+    debug "Querying ${GITHUB_API}/releases/tags/${version}"
     if json=$(curl_gh "${GITHUB_API}/releases/tags/${version}" 2>/dev/null); then
-        url=$(echo "$json" \
-            | tr -d '\n\r\t' \
-            | sed -nE 's/.*("browser_download_url"[[:space:]]*:[[:space:]]*"[^"]+").*/\1/p' \
-            | sed -nE 's/.*"browser_download_url"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' \
-            | grep "$platform" \
-            | grep '\.zip$' -m 1)
+        if command -v jq >/dev/null 2>&1; then
+            debug "Assets on tag (names): $(echo "$json" | jq -r '.assets[]?.name' | tr '\n' ' ')"
+            url=$(echo "$json" | jq -r --arg platform "$platform" '.assets[]?.browser_download_url | select(test($platform)) | select(endswith(".zip"))' | head -n1)
+        else
+            url=$(echo "$json" \
+                | tr -d '\n\r\t' \
+                | sed -nE 's/.*("browser_download_url"[[[:space:]]]*:[[:space:]]*"[^"]+").*/\1/p' \
+                | sed -nE 's/.*"browser_download_url"[[[:space:]]]*:[[:space:]]*"([^"]+)".*/\1/p' \
+                | grep "$platform" \
+                | grep '\.zip$' -m 1)
+        fi
     fi
-    
+    debug "Matched asset URL from tag endpoint: ${url:-<none>}"
+
     # Fallback to patterned URL if API failed or empty
     if [[ -z "$url" ]]; then
+        print_warning "API failed or no asset matched; trying list endpoint..."
+        if json2=$(curl_gh "${GITHUB_API}/releases?per_page=100" 2>/dev/null); then
+            if command -v jq >/dev/null 2>&1; then
+                url=$(echo "$json2" | jq -r --arg tag "$version" --arg platform "$platform" '.[] | select(.tag_name==$tag) | .assets[]?.browser_download_url | select(test($platform)) | select(endswith(".zip"))' | head -n1)
+            else
+                url=$(echo "$json2" \
+                    | tr -d '\n\r\t' \
+                    | sed -nE 's/.*\{([^}]*)\}.*/\{\1\}/gp' \
+                    | grep -E '"tag_name"[[:space:]]*:[[:space:]]*"'"$version"'"' \
+                    | sed -nE 's/.*("browser_download_url"[[[:space:]]]*:[[:space:]]*"[^"]+").*/\1/p' \
+                    | sed -nE 's/.*"browser_download_url"[[[:space:]]]*:[[:space:]]*"([^"]+)".*/\1/p' \
+                    | grep "$platform" \
+                    | grep '\.zip$' -m 1)
+            fi
+        fi
+        debug "Matched asset URL from list endpoint: ${url:-<none>}"
+    fi
+
+    if [[ -z "$url" ]]; then
         print_warning "API failed or no asset matched; trying patterned URL..."
-        local clean_version=${version#v}
+        local clean_version="$version"
+        clean_version="${clean_version##*:}"
+        clean_version="${clean_version#v}"
         local filename="axonhub_${clean_version}_${platform}.zip"
         local candidate="https://github.com/${REPO}/releases/download/${version}/${filename}"
+        debug "Trying candidate URL: $candidate"
         if curl -fsI "$candidate" >/dev/null 2>&1; then
             url="$candidate"
         fi
@@ -290,23 +429,71 @@ main() {
     print_info "Detected platform: $platform"
     
     # Determine target version (env AXONHUB_VERSION, positional arg, or latest)
-    local version
+    local version version_arg
     version="${AXONHUB_VERSION:-}"
-    if [[ -z "$version" && -n "${1:-}" ]]; then
-        version="$1"
-    fi
+
+    # Parse CLI flags and optional version argument
     if [[ -z "$version" ]]; then
-        version=$(get_latest_release)
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                -b|--beta)
+                    INCLUDE_BETA="true"; shift ;;
+                -r|--rc)
+                    INCLUDE_RC="true"; shift ;;
+                -v|--verbose)
+                    VERBOSE="true"; shift ;;
+                -h|--help)
+                    usage; exit 0 ;;
+                --)
+                    shift; break ;;
+                -*)
+                    print_error "Unknown option: $1"; usage; exit 1 ;;
+                *)
+                    if [[ -z "${version_arg:-}" ]]; then
+                        version_arg="$1"; shift
+                    else
+                        break
+                    fi ;;
+            esac
+        done
+        version="${version_arg:-}"
+    fi
+
+    if [[ -z "$version" ]]; then
+        version=$(get_latest_version "$INCLUDE_BETA" "$INCLUDE_RC")
     fi
     print_info "Using version: $version"
     
-    # Prefer local binary near this script to avoid downloading
+    # Prefer local binary near this script; offer to update if newer is available
     local binary_path
     local script_dir
     script_dir=$(cd "$(dirname "$0")" && pwd)
     if [[ -x "$script_dir/axonhub" ]]; then
         print_info "Found local binary: $script_dir/axonhub"
-        binary_path="$script_dir/axonhub"
+        # Try to read local version from the binary
+        local local_version norm_local norm_target
+        if local_version=$("$script_dir/axonhub" version 2>/dev/null | head -n1 | tr -d '\r'); then
+            print_info "Local binary version: $local_version"
+            norm_local=$(normalize_version "$local_version")
+        else
+            print_warning "Could not determine local binary version"
+            norm_local=""
+        fi
+        norm_target=$(normalize_version "$version")
+
+        if [[ -n "$norm_local" && "$norm_local" != "dev" ]] && version_lt "$norm_local" "$norm_target"; then
+            echo -n "A newer version is available (local ${local_version}, latest ${version}). Download the latest now? [Y/n]: " 1>&2
+            read -r reply
+            if [[ -z "$reply" || "$reply" =~ ^[Yy]$ ]]; then
+                binary_path=$(download_and_extract "$version" "$platform")
+            else
+                print_info "Using existing local binary as requested."
+                binary_path="$script_dir/axonhub"
+            fi
+        else
+            print_info "Local binary is up-to-date. Using existing local binary."
+            binary_path="$script_dir/axonhub"
+        fi
     else
         # Download and extract
         binary_path=$(download_and_extract "$version" "$platform")

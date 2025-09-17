@@ -199,11 +199,6 @@ Perfect for individual developers and small teams. No complex configuration requ
 
 1. **Download the latest release** from [GitHub Releases](https://github.com/looplj/axonhub/releases)
    - Choose the appropriate version for your operating system:
-     - `axonhub_linux_amd64.zip` - Linux (Intel/AMD)
-     - `axonhub_linux_arm64.zip` - Linux (ARM)
-     - `axonhub_darwin_amd64.zip` - macOS (Intel)
-     - `axonhub_darwin_arm64.zip` - macOS (Apple Silicon)
-     - `axonhub_windows_amd64.zip` - Windows
 
 2. **Extract and run**
    ```bash
@@ -211,32 +206,24 @@ Perfect for individual developers and small teams. No complex configuration requ
    unzip axonhub_*.zip
    cd axonhub_*
    
-   # Make executable (Linux/macOS only)
+   # Add execution permissions (only for Linux/macOS)
    chmod +x axonhub
-   
-   # Run directly - uses SQLite by default
-   ./axonhub
+  
+   # Run directly - default SQLite database
+   # Install AxonHub to system
+   ./deploy/install.sh
+
+   # Start AxonHub service
+   ./deploy/start.sh
+
+   # Stop AxonHub service
+   ./deploy/stop.sh
    ```
 
 3. **Access the application**
    ```
    http://localhost:8090
    ```
-
-#### Using Helper Scripts
-
-For easier management, use the provided scripts in the `deploy/` directory:
-
-```bash
-# Install AxonHub to system
-./deploy/install.sh
-
-# Start AxonHub service
-./deploy/start.sh
-
-# Stop AxonHub service
-./deploy/stop.sh
-```
 
 ---
 

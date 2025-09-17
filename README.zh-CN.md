@@ -182,11 +182,6 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 
 1. **下载最新版本** 从 [GitHub Releases](https://github.com/looplj/axonhub/releases)
    - 选择适合您操作系统的版本：
-     - `axonhub_linux_amd64.zip` - Linux (Intel/AMD)
-     - `axonhub_linux_arm64.zip` - Linux (ARM)
-     - `axonhub_darwin_amd64.zip` - macOS (Intel)
-     - `axonhub_darwin_arm64.zip` - macOS (Apple Silicon)
-     - `axonhub_windows_amd64.zip` - Windows
 
 2. **解压并运行**
    ```bash
@@ -198,28 +193,20 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
    chmod +x axonhub
    
    # 直接运行 - 默认使用 SQLite 数据库
-   ./axonhub
+   # 安装 AxonHub 到系统
+   ./deploy/install.sh
+
+   # 启动 AxonHub 服务
+   ./deploy/start.sh
+
+   # 停止 AxonHub 服务
+   ./deploy/stop.sh
    ```
 
 3. **访问应用**
    ```
    http://localhost:8090
    ```
-
-#### 使用辅助脚本 | Using Helper Scripts
-
-为了更方便的管理，可以使用 `deploy/` 目录中提供的脚本：
-
-```bash
-# 安装 AxonHub 到系统
-./deploy/install.sh
-
-# 启动 AxonHub 服务
-./deploy/start.sh
-
-# 停止 AxonHub 服务
-./deploy/stop.sh
-```
 
 ---
 
