@@ -767,6 +767,14 @@
           "label": "存储响应块",
           "description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理"
         },
+        "storeRequestBody": {
+          "label": "存储请求体",
+          "description": "关闭后，将不保存原始请求体。"
+        },
+        "storeResponseBody": {
+          "label": "存储响应体",
+          "description": "关闭后，将不保存最终响应体。"
+        },
         "cleanupOptions": "清理选项",
         "cleanupDays": "清理周期",
         "days": "天",

@@ -25,6 +25,8 @@ type BrandSettings {
 
 type StoragePolicy {
   storeChunks: Boolean!
+  storeRequestBody: Boolean!
+  storeResponseBody: Boolean!
   cleanupOptions: [CleanupOption!]!
 }
 
@@ -41,6 +43,8 @@ input UpdateBrandSettingsInput {
 
 input UpdateStoragePolicyInput {
   storeChunks: Boolean
+  storeRequestBody: Boolean
+  storeResponseBody: Boolean
   cleanupOptions: [CleanupOptionInput!]
 }
 

@@ -39,11 +39,25 @@ func (s *RequestService) CreateRequest(
 	httpRequest *httpclient.Request,
 	format llm.APIFormat,
 ) (*ent.Request, error) {
-	requestBodyBytes, err := xjson.Marshal(httpRequest.Body)
-	if err != nil {
-		log.Error(ctx, "Failed to serialize request body", log.Cause(err))
-		return nil, err
+	// Decide whether to store the original request body
+	storeRequestBody := true
+	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
+		storeRequestBody = policy.StoreRequestBody
+	} else {
+		log.Warn(ctx, "Failed to get storage policy, defaulting to store request body", log.Cause(err))
 	}
+
+	var requestBodyBytes objects.JSONRawMessage
+
+	if storeRequestBody {
+		b, err := xjson.Marshal(httpRequest.Body)
+		if err != nil {
+			log.Error(ctx, "Failed to serialize request body", log.Cause(err))
+			return nil, err
+		}
+
+		requestBodyBytes = b
+	} // else keep nil -> stored as JSON null
 
 	// Get source from context, default to API if not present
 	source := contexts.GetSourceOrDefault(ctx, request.SourceAPI)
@@ -79,10 +93,24 @@ func (s *RequestService) CreateRequestExecution(
 	channelRequest httpclient.Request,
 	format llm.APIFormat,
 ) (*ent.RequestExecution, error) {
-	requestBodyBytes, err := xjson.Marshal(channelRequest.Body)
-	if err != nil {
-		log.Error(ctx, "Failed to marshal request body", log.Cause(err))
-		return nil, err
+	// Decide whether to store the channel request body
+	storeRequestBody := true
+	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
+		storeRequestBody = policy.StoreRequestBody
+	} else {
+		log.Warn(ctx, "Failed to get storage policy, defaulting to store request body", log.Cause(err))
+	}
+
+	var requestBodyBytes objects.JSONRawMessage
+
+	if storeRequestBody {
+		b, err := xjson.Marshal(channelRequest.Body)
+		if err != nil {
+			log.Error(ctx, "Failed to marshal request body", log.Cause(err))
+			return nil, err
+		}
+
+		requestBodyBytes = b
 	}
 
 	client := ent.FromContext(ctx)
@@ -105,19 +133,31 @@ func (s *RequestService) UpdateRequestCompleted(
 	externalId string,
 	responseBody any,
 ) error {
-	responseBodyBytes, err := xjson.Marshal(responseBody)
-	if err != nil {
-		log.Error(ctx, "Failed to serialize response body", log.Cause(err))
-		return err
+	// Decide whether to store the final response body
+	storeResponseBody := true
+	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
+		storeResponseBody = policy.StoreResponseBody
+	} else {
+		log.Warn(ctx, "Failed to get storage policy, defaulting to store response body", log.Cause(err))
 	}
 
 	client := ent.FromContext(ctx)
 
-	_, err = client.Request.UpdateOneID(requestID).
+	upd := client.Request.UpdateOneID(requestID).
 		SetStatus(request.StatusCompleted).
-		SetResponseBody(responseBodyBytes).
-		SetExternalID(externalId).
-		Save(ctx)
+		SetExternalID(externalId)
+
+	if storeResponseBody {
+		responseBodyBytes, err := xjson.Marshal(responseBody)
+		if err != nil {
+			log.Error(ctx, "Failed to serialize response body", log.Cause(err))
+			return err
+		}
+
+		upd = upd.SetResponseBody(responseBodyBytes)
+	}
+
+	_, err := upd.Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request status to completed", log.Cause(err))
 		return err
@@ -163,18 +203,30 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 	externalId string,
 	responseBody any,
 ) error {
-	responseBodyBytes, err := xjson.Marshal(responseBody)
-	if err != nil {
-		return err
+	// Decide whether to store the final response body for execution
+	storeResponseBody := true
+	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
+		storeResponseBody = policy.StoreResponseBody
+	} else {
+		log.Warn(ctx, "Failed to get storage policy, defaulting to store response body", log.Cause(err))
 	}
 
 	client := ent.FromContext(ctx)
 
-	_, err = client.RequestExecution.UpdateOneID(executionID).
+	upd := client.RequestExecution.UpdateOneID(executionID).
 		SetStatus(requestexecution.StatusCompleted).
-		SetResponseBody(responseBodyBytes).
-		SetExternalID(externalId).
-		Save(ctx)
+		SetExternalID(externalId)
+
+	if storeResponseBody {
+		responseBodyBytes, err := xjson.Marshal(responseBody)
+		if err != nil {
+			return err
+		}
+
+		upd = upd.SetResponseBody(responseBodyBytes)
+	}
+
+	_, err := upd.Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request execution status to completed", log.Cause(err))
 		return err
@@ -197,6 +249,75 @@ func (s *RequestService) UpdateRequestExecutionFailed(
 		Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request execution status to failed", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
+func (s *RequestService) UpdateRequestExecutionCompletd(
+	ctx context.Context,
+	executionID int,
+	externalID string,
+	responseBody any,
+) error {
+	// Decide whether to store the final response body for execution
+	storeResponseBody := true
+	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
+		storeResponseBody = policy.StoreResponseBody
+	} else {
+		log.Warn(ctx, "Failed to get storage policy, defaulting to store response body", log.Cause(err))
+	}
+
+	client := ent.FromContext(ctx)
+
+	upd := client.RequestExecution.UpdateOneID(executionID).
+		SetStatus(requestexecution.StatusCompleted).
+		SetExternalID(externalID)
+
+	if storeResponseBody {
+		responseBodyBytes, err := xjson.Marshal(responseBody)
+		if err != nil {
+			log.Error(ctx, "Failed to marshal response body", log.Cause(err))
+			return err
+		}
+
+		upd = upd.SetResponseBody(responseBodyBytes)
+	}
+
+	_, err := upd.Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to update request execution status to completed", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
+// UpdateRequestExternalID updates request with response ID.
+func (s *RequestService) UpdateRequestExternalID(ctx context.Context, requestID int, responseID string) error {
+	client := ent.FromContext(ctx)
+
+	_, err := client.Request.UpdateOneID(requestID).
+		SetExternalID(responseID).
+		Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to update request response ID", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
+// UpdateRequestExecutionResponseID updates request execution with response ID.
+func (s *RequestService) UpdateRequestExecutionResponseID(ctx context.Context, executionID int, responseID string) error {
+	client := ent.FromContext(ctx)
+
+	_, err := client.RequestExecution.UpdateOneID(executionID).
+		SetExternalID(responseID).
+		Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to update request execution response ID", log.Cause(err))
 		return err
 	}
 
@@ -289,63 +410,6 @@ func (s *RequestService) AppendRequestChunk(
 		Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to append response chunk", log.Cause(err))
-		return err
-	}
-
-	return nil
-}
-
-func (s *RequestService) UpdateRequestExecutionCompletd(
-	ctx context.Context,
-	executionID int,
-	externalID string,
-	responseBody any,
-) error {
-	responseBodyBytes, err := xjson.Marshal(responseBody)
-	if err != nil {
-		log.Error(ctx, "Failed to marshal response body", log.Cause(err))
-		return err
-	}
-
-	client := ent.FromContext(ctx)
-
-	_, err = client.RequestExecution.UpdateOneID(executionID).
-		SetStatus(requestexecution.StatusCompleted).
-		SetExternalID(externalID).
-		SetResponseBody(responseBodyBytes).
-		Save(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to update request execution status to completed", log.Cause(err))
-		return err
-	}
-
-	return nil
-}
-
-// UpdateRequestExternalID updates request with response ID.
-func (s *RequestService) UpdateRequestExternalID(ctx context.Context, requestID int, responseID string) error {
-	client := ent.FromContext(ctx)
-
-	_, err := client.Request.UpdateOneID(requestID).
-		SetExternalID(responseID).
-		Save(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to update request response ID", log.Cause(err))
-		return err
-	}
-
-	return nil
-}
-
-// UpdateRequestExecutionResponseID updates request execution with response ID.
-func (s *RequestService) UpdateRequestExecutionResponseID(ctx context.Context, executionID int, responseID string) error {
-	client := ent.FromContext(ctx)
-
-	_, err := client.RequestExecution.UpdateOneID(executionID).
-		SetExternalID(responseID).
-		Save(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to update request execution response ID", log.Cause(err))
 		return err
 	}
 

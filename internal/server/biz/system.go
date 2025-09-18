@@ -44,8 +44,10 @@ const (
 
 // StoragePolicy represents the storage policy configuration.
 type StoragePolicy struct {
-	StoreChunks    bool            `json:"store_chunks"`
-	CleanupOptions []CleanupOption `json:"cleanup_options"`
+	StoreChunks       bool            `json:"store_chunks"`
+	StoreRequestBody  bool            `json:"store_request_body"`
+	StoreResponseBody bool            `json:"store_response_body"`
+	CleanupOptions    []CleanupOption `json:"cleanup_options"`
 }
 
 // CleanupOption represents cleanup configuration for a specific resource type.
@@ -264,7 +266,9 @@ func (s *SystemService) setSystemValue(
 }
 
 var defaultStoragePolicy = StoragePolicy{
-	StoreChunks: false,
+	StoreChunks:       false,
+	StoreRequestBody:  true,
+	StoreResponseBody: true,
 	CleanupOptions: []CleanupOption{
 		{
 			ResourceType: "requests",
@@ -295,6 +299,15 @@ func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, erro
 	var policy StoragePolicy
 	if err := json.Unmarshal([]byte(sys.Value), &policy); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal storage policy: %w", err)
+	}
+
+	// Backward compatibility: if new keys are absent in stored JSON, default them to true
+	if !strings.Contains(sys.Value, "\"store_request_body\"") {
+		policy.StoreRequestBody = true
+	}
+
+	if !strings.Contains(sys.Value, "\"store_response_body\"") {
+		policy.StoreResponseBody = true
 	}
 
 	return &policy, nil
