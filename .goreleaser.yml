@@ -58,6 +58,18 @@ archives:
         dst: start.sh
       - src: deploy/stop.sh
         dst: stop.sh
+      - src: deploy/install.ps1
+        dst: install.ps1
+      - src: deploy/start.ps1
+        dst: start.ps1
+      - src: deploy/stop.ps1
+        dst: stop.ps1
+      - src: deploy/install.bat
+        dst: install.bat
+      - src: deploy/start.bat
+        dst: start.bat
+      - src: deploy/stop.bat
+        dst: stop.bat
 
 checksum:
   name_template: 'checksums.txt'
