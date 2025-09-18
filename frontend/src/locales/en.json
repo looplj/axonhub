@@ -732,6 +732,14 @@
           "label": "Store Response Chunks",
           "description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing"
         },
+        "storeRequestBody": {
+          "label": "Store Request Body",
+          "description": "If disabled, original request body will not be persisted."
+        },
+        "storeResponseBody": {
+          "label": "Store Response Body",
+          "description": "If disabled, final response body will not be persisted."
+        },
         "cleanupOptions": "Cleanup Options",
         "cleanupDays": "Cleanup after",
         "days": "days",

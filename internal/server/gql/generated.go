@@ -371,8 +371,10 @@ type ComplexityRoot struct {
 	}
 
 	StoragePolicy struct {
-		CleanupOptions func(childComplexity int) int
-		StoreChunks    func(childComplexity int) int
+		CleanupOptions    func(childComplexity int) int
+		StoreChunks       func(childComplexity int) int
+		StoreRequestBody  func(childComplexity int) int
+		StoreResponseBody func(childComplexity int) int
 	}
 
 	System struct {
@@ -2120,6 +2122,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StoragePolicy.StoreChunks(childComplexity), true
+
+	case "StoragePolicy.storeRequestBody":
+		if e.complexity.StoragePolicy.StoreRequestBody == nil {
+			break
+		}
+
+		return e.complexity.StoragePolicy.StoreRequestBody(childComplexity), true
+
+	case "StoragePolicy.storeResponseBody":
+		if e.complexity.StoragePolicy.StoreResponseBody == nil {
+			break
+		}
+
+		return e.complexity.StoragePolicy.StoreResponseBody(childComplexity), true
 
 	case "System.createdAt":
 		if e.complexity.System.CreatedAt == nil {
@@ -10287,6 +10303,10 @@ func (ec *executionContext) fieldContext_Query_storagePolicy(_ context.Context, 
 			switch field.Name {
 			case "storeChunks":
 				return ec.fieldContext_StoragePolicy_storeChunks(ctx, field)
+			case "storeRequestBody":
+				return ec.fieldContext_StoragePolicy_storeRequestBody(ctx, field)
+			case "storeResponseBody":
+				return ec.fieldContext_StoragePolicy_storeResponseBody(ctx, field)
 			case "cleanupOptions":
 				return ec.fieldContext_StoragePolicy_cleanupOptions(ctx, field)
 			}
@@ -13882,6 +13902,94 @@ func (ec *executionContext) _StoragePolicy_storeChunks(ctx context.Context, fiel
 }
 
 func (ec *executionContext) fieldContext_StoragePolicy_storeChunks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StoragePolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StoragePolicy_storeRequestBody(ctx context.Context, field graphql.CollectedField, obj *biz.StoragePolicy) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StoragePolicy_storeRequestBody(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StoreRequestBody, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StoragePolicy_storeRequestBody(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StoragePolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StoragePolicy_storeResponseBody(ctx context.Context, field graphql.CollectedField, obj *biz.StoragePolicy) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StoragePolicy_storeResponseBody(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StoreResponseBody, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StoragePolicy_storeResponseBody(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StoragePolicy",
 		Field:      field,
@@ -25362,7 +25470,7 @@ func (ec *executionContext) unmarshalInputUpdateStoragePolicyInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"storeChunks", "cleanupOptions"}
+	fieldsInOrder := [...]string{"storeChunks", "storeRequestBody", "storeResponseBody", "cleanupOptions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -25376,6 +25484,20 @@ func (ec *executionContext) unmarshalInputUpdateStoragePolicyInput(ctx context.C
 				return it, err
 			}
 			it.StoreChunks = data
+		case "storeRequestBody":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storeRequestBody"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StoreRequestBody = data
+		case "storeResponseBody":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storeResponseBody"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StoreResponseBody = data
 		case "cleanupOptions":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cleanupOptions"))
 			data, err := ec.unmarshalOCleanupOptionInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCleanupOptionᚄ(ctx, v)
@@ -31267,6 +31389,16 @@ func (ec *executionContext) _StoragePolicy(ctx context.Context, sel ast.Selectio
 			out.Values[i] = graphql.MarshalString("StoragePolicy")
 		case "storeChunks":
 			out.Values[i] = ec._StoragePolicy_storeChunks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "storeRequestBody":
+			out.Values[i] = ec._StoragePolicy_storeRequestBody(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "storeResponseBody":
+			out.Values[i] = ec._StoragePolicy_storeResponseBody(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

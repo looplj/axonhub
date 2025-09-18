@@ -18,6 +18,8 @@ const STORAGE_POLICY_QUERY = `
   query StoragePolicy {
     storagePolicy {
       storeChunks
+      storeRequestBody
+      storeResponseBody
       cleanupOptions {
         resourceType
         enabled
@@ -47,6 +49,8 @@ export interface BrandSettings {
 
 export interface StoragePolicy {
   storeChunks: boolean
+  storeRequestBody: boolean
+  storeResponseBody: boolean
   cleanupOptions: CleanupOption[]
 }
 
@@ -63,6 +67,8 @@ export interface UpdateBrandSettingsInput {
 
 export interface UpdateStoragePolicyInput {
   storeChunks?: boolean
+  storeRequestBody?: boolean
+  storeResponseBody?: boolean
   cleanupOptions?: CleanupOptionInput[]
 }
 

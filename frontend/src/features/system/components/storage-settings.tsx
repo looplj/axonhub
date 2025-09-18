@@ -3,7 +3,6 @@
 import React, { useState } from 'react'
 import { Loader2, Save } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -30,6 +29,8 @@ export function StorageSettings() {
 
   const [storagePolicyState, setStoragePolicyState] = useState({
     storeChunks: storagePolicy?.storeChunks ?? false,
+    storeRequestBody: storagePolicy?.storeRequestBody ?? true,
+    storeResponseBody: storagePolicy?.storeResponseBody ?? true,
     cleanupOptions: storagePolicy?.cleanupOptions ?? []
   })
 
@@ -38,6 +39,8 @@ export function StorageSettings() {
     if (storagePolicy) {
       setStoragePolicyState({
         storeChunks: storagePolicy.storeChunks,
+        storeRequestBody: storagePolicy.storeRequestBody,
+        storeResponseBody: storagePolicy.storeResponseBody,
         cleanupOptions: storagePolicy.cleanupOptions
       })
     }
@@ -48,6 +51,8 @@ export function StorageSettings() {
     try {
       await updateStoragePolicy.mutateAsync({
         storeChunks: storagePolicyState.storeChunks,
+        storeRequestBody: storagePolicyState.storeRequestBody,
+        storeResponseBody: storagePolicyState.storeResponseBody,
         cleanupOptions: storagePolicyState.cleanupOptions.map(option => ({
           resourceType: option.resourceType,
           enabled: option.enabled,
@@ -74,6 +79,8 @@ export function StorageSettings() {
   const hasStoragePolicyChanges = 
     storagePolicy && 
     (storagePolicy.storeChunks !== storagePolicyState.storeChunks ||
+      storagePolicy.storeRequestBody !== storagePolicyState.storeRequestBody ||
+      storagePolicy.storeResponseBody !== storagePolicyState.storeResponseBody ||
       JSON.stringify(storagePolicy.cleanupOptions) !== JSON.stringify(storagePolicyState.cleanupOptions))
 
   if (isLoadingStoragePolicy) {
@@ -110,6 +117,46 @@ export function StorageSettings() {
               onCheckedChange={(checked) => setStoragePolicyState({
                 ...storagePolicyState,
                 storeChunks: checked
+              })}
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className='flex items-center justify-between'>
+            <div className='space-y-0.5'>
+              <Label htmlFor='storage-policy-store-request-body'>
+                {t('system.storage.policy.storeRequestBody.label', 'Store request body')}
+              </Label>
+              <div className='text-muted-foreground text-sm'>
+                {t('system.storage.policy.storeRequestBody.description', 'If disabled, original request body will not be persisted.')}
+              </div>
+            </div>
+            <Switch
+              id='storage-policy-store-request-body'
+              checked={storagePolicyState.storeRequestBody}
+              onCheckedChange={(checked) => setStoragePolicyState({
+                ...storagePolicyState,
+                storeRequestBody: checked
+              })}
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className='flex items-center justify-between'>
+            <div className='space-y-0.5'>
+              <Label htmlFor='storage-policy-store-response-body'>
+                {t('system.storage.policy.storeResponseBody.label', 'Store response body')}
+              </Label>
+              <div className='text-muted-foreground text-sm'>
+                {t('system.storage.policy.storeResponseBody.description', 'If disabled, final response body will not be persisted.')}
+              </div>
+            </div>
+            <Switch
+              id='storage-policy-store-response-body'
+              checked={storagePolicyState.storeResponseBody}
+              onCheckedChange={(checked) => setStoragePolicyState({
+                ...storagePolicyState,
+                storeResponseBody: checked
               })}
               disabled={isLoading}
             />
