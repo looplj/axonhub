@@ -1,39 +1,39 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { IconTrash, IconRefresh } from '@tabler/icons-react'
-import { AIDevtools } from '@ai-sdk-tools/devtools'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, RefreshCcw, Copy } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { Actions, Action } from '@/components/ai-elements/actions'
 import {
   Conversation,
   ConversationContent,
   ConversationEmptyState,
   ConversationScrollButton,
 } from '@/components/ai-elements/conversation'
+import { Loader } from '@/components/ai-elements/loader'
 import { Message, MessageContent } from '@/components/ai-elements/message'
 import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/components/ai-elements/prompt-input'
-import { Response } from '@/components/ai-elements/response'
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning'
+import { Response as UIResponse } from '@/components/ai-elements/response'
+import { AutoCompleteSelect } from '@/components/auto-complete-select'
 import { useChannels } from '@/features/channels/data/channels'
-import type { Channel } from '@/features/channels/data/schema'
 
 export default function Playground() {
   const { t } = useTranslation()
   const [selectedGroupModel, setSelectedGroupModel] = useState('')
   const [model, setModel] = useState('gpt-4o')
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null)
-  const [temperature, setTemperature] = useState(0.7)
-  const [maxTokens, setMaxTokens] = useState(1000)
+  const [temperature, setTemperature] = useState(0.6)
+  const [maxTokens, setMaxTokens] = useState(4096)
   const [systemPrompt, setSystemPrompt] = useState(t('playground.settings.defaultSystemPrompt'))
 
   // useRef hooks for direct access to current values
@@ -76,7 +76,7 @@ export default function Playground() {
 
   const [input, setInput] = useState('')
 
-  const { messages, sendMessage, status, setMessages, regenerate } = useChat({
+  const { messages, sendMessage, status, setMessages, regenerate, stop } = useChat({
     transport: new DefaultChatTransport({
       api: '/admin/playground/chat',
       credentials: 'include',
@@ -94,7 +94,68 @@ export default function Playground() {
           system: systemPromptRef.current,
         }
       },
+      fetch: async (url, init) => {
+        const res = await fetch(url, init)
+        if (!res.ok) {
+          let message = res.statusText || 'Request failed'
+          let code: number | undefined = res.status
+          try {
+            const body = await res.clone().json()
+            const upstream = body?.error?.message || body?.message
+            const upstreamCode = typeof body?.error?.code === 'number' ? body.error.code : undefined
+            if (upstream) message = upstream
+            if (typeof upstreamCode === 'number') code = upstreamCode
+          } catch {
+            // ignore JSON parse errors
+          }
+          const err: any = new Error(message)
+          err.status = res.status
+          err.code = code
+          err.response = res
+          throw err
+        }
+        return res
+      },
     }),
+    onError: (error) => {
+      const anyErr = error as any
+      const status = anyErr?.status
+      const codeFromError = typeof anyErr?.code === 'number' ? anyErr.code : undefined
+
+      // If the error includes a fetch Response, try to parse JSON body
+      const response: Response | undefined = anyErr?.response instanceof Response ? anyErr.response : undefined
+      if (response) {
+        response
+          .clone()
+          .json()
+          .then((data: any) => {
+            const upstreamMsg = data?.error?.message || data?.message
+            const upstreamCode = typeof data?.error?.code === 'number' ? data.error.code : undefined
+            const code = upstreamCode ?? codeFromError ?? status
+            const message = upstreamMsg || error.message || 'Unknown error'
+            const title = code ? `${code} ${message}` : message
+            toast.error(title)
+          })
+          .catch(() => {
+            const upstreamMsg = anyErr?.error?.message || anyErr?.response?.error?.message
+            const code = codeFromError ?? status
+            const message = upstreamMsg || error.message || 'Unknown error'
+            const title = code ? `${code} ${message}` : message
+            toast.error(title)
+          })
+        return
+      }
+
+      try {
+        const upstreamMsg = anyErr?.error?.message || anyErr?.response?.error?.message
+        const code = codeFromError ?? status
+        const message = upstreamMsg || error.message || 'Unknown error'
+        const title = code ? `${code} ${message}` : message
+        toast.error(title)
+      } catch {
+        toast.error(error.message)
+      }
+    },
   })
   const isLoading = status === 'submitted' || status === 'streaming'
 
@@ -102,12 +163,14 @@ export default function Playground() {
   const handleSubmit = useCallback(
     (message: { text?: string }, e: React.FormEvent) => {
       e.preventDefault()
+      // block submit while a request is in-flight
+      if (isLoading) return
       if (message.text?.trim()) {
         sendMessage({ text: message.text })
         setInput('')
       }
     },
-    [sendMessage, selectedChannel]
+    [sendMessage, selectedChannel, isLoading]
   )
 
   const handleClear = useCallback(() => {
@@ -158,35 +221,14 @@ export default function Playground() {
     return channelGroups.filter((group) => group.models.length > 0)
   }, [channelsData])
 
-  // 获取扁平化的模型列表（用于搜索）
-  const allModels = useMemo(() => {
-    if (!channelsData?.edges) return []
-
-    const models = new Set<string>()
-    const modelMap = new Map<
-      string,
-      {
-        value: string
-        label: string
-        channel: Channel
-      }
-    >()
-
-    channelsData.edges.forEach((edge) => {
-      edge.node.supportedModels.forEach((model: string) => {
-        if (!models.has(model)) {
-          models.add(model)
-          modelMap.set(model, {
-            value: model,
-            label: model,
-            channel: edge.node,
-          })
-        }
-      })
-    })
-
-    return Array.from(models).map((model) => modelMap.get(model)!)
-  }, [channelsData])
+  // 为选择准备的平面化模型项（value: channelId|model, label: "model — channel"）
+  const modelOptions = useMemo(
+    () =>
+      groupedModels.flatMap((group) =>
+        group.models.map((m) => ({ value: m.value, label: `${m.label} — ${group.channelName}` }))
+      ),
+    [groupedModels]
+  )
 
   // 处理模型选择，同时设置对应的 channel
   const handleModelChange = useCallback(
@@ -236,40 +278,19 @@ export default function Playground() {
                 <Label htmlFor='model' className='text-sm font-semibold'>
                   {t('playground.settings.model')}
                 </Label>
-                <Select value={selectedGroupModel} onValueChange={handleModelChange} disabled={channelsLoading}>
-                  <SelectTrigger className='h-10'>
-                    <SelectValue placeholder={channelsLoading ? t('loading') : t('playground.settings.selectModel')} />
-                  </SelectTrigger>
-                  <SelectContent className='max-h-[300px]'>
-                    {groupedModels.length > 0 ? (
-                      groupedModels.map((group, groupIndex) => (
-                        <div key={group.channelName}>
-                          {groupIndex > 0 && <Separator className='my-2' />}
-                          <div className='text-muted-foreground px-2 py-1.5 text-xs font-semibold'>
-                            {group.channelName} ({group.channelType})
-                          </div>
-                          {group.models.map((modelOption) => (
-                            <SelectItem key={`${group.channelName}-${modelOption.value}`} value={modelOption.value}>
-                              <div className='flex flex-col items-start'>
-                                <span className='font-medium'>{modelOption.label}</span>
-                                <span className='text-muted-foreground text-xs'>{group.channelName}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </div>
-                      ))
-                    ) : (
-                      <SelectItem value='gpt-4o' disabled>
-                        {channelsLoading ? t('loading') : t('playground.errors.noChannelsAvailable')}
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <AutoCompleteSelect
+                  selectedValue={selectedGroupModel as string}
+                  onSelectedValueChange={(v) => handleModelChange(v)}
+                  items={modelOptions}
+                  isLoading={channelsLoading}
+                  emptyMessage={t('playground.errors.noChannelsAvailable')}
+                  placeholder={channelsLoading ? t('loading') : t('playground.settings.selectModel')}
+                />
                 {channelsLoading && <p className='text-muted-foreground text-xs'>{t('loading')}...</p>}
-                {!channelsLoading && allModels.length > 0 && (
+                {!channelsLoading && modelOptions.length > 0 && (
                   <p className='text-muted-foreground text-xs'>
                     {t('playground.modelsAvailable', {
-                      count: allModels.length,
+                      count: modelOptions.length,
                       channels: groupedModels.length,
                     })}
                   </p>
@@ -366,42 +387,77 @@ export default function Playground() {
                     description={t('playground.chat.typeMessageBelow')}
                   />
                 ) : (
-                  messages.map((message) => (
-                    <Message from={message.role} key={message.id}>
-                      <MessageContent>
-                        {message.parts?.map((part, index) => {
-                          if (part.type === 'text') {
-                            return <Response key={index}>{part.text}</Response>
-                          }
-                          if (part.type === 'reasoning') {
-                            return (
-                              <Reasoning key={index} isStreaming={status === 'streaming'}>
-                                <ReasoningTrigger />
-                                <ReasoningContent>{part.text}</ReasoningContent>
-                              </Reasoning>
-                            )
-                          }
-                          return null
-                        })}
-                      </MessageContent>
-                    </Message>
-                  ))
+                  (() => {
+                    const lastAssistantIndex = (() => {
+                      for (let i = messages.length - 1; i >= 0; i--) {
+                        if (messages[i].role === 'assistant') return i
+                      }
+                      return -1
+                    })()
+                    return messages.map((message, messageIndex) => {
+                      const isLastAssistant = message.role === 'assistant' && messageIndex === lastAssistantIndex
+                      const textContent = message.parts
+                        ?.filter((p) => p.type === 'text')
+                        .map((p: any) => p.text)
+                        .join('\n')
+                      return (
+                        <Message from={message.role} key={message.id}>
+                          <MessageContent>
+                            {message.parts?.map((part, index) => {
+                              if (part.type === 'text') {
+                                return <UIResponse key={index}>{part.text}</UIResponse>
+                              }
+                              if (part.type === 'reasoning') {
+                                return (
+                                  <Reasoning key={index} isStreaming={status === 'streaming'}>
+                                    <ReasoningTrigger />
+                                    <ReasoningContent>{part.text}</ReasoningContent>
+                                  </Reasoning>
+                                )
+                              }
+                              return null
+                            })}
+                            {isLastAssistant && textContent ? (
+                              <Actions className='mt-2'>
+                                <Action onClick={() => regenerate()} label={t('playground.chat.retry')}>
+                                  <RefreshCcw className='size-3' />
+                                </Action>
+                                <Action onClick={() => navigator.clipboard.writeText(textContent)} label={t('copy')}>
+                                  <Copy className='size-3' />
+                                </Action>
+                              </Actions>
+                            ) : null}
+                          </MessageContent>
+                        </Message>
+                      )
+                    })
+                  })()
                 )}
+                {status === 'submitted' && <Loader />}
               </ConversationContent>
               <ConversationScrollButton />
             </Conversation>
 
-            <PromptInput onSubmit={handleSubmit} className='mt-4 w-full'>
+            <PromptInput onSubmit={handleSubmit} className='relative mt-4 w-full'>
               <PromptInputTextarea
                 value={input}
                 placeholder={t('playground.chat.typeMessage')}
                 onChange={(e) => setInput(e.currentTarget.value)}
-                className='pr-12'
+                className='pr-16'
               />
               <PromptInputSubmit
-                status={status === 'streaming' ? 'streaming' : 'ready'}
-                disabled={!input.trim()}
-                className='absolute right-1 bottom-1'
+                status={status}
+                disabled={status === 'ready' ? !input.trim() : false}
+                // className='absolute right-2 top-1/2 -translate-y-1/2'
+                className='absolute right-3 bottom-3'
+
+                onClick={(e) => {
+                  // When not ready (submitted/streaming/error), treat click as cancel
+                  if (status !== 'ready') {
+                    e.preventDefault()
+                    stop()
+                  }
+                }}
               />
             </PromptInput>
           </div>

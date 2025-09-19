@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
+	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -117,4 +119,63 @@ func (t *OutboundTransformer) TransformStreamChunk(
 	}
 
 	return t.TransformResponse(ctx, httpResp)
+}
+
+type openrouterError struct {
+	Error struct {
+		Message  string `json:"message"`
+		Code     int    `json:"code"`
+		Metadata struct {
+			Raw any `json:"raw"`
+		} `json:"metadata"`
+	} `json:"error"`
+}
+
+func (e openrouterError) ToLLMError() llm.ErrorDetail {
+	message := cast.ToString(e.Error.Metadata.Raw)
+	if message == "" {
+		message = e.Error.Message
+	}
+
+	if message == "" && e.Error.Code != 0 {
+		message = http.StatusText(e.Error.Code)
+	}
+
+	return llm.ErrorDetail{
+		Message: message,
+		Code:    fmt.Sprintf("%d", e.Error.Code),
+		Type:    "api_error",
+	}
+}
+
+func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
+	if rawErr == nil {
+		return &llm.ResponseError{
+			StatusCode: http.StatusInternalServerError,
+			Detail: llm.ErrorDetail{
+				Message: http.StatusText(http.StatusInternalServerError),
+				Type:    "api_error",
+			},
+		}
+	}
+
+	// Try to parse as OpenRouter error format first
+	var openaiError openrouterError
+
+	err := json.Unmarshal(rawErr.Body, &openaiError)
+	if err == nil {
+		return &llm.ResponseError{
+			StatusCode: rawErr.StatusCode,
+			Detail:     openaiError.ToLLMError(),
+		}
+	}
+
+	// If JSON parsing fails, use the upstream status text
+	return &llm.ResponseError{
+		StatusCode: rawErr.StatusCode,
+		Detail: llm.ErrorDetail{
+			Message: http.StatusText(rawErr.StatusCode),
+			Type:    "api_error",
+		},
+	}
 }
