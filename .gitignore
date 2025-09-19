@@ -88,6 +88,8 @@ yarn-error.log*
 dev-debug.log
 # Dependency directories
 node_modules/
+# Lock files - project uses pnpm
+package-lock.json
 # Environment variables
 .env
 # Editor directories and files

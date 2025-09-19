@@ -23,6 +23,7 @@ import {
 import { Message, MessageContent } from '@/components/ai-elements/message'
 import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/components/ai-elements/prompt-input'
 import { Response } from '@/components/ai-elements/response'
+import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning'
 import { useChannels } from '@/features/channels/data/channels'
 import type { Channel } from '@/features/channels/data/schema'
 
@@ -371,6 +372,14 @@ export default function Playground() {
                         {message.parts?.map((part, index) => {
                           if (part.type === 'text') {
                             return <Response key={index}>{part.text}</Response>
+                          }
+                          if (part.type === 'reasoning') {
+                            return (
+                              <Reasoning key={index} isStreaming={status === 'streaming'}>
+                                <ReasoningTrigger />
+                                <ReasoningContent>{part.text}</ReasoningContent>
+                              </Reasoning>
+                            )
                           }
                           return null
                         })}
