@@ -48,9 +48,11 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 
 在我们的 [演示实例](https://axonhub.onrender.com) 上体验 AxonHub！
 
+**注意**：演示网站目前只配置了一个用于测试的虚拟渠道，返回固定内容。
+
 ### 演示账号 | Demo Account
 - **邮箱 Email**: demo@example.com
-- **密码 Password**: 123456
+- **密码 Password**: 12345678
 
 ---
 
