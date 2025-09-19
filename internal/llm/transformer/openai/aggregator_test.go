@@ -72,7 +72,7 @@ func TestAggregateStreamChunks(t *testing.T) {
 			require.NoError(t, err)
 
 			// Test the function
-			gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks)
+			gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
 			require.NoError(t, err)
 
 			// Parse the result
@@ -140,7 +140,7 @@ func TestAggregateStreamChunks(t *testing.T) {
 }
 
 func TestAggregateStreamChunks_EmptyChunks(t *testing.T) {
-	gotBytes, _, err := AggregateStreamChunks(context.Background(), nil)
+	gotBytes, _, err := AggregateStreamChunks(context.Background(), nil, DefaultTransformChunk)
 	require.NoError(t, err)
 
 	var got llm.Response

@@ -9,6 +9,7 @@ import {
   Doubao,
   Moonshot,
   Zhipu,
+  OpenRouter,
 } from '@lobehub/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
@@ -53,8 +54,8 @@ const getChannelTypeConfig = (
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     icon: Anthropic,
   },
-  gemini: {
-    label: t('channels.types.gemini'),
+  gemini_openai: {
+    label: t('channels.types.gemini_openai'),
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: Google,
   },
@@ -102,6 +103,11 @@ const getChannelTypeConfig = (
     label: t('channels.types.zai_anthropic'),
     color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
     icon: Zhipu,
+  },
+  openrouter: {
+    label: t('channels.types.openrouter'),
+    color: 'bg-teal-100 text-teal-800 border-teal-200',
+    icon: OpenRouter,
   },
   anthropic_fake: {
     label: t('channels.types.anthropic_fake'),
