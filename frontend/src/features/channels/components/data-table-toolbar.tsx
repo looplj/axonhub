@@ -35,8 +35,8 @@ export function DataTableToolbar<TData>({
       label: t('channels.types.anthropic_gcp'),
     },
     {
-      value: 'gemini' as ChannelType,
-      label: t('channels.types.gemini'),
+      value: 'gemini_openai' as ChannelType,
+      label: t('channels.types.gemini_openai'),
     },
     {
       value: 'deepseek' as ChannelType,
@@ -49,6 +49,10 @@ export function DataTableToolbar<TData>({
     {
       value: 'moonshot' as ChannelType,
       label: t('channels.types.moonshot'),
+    },
+    {
+      value: 'openrouter' as ChannelType,
+      label: t('channels.types.openrouter'),
     },
     {
       value: 'deepseek_anthropic' as ChannelType,

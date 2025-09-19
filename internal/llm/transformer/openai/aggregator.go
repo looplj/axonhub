@@ -10,7 +10,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
-	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
 // choiceAggregator is a helper struct to aggregate data for each choice.
@@ -23,8 +22,19 @@ type choiceAggregator struct {
 	role             string
 }
 
+type ChunkTransformFunc func(ctx context.Context, chunk *httpclient.StreamEvent) (*Response, error)
+
+func DefaultTransformChunk(ctx context.Context, chunk *httpclient.StreamEvent) (*Response, error) {
+	var response Response
+	if err := json.Unmarshal(chunk.Data, &response); err != nil {
+		return nil, err
+	}
+
+	return &response, nil
+}
+
 // AggregateStreamChunks aggregates OpenAI streaming response chunks into a complete response.
-func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent, chunkTransformer ChunkTransformFunc) ([]byte, llm.ResponseMeta, error) {
 	if len(chunks) == 0 {
 		data, err := json.Marshal(&llm.Response{})
 		return data, llm.ResponseMeta{}, err
@@ -44,7 +54,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			continue
 		}
 
-		chunk, err := xjson.To[Response](chunk.Data)
+		chunk, err := chunkTransformer(ctx, chunk)
 		if err != nil {
 			continue // Skip invalid chunks
 		}
@@ -138,7 +148,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		}
 
 		// Keep the last chunk for metadata
-		lastChunkResponse = &chunk
+		lastChunkResponse = chunk
 	}
 
 	// Create a complete ChatCompletionResponse based on the last chunk structure

@@ -6,7 +6,7 @@ export const channelTypeSchema = z.enum([
   'anthropic',
   'anthropic_aws',
   'anthropic_gcp',
-  'gemini',
+  'gemini_openai',
   'deepseek',
   'doubao',
   'moonshot',
@@ -18,6 +18,7 @@ export const channelTypeSchema = z.enum([
   'moonshot_anthropic',
   'zhipu_anthropic',
   'zai_anthropic',
+  'openrouter',
 ])
 export type ChannelType = z.infer<typeof channelTypeSchema>
 

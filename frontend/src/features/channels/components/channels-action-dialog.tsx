@@ -35,7 +35,7 @@ const defaultBaseUrls: Record<string, string> = {
   anthropic: 'https://api.anthropic.com/v1',
   anthropic_aws: 'https://bedrock-runtime.us-east-1.amazonaws.com',
   anthropic_gcp: 'https://us-east5-aiplatform.googleapis.com',
-  gemini: 'https://generativelanguage.googleapis.com/v1beta',
+  gemini_openai: 'https://generativelanguage.googleapis.com/v1beta/openai',
   deepseek: 'https://api.deepseek.com/v1',
   doubao: 'https://ark.cn-beijing.volces.com/api/v3',
   kimi: 'https://api.moonshot.cn/v1',
@@ -45,6 +45,7 @@ const defaultBaseUrls: Record<string, string> = {
   kimi_anthropic: 'https://api.moonshot.cn/anthropic',
   zhipu_anthropic: 'https://open.bigmodel.cn/api/anthropic',
   zai_anthropic: 'https://open.bigmodel.cn/api/anthropic',
+  openrouter: 'https://openrouter.ai/api/v1',
   // Fake types are not allowed for creation
   // anthropic_fake: 'https://api.anthropic.com/v1',
   // openai_fake: 'https://api.openai.com/v1',
@@ -74,7 +75,7 @@ export const defaultModels: Record<string, string[]> = {
     'claude-3-7-sonnet@20250219',
     'claude-3-5-haiku@20241022',
   ],
-  gemini: ['gemini-2.5-pro', 'gemini-2.5-flash'],
+  gemini_openai: ['gemini-2.5-pro', 'gemini-2.5-flash'],
   deepseek: ['deepseek-chat', 'deepseek-reasoner'],
   doubao: ['doubao-seed-1.6', 'doubao-seed-1.6-flash'],
   moonshot: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
@@ -92,6 +93,36 @@ export const defaultModels: Record<string, string[]> = {
     'claude-3-5-haiku-latest',
   ],
   openai_fake: ['gpt-3.5-turbo', `gpt-4.5`, 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
+  openrouter: [
+    // DeepSeek
+    'deepseek/deepseek-chat-v3.1:free',
+    'deepseek/deepseek-chat-v3.1',
+    'deepseek/deepseek-r1-0528:free',
+    'deepseek/deepseek-r1-0528',
+    'deepseek/deepseek-r1:free',
+    'deepseek/deepseek-r1',
+    'deepseek/deepseek-chat-v3-0324:free',
+    'deepseek/deepseek-chat-v3-0324',
+
+    // Moonshot
+    'moonshotai/kimi-k2:free',
+    'moonshotai/kimi-k2-0905',
+
+    // Zai
+    'z-ai/glm-4.5',
+    'z-ai/glm-4.5-air',
+    'z-ai/glm-4.5-air:free',
+
+    // Google
+    "google/gemini-2.5-flash-lite",
+    "google/gemini-2.5-flash",
+    "google/gemini-2.5-pro",
+    
+    // Anthropic
+    "anthropic/claude-opus-4",
+    "anthropic/claude-sonnet-4",
+    "anthropic/claude-3.7-sonnet",
+  ],
 }
 
 export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) {
@@ -108,7 +139,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     { value: 'anthropic', label: t('channels.types.anthropic') },
     { value: 'anthropic_aws', label: t('channels.types.anthropic_aws') },
     { value: 'anthropic_gcp', label: t('channels.types.anthropic_gcp') },
-    // { value: 'gemini', label: t('channels.types.gemini') },
+    { value: 'gemini_openai', label: t('channels.types.gemini_openai') },
     { value: 'deepseek', label: t('channels.types.deepseek') },
     { value: 'doubao', label: t('channels.types.doubao') },
     { value: 'moonshot', label: t('channels.types.moonshot') },
@@ -118,6 +149,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     { value: 'moonshot_anthropic', label: t('channels.types.moonshot_anthropic') },
     { value: 'zhipu_anthropic', label: t('channels.types.zhipu_anthropic') },
     { value: 'zai_anthropic', label: t('channels.types.zai_anthropic') },
+    { value: 'openrouter', label: t('channels.types.openrouter') },
     { value: 'anthropic_fake', label: t('channels.types.anthropic_fake') },
     { value: 'openai_fake', label: t('channels.types.openai_fake') },
   ]
@@ -573,7 +605,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                   </div>
 
                   {/* Quick add models section */}
-                  {defaultModels[form.watch('type')] && defaultModels[form.watch('type')].length > 0 && (
+                  {(() => {
+                    const currentType = form.watch('type') as keyof typeof defaultModels | undefined
+                    const quickModels = currentType ? defaultModels[currentType] : undefined
+                    return quickModels && quickModels.length > 0
+                  })() && (
                     <div className='pt-3'>
                       <div className='mb-2 flex items-center justify-between'>
                         <span className='text-sm font-medium'>
@@ -590,7 +626,10 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         </Button>
                       </div>
                       <div className='flex flex-wrap gap-2'>
-                        {defaultModels[form.watch('type')].map((model) => (
+                        {((): string[] => {
+                          const currentType = form.watch('type') as keyof typeof defaultModels | undefined
+                          return currentType ? defaultModels[currentType] : []
+                        })().map((model: string) => (
                           <Badge
                             key={model}
                             variant={selectedDefaultModels.includes(model) ? 'default' : 'secondary'}

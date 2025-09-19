@@ -40,7 +40,7 @@ func (Channel) Fields() []ent.Field {
 				"anthropic",
 				"anthropic_aws",
 				"anthropic_gcp",
-				// "gemini",
+				"gemini_openai",
 				"deepseek",
 				"deepseek_anthropic",
 				"doubao",
@@ -52,6 +52,7 @@ func (Channel) Fields() []ent.Field {
 				"zai_anthropic",
 				"anthropic_fake",
 				"openai_fake",
+				"openrouter",
 			).
 			Immutable(),
 		field.String("base_url").Optional(),
