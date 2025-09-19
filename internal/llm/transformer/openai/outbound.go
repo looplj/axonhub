@@ -314,7 +314,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, llm.ResponseMeta, error) {
-	return AggregateStreamChunks(ctx, chunks)
+	return AggregateStreamChunks(ctx, chunks, DefaultTransformChunk)
 }
 
 // TransformError transforms HTTP error response to unified error response.
