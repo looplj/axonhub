@@ -48,9 +48,11 @@ For detailed technical documentation, API references, architecture design, and m
 
 Try AxonHub live at our [demo instance](https://axonhub.onrender.com)!
 
+**Note**: The demo instance currently has only one fake channel configured that returns fixed content for testing purposes.
+
 ### Demo Account
 - **Email**: demo@example.com
-- **Password**: 123456
+- **Password**: 12345678
 
 ---
 
