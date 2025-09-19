@@ -1,27 +1,4 @@
-/**
-MIT License
-
-Copyright (c) 2025 Leonardo Montini
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
- */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Command as CommandPrimitive } from 'cmdk'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -33,26 +10,25 @@ import { Skeleton } from './ui/skeleton'
 type Props<T extends string> = {
   selectedValue: T
   onSelectedValueChange: (value: T) => void
-  searchValue: string
-  onSearchValueChange: (value: string) => void
   items: { value: T; label: string }[]
   isLoading?: boolean
   emptyMessage?: string
   placeholder?: string
 }
 
-export function AutoComplete<T extends string>({
+// AutoCompleteSelect: strictly selects from provided items. No free-form values are allowed.
+export function AutoCompleteSelect<T extends string>({
   selectedValue,
   onSelectedValueChange,
-  searchValue,
-  onSearchValueChange,
   items,
   isLoading,
   emptyMessage = 'No items.',
   placeholder = 'Search...',
 }: Props<T>) {
   const [open, setOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
 
+  // map value -> label for quick lookup
   const labels = useMemo(
     () =>
       items.reduce(
@@ -65,28 +41,35 @@ export function AutoComplete<T extends string>({
     [items]
   )
 
-  const reset = () => {
-    onSelectedValueChange('' as T)
-    onSearchValueChange('')
-  }
+  // Filter items locally based on search string
+  const filtered = useMemo(() => {
+    if (!searchValue) return items
+    const q = searchValue.toLowerCase()
+    return items.filter((it) => it.label.toLowerCase().includes(q))
+  }, [items, searchValue])
 
   const onInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Don't reset if the input has a value - allow custom values
-    if (!e.relatedTarget?.hasAttribute('cmdk-list') && searchValue && labels[selectedValue] !== searchValue) {
-      // Keep the current search value as the selected value for custom inputs
-      onSelectedValueChange(searchValue as T)
+    // Strict mode: on blur, revert input text to the selected label
+    // unless focus moves within the list
+    if (!e.relatedTarget?.hasAttribute('cmdk-list')) {
+      setSearchValue(labels[selectedValue] ?? '')
     }
   }
 
   const onSelectItem = (inputValue: string) => {
-    if (inputValue === selectedValue) {
-      reset()
-    } else {
-      onSelectedValueChange(inputValue as T)
-      onSearchValueChange(labels[inputValue] ?? '')
-    }
+    // Only accept values from list
+    const exists = items.some((it) => it.value === inputValue)
+    if (!exists) return
+    onSelectedValueChange(inputValue as T)
+    setSearchValue(labels[inputValue] ?? '')
     setOpen(false)
   }
+
+  // Keep the search field in sync with the selected item when selection changes externally
+  // This also initializes the field with the current label.
+  useEffect(() => {
+    setSearchValue(labels[selectedValue] ?? '')
+  }, [labels, selectedValue])
 
   return (
     <div className='flex items-center'>
@@ -96,9 +79,9 @@ export function AutoComplete<T extends string>({
             <CommandPrimitive.Input
               asChild
               value={searchValue}
-              onValueChange={onSearchValueChange}
+              onValueChange={setSearchValue}
               onKeyDown={(e) => setOpen(e.key !== 'Escape')}
-              onMouseDown={() => setOpen((open) => !!searchValue || !open)}
+              onMouseDown={() => setOpen((prev) => !!searchValue || !prev)}
               onFocus={() => setOpen(true)}
               onBlur={onInputBlur}
             >
@@ -124,9 +107,9 @@ export function AutoComplete<T extends string>({
                   </div>
                 </CommandPrimitive.Loading>
               )}
-              {items.length > 0 && !isLoading ? (
+              {filtered.length > 0 && !isLoading ? (
                 <CommandGroup>
-                  {items.map((option) => (
+                  {filtered.map((option) => (
                     <CommandItem
                       key={option.value}
                       value={option.value}
@@ -134,9 +117,7 @@ export function AutoComplete<T extends string>({
                       onSelect={onSelectItem}
                       className='max-w-full w-full min-w-0'
                     >
-                      <Check
-                        className={cn('mr-2 h-4 w-4', selectedValue === option.value ? 'opacity-100' : 'opacity-0')}
-                      />
+                      <Check className={cn('mr-2 h-4 w-4', selectedValue === option.value ? 'opacity-100' : 'opacity-0')} />
                       <span className='truncate flex-1 min-w-0'>{option.label}</span>
                     </CommandItem>
                   ))}
@@ -150,3 +131,4 @@ export function AutoComplete<T extends string>({
     </div>
   )
 }
+

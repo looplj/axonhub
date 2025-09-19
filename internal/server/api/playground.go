@@ -1,22 +1,29 @@
 package api
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/aisdk"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/chat"
 )
 
 type PlaygroundResponseError struct {
-	Error struct {
-		Code    string `json:"code"`
+	Status int `json:"-"`
+	Error  struct {
+		Code    int    `json:"code,omitempty"`
 		Message string `json:"message"`
 	} `json:"error"`
 }
@@ -43,7 +50,129 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 	}
 }
 
-// ChatCompletion handles playground chat completion requests with optional channel specification.
+// tryExtractUpstreamErrorMessage attempts to extract a meaningful error message
+// from a typical upstream error JSON payload. Supported shapes include:
+// {"error": {"message": "..."}}, {"message": "..."}
+// If nothing is extracted, returns an empty string.
+func tryExtractUpstreamErrorMessage(body []byte) string {
+	if len(body) == 0 {
+		return ""
+	}
+
+	// 1) OpenAI / OpenRouter-like: {"error": {"message": "..."}}
+	var wrapped struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &wrapped); err == nil {
+		if wrapped.Error.Message != "" {
+			return wrapped.Error.Message
+		}
+	}
+
+	// 2) Generic: {"message": "..."}
+	var generic struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &generic); err == nil {
+		if generic.Message != "" {
+			return generic.Message
+		}
+	}
+
+	// 3) Some providers may return: {"error": "..."}
+	var alt struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(body, &alt); err == nil {
+		if alt.Error != "" {
+			return alt.Error
+		}
+	}
+
+	return ""
+}
+
+// HandleError handles raw errors and returns a PlaygroundResponseError.
+func (handlers *PlaygroundHandlers) HandleError(rawErr error) *PlaygroundResponseError {
+	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
+		// Prefer upstream error message when available
+		msg := tryExtractUpstreamErrorMessage(httpErr.Body)
+		if msg == "" {
+			msg = http.StatusText(httpErr.StatusCode)
+		}
+
+		return &PlaygroundResponseError{
+			Status: httpErr.StatusCode,
+			Error: struct {
+				Code    int    `json:"code,omitempty"`
+				Message string `json:"message"`
+			}{
+				Code:    httpErr.StatusCode,
+				Message: msg,
+			},
+		}
+	}
+
+	// Handle validation errors
+	if errors.Is(rawErr, transformer.ErrInvalidRequest) {
+		return &PlaygroundResponseError{
+			Status: http.StatusBadRequest,
+			Error: struct {
+				Code    int    `json:"code,omitempty"`
+				Message string `json:"message"`
+			}{
+				Code:    http.StatusBadRequest,
+				Message: http.StatusText(http.StatusBadRequest),
+			},
+		}
+	}
+
+	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
+		if llmErr.Detail.Message == "" {
+			return &PlaygroundResponseError{
+				Status: llmErr.StatusCode,
+				Error: struct {
+					Code    int    `json:"code,omitempty"`
+					Message string `json:"message"`
+				}{
+					Code:    llmErr.StatusCode,
+					Message: http.StatusText(llmErr.StatusCode),
+				},
+			}
+		}
+
+		// Try parse provider error code if present and numeric; otherwise use HTTP status.
+		parsedCode, _ := strconv.Atoi(llmErr.Detail.Code)
+		if parsedCode == 0 {
+			parsedCode = llmErr.StatusCode
+		}
+
+		return &PlaygroundResponseError{
+			Status: llmErr.StatusCode,
+			Error: struct {
+				Code    int    `json:"code,omitempty"`
+				Message string `json:"message"`
+			}{
+				Code:    parsedCode,
+				Message: llmErr.Detail.Message,
+			},
+		}
+	}
+
+	return &PlaygroundResponseError{
+		Status: http.StatusInternalServerError,
+		Error: struct {
+			Code    int    `json:"code,omitempty"`
+			Message string `json:"message"`
+		}{
+			Code:    http.StatusInternalServerError,
+			Message: http.StatusText(http.StatusInternalServerError),
+		},
+	}
+}
+
 func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -52,10 +181,10 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 		log.Error(ctx, "Error reading HTTP request", log.Cause(err))
 		c.JSON(http.StatusBadRequest, PlaygroundResponseError{
 			Error: struct {
-				Code    string `json:"code"`
+				Code    int    `json:"code,omitempty"`
 				Message string `json:"message"`
 			}{
-				Code:    "bad_request",
+				Code:    http.StatusBadRequest,
 				Message: err.Error(),
 			},
 		})
@@ -78,10 +207,10 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 			log.Error(ctx, "Error parsing channel ID", log.Cause(err))
 			c.JSON(http.StatusBadRequest, PlaygroundResponseError{
 				Error: struct {
-					Code    string `json:"code"`
+					Code    int    `json:"code,omitempty"`
 					Message string `json:"message"`
 				}{
-					Code:    "bad_request",
+					Code:    http.StatusBadRequest,
 					Message: err.Error(),
 				},
 			})
@@ -108,15 +237,8 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 	result, err := processor.Process(ctx, genericReq)
 	if err != nil {
 		log.Error(ctx, "Error processing chat completion", log.Cause(err))
-		c.JSON(http.StatusInternalServerError, PlaygroundResponseError{
-			Error: struct {
-				Code    string `json:"code"`
-				Message string `json:"message"`
-			}{
-				Code:    "internal_error",
-				Message: err.Error(),
-			},
-		})
+		errResponse := handlers.HandleError(err)
+		c.JSON(errResponse.Status, errResponse)
 
 		return
 	}

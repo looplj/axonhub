@@ -342,11 +342,11 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 		}
 	}
 
-	// If JSON parsing fails, return the JSON error message
+	// If JSON parsing fails, use the upstream status text
 	return &llm.ResponseError{
 		StatusCode: rawErr.StatusCode,
 		Detail: llm.ErrorDetail{
-			Message: http.StatusText(http.StatusInternalServerError),
+			Message: http.StatusText(rawErr.StatusCode),
 			Type:    "api_error",
 		},
 	}
