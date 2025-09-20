@@ -24,14 +24,17 @@
 
 AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, AI SDK 兼容 API 层，通过转换器管道架构将请求转换到各种 AI 提供商。系统具备完整的追踪（Trace）能力，帮助企业更好地管理和监控 AI 服务使用情况。并且具备完善的测试覆盖，保障系统的稳定性和可靠性。
 
+<div align="center">
+  <img src="assets/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
+</div>
+
 ### 解决的核心问题
 
 | 问题 Problem | AxonHub 解决方案 Solution |
 |-------------|-------------------------|
-| **供应商锁定** Vendor Lock-in | 🔄 统一 API 接口，随时切换提供商 |
+| **供应商锁定** Vendor Lock-in | 🔄 统一 API 接口，API 格式转换，随时切换提供商 |
 | **可扩展性** Extensibility | 灵活的 transformer 架构，支持多种转换器 |
 | **服务中断** Service Outages | ⚡ 自动故障转移，多渠道冗余 |
-| **成本控制** Cost Control | 💰 智能路由，成本优化策略 |
 | **权限管理** Permission Management | 📊 完善的用户权限管理 |
 | **开发复杂性** Development Complexity | 🛠️ 单一 SDK，统一接口标准 |
 
@@ -65,22 +68,22 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 <table>
   <tr>
     <td align="center">
-      <a href="screenshots/axonhub-dashboard.png">
-        <img src="screenshots/axonhub-dashboard.png" alt="系统仪表板" width="250"/>
+      <a href="assets/axonhub-dashboard.png">
+        <img src="assets/axonhub-dashboard.png" alt="系统仪表板" width="250"/>
       </a>
       <br/>
       系统仪表板
     </td>
     <td align="center">
-      <a href="screenshots/axonhub-channels.png">
-        <img src="screenshots/axonhub-channels.png" alt="渠道管理" width="250"/>
+      <a href="assets/axonhub-channels.png">
+        <img src="assets/axonhub-channels.png" alt="渠道管理" width="250"/>
       </a>
       <br/>
       渠道管理
     </td>
     <td align="center">
-      <a href="screenshots/axonhub-users.png">
-        <img src="screenshots/axonhub-users.png" alt="用户管理" width="250"/>
+      <a href="assets/axonhub-users.png">
+        <img src="assets/axonhub-users.png" alt="用户管理" width="250"/>
       </a>
       <br/>
       用户管理
@@ -88,22 +91,22 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
   </tr>
   <tr>
     <td align="center">
-      <a href="screenshots/axonhub-requests.png">
-        <img src="screenshots/axonhub-requests.png" alt="请求监控" width="250"/>
+      <a href="assets/axonhub-requests.png">
+        <img src="assets/axonhub-requests.png" alt="请求监控" width="250"/>
       </a>
       <br/>
       请求监控
     </td>
     <td align="center">
-      <a href="screenshots/axonhub-ussge-logs.png">
-        <img src="screenshots/axonhub-ussge-logs.png" alt="使用日志" width="250"/>
+      <a href="assets/axonhub-ussge-logs.png">
+        <img src="assets/axonhub-ussge-logs.png" alt="使用日志" width="250"/>
       </a>
       <br/>
       使用日志
     </td>
     <td align="center">
-      <a href="screenshots/axonhub-system.png">
-        <img src="screenshots/axonhub-system.png" alt="系统设置" width="250"/>
+      <a href="assets/axonhub-system.png">
+        <img src="assets/axonhub-system.png" alt="系统设置" width="250"/>
       </a>
       <br/>
       系统设置
@@ -130,7 +133,6 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 | 特性 Feature | 技术实现 Implementation | 企业价值 Business Value |
 |-------------|----------------------|---------------------|
 | **统一 API 接口** | OpenAI 兼容标准，零学习成本 | 避免供应商锁定，降低迁移风险 |
-| **智能路由** | 双向转换器架构，毫秒级切换 | 99.9% 可用性保证，业务连续性 |
 | **自动故障转移** | 多渠道级重试 + 负载均衡 | 服务中断时间 < 100ms |
 | **流式处理** | 原生 SSE 支持，实时响应 | 用户体验提升 60% |
 
@@ -280,6 +282,8 @@ docker-compose ps
 
 #### 虚拟机部署 | Virtual Machine Deployment
 
+下载最新版本从 [GitHub Releases](https://github.com/looplj/axonhub/releases)
+
 ```bash
 # 克隆项目
 git clone https://github.com/looplj/axonhub.git
@@ -289,26 +293,19 @@ cd axonhub
 export AXONHUB_DB_DIALECT="tidb"
 export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true"
 
-# 构建
-make build
+# 安装
+sudo ./install.sh
 
 # 配置文件检查
-./axonhub config check
+axonhub config check
 
-# 启动服务
-./axonhub 
-```
+# 使用管理脚本管理 AxonHub
 
-#### 进程管理 | Process Management
+# 启动
+./start.sh
 
-为简化使用，推荐使用辅助脚本进行管理：
-
-```bash
-# 启动 Start
-./deploy/start.sh
-
-# 停止 Stop
-./deploy/stop.sh
+# 停止
+./stop.sh
 ```
 
 ---
@@ -374,8 +371,8 @@ export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
 <table>
   <tr align="center">
     <td align="center">
-      <a href="screenshots/axonhub-profiles.png">
-        <img src="screenshots/axonhub-profiles.png" alt="Profiles Configuration Interface" width="250"/>
+      <a href="assets/axonhub-profiles.png">
+        <img src="assets/axonhub-profiles.png" alt="Profiles Configuration Interface" width="250"/>
       </a>
     </td>
   </tr>
@@ -404,12 +401,6 @@ AxonHub 引入了强大的模型配置文件功能，允许您为 API 密钥配�
 4. **Claude Code 自动使用**活跃配置文件中的供应商
 
 这消除了在开发环境中不断切换 API 密钥或模型名称的需要。
-
-<!-- TODO: 添加配置文件配置界面截图 -->
-<!-- [截图：配置文件配置界面] -->
-
-<!-- TODO: 添加模型映射设置截图 -->
-<!-- [截图：模型映射设置] -->
 
 ---
 
@@ -451,38 +442,11 @@ const completion = await openai.chat.completions.create({
 
 ### 架构设计 | Architecture Design
 
-AxonHub 采用高可扩展架构，支持多 AI 提供商和多模型切换：
+AxonHub 实现了一个复杂的双向数据转换管道，确保客户端和 AI 提供商之间的无缝通信。
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Client Apps   │    │   Web Frontend  │    │   Mobile Apps   │
-└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
-          │                      │                      │
-          └──────────────────────┼──────────────────────┘
-                                 │
-                    ┌────────────▼─────────────┐
-                    │    AxonHub Gateway      │
-                    │  ┌─────────────────────┐ │
-                    │  │  Unified API Layer  │ │
-                    │  │  Smart Router       │ │
-                    │  │  Access Control     │ │
-                    │  │  Audit Logs         │ │
-                    │  └─────────────────────┘ │
-                    └────────────┬─────────────┘
-                                 │
-          ┌──────────────────────┼──────────────────────┐
-          │                      │                      │
-    ┌─────▼─────┐        ┌─────▼─────┐        ┌─────▼─────┐
-    │  OpenAI   │        │ Anthropic │        │  DeepSeek │
-    │  Claude   │        │   Gemini  │        │  Moonshot │
-    │           │        │           │        │   Zhipu   │
-    └───────────┘        └───────────┘        └───────────┘
-```
-
-
-Transformation Flow:
-
-  Client Request → Inbound Transformer → Unified Request → Pipeline → Outbound Transformer → HTTP Client → Provider
+<div align="center">
+  <img src="assets/transformation-flow.svg" alt="AxonHub Transformation Flow" width="900"/>
+</div>
 
 ### 技术框架 | Technology Stack
 
@@ -490,7 +454,7 @@ Transformation Flow:
 - **Go 1.24+** - 高性能后端
 - **Gin** - HTTP 框架
 - **Ent ORM** - 类型安全的 ORM
-- **GraphQL** - 灵活的 API 查询
+- **gqlgen** - GraphQL 代码生成
 - **JWT** - 身份认证
 
 #### 前端技术栈
@@ -510,6 +474,10 @@ cd axonhub
 # 启动后端
 make build-backend
 ./axonhub
+
+# 推荐：使用 air 自动重载 Go 服务
+go install github.com/air-verse/air@latest
+air
 
 # 启动前端（新终端）
 cd frontend
@@ -532,6 +500,9 @@ make build
 - 🔧 [99designs/gqlgen](https://github.com/99designs/gqlgen) - GraphQL 代码生成
 - 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTP 框架
 - 🗄️ [ent/ent](https://github.com/ent/ent) - ORM 框架
+- ☁️ [render](https://render.com) - 免费云部署平台，用于部署 demo
+- 🗄️ [tidbcloud](https://www.pingcap.com/tidb-cloud/) - Serverless 数据库平台，用于部署 demo
+- 🔧 [air](https://github.com/air-verse/air) - 自动重载 Go 服务
 
 ---
 

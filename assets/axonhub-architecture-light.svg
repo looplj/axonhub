@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" role="img" aria-labelledby="axonhub-title">
+  <title id="axonhub-title">AxonHub Architecture - Unified AI Gateway</title>
+  
+  <!-- CSS Animations -->
+  <style>
+    .flow-line {
+      stroke-dasharray: 12,6;
+      animation: flow 1s linear infinite;
+    }
+    
+    @keyframes flow {
+      to { stroke-dashoffset: -36; }
+    }
+    
+    .pulse-center {
+      transform-origin: 400px 200px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+    
+    .rotate-slow {
+      transform-origin: 400px 200px;
+      animation: rotate-slow 12s linear infinite;
+    }
+    
+    .rotate-medium {
+      transform-origin: 400px 200px;
+      animation: rotate-medium 8s linear infinite;
+    }
+    
+    @keyframes rotate-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    @keyframes rotate-medium {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(-360deg); }
+    }
+    
+    .fade-in {
+      animation: fade-in 1.5s ease-out;
+    }
+    
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .glow {
+      filter: drop-shadow(0 0 6px rgba(14, 165, 233, 0.5));
+      animation: glow-pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes glow-pulse {
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(14, 165, 233, 0.5)); }
+      50% { filter: drop-shadow(0 0 12px rgba(14, 165, 233, 0.8)); }
+    }
+  </style>
+  
+  <!-- Background -->
+  <rect width="800" height="400" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2" rx="8"/>
+  
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#1e293b">
+    AxonHub - Unified AI Gateway
+  </text>
+  
+  <!-- Left side: AI Providers -->
+  <g class="fade-in">
+    <text x="120" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#475569">AI Providers</text>
+    
+    <!-- OpenAI -->
+    <rect x="40" y="90" width="160" height="50" rx="8" fill="#10b981" fill-opacity="0.1" stroke="#10b981" stroke-width="2"/>
+    <text x="120" y="120" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#059669">OpenAI</text>
+    
+    <!-- Anthropic -->
+    <rect x="40" y="160" width="160" height="50" rx="8" fill="#8b5cf6" fill-opacity="0.1" stroke="#8b5cf6" stroke-width="2"/>
+    <text x="120" y="190" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#7c3aed">Anthropic</text>
+    
+    <!-- DeepSeek -->
+    <rect x="40" y="230" width="160" height="50" rx="8" fill="#f59e0b" fill-opacity="0.1" stroke="#f59e0b" stroke-width="2"/>
+    <text x="120" y="260" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#d97706">DeepSeek</text>
+  </g>
+  
+  <!-- Center: AxonHub -->
+  <g class="pulse-center">
+    <circle cx="400" cy="200" r="80" fill="#0ea5e9" fill-opacity="0.1" stroke="#0ea5e9" stroke-width="3" class="glow"/>
+    <circle cx="400" cy="200" r="60" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-dasharray="5,5" class="rotate-slow"/>
+    <circle cx="400" cy="200" r="40" fill="none" stroke="#0ea5e9" stroke-width="1" stroke-dasharray="3,3" class="rotate-medium"/>
+    
+    <text x="400" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#0369a1">AxonHub</text>
+    <!-- <text x="400" y="215" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#0369a1">Gateway</text> -->
+    
+    <!-- Center icon -->
+    <path d="M390 185 L400 175 L410 185 M395 190 H405" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" class="glow"/>
+  </g>
+  
+  <!-- Right side: Applications -->
+  <g class="fade-in">
+    <text x="680" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#475569">Applications</text>
+    
+    <!-- Web App -->
+    <rect x="600" y="90" width="160" height="50" rx="8" fill="#6366f1" fill-opacity="0.1" stroke="#6366f1" stroke-width="2"/>
+    <text x="680" y="120" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#4f46e5">Web Apps</text>
+    
+    <!-- Mobile App -->
+    <rect x="600" y="160" width="160" height="50" rx="8" fill="#ec4899" fill-opacity="0.1" stroke="#ec4899" stroke-width="2"/>
+    <text x="680" y="190" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#db2777">Mobile Apps</text>
+    
+    <!-- API Clients -->
+    <rect x="600" y="230" width="160" height="50" rx="8" fill="#06b6d4" fill-opacity="0.1" stroke="#06b6d4" stroke-width="2"/>
+    <text x="680" y="260" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#0891b2">API Clients</text>
+  </g>
+  
+  <!-- Arrows: Providers to AxonHub -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+    </marker>
+  </defs>
+  
+  <!-- From providers to center -->
+  <path d="M200 115 Q300 115 320 180" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
+  <path d="M200 185 Q300 185 320 200" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
+  <path d="M200 255 Q300 255 320 220" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
+  
+  <!-- From center to applications -->
+  <path d="M480 180 Q500 115 600 115" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
+  <path d="M480 200 Q500 185 600 185" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
+  <path d="M480 220 Q500 255 600 255" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)" class="flow-line"/>
+  
+  <!-- Features labels -->
+  <text x="260" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Unified API Interface</text>
+  <text x="260" y="340" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Automatic Failover</text>
+  <text x="260" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Load Balancing</text>
+  
+  <text x="540" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Request Monitoring</text>
+  <text x="540" y="340" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Usage Analytics</text>
+  <text x="540" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#64748b">• Access Control</text>
+</svg>
