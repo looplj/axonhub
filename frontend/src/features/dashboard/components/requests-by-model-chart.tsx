@@ -1,18 +1,11 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
 import { useRequestsByModel } from '../data/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
 
-const COLORS = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-  'var(--chart-1)'
-]
+const CHART_COLOR = 'var(--chart-1)'
 
 export function RequestsByModelChart() {
   const { t } = useTranslation()
@@ -21,7 +14,7 @@ export function RequestsByModelChart() {
   if (isLoading) {
     return (
       <div className="h-[300px] flex items-center justify-center">
-        <Skeleton className="h-[250px] w-[250px] rounded-full" />
+        <Skeleton className="h-[250px] w-full rounded-md" />
       </div>
     )
   }
@@ -48,28 +41,36 @@ export function RequestsByModelChart() {
 
   const data = modelData.map((item) => ({
     name: item.modelId,
-    value: item.count,
+    count: item.count,
   }))
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          labelLine={false}
-          outerRadius={80}
-          fill="#8884d8"
-          dataKey="value"
-        >
-          {data.map((_entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Pie>
+      <BarChart
+        data={data}
+        margin={{
+          top: 20,
+          right: 30,
+          left: 20,
+          bottom: 5,
+        }}
+      >
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis 
+          dataKey="name" 
+          angle={-45}
+          textAnchor="end"
+          height={80}
+          fontSize={12}
+        />
+        <YAxis />
         <Tooltip />
-        <Legend />
-      </PieChart>
+        <Bar 
+          dataKey="count" 
+          fill={CHART_COLOR}
+          radius={[4, 4, 0, 0]}
+        />
+      </BarChart>
     </ResponsiveContainer>
   )
 }

@@ -9,7 +9,10 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -17,7 +20,6 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
-	"github.com/samber/lo"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -205,13 +207,28 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*Da
 
 	// Use raw SQL for complex GROUP BY with conditional counting
 	err := r.client.Request.Query().
-		Where(request.CreatedAtGTE(startDate), request.StatusEQ(request.StatusCompleted)).
 		Modify(func(s *sql.Selector) {
+			// Build a dialect-specific date expression that returns a string 'YYYY-MM-DD'
+			var dateExpr string
+			switch s.Dialect() {
+			case dialect.SQLite:
+				// The stored format looks like: "YYYY-MM-DD HH:MM:SS.SSSSSS +0800 CST m=+..."
+				// SQLite cannot parse this with strftime; take the leading date directly.
+				dateExpr = "substr(created_at, 1, 10)"
+			case dialect.MySQL:
+				dateExpr = "DATE_FORMAT(created_at, '%Y-%m-%d')"
+			case dialect.Postgres:
+				dateExpr = "to_char(created_at, 'YYYY-MM-DD')"
+			default:
+				// Fallback to ANSI-ish cast; many DBs accept this, but not guaranteed
+				dateExpr = "DATE(created_at)"
+			}
+
 			s.Select(
-				sql.As("DATE(created_at)", "date"),
+				sql.As(dateExpr, "date"),
 				sql.As(sql.Count("*"), "total_count"),
 			).
-				GroupBy("DATE(created_at)").
+				GroupBy(dateExpr).
 				OrderBy("date")
 		}).
 		Scan(ctx, &results)
