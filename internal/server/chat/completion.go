@@ -93,24 +93,26 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		if outbound != nil {
 			persistCtx := context.WithoutCancel(ctx)
 
-			// Update the last request execution status to failed if it exists
+			// Update the last request execution status based on error if it exists
 			// This ensures that when retry fails completely, the last execution is properly marked
 			if outbound.GetRequestExecution() != nil {
-				execUpdateErr := processor.RequestService.UpdateRequestExecutionFailed(
+				if execUpdateErr := processor.RequestService.UpdateRequestExecutionStatusFromError(
 					persistCtx,
 					outbound.GetRequestExecution().ID,
-					err.Error(),
-				)
-				if execUpdateErr != nil {
-					log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(execUpdateErr))
+					err,
+				); execUpdateErr != nil {
+					log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(execUpdateErr))
 				}
 			}
 
-			// Update the main request status to failed
+			// Update the main request status based on error
 			if outbound.GetRequest() != nil {
-				updateErr := processor.RequestService.UpdateRequestFailed(persistCtx, outbound.GetRequest().ID)
-				if updateErr != nil {
-					log.Warn(persistCtx, "Failed to update request status to failed", log.Cause(updateErr))
+				if updateErr := processor.RequestService.UpdateRequestStatusFromError(
+					persistCtx,
+					outbound.GetRequest().ID,
+					err,
+				); updateErr != nil {
+					log.Warn(persistCtx, "Failed to update request status from error", log.Cause(updateErr))
 				}
 			}
 		}

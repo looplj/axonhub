@@ -50,7 +50,8 @@ func (RequestExecution) Fields() []ent.Field {
 		// e.g: the provider response with Claude format, and the user expects the response with OpenAI format, the response_chunks is the Claude response format.
 		field.JSON("response_chunks", []objects.JSONRawMessage{}).Optional(),
 		field.String("error_message").Optional(),
-		field.Enum("status").Values("pending", "processing", "completed", "failed"),
+		// The status of the request execution.
+		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
 	}
 }
 

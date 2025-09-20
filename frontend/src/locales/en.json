@@ -805,7 +805,8 @@
       "pending": "Pending",
       "processing": "Processing",
       "completed": "Completed",
-      "failed": "Failed"
+      "failed": "Failed",
+      "canceled": "Canceled"
     },
     "source": {
       "api": "API",

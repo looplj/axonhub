@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -166,36 +167,6 @@ func (s *RequestService) UpdateRequestCompleted(
 	return nil
 }
 
-// UpdateRequestChannelID updates request with channel ID after channel selection.
-func (s *RequestService) UpdateRequestChannelID(ctx context.Context, requestID int, channelID int) error {
-	client := ent.FromContext(ctx)
-
-	_, err := client.Request.UpdateOneID(requestID).
-		SetChannelID(channelID).
-		Save(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to update request channel ID", log.Cause(err))
-		return err
-	}
-
-	return nil
-}
-
-// UpdateRequestFailed updates request status to failed.
-func (s *RequestService) UpdateRequestFailed(ctx context.Context, requestID int) error {
-	client := ent.FromContext(ctx)
-
-	_, err := client.Request.UpdateOneID(requestID).
-		SetStatus(request.StatusFailed).
-		Save(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to update request status to failed", log.Cause(err))
-		return err
-	}
-
-	return nil
-}
-
 // UpdateRequestExecutionCompleted updates request execution status to completed with response body.
 func (s *RequestService) UpdateRequestExecutionCompleted(
 	ctx context.Context,
@@ -235,93 +206,56 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 	return nil
 }
 
+// UpdateRequestExecutionCanceled updates request execution status to canceled with error message.
+func (s *RequestService) UpdateRequestExecutionCanceled(
+	ctx context.Context,
+	executionID int,
+	errorMsg string,
+) error {
+	return s.UpdateRequestExecutionStatus(ctx, executionID, requestexecution.StatusCanceled, errorMsg)
+}
+
 // UpdateRequestExecutionFailed updates request execution status to failed with error message.
 func (s *RequestService) UpdateRequestExecutionFailed(
 	ctx context.Context,
 	executionID int,
 	errorMsg string,
 ) error {
-	client := ent.FromContext(ctx)
-
-	_, err := client.RequestExecution.UpdateOneID(executionID).
-		SetStatus(requestexecution.StatusFailed).
-		SetErrorMessage(errorMsg).
-		Save(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to update request execution status to failed", log.Cause(err))
-		return err
-	}
-
-	return nil
+	return s.UpdateRequestExecutionStatus(ctx, executionID, requestexecution.StatusFailed, errorMsg)
 }
 
-func (s *RequestService) UpdateRequestExecutionCompletd(
+// UpdateRequestExecutionStatus updates request execution status to the provided value (e.g., canceled or failed), with optional error message.
+func (s *RequestService) UpdateRequestExecutionStatus(
 	ctx context.Context,
 	executionID int,
-	externalID string,
-	responseBody any,
+	status requestexecution.Status,
+	errorMsg string,
 ) error {
-	// Decide whether to store the final response body for execution
-	storeResponseBody := true
-	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
-		storeResponseBody = policy.StoreResponseBody
-	} else {
-		log.Warn(ctx, "Failed to get storage policy, defaulting to store response body", log.Cause(err))
-	}
-
 	client := ent.FromContext(ctx)
 
 	upd := client.RequestExecution.UpdateOneID(executionID).
-		SetStatus(requestexecution.StatusCompleted).
-		SetExternalID(externalID)
-
-	if storeResponseBody {
-		responseBodyBytes, err := xjson.Marshal(responseBody)
-		if err != nil {
-			log.Error(ctx, "Failed to marshal response body", log.Cause(err))
-			return err
-		}
-
-		upd = upd.SetResponseBody(responseBodyBytes)
+		SetStatus(status)
+	if errorMsg != "" {
+		upd = upd.SetErrorMessage(errorMsg)
 	}
 
 	_, err := upd.Save(ctx)
 	if err != nil {
-		log.Error(ctx, "Failed to update request execution status to completed", log.Cause(err))
+		log.Error(ctx, "Failed to update request execution status", log.Cause(err), log.Any("status", status))
 		return err
 	}
 
 	return nil
 }
 
-// UpdateRequestExternalID updates request with response ID.
-func (s *RequestService) UpdateRequestExternalID(ctx context.Context, requestID int, responseID string) error {
-	client := ent.FromContext(ctx)
-
-	_, err := client.Request.UpdateOneID(requestID).
-		SetExternalID(responseID).
-		Save(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to update request response ID", log.Cause(err))
-		return err
+// UpdateRequestExecutionStatusFromError updates request execution status based on error type and sets error message.
+func (s *RequestService) UpdateRequestExecutionStatusFromError(ctx context.Context, executionID int, rawErr error) error {
+	status := requestexecution.StatusFailed
+	if errors.Is(rawErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+		status = requestexecution.StatusCanceled
 	}
 
-	return nil
-}
-
-// UpdateRequestExecutionResponseID updates request execution with response ID.
-func (s *RequestService) UpdateRequestExecutionResponseID(ctx context.Context, executionID int, responseID string) error {
-	client := ent.FromContext(ctx)
-
-	_, err := client.RequestExecution.UpdateOneID(executionID).
-		SetExternalID(responseID).
-		Save(ctx)
-	if err != nil {
-		log.Error(ctx, "Failed to update request execution response ID", log.Cause(err))
-		return err
-	}
-
-	return nil
+	return s.UpdateRequestExecutionStatus(ctx, executionID, status, rawErr.Error())
 }
 
 type jsonStreamEvent struct {
@@ -410,6 +344,55 @@ func (s *RequestService) AppendRequestChunk(
 		Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to append response chunk", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
+// UpdateRequestCanceled updates request status to canceled.
+func (s *RequestService) UpdateRequestCanceled(ctx context.Context, requestID int) error {
+	return s.UpdateRequestStatus(ctx, requestID, request.StatusCanceled)
+}
+
+// UpdateRequestFailed updates request status to failed.
+func (s *RequestService) UpdateRequestFailed(ctx context.Context, requestID int) error {
+	return s.UpdateRequestStatus(ctx, requestID, request.StatusFailed)
+}
+
+// UpdateRequestStatus updates request status to the provided value (e.g., canceled or failed).
+func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int, status request.Status) error {
+	client := ent.FromContext(ctx)
+
+	_, err := client.Request.UpdateOneID(requestID).
+		SetStatus(status).
+		Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to update request status", log.Cause(err), log.Any("status", status))
+		return err
+	}
+
+	return nil
+}
+
+// UpdateRequestStatusFromError updates request status based on error type: canceled if context canceled, otherwise failed.
+func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, requestID int, rawErr error) error {
+	if errors.Is(rawErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+		return s.UpdateRequestStatus(ctx, requestID, request.StatusCanceled)
+	}
+
+	return s.UpdateRequestStatus(ctx, requestID, request.StatusFailed)
+}
+
+// UpdateRequestChannelID updates request with channel ID after channel selection.
+func (s *RequestService) UpdateRequestChannelID(ctx context.Context, requestID int, channelID int) error {
+	client := ent.FromContext(ctx)
+
+	_, err := client.Request.UpdateOneID(requestID).
+		SetChannelID(channelID).
+		Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to update request channel ID", log.Cause(err))
 		return err
 	}
 
