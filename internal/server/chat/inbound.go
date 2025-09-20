@@ -94,10 +94,8 @@ func (ts *InboundPersistentStream) Close() error {
 		// Use context without cancellation to ensure persistence even if client canceled
 		if ts.request != nil {
 			persistCtx := context.WithoutCancel(ctx)
-
-			err := ts.requestService.UpdateRequestFailed(persistCtx, ts.request.ID)
-			if err != nil {
-				log.Warn(persistCtx, "Failed to update request status to failed", log.Cause(err))
+			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, streamErr); err != nil {
+				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
 			}
 		}
 

@@ -10,6 +10,7 @@ export const requestStatusSchema = z.enum([
   'processing',
   'completed',
   'failed',
+  'canceled',
 ])
 export type RequestStatus = z.infer<typeof requestStatusSchema>
 
@@ -27,6 +28,7 @@ export const requestExecutionStatusSchema = z.enum([
   'processing',
   'completed',
   'failed',
+  'canceled',
 ])
 export type RequestExecutionStatus = z.infer<
   typeof requestExecutionStatusSchema

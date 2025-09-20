@@ -98,13 +98,8 @@ func (ts *OutboundPersistentStream) Close() error {
 		// Use context without cancellation to ensure persistence even if client canceled
 		persistCtx := context.WithoutCancel(ctx)
 		if ts.requestExec != nil {
-			err := ts.RequestService.UpdateRequestExecutionFailed(
-				persistCtx,
-				ts.requestExec.ID,
-				streamErr.Error(),
-			)
-			if err != nil {
-				log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(err))
+			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, streamErr); err != nil {
+				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(err))
 			}
 		}
 
@@ -125,7 +120,7 @@ func (ts *OutboundPersistentStream) Close() error {
 			return ts.stream.Close()
 		}
 
-		err = ts.RequestService.UpdateRequestExecutionCompletd(
+		err = ts.RequestService.UpdateRequestExecutionCompleted(
 			persistCtx,
 			ts.requestExec.ID,
 			meta.ID,
@@ -253,13 +248,8 @@ func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, r
 			// Use context without cancellation to ensure persistence even if client canceled
 			persistCtx := context.WithoutCancel(ctx)
 
-			innerErr := p.state.RequestService.UpdateRequestExecutionFailed(
-				persistCtx,
-				p.state.RequestExec.ID,
-				err.Error(),
-			)
-			if innerErr != nil {
-				log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(innerErr))
+			if innerErr := p.state.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, p.state.RequestExec.ID, err); innerErr != nil {
+				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(innerErr))
 			}
 		}
 

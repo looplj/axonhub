@@ -1177,6 +1177,7 @@ enum RequestExecutionStatus @goModel(model: "github.com/looplj/axonhub/internal/
   processing
   completed
   failed
+  canceled
 }
 """
 RequestExecutionWhereInput is used for filtering RequestExecution objects.
@@ -1365,6 +1366,7 @@ enum RequestStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/reque
   processing
   completed
   failed
+  canceled
 }
 """
 RequestWhereInput is used for filtering Request objects.
