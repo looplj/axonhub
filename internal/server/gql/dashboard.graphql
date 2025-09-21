@@ -3,11 +3,15 @@
 type DashboardOverview {
   totalUsers: Int!
   totalRequests: Int!
+  requestStats: RequestStats!
+  failedRequests: Int!
+  averageResponseTime: Float
+}
+
+type RequestStats {
   requestsToday: Int!
   requestsThisWeek: Int!
   requestsThisMonth: Int!
-  failedRequests: Int!
-  averageResponseTime: Float
 }
 
 type RequestStatsByChannel {
@@ -31,6 +35,20 @@ type HourlyRequestStats {
   count: Int!
 }
 
+type TokenStats {
+  totalInputTokensToday: Int!
+  totalOutputTokensToday: Int!
+  totalCachedTokensToday: Int!
+
+  totalInputTokensThisWeek: Int!
+  totalOutputTokensThisWeek: Int!
+  totalCachedTokensThisWeek: Int!
+
+  totalInputTokensThisMonth: Int!
+  totalOutputTokensThisMonth: Int!
+  totalCachedTokensThisMonth: Int!
+}
+
 type TopRequestsUsers {
   userId: ID!
   userName: String!
@@ -40,8 +58,10 @@ type TopRequestsUsers {
 
 extend type Query {
   dashboardOverview: DashboardOverview!
+  requestStats: RequestStats!
   requestStatsByChannel: [RequestStatsByChannel!]!
   requestStatsByModel: [RequestStatsByModel!]!
   dailyRequestStats(days: Int = 30): [DailyRequestStats!]!
   topRequestsUsers(limit: Int = 10): [TopRequestsUsers!]!
+  tokenStats: TokenStats!
 }

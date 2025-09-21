@@ -3,12 +3,16 @@ import { graphqlRequest } from '@/gql/graphql'
 import { z } from 'zod'
 
 // Schema definitions
-export const dashboardStatsSchema = z.object({
-  totalUsers: z.number(),
-  totalRequests: z.number(),
+export const requestStatsSchema = z.object({
   requestsToday: z.number(),
   requestsThisWeek: z.number(),
   requestsThisMonth: z.number(),
+})
+
+export const dashboardStatsSchema = z.object({
+  totalUsers: z.number(),
+  totalRequests: z.number(),
+  requestStats: requestStatsSchema,
   failedRequests: z.number(),
   averageResponseTime: z.number().nullable(),
 })
@@ -41,6 +45,7 @@ export const topUsersSchema = z.object({
   requestCount: z.number(),
 })
 
+export type RequestStats = z.infer<typeof requestStatsSchema>
 export type DashboardStats = z.infer<typeof dashboardStatsSchema>
 export type RequestsByChannel = z.infer<typeof requestsByChannelSchema>
 export type RequestsByModel = z.infer<typeof requestsByModelSchema>
@@ -48,15 +53,31 @@ export type DailyRequestStats = z.infer<typeof dailyRequestStatsSchema>
 export type HourlyRequestStats = z.infer<typeof hourlyRequestStatsSchema>
 export type TopUsers = z.infer<typeof topUsersSchema>
 
+export const tokenStatsSchema = z.object({
+  totalInputTokensToday: z.number(),
+  totalOutputTokensToday: z.number(),
+  totalCachedTokensToday: z.number(),
+  totalInputTokensThisWeek: z.number(),
+  totalOutputTokensThisWeek: z.number(),
+  totalCachedTokensThisWeek: z.number(),
+  totalInputTokensThisMonth: z.number(),
+  totalOutputTokensThisMonth: z.number(),
+  totalCachedTokensThisMonth: z.number(),
+})
+
+export type TokenStats = z.infer<typeof tokenStatsSchema>
+
 // GraphQL queries
 const DASHBOARD_STATS_QUERY = `
   query GetDashboardStats {
     dashboardOverview {
       totalUsers
       totalRequests
-      requestsToday
-      requestsThisWeek
-      requestsThisMonth
+      requestStats {
+        requestsToday
+        requestsThisWeek
+        requestsThisMonth
+      }
       failedRequests
       averageResponseTime
     }
@@ -107,6 +128,25 @@ const TOP_USERS_QUERY = `
       userName
       userEmail
       requestCount
+    }
+  }
+`
+
+// (removed) Old usageLogs-based token stats query is deprecated in favor of backend tokenStats aggregation
+
+// Backend-provided token stats aggregation
+const TOKEN_STATS_AGGR_QUERY = `
+  query GetTokenStats {
+    tokenStats {
+      totalInputTokensToday
+      totalOutputTokensToday
+      totalCachedTokensToday
+      totalInputTokensThisWeek
+      totalOutputTokensThisWeek
+      totalCachedTokensThisWeek
+      totalInputTokensThisMonth
+      totalOutputTokensThisMonth
+      totalCachedTokensThisMonth
     }
   }
 `
@@ -190,5 +230,16 @@ export function useTopUsers(limit?: number) {
       return data.topRequestsUsers.map(item => topUsersSchema.parse(item))
     },
     refetchInterval: 300000,
+  })
+}
+
+export function useTokenStats() {
+  return useQuery({
+    queryKey: ['tokenStats'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ tokenStats: TokenStats }>(TOKEN_STATS_AGGR_QUERY)
+      return tokenStatsSchema.parse(data.tokenStats)
+    },
+    refetchInterval: 300000, // Refetch every 5 minutes
   })
 }

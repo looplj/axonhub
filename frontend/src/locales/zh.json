@@ -1005,10 +1005,13 @@
     "loadError": "加载仪表板失败:",
     "noData": "暂无数据",
     "cards": {
+      "overview": "概览",
       "totalUsers": "总用户数",
       "totalRequests": "总请求数",
       "requestsByTime": "请求数统计",
-      "successRate": "成功率"
+      "successRate": "成功率",
+      "tokenStats": "令牌统计",
+      "tokensByTime": "令牌使用统计"
     },
     "charts": {
       "dailyRequestOverview": "每日请求概览",
@@ -1035,7 +1038,14 @@
       "fromLastMonth": "较上月",
       "sinceYesterday": "较昨日",
       "usersWithMostRequests": "本月请求最多的用户。",
-      "requests": "次请求"
+      "requests": "次请求",
+      "inputTokens": "输入令牌",
+      "outputTokens": "输出令牌",
+      "cachedTokens": "缓存令牌",
+      "totalTokens": "总令牌数",
+      "input": "输入",
+      "output": "输出",
+      "cached": "缓存"
     }
   },
   "playground": {

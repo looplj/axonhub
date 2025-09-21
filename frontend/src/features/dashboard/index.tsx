@@ -1,22 +1,17 @@
 import { useTranslation } from 'react-i18next'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
+import { LanguageSwitch } from '@/components/language-switch'
+import { Header } from '@/components/layout/header'
+import { ProfileDropdown } from '@/components/profile-dropdown'
+import { ThemeSwitch } from '@/components/theme-switch'
 import { DailyRequestStats } from './components/daily-requests-stats'
-import { RecentSales } from './components/recent-sales'
 import { RequestsByChannelChart } from './components/requests-by-channel-chart'
 import { RequestsByModelChart } from './components/requests-by-model-chart'
+import { TokenStatsCard } from './components/token-stats-card'
+import { TopUsers } from './components/top-users'
 import { useDashboardStats } from './data/dashboard'
-import { Header } from '@/components/layout/header'
-import { ThemeSwitch } from '@/components/theme-switch'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { LanguageSwitch } from '@/components/language-switch'
 
 export default function DashboardPage() {
   const { t } = useTranslation()
@@ -35,10 +30,10 @@ export default function DashboardPage() {
         <Tabs defaultValue='overview' className='space-y-4'>
           <Skeleton className='h-10 w-[400px]' />
           <div className='space-y-4'>
-            <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className='h-[120px]' />
-              ))}
+            <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-3'>
+              <Skeleton className='h-[120px]' />
+              <Skeleton className='h-[120px]' />
+              <Skeleton className='h-[120px]' />
             </div>
             <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
               <Skeleton className='col-span-4 h-[300px]' />
@@ -72,12 +67,10 @@ export default function DashboardPage() {
       </Header>
       <Tabs defaultValue='overview' className='space-y-4'>
         <TabsContent value='overview' className='space-y-4'>
-          <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+          <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-3'>
             <Card>
               <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>
-                  {t('dashboard.cards.totalUsers')}
-                </CardTitle>
+                <CardTitle className='text-sm font-medium'>{t('dashboard.cards.overview')}</CardTitle>
                 <svg
                   xmlns='http://www.w3.org/2000/svg'
                   viewBox='0 0 24 24'
@@ -94,46 +87,50 @@ export default function DashboardPage() {
                 </svg>
               </CardHeader>
               <CardContent>
-                <div className='text-2xl font-bold'>
-                  {stats?.totalUsers || 0}
+                <div className='space-y-4'>
+                  <div className='flex gap-4'>
+                    <div className='flex-1'>
+                      <div className='text-2xl font-bold'>{stats?.totalUsers || 0}</div>
+                      <p className='text-muted-foreground text-xs'>{t('dashboard.stats.totalUsersInSystem')}</p>
+                    </div>
+
+                    {/* Divider */}
+                    <div className='border-border border-l'></div>
+
+                    <div className='flex-1'>
+                      <div className='text-2xl font-bold'>{stats?.totalRequests || 0}</div>
+                      <p className='text-muted-foreground text-xs'>{t('dashboard.stats.allTimeRequests')}</p>
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  {/* <div className='border-border border-t'></div> */}
+
+                  <div className='flex gap-4'>
+                    <div className='flex-1'>
+                      <div className='text-2xl font-bold'>{stats?.failedRequests || 0}</div>
+                      <p className='text-muted-foreground text-xs'>{t('dashboard.stats.failedRequests')}</p>
+                    </div>
+
+                    {/* Divider */}
+                    <div className='border-border border-l'></div>
+
+                    <div className='flex-1'>
+                      <div className='text-2xl font-bold'>
+                        {stats && stats.totalRequests > 0
+                          ? (((stats.totalRequests - stats.failedRequests) / stats.totalRequests) * 100).toFixed(1)
+                          : '0.0'}
+                        %
+                      </div>
+                      <p className='text-muted-foreground text-xs'>{t('dashboard.cards.successRate')}</p>
+                    </div>
+                  </div>
                 </div>
-                <p className='text-muted-foreground text-xs'>
-                  {t('dashboard.stats.totalUsersInSystem')}
-                </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>
-                  {t('dashboard.cards.totalRequests')}
-                </CardTitle>
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth='2'
-                  className='text-muted-foreground h-4 w-4'
-                >
-                  <path d='M22 12h-4l-3 9L9 3l-3 9H2' />
-                </svg>
-              </CardHeader>
-              <CardContent>
-                <div className='text-2xl font-bold'>
-                  {stats?.totalRequests || 0}
-                </div>
-                <p className='text-muted-foreground text-xs'>
-                  {t('dashboard.stats.allTimeRequests')}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>
-                  {t('dashboard.cards.requestsByTime')}
-                </CardTitle>
+                <CardTitle className='text-sm font-medium'>{t('dashboard.cards.requestsByTime')}</CardTitle>
                 <svg
                   xmlns='http://www.w3.org/2000/svg'
                   viewBox='0 0 24 24'
@@ -149,53 +146,24 @@ export default function DashboardPage() {
                 </svg>
               </CardHeader>
               <CardContent>
-                <div className='space-y-1'>
+                <div className='space-y-3'>
                   <div className='flex justify-between text-sm'>
                     <span>{t('dashboard.stats.thisMonth')}:</span>
-                    <span className='font-semibold'>{stats?.requestsThisMonth || 0}</span>
+                    <span className='font-semibold'>{stats?.requestStats?.requestsThisMonth || 0}</span>
                   </div>
                   <div className='flex justify-between text-sm'>
                     <span>{t('dashboard.stats.thisWeek')}:</span>
-                    <span className='font-semibold'>{stats?.requestsThisWeek || 0}</span>
+                    <span className='font-semibold'>{stats?.requestStats?.requestsThisWeek || 0}</span>
                   </div>
                   <div className='flex justify-between text-sm'>
                     <span>{t('dashboard.stats.today')}:</span>
-                    <span className='font-semibold'>{stats?.requestsToday || 0}</span>
+                    <span className='font-semibold'>{stats?.requestStats?.requestsToday || 0}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>
-                  {t('dashboard.cards.successRate')}
-                </CardTitle>
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth='2'
-                  className='text-muted-foreground h-4 w-4'
-                >
-                  <path d='M9 12l2 2 4-4' />
-                  <circle cx='12' cy='12' r='10' />
-                </svg>
-              </CardHeader>
-              <CardContent>
-                <div className='text-2xl font-bold'>
-                  {stats && stats.totalRequests > 0
-                    ? ((stats.totalRequests - stats.failedRequests) / stats.totalRequests * 100).toFixed(1)
-                    : '0.0'
-                  }%
-                </div>
-                <p className='text-muted-foreground text-xs'>
-                  {stats?.failedRequests || 0} {t('dashboard.stats.failedRequests')}
-                </p>
-              </CardContent>
-            </Card>
+
+            <TokenStatsCard />
           </div>
           <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
             <Card className='col-span-4'>
@@ -209,12 +177,10 @@ export default function DashboardPage() {
             <Card className='col-span-3'>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.topUsers')}</CardTitle>
-                <CardDescription>
-                  {t('dashboard.stats.usersWithMostRequests')}
-                </CardDescription>
+                <CardDescription>{t('dashboard.stats.usersWithMostRequests')}</CardDescription>
               </CardHeader>
               <CardContent>
-                <RecentSales />
+                <TopUsers />
               </CardContent>
             </Card>
           </div>
@@ -222,9 +188,7 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.requestsByChannel')}</CardTitle>
-                <CardDescription>
-                  {t('dashboard.charts.requestsByChannelDescription')}
-                </CardDescription>
+                <CardDescription>{t('dashboard.charts.requestsByChannelDescription')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <RequestsByChannelChart />
@@ -233,9 +197,7 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.requestsByModel')}</CardTitle>
-                <CardDescription>
-                  {t('dashboard.charts.requestsByModelDescription')}
-                </CardDescription>
+                <CardDescription>{t('dashboard.charts.requestsByModelDescription')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <RequestsByModelChart />

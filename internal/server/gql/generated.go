@@ -178,9 +178,7 @@ type ComplexityRoot struct {
 	DashboardOverview struct {
 		AverageResponseTime func(childComplexity int) int
 		FailedRequests      func(childComplexity int) int
-		RequestsThisMonth   func(childComplexity int) int
-		RequestsThisWeek    func(childComplexity int) int
-		RequestsToday       func(childComplexity int) int
+		RequestStats        func(childComplexity int) int
 		TotalRequests       func(childComplexity int) int
 		TotalUsers          func(childComplexity int) int
 	}
@@ -246,6 +244,7 @@ type ComplexityRoot struct {
 		Me                    func(childComplexity int) int
 		Node                  func(childComplexity int, id objects.GUID) int
 		Nodes                 func(childComplexity int, ids []*objects.GUID) int
+		RequestStats          func(childComplexity int) int
 		RequestStatsByChannel func(childComplexity int) int
 		RequestStatsByModel   func(childComplexity int) int
 		Requests              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
@@ -253,6 +252,7 @@ type ComplexityRoot struct {
 		StoragePolicy         func(childComplexity int) int
 		SystemStatus          func(childComplexity int) int
 		Systems               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
+		TokenStats            func(childComplexity int) int
 		TopRequestsUsers      func(childComplexity int, limit *int) int
 		UsageLogs             func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
 		Users                 func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) int
@@ -320,6 +320,12 @@ type ComplexityRoot struct {
 	RequestExecutionEdge struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
+	}
+
+	RequestStats struct {
+		RequestsThisMonth func(childComplexity int) int
+		RequestsThisWeek  func(childComplexity int) int
+		RequestsToday     func(childComplexity int) int
 	}
 
 	RequestStatsByChannel struct {
@@ -406,6 +412,18 @@ type ComplexityRoot struct {
 		Latency func(childComplexity int) int
 		Message func(childComplexity int) int
 		Success func(childComplexity int) int
+	}
+
+	TokenStats struct {
+		TotalCachedTokensThisMonth func(childComplexity int) int
+		TotalCachedTokensThisWeek  func(childComplexity int) int
+		TotalCachedTokensToday     func(childComplexity int) int
+		TotalInputTokensThisMonth  func(childComplexity int) int
+		TotalInputTokensThisWeek   func(childComplexity int) int
+		TotalInputTokensToday      func(childComplexity int) int
+		TotalOutputTokensThisMonth func(childComplexity int) int
+		TotalOutputTokensThisWeek  func(childComplexity int) int
+		TotalOutputTokensToday     func(childComplexity int) int
 	}
 
 	TopRequestsUsers struct {
@@ -532,10 +550,12 @@ type QueryResolver interface {
 	UsageLogs(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) (*ent.UsageLogConnection, error)
 	Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error)
 	DashboardOverview(ctx context.Context) (*DashboardOverview, error)
+	RequestStats(ctx context.Context) (*RequestStats, error)
 	RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error)
 	RequestStatsByModel(ctx context.Context) ([]*RequestStatsByModel, error)
 	DailyRequestStats(ctx context.Context, days *int) ([]*DailyRequestStats, error)
 	TopRequestsUsers(ctx context.Context, limit *int) ([]*TopRequestsUsers, error)
+	TokenStats(ctx context.Context) (*TokenStats, error)
 	AllScopes(ctx context.Context) ([]*ScopeInfo, error)
 	Me(ctx context.Context) (*UserInfo, error)
 	SystemStatus(ctx context.Context) (*SystemStatus, error)
@@ -1060,26 +1080,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.DashboardOverview.FailedRequests(childComplexity), true
 
-	case "DashboardOverview.requestsThisMonth":
-		if e.complexity.DashboardOverview.RequestsThisMonth == nil {
+	case "DashboardOverview.requestStats":
+		if e.complexity.DashboardOverview.RequestStats == nil {
 			break
 		}
 
-		return e.complexity.DashboardOverview.RequestsThisMonth(childComplexity), true
-
-	case "DashboardOverview.requestsThisWeek":
-		if e.complexity.DashboardOverview.RequestsThisWeek == nil {
-			break
-		}
-
-		return e.complexity.DashboardOverview.RequestsThisWeek(childComplexity), true
-
-	case "DashboardOverview.requestsToday":
-		if e.complexity.DashboardOverview.RequestsToday == nil {
-			break
-		}
-
-		return e.complexity.DashboardOverview.RequestsToday(childComplexity), true
+		return e.complexity.DashboardOverview.RequestStats(childComplexity), true
 
 	case "DashboardOverview.totalRequests":
 		if e.complexity.DashboardOverview.TotalRequests == nil {
@@ -1504,6 +1510,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Nodes(childComplexity, args["ids"].([]*objects.GUID)), true
 
+	case "Query.requestStats":
+		if e.complexity.Query.RequestStats == nil {
+			break
+		}
+
+		return e.complexity.Query.RequestStats(childComplexity), true
+
 	case "Query.requestStatsByChannel":
 		if e.complexity.Query.RequestStatsByChannel == nil {
 			break
@@ -1567,6 +1580,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Systems(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.SystemOrder), args["where"].(*ent.SystemWhereInput)), true
+
+	case "Query.tokenStats":
+		if e.complexity.Query.TokenStats == nil {
+			break
+		}
+
+		return e.complexity.Query.TokenStats(childComplexity), true
 
 	case "Query.topRequestsUsers":
 		if e.complexity.Query.TopRequestsUsers == nil {
@@ -1936,6 +1956,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RequestExecutionEdge.Node(childComplexity), true
 
+	case "RequestStats.requestsThisMonth":
+		if e.complexity.RequestStats.RequestsThisMonth == nil {
+			break
+		}
+
+		return e.complexity.RequestStats.RequestsThisMonth(childComplexity), true
+
+	case "RequestStats.requestsThisWeek":
+		if e.complexity.RequestStats.RequestsThisWeek == nil {
+			break
+		}
+
+		return e.complexity.RequestStats.RequestsThisWeek(childComplexity), true
+
+	case "RequestStats.requestsToday":
+		if e.complexity.RequestStats.RequestsToday == nil {
+			break
+		}
+
+		return e.complexity.RequestStats.RequestsToday(childComplexity), true
+
 	case "RequestStatsByChannel.channelName":
 		if e.complexity.RequestStatsByChannel.ChannelName == nil {
 			break
@@ -2248,6 +2289,69 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TestChannelPayload.Success(childComplexity), true
+
+	case "TokenStats.totalCachedTokensThisMonth":
+		if e.complexity.TokenStats.TotalCachedTokensThisMonth == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalCachedTokensThisMonth(childComplexity), true
+
+	case "TokenStats.totalCachedTokensThisWeek":
+		if e.complexity.TokenStats.TotalCachedTokensThisWeek == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalCachedTokensThisWeek(childComplexity), true
+
+	case "TokenStats.totalCachedTokensToday":
+		if e.complexity.TokenStats.TotalCachedTokensToday == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalCachedTokensToday(childComplexity), true
+
+	case "TokenStats.totalInputTokensThisMonth":
+		if e.complexity.TokenStats.TotalInputTokensThisMonth == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalInputTokensThisMonth(childComplexity), true
+
+	case "TokenStats.totalInputTokensThisWeek":
+		if e.complexity.TokenStats.TotalInputTokensThisWeek == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalInputTokensThisWeek(childComplexity), true
+
+	case "TokenStats.totalInputTokensToday":
+		if e.complexity.TokenStats.TotalInputTokensToday == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalInputTokensToday(childComplexity), true
+
+	case "TokenStats.totalOutputTokensThisMonth":
+		if e.complexity.TokenStats.TotalOutputTokensThisMonth == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalOutputTokensThisMonth(childComplexity), true
+
+	case "TokenStats.totalOutputTokensThisWeek":
+		if e.complexity.TokenStats.TotalOutputTokensThisWeek == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalOutputTokensThisWeek(childComplexity), true
+
+	case "TokenStats.totalOutputTokensToday":
+		if e.complexity.TokenStats.TotalOutputTokensToday == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalOutputTokensToday(childComplexity), true
 
 	case "TopRequestsUsers.requestCount":
 		if e.complexity.TopRequestsUsers.RequestCount == nil {
@@ -6933,8 +7037,8 @@ func (ec *executionContext) fieldContext_DashboardOverview_totalRequests(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _DashboardOverview_requestsToday(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardOverview_requestsToday(ctx, field)
+func (ec *executionContext) _DashboardOverview_requestStats(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardOverview_requestStats(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6947,7 +7051,7 @@ func (ec *executionContext) _DashboardOverview_requestsToday(ctx context.Context
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.RequestsToday, nil
+		return obj.RequestStats, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6959,107 +7063,27 @@ func (ec *executionContext) _DashboardOverview_requestsToday(ctx context.Context
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(*RequestStats)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNRequestStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStats(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_DashboardOverview_requestsToday(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DashboardOverview_requestStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "DashboardOverview",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DashboardOverview_requestsThisWeek(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardOverview_requestsThisWeek(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.RequestsThisWeek, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DashboardOverview_requestsThisWeek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DashboardOverview",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DashboardOverview_requestsThisMonth(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DashboardOverview_requestsThisMonth(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.RequestsThisMonth, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DashboardOverview_requestsThisMonth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DashboardOverview",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			switch field.Name {
+			case "requestsToday":
+				return ec.fieldContext_RequestStats_requestsToday(ctx, field)
+			case "requestsThisWeek":
+				return ec.fieldContext_RequestStats_requestsThisWeek(ctx, field)
+			case "requestsThisMonth":
+				return ec.fieldContext_RequestStats_requestsThisMonth(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RequestStats", field.Name)
 		},
 	}
 	return fc, nil
@@ -9807,18 +9831,66 @@ func (ec *executionContext) fieldContext_Query_dashboardOverview(_ context.Conte
 				return ec.fieldContext_DashboardOverview_totalUsers(ctx, field)
 			case "totalRequests":
 				return ec.fieldContext_DashboardOverview_totalRequests(ctx, field)
-			case "requestsToday":
-				return ec.fieldContext_DashboardOverview_requestsToday(ctx, field)
-			case "requestsThisWeek":
-				return ec.fieldContext_DashboardOverview_requestsThisWeek(ctx, field)
-			case "requestsThisMonth":
-				return ec.fieldContext_DashboardOverview_requestsThisMonth(ctx, field)
+			case "requestStats":
+				return ec.fieldContext_DashboardOverview_requestStats(ctx, field)
 			case "failedRequests":
 				return ec.fieldContext_DashboardOverview_failedRequests(ctx, field)
 			case "averageResponseTime":
 				return ec.fieldContext_DashboardOverview_averageResponseTime(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DashboardOverview", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_requestStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_requestStats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().RequestStats(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*RequestStats)
+	fc.Result = res
+	return ec.marshalNRequestStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStats(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_requestStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "requestsToday":
+				return ec.fieldContext_RequestStats_requestsToday(ctx, field)
+			case "requestsThisWeek":
+				return ec.fieldContext_RequestStats_requestsThisWeek(ctx, field)
+			case "requestsThisMonth":
+				return ec.fieldContext_RequestStats_requestsThisMonth(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RequestStats", field.Name)
 		},
 	}
 	return fc, nil
@@ -10048,6 +10120,70 @@ func (ec *executionContext) fieldContext_Query_topRequestsUsers(ctx context.Cont
 	if fc.Args, err = ec.field_Query_topRequestsUsers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_tokenStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_tokenStats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().TokenStats(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*TokenStats)
+	fc.Result = res
+	return ec.marshalNTokenStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTokenStats(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_tokenStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "totalInputTokensToday":
+				return ec.fieldContext_TokenStats_totalInputTokensToday(ctx, field)
+			case "totalOutputTokensToday":
+				return ec.fieldContext_TokenStats_totalOutputTokensToday(ctx, field)
+			case "totalCachedTokensToday":
+				return ec.fieldContext_TokenStats_totalCachedTokensToday(ctx, field)
+			case "totalInputTokensThisWeek":
+				return ec.fieldContext_TokenStats_totalInputTokensThisWeek(ctx, field)
+			case "totalOutputTokensThisWeek":
+				return ec.fieldContext_TokenStats_totalOutputTokensThisWeek(ctx, field)
+			case "totalCachedTokensThisWeek":
+				return ec.fieldContext_TokenStats_totalCachedTokensThisWeek(ctx, field)
+			case "totalInputTokensThisMonth":
+				return ec.fieldContext_TokenStats_totalInputTokensThisMonth(ctx, field)
+			case "totalOutputTokensThisMonth":
+				return ec.fieldContext_TokenStats_totalOutputTokensThisMonth(ctx, field)
+			case "totalCachedTokensThisMonth":
+				return ec.fieldContext_TokenStats_totalCachedTokensThisMonth(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TokenStats", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -12736,6 +12872,138 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_cursor(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _RequestStats_requestsToday(ctx context.Context, field graphql.CollectedField, obj *RequestStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestStats_requestsToday(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequestsToday, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestStats_requestsToday(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestStats_requestsThisWeek(ctx context.Context, field graphql.CollectedField, obj *RequestStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestStats_requestsThisWeek(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequestsThisWeek, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestStats_requestsThisWeek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestStats_requestsThisMonth(ctx context.Context, field graphql.CollectedField, obj *RequestStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestStats_requestsThisMonth(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequestsThisMonth, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestStats_requestsThisMonth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RequestStatsByChannel_channelName(ctx context.Context, field graphql.CollectedField, obj *RequestStatsByChannel) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RequestStatsByChannel_channelName(ctx, field)
 	if err != nil {
@@ -14771,6 +15039,402 @@ func (ec *executionContext) fieldContext_TestChannelPayload_error(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalInputTokensToday(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TokenStats_totalInputTokensToday(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalInputTokensToday, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalInputTokensToday(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalOutputTokensToday(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TokenStats_totalOutputTokensToday(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalOutputTokensToday, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalOutputTokensToday(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalCachedTokensToday(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TokenStats_totalCachedTokensToday(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCachedTokensToday, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalCachedTokensToday(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalInputTokensThisWeek(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TokenStats_totalInputTokensThisWeek(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalInputTokensThisWeek, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalInputTokensThisWeek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalOutputTokensThisWeek(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TokenStats_totalOutputTokensThisWeek(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalOutputTokensThisWeek, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalOutputTokensThisWeek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalCachedTokensThisWeek(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TokenStats_totalCachedTokensThisWeek(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCachedTokensThisWeek, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalCachedTokensThisWeek(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalInputTokensThisMonth(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TokenStats_totalInputTokensThisMonth(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalInputTokensThisMonth, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalInputTokensThisMonth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalOutputTokensThisMonth(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TokenStats_totalOutputTokensThisMonth(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalOutputTokensThisMonth, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalOutputTokensThisMonth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalCachedTokensThisMonth(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TokenStats_totalCachedTokensThisMonth(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCachedTokensThisMonth, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalCachedTokensThisMonth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -29197,18 +29861,8 @@ func (ec *executionContext) _DashboardOverview(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "requestsToday":
-			out.Values[i] = ec._DashboardOverview_requestsToday(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "requestsThisWeek":
-			out.Values[i] = ec._DashboardOverview_requestsThisWeek(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "requestsThisMonth":
-			out.Values[i] = ec._DashboardOverview_requestsThisMonth(ctx, field, obj)
+		case "requestStats":
+			out.Values[i] = ec._DashboardOverview_requestStats(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -29879,6 +30533,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "requestStats":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_requestStats(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "requestStatsByChannel":
 			field := field
 
@@ -29955,6 +30631,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_topRequestsUsers(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "tokenStats":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_tokenStats(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -30931,6 +31629,55 @@ func (ec *executionContext) _RequestExecutionEdge(ctx context.Context, sel ast.S
 	return out
 }
 
+var requestStatsImplementors = []string{"RequestStats"}
+
+func (ec *executionContext) _RequestStats(ctx context.Context, sel ast.SelectionSet, obj *RequestStats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, requestStatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RequestStats")
+		case "requestsToday":
+			out.Values[i] = ec._RequestStats_requestsToday(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestsThisWeek":
+			out.Values[i] = ec._RequestStats_requestsThisWeek(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestsThisMonth":
+			out.Values[i] = ec._RequestStats_requestsThisMonth(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var requestStatsByChannelImplementors = []string{"RequestStatsByChannel"}
 
 func (ec *executionContext) _RequestStatsByChannel(ctx context.Context, sel ast.SelectionSet, obj *RequestStatsByChannel) graphql.Marshaler {
@@ -31676,6 +32423,85 @@ func (ec *executionContext) _TestChannelPayload(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._TestChannelPayload_message(ctx, field, obj)
 		case "error":
 			out.Values[i] = ec._TestChannelPayload_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var tokenStatsImplementors = []string{"TokenStats"}
+
+func (ec *executionContext) _TokenStats(ctx context.Context, sel ast.SelectionSet, obj *TokenStats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tokenStatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TokenStats")
+		case "totalInputTokensToday":
+			out.Values[i] = ec._TokenStats_totalInputTokensToday(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalOutputTokensToday":
+			out.Values[i] = ec._TokenStats_totalOutputTokensToday(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCachedTokensToday":
+			out.Values[i] = ec._TokenStats_totalCachedTokensToday(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalInputTokensThisWeek":
+			out.Values[i] = ec._TokenStats_totalInputTokensThisWeek(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalOutputTokensThisWeek":
+			out.Values[i] = ec._TokenStats_totalOutputTokensThisWeek(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCachedTokensThisWeek":
+			out.Values[i] = ec._TokenStats_totalCachedTokensThisWeek(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalInputTokensThisMonth":
+			out.Values[i] = ec._TokenStats_totalInputTokensThisMonth(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalOutputTokensThisMonth":
+			out.Values[i] = ec._TokenStats_totalOutputTokensThisMonth(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCachedTokensThisMonth":
+			out.Values[i] = ec._TokenStats_totalCachedTokensThisMonth(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -33645,6 +34471,20 @@ func (ec *executionContext) marshalNRequestSource2githubᚗcomᚋloopljᚋaxonhu
 	return v
 }
 
+func (ec *executionContext) marshalNRequestStats2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStats(ctx context.Context, sel ast.SelectionSet, v RequestStats) graphql.Marshaler {
+	return ec._RequestStats(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRequestStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStats(ctx context.Context, sel ast.SelectionSet, v *RequestStats) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RequestStats(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNRequestStatsByChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*RequestStatsByChannel) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -34067,6 +34907,20 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNTokenStats2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTokenStats(ctx context.Context, sel ast.SelectionSet, v TokenStats) graphql.Marshaler {
+	return ec._TokenStats(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTokenStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTokenStats(ctx context.Context, sel ast.SelectionSet, v *TokenStats) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TokenStats(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNTopRequestsUsers2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTopRequestsUsersᚄ(ctx context.Context, sel ast.SelectionSet, v []*TopRequestsUsers) graphql.Marshaler {
