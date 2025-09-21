@@ -4,12 +4,10 @@ name: Lint
 on:
   push:
     branches:
-      - 'master'
-      - 'main'
+      - 'unstable'
   pull_request:
     branches:
-      - 'master'
-      - 'main'
+      - 'unstable'
 env:
   GO111MODULE: on
 jobs:
