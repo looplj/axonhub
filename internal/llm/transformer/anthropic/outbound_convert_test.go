@@ -28,7 +28,6 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 			OutputTokens: 20,
 		},
 	}
-
 	result := convertToChatCompletionResponse(anthropicResp)
 
 	require.Equal(t, "msg_123", result.ID)
@@ -41,6 +40,112 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 	require.Equal(t, 10, result.Usage.PromptTokens)
 	require.Equal(t, 20, result.Usage.CompletionTokens)
 	require.Equal(t, 30, result.Usage.TotalTokens)
+}
+
+func TestOutboundTransformer_ToolArgsRepair(t *testing.T) {
+	transformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+
+	t.Run("reparable invalid json becomes valid", func(t *testing.T) {
+		req := &llm.Request{
+			Model:     "claude-3-sonnet-20240229",
+			MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+			Messages: []llm.Message{
+				{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_repair",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "test_func",
+								Arguments: `{"invalid": json}`,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		httpReq, err := transformer.TransformRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, httpReq)
+
+		var anthropicReq MessageRequest
+
+		err = json.Unmarshal(httpReq.Body, &anthropicReq)
+		require.NoError(t, err)
+		require.NotEmpty(t, anthropicReq.Messages)
+
+		// Find the tool_use block
+		var found bool
+
+		for _, msg := range anthropicReq.Messages {
+			for _, blk := range msg.Content.MultipleContent {
+				if blk.Type == "tool_use" {
+					found = true
+
+					require.Equal(t, "call_repair", blk.ID)
+					// Input should be valid JSON and repaired to {"invalid":"json"}
+					require.True(t, json.Valid(blk.Input))
+
+					var m map[string]any
+
+					err := json.Unmarshal(blk.Input, &m)
+					require.NoError(t, err)
+					require.Equal(t, "json", m["invalid"])
+				}
+			}
+		}
+
+		require.True(t, found, "expected tool_use block to be present")
+	})
+
+	t.Run("empty args becomes empty object", func(t *testing.T) {
+		req := &llm.Request{
+			Model:     "claude-3-sonnet-20240229",
+			MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+			Messages: []llm.Message{
+				{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_empty",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "test_func",
+								Arguments: "",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		httpReq, err := transformer.TransformRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, httpReq)
+
+		var anthropicReq MessageRequest
+
+		err = json.Unmarshal(httpReq.Body, &anthropicReq)
+		require.NoError(t, err)
+		require.NotEmpty(t, anthropicReq.Messages)
+
+		var found bool
+
+		for _, msg := range anthropicReq.Messages {
+			for _, blk := range msg.Content.MultipleContent {
+				if blk.Type == "tool_use" {
+					found = true
+
+					require.Equal(t, "call_empty", blk.ID)
+					require.Equal(t, json.RawMessage("{}"), blk.Input)
+				}
+			}
+		}
+
+		require.True(t, found, "expected tool_use block to be present")
+	})
 }
 
 func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {

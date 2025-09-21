@@ -6,6 +6,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
 // convertToAnthropicRequest converts ChatCompletionRequest to Anthropic MessageRequest.
@@ -21,7 +22,7 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 		Temperature: chatReq.Temperature,
 		TopP:        chatReq.TopP,
 		Stream:      chatReq.Stream,
-		System:      convertAoAnthropicSystemPrompt(chatReq),
+		System:      convertToAnthropicSystemPrompt(chatReq),
 	}
 	if chatReq.Metadata != nil {
 		if chatReq.Metadata["user_id"] != "" {
@@ -135,16 +136,26 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 
 		if len(msg.ToolCalls) > 0 {
 			var contextBlock *MessageContentBlock
-			if msg.Content.Content != nil {
+			if msg.Content.Content != nil && *msg.Content.Content != "" {
 				contextBlock = &MessageContentBlock{
 					Type: "text",
 					Text: *msg.Content.Content,
 				}
 			}
 
-			content, _ := convertMultiplePartContent(msg)
-			if contextBlock != nil {
+			content, existMultipleParts := convertMultiplePartContent(msg)
+
+			switch {
+			case existMultipleParts && contextBlock != nil:
 				content.MultipleContent = append([]MessageContentBlock{*contextBlock}, content.MultipleContent...)
+			case existMultipleParts:
+				// Do nothing, will assign it later.
+			case contextBlock != nil:
+				content = MessageContent{
+					Content: &contextBlock.Text,
+				}
+			default:
+				continue
 			}
 
 			anthropicMsg.Content = content
@@ -178,7 +189,7 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	return req
 }
 
-func convertAoAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
+func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 	systemMessages := lo.Filter(chatReq.Messages, func(msg llm.Message, _ int) bool {
 		return msg.Role == "system"
 	})
@@ -252,11 +263,12 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 	}
 
 	for _, toolCall := range msg.ToolCalls {
+		// Use safe JSON repair/fallback for tool input
 		blocks = append(blocks, MessageContentBlock{
 			Type:  "tool_use",
 			ID:    toolCall.ID,
 			Name:  &toolCall.Function.Name,
-			Input: []byte(toolCall.Function.Arguments),
+			Input: xjson.SafeJSONRawMessage(toolCall.Function.Arguments),
 			CacheControl: &CacheControl{
 				Type: "ephemeral",
 			},
@@ -346,12 +358,14 @@ func convertToChatCompletionResponse(anthropicResp *Message) *llm.Response {
 			}
 		case "tool_use":
 			if block.ID != "" && block.Name != nil {
+				// Repair or safely fallback invalid JSON from provider
+				repaired := xjson.SafeJSONRawMessage(string(block.Input))
 				toolCall := llm.ToolCall{
 					ID:   block.ID,
 					Type: "function",
 					Function: llm.FunctionCall{
 						Name:      *block.Name,
-						Arguments: string(block.Input),
+						Arguments: string(repaired),
 					},
 				}
 				toolCalls = append(toolCalls, toolCall)

@@ -50,4 +50,4 @@ jobs:
           # skip-build-cache: true
 
           # optionally use a specific version of Go rather than the latest one
-          go-version: '1.24.0'
+          # go-version: '1.24.7'

@@ -200,11 +200,12 @@
       "firstNameRequired": "名字不能为空",
       "lastNameRequired": "姓氏不能为空",
       "emailInvalid": "邮箱格式无效",
-      "passwordMinLength": "密码至少需要6个字符",
+      "passwordMinLength": "密码至少需要8个字符",
       "passwordsNotMatch": "密码不匹配",
       "currentPasswordRequired": "当前密码不能为空",
       "newPasswordRequired": "新密码不能为空",
-      "newPasswordMinLength": "新密码至少需要6个字符"
+      "newPasswordMinLength": "新密码至少需要8个字符",
+      "passwordPattern": "密码必须包含至少一个大写字母、一个小写字母和一个数字"
     },
     "buttons": {
       "save": "保存更改",

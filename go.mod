@@ -1,6 +1,6 @@
 module github.com/looplj/axonhub
 
-go 1.24.4
+go 1.24.7
 
 require (
 	github.com/go-openapi/inflect v0.21.2 // indirect
@@ -33,7 +33,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
 	github.com/jackc/pgx/v5 v5.7.5
-	github.com/kaptinlin/jsonrepair v0.2.2
+	github.com/kaptinlin/jsonrepair v0.2.3
 	github.com/samber/lo v1.51.0
 	github.com/spf13/cast v1.7.1
 	github.com/spf13/viper v1.20.1

@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { passwordSchema } from '@/lib/validation'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -24,17 +25,9 @@ type UserAuthFormProps = HTMLAttributes<HTMLFormElement>
 const createFormSchema = (t: (key: string) => string) =>
   z.object({
     email: z
-      .string()
-      .min(1, { message: t('auth.signIn.validation.emailRequired') })
-      .email({ message: t('auth.signIn.validation.emailInvalid') }),
-    password: z
-      .string()
-      .min(1, {
-        message: t('auth.signIn.validation.passwordRequired'),
-      })
-      .min(7, {
-        message: t('auth.signIn.validation.passwordMinLength'),
-      }),
+      .email()
+      .min(1, { message: t('auth.signIn.validation.emailRequired') }),
+    password: passwordSchema(t),
   })
 
 export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
