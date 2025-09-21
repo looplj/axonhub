@@ -53,6 +53,7 @@ func (Channel) Fields() []ent.Field {
 				"anthropic_fake",
 				"openai_fake",
 				"openrouter",
+				"xai",
 			).
 			Immutable(),
 		field.String("base_url").Optional(),

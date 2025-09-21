@@ -161,7 +161,6 @@ func (p *PersistentOutboundTransformer) TransformError(ctx context.Context, rawE
 	return p.wrapped.TransformError(ctx, rawErr)
 }
 
-// Outbound transformer methods for enhanced version.
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
 	if len(p.state.Channels) == 0 {
 		channels, err := p.state.ChannelSelector.Select(ctx, llmRequest)

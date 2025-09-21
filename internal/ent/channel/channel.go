@@ -148,6 +148,7 @@ const (
 	TypeAnthropicFake     Type = "anthropic_fake"
 	TypeOpenaiFake        Type = "openai_fake"
 	TypeOpenrouter        Type = "openrouter"
+	TypeXai               Type = "xai"
 )
 
 func (_type Type) String() string {
@@ -157,7 +158,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeOpenai, TypeAnthropic, TypeAnthropicAWS, TypeAnthropicGcp, TypeGeminiOpenai, TypeDeepseek, TypeDeepseekAnthropic, TypeDoubao, TypeMoonshot, TypeMoonshotAnthropic, TypeZhipu, TypeZai, TypeZhipuAnthropic, TypeZaiAnthropic, TypeAnthropicFake, TypeOpenaiFake, TypeOpenrouter:
+	case TypeOpenai, TypeAnthropic, TypeAnthropicAWS, TypeAnthropicGcp, TypeGeminiOpenai, TypeDeepseek, TypeDeepseekAnthropic, TypeDoubao, TypeMoonshot, TypeMoonshotAnthropic, TypeZhipu, TypeZai, TypeZhipuAnthropic, TypeZaiAnthropic, TypeAnthropicFake, TypeOpenaiFake, TypeOpenrouter, TypeXai:
 		return nil
 	default:
 		return fmt.Errorf("channel: invalid enum value for type field: %q", _type)
