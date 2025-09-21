@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -30,9 +31,6 @@ func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOvervi
 	stats := &DashboardOverview{
 		TotalUsers:          0,
 		TotalRequests:       0,
-		RequestsToday:       0,
-		RequestsThisWeek:    0,
-		RequestsThisMonth:   0,
 		FailedRequests:      0,
 		AverageResponseTime: nil,
 	}
@@ -50,34 +48,17 @@ func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOvervi
 		stats.TotalRequests = totalRequests
 	}
 
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	weekAgo := today.AddDate(0, 0, -7)
-	monthAgo := today.AddDate(0, -1, 0)
-
-	// Get time-based counts with optimized single queries
-	if requestsToday, err := r.client.Request.Query().
-		Where(request.CreatedAtGTE(today)).
-		Count(ctx); err != nil {
-		log.Warn(ctx, "failed to count today's requests", log.Cause(err))
+	// Get request stats using the dedicated resolver
+	if requestStats, err := r.RequestStats(ctx); err != nil {
+		log.Warn(ctx, "failed to get request stats", log.Cause(err))
+		// Set a default empty RequestStats if there's an error
+		stats.RequestStats = &RequestStats{
+			RequestsToday:     0,
+			RequestsThisWeek:  0,
+			RequestsThisMonth: 0,
+		}
 	} else {
-		stats.RequestsToday = requestsToday
-	}
-
-	if requestsThisWeek, err := r.client.Request.Query().
-		Where(request.CreatedAtGTE(weekAgo)).
-		Count(ctx); err != nil {
-		log.Warn(ctx, "failed to count this week's requests", log.Cause(err))
-	} else {
-		stats.RequestsThisWeek = requestsThisWeek
-	}
-
-	if requestsThisMonth, err := r.client.Request.Query().
-		Where(request.CreatedAtGTE(monthAgo)).
-		Count(ctx); err != nil {
-		log.Warn(ctx, "failed to count this month's requests", log.Cause(err))
-	} else {
-		stats.RequestsThisMonth = requestsThisMonth
+		stats.RequestStats = requestStats
 	}
 
 	if failedRequests, err := r.client.Request.Query().
@@ -90,6 +71,52 @@ func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOvervi
 
 	// TODO: Calculate average response time from request execution data
 	// This would require additional database schema changes to store response times
+
+	return stats, nil
+}
+
+// RequestStats is the resolver for the requestStats field.
+func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Initialize response with defaults to handle partial failures gracefully
+	stats := &RequestStats{
+		RequestsToday:     0,
+		RequestsThisWeek:  0,
+		RequestsThisMonth: 0,
+	}
+
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	weekAgo := today.AddDate(0, 0, -7)
+	monthAgo := today.AddDate(0, -1, 0)
+
+	// Get requests for today
+	if requestsToday, err := r.client.Request.Query().
+		Where(request.CreatedAtGTE(today)).
+		Count(ctx); err != nil {
+		log.Warn(ctx, "failed to count today's requests", log.Cause(err))
+	} else {
+		stats.RequestsToday = requestsToday
+	}
+
+	// Get requests for this week
+	if requestsThisWeek, err := r.client.Request.Query().
+		Where(request.CreatedAtGTE(weekAgo)).
+		Count(ctx); err != nil {
+		log.Warn(ctx, "failed to count this week's requests", log.Cause(err))
+	} else {
+		stats.RequestsThisWeek = requestsThisWeek
+	}
+
+	// Get requests for this month
+	if requestsThisMonth, err := r.client.Request.Query().
+		Where(request.CreatedAtGTE(monthAgo)).
+		Count(ctx); err != nil {
+		log.Warn(ctx, "failed to count this month's requests", log.Cause(err))
+	} else {
+		stats.RequestsThisMonth = requestsThisMonth
+	}
 
 	return stats, nil
 }
@@ -341,4 +368,87 @@ func (r *queryResolver) TopRequestsUsers(ctx context.Context, limit *int) ([]*To
 	}
 
 	return response, nil
+}
+
+// TokenStats is the resolver for the tokenStats field.
+func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
+	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Initialize response with defaults to handle partial failures gracefully
+	stats := &TokenStats{
+		TotalInputTokensToday:      0,
+		TotalOutputTokensToday:     0,
+		TotalCachedTokensToday:     0,
+		TotalInputTokensThisWeek:   0,
+		TotalOutputTokensThisWeek:  0,
+		TotalCachedTokensThisWeek:  0,
+		TotalInputTokensThisMonth:  0,
+		TotalOutputTokensThisMonth: 0,
+		TotalCachedTokensThisMonth: 0,
+	}
+
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	weekAgo := today.AddDate(0, 0, -7)
+	monthAgo := today.AddDate(0, -1, 0)
+
+	// Helper function to get token sums for a specific time period
+	getTokenSums := func(since time.Time) (input, output, cached int) {
+		type tokenSums struct {
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+			CachedTokens int `json:"cached_tokens"`
+		}
+
+		var records []tokenSums
+
+		err := r.client.UsageLog.Query().
+			Where(usagelog.CreatedAtGTE(since)).
+			Modify(func(s *sql.Selector) {
+				s.Select(
+					sql.As(sql.Sum(usagelog.FieldPromptTokens), "input_tokens"),
+					sql.As(sql.Sum(usagelog.FieldCompletionTokens), "output_tokens"),
+					sql.As(sql.Sum(usagelog.FieldPromptCachedTokens), "cached_tokens"),
+				)
+			}).
+			Scan(ctx, &records)
+		if err != nil || len(records) == 0 {
+			log.Warn(ctx, "failed to aggregate token stats", log.Cause(err))
+			return 0, 0, 0
+		}
+
+		inputVal := records[0].InputTokens
+		outputVal := records[0].OutputTokens
+		cachedVal := records[0].CachedTokens
+
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "token stats query result",
+				log.String("since", since.Format("2006-01-02 15:04:05")),
+				log.Int("input", inputVal),
+				log.Int("output", outputVal),
+				log.Int("cached", cachedVal))
+		}
+
+		return inputVal, outputVal, cachedVal
+	}
+
+	// Get token stats for today
+	input, output, cached := getTokenSums(today)
+	stats.TotalInputTokensToday = input
+	stats.TotalOutputTokensToday = output
+	stats.TotalCachedTokensToday = cached
+
+	// Get token stats for this week
+	input, output, cached = getTokenSums(weekAgo)
+	stats.TotalInputTokensThisWeek = input
+	stats.TotalOutputTokensThisWeek = output
+	stats.TotalCachedTokensThisWeek = cached
+
+	// Get token stats for this month
+	input, output, cached = getTokenSums(monthAgo)
+	stats.TotalInputTokensThisMonth = input
+	stats.TotalOutputTokensThisMonth = output
+	stats.TotalCachedTokensThisMonth = cached
+
+	return stats, nil
 }

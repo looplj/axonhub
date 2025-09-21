@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useTopUsers } from '../data/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
 
-export function RecentSales() {
+export function TopUsers() {
   const { t } = useTranslation()
   const { data: topUsers, isLoading, error } = useTopUsers(5)
 

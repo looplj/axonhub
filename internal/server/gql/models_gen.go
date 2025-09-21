@@ -54,13 +54,11 @@ type DailyRequestStats struct {
 }
 
 type DashboardOverview struct {
-	TotalUsers          int      `json:"totalUsers"`
-	TotalRequests       int      `json:"totalRequests"`
-	RequestsToday       int      `json:"requestsToday"`
-	RequestsThisWeek    int      `json:"requestsThisWeek"`
-	RequestsThisMonth   int      `json:"requestsThisMonth"`
-	FailedRequests      int      `json:"failedRequests"`
-	AverageResponseTime *float64 `json:"averageResponseTime,omitempty"`
+	TotalUsers          int           `json:"totalUsers"`
+	TotalRequests       int           `json:"totalRequests"`
+	RequestStats        *RequestStats `json:"requestStats"`
+	FailedRequests      int           `json:"failedRequests"`
+	AverageResponseTime *float64      `json:"averageResponseTime,omitempty"`
 }
 
 type HourlyRequestStats struct {
@@ -81,6 +79,12 @@ type InitializeSystemPayload struct {
 	Message string    `json:"message"`
 	User    *ent.User `json:"user,omitempty"`
 	Token   *string   `json:"token,omitempty"`
+}
+
+type RequestStats struct {
+	RequestsToday     int `json:"requestsToday"`
+	RequestsThisWeek  int `json:"requestsThisWeek"`
+	RequestsThisMonth int `json:"requestsThisMonth"`
 }
 
 type RequestStatsByChannel struct {
@@ -128,6 +132,18 @@ type TestChannelPayload struct {
 	Success bool    `json:"success"`
 	Message *string `json:"message,omitempty"`
 	Error   *string `json:"error,omitempty"`
+}
+
+type TokenStats struct {
+	TotalInputTokensToday      int `json:"totalInputTokensToday"`
+	TotalOutputTokensToday     int `json:"totalOutputTokensToday"`
+	TotalCachedTokensToday     int `json:"totalCachedTokensToday"`
+	TotalInputTokensThisWeek   int `json:"totalInputTokensThisWeek"`
+	TotalOutputTokensThisWeek  int `json:"totalOutputTokensThisWeek"`
+	TotalCachedTokensThisWeek  int `json:"totalCachedTokensThisWeek"`
+	TotalInputTokensThisMonth  int `json:"totalInputTokensThisMonth"`
+	TotalOutputTokensThisMonth int `json:"totalOutputTokensThisMonth"`
+	TotalCachedTokensThisMonth int `json:"totalCachedTokensThisMonth"`
 }
 
 type TopRequestsUsers struct {
