@@ -9,6 +9,7 @@ import { ROLES_QUERY, ALL_SCOPES_QUERY } from '@/gql/roles'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { passwordConfirmationSchema } from '@/lib/validation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -20,14 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { User, CreateUserInput, UpdateUserInput } from '../data/schema'
 import { useCreateUser, useUpdateUser } from '../data/users'
@@ -38,7 +32,7 @@ const createFormSchema = (t: (key: string) => string) =>
     .object({
       firstName: z.string().min(1, t('users.validation.firstNameRequired')),
       lastName: z.string().min(1, t('users.validation.lastNameRequired')),
-      email: z.string().email(t('users.validation.emailInvalid')),
+      email: z.email().min(1, t('users.validation.emailRequired')),
       password: z.string().optional(),
       confirmPassword: z.string().optional(),
       isOwner: z.boolean().optional(),
@@ -48,19 +42,19 @@ const createFormSchema = (t: (key: string) => string) =>
     .superRefine((data, ctx) => {
       // 只在创建用户且提供了密码时验证
       if (data.password || data.confirmPassword) {
-        if (!data.password || data.password.length < 6) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: t('users.validation.passwordMinLength'),
-            path: ['password'],
-          })
-        }
+        // Validate password against shared rules
+        const passwordValidation = passwordConfirmationSchema(t).safeParse({
+          password: data.password || '',
+          confirmPassword: data.confirmPassword || '',
+        })
 
-        if (data.password !== data.confirmPassword) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: t('users.validation.passwordsNotMatch'),
-            path: ['confirmPassword'],
+        if (!passwordValidation.success) {
+          passwordValidation.error.issues.forEach((issue) => {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: issue.message,
+              path: issue.path,
+            })
           })
         }
       }
@@ -161,7 +155,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [t,setRoles, setAllScopes])
+  }, [t, setRoles, setAllScopes])
 
   // Load roles and scopes when dialog opens
   useEffect(() => {
@@ -174,16 +168,11 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
     try {
       if (isEdit && currentRow) {
         // For updates, we need to calculate role changes
-        const currentRoleIDs =
-          currentRow.roles?.edges?.map((edge) => edge.node.id) || []
+        const currentRoleIDs = currentRow.roles?.edges?.map((edge) => edge.node.id) || []
         const newRoleIDs = values.roleIDs || []
 
-        const addRoleIDs = newRoleIDs.filter(
-          (id) => !currentRoleIDs.includes(id)
-        )
-        const removeRoleIDs = currentRoleIDs.filter(
-          (id) => !newRoleIDs.includes(id)
-        )
+        const addRoleIDs = newRoleIDs.filter((id) => !currentRoleIDs.includes(id))
+        const removeRoleIDs = currentRoleIDs.filter((id) => !newRoleIDs.includes(id))
 
         const updateInput: UpdateUserInput = {
           firstName: values.firstName,
@@ -263,25 +252,15 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
     >
       <DialogContent className='sm:max-w-2xl'>
         <DialogHeader className='text-left'>
-          <DialogTitle>
-            {isEdit
-              ? t('users.dialogs.edit.title')
-              : t('users.dialogs.add.title')}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? t('users.dialogs.edit.title') : t('users.dialogs.add.title')}</DialogTitle>
           <DialogDescription>
-            {isEdit
-              ? t('users.dialogs.edit.description')
-              : t('users.dialogs.add.description')}
+            {isEdit ? t('users.dialogs.edit.description') : t('users.dialogs.add.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className='max-h-[60vh] overflow-y-auto'>
           <Form {...form}>
-            <form
-              id='user-form'
-              onSubmit={form.handleSubmit(onSubmit)}
-              className='space-y-6'
-            >
+            <form id='user-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
               <div className='grid grid-cols-2 gap-4'>
                 <FormField
                   control={form.control}
@@ -290,11 +269,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     <FormItem>
                       <FormLabel>{t('users.form.firstName')}</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder='John' 
-                          aria-invalid={!!fieldState.error}
-                          {...field} 
-                        />
+                        <Input placeholder='John' aria-invalid={!!fieldState.error} {...field} />
                       </FormControl>
                       <div className='min-h-[1.25rem]'>
                         <FormMessage />
@@ -309,11 +284,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     <FormItem>
                       <FormLabel>{t('users.form.lastName')}</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder='Doe' 
-                          aria-invalid={!!fieldState.error}
-                          {...field} 
-                        />
+                        <Input placeholder='Doe' aria-invalid={!!fieldState.error} {...field} />
                       </FormControl>
                       <div className='min-h-[1.25rem]'>
                         <FormMessage />
@@ -330,11 +301,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                   <FormItem>
                     <FormLabel>{t('users.form.email')}</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder='john.doe@example.com' 
-                        aria-invalid={!!fieldState.error}
-                        {...field} 
-                      />
+                      <Input placeholder='john.doe@example.com' aria-invalid={!!fieldState.error} {...field} />
                     </FormControl>
                     <div className='min-h-[1.25rem]'>
                       <FormMessage />
@@ -395,16 +362,11 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                 render={({ field }) => (
                   <FormItem className='flex flex-row items-start space-y-0 space-x-3'>
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className='space-y-1 leading-none'>
                       <FormLabel>{t('users.form.isOwner')}</FormLabel>
-                      <p className='text-muted-foreground text-sm'>
-                        {t('users.form.ownerDescription')}
-                      </p>
+                      <p className='text-muted-foreground text-sm'>{t('users.form.ownerDescription')}</p>
                     </div>
                   </FormItem>
                 )}
@@ -418,15 +380,10 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                 ) : (
                   <div className='grid grid-cols-2 gap-2'>
                     {roles.map((role) => (
-                      <div
-                        key={role.id}
-                        className='flex items-center space-x-2'
-                      >
+                      <div key={role.id} className='flex items-center space-x-2'>
                         <Checkbox
                           id={`role-${role.id}`}
-                          checked={(form.watch('roleIDs') || []).includes(
-                            role.id
-                          )}
+                          checked={(form.watch('roleIDs') || []).includes(role.id)}
                           onCheckedChange={() => handleRoleToggle(role.id)}
                         />
                         <label
@@ -448,16 +405,9 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                 {/* Selected Scopes */}
                 <div className='flex flex-wrap gap-2'>
                   {(form.watch('scopes') || []).map((scope) => (
-                    <Badge
-                      key={scope}
-                      variant='secondary'
-                      className='flex items-center gap-1'
-                    >
+                    <Badge key={scope} variant='secondary' className='flex items-center gap-1'>
                       {scope}
-                      <X
-                        className='h-3 w-3 cursor-pointer'
-                        onClick={() => handleScopeRemove(scope as string)}
-                      />
+                      <X className='h-3 w-3 cursor-pointer' onClick={() => handleScopeRemove(scope as string)} />
                     </Badge>
                   ))}
                 </div>
@@ -468,15 +418,10 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                 ) : (
                   <div className='grid max-h-32 grid-cols-2 gap-2 overflow-y-auto rounded border p-2'>
                     {allScopes.map((scope) => (
-                      <div
-                        key={scope.scope}
-                        className='flex items-start space-x-2'
-                      >
+                      <div key={scope.scope} className='flex items-start space-x-2'>
                         <Checkbox
                           id={`scope-${scope.scope}`}
-                          checked={(form.watch('scopes') || []).includes(
-                            scope.scope
-                          )}
+                          checked={(form.watch('scopes') || []).includes(scope.scope)}
                           onCheckedChange={() => handleScopeToggle(scope.scope)}
                         />
                         <div className='space-y-1 leading-none'>
@@ -500,14 +445,8 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         </div>
 
         <DialogFooter>
-          <Button
-            type='submit'
-            form='user-form'
-            disabled={createUser.isPending || updateUser.isPending}
-          >
-            {createUser.isPending || updateUser.isPending
-              ? t('users.buttons.saving')
-              : t('users.buttons.saveChanges')}
+          <Button type='submit' form='user-form' disabled={createUser.isPending || updateUser.isPending}>
+            {createUser.isPending || updateUser.isPending ? t('users.buttons.saving') : t('users.buttons.saveChanges')}
           </Button>
         </DialogFooter>
       </DialogContent>

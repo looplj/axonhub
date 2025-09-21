@@ -167,11 +167,11 @@
       "firstNameRequired": "First name is required",
       "lastNameRequired": "Last name is required",
       "emailInvalid": "Invalid email address",
-      "passwordMinLength": "Password must be at least 6 characters",
+      "passwordMinLength": "Password must be at least 8 characters",
       "passwordsNotMatch": "Passwords don't match",
       "currentPasswordRequired": "Current password is required",
       "newPasswordRequired": "New password is required",
-      "newPasswordMinLength": "New password must be at least 6 characters"
+      "newPasswordMinLength": "New password must be at least 8 characters"
     },
     "buttons": {
       "save": "Save changes",
@@ -1260,8 +1260,9 @@
         "emailRequired": "Email is required",
         "emailInvalid": "Invalid email format",
         "passwordRequired": "Password is required",
-        "passwordMinLength": "Password must be at least 7 characters",
-        "captchaRequired": "Captcha is required"
+        "passwordMinLength": "Password must be at least 8 characters",
+        "captchaRequired": "Captcha is required",
+        "passwordPattern": "Password must contain at least one uppercase letter, one lowercase letter, and one digit"
       },
       "links": {
         "forgotPassword": "Forgot password?",

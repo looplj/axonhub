@@ -8,6 +8,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
 func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
@@ -268,17 +269,9 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			if len(message.ToolCalls) > 0 {
 				for _, toolCall := range message.ToolCalls {
 					var input json.RawMessage
-
 					if toolCall.Function.Arguments != "" {
-						// Validate JSON before using it as RawMessage
-						var temp interface{}
-						if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &temp); err != nil {
-							// If invalid JSON, wrap it in a string field
-							escapedArgs, _ := json.Marshal(toolCall.Function.Arguments)
-							input = json.RawMessage(`{"raw_arguments": ` + string(escapedArgs) + `}`)
-						} else {
-							input = json.RawMessage(toolCall.Function.Arguments)
-						}
+						// Attempt to use the provided arguments; repair if invalid, fallback to {}
+						input = xjson.SafeJSONRawMessage(toolCall.Function.Arguments)
 					} else {
 						input = json.RawMessage("{}")
 					}

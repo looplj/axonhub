@@ -1456,7 +1456,8 @@ func TestInboundTransformer_TransformResponse_EdgeCases(t *testing.T) {
 				var input map[string]interface{}
 				err := json.Unmarshal(resp.Content[0].Input, &input)
 				require.NoError(t, err)
-				require.Equal(t, `{"invalid": json}`, input["raw_arguments"])
+				// Malformed JSON should be safely repaired
+				require.Equal(t, "json", input["invalid"])
 			},
 		},
 		{

@@ -158,7 +158,7 @@ func (t *OutboundTransformer) TransformRequest(
 	// Apply platform-specific transformations
 	body, err := json.Marshal(anthropicReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to transform request for platform: %w", err)
+		return nil, fmt.Errorf("failed to marshal anthropic request: %w", err)
 	}
 
 	// Prepare headers
