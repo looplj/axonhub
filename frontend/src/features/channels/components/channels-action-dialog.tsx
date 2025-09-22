@@ -46,6 +46,7 @@ const defaultBaseUrls: Record<string, string> = {
   zhipu_anthropic: 'https://open.bigmodel.cn/api/anthropic',
   zai_anthropic: 'https://open.bigmodel.cn/api/anthropic',
   openrouter: 'https://openrouter.ai/api/v1',
+  xai: 'https://api.x.ai/v1',
   // Fake types are not allowed for creation
   // anthropic_fake: 'https://api.anthropic.com/v1',
   // openai_fake: 'https://api.openai.com/v1',
@@ -114,15 +115,21 @@ export const defaultModels: Record<string, string[]> = {
     'z-ai/glm-4.5-air:free',
 
     // Google
-    "google/gemini-2.5-flash-lite",
-    "google/gemini-2.5-flash",
-    "google/gemini-2.5-pro",
-    
+    'google/gemini-2.5-flash-lite',
+    'google/gemini-2.5-flash',
+    'google/gemini-2.5-pro',
+
     // Anthropic
-    "anthropic/claude-opus-4",
-    "anthropic/claude-sonnet-4",
-    "anthropic/claude-3.7-sonnet",
+    'anthropic/claude-opus-4',
+    'anthropic/claude-sonnet-4',
+    'anthropic/claude-3.7-sonnet',
+
+    // XAI
+    'x-ai/grok-4-fast:free',
+    'x-ai/grok-4-fast',
+    'x-ai/grok-code-fast-1',
   ],
+  xai: ['grok-4', 'grok-3', 'grok-3-mini', 'grok-code-fast', 'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning'],
 }
 
 export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) {
@@ -150,6 +157,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     { value: 'zhipu_anthropic', label: t('channels.types.zhipu_anthropic') },
     { value: 'zai_anthropic', label: t('channels.types.zai_anthropic') },
     { value: 'openrouter', label: t('channels.types.openrouter') },
+    { value: 'xai', label: t('channels.types.xai') },
     { value: 'anthropic_fake', label: t('channels.types.anthropic_fake') },
     { value: 'openai_fake', label: t('channels.types.openai_fake') },
   ]

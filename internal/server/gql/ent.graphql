@@ -397,6 +397,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   anthropic_fake
   openai_fake
   openrouter
+  xai
 }
 """
 ChannelWhereInput is used for filtering Channel objects.

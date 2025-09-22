@@ -9,7 +9,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// Enhanced PersistenceState holds shared state with channel management and retry capabilities.
+// PersistenceState holds shared state with channel management and retry capabilities.
 type PersistenceState struct {
 	APIKey *ent.APIKey
 	User   *ent.User

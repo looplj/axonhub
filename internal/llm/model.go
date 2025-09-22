@@ -384,7 +384,7 @@ type Tool struct {
 	Function Function `json:"function"`
 }
 
-// FunctionRequest represents a function definition.
+// Function represents a function definition.
 type Function struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`

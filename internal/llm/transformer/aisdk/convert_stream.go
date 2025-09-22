@@ -333,8 +333,8 @@ func (s *aiSDKConvertStream) Next() bool {
 		}
 	}
 
-	// If we have events in the queue, return true
-	return len(s.eventQueue) > 0
+	// Continue to the next event.
+	return true
 }
 
 func (s *aiSDKConvertStream) Current() *httpclient.StreamEvent {

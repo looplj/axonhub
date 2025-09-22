@@ -140,7 +140,6 @@ func (p *PersistentInboundTransformer) TransformError(ctx context.Context, rawEr
 	return p.wrapped.TransformError(ctx, rawErr)
 }
 
-// Inbound transformer methods for enhanced version.
 func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, request *httpclient.Request) (*llm.Request, error) {
 	llmRequest, err := p.wrapped.TransformRequest(ctx, request)
 	if err != nil {

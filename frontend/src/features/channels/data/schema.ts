@@ -19,6 +19,7 @@ export const channelTypeSchema = z.enum([
   'zhipu_anthropic',
   'zai_anthropic',
   'openrouter',
+  'xai',
 ])
 export type ChannelType = z.infer<typeof channelTypeSchema>
 

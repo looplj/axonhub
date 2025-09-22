@@ -446,8 +446,8 @@ func (s *anthropicInboundStream) Next() bool {
 		}
 	}
 
-	// If we have events in the queue, return true
-	return len(s.eventQueue) > 0
+	// Continue to the next event.
+	return true
 }
 
 func (s *anthropicInboundStream) Current() *httpclient.StreamEvent {

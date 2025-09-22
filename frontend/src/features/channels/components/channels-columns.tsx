@@ -1,16 +1,7 @@
 import { format } from 'date-fns'
 import { ColumnDef, Row } from '@tanstack/react-table'
 import { IconPlayerPlay, IconChevronDown } from '@tabler/icons-react'
-import {
-  OpenAI,
-  Anthropic,
-  Google,
-  DeepSeek,
-  Doubao,
-  Moonshot,
-  Zhipu,
-  OpenRouter,
-} from '@lobehub/icons'
+import { OpenAI, Anthropic, Google, DeepSeek, Doubao, Moonshot, Zhipu, OpenRouter, XAI } from '@lobehub/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -18,8 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import LongText from '@/components/long-text'
 import { useChannels } from '../context/channels-context'
-import { Channel, ChannelType } from '../data/schema'
 import { useTestChannel } from '../data/channels'
+import { Channel, ChannelType } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'
 
@@ -119,6 +110,11 @@ const getChannelTypeConfig = (
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: OpenAI,
   },
+  xai: {
+    label: t('channels.types.xai'),
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: XAI,
+  },
 })
 
 // Test Cell Component to handle hooks properly
@@ -157,21 +153,14 @@ function TestCell({ row }: { row: Row<Channel> }) {
         <IconPlayerPlay className='mr-1 h-3 w-3' />
         {t('channels.actions.test')}
       </Button>
-      <Button
-        size='sm'
-        variant='outline'
-        className='h-8 w-8 p-0'
-        onClick={handleOpenTestDialog}
-      >
+      <Button size='sm' variant='outline' className='h-8 w-8 p-0' onClick={handleOpenTestDialog}>
         <IconChevronDown className='h-3 w-3' />
       </Button>
     </div>
   )
 }
 
-export const createColumns = (
-  t: ReturnType<typeof useTranslation>['t']
-): ColumnDef<Channel>[] => {
+export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<Channel>[] => {
   const channelTypeConfig = getChannelTypeConfig(t)
 
   return [
@@ -179,10 +168,7 @@ export const createColumns = (
       id: 'select',
       header: ({ table }) => (
         <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && 'indeterminate')
-          }
+          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label={t('channels.columns.selectAll')}
           className='translate-y-[2px]'
@@ -207,17 +193,8 @@ export const createColumns = (
     },
     {
       accessorKey: 'name',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t('channels.columns.name')}
-        />
-      ),
-      cell: ({ row }) => (
-        <LongText className='max-w-36 font-medium'>
-          {row.getValue('name')}
-        </LongText>
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.name')} />,
+      cell: ({ row }) => <LongText className='max-w-36 font-medium'>{row.getValue('name')}</LongText>,
       meta: {
         className: cn(
           'drop-shadow-[0_1px_2px_rgb(0_0_0_/_0.1)] dark:drop-shadow-[0_1px_2px_rgb(255_255_255_/_0.1)] lg:drop-shadow-none',
@@ -229,12 +206,7 @@ export const createColumns = (
     },
     {
       accessorKey: 'type',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t('channels.columns.type')}
-        />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.type')} />,
       cell: ({ row }) => {
         const type = row.getValue('type') as ChannelType
         const config = channelTypeConfig[type]
@@ -255,12 +227,7 @@ export const createColumns = (
     },
     {
       accessorKey: 'status',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t('channels.columns.status')}
-        />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.status')} />,
       cell: ({ row }) => {
         const status = row.getValue('status') as string
         const getBadgeVariant = () => {
@@ -283,38 +250,20 @@ export const createColumns = (
               return t('channels.status.disabled')
           }
         }
-        return (
-          <Badge variant={getBadgeVariant()}>
-            {getStatusText()}
-          </Badge>
-        )
+        return <Badge variant={getBadgeVariant()}>{getStatusText()}</Badge>
       },
       enableSorting: true,
       enableHiding: false,
     },
     {
       accessorKey: 'baseURL',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t('channels.columns.baseURL')}
-        />
-      ),
-      cell: ({ row }) => (
-        <LongText className='text-muted-foreground max-w-48'>
-          {row.getValue('baseURL')}
-        </LongText>
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.baseURL')} />,
+      cell: ({ row }) => <LongText className='text-muted-foreground max-w-48'>{row.getValue('baseURL')}</LongText>,
       enableSorting: false,
     },
     {
       accessorKey: 'supportedModels',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t('channels.columns.supportedModels')}
-        />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.supportedModels')} />,
       cell: ({ row }) => {
         const models = row.getValue('supportedModels') as string[]
         return (
@@ -334,35 +283,20 @@ export const createColumns = (
       },
       enableSorting: false,
     },
-
-    {
-      accessorKey: 'createdAt',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t('channels.columns.createdAt')}
-        />
-      ),
-      cell: ({ row }) => {
-        const date = row.getValue('createdAt') as Date
-        return (
-          <div className='text-muted-foreground text-sm'>
-            {format(date, 'yyyy-MM-dd HH:mm')}
-          </div>
-        )
-      },
-    },
     {
       id: 'test',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={t('channels.columns.test')}
-        />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.test')} />,
       cell: TestCell,
       enableSorting: false,
       enableHiding: false,
+    },
+    {
+      accessorKey: 'createdAt',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.createdAt')} />,
+      cell: ({ row }) => {
+        const date = row.getValue('createdAt') as Date
+        return <div className='text-muted-foreground text-sm'>{format(date, 'yyyy-MM-dd HH:mm')}</div>
+      },
     },
     {
       id: 'actions',

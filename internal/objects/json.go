@@ -28,7 +28,7 @@ func (m *JSONRawMessage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON returns m as the JSON encoding of m.
+// MarshalGQL returns m as the JSON encoding of m.
 func (m JSONRawMessage) MarshalGQL(w io.Writer) {
 	if m == nil {
 		_, _ = w.Write([]byte("null"))
@@ -38,7 +38,7 @@ func (m JSONRawMessage) MarshalGQL(w io.Writer) {
 	_, _ = w.Write(m)
 }
 
-// UnmarshalJSON sets *m to a copy of data.
+// UnmarshalGQL sets *m to a copy of data.
 func (m *JSONRawMessage) UnmarshalGQL(v any) error {
 	if m == nil {
 		return errors.New("json.RawMessage: UnmarshalGQL on nil pointer")

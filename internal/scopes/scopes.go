@@ -6,31 +6,24 @@ type Scope string
 
 // Available scopes in the system.
 const (
-	// Channel scopes.
 	ScopeReadChannels  Scope = "read_channels"
 	ScopeWriteChannels Scope = "write_channels"
 
-	// User scopes.
 	ScopeReadUsers  Scope = "read_users"
 	ScopeWriteUsers Scope = "write_users"
 
-	// Role scopes.
 	ScopeReadRoles  Scope = "read_roles"
 	ScopeWriteRoles Scope = "write_roles"
 
-	// API Key scopes.
 	//nolint:gosec // This is a scope, not a secret.
 	ScopeReadAPIKeys  Scope = "read_api_keys"
 	ScopeWriteAPIKeys Scope = "write_api_keys"
 
-	// Request scopes.
 	ScopeReadRequests  Scope = "read_requests"
 	ScopeWriteRequests Scope = "write_requests"
 
-	// Dashboard scopes.
 	ScopeReadDashboard Scope = "read_dashboard"
 
-	// Settings scopes.
 	ScopeReadSettings  Scope = "read_settings"
 	ScopeWriteSettings Scope = "write_settings"
 )

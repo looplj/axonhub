@@ -47,7 +47,7 @@ func (c *Chain) Remove(name string) {
 	}
 }
 
-// Execute applies all decorators in the chain to the request.
+// ExecuteRequest applies all decorators in the chain to the request.
 func (c *Chain) ExecuteRequest(ctx context.Context, request *llm.Request) (*llm.Request, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
