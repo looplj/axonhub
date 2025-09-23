@@ -180,6 +180,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				require.Equal(t, "msg_empty", result.ID)
 				require.Equal(t, "chat.completion", result.Object)
 				require.NotNil(t, result.Choices)
+
 				if len(result.Choices) > 0 {
 					require.Nil(t, result.Choices[0].Message.Content.Content)
 					require.Empty(t, result.Choices[0].Message.Content.MultipleContent)

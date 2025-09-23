@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
 
@@ -26,7 +27,12 @@ func (System) Mixin() []ent.Mixin {
 func (System) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("key").Unique(),
-		field.String("value"),
+		field.String("value").SchemaType(
+			map[string]string{
+				// Some fields, like logo is stored as base64 image, it is too long to store in varchar, so we use mediumtext to store it.
+				dialect.MySQL: "mediumtext",
+			},
+		),
 	}
 }
 

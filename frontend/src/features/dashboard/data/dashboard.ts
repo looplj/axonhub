@@ -42,6 +42,7 @@ export const topUsersSchema = z.object({
   userId: z.string(),
   userName: z.string(),
   userEmail: z.string(),
+  avatar: z.string().optional(),
   requestCount: z.number(),
 })
 
@@ -127,6 +128,7 @@ const TOP_USERS_QUERY = `
       userId
       userName
       userEmail
+      avatar
       requestCount
     }
   }

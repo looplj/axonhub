@@ -169,7 +169,7 @@ export function useSidebarData(): SidebarData {
       {
         name: t('sidebar.team.name'),
         logo: Command,
-        plan: '',
+        description: '',
         // DO NOT USE THIS
         // plan: t('sidebar.team.plan'),
       },

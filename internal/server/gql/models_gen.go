@@ -150,6 +150,7 @@ type TopRequestsUsers struct {
 	UserID       objects.GUID `json:"userId"`
 	UserName     string       `json:"userName"`
 	UserEmail    string       `json:"userEmail"`
+	Avatar       *string      `json:"avatar,omitempty"`
 	RequestCount int          `json:"requestCount"`
 }
 

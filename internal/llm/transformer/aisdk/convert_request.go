@@ -326,6 +326,7 @@ func convertToLLMRequestWithOptions(req *Request, options *ConvertToLLMRequestOp
 							if len(toolCalls) == 0 {
 								return nil
 							}
+
 							return toolCalls
 						}(),
 					}

@@ -11,6 +11,8 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -19,7 +21,6 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
-	"github.com/samber/lo"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -236,6 +237,7 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*Da
 		Modify(func(s *sql.Selector) {
 			// Build a dialect-specific date expression that returns a string 'YYYY-MM-DD'
 			var dateExpr string
+
 			switch s.Dialect() {
 			case dialect.SQLite:
 				// The stored format looks like: "YYYY-MM-DD HH:MM:SS.SSSSSS +0800 CST m=+..."
@@ -361,6 +363,7 @@ func (r *queryResolver) TopRequestsUsers(ctx context.Context, limit *int) ([]*To
 				UserID:       objects.GUID{Type: "User", ID: u.ID},
 				UserName:     fullName,
 				UserEmail:    u.Email,
+				Avatar:       &u.Avatar,
 				RequestCount: result.RequestCount,
 			})
 		}

@@ -45,7 +45,10 @@ export function TopUsers() {
       {topUsers.map((user) => (
         <div key={user.userId} className="flex items-center">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={`https://avatar.vercel.sh/${user.userEmail}`} alt="Avatar" />
+            <AvatarImage 
+              src={user.avatar || `https://avatar.vercel.sh/${user.userEmail}`} 
+              alt="Avatar" 
+            />
             <AvatarFallback>
               {user.userName
                 .split(' ')

@@ -256,7 +256,9 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 			chunks: []*httpclient.StreamEvent{},
 			validate: func(respBytes []byte) bool {
 				var resp llm.Response
+
 				err := json.Unmarshal(respBytes, &resp)
+
 				return err == nil
 			},
 		},
@@ -281,10 +283,12 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 			},
 			validate: func(respBytes []byte) bool {
 				var resp llm.Response
+
 				err := json.Unmarshal(respBytes, &resp)
 				if err != nil {
 					return false
 				}
+
 				if len(resp.Choices) == 0 {
 					return false
 				}
@@ -296,6 +300,7 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 				if resp.Object != "chat.completion" {
 					return false
 				}
+
 				return true
 			},
 		},
@@ -318,10 +323,12 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 			},
 			validate: func(respBytes []byte) bool {
 				var resp llm.Response
+
 				err := json.Unmarshal(respBytes, &resp)
 				if err != nil {
 					return false
 				}
+
 				if len(resp.Choices) == 0 {
 					return false
 				}

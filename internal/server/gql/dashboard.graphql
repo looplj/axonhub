@@ -53,6 +53,7 @@ type TopRequestsUsers {
   userId: ID!
   userName: String!
   userEmail: String!
+  avatar: String
   requestCount: Int!
 }
 

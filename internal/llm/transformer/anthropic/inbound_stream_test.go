@@ -65,6 +65,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "get_user_city", *result.Content[0].Name)
 
 				var cityInput map[string]interface{}
+
 				err := json.Unmarshal(result.Content[0].Input, &cityInput)
 				require.NoError(t, err)
 				require.Equal(t, "123", cityInput["user_id"])
@@ -75,6 +76,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "get_user_language", *result.Content[1].Name)
 
 				var langInput map[string]interface{}
+
 				err = json.Unmarshal(result.Content[1].Input, &langInput)
 				require.NoError(t, err)
 				require.Equal(t, "123", langInput["user_id"])
@@ -100,11 +102,13 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 				// Verify thinking content block
 				require.Equal(t, "thinking", result.Content[0].Type)
+
 				expectedThinking := "The user is asking for the weather in San Francisco, CA. To get the weather, I need to:\n\n1. First get the coordinates (latitude and longitude) of San Francisco, CA using the get_coordinates function\n2. Then get the temperature unit for the US using get_temperature_unit function \n3. Finally use the get_weather function with the coordinates and appropriate unit\n\nLet me start with getting the coordinates and temperature unit."
 				require.Equal(t, expectedThinking, result.Content[0].Thinking)
 
 				// Verify text content block
 				require.Equal(t, "text", result.Content[1].Type)
+
 				expectedText := "I'll help you get the weather for San Francisco, CA. Let me first get the coordinates and determine the appropriate temperature unit for the US."
 				require.Equal(t, expectedText, result.Content[1].Text)
 
@@ -114,6 +118,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "get_coordinates", *result.Content[2].Name)
 
 				var coordInput map[string]interface{}
+
 				err := json.Unmarshal(result.Content[2].Input, &coordInput)
 				require.NoError(t, err)
 				require.Equal(t, "San Francisco, CA", coordInput["location"])
@@ -124,6 +129,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "get_temperature_unit", *result.Content[3].Name)
 
 				var unitInput map[string]interface{}
+
 				err = json.Unmarshal(result.Content[3].Input, &unitInput)
 				require.NoError(t, err)
 				require.Equal(t, "United States", unitInput["country"])
