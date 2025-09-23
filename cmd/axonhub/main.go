@@ -87,6 +87,7 @@ func startServer() {
 							os.Exit(1)
 						}
 					}()
+
 					return nil
 				},
 				OnStop: func(ctx context.Context) error {
@@ -94,10 +95,12 @@ func startServer() {
 					if err != nil {
 						log.Error(context.Background(), "server shutdown error:", log.Cause(err))
 					}
+
 					err = ent.Close()
 					if err != nil {
 						log.Error(context.Background(), "ent close error:", log.Cause(err))
 					}
+
 					return nil
 				},
 			})

@@ -36,11 +36,13 @@ func TestDataStreamTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 				// Find text parts and aggregate content
 				var aggregatedText string
+
 				for _, part := range result.Parts {
 					if part.Type == "text" {
 						aggregatedText += part.Text
 					}
 				}
+
 				require.Equal(t, expectedContent, aggregatedText)
 			},
 		},
@@ -71,6 +73,7 @@ func TestDataStreamTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				// Expect first part is reasoning and the second is text
 				// Aggregate reasoning and text content
 				var reasoningText, textText string
+
 				for _, p := range result.Parts {
 					switch p.Type {
 					case "reasoning":

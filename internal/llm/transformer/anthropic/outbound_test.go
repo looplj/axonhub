@@ -481,7 +481,9 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 				expectError: false,
 				validate: func(t *testing.T, result *httpclient.Request) {
 					t.Helper()
+
 					var anthropicReq MessageRequest
+
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
 					require.NotNil(t, anthropicReq.Tools)
@@ -502,7 +504,9 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 						},
 						"required": []interface{}{"location"},
 					}
+
 					var actualSchema map[string]interface{}
+
 					unmarshalErr := json.Unmarshal(anthropicReq.Tools[0].InputSchema, &actualSchema)
 					require.NoError(t, unmarshalErr)
 					require.Equal(t, expectedSchema, actualSchema)
@@ -547,7 +551,9 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 				expectError: false,
 				validate: func(t *testing.T, result *httpclient.Request) {
 					t.Helper()
+
 					var anthropicReq MessageRequest
+
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
 					require.NotNil(t, anthropicReq.Tools)
@@ -605,7 +611,9 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 				expectError: false,
 				validate: func(t *testing.T, result *httpclient.Request) {
 					t.Helper()
+
 					var anthropicReq MessageRequest
+
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
 					require.NotNil(t, anthropicReq.Tools)
@@ -635,7 +643,9 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 				expectError: false,
 				validate: func(t *testing.T, result *httpclient.Request) {
 					t.Helper()
+
 					var anthropicReq MessageRequest
+
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
 					require.Nil(t, anthropicReq.Tools) // Should not include tools field if empty
@@ -678,7 +688,9 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 				expectError: false,
 				validate: func(t *testing.T, result *httpclient.Request) {
 					t.Helper()
+
 					var anthropicReq MessageRequest
+
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
 					// Note: Tool choice is not directly supported in current implementation
@@ -862,6 +874,7 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 
 				// Parse the transformed Anthropic request
 				var anthropicReq MessageRequest
+
 				err := json.Unmarshal(result.Body, &anthropicReq)
 				require.NoError(t, err)
 
@@ -883,6 +896,7 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 
 				// Verify tool input schema
 				var schema map[string]interface{}
+
 				err = json.Unmarshal(anthropicReq.Tools[0].InputSchema, &schema)
 				require.NoError(t, err)
 				require.Equal(t, "object", schema["type"])

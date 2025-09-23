@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { ChevronsUpDown, Plus } from 'lucide-react'
+import { ChevronsUpDown } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +24,7 @@ export function TeamSwitcher({
   teams: {
     name: string
     logo: React.ElementType
-    plan: string
+    description: string
   }[]
 }) {
   const { isMobile } = useSidebar()
@@ -74,7 +74,7 @@ export function TeamSwitcher({
                   <span className='truncate font-semibold'>
                     {displayName}
                   </span>
-                  <span className='truncate text-xs'>{activeTeam.plan}</span>
+                  <span className='truncate text-xs'>{activeTeam.description}</span>
                 </div>
                 <ChevronsUpDown className='ml-auto' />
               </SidebarMenuButton>
@@ -135,7 +135,7 @@ export function TeamSwitcher({
               <span className='truncate font-semibold'>
                 {displayName}
               </span>
-              <span className='truncate text-xs'>{activeTeam.plan}</span>
+              <span className='truncate text-xs'>{activeTeam.description}</span>
             </div>
           </SidebarMenuButton>
         )}

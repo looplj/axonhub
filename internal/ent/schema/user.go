@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -33,7 +34,12 @@ func (User) Fields() []ent.Field {
 		field.String("password").Sensitive(),
 		field.String("first_name").Default(""),
 		field.String("last_name").Default(""),
-		field.String("avatar").Optional().Comment("用户头像URL"),
+		field.String("avatar").Optional().Comment("用户头像URL").SchemaType(
+			map[string]string{
+				// The avatar is stored as base64 image, it is too long to store in varchar, so we use mediumtext to store it.
+				dialect.MySQL: "mediumtext",
+			},
+		),
 		field.Bool("is_owner").Default(false),
 		field.Strings("scopes").
 			Comment("User-specific scopes: write_channels, read_channels, add_users, read_users, etc.").

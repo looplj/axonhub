@@ -104,6 +104,7 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 
 				// Verify tool parameters schema
 				var schema map[string]interface{}
+
 				err := json.Unmarshal(result.Tools[0].Function.Parameters, &schema)
 				require.NoError(t, err)
 				require.Equal(t, "object", schema["type"])
@@ -126,8 +127,10 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 
 				// Verify third tool parameters
 				var weatherSchema map[string]interface{}
+
 				err = json.Unmarshal(result.Tools[2].Function.Parameters, &weatherSchema)
 				require.NoError(t, err)
+
 				weatherProps, ok := weatherSchema["properties"].(map[string]interface{})
 				require.True(t, ok)
 

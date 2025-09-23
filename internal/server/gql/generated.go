@@ -427,6 +427,7 @@ type ComplexityRoot struct {
 	}
 
 	TopRequestsUsers struct {
+		Avatar       func(childComplexity int) int
 		RequestCount func(childComplexity int) int
 		UserEmail    func(childComplexity int) int
 		UserID       func(childComplexity int) int
@@ -2352,6 +2353,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TokenStats.TotalOutputTokensToday(childComplexity), true
+
+	case "TopRequestsUsers.avatar":
+		if e.complexity.TopRequestsUsers.Avatar == nil {
+			break
+		}
+
+		return e.complexity.TopRequestsUsers.Avatar(childComplexity), true
 
 	case "TopRequestsUsers.requestCount":
 		if e.complexity.TopRequestsUsers.RequestCount == nil {
@@ -10104,6 +10112,8 @@ func (ec *executionContext) fieldContext_Query_topRequestsUsers(ctx context.Cont
 				return ec.fieldContext_TopRequestsUsers_userName(ctx, field)
 			case "userEmail":
 				return ec.fieldContext_TopRequestsUsers_userEmail(ctx, field)
+			case "avatar":
+				return ec.fieldContext_TopRequestsUsers_avatar(ctx, field)
 			case "requestCount":
 				return ec.fieldContext_TopRequestsUsers_requestCount(ctx, field)
 			}
@@ -15560,6 +15570,47 @@ func (ec *executionContext) _TopRequestsUsers_userEmail(ctx context.Context, fie
 }
 
 func (ec *executionContext) fieldContext_TopRequestsUsers_userEmail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TopRequestsUsers",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TopRequestsUsers_avatar(ctx context.Context, field graphql.CollectedField, obj *TopRequestsUsers) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TopRequestsUsers_avatar(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Avatar, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TopRequestsUsers_avatar(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TopRequestsUsers",
 		Field:      field,
@@ -32551,6 +32602,8 @@ func (ec *executionContext) _TopRequestsUsers(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "avatar":
+			out.Values[i] = ec._TopRequestsUsers_avatar(ctx, field, obj)
 		case "requestCount":
 			out.Values[i] = ec._TopRequestsUsers_requestCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

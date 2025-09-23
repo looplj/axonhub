@@ -226,7 +226,7 @@ var (
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "key", Type: field.TypeString, Unique: true},
-		{Name: "value", Type: field.TypeString},
+		{Name: "value", Type: field.TypeString, SchemaType: map[string]string{"mysql": "mediumtext"}},
 	}
 	// SystemsTable holds the schema information for the "systems" table.
 	SystemsTable = &schema.Table{
@@ -331,7 +331,7 @@ var (
 		{Name: "password", Type: field.TypeString},
 		{Name: "first_name", Type: field.TypeString, Default: ""},
 		{Name: "last_name", Type: field.TypeString, Default: ""},
-		{Name: "avatar", Type: field.TypeString, Nullable: true},
+		{Name: "avatar", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"mysql": "mediumtext"}},
 		{Name: "is_owner", Type: field.TypeBool, Default: false},
 		{Name: "scopes", Type: field.TypeJSON, Nullable: true},
 	}

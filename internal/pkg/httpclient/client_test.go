@@ -60,8 +60,10 @@ func TestHttpClientImpl_Do(t *testing.T) {
 				if auth != "Bearer test-token" {
 					w.WriteHeader(http.StatusUnauthorized)
 					w.Write([]byte(`{"error": "unauthorized"}`))
+
 					return
 				}
+
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"response": "authenticated"}`))
 			},

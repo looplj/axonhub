@@ -19,8 +19,12 @@
       "profile": "Profile"
     },
     "team": {
-      "name": "AxonHub Admin",
+      "name": "AxonHub",
       "plan": "AI + Unified"
+    },  
+    "userMenu": {
+      "account": "Account",
+      "logOut": "Log out"
     }
   },
   "theme": {
