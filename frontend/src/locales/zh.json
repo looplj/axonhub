@@ -253,15 +253,15 @@
       "selectRow": "选择行"
     },
     "status": {
-      "enabled": "已激活",
-      "disabled": "已停用"
+      "enabled": "已启用",
+      "disabled": "已禁用"
     },
     "actions": {
       "openMenu": "打开菜单",
       "edit": "编辑",
       "profiles": "配置文件",
-      "enable": "激活",
-      "disable": "停用",
+      "enable": "启用",
+      "disable": "禁用",
       "delete": "删除",
       "copy": "复制",
       "view": "查看",

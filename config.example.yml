@@ -18,6 +18,24 @@ db:
   dsn: "file:axonhub.db?cache=shared&_fk=1"  # Database connection string (env: AXONHUB_DB_DSN)
   debug: false                  # Enable database debug logging (env: AXONHUB_DB_DEBUG)
 
+# Cache configuration
+cache:
+  # One of: memory, redis, two-level (memory + redis)
+  mode: "memory"                # (env: AXONHUB_CACHE_MODE)
+  
+  # Memory cache configuration
+  memory:
+    expiration: "5s"            # Memory cache TTL (env: AXONHUB_CACHE_MEMORY_EXPIRATION)
+    cleanup_interval: "10m"     # Memory cache cleanup interval (env: AXONHUB_CACHE_MEMORY_CLEANUP_INTERVAL)
+  
+  # Redis cache configuration
+  redis:
+    addr: ""                    # e.g. 127.0.0.1:6379 (env: AXONHUB_CACHE_REDIS_ADDR)
+    username: ""                # Optional (env: AXONHUB_CACHE_REDIS_USERNAME)
+    password: ""                # Optional (env: AXONHUB_CACHE_REDIS_PASSWORD)
+    db: 0                       # Redis DB index (env: AXONHUB_CACHE_REDIS_DB)
+    expiration: "30m"           # Redis cache TTL (env: AXONHUB_CACHE_REDIS_EXPIRATION)
+
 # Logging configuration
 log:
   name: "axonhub"               # Logger name (env: AXONHUB_LOG_NAME)

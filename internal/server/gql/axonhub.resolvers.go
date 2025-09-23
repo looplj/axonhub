@@ -15,7 +15,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/chat"
 )
 
@@ -206,19 +205,10 @@ func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPI
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	// Generate API key with ah- prefix (similar to OpenAI format)
-	generatedKey, err := r.authService.GenerateAPIKey()
+	// Use APIKeyService to create the API key
+	apiKey, err := r.apiKeyService.CreateAPIKey(ctx, input, user.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate API key: %w", err)
-	}
-
-	apiKey, err := r.client.APIKey.Create().
-		SetName(input.Name).
-		SetKey(generatedKey).
-		SetUserID(user.ID).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create API key: %w", err)
+		return nil, err
 	}
 
 	return apiKey, nil
@@ -226,126 +216,32 @@ func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPI
 
 // UpdateAPIKey is the resolver for the updateAPIKey field.
 func (r *mutationResolver) UpdateAPIKey(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyInput) (*ent.APIKey, error) {
-	apiKey, err := r.client.APIKey.UpdateOneID(id.ID).
-		SetNillableName(input.Name).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update API key: %w", err)
-	}
-
-	return apiKey, nil
+	return r.apiKeyService.UpdateAPIKey(ctx, id.ID, input)
 }
 
 // UpdateAPIKeyStatus is the resolver for the updateAPIKeyStatus field.
 func (r *mutationResolver) UpdateAPIKeyStatus(ctx context.Context, id objects.GUID, status apikey.Status) (*ent.APIKey, error) {
-	apiKey, err := r.client.APIKey.UpdateOneID(id.ID).
-		SetStatus(status).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update API key status: %w", err)
-	}
-
-	return apiKey, nil
+	return r.apiKeyService.UpdateAPIKeyStatus(ctx, id.ID, status)
 }
 
 // UpdateAPIKeyProfiles is the resolver for the updateAPIKeyProfiles field.
 func (r *mutationResolver) UpdateAPIKeyProfiles(ctx context.Context, id objects.GUID, input objects.APIKeyProfiles) (*ent.APIKey, error) {
-	apiKey, err := r.client.APIKey.UpdateOneID(id.ID).
-		SetProfiles(&input).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update API key profiles: %w", err)
-	}
-
-	return apiKey, nil
+	return r.apiKeyService.UpdateAPIKeyProfiles(ctx, id.ID, input)
 }
 
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error) {
-	// Hash the password using our auth service
-	hashedPassword, err := biz.HashPassword(input.Password)
-	if err != nil {
-		return nil, err
-	}
-
-	mut := r.client.User.Create().
-		SetNillableFirstName(input.FirstName).
-		SetNillableLastName(input.LastName).
-		SetEmail(input.Email).
-		SetPassword(hashedPassword).
-		SetScopes(input.Scopes)
-
-	if input.RoleIDs != nil {
-		mut.AddRoleIDs(input.RoleIDs...)
-	}
-
-	user, err := mut.Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create user: %w", err)
-	}
-
-	return user, nil
+	return r.userService.CreateUser(ctx, input)
 }
 
 // UpdateUser is the resolver for the updateUser field.
 func (r *mutationResolver) UpdateUser(ctx context.Context, id objects.GUID, input ent.UpdateUserInput) (*ent.User, error) {
-	mut := r.client.User.UpdateOneID(id.ID).
-		SetNillableEmail(input.Email).
-		SetNillableFirstName(input.FirstName).
-		SetNillableLastName(input.LastName).
-		SetNillableIsOwner(input.IsOwner)
-
-	if input.Password != nil {
-		hashedPassword, err := biz.HashPassword(*input.Password)
-		if err != nil {
-			return nil, err
-		}
-
-		mut.SetPassword(hashedPassword)
-	}
-
-	if input.Scopes != nil {
-		mut.SetScopes(input.Scopes)
-	}
-
-	if input.AppendScopes != nil {
-		mut.AppendScopes(input.AppendScopes)
-	}
-
-	if input.ClearScopes {
-		mut.ClearScopes()
-	}
-
-	if input.AddRoleIDs != nil {
-		mut.AddRoleIDs(input.AddRoleIDs...)
-	}
-
-	if input.RemoveRoleIDs != nil {
-		mut.RemoveRoleIDs(input.RemoveRoleIDs...)
-	}
-
-	if input.ClearRoles {
-		mut.ClearRoles()
-	}
-
-	user, err := mut.Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update user: %w", err)
-	}
-
-	return user, nil
+	return r.userService.UpdateUser(ctx, id.ID, input)
 }
 
 // UpdateUserStatus is the resolver for the updateUserStatus field.
 func (r *mutationResolver) UpdateUserStatus(ctx context.Context, id objects.GUID, status user.Status) (*ent.User, error) {
-	user, err := r.client.User.UpdateOneID(id.ID).
-		SetStatus(status).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update user status: %w", err)
-	}
-
-	return user, nil
+	return r.userService.UpdateUserStatus(ctx, id.ID, status)
 }
 
 // CreateRole is the resolver for the createRole field.

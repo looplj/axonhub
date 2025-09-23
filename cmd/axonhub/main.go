@@ -44,20 +44,7 @@ func main() {
 type logger struct{}
 
 func (l *logger) LogEvent(event fxevent.Event) {
-	switch ev := event.(type) {
-	case *fxevent.OnStartExecuting:
-		log.Info(context.Background(), "Start executing", log.String("function_name", ev.FunctionName), log.String("caller_name", ev.CallerName))
-	case *fxevent.OnStartExecuted:
-		if ev.Err != nil {
-			log.Error(context.Background(), "Failed to start", log.String("function_name", ev.FunctionName), log.String("caller_name", ev.CallerName), log.String("error", ev.Err.Error()))
-		}
-	case *fxevent.OnStopExecuting:
-		log.Info(context.Background(), "Stop executing", log.String("function_name", ev.FunctionName), log.String("caller_name", ev.CallerName))
-	case *fxevent.OnStopExecuted:
-		if ev.Err != nil {
-			log.Error(context.Background(), "Failed to stop", log.String("function_name", ev.FunctionName), log.String("caller_name", ev.CallerName), log.String("error", ev.Err.Error()))
-		}
-	}
+	log.Debug(context.Background(), "fx event", log.Any("event", event))
 }
 
 func startServer() {
@@ -72,10 +59,18 @@ func startServer() {
 		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, provider *sdk.MeterProvider, ent *ent.Client) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
-					return metrics.SetupMetrics(provider, server.Config.Name)
+					if provider != nil {
+						return metrics.SetupMetrics(provider, server.Config.Name)
+					}
+
+					return nil
 				},
 				OnStop: func(ctx context.Context) error {
-					return provider.Shutdown(ctx)
+					if provider != nil {
+						return provider.Shutdown(ctx)
+					}
+
+					return nil
 				},
 			})
 			lc.Append(fx.Hook{
