@@ -1,12 +1,21 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Set default test environment variables
+process.env.AXONHUB_ADMIN_EMAIL = process.env.AXONHUB_ADMIN_EMAIL || 'my@example.com';
+process.env.AXONHUB_ADMIN_PASSWORD = process.env.AXONHUB_ADMIN_PASSWORD || 'pwd123456';
+
+// Type declaration for process
+declare const process: {
+  env: Record<string, string | undefined>;
+};
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
   testDir: './tests',
   /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
@@ -22,6 +31,12 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    
+    /* Screenshot on failure */
+    screenshot: 'only-on-failure',
+    
+    /* Video on failure */
+    video: 'retain-on-failure',
   },
 
   /* Configure projects for major browsers */
@@ -67,5 +82,8 @@ export default defineConfig({
     command: 'pnpm dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000, // 2 minutes timeout
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });

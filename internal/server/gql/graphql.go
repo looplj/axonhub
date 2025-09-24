@@ -29,6 +29,8 @@ type Dependencies struct {
 
 	Ent            *ent.Client
 	AuthService    *biz.AuthService
+	APIKeyService  *biz.APIKeyService
+	UserService    *biz.UserService
 	SystemService  *biz.SystemService
 	ChannelService *biz.ChannelService
 	RequestService *biz.RequestService
@@ -40,7 +42,7 @@ type GraphqlHandler struct {
 }
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
-	gqlSrv := handler.New(NewSchema(deps.Ent, deps.AuthService, deps.SystemService, deps.ChannelService, deps.RequestService))
+	gqlSrv := handler.New(NewSchema(deps.Ent, deps.AuthService, deps.APIKeyService, deps.UserService, deps.SystemService, deps.ChannelService, deps.RequestService))
 
 	gqlSrv.AddTransport(transport.Options{})
 	gqlSrv.AddTransport(transport.GET{})

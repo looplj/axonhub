@@ -22,16 +22,22 @@ type AuthServiceParams struct {
 	fx.In
 
 	SystemService *SystemService
+	APIKeyService *APIKeyService
+	UserService   *UserService
 }
 
 func NewAuthService(params AuthServiceParams) *AuthService {
 	return &AuthService{
 		SystemService: params.SystemService,
+		APIKeyService: params.APIKeyService,
+		UserService:   params.UserService,
 	}
 }
 
 type AuthService struct {
 	SystemService *SystemService
+	APIKeyService *APIKeyService
+	UserService   *UserService
 }
 
 // HashPassword hashes a password using bcrypt.
@@ -151,12 +157,7 @@ func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString stri
 		return nil, fmt.Errorf("invalid token claims: %w", ErrInvalidJWT)
 	}
 
-	client := ent.FromContext(ctx)
-
-	u, err := client.User.Query().
-		Where(user.ID(int(userID))).
-		WithRoles().
-		Only(ctx)
+	u, err := s.UserService.GetUserByID(ctx, int(userID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -169,40 +170,23 @@ func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString stri
 }
 
 func (s *AuthService) AnthenticateAPIKey(ctx context.Context, key string) (*ent.APIKey, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	// 查询数据库验证 API key 是否存在
-	client := ent.FromContext(ctx)
-
-	apiKey, err := client.APIKey.Query().
-		WithUser().
-		Where(apikey.KeyEQ(key), apikey.StatusEQ(apikey.StatusEnabled)).
-		First(ctx)
+	apiKey, err := s.APIKeyService.GetAPIKey(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get api key: %w", err)
 	}
 
-	apiOwner, err := apiKey.User(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get api key: %w", err)
+	if apiKey.Status != apikey.StatusEnabled {
+		return nil, fmt.Errorf("api key not enabled: %w", ErrInvalidAPIKey)
 	}
 
-	if apiOwner == nil || apiOwner.Status != user.StatusActivated {
+	owner, err := apiKey.User(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get api key owner: %w", err)
+	}
+
+	if owner == nil || owner.Status != user.StatusActivated {
 		return nil, fmt.Errorf("api key owner not valid: %w", ErrInvalidAPIKey)
 	}
 
 	return apiKey, nil
-}
-
-// GenerateAPIKey generates a new API key with ah- prefix (similar to OpenAI format).
-func (s *AuthService) GenerateAPIKey() (string, error) {
-	// Generate 32 bytes of random data
-	bytes := make([]byte, 32)
-
-	_, err := rand.Read(bytes)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate random bytes: %w", err)
-	}
-
-	// Convert to hex and add ah- prefix
-	return "ah-" + hex.EncodeToString(bytes), nil
 }

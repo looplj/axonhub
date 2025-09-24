@@ -54,7 +54,6 @@ func (APIKey) Fields() []ent.Field {
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			).
-			Sensitive().
 			Optional(),
 		field.JSON("profiles", &objects.APIKeyProfiles{}).
 			Default(&objects.APIKeyProfiles{}).

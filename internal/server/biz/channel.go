@@ -92,11 +92,12 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 }
 
 type ChannelService struct {
-	Channels  []*Channel
 	Executors executors.ScheduledExecutor
 	Ent       *ent.Client
+
 	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
-	latestUpdate time.Time
+	EnabledChannels []*Channel
+	latestUpdate    time.Time
 }
 
 func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {
@@ -158,7 +159,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 		channels = append(channels, channel)
 	}
 
-	svc.Channels = channels
+	svc.EnabledChannels = channels
 
 	return nil
 }
@@ -280,7 +281,7 @@ func (svc *ChannelService) ChooseChannels(
 ) ([]*Channel, error) {
 	var channels []*Channel
 
-	for _, channel := range svc.Channels {
+	for _, channel := range svc.EnabledChannels {
 		if channel.IsModelSupported(chatReq.Model) {
 			channels = append(channels, channel)
 		}

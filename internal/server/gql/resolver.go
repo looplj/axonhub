@@ -16,6 +16,8 @@ import (
 type Resolver struct {
 	client         *ent.Client
 	authService    *biz.AuthService
+	apiKeyService  *biz.APIKeyService
+	userService    *biz.UserService
 	systemService  *biz.SystemService
 	channelService *biz.ChannelService
 	requestService *biz.RequestService
@@ -26,6 +28,8 @@ type Resolver struct {
 func NewSchema(
 	client *ent.Client,
 	authService *biz.AuthService,
+	apiKeyService *biz.APIKeyService,
+	userService *biz.UserService,
 	systemService *biz.SystemService,
 	channelService *biz.ChannelService,
 	requestService *biz.RequestService,
@@ -34,6 +38,8 @@ func NewSchema(
 		Resolvers: &Resolver{
 			client:         client,
 			authService:    authService,
+			apiKeyService:  apiKeyService,
+			userService:    userService,
 			systemService:  systemService,
 			channelService: channelService,
 			requestService: requestService,

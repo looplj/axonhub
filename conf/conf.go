@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server"
 	"github.com/looplj/axonhub/internal/server/db"
 	"github.com/looplj/axonhub/internal/server/gc"
@@ -31,6 +32,7 @@ type Config struct {
 	Metrics   metrics.Config `conf:"metrics" yaml:"metrics" json:"metrics"`
 	Dumper    dumper.Config  `conf:"dumper" yaml:"dumper" json:"dumper"`
 	GC        gc.Config      `conf:"gc" yaml:"gc" json:"gc"`
+	Cache     xcache.Config  `conf:"cache" yaml:"cache" json:"cache"`
 }
 
 // Load loads configuration from YAML file and environment variables.
@@ -162,6 +164,15 @@ func setDefaults(v *viper.Viper) {
 
 	// GC defaults
 	v.SetDefault("gc.cron", "0 2 * * *") // Daily at 2:00 AM
+
+	// Cache defaults
+	v.SetDefault("cache.mode", "memory")
+	v.SetDefault("cache.default_expiration", "5m")
+	v.SetDefault("cache.cleanup_interval", "10m")
+	v.SetDefault("cache.redis.addr", "")
+	v.SetDefault("cache.redis.username", "")
+	v.SetDefault("cache.redis.password", "")
+	v.SetDefault("cache.redis.db", 0)
 }
 
 // parseLogLevel converts a string log level to zapcore.Level.

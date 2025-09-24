@@ -9,6 +9,10 @@ type APIKey implements Node {
   key: String!
   name: String!
   status: APIKeyStatus!
+  """
+  API Key specific scopes: read_channels, write_requests, etc.
+  """
+  scopes: [String!]
   profiles: APIKeyProfiles
   user: User!
   requests(

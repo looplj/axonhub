@@ -35,7 +35,7 @@ type APIKey struct {
 	// Status holds the value of the "status" field.
 	Status apikey.Status `json:"status,omitempty"`
 	// API Key specific scopes: read_channels, write_requests, etc.
-	Scopes []string `json:"-"`
+	Scopes []string `json:"scopes,omitempty"`
 	// Profiles holds the value of the "profiles" field.
 	Profiles *objects.APIKeyProfiles `json:"profiles,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -238,7 +238,8 @@ func (ak *APIKey) String() string {
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", ak.Status))
 	builder.WriteString(", ")
-	builder.WriteString("scopes=<sensitive>")
+	builder.WriteString("scopes=")
+	builder.WriteString(fmt.Sprintf("%v", ak.Scopes))
 	builder.WriteString(", ")
 	builder.WriteString("profiles=")
 	builder.WriteString(fmt.Sprintf("%v", ak.Profiles))

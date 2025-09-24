@@ -397,6 +397,12 @@ db:
   dialect: "sqlite3"
   dsn: "${BASE_DIR}/axonhub.db?cache=shared&_fk=1&journal_mode=WAL"
 
+cache:
+  mode: "memory"
+  cache:
+    expiration: "5s" 
+    cleanup_interval: "5s"
+
 log:
   level: "info"
   encoding: "json"

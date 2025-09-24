@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
 const (
@@ -59,17 +60,20 @@ type CleanupOption struct {
 
 type SystemServiceParams struct {
 	fx.In
+
+	CacheConfig xcache.Config
 }
 
 func NewSystemService(params SystemServiceParams) *SystemService {
-	return &SystemService{}
+	return &SystemService{Cache: xcache.NewFromConfig[ent.System](params.CacheConfig)}
 }
 
-type SystemService struct{}
+type SystemService struct {
+	Cache xcache.Cache[ent.System]
+}
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	client := ent.FromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyInitialized)).Only(ctx)
@@ -173,9 +177,7 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 
 // SecretKey retrieves the JWT secret key from system settings.
 func (s *SystemService) SecretKey(ctx context.Context) (string, error) {
-	client := ent.FromContext(ctx)
-
-	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeySecretKey)).Only(ctx)
+	value, err := s.getSystemValue(ctx, SystemKeySecretKey)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return "", fmt.Errorf("secret key not found, system may not be initialized")
@@ -184,7 +186,7 @@ func (s *SystemService) SecretKey(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("failed to get secret key: %w", err)
 	}
 
-	return sys.Value, nil
+	return value, nil
 }
 
 // SetSecretKey sets a new JWT secret key.
@@ -245,6 +247,28 @@ func (s *SystemService) SetBrandLogo(ctx context.Context, brandLogo string) erro
 	return s.setSystemValue(ctx, SystemKeyBrandLogo, brandLogo)
 }
 
+func (s *SystemService) getSystemValue(ctx context.Context, key string) (string, error) {
+	cacheKey := "system:" + key
+	if v, err := s.Cache.Get(ctx, cacheKey); err == nil {
+		return v.Value, nil
+	}
+
+	client := ent.FromContext(ctx)
+
+	sys, err := client.System.Query().Where(system.KeyEQ(key)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return "", nil
+		}
+
+		return "", fmt.Errorf("failed to get system value: %w", err)
+	}
+
+	_ = s.Cache.Set(ctx, cacheKey, *sys)
+
+	return sys.Value, nil
+}
+
 // setSystemValue sets or updates a system key-value pair.
 func (s *SystemService) setSystemValue(
 	ctx context.Context,
@@ -260,6 +284,11 @@ func (s *SystemService) setSystemValue(
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create system setting: %w", err)
+	}
+
+	// Invalidate cache for this key
+	if err := s.Cache.Delete(ctx, "system:"+key); err != nil {
+		log.Warn(ctx, "failed to invalidate cache", log.String("key", key), log.Cause(err))
 	}
 
 	return nil
@@ -285,9 +314,7 @@ var defaultStoragePolicy = StoragePolicy{
 
 // StoragePolicy retrieves the storage policy configuration.
 func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, error) {
-	client := ent.FromContext(ctx)
-
-	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyStoragePolicy)).Only(ctx)
+	value, err := s.getSystemValue(ctx, SystemKeyStoragePolicy)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return lo.ToPtr(defaultStoragePolicy), nil
@@ -297,16 +324,16 @@ func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, erro
 	}
 
 	var policy StoragePolicy
-	if err := json.Unmarshal([]byte(sys.Value), &policy); err != nil {
+	if err := json.Unmarshal([]byte(value), &policy); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal storage policy: %w", err)
 	}
 
 	// Backward compatibility: if new keys are absent in stored JSON, default them to true
-	if !strings.Contains(sys.Value, "\"store_request_body\"") {
+	if !strings.Contains(value, "\"store_request_body\"") {
 		policy.StoreRequestBody = true
 	}
 
-	if !strings.Contains(sys.Value, "\"store_response_body\"") {
+	if !strings.Contains(value, "\"store_response_body\"") {
 		policy.StoreResponseBody = true
 	}
 
