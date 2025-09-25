@@ -45,7 +45,7 @@ func (APIKey) Fields() []ent.Field {
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
 		field.String("name"),
-		field.Enum("status").Values("enabled", "disabled").Default("enabled").Annotations(
+		field.Enum("status").Values("enabled", "disabled", "archived").Default("enabled").Annotations(
 			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 		),
 		field.Strings("scopes").

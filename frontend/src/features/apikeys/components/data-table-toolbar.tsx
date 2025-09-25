@@ -66,6 +66,10 @@ export function DataTableToolbar<TData>({
       value: 'disabled' as ApiKeyStatus,
       label: t('apikeys.status.disabled'),
     },
+    {
+      value: 'archived' as ApiKeyStatus,
+      label: t('apikeys.status.archived'),
+    },
   ]
 
   return (

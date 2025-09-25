@@ -34,6 +34,9 @@ function ApiKeysContent() {
     }
     if (statusFilter.length > 0) {
       where.statusIn = statusFilter
+    } else {
+      // By default, exclude archived API keys when no status filter is applied
+      where.statusIn = ['enabled', 'disabled']
     }
     if (userFilter.length > 0 && userFilter[0]) {
       where.userID = userFilter[0] // API expects single userID
