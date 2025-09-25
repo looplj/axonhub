@@ -254,7 +254,8 @@
     },
     "status": {
       "enabled": "已启用",
-      "disabled": "已禁用"
+      "disabled": "已禁用",
+      "archived": "已归档"
     },
     "actions": {
       "openMenu": "打开菜单",
@@ -262,6 +263,7 @@
       "profiles": "配置文件",
       "enable": "启用",
       "disable": "禁用",
+      "archive": "归档",
       "delete": "删除",
       "copy": "复制",
       "view": "查看",
@@ -287,7 +289,13 @@
         "disableTitle": "禁用 API Key",
         "enableTitle": "启用 API Key",
         "disableDescription": "确定要禁用 API Key \"{{name}}\" 吗？",
-        "enableDescription": "确定要启用 API Key \"{{name}}\" 吗？"
+        "enableDescription": "确定要启用 API Key \"{{name}}\" 吗？",
+        "archive": {
+          "title": "归档 API Key",
+          "description": "确定要归档 API Key \"{{name}}\" 吗？",
+          "warning": "此操作将从列表中隐藏 API Key。您仍然可以通过使用状态筛选器来查看已归档的密钥。",
+          "button": "归档"
+        }
       },
       "view": {
         "title": "查看 API 密钥",
@@ -323,6 +331,8 @@
         "enabling": "激活中...",
         "disable": "停用",
         "disabling": "停用中...",
+        "archive": "归档",
+        "archiving": "归档中...",
         "save": "保存",
         "saving": "保存中..."
       }

@@ -1,20 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
 import { graphqlRequest } from '@/gql/graphql'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { useErrorHandler } from '@/hooks/use-error-handler'
 import { useRequestPermissions } from '../../../gql/useRequestPermissions'
-import type { ApiKey, ApiKeyConnection, CreateApiKeyInput, UpdateApiKeyInput, UpdateApiKeyProfilesInput } from './schema'
+import type {
+  ApiKey,
+  ApiKeyConnection,
+  CreateApiKeyInput,
+  UpdateApiKeyInput,
+  UpdateApiKeyProfilesInput,
+} from './schema'
 import { apiKeyConnectionSchema, apiKeySchema } from './schema'
-import { toast } from 'sonner'
 
 // Dynamic GraphQL query builders
 function buildApiKeysQuery(permissions: { canViewUsers: boolean }) {
-  const userFields = permissions.canViewUsers ? `
+  const userFields = permissions.canViewUsers
+    ? `
           user {
             id
             firstName
             lastName
-          }` : ''
+          }`
+    : ''
 
   return `
     query GetApiKeys($first: Int, $after: Cursor, $orderBy: APIKeyOrder, $where: APIKeyWhereInput) {
@@ -43,12 +51,14 @@ function buildApiKeysQuery(permissions: { canViewUsers: boolean }) {
 }
 
 function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
-  const userFields = permissions.canViewUsers ? `
+  const userFields = permissions.canViewUsers
+    ? `
       user {
         id
         firstName
         lastName
-      }` : ''
+      }`
+    : ''
 
   return `
     query GetApiKey($id: ID!) {
@@ -74,12 +84,14 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
 }
 
 function buildCreateApiKeyMutation(permissions: { canViewUsers: boolean }) {
-  const userFields = permissions.canViewUsers ? `
+  const userFields = permissions.canViewUsers
+    ? `
       user {
         id
         firstName
         lastName
-      }` : ''
+      }`
+    : ''
 
   return `
     mutation CreateAPIKey($input: CreateAPIKeyInput!) {
@@ -96,12 +108,14 @@ function buildCreateApiKeyMutation(permissions: { canViewUsers: boolean }) {
 }
 
 function buildUpdateApiKeyMutation(permissions: { canViewUsers: boolean }) {
-  const userFields = permissions.canViewUsers ? `
+  const userFields = permissions.canViewUsers
+    ? `
       user {
         id
         firstName
         lastName
-      }` : ''
+      }`
+    : ''
 
   return `
     mutation UpdateAPIKey($id: ID!, $input: UpdateAPIKeyInput!) {
@@ -151,16 +165,13 @@ export function useApiKeys(variables?: {
   const { t } = useTranslation()
   const { handleError } = useErrorHandler()
   const permissions = useRequestPermissions()
-  
+
   return useQuery({
     queryKey: ['apiKeys', variables, permissions],
     queryFn: async () => {
       try {
         const query = buildApiKeysQuery(permissions)
-        const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(
-          query,
-          variables
-        )
+        const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(query, variables)
         return apiKeyConnectionSchema.parse(data?.apiKeys)
       } catch (error) {
         handleError(error, t('apikeys.errors.fetchData'))
@@ -174,7 +185,7 @@ export function useApiKey(id: string) {
   const { t } = useTranslation()
   const { handleError } = useErrorHandler()
   const permissions = useRequestPermissions()
-  
+
   return useQuery({
     queryKey: ['apiKey', id, permissions],
     queryFn: async () => {
@@ -195,7 +206,7 @@ export function useCreateApiKey() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const permissions = useRequestPermissions()
-  
+
   return useMutation({
     mutationFn: (input: CreateApiKeyInput) => {
       const mutation = buildCreateApiKeyMutation(permissions)
@@ -216,7 +227,7 @@ export function useUpdateApiKey() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const permissions = useRequestPermissions()
-  
+
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyInput }) => {
       const mutation = buildUpdateApiKeyMutation(permissions)
@@ -237,16 +248,19 @@ export function useUpdateApiKey() {
 export function useUpdateApiKeyStatus() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  
+
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'enabled' | 'disabled' }) => 
+    mutationFn: ({ id, status }: { id: string; status: 'enabled' | 'disabled' | 'archived' }) =>
       graphqlRequest<{ updateAPIKeyStatus: ApiKey }>(UPDATE_APIKEY_STATUS_MUTATION, { id, status }),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] })
-      const statusText = data.updateAPIKeyStatus.status === 'enabled' 
-        ? t('apikeys.status.enabled') 
-        : t('apikeys.status.disabled')
+      const statusText =
+        data.updateAPIKeyStatus.status === 'enabled'
+          ? t('apikeys.status.enabled')
+          : data.updateAPIKeyStatus.status === 'disabled'
+            ? t('apikeys.status.disabled')
+            : t('apikeys.status.archived')
       toast.success(t('apikeys.messages.statusUpdateSuccess', { status: statusText }))
     },
     onError: (error) => {
@@ -259,9 +273,9 @@ export function useUpdateApiKeyStatus() {
 export function useUpdateApiKeyProfiles() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  
+
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyProfilesInput }) => 
+    mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyProfilesInput }) =>
       graphqlRequest<{ updateAPIKeyProfiles: ApiKey }>(UPDATE_APIKEY_PROFILES_MUTATION, { id, input }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })

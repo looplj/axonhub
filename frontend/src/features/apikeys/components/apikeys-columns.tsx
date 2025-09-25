@@ -159,9 +159,21 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     ),
     cell: ({ row }) => {
       const status = row.getValue('status') as string
+      const statusText = {
+        enabled: t('apikeys.status.enabled'),
+        disabled: t('apikeys.status.disabled'),
+        archived: t('apikeys.status.archived'),
+      }[status] || t('apikeys.status.disabled')
+
+      const statusColor = {
+        enabled: 'text-green-600',
+        disabled: 'text-red-600',
+        archived: 'text-orange-600',
+      }[status] || 'text-red-600'
+
       return (
-        <div className={`text-sm ${status === 'enabled' ? 'text-green-600' : 'text-red-600'}`}>
-          {status === 'enabled' ? t('apikeys.status.enabled') : t('apikeys.status.disabled')}
+        <div className={`text-sm ${statusColor}`}>
+          {statusText}
         </div>
       )
     },

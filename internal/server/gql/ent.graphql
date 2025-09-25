@@ -102,6 +102,7 @@ APIKeyStatus is enum for the field status
 enum APIKeyStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/apikey.Status") {
   enabled
   disabled
+  archived
 }
 """
 APIKeyWhereInput is used for filtering APIKey objects.

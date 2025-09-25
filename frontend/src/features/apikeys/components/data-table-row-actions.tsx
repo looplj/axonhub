@@ -1,5 +1,5 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
-import { IconUserOff, IconUserCheck, IconEdit, IconSettings } from '@tabler/icons-react'
+import { IconUserOff, IconUserCheck, IconEdit, IconSettings, IconArchive } from '@tabler/icons-react'
 import { Row } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -26,7 +26,15 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   }
 
   const handleStatusChange = (apiKey: ApiKey) => {
+    if (apiKey.status === 'archived') {
+      // Archived API keys cannot be enabled/disabled
+      return
+    }
     openDialog('status', apiKey)
+  }
+
+  const handleArchive = (apiKey: ApiKey) => {
+    openDialog('archive', apiKey)
   }
 
   const handleProfiles = (apiKey: ApiKey) => {
@@ -53,22 +61,33 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <IconSettings className='mr-2 h-4 w-4' />
             {t('apikeys.actions.profiles')}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => handleStatusChange(apiKey)}
-            className={apiKey.status === 'enabled' ? 'text-orange-600' : 'text-green-600'}
-          >
-            {apiKey.status === 'enabled' ? (
-              <>
-                <IconUserOff className='mr-2 h-4 w-4' />
-                {t('apikeys.actions.disable')}
-              </>
-            ) : (
-              <>
-                <IconUserCheck className='mr-2 h-4 w-4' />
-                {t('apikeys.actions.enable')}
-              </>
-            )}
-          </DropdownMenuItem>
+          {apiKey.status !== 'archived' && (
+            <DropdownMenuItem
+              onClick={() => handleStatusChange(apiKey)}
+              className={apiKey.status === 'enabled' ? 'text-orange-600' : 'text-green-600'}
+            >
+              {apiKey.status === 'enabled' ? (
+                <>
+                  <IconUserOff className='mr-2 h-4 w-4' />
+                  {t('apikeys.actions.disable')}
+                </>
+              ) : (
+                <>
+                  <IconUserCheck className='mr-2 h-4 w-4' />
+                  {t('apikeys.actions.enable')}
+                </>
+              )}
+            </DropdownMenuItem>
+          )}
+          {apiKey.status !== 'archived' && (
+            <DropdownMenuItem
+              onClick={() => handleArchive(apiKey)}
+              className='text-orange-600'
+            >
+              <IconArchive className='mr-2 h-4 w-4' />
+              {t('apikeys.actions.archive')}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
     </DropdownMenu>
   )

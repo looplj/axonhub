@@ -4,6 +4,7 @@ import { ApiKeysEditDialog } from './apikeys-edit-dialog'
 import { ApiKeysStatusDialog } from './apikeys-status-dialog'
 import { ApiKeysViewDialog } from './apikeys-view-dialog'
 import { ApiKeyProfilesDialog } from './apikeys-profiles-dialog'
+import { ApiKeysArchiveDialog } from './apikeys-archive-dialog'
 import { useApiKeysContext } from '../context/apikeys-context'
 import { type UpdateApiKeyProfilesInput } from '../data/schema'
 import { useApiKey, useUpdateApiKeyProfiles } from '../data/apikeys'
@@ -16,6 +17,7 @@ export function ApiKeysDialogs() {
       {/* <ApiKeysDeleteDialog /> */}
       <ApiKeysStatusDialog />
       <ApiKeysViewDialog />
+      <ApiKeysArchiveDialog />
       <ApiKeysProfilesDialogWrapper />
     </>
   )

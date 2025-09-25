@@ -116,6 +116,7 @@ const DefaultStatus = StatusEnabled
 const (
 	StatusEnabled  Status = "enabled"
 	StatusDisabled Status = "disabled"
+	StatusArchived Status = "archived"
 )
 
 func (s Status) String() string {
@@ -125,7 +126,7 @@ func (s Status) String() string {
 // StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
 func StatusValidator(s Status) error {
 	switch s {
-	case StatusEnabled, StatusDisabled:
+	case StatusEnabled, StatusDisabled, StatusArchived:
 		return nil
 	default:
 		return fmt.Errorf("apikey: invalid enum value for status field: %q", s)
