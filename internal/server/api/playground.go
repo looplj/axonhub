@@ -33,12 +33,14 @@ type PlaygroundHandlersParams struct {
 
 	ChannelService *biz.ChannelService
 	RequestService *biz.RequestService
+	SystemService  *biz.SystemService
 	HttpClient     *httpclient.HttpClient
 }
 
 type PlaygroundHandlers struct {
 	ChannelService *biz.ChannelService
 	RequestService *biz.RequestService
+	SystemService  *biz.SystemService
 	HttpClient     *httpclient.HttpClient
 }
 
@@ -46,6 +48,7 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 	return &PlaygroundHandlers{
 		ChannelService: params.ChannelService,
 		RequestService: params.RequestService,
+		SystemService:  params.SystemService,
 		HttpClient:     params.HttpClient,
 	}
 }
@@ -223,6 +226,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 			handlers.RequestService,
 			handlers.HttpClient,
 			aisdk.NewDataStreamTransformer(),
+			handlers.SystemService,
 		)
 	} else {
 		// Use default processor with all available channels
@@ -231,6 +235,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 			handlers.RequestService,
 			handlers.HttpClient,
 			aisdk.NewDataStreamTransformer(),
+			handlers.SystemService,
 		)
 	}
 

@@ -13,10 +13,22 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
-// ChannelRetryable interface for transformers that support channel switching.
-type ChannelRetryable interface {
-	NextChannel(ctx context.Context) error
+// Retryable interface for transformers that support channel switching.
+type Retryable interface {
+	// HasMoreChannels returns true if there are more channels to switch to.
 	HasMoreChannels() bool
+
+	// NextChannel switches to the next channel.
+	NextChannel(ctx context.Context) error
+}
+
+// ChannelRetryable interface for transformers that support same-channel retry.
+type ChannelRetryable interface {
+	// CanRetry returns true if the transformer can retry for current channel.
+	CanRetry() bool
+
+	// PrepareForRetry prepares the transformer for retry.
+	PrepareForRetry(ctx context.Context) error
 }
 
 // ChannelCustomizedExecutor interface for channel need custom the process of request.
@@ -35,6 +47,13 @@ func WithRetry(maxRetries int, retryDelay time.Duration, retryableErrors ...stri
 		p.maxRetries = maxRetries
 		p.retryDelay = retryDelay
 		p.retryableErrors = retryableErrors
+	}
+}
+
+// WithSameChannelRetry configures same-channel retry behavior for the pipeline.
+func WithSameChannelRetry(maxSameChannelRetries int) Option {
+	return func(p *pipeline) {
+		p.maxSameChannelRetries = maxSameChannelRetries
 	}
 }
 
@@ -79,13 +98,14 @@ func (f *Factory) Pipeline(
 
 // pipeline implements the main pipeline logic with retry capabilities.
 type pipeline struct {
-	Executor        Executor
-	Inbound         transformer.Inbound
-	Outbound        transformer.Outbound
-	decorators      []decorator.Decorator
-	maxRetries      int
-	retryDelay      time.Duration
-	retryableErrors []string
+	Executor              Executor
+	Inbound               transformer.Inbound
+	Outbound              transformer.Outbound
+	decorators            []decorator.Decorator
+	maxRetries            int
+	maxSameChannelRetries int
+	retryDelay            time.Duration
+	retryableErrors       []string
 }
 
 type Result struct {
@@ -109,22 +129,57 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 	var lastErr error
 
 	maxAttempts := p.maxRetries + 1 // maxRetries + initial attempt
+	sameChannelAttempts := 0
 
 	for attempt := range maxAttempts {
 		if attempt > 0 {
 			log.Debug(ctx, "retrying pipeline process", log.Any("attempt", attempt))
 
-			// Try to switch to next channel if available
+			// First try same-channel retry if available and not exhausted
 			if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
-				if channelRetryable.HasMoreChannels() {
-					err := channelRetryable.NextChannel(ctx)
+				if channelRetryable.CanRetry() && sameChannelAttempts < p.getMaxSameChannelRetries() {
+					err := channelRetryable.PrepareForRetry(ctx)
 					if err != nil {
-						log.Warn(ctx, "failed to switch to next channel", log.Cause(err))
-						break
+						log.Warn(ctx, "failed to prepare same channel retry", log.Cause(err))
+					} else {
+						sameChannelAttempts++
+						log.Debug(ctx, "retrying same channel",
+							log.Any("sameChannelAttempt", sameChannelAttempts),
+							log.Any("maxSameChannelRetries", p.getMaxSameChannelRetries()))
 					}
 				} else {
-					log.Debug(ctx, "no more channels available for retry")
-					break
+					// Same-channel retries exhausted, try to switch to next channel
+					if retryable, ok := p.Outbound.(Retryable); ok {
+						if retryable.HasMoreChannels() {
+							err := retryable.NextChannel(ctx)
+							if err != nil {
+								log.Warn(ctx, "failed to switch to next channel", log.Cause(err))
+								break
+							}
+
+							sameChannelAttempts = 0 // Reset same-channel attempts for new channel
+						} else {
+							log.Debug(ctx, "no more channels available for retry")
+							break
+						}
+					} else {
+						log.Debug(ctx, "same channel retries exhausted and no channel switching available")
+						break
+					}
+				}
+			} else {
+				// Fallback to channel switching if same-channel retry not supported
+				if retryable, ok := p.Outbound.(Retryable); ok {
+					if retryable.HasMoreChannels() {
+						err := retryable.NextChannel(ctx)
+						if err != nil {
+							log.Warn(ctx, "failed to switch to next channel", log.Cause(err))
+							break
+						}
+					} else {
+						log.Debug(ctx, "no more channels available for retry")
+						break
+					}
 				}
 			}
 
@@ -150,7 +205,8 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		log.Warn(ctx, "pipeline process failed, will retry",
 			log.Cause(err),
 			log.Any("attempt", attempt),
-			log.Any("maxRetries", p.maxRetries))
+			log.Any("maxRetries", p.maxRetries),
+			log.Any("sameChannelAttempts", sameChannelAttempts))
 	}
 
 	return nil, lastErr
@@ -183,6 +239,11 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 	}
 
 	return result, nil
+}
+
+// getMaxSameChannelRetries returns the maximum number of same-channel retries.
+func (p *pipeline) getMaxSameChannelRetries() int {
+	return p.maxSameChannelRetries
 }
 
 // isRetryableError checks if an error is retryable based on configuration.

@@ -44,6 +44,7 @@ type AnthropicHandlersParams struct {
 
 	ChannelService *biz.ChannelService
 	RequestService *biz.RequestService
+	SystemService  *biz.SystemService
 	HttpClient     *httpclient.HttpClient
 }
 
@@ -59,6 +60,7 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 				params.RequestService,
 				params.HttpClient,
 				anthropic.NewInboundTransformer(),
+				params.SystemService,
 			),
 		},
 	}

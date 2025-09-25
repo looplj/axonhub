@@ -20,6 +20,7 @@ type AiSdkHandlersParams struct {
 
 	ChannelService *biz.ChannelService
 	RequestService *biz.RequestService
+	SystemService  *biz.SystemService
 	HttpClient     *httpclient.HttpClient
 }
 
@@ -35,6 +36,7 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 			params.RequestService,
 			params.HttpClient,
 			aisdk.NewTextTransformer(),
+			params.SystemService,
 		),
 		SSEChatCompletionHandler: &ChatCompletionSSEHandlers{
 			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
@@ -42,6 +44,7 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 				params.RequestService,
 				params.HttpClient,
 				aisdk.NewDataStreamTransformer(),
+				params.SystemService,
 			),
 		},
 	}

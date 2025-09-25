@@ -41,6 +41,16 @@ func (r *mutationResolver) UpdateStoragePolicy(ctx context.Context, input biz.St
 	return true, nil
 }
 
+// UpdateRetryPolicy is the resolver for the updateRetryPolicy field.
+func (r *mutationResolver) UpdateRetryPolicy(ctx context.Context, input biz.RetryPolicy) (bool, error) {
+	err := r.systemService.SetRetryPolicy(ctx, &input)
+	if err != nil {
+		return false, fmt.Errorf("failed to update retry policy: %w", err)
+	}
+
+	return true, nil
+}
+
 // SystemStatus is the resolver for the systemStatus field.
 func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error) {
 	isInitialized, err := r.systemService.IsInitialized(ctx)
@@ -76,4 +86,9 @@ func (r *queryResolver) BrandSettings(ctx context.Context) (*BrandSettings, erro
 // StoragePolicy is the resolver for the storagePolicy field.
 func (r *queryResolver) StoragePolicy(ctx context.Context) (*biz.StoragePolicy, error) {
 	return r.systemService.StoragePolicy(ctx)
+}
+
+// RetryPolicy is the resolver for the retryPolicy field.
+func (r *queryResolver) RetryPolicy(ctx context.Context) (*biz.RetryPolicy, error) {
+	return r.systemService.RetryPolicy(ctx)
 }

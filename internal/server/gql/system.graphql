@@ -54,13 +54,29 @@ input CleanupOptionInput {
   cleanupDays: Int!
 }
 
+type RetryPolicy {
+  maxChannelRetries: Int!
+  maxSingleChannelRetries: Int!
+  retryDelayMs: Int!
+  enabled: Boolean!
+}
+
+input UpdateRetryPolicyInput {
+  maxChannelRetries: Int
+  maxSingleChannelRetries: Int
+  retryDelayMs: Int
+  enabled: Boolean
+}
+
 extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
+  updateRetryPolicy(input: UpdateRetryPolicyInput!): Boolean!
 }
 
 extend type Query {
   systemStatus: SystemStatus!
   brandSettings: BrandSettings!
   storagePolicy: StoragePolicy!
+  retryPolicy: RetryPolicy!
 }

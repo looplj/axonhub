@@ -95,6 +95,12 @@ models:
   CleanupOptionInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.CleanupOption
+  RetryPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.RetryPolicy
+  UpdateRetryPolicyInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.RetryPolicy
   UpdateAPIKeyProfilesInput:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyProfiles
