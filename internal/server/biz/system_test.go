@@ -73,11 +73,12 @@ func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
 
-	// Getting secret key before initialization should return empty string
+	// Getting secret key before initialization should return error
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	secretKey, err := service.SecretKey(ctx)
-	require.NoError(t, err)
-	require.Empty(t, secretKey) // Should be empty when not initialized
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "secret key not found, system may not be initialized")
+	require.Empty(t, secretKey) // Should be empty when error occurs
 }
 
 func setupTestSystemService(t *testing.T, cacheConfig xcache.Config) (*SystemService, *ent.Client) {
@@ -461,8 +462,9 @@ func TestSystemService_GetSystemValue_NotFound(t *testing.T) {
 
 	// Try to get non-existent key
 	value, err := service.getSystemValue(ctx, "non-existent-key")
-	require.NoError(t, err)
-	assert.Empty(t, value) // Should return empty string for not found
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to get system value")
+	assert.Empty(t, value) // Should return empty string when error occurs
 }
 
 func TestSystemService_BrandName_NotSet(t *testing.T) {

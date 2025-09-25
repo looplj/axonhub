@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"time"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/llm/decorator"
@@ -20,12 +21,14 @@ func NewChatCompletionProcessor(
 	requestService *biz.RequestService,
 	httpClient *httpclient.HttpClient,
 	inbound transformer.Inbound,
+	systemService *biz.SystemService,
 ) *ChatCompletionProcessor {
 	return NewChatCompletionProcessorWithSelector(
 		NewDefaultChannelSelector(channelService),
 		requestService,
 		httpClient,
 		inbound,
+		systemService,
 	)
 }
 
@@ -34,11 +37,13 @@ func NewChatCompletionProcessorWithSelector(
 	requestService *biz.RequestService,
 	httpClient *httpclient.HttpClient,
 	inbound transformer.Inbound,
+	systemService *biz.SystemService,
 ) *ChatCompletionProcessor {
 	return &ChatCompletionProcessor{
 		ChannelSelector: channelSelector,
 		Inbound:         inbound,
 		RequestService:  requestService,
+		SystemService:   systemService,
 		Decorators: []decorator.Decorator{
 			stream.EnsureUsage(),
 		},
@@ -51,6 +56,7 @@ type ChatCompletionProcessor struct {
 	ChannelSelector ChannelSelector
 	Inbound         transformer.Inbound
 	RequestService  *biz.RequestService
+	SystemService   *biz.SystemService
 	Decorators      []decorator.Decorator
 	PipelineFactory *pipeline.Factory
 	ModelMapper     *ModelMapper
@@ -78,11 +84,30 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		processor.ChannelSelector,
 	)
 
+	// Get retry policy from system settings
+	retryPolicy := processor.SystemService.RetryPolicyOrDefault(ctx)
+
+	var pipelineOpts []pipeline.Option
+
+	// Only apply retry if policy is enabled
+	if retryPolicy.Enabled {
+		pipelineOpts = append(pipelineOpts, pipeline.WithRetry(
+			retryPolicy.MaxChannelRetries,
+			time.Duration(retryPolicy.RetryDelayMs)*time.Millisecond,
+		))
+
+		// Add same-channel retry configuration
+		pipelineOpts = append(pipelineOpts, pipeline.WithSameChannelRetry(
+			retryPolicy.MaxSingleChannelRetries,
+		))
+	}
+
+	pipelineOpts = append(pipelineOpts, pipeline.WithDecorators(processor.Decorators...))
+
 	pipe := processor.PipelineFactory.Pipeline(
 		inbound,
 		outbound,
-		pipeline.WithRetry(3, 0),
-		pipeline.WithDecorators(processor.Decorators...),
+		pipelineOpts...,
 	)
 
 	result, err := pipe.Process(ctx, request)

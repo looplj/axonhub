@@ -41,6 +41,10 @@ const (
 	// SystemKeyStoragePolicy is the key used to store the storage policy configuration.
 	// The value is JSON-encoded StoragePolicy struct.
 	SystemKeyStoragePolicy = "storage_policy"
+
+	// SystemKeyRetryPolicy is the key used to store the retry policy configuration.
+	// The value is JSON-encoded RetryPolicy struct.
+	SystemKeyRetryPolicy = "retry_policy"
 )
 
 // StoragePolicy represents the storage policy configuration.
@@ -56,6 +60,18 @@ type CleanupOption struct {
 	ResourceType string `json:"resource_type"`
 	Enabled      bool   `json:"enabled"`
 	CleanupDays  int    `json:"cleanup_days"`
+}
+
+// RetryPolicy represents the retry policy configuration.
+type RetryPolicy struct {
+	// MaxChannelRetries defines the maximum number of different channels to retry
+	MaxChannelRetries int `json:"max_channel_retries"`
+	// MaxSingleChannelRetries defines the maximum number of retries for a single channel
+	MaxSingleChannelRetries int `json:"max_single_channel_retries"`
+	// RetryDelayMs defines the delay between retries in milliseconds
+	RetryDelayMs int `json:"retry_delay_ms"`
+	// Enabled controls whether retry policy is active
+	Enabled bool `json:"enabled"`
 }
 
 type SystemServiceParams struct {
@@ -257,10 +273,6 @@ func (s *SystemService) getSystemValue(ctx context.Context, key string) (string,
 
 	sys, err := client.System.Query().Where(system.KeyEQ(key)).Only(ctx)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return "", nil
-		}
-
 		return "", fmt.Errorf("failed to get system value: %w", err)
 	}
 
@@ -312,6 +324,13 @@ var defaultStoragePolicy = StoragePolicy{
 	},
 }
 
+var defaultRetryPolicy = RetryPolicy{
+	MaxChannelRetries:       3,
+	MaxSingleChannelRetries: 2,
+	RetryDelayMs:            1000,
+	Enabled:                 true,
+}
+
 // StoragePolicy retrieves the storage policy configuration.
 func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, error) {
 	value, err := s.getSystemValue(ctx, SystemKeyStoragePolicy)
@@ -348,4 +367,54 @@ func (s *SystemService) SetStoragePolicy(ctx context.Context, policy *StoragePol
 	}
 
 	return s.setSystemValue(ctx, SystemKeyStoragePolicy, string(jsonBytes))
+}
+
+// RetryPolicy retrieves the retry policy configuration.
+func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyRetryPolicy)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultRetryPolicy), nil
+		}
+
+		return nil, fmt.Errorf("failed to get retry policy: %w", err)
+	}
+
+	var policy RetryPolicy
+	if err := json.Unmarshal([]byte(value), &policy); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal retry policy: %w", err)
+	}
+
+	return &policy, nil
+}
+
+func (s *SystemService) RetryPolicyOrDefault(ctx context.Context) *RetryPolicy {
+	value, err := s.getSystemValue(ctx, SystemKeyRetryPolicy)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultRetryPolicy)
+		}
+
+		log.Warn(ctx, "failed to get retry policy", log.Cause(err))
+
+		return lo.ToPtr(defaultRetryPolicy)
+	}
+
+	var policy RetryPolicy
+	if err := json.Unmarshal([]byte(value), &policy); err != nil {
+		log.Warn(ctx, "failed to unmarshal retry policy", log.Cause(err))
+		return lo.ToPtr(defaultRetryPolicy)
+	}
+
+	return &policy
+}
+
+// SetRetryPolicy sets the retry policy configuration.
+func (s *SystemService) SetRetryPolicy(ctx context.Context, policy *RetryPolicy) error {
+	jsonBytes, err := json.Marshal(policy)
+	if err != nil {
+		return fmt.Errorf("failed to marshal retry policy: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyRetryPolicy, string(jsonBytes))
 }

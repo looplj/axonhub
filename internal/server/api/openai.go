@@ -15,6 +15,7 @@ type OpenAIHandlersParams struct {
 
 	ChannelService *biz.ChannelService
 	RequestService *biz.RequestService
+	SystemService  *biz.SystemService
 	HttpClient     *httpclient.HttpClient
 }
 
@@ -30,6 +31,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RequestService,
 				params.HttpClient,
 				openai.NewInboundTransformer(),
+				params.SystemService,
 			),
 		},
 	}

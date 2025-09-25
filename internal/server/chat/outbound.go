@@ -325,6 +325,11 @@ func (p *PersistentOutboundTransformer) GetCurrentChannelOutbound() transformer.
 	return nil
 }
 
+// HasMoreChannels returns true if there are more channels available for retry.
+func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
+	return p.state.ChannelIndex+1 < len(p.state.Channels)
+}
+
 // NextChannel moves to the next available channel for retry.
 func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	// Before switching to the next channel, if we have a current request execution that failed,
@@ -360,9 +365,40 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	return nil
 }
 
-// HasMoreChannels returns true if there are more channels available for retry.
-func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
-	return p.state.ChannelIndex+1 < len(p.state.Channels)
+// PrepareForRetry prepares for retrying the same channel.
+// This creates a new request execution for the same channel without switching channels.
+func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) error {
+	if p.state.CurrentChannel == nil {
+		return errors.New("no current channel available for same-channel retry")
+	}
+
+	// Mark the current request execution as failed before creating a new one
+	if p.state.RequestExec != nil {
+		// Use context without cancellation to ensure persistence even if client canceled
+		persistCtx := context.WithoutCancel(ctx)
+
+		err := p.state.RequestService.UpdateRequestExecutionFailed(
+			persistCtx,
+			p.state.RequestExec.ID,
+			"Same channel retry - previous attempt failed",
+		)
+		if err != nil {
+			log.Warn(persistCtx, "Failed to update request execution status to failed for same-channel retry", log.Cause(err))
+		}
+	}
+
+	// Reset request execution for the same channel retry
+	p.state.RequestExec = nil
+
+	log.Debug(ctx, "prepared same channel retry",
+		log.Any("channel", p.state.CurrentChannel.Name))
+
+	return nil
+}
+
+// CanRetry returns true if the current channel can be retried.
+func (p *PersistentOutboundTransformer) CanRetry() bool {
+	return p.state.CurrentChannel != nil
 }
 
 // CustomizeExecutor customizes the executor for the current channel.

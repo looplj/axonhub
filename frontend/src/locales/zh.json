@@ -755,7 +755,8 @@
     "loading": "加载系统设置...",
     "tabs": {
       "brand": "品牌",
-      "storage": "存储"
+      "storage": "存储",
+      "retry": "重试"
     },
     "storage": {
       "title": "存储设置",
@@ -809,6 +810,26 @@
       "title": "其他设置",
       "description": "更多系统配置选项将在此处添加",
       "comingSoon": "更多配置选项即将推出..."
+    },
+    "retry": {
+      "title": "重试策略",
+      "description": "配置失败请求的自动重试行为",
+      "enabled": {
+        "label": "启用重试",
+        "description": "启用后，系统将自动重试失败的请求"
+      },
+      "maxChannelRetries": {
+        "label": "最大渠道重试次数",
+        "description": "跨不同渠道的最大重试次数 (0-10)"
+      },
+      "maxSingleChannelRetries": {
+        "label": "单渠道最大重试次数",
+        "description": "同一渠道的最大重试次数 (0-5)"
+      },
+      "retryDelayMs": {
+        "label": "重试延迟",
+        "description": "重试间隔时间，单位毫秒 (100-10000ms)"
+      }
     },
     "buttons": {
       "save": "保存设置",

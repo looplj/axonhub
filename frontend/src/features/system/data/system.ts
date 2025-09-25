@@ -41,6 +41,23 @@ const UPDATE_STORAGE_POLICY_MUTATION = `
   }
 `
 
+const RETRY_POLICY_QUERY = `
+  query RetryPolicy {
+    retryPolicy {
+      maxChannelRetries
+      maxSingleChannelRetries
+      retryDelayMs
+      enabled
+    }
+  }
+`
+
+const UPDATE_RETRY_POLICY_MUTATION = `
+  mutation UpdateRetryPolicy($input: UpdateRetryPolicyInput!) {
+    updateRetryPolicy(input: $input)
+  }
+`
+
 // Types
 export interface BrandSettings {
   brandName?: string
@@ -76,6 +93,20 @@ export interface CleanupOptionInput {
   resourceType: string
   enabled: boolean
   cleanupDays: number
+}
+
+export interface RetryPolicy {
+  maxChannelRetries: number
+  maxSingleChannelRetries: number
+  retryDelayMs: number
+  enabled: boolean
+}
+
+export interface RetryPolicyInput {
+  maxChannelRetries?: number
+  maxSingleChannelRetries?: number
+  retryDelayMs?: number
+  enabled?: boolean
 }
 
 // Hooks
@@ -132,7 +163,7 @@ export function useUpdateBrandSettings() {
       queryClient.invalidateQueries({ queryKey: ['brandSettings'] })
       toast.success(i18n.t('common.success.systemUpdated'))
     },
-    onError: (error: any) => {
+    onError: () => {
       toast.error(i18n.t('common.errors.systemUpdateFailed'))
     },
   })
@@ -153,7 +184,47 @@ export function useUpdateStoragePolicy() {
       queryClient.invalidateQueries({ queryKey: ['storagePolicy'] })
       toast.success(i18n.t('common.success.systemUpdated'))
     },
-    onError: (error: any) => {
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'))
+    },
+  })
+}
+
+export function useRetryPolicy() {
+  const { handleError } = useErrorHandler()
+  
+  return useQuery({
+    queryKey: ['retryPolicy'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ retryPolicy: RetryPolicy }>(
+          RETRY_POLICY_QUERY
+        )
+        return data.retryPolicy
+      } catch (error) {
+        handleError(error, '获取重试策略')
+        throw error
+      }
+    },
+  })
+}
+
+export function useUpdateRetryPolicy() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (input: RetryPolicyInput) => {
+      const data = await graphqlRequest<{ updateRetryPolicy: boolean }>(
+        UPDATE_RETRY_POLICY_MUTATION,
+        { input }
+      )
+      return data.updateRetryPolicy
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['retryPolicy'] })
+      toast.success(i18n.t('common.success.systemUpdated'))
+    },
+    onError: () => {
       toast.error(i18n.t('common.errors.systemUpdateFailed'))
     },
   })

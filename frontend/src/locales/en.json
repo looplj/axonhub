@@ -723,7 +723,8 @@
     "loading": "Loading system settings...",
     "tabs": {
       "brand": "Brand",
-      "storage": "Storage"
+      "storage": "Storage",
+      "retry": "Retry"
     },
     "storage": {
       "title": "Storage Settings",
@@ -777,6 +778,26 @@
       "title": "Other Settings",
       "description": "More system configuration options will be added here",
       "comingSoon": "More configuration options coming soon..."
+    },
+    "retry": {
+      "title": "Retry Policy",
+      "description": "Configure automatic retry behavior for failed requests",
+      "enabled": {
+        "label": "Enable Retry",
+        "description": "When enabled, the system will automatically retry failed requests"
+      },
+      "maxChannelRetries": {
+        "label": "Max Channel Retries",
+        "description": "Maximum number of times to retry across different channels (0-10)"
+      },
+      "maxSingleChannelRetries": {
+        "label": "Max Single Channel Retries",
+        "description": "Maximum number of times to retry on the same channel (0-5)"
+      },
+      "retryDelayMs": {
+        "label": "Retry Delay",
+        "description": "Delay between retry attempts in milliseconds (100-10000ms)"
+      }
     },
     "buttons": {
       "save": "Save Settings",
