@@ -116,6 +116,64 @@ func (t *OutboundTransformer) TransformRequest(
 	return t.Outbound.TransformRequest(ctx, chatReq)
 }
 
+func IsValidResponse(event *llm.Response) bool {
+	// Always allow the done response
+	if event.Object == llm.DoneResponse.Object {
+		return true
+	}
+
+	// Filter out events with no choices
+	if len(event.Choices) == 0 {
+		return false
+	}
+
+	choice := event.Choices[0]
+
+	// Filter out events with no delta
+	if choice.Delta == nil {
+		return false
+	}
+
+	delta := choice.Delta
+
+	// Check if delta has meaningful content
+	hasContent := delta.Content.Content != nil && *delta.Content.Content != ""
+
+	// Check for text content
+
+	// Check for multiple content parts
+	if len(delta.Content.MultipleContent) > 0 {
+		hasContent = true
+	}
+
+	// Check for tool calls
+	if len(delta.ToolCalls) > 0 {
+		hasContent = true
+	}
+
+	// Check for role (important for the first message)
+	if delta.Role != "" {
+		hasContent = true
+	}
+
+	// Check for finish reason
+	if choice.FinishReason != nil {
+		hasContent = true
+	}
+
+	// Check for refusal
+	if delta.Refusal != "" {
+		hasContent = true
+	}
+
+	// Check for reasoning content (for models that support it)
+	if delta.ReasoningContent != nil && *delta.ReasoningContent != "" {
+		hasContent = true
+	}
+
+	return hasContent
+}
+
 func (t *OutboundTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*httpclient.StreamEvent],
@@ -126,61 +184,7 @@ func (t *OutboundTransformer) TransformStream(
 	}
 
 	llmStream := streams.Filter(originStream, func(event *llm.Response) bool {
-		// Always allow the done response
-		if event.Object == llm.DoneResponse.Object {
-			return true
-		}
-
-		// Filter out events with no choices
-		if len(event.Choices) == 0 {
-			return false
-		}
-
-		choice := event.Choices[0]
-
-		// Filter out events with no delta
-		if choice.Delta == nil {
-			return false
-		}
-
-		delta := choice.Delta
-
-		// Check if delta has meaningful content
-		hasContent := delta.Content.Content != nil && *delta.Content.Content != ""
-
-		// Check for text content
-
-		// Check for multiple content parts
-		if len(delta.Content.MultipleContent) > 0 {
-			hasContent = true
-		}
-
-		// Check for tool calls
-		if len(delta.ToolCalls) > 0 {
-			hasContent = true
-		}
-
-		// Check for role (important for the first message)
-		if delta.Role != "" {
-			hasContent = true
-		}
-
-		// Check for finish reason
-		if choice.FinishReason != nil {
-			hasContent = true
-		}
-
-		// Check for refusal
-		if delta.Refusal != "" {
-			hasContent = true
-		}
-
-		// Check for reasoning content (for models that support it)
-		if delta.ReasoningContent != nil && *delta.ReasoningContent != "" {
-			hasContent = true
-		}
-
-		return hasContent
+		return IsValidResponse(event)
 	})
 
 	return llmStream, nil

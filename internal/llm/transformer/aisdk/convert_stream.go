@@ -334,7 +334,7 @@ func (s *aiSDKConvertStream) Next() bool {
 	}
 
 	// Continue to the next event.
-	return true
+	return s.Next()
 }
 
 func (s *aiSDKConvertStream) Current() *httpclient.StreamEvent {

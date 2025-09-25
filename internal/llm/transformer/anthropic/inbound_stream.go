@@ -447,7 +447,7 @@ func (s *anthropicInboundStream) Next() bool {
 	}
 
 	// Continue to the next event.
-	return true
+	return s.Next()
 }
 
 func (s *anthropicInboundStream) Current() *httpclient.StreamEvent {
