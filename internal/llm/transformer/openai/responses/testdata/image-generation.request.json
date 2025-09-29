@@ -1,0 +1,28 @@
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": {
+        "content": "Generate an image of a beautiful sunset over mountains"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "type": "image_generation",
+      "image_generation": {
+        "quality": "high",
+        "size": "1024x1024",
+        "output_format": "png",
+        "output_compression": 80,
+        "background": "transparent",
+        "input_fidelity": "high",
+        "moderation": "strict",
+        "partial_images": 3
+      }
+    }
+  ],
+  "stream": true,
+  "parallel_tool_calls": false
+}

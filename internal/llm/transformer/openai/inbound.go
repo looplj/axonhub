@@ -66,6 +66,9 @@ func (t *InboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
+	chatReq.RawRequest = httpReq
+	chatReq.RawAPIFormat = llm.APIFormatOpenAIChatCompletion
+
 	return &chatReq, nil
 }
 

@@ -351,8 +351,7 @@ func convertToChatCompletionResponse(anthropicResp *Message) *llm.Response {
 				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
 					Type: "image",
 					ImageURL: &llm.ImageURL{
-						URL:    block.Source.Data,
-						Detail: "",
+						URL: block.Source.Data,
 					},
 				})
 			}

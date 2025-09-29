@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -141,6 +142,18 @@ type Request struct {
 	// a maximum length of 512 characters.
 	Metadata map[string]string `json:"metadata,omitempty"`
 
+	// Output types that you would like the model to generate. Most models are capable
+	// of generating text, which is the default:
+	//
+	// `["text"]`
+	// To generate audio, you can use:
+	// `["text", "audio"]`
+	// To generate image, you can use:
+	// `["text", "image"]`
+	// Please note that not all models support audio and image generation.
+	// Any of "text", "audio", "image".
+	Modalities []string `json:"modalities,omitempty"`
+
 	// Controls effort on reasoning for reasoning models. It can be set to "low", "medium", or "high".
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 
@@ -159,12 +172,12 @@ type Request struct {
 	// Static predicted output content, such as the content of a text file that is
 	// being regenerated.
 	// TODO
-	// Prediction ChatCompletionPredictionContentParam `json:"prediction,omitzero"`
+	// Prediction ChatCompletionPredictionContentParam `json:"prediction,omitempty"`
 
 	// Whether to enable
 	// [parallel function calling](https://platform.openai.com/docs/guides/function-calling#configuring-parallel-function-calling)
 	// during tool use.
-	ParallelToolCalls *bool       `json:"parallel_tool_calls,omitzero"`
+	ParallelToolCalls *bool       `json:"parallel_tool_calls,omitempty"`
 	Tools             []Tool      `json:"tools,omitempty"`
 	ToolChoice        *ToolChoice `json:"tool_choice,omitempty"`
 
@@ -182,7 +195,10 @@ type Request struct {
 	// RawAPIFormat is the original format of the request.
 	// e.g. the request from the chat/completions endpoint is in the openai/chat_completion format.
 	RawAPIFormat APIFormat `json:"-"`
-	// end of help fields
+}
+
+func (r *Request) IsImageGenerationRequest() bool {
+	return len(r.Modalities) > 0 && slices.Contains(r.Modalities, "image")
 }
 
 type ToolFunction struct {
@@ -365,7 +381,7 @@ type ImageURL struct {
 	// [Vision guide](https://platform.openai.com/docs/guides/vision#low-or-high-fidelity-image-understanding).
 	//
 	// Any of "auto", "low", "high".
-	Detail string `json:"detail,omitempty"`
+	Detail *string `json:"detail,omitempty"`
 }
 
 type Audio struct {
@@ -380,8 +396,22 @@ type Audio struct {
 
 // Tool represents a function tool.
 type Tool struct {
-	Type     string   `json:"type"`
-	Function Function `json:"function"`
+	// Type is the type of the tool.
+	// Any of "function", "image_generation".
+	Type            string           `json:"type"`
+	Function        Function         `json:"function"`
+	ImageGeneration *ImageGeneration `json:"image_generation,omitempty"`
+}
+
+type toolJSONMarshaller Tool
+
+func (t Tool) MarshalJSON() ([]byte, error) {
+	// TODO: find a better way to save the image generation tool to the request body.
+	m := toolJSONMarshaller(t)
+	// ImageGeneration is not a valid field for chat completion, so we should remove it from the request.
+	m.ImageGeneration = nil
+
+	return json.Marshal(m)
 }
 
 // Function represents a function definition.
@@ -418,8 +448,10 @@ type ToolCall struct {
 
 // ResponseFormat specifies the format of the response.
 type ResponseFormat struct {
+	// Any of "json_schema", "json_object", "text".
 	Type string `json:"type"`
 	// TODO: Schema
+	// json.RawMessage `json:"schema,omitempty"`
 }
 
 // Response is the unified response model.

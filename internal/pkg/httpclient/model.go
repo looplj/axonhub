@@ -25,6 +25,9 @@ type Request struct {
 
 	// Raw HTTP request for advanced use cases
 	RawRequest *http.Request `json:"-"`
+
+	// Metadata for advanced use cases
+	Metadata map[string]string `json:"-"`
 }
 
 // AuthConfig represents authentication configuration.

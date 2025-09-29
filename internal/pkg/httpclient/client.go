@@ -91,6 +91,8 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		Body:        body,
 		RawResponse: rawResp,
 		Stream:      nil,
+		Request:     request,
+		RawRequest:  rawReq,
 	}
 
 	return response, nil
