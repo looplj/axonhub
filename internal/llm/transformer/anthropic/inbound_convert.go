@@ -13,12 +13,13 @@ import (
 
 func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	chatReq := &llm.Request{
-		Model:       anthropicReq.Model,
-		MaxTokens:   &anthropicReq.MaxTokens,
-		Temperature: anthropicReq.Temperature,
-		TopP:        anthropicReq.TopP,
-		Stream:      anthropicReq.Stream,
-		Metadata:    map[string]string{},
+		Model:        anthropicReq.Model,
+		MaxTokens:    &anthropicReq.MaxTokens,
+		Temperature:  anthropicReq.Temperature,
+		TopP:         anthropicReq.TopP,
+		Stream:       anthropicReq.Stream,
+		Metadata:     map[string]string{},
+		RawAPIFormat: llm.APIFormatAnthropicMessage,
 	}
 	if anthropicReq.Metadata != nil {
 		chatReq.Metadata["user_id"] = anthropicReq.Metadata.UserID

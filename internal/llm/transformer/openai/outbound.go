@@ -13,6 +13,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
+	oairesp "github.com/looplj/axonhub/internal/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
@@ -21,8 +22,8 @@ import (
 type PlatformType string
 
 const (
-	PlatformOpenAI PlatformType = "openai" // Standard OpenAI API
-	PlatformAzure  PlatformType = "azure"  // Azure OpenAI
+	PlatformOpenAI PlatformType = "openai"
+	PlatformAzure  PlatformType = "azure"
 )
 
 const DefaultAzureAPIVersion = "2025-04-01-preview"
@@ -43,6 +44,7 @@ type Config struct {
 // OutboundTransformer implements transformer.Outbound for OpenAI format.
 type OutboundTransformer struct {
 	config *Config
+	rt     *oairesp.OutboundTransformer
 }
 
 // NewOutboundTransformer creates a new OpenAI OutboundTransformer with legacy parameters.
@@ -69,8 +71,14 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid OpenAI transformer configuration: %w", err)
 	}
 
+	rt, err := oairesp.NewOutboundTransformer(config.BaseURL, config.APIKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OpenAI outbound transformer: %w", err)
+	}
+
 	return &OutboundTransformer{
 		config: config,
+		rt:     rt,
 	}, nil
 }
 
@@ -103,7 +111,6 @@ func validateConfig(config *Config) error {
 	return nil
 }
 
-// APIFormat returns the API format of the transformer.
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIChatCompletion
 }
@@ -124,6 +131,20 @@ func (t *OutboundTransformer) TransformRequest(
 
 	if len(chatReq.Messages) == 0 {
 		return nil, fmt.Errorf("messages are required")
+	}
+
+	// If this is an image generation request, use the Responses API.
+	if chatReq.IsImageGenerationRequest() {
+		// Platform routing: For now, only standard OpenAI Responses API is supported.
+		//nolint:exhaustive // Chcked.
+		switch t.config.Type {
+		case PlatformAzure:
+			return nil, fmt.Errorf("image generation via Responses API is not yet supported for Azure platform")
+		default:
+			// ok
+		}
+
+		return t.buildResponsesAPIRequest(ctx, chatReq)
 	}
 
 	body, err := json.Marshal(chatReq)
@@ -187,6 +208,11 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("response body is empty")
 	}
 
+	// If this looks like Responses API, delegate to responses transformer
+	if httpResp.Request != nil && httpResp.Request.Metadata != nil && httpResp.Request.Metadata["outbound_format_type"] == llm.APIFormatOpenAIResponse.String() {
+		return t.rt.TransformResponse(ctx, httpResp)
+	}
+
 	var chatResp Response
 
 	err := json.Unmarshal(httpResp.Body, &chatResp)
@@ -231,7 +257,6 @@ func (t *OutboundTransformer) TransformStreamChunk(
 // buildPlatformURL constructs the appropriate URL based on the platform.
 func (t *OutboundTransformer) buildPlatformURL(chatReq *llm.Request) (string, error) {
 	baseURL := strings.TrimSuffix(t.config.BaseURL, "/")
-
 	//nolint:exhaustive // Chcked.
 	switch t.config.Type {
 	case PlatformAzure:

@@ -71,6 +71,7 @@ linters:
     - funcorder
     - noinlineerr
     - nilnil
+    - thelper
     
 
   # all available settings of specific linters
