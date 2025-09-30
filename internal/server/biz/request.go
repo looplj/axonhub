@@ -48,7 +48,7 @@ func (s *RequestService) CreateRequest(
 		log.Warn(ctx, "Failed to get storage policy, defaulting to store request body", log.Cause(err))
 	}
 
-	var requestBodyBytes objects.JSONRawMessage
+	var requestBodyBytes objects.JSONRawMessage = []byte("{}")
 
 	if storeRequestBody {
 		b, err := xjson.Marshal(httpRequest.Body)
@@ -102,16 +102,20 @@ func (s *RequestService) CreateRequestExecution(
 		log.Warn(ctx, "Failed to get storage policy, defaulting to store request body", log.Cause(err))
 	}
 
-	var requestBodyBytes objects.JSONRawMessage
+	var requestBodyBytes objects.JSONRawMessage = []byte("{}")
 
 	if storeRequestBody {
-		b, err := xjson.Marshal(channelRequest.Body)
-		if err != nil {
-			log.Error(ctx, "Failed to marshal request body", log.Cause(err))
-			return nil, err
-		}
+		if len(channelRequest.JSONBody) > 0 {
+			requestBodyBytes = channelRequest.JSONBody
+		} else {
+			b, err := xjson.Marshal(channelRequest.Body)
+			if err != nil {
+				log.Error(ctx, "Failed to marshal request body", log.Cause(err))
+				return nil, err
+			}
 
-		requestBodyBytes = b
+			requestBodyBytes = b
+		}
 	}
 
 	client := ent.FromContext(ctx)

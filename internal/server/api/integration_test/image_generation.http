@@ -4,7 +4,7 @@ Content-Type: application/json
 Authorization: Bearer {{AXONHUB_API_KEY}}
 
 {
-    "model": "gpt-4o",
+    "model": "gpt-image-1",
     "messages": [
         {
             "role": "user",
@@ -24,3 +24,12 @@ Authorization: Bearer {{AXONHUB_API_KEY}}
     "modalities": ["text", "image"]
 }
     
+
+### Image Generation with Image
+POST http://localhost:8090/v1/chat/completions
+Content-Type: application/json
+Authorization: Bearer {{AXONHUB_API_KEY}}
+
+< ./edit_image.json
+    
+

@@ -12,10 +12,17 @@ import (
 // Request represents a generic HTTP request that can be adapted to different providers.
 type Request struct {
 	// HTTP basics
-	Method  string      `json:"method"`
-	URL     string      `json:"url"`
-	Headers http.Header `json:"headers"`
-	Body    []byte      `json:"body,omitempty"`
+	Method      string      `json:"method"`
+	URL         string      `json:"url"`
+	Headers     http.Header `json:"headers"`
+	ContentType string      `json:"content_type"`
+	Body        []byte      `json:"body,omitempty"`
+
+	// JSONBody is a json representation of the request body.
+	// For some scenario, the request body is not a json, but we still need to marshal it to json for the request.
+	// For example, the image edit api.
+	// If the JSONBody is not empty, will use the JSONBody to save in to the log.
+	JSONBody []byte `json:"json_body,omitempty"`
 
 	// Authentication
 	Auth *AuthConfig `json:"auth,omitempty"`

@@ -133,18 +133,18 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("messages are required")
 	}
 
-	// If this is an image generation request, use the Responses API.
+	// If this is an image generation request, use the Image Generation API.
 	if chatReq.IsImageGenerationRequest() {
-		// Platform routing: For now, only standard OpenAI Responses API is supported.
+		// Platform routing: For now, only standard OpenAI Image Generation API is supported.
 		//nolint:exhaustive // Chcked.
 		switch t.config.Type {
 		case PlatformAzure:
-			return nil, fmt.Errorf("image generation via Responses API is not yet supported for Azure platform")
+			return nil, fmt.Errorf("image generation via Image Generation API is not yet supported for Azure platform")
 		default:
 			// ok
 		}
 
-		return t.buildResponsesAPIRequest(ctx, chatReq)
+		return t.buildImageGenerationAPIRequest(ctx, chatReq)
 	}
 
 	body, err := json.Marshal(chatReq)
@@ -211,6 +211,11 @@ func (t *OutboundTransformer) TransformResponse(
 	// If this looks like Responses API, delegate to responses transformer
 	if httpResp.Request != nil && httpResp.Request.Metadata != nil && httpResp.Request.Metadata["outbound_format_type"] == llm.APIFormatOpenAIResponse.String() {
 		return t.rt.TransformResponse(ctx, httpResp)
+	}
+
+	// If this looks like Image Generation API, use image generation response transformer
+	if httpResp.Request != nil && httpResp.Request.Metadata != nil && httpResp.Request.Metadata["outbound_format_type"] == llm.APIFormatOpenAIImageGeneration.String() {
+		return transformImageGenerationResponse(httpResp)
 	}
 
 	var chatResp Response

@@ -34,6 +34,8 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 		return
 	}
 
+	// log.Debug(ctx, "Chat completion request", log.Any("request", genericReq))
+
 	result, err := handlers.ChatCompletionProcessor.Process(ctx, genericReq)
 	if err != nil {
 		log.Error(ctx, "Error processing chat completion", log.Cause(err))
