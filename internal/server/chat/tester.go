@@ -29,6 +29,7 @@ type TestChannelProcessor struct {
 func NewTestChannelProcessor(
 	channelService *biz.ChannelService,
 	requestService *biz.RequestService,
+	systemService *biz.SystemService,
 	httpClient *httpclient.HttpClient,
 	channelID objects.GUID,
 ) *TestChannelProcessor {
@@ -41,6 +42,7 @@ func NewTestChannelProcessor(
 			Decorators: []decorator.Decorator{
 				stream.EnsureUsage(),
 			},
+			SystemService: systemService,
 		},
 	}
 }

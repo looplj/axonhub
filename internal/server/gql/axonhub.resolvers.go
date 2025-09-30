@@ -80,7 +80,7 @@ func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInp
 	// Set test source context for test channel requests
 	ctx = contexts.WithSource(ctx, request.SourceTest)
 
-	processor := chat.NewTestChannelProcessor(r.channelService, r.requestService, r.httpClient, input.ChannelID)
+	processor := chat.NewTestChannelProcessor(r.channelService, r.requestService, r.systemService, r.httpClient, input.ChannelID)
 
 	result, err := processor.TestChannel(ctx, input.ChannelID, input.ModelID)
 	if err != nil {
