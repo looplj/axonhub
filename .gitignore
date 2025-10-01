@@ -122,3 +122,4 @@ dumps
 
 config.yml
 internal/server/static/dist
+*.b64
