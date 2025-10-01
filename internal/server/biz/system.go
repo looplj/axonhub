@@ -222,6 +222,7 @@ func (s *SystemService) StoreChunks(ctx context.Context) (bool, error) {
 
 // BrandName retrieves the brand name.
 func (s *SystemService) BrandName(ctx context.Context) (string, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := ent.FromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyBrandName)).Only(ctx)
@@ -333,6 +334,8 @@ var defaultRetryPolicy = RetryPolicy{
 
 // StoragePolicy retrieves the storage policy configuration.
 func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
 	value, err := s.getSystemValue(ctx, SystemKeyStoragePolicy)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -371,6 +374,8 @@ func (s *SystemService) SetStoragePolicy(ctx context.Context, policy *StoragePol
 
 // RetryPolicy retrieves the retry policy configuration.
 func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
 	value, err := s.getSystemValue(ctx, SystemKeyRetryPolicy)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -389,7 +394,9 @@ func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
 }
 
 func (s *SystemService) RetryPolicyOrDefault(ctx context.Context) *RetryPolicy {
-	value, err := s.getSystemValue(ctx, SystemKeyRetryPolicy)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	policy, err := s.RetryPolicy(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return lo.ToPtr(defaultRetryPolicy)
@@ -400,13 +407,7 @@ func (s *SystemService) RetryPolicyOrDefault(ctx context.Context) *RetryPolicy {
 		return lo.ToPtr(defaultRetryPolicy)
 	}
 
-	var policy RetryPolicy
-	if err := json.Unmarshal([]byte(value), &policy); err != nil {
-		log.Warn(ctx, "failed to unmarshal retry policy", log.Cause(err))
-		return lo.ToPtr(defaultRetryPolicy)
-	}
-
-	return &policy
+	return policy
 }
 
 // SetRetryPolicy sets the retry policy configuration.
