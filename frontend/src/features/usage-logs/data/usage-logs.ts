@@ -132,7 +132,7 @@ export function useUsageLogs(variables?: {
         )
         return usageLogConnectionSchema.parse(data?.usageLogs)
       } catch (error) {
-        handleError(error, '获取使用日志数据')
+        handleError(error, '获取用量日志数据')
         throw error
       }
     },
@@ -157,7 +157,7 @@ export function useUsageLog(id: string) {
         }
         return usageLogSchema.parse(data.node)
       } catch (error) {
-        handleError(error, '获取使用日志详情')
+        handleError(error, '获取用量日志详情')
         throw error
       }
     },

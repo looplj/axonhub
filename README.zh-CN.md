@@ -99,10 +99,10 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
     </td>
     <td align="center">
       <a href="assets/axonhub-ussge-logs.png">
-        <img src="assets/axonhub-ussge-logs.png" alt="使用日志" width="250"/>
+        <img src="assets/axonhub-ussge-logs.png" alt="用量日志" width="250"/>
       </a>
       <br/>
-      使用日志
+      用量日志
     </td>
     <td align="center">
       <a href="assets/axonhub-system.png">
