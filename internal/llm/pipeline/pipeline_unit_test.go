@@ -92,7 +92,7 @@ func (t *testChannelRetryableOutbound) AggregateStreamChunks(ctx context.Context
 	return []byte(`{}`), llm.ResponseMeta{}, nil
 }
 
-func (t *testChannelRetryableOutbound) CanRetry() bool {
+func (t *testChannelRetryableOutbound) CanRetry(err error) bool {
 	t.canRetryCalls++
 	return t.currentRetries < t.maxRetries
 }
@@ -186,12 +186,12 @@ func TestChannelRetryable_CanRetry(t *testing.T) {
 	}
 
 	// Test CanRetry when retries available
-	require.True(t, outbound.CanRetry())
+	require.True(t, outbound.CanRetry(nil))
 	require.Equal(t, 1, outbound.canRetryCalls)
 
 	// Exhaust retries
 	outbound.currentRetries = 2
-	require.False(t, outbound.CanRetry())
+	require.False(t, outbound.CanRetry(nil))
 	require.Equal(t, 2, outbound.canRetryCalls)
 }
 
@@ -223,25 +223,6 @@ func TestChannelCustomizedExecutor_CustomizeExecutor(t *testing.T) {
 	require.Equal(t, 1, outbound.customizeExecutorCalls)
 }
 
-func TestPipeline_IsRetryableError(t *testing.T) {
-	p := &pipeline{
-		retryableErrors: []string{"timeout", "connection"},
-	}
-
-	// Test retryable error
-	err := errors.New("connection timeout occurred")
-	require.True(t, p.isRetryableError(err))
-
-	// Test non-retryable error
-	err = errors.New("authentication failed")
-	require.False(t, p.isRetryableError(err))
-
-	// Test empty retryable errors (should retry all)
-	p.retryableErrors = []string{}
-	err = errors.New("any error")
-	require.True(t, p.isRetryableError(err))
-}
-
 func TestPipeline_GetMaxSameChannelRetries(t *testing.T) {
 	p := &pipeline{
 		maxSameChannelRetries: 3,
@@ -253,12 +234,11 @@ func TestPipeline_GetMaxSameChannelRetries(t *testing.T) {
 func TestWithRetry(t *testing.T) {
 	p := &pipeline{}
 
-	option := WithRetry(5, 100*time.Millisecond, "error1", "error2")
+	option := WithRetry(5, 100*time.Millisecond)
 	option(p)
 
 	require.Equal(t, 5, p.maxRetries)
 	require.Equal(t, 100*time.Millisecond, p.retryDelay)
-	require.Equal(t, []string{"error1", "error2"}, p.retryableErrors)
 }
 
 func TestWithSameChannelRetry(t *testing.T) {
