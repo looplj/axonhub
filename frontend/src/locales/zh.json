@@ -13,7 +13,7 @@
       "roles": "角色",
       "system": "系统",
       "requests": "请求",
-      "usageLogs": "使用日志",
+      "usageLogs": "用量日志",
       "apiKeys": "API 密钥",
       "playground": "测试场",
       "profile": "个人资料"
@@ -503,17 +503,17 @@
       "anthropic_aws": "Anthropic AWS",
       "anthropic_gcp": "Anthropic GCP",
       "gemini": "Gemini",
-      "gemini_openai": "Gemini（OpenAI 兼容）",
+      "gemini_openai": "Gemini (OpenAI)",
       "deepseek": "DeepSeek",
       "doubao": "Doubao",
       "moonshot": "Moonshot",
       "openrouter": "OpenRouter",
-      "deepseek_anthropic": "DeepSeek Anthropic",
-      "moonshot_anthropic": "Moonshot Anthropic",
+      "deepseek_anthropic": "DeepSeek (Anthropic)",
+      "moonshot_anthropic": "Moonshot (Anthropic)",
       "zhipu": "智谱",
       "zai": "Zai",
-      "zhipu_anthropic": "智谱 Anthropic",
-      "zai_anthropic": "Zai Anthropic",
+      "zhipu_anthropic": "智谱 (Anthropic)",
+      "zai_anthropic": "Zai (Anthropic)",
       "xai": "xAI",
       "anthropic_fake": "Anthropic Fake",
       "openai_fake": "OpenAI Fake"
@@ -795,7 +795,7 @@
         "days": "天",
         "resourceTypes": {
           "requests": "请求日志",
-          "usage_logs": "使用日志"
+          "usage_logs": "用量日志"
         }
       }
     },
@@ -954,7 +954,7 @@
     }
   },
   "usageLogs": {
-    "title": "使用日志",
+    "title": "用量日志",
     "description": "查看和分析AI模型使用情况和令牌消耗",
     "loadError": "加载失败:",
     "noResults": "暂无数据",
@@ -1027,7 +1027,7 @@
           "reasoning": "推理令牌",
           "prediction": "预测令牌"
         },
-        "notFound": "使用日志未找到"
+        "notFound": "用量日志未找到"
       }
     }
   },

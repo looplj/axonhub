@@ -12,7 +12,7 @@ test.describe('Usage Logs Management', () => {
     await page.waitForLoadState('networkidle');
     
     // Check if the usage logs page is visible
-    await expect(page.locator('h1, h2').filter({ hasText: /Usage Logs|使用日志/i })).toBeVisible();
+    await expect(page.locator('h1, h2').filter({ hasText: /Usage Logs|用量日志/i })).toBeVisible();
     
     // Check if the description is present (optional)
     const description = page.locator('p').filter({ hasText: /usage|token|使用|令牌/i });
@@ -61,12 +61,12 @@ test.describe('Usage Logs Management', () => {
     await gotoAndEnsureAuth(page, '/');
     
     // Click on the usage logs link in the sidebar
-    const usageLogsLink = page.locator('a:has-text("Usage Logs"), a:has-text("使用日志")');
+    const usageLogsLink = page.locator('a:has-text("Usage Logs"), a:has-text("用量日志")');
     await expect(usageLogsLink).toBeVisible();
     await usageLogsLink.click();
     
     // Check if we're on the usage logs page
     await expect(page).toHaveURL(/.*usage-logs/);
-    await expect(page.locator('h2, h1')).toContainText(/Usage Logs|使用日志/);
+    await expect(page.locator('h2, h1')).toContainText(/Usage Logs|用量日志/);
   });
 });
