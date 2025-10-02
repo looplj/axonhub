@@ -123,3 +123,4 @@ dumps
 config.yml
 internal/server/static/dist
 *.b64
+coverage.out

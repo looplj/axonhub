@@ -35,6 +35,11 @@ func (p *pipeline) notStream(
 		return nil, err
 	}
 
+	// Step 2.1: Merge headers from raw request if available
+	if request.RawRequest != nil && len(request.RawRequest.Headers) > 0 {
+		httpReq.Headers = httpclient.MergeHTTPHeaders(httpReq.Headers, request.RawRequest.Headers)
+	}
+
 	executor := p.Executor
 	if c, ok := p.Outbound.(ChannelCustomizedExecutor); ok {
 		executor = c.CustomizeExecutor(executor)

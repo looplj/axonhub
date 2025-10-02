@@ -190,7 +190,9 @@ func (hc *HttpClient) buildHttpRequest(
 		httpReq.Header = make(http.Header)
 	}
 
-	httpReq.Header.Set("User-Agent", "axonhub/1.0")
+	if httpReq.Header.Get("User-Agent") == "" {
+		httpReq.Header.Set("User-Agent", "axonhub/1.0")
+	}
 
 	// Apply authentication
 	if request.Auth != nil {

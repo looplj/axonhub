@@ -123,6 +123,8 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		return nil, err
 	}
 
+	llmRequest.RawRequest = request
+
 	var lastErr error
 
 	maxAttempts := p.maxRetries + 1 // maxRetries + initial attempt
