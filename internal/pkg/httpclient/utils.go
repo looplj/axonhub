@@ -11,7 +11,7 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 		Method:     rawReq.Method,
 		URL:        rawReq.URL.String(),
 		Headers:    rawReq.Header,
-		Body:       []byte{},
+		Body:       nil,
 		Auth:       &AuthConfig{},
 		RequestID:  "",
 		RawRequest: rawReq,
@@ -44,4 +44,26 @@ func IsHTTPStatusCodeRetryable(statusCode int) bool {
 	}
 
 	return false // Non-error status codes don't need retrying
+}
+
+var blockedHeaders = map[string]bool{
+	"Content-Length":    true,
+	"Transfer-Encoding": true,
+	"Authorization":     true,
+	"Api-Key":           true,
+	"X-Api-Key":         true,
+	"X-Api-Secret":      true,
+	"X-Api-Token":       true,
+}
+
+// MergeHTTPHeaders merges the source headers into the destination headers if the key not present in the destination headers.
+// Blocked headers are not merged.
+func MergeHTTPHeaders(dest, src http.Header) http.Header {
+	for k, v := range src {
+		if _, ok := dest[k]; !ok && !blockedHeaders[k] {
+			dest[k] = v
+		}
+	}
+
+	return dest
 }
