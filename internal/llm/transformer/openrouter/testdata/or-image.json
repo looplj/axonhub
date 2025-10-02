@@ -1,0 +1,42 @@
+{
+  "id": "gen-1759393520-lxwGJP80UyDdG9VmVTQj",
+  "provider": "Google",
+  "model": "google/gemini-2.5-flash-image-preview",
+  "object": "chat.completion",
+  "created": 1759393520,
+  "choices": [
+    {
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "STOP",
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "",
+        "refusal": null,
+        "reasoning": null,
+        "images": [
+          {
+            "type": "image_url",
+            "image_url": {
+              "url": "data:image/png;base64,iVBORw0KGgo"
+            },
+            "index": 0
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 7,
+    "completion_tokens": 1290,
+    "total_tokens": 1297,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 1290
+    }
+  }
+}
