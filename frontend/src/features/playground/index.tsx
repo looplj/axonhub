@@ -25,6 +25,10 @@ import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/component
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning'
 import { Response as UIResponse } from '@/components/ai-elements/response'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
+import { LanguageSwitch } from '@/components/language-switch'
+import { Header } from '@/components/layout/header'
+import { ProfileDropdown } from '@/components/profile-dropdown'
+import { ThemeSwitch } from '@/components/theme-switch'
 import { useChannels } from '@/features/channels/data/channels'
 
 export default function Playground() {
@@ -264,8 +268,16 @@ export default function Playground() {
           enabled={true}
         />
       )} */}
-      <div className='bg-background flex h-screen w-full'>
+      <Header fixed>
+        <div className='ml-auto flex items-center space-x-4'>
+          <LanguageSwitch />
+          <ThemeSwitch />
+          <ProfileDropdown />
+        </div>
+      </Header>
+      <div className='bg-background flex h-screen w-full pt-16'>
         {/* Settings Sidebar */}
+
         <div className='bg-muted/40 flex w-80 flex-col border-r'>
           <div className='border-b p-6'>
             <h1 className='text-2xl font-bold tracking-tight'>{t('playground.title')}</h1>
@@ -450,7 +462,6 @@ export default function Playground() {
                 disabled={status === 'ready' ? !input.trim() : false}
                 // className='absolute right-2 top-1/2 -translate-y-1/2'
                 className='absolute right-3 bottom-3'
-
                 onClick={(e) => {
                   // When not ready (submitted/streaming/error), treat click as cancel
                   if (status !== 'ready') {
