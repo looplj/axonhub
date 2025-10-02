@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -24,8 +23,8 @@ type Retryable interface {
 
 // ChannelRetryable interface for transformers that support same-channel retry.
 type ChannelRetryable interface {
-	// CanRetry returns true if the transformer can retry for current channel.
-	CanRetry() bool
+	// CanRetry returns true if the transformer can retry for current channel given the error that occurred.
+	CanRetry(err error) bool
 
 	// PrepareForRetry prepares the transformer for retry.
 	PrepareForRetry(ctx context.Context) error
@@ -42,11 +41,10 @@ type ChannelCustomizedExecutor interface {
 type Option func(*pipeline)
 
 // WithRetry configures retry behavior for the pipeline.
-func WithRetry(maxRetries int, retryDelay time.Duration, retryableErrors ...string) Option {
+func WithRetry(maxRetries int, retryDelay time.Duration) Option {
 	return func(p *pipeline) {
 		p.maxRetries = maxRetries
 		p.retryDelay = retryDelay
-		p.retryableErrors = retryableErrors
 	}
 }
 
@@ -105,7 +103,6 @@ type pipeline struct {
 	maxRetries            int
 	maxSameChannelRetries int
 	retryDelay            time.Duration
-	retryableErrors       []string
 }
 
 type Result struct {
@@ -137,7 +134,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 			// First try same-channel retry if available and not exhausted
 			if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
-				if channelRetryable.CanRetry() && sameChannelAttempts < p.getMaxSameChannelRetries() {
+				if sameChannelAttempts < p.getMaxSameChannelRetries() && channelRetryable.CanRetry(lastErr) {
 					err := channelRetryable.PrepareForRetry(ctx)
 					if err != nil {
 						log.Warn(ctx, "failed to prepare same channel retry", log.Cause(err))
@@ -196,12 +193,6 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 		lastErr = err
 
-		// Check if error is retryable
-		if !p.isRetryableError(err) {
-			log.Debug(ctx, "error is not retryable", log.Cause(err))
-			break
-		}
-
 		log.Warn(ctx, "pipeline process failed, will retry",
 			log.Cause(err),
 			log.Any("attempt", attempt),
@@ -244,20 +235,4 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 // getMaxSameChannelRetries returns the maximum number of same-channel retries.
 func (p *pipeline) getMaxSameChannelRetries() int {
 	return p.maxSameChannelRetries
-}
-
-// isRetryableError checks if an error is retryable based on configuration.
-func (p *pipeline) isRetryableError(err error) bool {
-	if len(p.retryableErrors) == 0 {
-		return true // If no specific errors configured, retry all errors
-	}
-
-	errMsg := err.Error()
-	for _, retryableErr := range p.retryableErrors {
-		if strings.Contains(errMsg, retryableErr) {
-			return true
-		}
-	}
-
-	return false
 }

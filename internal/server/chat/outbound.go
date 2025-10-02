@@ -397,8 +397,8 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 }
 
 // CanRetry returns true if the current channel can be retried.
-func (p *PersistentOutboundTransformer) CanRetry() bool {
-	return p.state.CurrentChannel != nil
+func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
+	return p.state.CurrentChannel != nil && isRetryableError(err)
 }
 
 // CustomizeExecutor customizes the executor for the current channel.
