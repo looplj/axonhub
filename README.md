@@ -25,26 +25,27 @@
 AxonHub is a modern AI gateway system that provides a unified OpenAI, Anthropic, and AI SDK compatible API layer, transforming requests to various AI providers through a transformer pipeline architecture. The system features comprehensive tracing capabilities, helping enterprises better manage and monitor AI service usage. It also includes comprehensive test coverage to ensure system stability and reliability.
 
 <div align="center">
-  <img src="assets/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
+  <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
 </div>
 
 ### Core Problems Solved
 
-| Problem                    | AxonHub Solution                                                  |
-| -------------------------- | ----------------------------------------------------------------- |
-| **Vendor Lock-in**         | 🔄 Unified API interface, API format conversion, switch providers anytime                |
-| **Extensibility**          | Flexible transformer architecture, supports multiple transformers |
-| **Service Outages**        | ⚡ Automatic failover, multi-channel redundancy                   |
-| **Permission Management**  | 📊 Comprehensive user permission management                       |
-| **Development Complexity** | 🛠️ Single SDK, unified interface standard                         |
+| Problem                    | AxonHub Solution                                                          |
+| -------------------------- | ------------------------------------------------------------------------- |
+| **Vendor Lock-in**         | 🔄 Unified API interface, API format conversion, switch providers anytime |
+| **Extensibility**          | Flexible transformer architecture, supports multiple transformers         |
+| **Service Outages**        | ⚡ Automatic failover, multi-channel redundancy                           |
+| **Permission Management**  | 📊 Comprehensive user permission management                               |
+| **Development Complexity** | 🛠️ Single SDK, unified interface standard                                 |
 
 ---
 
 ## 📚 Documentation
 
-### DeepWiki
+For detailed technical documentation, API references, architecture design, and more, please visit
 
-For detailed technical documentation, API references, architecture design, and more, please visit [AxonHub DeepWiki](https://deepwiki.com/looplj/axonhub).
+- [DeepWiki](https://deepwiki.com/looplj/axonhub).
+- [Zread](https://zread.ai/looplj/axonhub).
 
 ---
 
@@ -52,7 +53,7 @@ For detailed technical documentation, API references, architecture design, and m
 
 Try AxonHub live at our [demo instance](https://axonhub.onrender.com)!
 
-**Note**: The demo site currently has only one fake channel configured that returns fixed content for testing purposes.
+**Note**：The demo instance currently configures Zhipu and OpenRouter free models.
 
 ### Demo Account
 
@@ -70,22 +71,22 @@ Here are some screenshots of AxonHub in action:
 <table>
   <tr>
     <td align="center">
-      <a href="assets/axonhub-dashboard.png">
-        <img src="assets/axonhub-dashboard.png" alt="System Dashboard" width="250"/>
+      <a href="docs/screenshots/axonhub-dashboard.png">
+        <img src="docs/screenshots/axonhub-dashboard.png" alt="System Dashboard" width="250"/>
       </a>
       <br/>
       System Dashboard
     </td>
     <td align="center">
-      <a href="assets/axonhub-channels.png">
-        <img src="assets/axonhub-channels.png" alt="Channel Management" width="250"/>
+      <a href="docs/screenshots/axonhub-channels.png">
+        <img src="docs/screenshots/axonhub-channels.png" alt="Channel Management" width="250"/>
       </a>
       <br/>
       Channel Management
     </td>
     <td align="center">
-      <a href="assets/axonhub-users.png">
-        <img src="assets/axonhub-users.png" alt="User Management" width="250"/>
+      <a href="docs/screenshots/axonhub-users.png">
+        <img src="docs/screenshots/axonhub-users.png" alt="User Management" width="250"/>
       </a>
       <br/>
       User Management
@@ -93,22 +94,22 @@ Here are some screenshots of AxonHub in action:
   </tr>
   <tr>
     <td align="center">
-      <a href="assets/axonhub-requests.png">
-        <img src="assets/axonhub-requests.png" alt="Request Monitoring" width="250"/>
+      <a href="docs/screenshots/axonhub-requests.png">
+        <img src="docs/screenshots/axonhub-requests.png" alt="Request Monitoring" width="250"/>
       </a>
       <br/>
       Request Monitoring
     </td>
     <td align="center">
-      <a href="assets/axonhub-ussge-logs.png">
-        <img src="assets/axonhub-ussge-logs.png" alt="Usage Logs" width="250"/>
+      <a href="docs/screenshots/axonhub-usage-logs.png">
+        <img src="docs/screenshots/axonhub-usage-logs.png" alt="Usage Logs" width="250"/>
       </a>
       <br/>
       Usage Logs
     </td>
     <td align="center">
-      <a href="assets/axonhub-system.png">
-        <img src="assets/axonhub-system.png" alt="System Dashboard" width="250"/>
+      <a href="docs/screenshots/axonhub-system.png">
+        <img src="docs/screenshots/axonhub-system.png" alt="System Dashboard" width="250"/>
       </a>
       <br/>
       System Setting
@@ -120,50 +121,34 @@ Here are some screenshots of AxonHub in action:
 
 ### 🚀 Supported Features
 
-| Feature              | Status      | Description                    |
-| -------------------- | ----------- | ------------------------------ |
-| **Chat Completion**  | ✅ Done     | Conversational interface       |
-| **Image Generation** | 📝 Planning | Image generation               |
-| **Rerank**           | 📝 Todo     | Results ranking                |
-| **Embedding**        | 📝 Todo     | Vector embedding generation    |
-| **Realtime**         | 📝 Todo     | Live conversation capabilities |
+| Feature              | Status     | Description                    | Document                                     |
+| -------------------- | ---------- | ------------------------------ | -------------------------------------------- |
+| **Chat Completion**  | ✅ Done    | Conversational interface       | [Chat Completions](docs/chat-completions.md) |
+| **Image Generation** | ⚠️ Partial | Image generation               | [Image Generations](docs/image-generations.md) |
+| **Rerank**           | 📝 Todo    | Results ranking                | -                                            |
+| **Embedding**        | 📝 Todo    | Vector embedding generation    | -                                            |
+| **Realtime**         | 📝 Todo    | Live conversation capabilities | -                                            |
 
 ---
 
 ### 🌐 Multi-Provider AI Gateway
 
-| Feature                   | Technical Implementation                                            | Business Value                                    |
-| ------------------------- | ------------------------------------------------------------------- | ------------------------------------------------- |
-| **Unified API Interface** | OpenAI compatible standard, zero learning curve                     | Avoid vendor lock-in, reduce migration risk       |
-| **Automatic Failover**    | Multi-channel retry + load balancing                                | Service interruption time < 100ms                 |
-| **Stream Processing**     | Native SSE support, real-time response                              | 60% user experience improvement                   |
+| Feature                   | Technical Implementation                        | Business Value                              |
+| ------------------------- | ----------------------------------------------- | ------------------------------------------- |
+| **Unified API Interface** | OpenAI compatible standard, zero learning curve | Avoid vendor lock-in, reduce migration risk |
+| **Automatic Failover**    | Multi-channel retry + load balancing            | Service interruption time < 100ms           |
+| **Stream Processing**     | Native SSE support, real-time response          | 60% user experience improvement             |
 
 ---
 
 ### 🔧 API Format Support
 
-| Format            | Status     | Compatibility       | Notes                  |
-| ----------------- | ---------- | ------------------- | ---------------------- |
-| **OpenAI API**    | ✅ Done    | Fully compatible    | Chat/Completions API   |
-| **Anthropic API** | ✅ Done    | Fully supported     | Claude Messages API    |
-| **AI SDK**        | ⚠️ Partial | Partially supported | Vercel AI SDK format   |
-| **More Formats**  | 🔄 Ongoing | Continuously added  | New API format support |
-
----
-
-### 🤖 Supported Providers
-
-| Provider               | Status     | Supported Models             | Notes                                          |
-| ---------------------- | ---------- | ---------------------------- | ---------------------------------------------- |
-| **OpenAI**             | ✅ Done    | GPT-4, GPT-4o, GPT-5, etc.   | Fully supported, including streaming responses |
-| **Anthropic**          | ✅ Done    | Claude 4.0, Claude 4.1, etc. | Fully supported, including chain of thought    |
-| **Zhipu AI**           | ✅ Done    | GLM-4.5, GLM-4.5-air, etc.   | Fully supported                                |
-| **Moonshot AI (Kimi)** | ✅ Done    | kimi-k2, etc.                | Fully supported                                |
-| **DeepSeek**           | ✅ Done    | DeepSeek-V3.1, etc.          | Fully supported                                |
-| **ByteDance Doubao**   | ✅ Done    | doubao-1.6, etc.             | Fully supported                                |
-| **AWS Bedrock**        | 🔄 Testing | Claude on AWS                | Access via Bedrock                             |
-| **Google Cloud**       | 🔄 Testing | Claude on GCP                | Access via Vertex AI                           |
-| **Gemini**             | 📝 Todo    | Gemini 2.5, etc.             | Not implemented                                |
+| Format                      | Status     | Compatibility       | Modalities      |
+| --------------------------- | ---------- | ------------------- | --------------- |
+| **OpenAI Chat Completions** | ✅ Done    | Fully compatible    | Text, Image     |
+| **Anthropic**               | ✅ Done    | Fully supported     | Text            |
+| **AI SDK**                  | ⚠️ Partial | Partially supported | Text            |
+| **Gemini**                  | 🔄 Todo    | -    | - |
 
 ---
 
@@ -308,7 +293,7 @@ Download the latest release from [GitHub Releases](https://github.com/looplj/axo
 ```bash
 # Extract and run
 unzip axonhub_*.zip
-cd axonhub_*.zip
+cd axonhub_*
 
 # Set environment variables
 export AXONHUB_DB_DIALECT="tidb"
@@ -378,9 +363,9 @@ After successful testing, click the enable button to activate the channel.
 2. Assign roles and permissions
 3. Create API keys
 
-### 4. Claude Code Integration
+### 4. Claude Code/Codex Integration
 
-Using AxonHub in Claude Code:
+#### 4.1 Using AxonHub in Claude Code:
 
 ```bash
 # Set Claude Code to use AxonHub
@@ -388,13 +373,38 @@ export ANTHROPIC_API_KEY="your-axonhub-api-key"
 export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
 ```
 
-#### 4.1. Model Profiles Feature
+#### 4.2 Using AxonHub in Codex:
+
+configure the model provider in the codex config file: ${HOME}/.codex/config.toml
+
+```toml
+model = "gpt-5"
+model_provider = "axonhub-chat-completions"
+
+[model_providers.axonhub-chat-completions]
+# Name of the provider that will be displayed in the Codex UI.
+name = "AxonHub using Chat Completions"
+# The path `/chat/completions` will be amended to this URL to make the POST
+# request for the chat completions.
+base_url = "http://127.0.0.1:8090/v1"
+# If `env_key` is set, identifies an environment variable that must be set when
+# using Codex with this provider. The value of the environment variable must be
+# non-empty and will be used in the `Bearer TOKEN` HTTP header for the POST request.
+env_key = "AXONHUB_API_KEY"
+# Valid values for wire_api are "chat" and "responses". Defaults to "chat" if omitted.
+wire_api = "chat"
+# If necessary, extra query params that need to be added to the URL.
+# See the Azure example below.
+query_params = {}
+```
+
+#### 4.3. Model Profiles Feature
 
 <table>
   <tr align="center">
     <td align="center">
-      <a href="assets/axonhub-profiles.png">
-        <img src="assets/axonhub-profiles.png" alt="System Dashboard" width="250"/>
+      <a href="docs/screenshots/axonhub-profiles.png">
+        <img src="docs/screenshots/axonhub-profiles.png" alt="System Dashboard" width="250"/>
       </a>
       <br/>
       Model Profiles
@@ -408,14 +418,14 @@ AxonHub introduces a powerful model profiles feature that allows you to configur
 - **Cost Optimization**: Map expensive model requests to more cost-effective alternatives automatically
 - **Model Fallback**: Configure fallback mappings when certain models are unavailable
 
-#### 4.2 How Profiles Work
+#### 4.4 How Profiles Work
 
 When an active profile has model mappings configured, the system will automatically map requested models to their target models during API requests. For example:
 
 - Request `claude-sonnet-20241022` → Actually use `deepseek-v3.1` (model mapping)
 - Use regex patterns to match multiple models at once
 
-#### 4.3 Claude Code + Profiles Workflow
+#### 4.5 Claude Code/Codex + Profiles Workflow
 
 With the profiles feature, you only need to configure Claude Code once:
 
@@ -470,20 +480,21 @@ const completion = await openai.chat.completions.create({
 AxonHub implements a sophisticated bidirectional data transformation pipeline that ensures seamless communication between clients and AI providers:
 
 <div align="center">
-  <img src="assets/transformation-flow.svg" alt="AxonHub Transformation Flow" width="900"/>
+  <img src="docs/transformation-flow.svg" alt="AxonHub Transformation Flow" width="900"/>
 </div>
 
 #### Pipeline Components
 
-| Component | Purpose | Key Features |
-|-----------|---------|--------------|
-| **Client** | Application layer | Web apps, mobile apps, API clients |
-| **Inbound Transformer** | Request preprocessing | Parse, validate, normalize input |
-| **Unified Request** | Core processing | Route selection, load balancing, failover |
-| **Outbound Transformer** | Provider adaptation | Format conversion, protocol mapping |
-| **Provider** | AI services | OpenAI, Anthropic, DeepSeek, etc. |
+| Component                | Purpose               | Key Features                              |
+| ------------------------ | --------------------- | ----------------------------------------- |
+| **Client**               | Application layer     | Web apps, mobile apps, API clients        |
+| **Inbound Transformer**  | Request preprocessing | Parse, validate, normalize input          |
+| **Unified Request**      | Core processing       | Route selection, load balancing, failover |
+| **Outbound Transformer** | Provider adaptation   | Format conversion, protocol mapping       |
+| **Provider**             | AI services           | OpenAI, Anthropic, DeepSeek, etc.         |
 
 This architecture ensures:
+
 - ⚡ **Low Latency**: Optimized processing pipeline
 - 🔄 **Auto Failover**: Seamless provider switching
 - 📊 **Real-time Monitoring**: Complete request tracing

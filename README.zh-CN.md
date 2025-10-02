@@ -25,7 +25,7 @@
 AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, AI SDK 兼容 API 层，通过转换器管道架构将请求转换到各种 AI 提供商。系统具备完整的追踪（Trace）能力，帮助企业更好地管理和监控 AI 服务使用情况。并且具备完善的测试覆盖，保障系统的稳定性和可靠性。
 
 <div align="center">
-  <img src="assets/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
+  <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
 </div>
 
 ### 解决的核心问题
@@ -43,7 +43,9 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 ## 📚 文档 | Documentation
 
 ### DeepWiki
-详细的技术文档、API 参考、架构设计等内容，可以访问 [AxonHub DeepWiki](https://deepwiki.com/looplj/axonhub)。
+详细的技术文档、API 参考、架构设计等内容，可以访问 
+- [DeepWiki](https://deepwiki.com/looplj/axonhub)
+- [Zread](https://zread.ai/looplj/axonhub)
 
 ---
 
@@ -51,7 +53,7 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 
 在我们的 [演示实例](https://axonhub.onrender.com) 上体验 AxonHub！
 
-**注意**：演示网站目前只配置了一个用于测试的虚拟渠道，返回固定内容。
+**注意**：演示网站目前配置了 Zhipu 和 OpenRouter 的免费模型。
 
 ### 演示账号 | Demo Account
 - **邮箱 Email**: demo@example.com
@@ -68,22 +70,22 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 <table>
   <tr>
     <td align="center">
-      <a href="assets/axonhub-dashboard.png">
-        <img src="assets/axonhub-dashboard.png" alt="系统仪表板" width="250"/>
+      <a href="docs/screenshots/axonhub-dashboard.png">
+        <img src="docs/screenshots/axonhub-dashboard.png" alt="系统仪表板" width="250"/>
       </a>
       <br/>
       系统仪表板
     </td>
     <td align="center">
-      <a href="assets/axonhub-channels.png">
-        <img src="assets/axonhub-channels.png" alt="渠道管理" width="250"/>
+      <a href="docs/screenshots/axonhub-channels.png">
+        <img src="docs/screenshots/axonhub-channels.png" alt="渠道管理" width="250"/>
       </a>
       <br/>
       渠道管理
     </td>
     <td align="center">
-      <a href="assets/axonhub-users.png">
-        <img src="assets/axonhub-users.png" alt="用户管理" width="250"/>
+      <a href="docs/screenshots/axonhub-users.png">
+        <img src="docs/screenshots/axonhub-users.png" alt="用户管理" width="250"/>
       </a>
       <br/>
       用户管理
@@ -91,22 +93,22 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
   </tr>
   <tr>
     <td align="center">
-      <a href="assets/axonhub-requests.png">
-        <img src="assets/axonhub-requests.png" alt="请求监控" width="250"/>
+      <a href="docs/screenshots/axonhub-requests.png">
+        <img src="docs/screenshots/axonhub-requests.png" alt="请求监控" width="250"/>
       </a>
       <br/>
       请求监控
     </td>
     <td align="center">
-      <a href="assets/axonhub-ussge-logs.png">
-        <img src="assets/axonhub-ussge-logs.png" alt="用量日志" width="250"/>
+      <a href="docs/screenshots/axonhub-usage-logs.png">
+        <img src="docs/screenshots/axonhub-usage-logs.png" alt="用量日志" width="250"/>
       </a>
       <br/>
       用量日志
     </td>
     <td align="center">
-      <a href="assets/axonhub-system.png">
-        <img src="assets/axonhub-system.png" alt="系统设置" width="250"/>
+      <a href="docs/screenshots/axonhub-system.png">
+        <img src="docs/screenshots/axonhub-system.png" alt="系统设置" width="250"/>
       </a>
       <br/>
       系统设置
@@ -118,13 +120,13 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 
 ### 🚀 支持的功能 | Supported Features
 
-| 功能 | 状态 | 描述 |
-|---------|--------|-------------|
-| **文本生成（Chat Completion）** | ✅ Done | 对话交互接口 |
-| **图片生成（Image Generation）** | 📝 Todo | 图片生成 |
-| **重排序（Rerank）** | 📝 Todo | 结果排序 |
-| **实时对话（Realtime）** | 📝 Todo | 实时对话功能 |
-| **嵌入（Embedding）** | 📝 Todo | 向量嵌入生成 |
+| 功能 | 状态 | 描述 | 文档 |
+|---------|--------|-------------|--------|
+| **文本生成（Chat Completion）** | ✅ Done | 对话交互接口 | [Chat Completions](docs/chat-completions.md) |
+| **图片生成（Image Generation）** | ⚠️ Partial | 图片生成 | [Image Generations](docs/image-generations.md) |
+| **重排序（Rerank）** | 📝 Todo | 结果排序 | - |
+| **实时对话（Realtime）** | 📝 Todo | 实时对话功能 | - |
+| **嵌入（Embedding）** | 📝 Todo | 向量嵌入生成 | - |
 
 ---
 
@@ -140,28 +142,12 @@ AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, 
 
 ### 🔧 接口格式支持 | API Format Support
 
-| 格式 Format | 状态 Status | 兼容性 Compatibility | 备注 Notes |
+| 格式 Format | 状态 Status | 兼容性 Compatibility | Modalities |
 |-------------|------------|---------------------|----------|
-| **OpenAI API** | ✅ Done | 完全兼容 | Chat/Completions API |
-| **Anthropic API** | ✅ Done | 完全支持 | Claude Messages API |
-| **AI SDK** | ⚠️ Partial | 部分支持 | Vercel AI SDK 格式 |
-| **更多格式** | 🔄 Ongoing | 持续增加 | 新的 API 格式支持 |
-
----
-
-### 🤖 支持的供应商 | Supported Providers
-
-| 提供商 Provider | 状态 Status | 支持的模型 Supported Models | 备注 Notes |
-|---------------|------------|---------------------------|----------|
-| **OpenAI** | ✅ Done | GPT-4, GPT-4o, GPT-5, etc. | 完全支持，包括流式响应 |
-| **Anthropic** | ✅ Done | Claude 4.0, Claude 4.1, etc. | 完全支持，包括思维链 |
-| **智谱 AI (Zhipu)** | ✅ Done | GLM-4.5, GLM-4.5-air, etc. | 完全支持 |
-| **月之暗面 (Kimi)** | ✅ Done | kimi-k2, etc. | 完全支持 |
-| **深度求索 (DeepSeek)** | ✅ Done | DeepSeek-V3.1, etc. | 完全支持 |
-| **字节豆包 (Doubao)** | ✅ Done | doubao-1.6, etc. | 完全支持 |
-| **AWS Bedrock** | 🔄 Testing | Claude on AWS | 通过 Bedrock 接入 |
-| **Google Cloud** | 🔄 Testing| Claude on GCP | 通过 Vertex AI 接入 |
-| **Gemini** | 📝 Todo | Gemini 2.5, etc. | 未实现 |
+| **OpenAI Chat Completions** | ✅ Done | 完全兼容 | Text, Image |
+| **Anthropic API** | ✅ Done | 完全支持 | Text |
+| **AI SDK** | ⚠️ Partial | 部分支持 | Text |
+| **Gemini** | 🔄 Todo | - | - |
 
 ---
 
@@ -356,7 +342,9 @@ supported_models: ["gpt-5", "gpt-4o"]
 2. 分配角色和权限
 3. 生成 API 密钥
 
-### 4. Claude Code 使用 | Claude Code Integration
+### 4. Claude Code/Codex 使用 | Claude Code Integration
+
+#### 4.1 Claude Code 使用 | Claude Code Integration
 
 在 Claude Code 中使用 AxonHub：
 
@@ -366,13 +354,41 @@ export ANTHROPIC_API_KEY="your-axonhub-api-key"
 export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
 ```
 
-#### 4.1 模型配置文件功能 | Model Profiles Feature
+
+#### 4.2 Codex 使用 | Codex Integration
+
+配置 Codex 的 model provider 在 ${HOME}/.codex/config.toml
+
+```toml
+model = "gpt-5"
+model_provider = "axonhub-chat-completions"
+
+[model_providers.axonhub-chat-completions]
+# Name of the provider that will be displayed in the Codex UI.
+name = "AxonHub using Chat Completions"
+# The path `/chat/completions` will be amended to this URL to make the POST
+# request for the chat completions.
+base_url = "http://127.0.0.1:8090/v1"
+# If `env_key` is set, identifies an environment variable that must be set when
+# using Codex with this provider. The value of the environment variable must be
+# non-empty and will be used in the `Bearer TOKEN` HTTP header for the POST request.
+env_key = "AXONHUB_API_KEY"
+# Valid values for wire_api are "chat" and "responses". Defaults to "chat" if omitted.
+wire_api = "chat"
+# If necessary, extra query params that need to be added to the URL.
+# See the Azure example below.
+query_params = {}
+```
+
+
+
+#### 4.3 模型配置文件功能 | Model Profiles Feature
 
 <table>
   <tr align="center">
     <td align="center">
-      <a href="assets/axonhub-profiles.png">
-        <img src="assets/axonhub-profiles.png" alt="Profiles Configuration Interface" width="250"/>
+      <a href="docs/screenshots/axonhub-profiles.png">
+        <img src="docs/screenshots/axonhub-profiles.png" alt="Profiles Configuration Interface" width="250"/>
       </a>
     </td>
   </tr>
@@ -384,14 +400,14 @@ AxonHub 引入了强大的模型配置文件功能，允许您为 API 密钥配�
 - **成本优化**：自动将昂贵的模型请求映射到更具成本效益的替代方案
 - **模型回退**：在某些模型不可用时配置回退映射
 
-#### 4.2 配置文件工作原理 | How Profiles Work
+#### 4.4 配置文件工作原理 | How Profiles Work
 
 当活动配置文件配置了模型映射时，系统将在 API 请求期间自动将请求的模型映射到目标模型。例如：
 
 - 请求 `claude-sonnet-20241022` → 实际使用 `deepseek-v3.1`（模型映射）
 - 使用正则表达式模式一次匹配多个模型
 
-#### 4.3 Claude Code + 配置文件工作流 | Claude Code + Profiles Workflow
+#### 4.5 Claude Code/Codex + 配置文件工作流 | Claude Code + Profiles Workflow
 
 使用配置文件功能，您只需配置一次 Claude Code：
 
@@ -445,7 +461,7 @@ const completion = await openai.chat.completions.create({
 AxonHub 实现了一个复杂的双向数据转换管道，确保客户端和 AI 提供商之间的无缝通信。
 
 <div align="center">
-  <img src="assets/transformation-flow.svg" alt="AxonHub Transformation Flow" width="900"/>
+  <img src="docs/transformation-flow.svg" alt="AxonHub Transformation Flow" width="900"/>
 </div>
 
 ### 技术框架 | Technology Stack
