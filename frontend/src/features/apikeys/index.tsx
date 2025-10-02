@@ -84,7 +84,6 @@ function ApiKeysContent() {
       <ApiKeysTable
         data={data?.edges?.map((edge) => edge.node) || []}
         loading={isLoading}
-
         columns={createColumns(t)}
         pageInfo={data?.pageInfo}
         pageSize={pageSize}
@@ -110,7 +109,6 @@ export default function ApiKeysManagement() {
   return (
     <ApiKeysProvider>
       <Header fixed>
-        <Search />
         <div className='ml-auto flex items-center space-x-4'>
           <LanguageSwitch />
           <ThemeSwitch />
@@ -121,9 +119,7 @@ export default function ApiKeysManagement() {
       <Main>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>
-              {t('apikeys.title')}
-            </h2>
+            <h2 className='text-2xl font-bold tracking-tight'>{t('apikeys.title')}</h2>
             <p className='text-muted-foreground'>{t('apikeys.description')}</p>
           </div>
           <ApiKeysPrimaryButtons />
