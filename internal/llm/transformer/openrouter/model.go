@@ -28,6 +28,8 @@ type Choice struct {
 	Delta   *Message `json:"delta,omitempty"`
 }
 
+type Image llm.MessageContentPart
+
 func (c *Choice) ToLLMChoice() llm.Choice {
 	if c.Message != nil {
 		c.Choice.Message = lo.ToPtr(c.Message.ToLLMMessage())
@@ -46,9 +48,28 @@ type Message struct {
 	llm.Message
 
 	Reasoning *string `json:"reasoning,omitempty"`
+	Images    []Image `json:"images,omitempty"`
 }
 
 func (m *Message) ToLLMMessage() llm.Message {
 	m.ReasoningContent = m.Reasoning
+	if len(m.Images) > 0 {
+		var parts []llm.MessageContentPart
+		if m.Content.Content != nil && *m.Content.Content != "" {
+			parts = append(parts, llm.MessageContentPart{
+				Type: "text",
+				Text: m.Content.Content,
+			})
+		} else {
+			parts = m.Content.MultipleContent
+		}
+
+		for _, image := range m.Images {
+			parts = append(parts, llm.MessageContentPart(image))
+		}
+
+		m.Content = llm.MessageContent{MultipleContent: parts}
+	}
+
 	return m.Message
 }

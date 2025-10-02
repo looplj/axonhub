@@ -39,6 +39,46 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 				},
 			},
 		},
+		{
+			file: "or-image.json",
+			name: "or-image",
+			want: &llm.Response{
+				ID:      "gen-1759393520-lxwGJP80UyDdG9VmVTQj",
+				Model:   "google/gemini-2.5-flash-image-preview",
+				Object:  "chat.completion",
+				Created: 1759393520,
+				Choices: []llm.Choice{
+					{
+						Index:        0,
+						FinishReason: lo.ToPtr("stop"),
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								MultipleContent: []llm.MessageContentPart{
+									{
+										Type: "image_url",
+										ImageURL: &llm.ImageURL{
+											URL: "data:image/png;base64,iVBORw0KGgo",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				Usage: &llm.Usage{
+					PromptTokens:     7,
+					CompletionTokens: 1290,
+					TotalTokens:      1297,
+					PromptTokensDetails: &llm.PromptTokensDetails{
+						CachedTokens: 0,
+					},
+					CompletionTokensDetails: &llm.CompletionTokensDetails{
+						ReasoningTokens: 0,
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

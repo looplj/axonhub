@@ -50,6 +50,11 @@ type AuthConfig struct {
 	HeaderKey string `json:"header_key,omitempty"`
 }
 
+const (
+	AuthTypeBearer = "bearer"
+	AuthTypeAPIKey = "api_key"
+)
+
 // Response represents a generic HTTP response.
 type Response struct {
 	// HTTP response basics

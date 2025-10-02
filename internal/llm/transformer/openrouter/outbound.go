@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/samber/lo"
 	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
 
@@ -51,11 +53,78 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid OpenRouter transformer configuration: %w", err)
 	}
 
+	baseURL := strings.TrimSuffix(config.BaseURL, "/")
+
 	return &OutboundTransformer{
-		BaseURL:  config.BaseURL,
+		BaseURL:  baseURL,
 		APIKey:   config.APIKey,
 		Outbound: t,
 	}, nil
+}
+
+// TransformRequest transforms ChatCompletionRequest to Request.
+func (t *OutboundTransformer) TransformRequest(
+	ctx context.Context,
+	chatReq *llm.Request,
+) (*httpclient.Request, error) {
+	if chatReq == nil {
+		return nil, fmt.Errorf("chat completion request is nil")
+	}
+
+	// Validate required fields
+	if chatReq.Model == "" {
+		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
+	}
+
+	if len(chatReq.Messages) == 0 {
+		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
+	}
+
+	if chatReq.IsImageGenerationRequest() {
+		chatReq = removeImageGenerationFromRequest(chatReq)
+		chatReq.Stream = lo.ToPtr(false)
+	}
+
+	body, err := json.Marshal(chatReq)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to transform request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	// Prepare headers
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+	headers.Set("Accept", "application/json")
+
+	auth := &httpclient.AuthConfig{
+		Type:   httpclient.AuthTypeBearer,
+		APIKey: t.APIKey,
+	}
+
+	url := t.BaseURL + "/chat/completions"
+
+	return &httpclient.Request{
+		Method:      http.MethodPost,
+		URL:         url,
+		Headers:     headers,
+		Body:        body,
+		Auth:        auth,
+		ContentType: "application/json",
+	}, nil
+}
+
+// The image generation tool is AxonHub specific to customize the image, so we need to remove it before sending the request.
+func removeImageGenerationFromRequest(req *llm.Request) *llm.Request {
+	var tools []llm.Tool
+
+	for _, tool := range req.Tools {
+		if tool.Type != "image_generation" {
+			tools = append(tools, tool)
+		}
+	}
+
+	req.Tools = tools
+
+	return req
 }
 
 func (t *OutboundTransformer) TransformResponse(
