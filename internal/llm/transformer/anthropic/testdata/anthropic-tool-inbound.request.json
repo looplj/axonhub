@@ -52,7 +52,10 @@
         "type": "object"
       },
       "name": "get_weather",
-      "description": "Get the weather at a specific location"
+      "description": "Get the weather at a specific location",
+      "cache_control": {
+        "type": "ephemeral"
+      }
     }
   ]
 }
