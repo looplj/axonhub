@@ -322,34 +322,8 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 	}, true
 }
 
-// convertToLlmUsage converts Anthropic Usage to unified Usage format.
-func convertToLlmUsage(usage Usage) llm.Usage {
-	// For some channel, like deepseek anthropic endpoint, the input tokens is greater than cache read input tokens, not same with anthropic official.
-	// I guess the input tokens include the cached tokens, so we handle it here.
-	if usage.CacheReadInputTokens > usage.InputTokens {
-		usage.InputTokens = usage.CacheReadInputTokens + usage.InputTokens
-	}
-
-	u := llm.Usage{
-		PromptTokens:     int(usage.InputTokens),
-		CompletionTokens: int(usage.OutputTokens),
-		TotalTokens: int(
-			usage.InputTokens + usage.OutputTokens,
-		),
-	}
-
-	// Map detailed token information from Anthropic format to unified model
-	if usage.CacheReadInputTokens > 0 {
-		u.PromptTokensDetails = &llm.PromptTokensDetails{
-			CachedTokens: int(usage.CacheReadInputTokens),
-		}
-	}
-
-	return u
-}
-
 // convertToChatCompletionResponse converts Anthropic Message to unified Response format.
-func convertToChatCompletionResponse(anthropicResp *Message) *llm.Response {
+func convertToChatCompletionResponse(anthropicResp *Message, platformType PlatformType) *llm.Response {
 	if anthropicResp == nil {
 		return &llm.Response{
 			ID:      "",
@@ -448,31 +422,7 @@ func convertToChatCompletionResponse(anthropicResp *Message) *llm.Response {
 
 	resp.Choices = []llm.Choice{choice}
 
-	// Convert usage
-	if anthropicResp.Usage != nil {
-		usage := &llm.Usage{
-			PromptTokens:     int(anthropicResp.Usage.InputTokens),
-			CompletionTokens: int(anthropicResp.Usage.OutputTokens),
-			TotalTokens: int(
-				anthropicResp.Usage.InputTokens + anthropicResp.Usage.OutputTokens,
-			),
-		}
-
-		// Map detailed token information from Anthropic format to unified model
-		if anthropicResp.Usage.CacheReadInputTokens > 0 {
-			usage.PromptTokensDetails = &llm.PromptTokensDetails{
-				CachedTokens: int(anthropicResp.Usage.CacheReadInputTokens),
-			}
-		}
-
-		// Note: Anthropic doesn't currently provide reasoning tokens breakdown
-		// but we can add it in the future if they support it
-		usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
-			ReasoningTokens: 0, // Anthropic doesn't provide this yet
-		}
-
-		resp.Usage = usage
-	}
+	resp.Usage = convertToLlmUsage(anthropicResp.Usage, platformType)
 
 	return resp
 }

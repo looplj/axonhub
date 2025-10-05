@@ -52,19 +52,19 @@ func (UsageLog) Fields() []ent.Field {
 		field.String("model_id").Immutable().Comment("Model identifier used for the request"),
 
 		// Core usage metrics from llm.Usage
-		field.Int("prompt_tokens").Default(0).Comment("Number of tokens in the prompt"),
-		field.Int("completion_tokens").Default(0).Comment("Number of tokens in the completion"),
-		field.Int("total_tokens").Default(0).Comment("Total number of tokens used"),
+		field.Int64("prompt_tokens").Default(0).Comment("Number of tokens in the prompt"),
+		field.Int64("completion_tokens").Default(0).Comment("Number of tokens in the completion"),
+		field.Int64("total_tokens").Default(0).Comment("Total number of tokens used"),
 
 		// Prompt tokens details from llm.PromptTokensDetails
-		field.Int("prompt_audio_tokens").Default(0).Optional().Comment("Number of audio tokens in the prompt"),
-		field.Int("prompt_cached_tokens").Default(0).Optional().Comment("Number of cached tokens in the prompt"),
+		field.Int64("prompt_audio_tokens").Default(0).Optional().Comment("Number of audio tokens in the prompt"),
+		field.Int64("prompt_cached_tokens").Default(0).Optional().Comment("Number of cached tokens in the prompt"),
 
 		// Completion tokens details from llm.CompletionTokensDetails
-		field.Int("completion_audio_tokens").Default(0).Optional().Comment("Number of audio tokens in the completion"),
-		field.Int("completion_reasoning_tokens").Default(0).Optional().Comment("Number of reasoning tokens in the completion"),
-		field.Int("completion_accepted_prediction_tokens").Default(0).Optional().Comment("Number of accepted prediction tokens"),
-		field.Int("completion_rejected_prediction_tokens").Default(0).Optional().Comment("Number of rejected prediction tokens"),
+		field.Int64("completion_audio_tokens").Default(0).Optional().Comment("Number of audio tokens in the completion"),
+		field.Int64("completion_reasoning_tokens").Default(0).Optional().Comment("Number of reasoning tokens in the completion"),
+		field.Int64("completion_accepted_prediction_tokens").Default(0).Optional().Comment("Number of accepted prediction tokens"),
+		field.Int64("completion_rejected_prediction_tokens").Default(0).Optional().Comment("Number of rejected prediction tokens"),
 
 		// Additional metadata
 		field.Enum("source").Values("api", "playground", "test").Default("api").Immutable().Comment("Source of the request"),

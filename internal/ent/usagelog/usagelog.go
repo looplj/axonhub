@@ -136,23 +136,23 @@ var (
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
 	// DefaultPromptTokens holds the default value on creation for the "prompt_tokens" field.
-	DefaultPromptTokens int
+	DefaultPromptTokens int64
 	// DefaultCompletionTokens holds the default value on creation for the "completion_tokens" field.
-	DefaultCompletionTokens int
+	DefaultCompletionTokens int64
 	// DefaultTotalTokens holds the default value on creation for the "total_tokens" field.
-	DefaultTotalTokens int
+	DefaultTotalTokens int64
 	// DefaultPromptAudioTokens holds the default value on creation for the "prompt_audio_tokens" field.
-	DefaultPromptAudioTokens int
+	DefaultPromptAudioTokens int64
 	// DefaultPromptCachedTokens holds the default value on creation for the "prompt_cached_tokens" field.
-	DefaultPromptCachedTokens int
+	DefaultPromptCachedTokens int64
 	// DefaultCompletionAudioTokens holds the default value on creation for the "completion_audio_tokens" field.
-	DefaultCompletionAudioTokens int
+	DefaultCompletionAudioTokens int64
 	// DefaultCompletionReasoningTokens holds the default value on creation for the "completion_reasoning_tokens" field.
-	DefaultCompletionReasoningTokens int
+	DefaultCompletionReasoningTokens int64
 	// DefaultCompletionAcceptedPredictionTokens holds the default value on creation for the "completion_accepted_prediction_tokens" field.
-	DefaultCompletionAcceptedPredictionTokens int
+	DefaultCompletionAcceptedPredictionTokens int64
 	// DefaultCompletionRejectedPredictionTokens holds the default value on creation for the "completion_rejected_prediction_tokens" field.
-	DefaultCompletionRejectedPredictionTokens int
+	DefaultCompletionRejectedPredictionTokens int64
 	// DefaultFormat holds the default value on creation for the "format" field.
 	DefaultFormat string
 )

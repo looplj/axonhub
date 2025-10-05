@@ -2,7 +2,6 @@ package anthropic
 
 import (
 	"encoding/json"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -28,7 +27,7 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 			OutputTokens: 20,
 		},
 	}
-	result := convertToChatCompletionResponse(anthropicResp)
+	result := convertToChatCompletionResponse(anthropicResp, PlatformDirect)
 
 	require.Equal(t, "msg_123", result.ID)
 	require.Equal(t, "chat.completion", result.Object)
@@ -37,9 +36,9 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 	require.Equal(t, "assistant", result.Choices[0].Message.Role)
 	require.Equal(t, "Hello! How can I help you?", *result.Choices[0].Message.Content.Content)
 	require.Equal(t, "stop", *result.Choices[0].FinishReason)
-	require.Equal(t, 10, result.Usage.PromptTokens)
-	require.Equal(t, 20, result.Usage.CompletionTokens)
-	require.Equal(t, 30, result.Usage.TotalTokens)
+	require.Equal(t, int64(10), result.Usage.PromptTokens)
+	require.Equal(t, int64(20), result.Usage.CompletionTokens)
+	require.Equal(t, int64(30), result.Usage.TotalTokens)
 }
 
 func TestOutboundTransformer_ToolArgsRepair(t *testing.T) {
@@ -305,7 +304,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 						StopReason: func() *string { s := anthropicReason; return &s }(),
 					}
 
-					result := convertToChatCompletionResponse(msg)
+					result := convertToChatCompletionResponse(msg, PlatformDirect)
 					if expectedReason == "stop" {
 						require.Equal(t, expectedReason, *result.Choices[0].FinishReason)
 					} else {
@@ -335,14 +334,13 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Response) {
 				t.Helper()
 				require.Equal(t, "msg_cache", result.ID)
-				require.Equal(t, 100, result.Usage.PromptTokens)
-				require.Equal(t, 50, result.Usage.CompletionTokens)
-				require.Equal(t, 150, result.Usage.TotalTokens)
+				require.Equal(t, int64(150), result.Usage.PromptTokens)
+				require.Equal(t, int64(50), result.Usage.CompletionTokens)
+				require.Equal(t, int64(200), result.Usage.TotalTokens)
 				// Verify detailed token information
 				require.NotNil(t, result.Usage.PromptTokensDetails)
-				require.Equal(t, 30, result.Usage.PromptTokensDetails.CachedTokens)
-				require.NotNil(t, result.Usage.CompletionTokensDetails)
-				require.Equal(t, 0, result.Usage.CompletionTokensDetails.ReasoningTokens)
+				require.Equal(t, int64(50), result.Usage.PromptTokensDetails.CachedTokens)
+				require.Nil(t, result.Usage.CompletionTokensDetails)
 			},
 		},
 		{
@@ -366,15 +364,13 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Response) {
 				t.Helper()
 				require.Equal(t, "msg_detailed", result.ID)
-				require.Equal(t, 200, result.Usage.PromptTokens)
-				require.Equal(t, 75, result.Usage.CompletionTokens)
-				require.Equal(t, 275, result.Usage.TotalTokens)
+				require.Equal(t, int64(350), result.Usage.PromptTokens)
+				require.Equal(t, int64(75), result.Usage.CompletionTokens)
+				require.Equal(t, int64(425), result.Usage.TotalTokens)
 				// Verify detailed prompt token information
 				require.NotNil(t, result.Usage.PromptTokensDetails)
-				require.Equal(t, 100, result.Usage.PromptTokensDetails.CachedTokens)
-				// Verify detailed completion token information
-				require.NotNil(t, result.Usage.CompletionTokensDetails)
-				require.Equal(t, 0, result.Usage.CompletionTokensDetails.ReasoningTokens)
+				require.Equal(t, int64(150), result.Usage.PromptTokensDetails.CachedTokens)
+				require.Nil(t, result.Usage.CompletionTokensDetails)
 			},
 		},
 		{
@@ -398,13 +394,12 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Response) {
 				t.Helper()
 				require.Equal(t, "msg_no_cache", result.ID)
-				require.Equal(t, 80, result.Usage.PromptTokens)
-				require.Equal(t, 40, result.Usage.CompletionTokens)
-				require.Equal(t, 120, result.Usage.TotalTokens)
+				require.Equal(t, int64(80), result.Usage.PromptTokens)
+				require.Equal(t, int64(40), result.Usage.CompletionTokens)
+				require.Equal(t, int64(120), result.Usage.TotalTokens)
 				// Verify no detailed token information when cache tokens are 0
 				require.Nil(t, result.Usage.PromptTokensDetails)
-				require.NotNil(t, result.Usage.CompletionTokensDetails)
-				require.Equal(t, 0, result.Usage.CompletionTokensDetails.ReasoningTokens)
+				require.Nil(t, result.Usage.CompletionTokensDetails)
 			},
 		},
 		{
@@ -427,7 +422,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertToChatCompletionResponse(tt.input)
+			result := convertToChatCompletionResponse(tt.input, PlatformDirect)
 			tt.validate(t, result)
 		})
 	}
@@ -643,66 +638,6 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 			require.Equal(t, tt.expected.MaxTokens, result.MaxTokens)
 			require.Equal(t, tt.expected.System, result.System)
 			require.Equal(t, len(tt.expected.Messages), len(result.Messages))
-		})
-	}
-}
-
-func Test_convertUsage(t *testing.T) {
-	type args struct {
-		usage Usage
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want llm.Usage
-	}{
-		{
-			name: "base case",
-			args: args{
-				usage: Usage{
-					InputTokens:              100,
-					OutputTokens:             50,
-					CacheCreationInputTokens: 20,
-					CacheReadInputTokens:     30,
-					ServiceTier:              "standard",
-				},
-			},
-			want: llm.Usage{
-				PromptTokens:     100,
-				CompletionTokens: 50,
-				TotalTokens:      150,
-				PromptTokensDetails: &llm.PromptTokensDetails{
-					CachedTokens: 30,
-				},
-			},
-		},
-		{
-			name: "cache read tokens greater than input tokens",
-			args: args{
-				usage: Usage{
-					InputTokens:              100,
-					OutputTokens:             50,
-					CacheCreationInputTokens: 20,
-					CacheReadInputTokens:     150,
-					ServiceTier:              "standard",
-				},
-			},
-			want: llm.Usage{
-				PromptTokens:     250,
-				CompletionTokens: 50,
-				TotalTokens:      300,
-				PromptTokensDetails: &llm.PromptTokensDetails{
-					CachedTokens: 150,
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := convertToLlmUsage(tt.args.usage); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("convertUsage() = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }

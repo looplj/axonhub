@@ -221,8 +221,68 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 			Channel:  c,
 			Outbound: transformer,
 		}, nil
-	case channel.TypeAnthropic, channel.TypeDeepseekAnthropic, channel.TypeMoonshotAnthropic, channel.TypeZhipuAnthropic, channel.TypeZaiAnthropic:
-		transformer, err := anthropic.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+	case channel.TypeAnthropic:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:    anthropic.PlatformDirect,
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:  c,
+			Outbound: transformer,
+		}, nil
+	case channel.TypeDeepseekAnthropic:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:    anthropic.PlatformDeepSeek,
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:  c,
+			Outbound: transformer,
+		}, nil
+	case channel.TypeMoonshotAnthropic:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:    anthropic.PlatformMoonshot,
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:  c,
+			Outbound: transformer,
+		}, nil
+	case channel.TypeZhipuAnthropic:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:    anthropic.PlatformZhipu,
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:  c,
+			Outbound: transformer,
+		}, nil
+	case channel.TypeZaiAnthropic:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:    anthropic.PlatformZai,
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 		}

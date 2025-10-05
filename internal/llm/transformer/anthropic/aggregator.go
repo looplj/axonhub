@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"github.com/kaptinlin/jsonrepair"
-	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/log"
@@ -14,7 +13,7 @@ import (
 )
 
 //nolint:maintidx // TODO: fix this.
-func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent, platformType PlatformType) ([]byte, llm.ResponseMeta, error) {
 	if len(chunks) == 0 {
 		return nil, llm.ResponseMeta{}, errors.New("empty stream chunks")
 	}
@@ -120,6 +119,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 						usage.InputTokens = event.Usage.InputTokens
 					}
 
+					if event.Usage.CachedTokens > 0 {
+						usage.CachedTokens = event.Usage.CachedTokens
+					}
+
 					if event.Usage.CacheCreationInputTokens > 0 {
 						usage.CacheCreationInputTokens = event.Usage.CacheCreationInputTokens
 					}
@@ -199,7 +202,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	if usage != nil {
 		return data, llm.ResponseMeta{
 			ID:    message.ID,
-			Usage: lo.ToPtr(convertToLlmUsage(*usage)),
+			Usage: convertToLlmUsage(usage, platformType),
 		}, nil
 	}
 

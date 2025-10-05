@@ -19,9 +19,13 @@ import (
 type PlatformType string
 
 const (
-	PlatformDirect  PlatformType = "direct"  // Direct Anthropic API
-	PlatformBedrock PlatformType = "bedrock" // AWS Bedrock
-	PlatformVertex  PlatformType = "vertex"  // Google Vertex AI
+	PlatformDirect   PlatformType = "direct"   // Direct Anthropic API
+	PlatformBedrock  PlatformType = "bedrock"  // AWS Bedrock
+	PlatformVertex   PlatformType = "vertex"   // Google Vertex AI
+	PlatformDeepSeek PlatformType = "deepseek" // DeepSeek with Anthropic format
+	PlatformMoonshot PlatformType = "moonshot" // Moonshot with Anthropic format
+	PlatformZhipu    PlatformType = "zhipu"    // Zhipu with Anthropic format
+	PlatformZai      PlatformType = "zai"      // Zai with Anthropic format
 )
 
 // Config holds all configuration for the Anthropic outbound transformer.
@@ -178,7 +182,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Prepare authentication
 	var auth *httpclient.AuthConfig
-	if t.config.APIKey != "" && t.config.Type == PlatformDirect {
+	if t.config.APIKey != "" && (t.config.Type != PlatformBedrock && t.config.Type != PlatformVertex) {
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",
 			APIKey:    t.config.APIKey,
@@ -273,7 +277,7 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// Convert to ChatCompletionResponse
-	chatResp := convertToChatCompletionResponse(&anthropicResp)
+	chatResp := convertToChatCompletionResponse(&anthropicResp, t.config.Type)
 
 	return chatResp, nil
 }
@@ -283,7 +287,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 	ctx context.Context,
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, llm.ResponseMeta, error) {
-	return AggregateStreamChunks(ctx, chunks)
+	return AggregateStreamChunks(ctx, chunks, t.config.Type)
 }
 
 // SetAPIKey updates the API key.

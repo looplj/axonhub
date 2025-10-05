@@ -406,9 +406,9 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 				require.NotNil(t, result.Choices[0].Message.Content.Content)
 				require.Equal(t, "Hello! How can I help you?", *result.Choices[0].Message.Content.Content)
 				require.NotNil(t, result.Usage)
-				require.Equal(t, 10, result.Usage.PromptTokens)
-				require.Equal(t, 20, result.Usage.CompletionTokens)
-				require.Equal(t, 30, result.Usage.TotalTokens)
+				require.Equal(t, int64(10), result.Usage.PromptTokens)
+				require.Equal(t, int64(20), result.Usage.CompletionTokens)
+				require.Equal(t, int64(30), result.Usage.TotalTokens)
 			},
 		},
 		{
@@ -686,7 +686,7 @@ func TestOutboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 				require.NotNil(t, result.Choices[0].Message.Content.Content)
 				require.Contains(t, *result.Choices[0].Message.Content.Content, "weather")
 				require.NotNil(t, result.Usage)
-				require.Greater(t, result.Usage.TotalTokens, 0)
+				require.Greater(t, result.Usage.TotalTokens, int64(0))
 			},
 		},
 	}

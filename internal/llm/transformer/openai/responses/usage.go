@@ -5,15 +5,15 @@ import (
 )
 
 type Usage struct {
-	InputTokens       int `json:"input_tokens"`
+	InputTokens       int64 `json:"input_tokens"`
 	InputTokenDetails struct {
-		CachedTokens int `json:"cached_tokens"`
+		CachedTokens int64 `json:"cached_tokens"`
 	} `json:"input_tokens_details"`
-	OutputTokens       int `json:"output_tokens"`
+	OutputTokens       int64 `json:"output_tokens"`
 	OutputTokenDetails struct {
-		ReasoningTokens int `json:"reasoning_tokens"`
+		ReasoningTokens int64 `json:"reasoning_tokens"`
 	} `json:"output_tokens_details"`
-	TotalTokens int `json:"total_tokens"`
+	TotalTokens int64 `json:"total_tokens"`
 }
 
 func (u *Usage) ToUsage() *llm.Usage {

@@ -461,15 +461,15 @@ type CreateUsageLogInput struct {
 	CreatedAt                          *time.Time
 	UpdatedAt                          *time.Time
 	ModelID                            string
-	PromptTokens                       *int
-	CompletionTokens                   *int
-	TotalTokens                        *int
-	PromptAudioTokens                  *int
-	PromptCachedTokens                 *int
-	CompletionAudioTokens              *int
-	CompletionReasoningTokens          *int
-	CompletionAcceptedPredictionTokens *int
-	CompletionRejectedPredictionTokens *int
+	PromptTokens                       *int64
+	CompletionTokens                   *int64
+	TotalTokens                        *int64
+	PromptAudioTokens                  *int64
+	PromptCachedTokens                 *int64
+	CompletionAudioTokens              *int64
+	CompletionReasoningTokens          *int64
+	CompletionAcceptedPredictionTokens *int64
+	CompletionRejectedPredictionTokens *int64
 	Source                             *usagelog.Source
 	Format                             *string
 	UserID                             int
@@ -535,21 +535,21 @@ func (c *UsageLogCreate) SetInput(i CreateUsageLogInput) *UsageLogCreate {
 // UpdateUsageLogInput represents a mutation input for updating usagelogs.
 type UpdateUsageLogInput struct {
 	UpdatedAt                               *time.Time
-	PromptTokens                            *int
-	CompletionTokens                        *int
-	TotalTokens                             *int
+	PromptTokens                            *int64
+	CompletionTokens                        *int64
+	TotalTokens                             *int64
 	ClearPromptAudioTokens                  bool
-	PromptAudioTokens                       *int
+	PromptAudioTokens                       *int64
 	ClearPromptCachedTokens                 bool
-	PromptCachedTokens                      *int
+	PromptCachedTokens                      *int64
 	ClearCompletionAudioTokens              bool
-	CompletionAudioTokens                   *int
+	CompletionAudioTokens                   *int64
 	ClearCompletionReasoningTokens          bool
-	CompletionReasoningTokens               *int
+	CompletionReasoningTokens               *int64
 	ClearCompletionAcceptedPredictionTokens bool
-	CompletionAcceptedPredictionTokens      *int
+	CompletionAcceptedPredictionTokens      *int64
 	ClearCompletionRejectedPredictionTokens bool
-	CompletionRejectedPredictionTokens      *int
+	CompletionRejectedPredictionTokens      *int64
 	ClearChannel                            bool
 	ChannelID                               *int
 }

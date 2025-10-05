@@ -177,15 +177,15 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usagelog.FieldRequestID:                          {Type: field.TypeInt, Column: usagelog.FieldRequestID},
 			usagelog.FieldChannelID:                          {Type: field.TypeInt, Column: usagelog.FieldChannelID},
 			usagelog.FieldModelID:                            {Type: field.TypeString, Column: usagelog.FieldModelID},
-			usagelog.FieldPromptTokens:                       {Type: field.TypeInt, Column: usagelog.FieldPromptTokens},
-			usagelog.FieldCompletionTokens:                   {Type: field.TypeInt, Column: usagelog.FieldCompletionTokens},
-			usagelog.FieldTotalTokens:                        {Type: field.TypeInt, Column: usagelog.FieldTotalTokens},
-			usagelog.FieldPromptAudioTokens:                  {Type: field.TypeInt, Column: usagelog.FieldPromptAudioTokens},
-			usagelog.FieldPromptCachedTokens:                 {Type: field.TypeInt, Column: usagelog.FieldPromptCachedTokens},
-			usagelog.FieldCompletionAudioTokens:              {Type: field.TypeInt, Column: usagelog.FieldCompletionAudioTokens},
-			usagelog.FieldCompletionReasoningTokens:          {Type: field.TypeInt, Column: usagelog.FieldCompletionReasoningTokens},
-			usagelog.FieldCompletionAcceptedPredictionTokens: {Type: field.TypeInt, Column: usagelog.FieldCompletionAcceptedPredictionTokens},
-			usagelog.FieldCompletionRejectedPredictionTokens: {Type: field.TypeInt, Column: usagelog.FieldCompletionRejectedPredictionTokens},
+			usagelog.FieldPromptTokens:                       {Type: field.TypeInt64, Column: usagelog.FieldPromptTokens},
+			usagelog.FieldCompletionTokens:                   {Type: field.TypeInt64, Column: usagelog.FieldCompletionTokens},
+			usagelog.FieldTotalTokens:                        {Type: field.TypeInt64, Column: usagelog.FieldTotalTokens},
+			usagelog.FieldPromptAudioTokens:                  {Type: field.TypeInt64, Column: usagelog.FieldPromptAudioTokens},
+			usagelog.FieldPromptCachedTokens:                 {Type: field.TypeInt64, Column: usagelog.FieldPromptCachedTokens},
+			usagelog.FieldCompletionAudioTokens:              {Type: field.TypeInt64, Column: usagelog.FieldCompletionAudioTokens},
+			usagelog.FieldCompletionReasoningTokens:          {Type: field.TypeInt64, Column: usagelog.FieldCompletionReasoningTokens},
+			usagelog.FieldCompletionAcceptedPredictionTokens: {Type: field.TypeInt64, Column: usagelog.FieldCompletionAcceptedPredictionTokens},
+			usagelog.FieldCompletionRejectedPredictionTokens: {Type: field.TypeInt64, Column: usagelog.FieldCompletionRejectedPredictionTokens},
 			usagelog.FieldSource:                             {Type: field.TypeEnum, Column: usagelog.FieldSource},
 			usagelog.FieldFormat:                             {Type: field.TypeString, Column: usagelog.FieldFormat},
 		},
@@ -1256,48 +1256,48 @@ func (f *UsageLogFilter) WhereModelID(p entql.StringP) {
 	f.Where(p.Field(usagelog.FieldModelID))
 }
 
-// WherePromptTokens applies the entql int predicate on the prompt_tokens field.
-func (f *UsageLogFilter) WherePromptTokens(p entql.IntP) {
+// WherePromptTokens applies the entql int64 predicate on the prompt_tokens field.
+func (f *UsageLogFilter) WherePromptTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldPromptTokens))
 }
 
-// WhereCompletionTokens applies the entql int predicate on the completion_tokens field.
-func (f *UsageLogFilter) WhereCompletionTokens(p entql.IntP) {
+// WhereCompletionTokens applies the entql int64 predicate on the completion_tokens field.
+func (f *UsageLogFilter) WhereCompletionTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldCompletionTokens))
 }
 
-// WhereTotalTokens applies the entql int predicate on the total_tokens field.
-func (f *UsageLogFilter) WhereTotalTokens(p entql.IntP) {
+// WhereTotalTokens applies the entql int64 predicate on the total_tokens field.
+func (f *UsageLogFilter) WhereTotalTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldTotalTokens))
 }
 
-// WherePromptAudioTokens applies the entql int predicate on the prompt_audio_tokens field.
-func (f *UsageLogFilter) WherePromptAudioTokens(p entql.IntP) {
+// WherePromptAudioTokens applies the entql int64 predicate on the prompt_audio_tokens field.
+func (f *UsageLogFilter) WherePromptAudioTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldPromptAudioTokens))
 }
 
-// WherePromptCachedTokens applies the entql int predicate on the prompt_cached_tokens field.
-func (f *UsageLogFilter) WherePromptCachedTokens(p entql.IntP) {
+// WherePromptCachedTokens applies the entql int64 predicate on the prompt_cached_tokens field.
+func (f *UsageLogFilter) WherePromptCachedTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldPromptCachedTokens))
 }
 
-// WhereCompletionAudioTokens applies the entql int predicate on the completion_audio_tokens field.
-func (f *UsageLogFilter) WhereCompletionAudioTokens(p entql.IntP) {
+// WhereCompletionAudioTokens applies the entql int64 predicate on the completion_audio_tokens field.
+func (f *UsageLogFilter) WhereCompletionAudioTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldCompletionAudioTokens))
 }
 
-// WhereCompletionReasoningTokens applies the entql int predicate on the completion_reasoning_tokens field.
-func (f *UsageLogFilter) WhereCompletionReasoningTokens(p entql.IntP) {
+// WhereCompletionReasoningTokens applies the entql int64 predicate on the completion_reasoning_tokens field.
+func (f *UsageLogFilter) WhereCompletionReasoningTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldCompletionReasoningTokens))
 }
 
-// WhereCompletionAcceptedPredictionTokens applies the entql int predicate on the completion_accepted_prediction_tokens field.
-func (f *UsageLogFilter) WhereCompletionAcceptedPredictionTokens(p entql.IntP) {
+// WhereCompletionAcceptedPredictionTokens applies the entql int64 predicate on the completion_accepted_prediction_tokens field.
+func (f *UsageLogFilter) WhereCompletionAcceptedPredictionTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldCompletionAcceptedPredictionTokens))
 }
 
-// WhereCompletionRejectedPredictionTokens applies the entql int predicate on the completion_rejected_prediction_tokens field.
-func (f *UsageLogFilter) WhereCompletionRejectedPredictionTokens(p entql.IntP) {
+// WhereCompletionRejectedPredictionTokens applies the entql int64 predicate on the completion_rejected_prediction_tokens field.
+func (f *UsageLogFilter) WhereCompletionRejectedPredictionTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldCompletionRejectedPredictionTokens))
 }
 

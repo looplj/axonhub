@@ -6456,24 +6456,24 @@ type UsageLogMutation struct {
 	deleted_at                               *int
 	adddeleted_at                            *int
 	model_id                                 *string
-	prompt_tokens                            *int
-	addprompt_tokens                         *int
-	completion_tokens                        *int
-	addcompletion_tokens                     *int
-	total_tokens                             *int
-	addtotal_tokens                          *int
-	prompt_audio_tokens                      *int
-	addprompt_audio_tokens                   *int
-	prompt_cached_tokens                     *int
-	addprompt_cached_tokens                  *int
-	completion_audio_tokens                  *int
-	addcompletion_audio_tokens               *int
-	completion_reasoning_tokens              *int
-	addcompletion_reasoning_tokens           *int
-	completion_accepted_prediction_tokens    *int
-	addcompletion_accepted_prediction_tokens *int
-	completion_rejected_prediction_tokens    *int
-	addcompletion_rejected_prediction_tokens *int
+	prompt_tokens                            *int64
+	addprompt_tokens                         *int64
+	completion_tokens                        *int64
+	addcompletion_tokens                     *int64
+	total_tokens                             *int64
+	addtotal_tokens                          *int64
+	prompt_audio_tokens                      *int64
+	addprompt_audio_tokens                   *int64
+	prompt_cached_tokens                     *int64
+	addprompt_cached_tokens                  *int64
+	completion_audio_tokens                  *int64
+	addcompletion_audio_tokens               *int64
+	completion_reasoning_tokens              *int64
+	addcompletion_reasoning_tokens           *int64
+	completion_accepted_prediction_tokens    *int64
+	addcompletion_accepted_prediction_tokens *int64
+	completion_rejected_prediction_tokens    *int64
+	addcompletion_rejected_prediction_tokens *int64
 	source                                   *usagelog.Source
 	format                                   *string
 	clearedFields                            map[string]struct{}
@@ -6872,13 +6872,13 @@ func (m *UsageLogMutation) ResetModelID() {
 }
 
 // SetPromptTokens sets the "prompt_tokens" field.
-func (m *UsageLogMutation) SetPromptTokens(i int) {
+func (m *UsageLogMutation) SetPromptTokens(i int64) {
 	m.prompt_tokens = &i
 	m.addprompt_tokens = nil
 }
 
 // PromptTokens returns the value of the "prompt_tokens" field in the mutation.
-func (m *UsageLogMutation) PromptTokens() (r int, exists bool) {
+func (m *UsageLogMutation) PromptTokens() (r int64, exists bool) {
 	v := m.prompt_tokens
 	if v == nil {
 		return
@@ -6889,7 +6889,7 @@ func (m *UsageLogMutation) PromptTokens() (r int, exists bool) {
 // OldPromptTokens returns the old "prompt_tokens" field's value of the UsageLog entity.
 // If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldPromptTokens(ctx context.Context) (v int, err error) {
+func (m *UsageLogMutation) OldPromptTokens(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldPromptTokens is only allowed on UpdateOne operations")
 	}
@@ -6904,7 +6904,7 @@ func (m *UsageLogMutation) OldPromptTokens(ctx context.Context) (v int, err erro
 }
 
 // AddPromptTokens adds i to the "prompt_tokens" field.
-func (m *UsageLogMutation) AddPromptTokens(i int) {
+func (m *UsageLogMutation) AddPromptTokens(i int64) {
 	if m.addprompt_tokens != nil {
 		*m.addprompt_tokens += i
 	} else {
@@ -6913,7 +6913,7 @@ func (m *UsageLogMutation) AddPromptTokens(i int) {
 }
 
 // AddedPromptTokens returns the value that was added to the "prompt_tokens" field in this mutation.
-func (m *UsageLogMutation) AddedPromptTokens() (r int, exists bool) {
+func (m *UsageLogMutation) AddedPromptTokens() (r int64, exists bool) {
 	v := m.addprompt_tokens
 	if v == nil {
 		return
@@ -6928,13 +6928,13 @@ func (m *UsageLogMutation) ResetPromptTokens() {
 }
 
 // SetCompletionTokens sets the "completion_tokens" field.
-func (m *UsageLogMutation) SetCompletionTokens(i int) {
+func (m *UsageLogMutation) SetCompletionTokens(i int64) {
 	m.completion_tokens = &i
 	m.addcompletion_tokens = nil
 }
 
 // CompletionTokens returns the value of the "completion_tokens" field in the mutation.
-func (m *UsageLogMutation) CompletionTokens() (r int, exists bool) {
+func (m *UsageLogMutation) CompletionTokens() (r int64, exists bool) {
 	v := m.completion_tokens
 	if v == nil {
 		return
@@ -6945,7 +6945,7 @@ func (m *UsageLogMutation) CompletionTokens() (r int, exists bool) {
 // OldCompletionTokens returns the old "completion_tokens" field's value of the UsageLog entity.
 // If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldCompletionTokens(ctx context.Context) (v int, err error) {
+func (m *UsageLogMutation) OldCompletionTokens(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldCompletionTokens is only allowed on UpdateOne operations")
 	}
@@ -6960,7 +6960,7 @@ func (m *UsageLogMutation) OldCompletionTokens(ctx context.Context) (v int, err 
 }
 
 // AddCompletionTokens adds i to the "completion_tokens" field.
-func (m *UsageLogMutation) AddCompletionTokens(i int) {
+func (m *UsageLogMutation) AddCompletionTokens(i int64) {
 	if m.addcompletion_tokens != nil {
 		*m.addcompletion_tokens += i
 	} else {
@@ -6969,7 +6969,7 @@ func (m *UsageLogMutation) AddCompletionTokens(i int) {
 }
 
 // AddedCompletionTokens returns the value that was added to the "completion_tokens" field in this mutation.
-func (m *UsageLogMutation) AddedCompletionTokens() (r int, exists bool) {
+func (m *UsageLogMutation) AddedCompletionTokens() (r int64, exists bool) {
 	v := m.addcompletion_tokens
 	if v == nil {
 		return
@@ -6984,13 +6984,13 @@ func (m *UsageLogMutation) ResetCompletionTokens() {
 }
 
 // SetTotalTokens sets the "total_tokens" field.
-func (m *UsageLogMutation) SetTotalTokens(i int) {
+func (m *UsageLogMutation) SetTotalTokens(i int64) {
 	m.total_tokens = &i
 	m.addtotal_tokens = nil
 }
 
 // TotalTokens returns the value of the "total_tokens" field in the mutation.
-func (m *UsageLogMutation) TotalTokens() (r int, exists bool) {
+func (m *UsageLogMutation) TotalTokens() (r int64, exists bool) {
 	v := m.total_tokens
 	if v == nil {
 		return
@@ -7001,7 +7001,7 @@ func (m *UsageLogMutation) TotalTokens() (r int, exists bool) {
 // OldTotalTokens returns the old "total_tokens" field's value of the UsageLog entity.
 // If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldTotalTokens(ctx context.Context) (v int, err error) {
+func (m *UsageLogMutation) OldTotalTokens(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldTotalTokens is only allowed on UpdateOne operations")
 	}
@@ -7016,7 +7016,7 @@ func (m *UsageLogMutation) OldTotalTokens(ctx context.Context) (v int, err error
 }
 
 // AddTotalTokens adds i to the "total_tokens" field.
-func (m *UsageLogMutation) AddTotalTokens(i int) {
+func (m *UsageLogMutation) AddTotalTokens(i int64) {
 	if m.addtotal_tokens != nil {
 		*m.addtotal_tokens += i
 	} else {
@@ -7025,7 +7025,7 @@ func (m *UsageLogMutation) AddTotalTokens(i int) {
 }
 
 // AddedTotalTokens returns the value that was added to the "total_tokens" field in this mutation.
-func (m *UsageLogMutation) AddedTotalTokens() (r int, exists bool) {
+func (m *UsageLogMutation) AddedTotalTokens() (r int64, exists bool) {
 	v := m.addtotal_tokens
 	if v == nil {
 		return
@@ -7040,13 +7040,13 @@ func (m *UsageLogMutation) ResetTotalTokens() {
 }
 
 // SetPromptAudioTokens sets the "prompt_audio_tokens" field.
-func (m *UsageLogMutation) SetPromptAudioTokens(i int) {
+func (m *UsageLogMutation) SetPromptAudioTokens(i int64) {
 	m.prompt_audio_tokens = &i
 	m.addprompt_audio_tokens = nil
 }
 
 // PromptAudioTokens returns the value of the "prompt_audio_tokens" field in the mutation.
-func (m *UsageLogMutation) PromptAudioTokens() (r int, exists bool) {
+func (m *UsageLogMutation) PromptAudioTokens() (r int64, exists bool) {
 	v := m.prompt_audio_tokens
 	if v == nil {
 		return
@@ -7057,7 +7057,7 @@ func (m *UsageLogMutation) PromptAudioTokens() (r int, exists bool) {
 // OldPromptAudioTokens returns the old "prompt_audio_tokens" field's value of the UsageLog entity.
 // If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldPromptAudioTokens(ctx context.Context) (v int, err error) {
+func (m *UsageLogMutation) OldPromptAudioTokens(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldPromptAudioTokens is only allowed on UpdateOne operations")
 	}
@@ -7072,7 +7072,7 @@ func (m *UsageLogMutation) OldPromptAudioTokens(ctx context.Context) (v int, err
 }
 
 // AddPromptAudioTokens adds i to the "prompt_audio_tokens" field.
-func (m *UsageLogMutation) AddPromptAudioTokens(i int) {
+func (m *UsageLogMutation) AddPromptAudioTokens(i int64) {
 	if m.addprompt_audio_tokens != nil {
 		*m.addprompt_audio_tokens += i
 	} else {
@@ -7081,7 +7081,7 @@ func (m *UsageLogMutation) AddPromptAudioTokens(i int) {
 }
 
 // AddedPromptAudioTokens returns the value that was added to the "prompt_audio_tokens" field in this mutation.
-func (m *UsageLogMutation) AddedPromptAudioTokens() (r int, exists bool) {
+func (m *UsageLogMutation) AddedPromptAudioTokens() (r int64, exists bool) {
 	v := m.addprompt_audio_tokens
 	if v == nil {
 		return
@@ -7110,13 +7110,13 @@ func (m *UsageLogMutation) ResetPromptAudioTokens() {
 }
 
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
-func (m *UsageLogMutation) SetPromptCachedTokens(i int) {
+func (m *UsageLogMutation) SetPromptCachedTokens(i int64) {
 	m.prompt_cached_tokens = &i
 	m.addprompt_cached_tokens = nil
 }
 
 // PromptCachedTokens returns the value of the "prompt_cached_tokens" field in the mutation.
-func (m *UsageLogMutation) PromptCachedTokens() (r int, exists bool) {
+func (m *UsageLogMutation) PromptCachedTokens() (r int64, exists bool) {
 	v := m.prompt_cached_tokens
 	if v == nil {
 		return
@@ -7127,7 +7127,7 @@ func (m *UsageLogMutation) PromptCachedTokens() (r int, exists bool) {
 // OldPromptCachedTokens returns the old "prompt_cached_tokens" field's value of the UsageLog entity.
 // If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldPromptCachedTokens(ctx context.Context) (v int, err error) {
+func (m *UsageLogMutation) OldPromptCachedTokens(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldPromptCachedTokens is only allowed on UpdateOne operations")
 	}
@@ -7142,7 +7142,7 @@ func (m *UsageLogMutation) OldPromptCachedTokens(ctx context.Context) (v int, er
 }
 
 // AddPromptCachedTokens adds i to the "prompt_cached_tokens" field.
-func (m *UsageLogMutation) AddPromptCachedTokens(i int) {
+func (m *UsageLogMutation) AddPromptCachedTokens(i int64) {
 	if m.addprompt_cached_tokens != nil {
 		*m.addprompt_cached_tokens += i
 	} else {
@@ -7151,7 +7151,7 @@ func (m *UsageLogMutation) AddPromptCachedTokens(i int) {
 }
 
 // AddedPromptCachedTokens returns the value that was added to the "prompt_cached_tokens" field in this mutation.
-func (m *UsageLogMutation) AddedPromptCachedTokens() (r int, exists bool) {
+func (m *UsageLogMutation) AddedPromptCachedTokens() (r int64, exists bool) {
 	v := m.addprompt_cached_tokens
 	if v == nil {
 		return
@@ -7180,13 +7180,13 @@ func (m *UsageLogMutation) ResetPromptCachedTokens() {
 }
 
 // SetCompletionAudioTokens sets the "completion_audio_tokens" field.
-func (m *UsageLogMutation) SetCompletionAudioTokens(i int) {
+func (m *UsageLogMutation) SetCompletionAudioTokens(i int64) {
 	m.completion_audio_tokens = &i
 	m.addcompletion_audio_tokens = nil
 }
 
 // CompletionAudioTokens returns the value of the "completion_audio_tokens" field in the mutation.
-func (m *UsageLogMutation) CompletionAudioTokens() (r int, exists bool) {
+func (m *UsageLogMutation) CompletionAudioTokens() (r int64, exists bool) {
 	v := m.completion_audio_tokens
 	if v == nil {
 		return
@@ -7197,7 +7197,7 @@ func (m *UsageLogMutation) CompletionAudioTokens() (r int, exists bool) {
 // OldCompletionAudioTokens returns the old "completion_audio_tokens" field's value of the UsageLog entity.
 // If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldCompletionAudioTokens(ctx context.Context) (v int, err error) {
+func (m *UsageLogMutation) OldCompletionAudioTokens(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldCompletionAudioTokens is only allowed on UpdateOne operations")
 	}
@@ -7212,7 +7212,7 @@ func (m *UsageLogMutation) OldCompletionAudioTokens(ctx context.Context) (v int,
 }
 
 // AddCompletionAudioTokens adds i to the "completion_audio_tokens" field.
-func (m *UsageLogMutation) AddCompletionAudioTokens(i int) {
+func (m *UsageLogMutation) AddCompletionAudioTokens(i int64) {
 	if m.addcompletion_audio_tokens != nil {
 		*m.addcompletion_audio_tokens += i
 	} else {
@@ -7221,7 +7221,7 @@ func (m *UsageLogMutation) AddCompletionAudioTokens(i int) {
 }
 
 // AddedCompletionAudioTokens returns the value that was added to the "completion_audio_tokens" field in this mutation.
-func (m *UsageLogMutation) AddedCompletionAudioTokens() (r int, exists bool) {
+func (m *UsageLogMutation) AddedCompletionAudioTokens() (r int64, exists bool) {
 	v := m.addcompletion_audio_tokens
 	if v == nil {
 		return
@@ -7250,13 +7250,13 @@ func (m *UsageLogMutation) ResetCompletionAudioTokens() {
 }
 
 // SetCompletionReasoningTokens sets the "completion_reasoning_tokens" field.
-func (m *UsageLogMutation) SetCompletionReasoningTokens(i int) {
+func (m *UsageLogMutation) SetCompletionReasoningTokens(i int64) {
 	m.completion_reasoning_tokens = &i
 	m.addcompletion_reasoning_tokens = nil
 }
 
 // CompletionReasoningTokens returns the value of the "completion_reasoning_tokens" field in the mutation.
-func (m *UsageLogMutation) CompletionReasoningTokens() (r int, exists bool) {
+func (m *UsageLogMutation) CompletionReasoningTokens() (r int64, exists bool) {
 	v := m.completion_reasoning_tokens
 	if v == nil {
 		return
@@ -7267,7 +7267,7 @@ func (m *UsageLogMutation) CompletionReasoningTokens() (r int, exists bool) {
 // OldCompletionReasoningTokens returns the old "completion_reasoning_tokens" field's value of the UsageLog entity.
 // If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldCompletionReasoningTokens(ctx context.Context) (v int, err error) {
+func (m *UsageLogMutation) OldCompletionReasoningTokens(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldCompletionReasoningTokens is only allowed on UpdateOne operations")
 	}
@@ -7282,7 +7282,7 @@ func (m *UsageLogMutation) OldCompletionReasoningTokens(ctx context.Context) (v 
 }
 
 // AddCompletionReasoningTokens adds i to the "completion_reasoning_tokens" field.
-func (m *UsageLogMutation) AddCompletionReasoningTokens(i int) {
+func (m *UsageLogMutation) AddCompletionReasoningTokens(i int64) {
 	if m.addcompletion_reasoning_tokens != nil {
 		*m.addcompletion_reasoning_tokens += i
 	} else {
@@ -7291,7 +7291,7 @@ func (m *UsageLogMutation) AddCompletionReasoningTokens(i int) {
 }
 
 // AddedCompletionReasoningTokens returns the value that was added to the "completion_reasoning_tokens" field in this mutation.
-func (m *UsageLogMutation) AddedCompletionReasoningTokens() (r int, exists bool) {
+func (m *UsageLogMutation) AddedCompletionReasoningTokens() (r int64, exists bool) {
 	v := m.addcompletion_reasoning_tokens
 	if v == nil {
 		return
@@ -7320,13 +7320,13 @@ func (m *UsageLogMutation) ResetCompletionReasoningTokens() {
 }
 
 // SetCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field.
-func (m *UsageLogMutation) SetCompletionAcceptedPredictionTokens(i int) {
+func (m *UsageLogMutation) SetCompletionAcceptedPredictionTokens(i int64) {
 	m.completion_accepted_prediction_tokens = &i
 	m.addcompletion_accepted_prediction_tokens = nil
 }
 
 // CompletionAcceptedPredictionTokens returns the value of the "completion_accepted_prediction_tokens" field in the mutation.
-func (m *UsageLogMutation) CompletionAcceptedPredictionTokens() (r int, exists bool) {
+func (m *UsageLogMutation) CompletionAcceptedPredictionTokens() (r int64, exists bool) {
 	v := m.completion_accepted_prediction_tokens
 	if v == nil {
 		return
@@ -7337,7 +7337,7 @@ func (m *UsageLogMutation) CompletionAcceptedPredictionTokens() (r int, exists b
 // OldCompletionAcceptedPredictionTokens returns the old "completion_accepted_prediction_tokens" field's value of the UsageLog entity.
 // If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldCompletionAcceptedPredictionTokens(ctx context.Context) (v int, err error) {
+func (m *UsageLogMutation) OldCompletionAcceptedPredictionTokens(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldCompletionAcceptedPredictionTokens is only allowed on UpdateOne operations")
 	}
@@ -7352,7 +7352,7 @@ func (m *UsageLogMutation) OldCompletionAcceptedPredictionTokens(ctx context.Con
 }
 
 // AddCompletionAcceptedPredictionTokens adds i to the "completion_accepted_prediction_tokens" field.
-func (m *UsageLogMutation) AddCompletionAcceptedPredictionTokens(i int) {
+func (m *UsageLogMutation) AddCompletionAcceptedPredictionTokens(i int64) {
 	if m.addcompletion_accepted_prediction_tokens != nil {
 		*m.addcompletion_accepted_prediction_tokens += i
 	} else {
@@ -7361,7 +7361,7 @@ func (m *UsageLogMutation) AddCompletionAcceptedPredictionTokens(i int) {
 }
 
 // AddedCompletionAcceptedPredictionTokens returns the value that was added to the "completion_accepted_prediction_tokens" field in this mutation.
-func (m *UsageLogMutation) AddedCompletionAcceptedPredictionTokens() (r int, exists bool) {
+func (m *UsageLogMutation) AddedCompletionAcceptedPredictionTokens() (r int64, exists bool) {
 	v := m.addcompletion_accepted_prediction_tokens
 	if v == nil {
 		return
@@ -7390,13 +7390,13 @@ func (m *UsageLogMutation) ResetCompletionAcceptedPredictionTokens() {
 }
 
 // SetCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field.
-func (m *UsageLogMutation) SetCompletionRejectedPredictionTokens(i int) {
+func (m *UsageLogMutation) SetCompletionRejectedPredictionTokens(i int64) {
 	m.completion_rejected_prediction_tokens = &i
 	m.addcompletion_rejected_prediction_tokens = nil
 }
 
 // CompletionRejectedPredictionTokens returns the value of the "completion_rejected_prediction_tokens" field in the mutation.
-func (m *UsageLogMutation) CompletionRejectedPredictionTokens() (r int, exists bool) {
+func (m *UsageLogMutation) CompletionRejectedPredictionTokens() (r int64, exists bool) {
 	v := m.completion_rejected_prediction_tokens
 	if v == nil {
 		return
@@ -7407,7 +7407,7 @@ func (m *UsageLogMutation) CompletionRejectedPredictionTokens() (r int, exists b
 // OldCompletionRejectedPredictionTokens returns the old "completion_rejected_prediction_tokens" field's value of the UsageLog entity.
 // If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldCompletionRejectedPredictionTokens(ctx context.Context) (v int, err error) {
+func (m *UsageLogMutation) OldCompletionRejectedPredictionTokens(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldCompletionRejectedPredictionTokens is only allowed on UpdateOne operations")
 	}
@@ -7422,7 +7422,7 @@ func (m *UsageLogMutation) OldCompletionRejectedPredictionTokens(ctx context.Con
 }
 
 // AddCompletionRejectedPredictionTokens adds i to the "completion_rejected_prediction_tokens" field.
-func (m *UsageLogMutation) AddCompletionRejectedPredictionTokens(i int) {
+func (m *UsageLogMutation) AddCompletionRejectedPredictionTokens(i int64) {
 	if m.addcompletion_rejected_prediction_tokens != nil {
 		*m.addcompletion_rejected_prediction_tokens += i
 	} else {
@@ -7431,7 +7431,7 @@ func (m *UsageLogMutation) AddCompletionRejectedPredictionTokens(i int) {
 }
 
 // AddedCompletionRejectedPredictionTokens returns the value that was added to the "completion_rejected_prediction_tokens" field in this mutation.
-func (m *UsageLogMutation) AddedCompletionRejectedPredictionTokens() (r int, exists bool) {
+func (m *UsageLogMutation) AddedCompletionRejectedPredictionTokens() (r int64, exists bool) {
 	v := m.addcompletion_rejected_prediction_tokens
 	if v == nil {
 		return
@@ -7849,63 +7849,63 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 		m.SetModelID(v)
 		return nil
 	case usagelog.FieldPromptTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPromptTokens(v)
 		return nil
 	case usagelog.FieldCompletionTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCompletionTokens(v)
 		return nil
 	case usagelog.FieldTotalTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetTotalTokens(v)
 		return nil
 	case usagelog.FieldPromptAudioTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPromptAudioTokens(v)
 		return nil
 	case usagelog.FieldPromptCachedTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPromptCachedTokens(v)
 		return nil
 	case usagelog.FieldCompletionAudioTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCompletionAudioTokens(v)
 		return nil
 	case usagelog.FieldCompletionReasoningTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCompletionReasoningTokens(v)
 		return nil
 	case usagelog.FieldCompletionAcceptedPredictionTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCompletionAcceptedPredictionTokens(v)
 		return nil
 	case usagelog.FieldCompletionRejectedPredictionTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -8008,63 +8008,63 @@ func (m *UsageLogMutation) AddField(name string, value ent.Value) error {
 		m.AddDeletedAt(v)
 		return nil
 	case usagelog.FieldPromptTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddPromptTokens(v)
 		return nil
 	case usagelog.FieldCompletionTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddCompletionTokens(v)
 		return nil
 	case usagelog.FieldTotalTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddTotalTokens(v)
 		return nil
 	case usagelog.FieldPromptAudioTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddPromptAudioTokens(v)
 		return nil
 	case usagelog.FieldPromptCachedTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddPromptCachedTokens(v)
 		return nil
 	case usagelog.FieldCompletionAudioTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddCompletionAudioTokens(v)
 		return nil
 	case usagelog.FieldCompletionReasoningTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddCompletionReasoningTokens(v)
 		return nil
 	case usagelog.FieldCompletionAcceptedPredictionTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddCompletionAcceptedPredictionTokens(v)
 		return nil
 	case usagelog.FieldCompletionRejectedPredictionTokens:
-		v, ok := value.(int)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

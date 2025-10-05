@@ -91,47 +91,47 @@ func ModelID(v string) predicate.UsageLog {
 }
 
 // PromptTokens applies equality check predicate on the "prompt_tokens" field. It's identical to PromptTokensEQ.
-func PromptTokens(v int) predicate.UsageLog {
+func PromptTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldPromptTokens, v))
 }
 
 // CompletionTokens applies equality check predicate on the "completion_tokens" field. It's identical to CompletionTokensEQ.
-func CompletionTokens(v int) predicate.UsageLog {
+func CompletionTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCompletionTokens, v))
 }
 
 // TotalTokens applies equality check predicate on the "total_tokens" field. It's identical to TotalTokensEQ.
-func TotalTokens(v int) predicate.UsageLog {
+func TotalTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldTotalTokens, v))
 }
 
 // PromptAudioTokens applies equality check predicate on the "prompt_audio_tokens" field. It's identical to PromptAudioTokensEQ.
-func PromptAudioTokens(v int) predicate.UsageLog {
+func PromptAudioTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldPromptAudioTokens, v))
 }
 
 // PromptCachedTokens applies equality check predicate on the "prompt_cached_tokens" field. It's identical to PromptCachedTokensEQ.
-func PromptCachedTokens(v int) predicate.UsageLog {
+func PromptCachedTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldPromptCachedTokens, v))
 }
 
 // CompletionAudioTokens applies equality check predicate on the "completion_audio_tokens" field. It's identical to CompletionAudioTokensEQ.
-func CompletionAudioTokens(v int) predicate.UsageLog {
+func CompletionAudioTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCompletionAudioTokens, v))
 }
 
 // CompletionReasoningTokens applies equality check predicate on the "completion_reasoning_tokens" field. It's identical to CompletionReasoningTokensEQ.
-func CompletionReasoningTokens(v int) predicate.UsageLog {
+func CompletionReasoningTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCompletionReasoningTokens, v))
 }
 
 // CompletionAcceptedPredictionTokens applies equality check predicate on the "completion_accepted_prediction_tokens" field. It's identical to CompletionAcceptedPredictionTokensEQ.
-func CompletionAcceptedPredictionTokens(v int) predicate.UsageLog {
+func CompletionAcceptedPredictionTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCompletionAcceptedPredictionTokens, v))
 }
 
 // CompletionRejectedPredictionTokens applies equality check predicate on the "completion_rejected_prediction_tokens" field. It's identical to CompletionRejectedPredictionTokensEQ.
-func CompletionRejectedPredictionTokens(v int) predicate.UsageLog {
+func CompletionRejectedPredictionTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCompletionRejectedPredictionTokens, v))
 }
 
@@ -396,162 +396,162 @@ func ModelIDContainsFold(v string) predicate.UsageLog {
 }
 
 // PromptTokensEQ applies the EQ predicate on the "prompt_tokens" field.
-func PromptTokensEQ(v int) predicate.UsageLog {
+func PromptTokensEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldPromptTokens, v))
 }
 
 // PromptTokensNEQ applies the NEQ predicate on the "prompt_tokens" field.
-func PromptTokensNEQ(v int) predicate.UsageLog {
+func PromptTokensNEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNEQ(FieldPromptTokens, v))
 }
 
 // PromptTokensIn applies the In predicate on the "prompt_tokens" field.
-func PromptTokensIn(vs ...int) predicate.UsageLog {
+func PromptTokensIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldIn(FieldPromptTokens, vs...))
 }
 
 // PromptTokensNotIn applies the NotIn predicate on the "prompt_tokens" field.
-func PromptTokensNotIn(vs ...int) predicate.UsageLog {
+func PromptTokensNotIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldPromptTokens, vs...))
 }
 
 // PromptTokensGT applies the GT predicate on the "prompt_tokens" field.
-func PromptTokensGT(v int) predicate.UsageLog {
+func PromptTokensGT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGT(FieldPromptTokens, v))
 }
 
 // PromptTokensGTE applies the GTE predicate on the "prompt_tokens" field.
-func PromptTokensGTE(v int) predicate.UsageLog {
+func PromptTokensGTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGTE(FieldPromptTokens, v))
 }
 
 // PromptTokensLT applies the LT predicate on the "prompt_tokens" field.
-func PromptTokensLT(v int) predicate.UsageLog {
+func PromptTokensLT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLT(FieldPromptTokens, v))
 }
 
 // PromptTokensLTE applies the LTE predicate on the "prompt_tokens" field.
-func PromptTokensLTE(v int) predicate.UsageLog {
+func PromptTokensLTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldPromptTokens, v))
 }
 
 // CompletionTokensEQ applies the EQ predicate on the "completion_tokens" field.
-func CompletionTokensEQ(v int) predicate.UsageLog {
+func CompletionTokensEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCompletionTokens, v))
 }
 
 // CompletionTokensNEQ applies the NEQ predicate on the "completion_tokens" field.
-func CompletionTokensNEQ(v int) predicate.UsageLog {
+func CompletionTokensNEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNEQ(FieldCompletionTokens, v))
 }
 
 // CompletionTokensIn applies the In predicate on the "completion_tokens" field.
-func CompletionTokensIn(vs ...int) predicate.UsageLog {
+func CompletionTokensIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldIn(FieldCompletionTokens, vs...))
 }
 
 // CompletionTokensNotIn applies the NotIn predicate on the "completion_tokens" field.
-func CompletionTokensNotIn(vs ...int) predicate.UsageLog {
+func CompletionTokensNotIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldCompletionTokens, vs...))
 }
 
 // CompletionTokensGT applies the GT predicate on the "completion_tokens" field.
-func CompletionTokensGT(v int) predicate.UsageLog {
+func CompletionTokensGT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGT(FieldCompletionTokens, v))
 }
 
 // CompletionTokensGTE applies the GTE predicate on the "completion_tokens" field.
-func CompletionTokensGTE(v int) predicate.UsageLog {
+func CompletionTokensGTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGTE(FieldCompletionTokens, v))
 }
 
 // CompletionTokensLT applies the LT predicate on the "completion_tokens" field.
-func CompletionTokensLT(v int) predicate.UsageLog {
+func CompletionTokensLT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLT(FieldCompletionTokens, v))
 }
 
 // CompletionTokensLTE applies the LTE predicate on the "completion_tokens" field.
-func CompletionTokensLTE(v int) predicate.UsageLog {
+func CompletionTokensLTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldCompletionTokens, v))
 }
 
 // TotalTokensEQ applies the EQ predicate on the "total_tokens" field.
-func TotalTokensEQ(v int) predicate.UsageLog {
+func TotalTokensEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldTotalTokens, v))
 }
 
 // TotalTokensNEQ applies the NEQ predicate on the "total_tokens" field.
-func TotalTokensNEQ(v int) predicate.UsageLog {
+func TotalTokensNEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNEQ(FieldTotalTokens, v))
 }
 
 // TotalTokensIn applies the In predicate on the "total_tokens" field.
-func TotalTokensIn(vs ...int) predicate.UsageLog {
+func TotalTokensIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldIn(FieldTotalTokens, vs...))
 }
 
 // TotalTokensNotIn applies the NotIn predicate on the "total_tokens" field.
-func TotalTokensNotIn(vs ...int) predicate.UsageLog {
+func TotalTokensNotIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldTotalTokens, vs...))
 }
 
 // TotalTokensGT applies the GT predicate on the "total_tokens" field.
-func TotalTokensGT(v int) predicate.UsageLog {
+func TotalTokensGT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGT(FieldTotalTokens, v))
 }
 
 // TotalTokensGTE applies the GTE predicate on the "total_tokens" field.
-func TotalTokensGTE(v int) predicate.UsageLog {
+func TotalTokensGTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGTE(FieldTotalTokens, v))
 }
 
 // TotalTokensLT applies the LT predicate on the "total_tokens" field.
-func TotalTokensLT(v int) predicate.UsageLog {
+func TotalTokensLT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLT(FieldTotalTokens, v))
 }
 
 // TotalTokensLTE applies the LTE predicate on the "total_tokens" field.
-func TotalTokensLTE(v int) predicate.UsageLog {
+func TotalTokensLTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldTotalTokens, v))
 }
 
 // PromptAudioTokensEQ applies the EQ predicate on the "prompt_audio_tokens" field.
-func PromptAudioTokensEQ(v int) predicate.UsageLog {
+func PromptAudioTokensEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldPromptAudioTokens, v))
 }
 
 // PromptAudioTokensNEQ applies the NEQ predicate on the "prompt_audio_tokens" field.
-func PromptAudioTokensNEQ(v int) predicate.UsageLog {
+func PromptAudioTokensNEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNEQ(FieldPromptAudioTokens, v))
 }
 
 // PromptAudioTokensIn applies the In predicate on the "prompt_audio_tokens" field.
-func PromptAudioTokensIn(vs ...int) predicate.UsageLog {
+func PromptAudioTokensIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldIn(FieldPromptAudioTokens, vs...))
 }
 
 // PromptAudioTokensNotIn applies the NotIn predicate on the "prompt_audio_tokens" field.
-func PromptAudioTokensNotIn(vs ...int) predicate.UsageLog {
+func PromptAudioTokensNotIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldPromptAudioTokens, vs...))
 }
 
 // PromptAudioTokensGT applies the GT predicate on the "prompt_audio_tokens" field.
-func PromptAudioTokensGT(v int) predicate.UsageLog {
+func PromptAudioTokensGT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGT(FieldPromptAudioTokens, v))
 }
 
 // PromptAudioTokensGTE applies the GTE predicate on the "prompt_audio_tokens" field.
-func PromptAudioTokensGTE(v int) predicate.UsageLog {
+func PromptAudioTokensGTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGTE(FieldPromptAudioTokens, v))
 }
 
 // PromptAudioTokensLT applies the LT predicate on the "prompt_audio_tokens" field.
-func PromptAudioTokensLT(v int) predicate.UsageLog {
+func PromptAudioTokensLT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLT(FieldPromptAudioTokens, v))
 }
 
 // PromptAudioTokensLTE applies the LTE predicate on the "prompt_audio_tokens" field.
-func PromptAudioTokensLTE(v int) predicate.UsageLog {
+func PromptAudioTokensLTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldPromptAudioTokens, v))
 }
 
@@ -566,42 +566,42 @@ func PromptAudioTokensNotNil() predicate.UsageLog {
 }
 
 // PromptCachedTokensEQ applies the EQ predicate on the "prompt_cached_tokens" field.
-func PromptCachedTokensEQ(v int) predicate.UsageLog {
+func PromptCachedTokensEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldPromptCachedTokens, v))
 }
 
 // PromptCachedTokensNEQ applies the NEQ predicate on the "prompt_cached_tokens" field.
-func PromptCachedTokensNEQ(v int) predicate.UsageLog {
+func PromptCachedTokensNEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNEQ(FieldPromptCachedTokens, v))
 }
 
 // PromptCachedTokensIn applies the In predicate on the "prompt_cached_tokens" field.
-func PromptCachedTokensIn(vs ...int) predicate.UsageLog {
+func PromptCachedTokensIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldIn(FieldPromptCachedTokens, vs...))
 }
 
 // PromptCachedTokensNotIn applies the NotIn predicate on the "prompt_cached_tokens" field.
-func PromptCachedTokensNotIn(vs ...int) predicate.UsageLog {
+func PromptCachedTokensNotIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldPromptCachedTokens, vs...))
 }
 
 // PromptCachedTokensGT applies the GT predicate on the "prompt_cached_tokens" field.
-func PromptCachedTokensGT(v int) predicate.UsageLog {
+func PromptCachedTokensGT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGT(FieldPromptCachedTokens, v))
 }
 
 // PromptCachedTokensGTE applies the GTE predicate on the "prompt_cached_tokens" field.
-func PromptCachedTokensGTE(v int) predicate.UsageLog {
+func PromptCachedTokensGTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGTE(FieldPromptCachedTokens, v))
 }
 
 // PromptCachedTokensLT applies the LT predicate on the "prompt_cached_tokens" field.
-func PromptCachedTokensLT(v int) predicate.UsageLog {
+func PromptCachedTokensLT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLT(FieldPromptCachedTokens, v))
 }
 
 // PromptCachedTokensLTE applies the LTE predicate on the "prompt_cached_tokens" field.
-func PromptCachedTokensLTE(v int) predicate.UsageLog {
+func PromptCachedTokensLTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldPromptCachedTokens, v))
 }
 
@@ -616,42 +616,42 @@ func PromptCachedTokensNotNil() predicate.UsageLog {
 }
 
 // CompletionAudioTokensEQ applies the EQ predicate on the "completion_audio_tokens" field.
-func CompletionAudioTokensEQ(v int) predicate.UsageLog {
+func CompletionAudioTokensEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCompletionAudioTokens, v))
 }
 
 // CompletionAudioTokensNEQ applies the NEQ predicate on the "completion_audio_tokens" field.
-func CompletionAudioTokensNEQ(v int) predicate.UsageLog {
+func CompletionAudioTokensNEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNEQ(FieldCompletionAudioTokens, v))
 }
 
 // CompletionAudioTokensIn applies the In predicate on the "completion_audio_tokens" field.
-func CompletionAudioTokensIn(vs ...int) predicate.UsageLog {
+func CompletionAudioTokensIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldIn(FieldCompletionAudioTokens, vs...))
 }
 
 // CompletionAudioTokensNotIn applies the NotIn predicate on the "completion_audio_tokens" field.
-func CompletionAudioTokensNotIn(vs ...int) predicate.UsageLog {
+func CompletionAudioTokensNotIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldCompletionAudioTokens, vs...))
 }
 
 // CompletionAudioTokensGT applies the GT predicate on the "completion_audio_tokens" field.
-func CompletionAudioTokensGT(v int) predicate.UsageLog {
+func CompletionAudioTokensGT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGT(FieldCompletionAudioTokens, v))
 }
 
 // CompletionAudioTokensGTE applies the GTE predicate on the "completion_audio_tokens" field.
-func CompletionAudioTokensGTE(v int) predicate.UsageLog {
+func CompletionAudioTokensGTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGTE(FieldCompletionAudioTokens, v))
 }
 
 // CompletionAudioTokensLT applies the LT predicate on the "completion_audio_tokens" field.
-func CompletionAudioTokensLT(v int) predicate.UsageLog {
+func CompletionAudioTokensLT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLT(FieldCompletionAudioTokens, v))
 }
 
 // CompletionAudioTokensLTE applies the LTE predicate on the "completion_audio_tokens" field.
-func CompletionAudioTokensLTE(v int) predicate.UsageLog {
+func CompletionAudioTokensLTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldCompletionAudioTokens, v))
 }
 
@@ -666,42 +666,42 @@ func CompletionAudioTokensNotNil() predicate.UsageLog {
 }
 
 // CompletionReasoningTokensEQ applies the EQ predicate on the "completion_reasoning_tokens" field.
-func CompletionReasoningTokensEQ(v int) predicate.UsageLog {
+func CompletionReasoningTokensEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCompletionReasoningTokens, v))
 }
 
 // CompletionReasoningTokensNEQ applies the NEQ predicate on the "completion_reasoning_tokens" field.
-func CompletionReasoningTokensNEQ(v int) predicate.UsageLog {
+func CompletionReasoningTokensNEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNEQ(FieldCompletionReasoningTokens, v))
 }
 
 // CompletionReasoningTokensIn applies the In predicate on the "completion_reasoning_tokens" field.
-func CompletionReasoningTokensIn(vs ...int) predicate.UsageLog {
+func CompletionReasoningTokensIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldIn(FieldCompletionReasoningTokens, vs...))
 }
 
 // CompletionReasoningTokensNotIn applies the NotIn predicate on the "completion_reasoning_tokens" field.
-func CompletionReasoningTokensNotIn(vs ...int) predicate.UsageLog {
+func CompletionReasoningTokensNotIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldCompletionReasoningTokens, vs...))
 }
 
 // CompletionReasoningTokensGT applies the GT predicate on the "completion_reasoning_tokens" field.
-func CompletionReasoningTokensGT(v int) predicate.UsageLog {
+func CompletionReasoningTokensGT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGT(FieldCompletionReasoningTokens, v))
 }
 
 // CompletionReasoningTokensGTE applies the GTE predicate on the "completion_reasoning_tokens" field.
-func CompletionReasoningTokensGTE(v int) predicate.UsageLog {
+func CompletionReasoningTokensGTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGTE(FieldCompletionReasoningTokens, v))
 }
 
 // CompletionReasoningTokensLT applies the LT predicate on the "completion_reasoning_tokens" field.
-func CompletionReasoningTokensLT(v int) predicate.UsageLog {
+func CompletionReasoningTokensLT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLT(FieldCompletionReasoningTokens, v))
 }
 
 // CompletionReasoningTokensLTE applies the LTE predicate on the "completion_reasoning_tokens" field.
-func CompletionReasoningTokensLTE(v int) predicate.UsageLog {
+func CompletionReasoningTokensLTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldCompletionReasoningTokens, v))
 }
 
@@ -716,42 +716,42 @@ func CompletionReasoningTokensNotNil() predicate.UsageLog {
 }
 
 // CompletionAcceptedPredictionTokensEQ applies the EQ predicate on the "completion_accepted_prediction_tokens" field.
-func CompletionAcceptedPredictionTokensEQ(v int) predicate.UsageLog {
+func CompletionAcceptedPredictionTokensEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCompletionAcceptedPredictionTokens, v))
 }
 
 // CompletionAcceptedPredictionTokensNEQ applies the NEQ predicate on the "completion_accepted_prediction_tokens" field.
-func CompletionAcceptedPredictionTokensNEQ(v int) predicate.UsageLog {
+func CompletionAcceptedPredictionTokensNEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNEQ(FieldCompletionAcceptedPredictionTokens, v))
 }
 
 // CompletionAcceptedPredictionTokensIn applies the In predicate on the "completion_accepted_prediction_tokens" field.
-func CompletionAcceptedPredictionTokensIn(vs ...int) predicate.UsageLog {
+func CompletionAcceptedPredictionTokensIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldIn(FieldCompletionAcceptedPredictionTokens, vs...))
 }
 
 // CompletionAcceptedPredictionTokensNotIn applies the NotIn predicate on the "completion_accepted_prediction_tokens" field.
-func CompletionAcceptedPredictionTokensNotIn(vs ...int) predicate.UsageLog {
+func CompletionAcceptedPredictionTokensNotIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldCompletionAcceptedPredictionTokens, vs...))
 }
 
 // CompletionAcceptedPredictionTokensGT applies the GT predicate on the "completion_accepted_prediction_tokens" field.
-func CompletionAcceptedPredictionTokensGT(v int) predicate.UsageLog {
+func CompletionAcceptedPredictionTokensGT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGT(FieldCompletionAcceptedPredictionTokens, v))
 }
 
 // CompletionAcceptedPredictionTokensGTE applies the GTE predicate on the "completion_accepted_prediction_tokens" field.
-func CompletionAcceptedPredictionTokensGTE(v int) predicate.UsageLog {
+func CompletionAcceptedPredictionTokensGTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGTE(FieldCompletionAcceptedPredictionTokens, v))
 }
 
 // CompletionAcceptedPredictionTokensLT applies the LT predicate on the "completion_accepted_prediction_tokens" field.
-func CompletionAcceptedPredictionTokensLT(v int) predicate.UsageLog {
+func CompletionAcceptedPredictionTokensLT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLT(FieldCompletionAcceptedPredictionTokens, v))
 }
 
 // CompletionAcceptedPredictionTokensLTE applies the LTE predicate on the "completion_accepted_prediction_tokens" field.
-func CompletionAcceptedPredictionTokensLTE(v int) predicate.UsageLog {
+func CompletionAcceptedPredictionTokensLTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldCompletionAcceptedPredictionTokens, v))
 }
 
@@ -766,42 +766,42 @@ func CompletionAcceptedPredictionTokensNotNil() predicate.UsageLog {
 }
 
 // CompletionRejectedPredictionTokensEQ applies the EQ predicate on the "completion_rejected_prediction_tokens" field.
-func CompletionRejectedPredictionTokensEQ(v int) predicate.UsageLog {
+func CompletionRejectedPredictionTokensEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCompletionRejectedPredictionTokens, v))
 }
 
 // CompletionRejectedPredictionTokensNEQ applies the NEQ predicate on the "completion_rejected_prediction_tokens" field.
-func CompletionRejectedPredictionTokensNEQ(v int) predicate.UsageLog {
+func CompletionRejectedPredictionTokensNEQ(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNEQ(FieldCompletionRejectedPredictionTokens, v))
 }
 
 // CompletionRejectedPredictionTokensIn applies the In predicate on the "completion_rejected_prediction_tokens" field.
-func CompletionRejectedPredictionTokensIn(vs ...int) predicate.UsageLog {
+func CompletionRejectedPredictionTokensIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldIn(FieldCompletionRejectedPredictionTokens, vs...))
 }
 
 // CompletionRejectedPredictionTokensNotIn applies the NotIn predicate on the "completion_rejected_prediction_tokens" field.
-func CompletionRejectedPredictionTokensNotIn(vs ...int) predicate.UsageLog {
+func CompletionRejectedPredictionTokensNotIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldCompletionRejectedPredictionTokens, vs...))
 }
 
 // CompletionRejectedPredictionTokensGT applies the GT predicate on the "completion_rejected_prediction_tokens" field.
-func CompletionRejectedPredictionTokensGT(v int) predicate.UsageLog {
+func CompletionRejectedPredictionTokensGT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGT(FieldCompletionRejectedPredictionTokens, v))
 }
 
 // CompletionRejectedPredictionTokensGTE applies the GTE predicate on the "completion_rejected_prediction_tokens" field.
-func CompletionRejectedPredictionTokensGTE(v int) predicate.UsageLog {
+func CompletionRejectedPredictionTokensGTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldGTE(FieldCompletionRejectedPredictionTokens, v))
 }
 
 // CompletionRejectedPredictionTokensLT applies the LT predicate on the "completion_rejected_prediction_tokens" field.
-func CompletionRejectedPredictionTokensLT(v int) predicate.UsageLog {
+func CompletionRejectedPredictionTokensLT(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLT(FieldCompletionRejectedPredictionTokens, v))
 }
 
 // CompletionRejectedPredictionTokensLTE applies the LTE predicate on the "completion_rejected_prediction_tokens" field.
-func CompletionRejectedPredictionTokensLTE(v int) predicate.UsageLog {
+func CompletionRejectedPredictionTokensLTE(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldCompletionRejectedPredictionTokens, v))
 }
 

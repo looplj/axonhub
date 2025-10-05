@@ -111,7 +111,8 @@ func (t *InboundTransformer) TransformResponse(ctx context.Context, chatResp *ll
 }
 
 func (t *InboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
-	return AggregateStreamChunks(ctx, chunks)
+	// InboundTransformer doesn't have platform type info, default to Direct (Anthropic official)
+	return AggregateStreamChunks(ctx, chunks, PlatformDirect)
 }
 
 // TransformError transforms LLM error response to HTTP error response in Anthropic format.
