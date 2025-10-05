@@ -3,6 +3,8 @@ package anthropic
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/looplj/axonhub/internal/llm"
 )
 
 // MessageRequest represents the Anthropic Messages API request format.
@@ -160,6 +162,25 @@ type Tool struct {
 
 type CacheControl struct {
 	Type string `json:"type" validate:"required,oneof=ephemeral"`
+	// The time-to-live for the cache control breakpoint.
+	//
+	// This may be one the following values:
+	//
+	// 5m: 5 minutes
+	// 1h: 1 hour
+	// Defaults to 5m.
+	TTL string `json:"ttl,omitempty"`
+}
+
+func (c *CacheControl) ToLLMCacheControl() *llm.CacheControl {
+	if c == nil {
+		return nil
+	}
+
+	return &llm.CacheControl{
+		Type: c.Type,
+		TTL:  c.TTL,
+	}
 }
 
 // InputSchema represents the JSON schema for tool input.

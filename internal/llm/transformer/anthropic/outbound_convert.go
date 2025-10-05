@@ -15,6 +15,17 @@ func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 	return convertToAnthropicRequestWithConfig(chatReq, nil)
 }
 
+func convertCacheControlToAnthropic(cacheControl *llm.CacheControl) *CacheControl {
+	if cacheControl == nil {
+		return nil
+	}
+
+	return &CacheControl{
+		Type: cacheControl.Type,
+		TTL:  cacheControl.TTL,
+	}
+}
+
 // convertToAnthropicRequestWithConfig converts ChatCompletionRequest to Anthropic MessageRequest with config.
 func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
 	req := &MessageRequest{
@@ -60,6 +71,11 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 					Description: tool.Function.Description,
 					InputSchema: tool.Function.Parameters,
 				}
+				// Use cache control from llm model if present
+				if tool.CacheControl != nil {
+					anthropicTool.CacheControl = convertCacheControlToAnthropic(tool.CacheControl)
+				}
+
 				tools = append(tools, anthropicTool)
 			}
 		}
@@ -91,6 +107,7 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 								Content: &MessageContent{
 									Content: msg.Content.Content,
 								},
+								CacheControl: convertCacheControlToAnthropic(msg.CacheControl),
 							},
 						},
 					},
@@ -119,7 +136,8 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 								Content: &MessageContent{
 									Content: item.Content.Content,
 								},
-								IsError: item.ToolCallIsError,
+								IsError:      item.ToolCallIsError,
+								CacheControl: convertCacheControlToAnthropic(item.CacheControl),
 							}
 						}),
 					},
@@ -138,8 +156,9 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 			var contextBlock *MessageContentBlock
 			if msg.Content.Content != nil && *msg.Content.Content != "" {
 				contextBlock = &MessageContentBlock{
-					Type: "text",
-					Text: *msg.Content.Content,
+					Type:         "text",
+					Text:         *msg.Content.Content,
+					CacheControl: convertCacheControlToAnthropic(msg.CacheControl),
 				}
 			}
 
@@ -162,9 +181,23 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 			messages = append(messages, anthropicMsg)
 		} else {
 			if msg.Content.Content != nil {
-				anthropicMsg.Content = MessageContent{
-					Content: msg.Content.Content,
+				// If message has cache control, we need to use MultipleContent format
+				if msg.CacheControl != nil {
+					anthropicMsg.Content = MessageContent{
+						MultipleContent: []MessageContentBlock{
+							{
+								Type:         "text",
+								Text:         *msg.Content.Content,
+								CacheControl: convertCacheControlToAnthropic(msg.CacheControl),
+							},
+						},
+					}
+				} else {
+					anthropicMsg.Content = MessageContent{
+						Content: msg.Content.Content,
+					}
 				}
+
 				messages = append(messages, anthropicMsg)
 			} else if len(msg.Content.MultipleContent) > 0 {
 				content, ok := convertMultiplePartContent(msg)
@@ -205,13 +238,13 @@ func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 	default:
 		return &SystemPrompt{
 			MultiplePrompts: lo.Map(systemMessages, func(msg llm.Message, _ int) SystemPromptPart {
-				return SystemPromptPart{
-					Type: "text",
-					Text: *msg.Content.Content,
-					CacheControl: &CacheControl{
-						Type: "ephemeral",
-					},
+				part := SystemPromptPart{
+					Type:         "text",
+					Text:         *msg.Content.Content,
+					CacheControl: convertCacheControlToAnthropic(msg.CacheControl),
 				}
+
+				return part
 			}),
 		}
 	}
@@ -224,8 +257,9 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 		case "text":
 			if part.Text != nil {
 				blocks = append(blocks, MessageContentBlock{
-					Type: "text",
-					Text: *part.Text,
+					Type:         "text",
+					Text:         *part.Text,
+					CacheControl: convertCacheControlToAnthropic(part.CacheControl),
 				})
 			}
 		case "image_url":
@@ -239,24 +273,30 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 						headerParts := strings.Split(parts[0], ";")
 						if len(headerParts) >= 2 {
 							mediaType := strings.TrimPrefix(headerParts[0], "data:")
-							blocks = append(blocks, MessageContentBlock{
+							block := MessageContentBlock{
 								Type: "image",
 								Source: &ImageSource{
 									Type:      "base64",
 									MediaType: mediaType,
 									Data:      parts[1],
 								},
-							})
+								CacheControl: convertCacheControlToAnthropic(part.CacheControl),
+							}
+
+							blocks = append(blocks, block)
 						}
 					}
 				} else {
-					blocks = append(blocks, MessageContentBlock{
+					block := MessageContentBlock{
 						Type: "image",
 						Source: &ImageSource{
 							Type: "url",
 							URL:  part.ImageURL.URL,
 						},
-					})
+						CacheControl: convertCacheControlToAnthropic(part.CacheControl),
+					}
+
+					blocks = append(blocks, block)
 				}
 			}
 		}
@@ -265,13 +305,11 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 	for _, toolCall := range msg.ToolCalls {
 		// Use safe JSON repair/fallback for tool input
 		blocks = append(blocks, MessageContentBlock{
-			Type:  "tool_use",
-			ID:    toolCall.ID,
-			Name:  &toolCall.Function.Name,
-			Input: xjson.SafeJSONRawMessage(toolCall.Function.Arguments),
-			CacheControl: &CacheControl{
-				Type: "ephemeral",
-			},
+			Type:         "tool_use",
+			ID:           toolCall.ID,
+			Name:         &toolCall.Function.Name,
+			Input:        xjson.SafeJSONRawMessage(toolCall.Function.Arguments),
+			CacheControl: convertCacheControlToAnthropic(toolCall.CacheControl),
 		})
 	}
 

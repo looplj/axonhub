@@ -40,12 +40,14 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			})
 		} else if len(anthropicReq.System.MultiplePrompts) > 0 {
 			for _, prompt := range anthropicReq.System.MultiplePrompts {
-				messages = append(messages, llm.Message{
+				msg := llm.Message{
 					Role: "system",
 					Content: llm.MessageContent{
 						Content: &prompt.Text,
 					},
-				})
+					CacheControl: prompt.CacheControl.ToLLMCacheControl(),
+				}
+				messages = append(messages, msg)
 			}
 		}
 	}
@@ -70,30 +72,30 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 				switch block.Type {
 				case "text":
 					contentParts = append(contentParts, llm.MessageContentPart{
-						Type: "text",
-						Text: &block.Text,
+						Type:         "text",
+						Text:         &block.Text,
+						CacheControl: block.CacheControl.ToLLMCacheControl(),
 					})
 					hasContent = true
 				case "image":
 					if block.Source != nil {
+						part := llm.MessageContentPart{
+							Type:         "image_url",
+							CacheControl: block.CacheControl.ToLLMCacheControl(),
+						}
 						if block.Source.Type == "base64" {
 							// Convert Anthropic image format to OpenAI format
 							imageURL := fmt.Sprintf("data:%s;base64,%s", block.Source.MediaType, block.Source.Data)
-							contentParts = append(contentParts, llm.MessageContentPart{
-								Type: "image_url",
-								ImageURL: &llm.ImageURL{
-									URL: imageURL,
-								},
-							})
+							part.ImageURL = &llm.ImageURL{
+								URL: imageURL,
+							}
 						} else {
-							contentParts = append(contentParts, llm.MessageContentPart{
-								Type: "image_url",
-								ImageURL: &llm.ImageURL{
-									URL: block.Source.URL,
-								},
-							})
+							part.ImageURL = &llm.ImageURL{
+								URL: block.Source.URL,
+							}
 						}
 
+						contentParts = append(contentParts, part)
 						hasContent = true
 					}
 				case "tool_result":
@@ -106,6 +108,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 							Content: llm.MessageContent{
 								Content: block.Content.Content,
 							},
+							CacheControl:    block.CacheControl.ToLLMCacheControl(),
 							ToolCallIsError: block.IsError,
 						})
 					}
@@ -117,6 +120,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 							Name:      lo.FromPtr(block.Name),
 							Arguments: string(block.Input),
 						},
+						CacheControl: block.CacheControl.ToLLMCacheControl(),
 					})
 					hasContent = true
 				}
@@ -128,6 +132,11 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 				chatMsg.Content = llm.MessageContent{
 					Content: contentParts[0].Text,
 				}
+				// Preserve cache control at message level when simplifying
+				if contentParts[0].CacheControl != nil {
+					chatMsg.CacheControl = contentParts[0].CacheControl
+				}
+
 				hasContent = true
 			} else {
 				chatMsg.Content = llm.MessageContent{
@@ -156,6 +165,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 					Description: tool.Description,
 					Parameters:  tool.InputSchema,
 				},
+				CacheControl: tool.CacheControl.ToLLMCacheControl(),
 			}
 			tools = append(tools, llmTool)
 		}

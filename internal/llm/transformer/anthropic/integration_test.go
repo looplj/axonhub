@@ -206,6 +206,10 @@ func TestTransformRequest_Integration(t *testing.T) {
 			name:        "claude code2",
 			requestFile: `anthropic-claude-code2.request.json`,
 		},
+		{
+			name:        "claude cache control",
+			requestFile: `anthropic-cache-control-inbound.request.json`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -241,8 +245,8 @@ func TestTransformRequest_Integration(t *testing.T) {
 			err = json.Unmarshal(outboundReq.Body, &gotReq)
 			require.NoError(t, err)
 
-			if !cmp.Equal(wantReq, gotReq, cmpopts.IgnoreFields(MessageContentBlock{}, "CacheControl")) {
-				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq, cmpopts.IgnoreFields(MessageContentBlock{}, "CacheControl")))
+			if !cmp.Equal(wantReq, gotReq, cmpopts.IgnoreFields(MessageContentBlock{})) {
+				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq, cmpopts.IgnoreFields(MessageContentBlock{})))
 			}
 		})
 	}
