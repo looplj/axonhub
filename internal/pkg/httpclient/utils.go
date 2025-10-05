@@ -49,11 +49,13 @@ func IsHTTPStatusCodeRetryable(statusCode int) bool {
 var blockedHeaders = map[string]bool{
 	"Content-Length":    true,
 	"Transfer-Encoding": true,
-	"Authorization":     true,
-	"Api-Key":           true,
-	"X-Api-Key":         true,
-	"X-Api-Secret":      true,
-	"X-Api-Token":       true,
+	// The client will handle it automatically.
+	"Accept-Encoding": true,
+	"Authorization":   true,
+	"Api-Key":         true,
+	"X-Api-Key":       true,
+	"X-Api-Secret":    true,
+	"X-Api-Token":     true,
 }
 
 // MergeHTTPHeaders merges the source headers into the destination headers if the key not present in the destination headers.

@@ -142,11 +142,10 @@ func TestMergeHTTPHeaders(t *testing.T) {
 				"Accept-Encoding": []string{"gzip, deflate"},
 			},
 			want: http.Header{
-				"Content-Type":    []string{"application/json"},
-				"X-Request-ID":    []string{"req-123"},
-				"X-Trace-ID":      []string{"trace-456"},
-				"User-Agent":      []string{"Custom/1.0"},
-				"Accept-Encoding": []string{"gzip, deflate"},
+				"Content-Type": []string{"application/json"},
+				"X-Request-ID": []string{"req-123"},
+				"X-Trace-ID":   []string{"trace-456"},
+				"User-Agent":   []string{"Custom/1.0"},
 			},
 		},
 		{
