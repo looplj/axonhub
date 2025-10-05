@@ -73,10 +73,7 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 				}
 				// Use cache control from llm model if present
 				if tool.CacheControl != nil {
-					anthropicTool.CacheControl = &CacheControl{
-						Type: tool.CacheControl.Type,
-						TTL:  tool.CacheControl.TTL,
-					}
+					anthropicTool.CacheControl = convertCacheControlToAnthropic(tool.CacheControl)
 				}
 
 				tools = append(tools, anthropicTool)

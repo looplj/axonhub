@@ -246,7 +246,7 @@ func TestTransformRequest_Integration(t *testing.T) {
 			require.NoError(t, err)
 
 			if !cmp.Equal(wantReq, gotReq, cmpopts.IgnoreFields(MessageContentBlock{})) {
-				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq, cmpopts.IgnoreFields(MessageContentBlock{}, "CacheControl")))
+				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq, cmpopts.IgnoreFields(MessageContentBlock{})))
 			}
 		})
 	}
