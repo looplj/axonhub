@@ -1092,6 +1092,10 @@ type RequestWhereInput struct {
 	StatusIn    []request.Status `json:"statusIn,omitempty"`
 	StatusNotIn []request.Status `json:"statusNotIn,omitempty"`
 
+	// "stream" field predicates.
+	Stream    *bool `json:"stream,omitempty"`
+	StreamNEQ *bool `json:"streamNEQ,omitempty"`
+
 	// "user" edge predicates.
 	HasUser     *bool             `json:"hasUser,omitempty"`
 	HasUserWith []*UserWhereInput `json:"hasUserWith,omitempty"`
@@ -1474,6 +1478,12 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, request.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.Stream != nil {
+		predicates = append(predicates, request.StreamEQ(*i.Stream))
+	}
+	if i.StreamNEQ != nil {
+		predicates = append(predicates, request.StreamNEQ(*i.StreamNEQ))
 	}
 
 	if i.HasUser != nil {

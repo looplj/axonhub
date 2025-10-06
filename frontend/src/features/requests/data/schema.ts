@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { channel } from 'diagnostics_channel'
 import { apiKeySchema } from '@/features/apikeys/data/schema'
 import { userSchema } from '@/features/users/data/schema'
 import { channelSchema } from '@/features/channels/data'
@@ -68,6 +67,7 @@ export const requestSchema = z.object({
   requestBody: z.any(), // JSONRawMessage
   responseBody: z.any().nullable(), // JSONRawMessage
   status: requestStatusSchema,
+  stream: z.boolean().nullable(),
   executions: z
     .object({
       edges: z.array(

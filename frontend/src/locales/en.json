@@ -824,6 +824,7 @@
       "id": "ID",
       "modelId": "Model ID",
       "status": "Status",
+      "stream": "Stream",
       "source": "Source",
       "channel": "Channel",
       "user": "User",
@@ -843,6 +844,10 @@
       "completed": "Completed",
       "failed": "Failed",
       "canceled": "Canceled"
+    },
+    "stream": {
+      "streaming": "Streaming",
+      "nonStreaming": "Non-streaming"
     },
     "source": {
       "api": "API",
@@ -900,7 +905,8 @@
           "overview": "Overview",
           "request": "Request",
           "response": "Response",
-          "executions": "Executions"
+          "executions": "Executions",
+          "usage": "Usage"
         },
         "fields": {
           "userId": "User ID",

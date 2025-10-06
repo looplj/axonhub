@@ -196,6 +196,7 @@ type CreateRequestInput struct {
 	ResponseChunks []objects.JSONRawMessage
 	ExternalID     *string
 	Status         request.Status
+	Stream         *bool
 	UserID         int
 	APIKeyID       *int
 	ChannelID      *int
@@ -229,6 +230,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 		m.SetExternalID(*v)
 	}
 	m.SetStatus(i.Status)
+	if v := i.Stream; v != nil {
+		m.SetStream(*v)
+	}
 	m.SetUserID(i.UserID)
 	if v := i.APIKeyID; v != nil {
 		m.SetAPIKeyID(*v)

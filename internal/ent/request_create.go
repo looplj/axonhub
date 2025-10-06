@@ -176,6 +176,20 @@ func (rc *RequestCreate) SetStatus(r request.Status) *RequestCreate {
 	return rc
 }
 
+// SetStream sets the "stream" field.
+func (rc *RequestCreate) SetStream(b bool) *RequestCreate {
+	rc.mutation.SetStream(b)
+	return rc
+}
+
+// SetNillableStream sets the "stream" field if the given value is not nil.
+func (rc *RequestCreate) SetNillableStream(b *bool) *RequestCreate {
+	if b != nil {
+		rc.SetStream(*b)
+	}
+	return rc
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (rc *RequestCreate) SetUser(u *User) *RequestCreate {
 	return rc.SetUserID(u.ID)
@@ -284,6 +298,10 @@ func (rc *RequestCreate) defaults() error {
 		v := request.DefaultFormat
 		rc.mutation.SetFormat(v)
 	}
+	if _, ok := rc.mutation.Stream(); !ok {
+		v := request.DefaultStream
+		rc.mutation.SetStream(v)
+	}
 	return nil
 }
 
@@ -325,6 +343,9 @@ func (rc *RequestCreate) check() error {
 		if err := request.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Request.status": %w`, err)}
 		}
+	}
+	if _, ok := rc.mutation.Stream(); !ok {
+		return &ValidationError{Name: "stream", err: errors.New(`ent: missing required field "Request.stream"`)}
 	}
 	if len(rc.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Request.user"`)}
@@ -399,6 +420,10 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := rc.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := rc.mutation.Stream(); ok {
+		_spec.SetField(request.FieldStream, field.TypeBool, value)
+		_node.Stream = value
 	}
 	if nodes := rc.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -680,6 +705,9 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 		}
 		if _, exists := u.create.mutation.RequestBody(); exists {
 			s.SetIgnore(request.FieldRequestBody)
+		}
+		if _, exists := u.create.mutation.Stream(); exists {
+			s.SetIgnore(request.FieldStream)
 		}
 	}))
 	return u
@@ -1041,6 +1069,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 			}
 			if _, exists := b.mutation.RequestBody(); exists {
 				s.SetIgnore(request.FieldRequestBody)
+			}
+			if _, exists := b.mutation.Stream(); exists {
+				s.SetIgnore(request.FieldStream)
 			}
 		}
 	}))

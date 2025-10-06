@@ -856,6 +856,7 @@
       "id": "ID",
       "modelId": "模型ID",
       "status": "状态",
+      "stream": "流式",
       "source": "来源",
       "channel": "渠道",
       "user": "用户",
@@ -875,6 +876,10 @@
       "completed": "已完成",
       "failed": "失败",
       "canceled": "已取消"
+    },
+    "stream": {
+      "streaming": "流式",
+      "nonStreaming": "非流式"
     },
     "source": {
       "api": "API",
@@ -902,7 +907,8 @@
       "tabs": {
         "request": "请求",
         "response": "响应",
-        "executions": "执行记录"
+        "executions": "执行记录",
+        "usage":"用量"
       },
       "noResponse": "暂无响应数据"
     },

@@ -50,6 +50,8 @@ type Request struct {
 	ExternalID string `json:"external_id,omitempty"`
 	// Status holds the value of the "status" field.
 	Status request.Status `json:"status,omitempty"`
+	// Stream holds the value of the "stream" field.
+	Stream bool `json:"stream,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestQuery when eager-loading is set.
 	Edges        RequestEdges `json:"edges"`
@@ -136,6 +138,8 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case request.FieldRequestBody, request.FieldResponseBody, request.FieldResponseChunks:
 			values[i] = new([]byte)
+		case request.FieldStream:
+			values[i] = new(sql.NullBool)
 		case request.FieldID, request.FieldDeletedAt, request.FieldUserID, request.FieldAPIKeyID, request.FieldChannelID:
 			values[i] = new(sql.NullInt64)
 		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus:
@@ -253,6 +257,12 @@ func (r *Request) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				r.Status = request.Status(value.String)
 			}
+		case request.FieldStream:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field stream", values[i])
+			} else if value.Valid {
+				r.Stream = value.Bool
+			}
 		default:
 			r.selectValues.Set(columns[i], values[i])
 		}
@@ -355,6 +365,9 @@ func (r *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", r.Status))
+	builder.WriteString(", ")
+	builder.WriteString("stream=")
+	builder.WriteString(fmt.Sprintf("%v", r.Stream))
 	builder.WriteByte(')')
 	return builder.String()
 }

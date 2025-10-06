@@ -46,6 +46,8 @@ const (
 	FieldExternalID = "external_id"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldStream holds the string denoting the stream field in the database.
+	FieldStream = "stream"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// EdgeAPIKey holds the string denoting the api_key edge name in mutations.
@@ -112,6 +114,7 @@ var Columns = []string{
 	FieldChannelID,
 	FieldExternalID,
 	FieldStatus,
+	FieldStream,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -143,6 +146,8 @@ var (
 	DefaultDeletedAt int
 	// DefaultFormat holds the default value on creation for the "format" field.
 	DefaultFormat string
+	// DefaultStream holds the default value on creation for the "stream" field.
+	DefaultStream bool
 )
 
 // Source defines the type for the "source" enum field.
@@ -259,6 +264,11 @@ func ByExternalID(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByStream orders the results by the stream field.
+func ByStream(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStream, opts...).ToFunc()
 }
 
 // ByUserField orders the results by user field.

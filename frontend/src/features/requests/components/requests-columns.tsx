@@ -41,16 +41,27 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         return <div className='font-mono text-xs'>{request.modelID || t('requests.columns.unknown')}</div>
       },
     },
+
     {
-      accessorKey: 'status',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.status')} />,
+      id: 'stream',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.stream')} />,
       enableSorting: false,
       cell: ({ row }) => {
-        const status = row.getValue('status') as string
-        return <Badge className={getStatusColor(status)}>{t(`requests.status.${status}`)}</Badge>
+        const isStream = row.original.stream
+        return (
+          <Badge
+            className={
+              isStream
+                ? 'border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
+                : 'border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-800 dark:bg-gray-900/20 dark:text-gray-300'
+            }
+          >
+            {isStream ? t('requests.stream.streaming') : t('requests.stream.nonStreaming')}
+          </Badge>
+        )
       },
       filterFn: (row, id, value) => {
-        return value.includes(row.getValue(id))
+        return value.includes(row.original.stream?.toString() || '-')
       },
     },
     {
@@ -146,6 +157,19 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
           },
         ] as ColumnDef<Request>[])
       : []),
+
+    {
+      accessorKey: 'status',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.status')} />,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const status = row.getValue('status') as string
+        return <Badge className={getStatusColor(status)}>{t(`requests.status.${status}`)}</Badge>
+      },
+      filterFn: (row, id, value) => {
+        return value.includes(row.getValue(id))
+      },
+    },
     {
       id: 'details',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.details')} />,

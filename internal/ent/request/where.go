@@ -100,6 +100,11 @@ func ExternalID(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldExternalID, v))
 }
 
+// Stream applies equality check predicate on the "stream" field. It's identical to StreamEQ.
+func Stream(v bool) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldStream, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldCreatedAt, v))
@@ -563,6 +568,16 @@ func StatusIn(vs ...Status) predicate.Request {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.Request {
 	return predicate.Request(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// StreamEQ applies the EQ predicate on the "stream" field.
+func StreamEQ(v bool) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldStream, v))
+}
+
+// StreamNEQ applies the NEQ predicate on the "stream" field.
+func StreamNEQ(v bool) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldStream, v))
 }
 
 // HasUser applies the HasEdge predicate on the "user" edge.
