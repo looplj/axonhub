@@ -59,6 +59,8 @@ export const defaultModels: Record<string, string[]> = {
     'claude-opus-4-1',
     'claude-opus-4-0',
     'claude-sonnet-4-0',
+    'claude-sonnet-4-1',
+    'claude-sonnet-4-5',
     'claude-3-7-sonnet-latest',
     'claude-3-5-haiku-latest',
   ],
@@ -80,12 +82,12 @@ export const defaultModels: Record<string, string[]> = {
   deepseek: ['deepseek-chat', 'deepseek-reasoner'],
   doubao: ['doubao-seed-1.6', 'doubao-seed-1.6-flash'],
   moonshot: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
-  zhipu: ['glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
-  zai: ['glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+  zhipu: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+  zai: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
   deepseek_anthropic: ['deepseek-chat', 'deepseek-reasoner'],
   moonshot_anthropic: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
-  zhipu_anthropic: ['glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
-  zai_anthropic: ['glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+  zhipu_anthropic: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+  zai_anthropic: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
   anthropic_fake: [
     'claude-opus-4-1',
     'claude-opus-4-0',
@@ -110,6 +112,7 @@ export const defaultModels: Record<string, string[]> = {
     'moonshotai/kimi-k2-0905',
 
     // Zai
+    'z-ai/glm-4.6',
     'z-ai/glm-4.5',
     'z-ai/glm-4.5-air',
     'z-ai/glm-4.5-air:free',
