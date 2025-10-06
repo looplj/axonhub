@@ -52,7 +52,7 @@ func (srv *Server) Run() error {
 		Addr:         addr,
 		Handler:      srv.Engine,
 		ReadTimeout:  srv.Config.ReadTimeout,
-		WriteTimeout: srv.Config.WriteTimeout,
+		WriteTimeout: max(srv.Config.RequestTimeout, srv.Config.LLMRequestTimeout),
 	}
 	srv.addr = addr
 
