@@ -591,6 +591,7 @@ input CreateRequestInput {
   responseChunks: [JSONRawMessageInput!]
   externalID: String
   status: RequestStatus!
+  stream: Boolean
   userID: ID!
   apiKeyID: ID
   channelID: ID
@@ -1012,6 +1013,7 @@ type Request implements Node {
   channelID: ID
   externalID: String
   status: RequestStatus!
+  stream: Boolean!
   user: User!
   apiKey: APIKey
   executions(
@@ -1515,6 +1517,11 @@ input RequestWhereInput {
   statusNEQ: RequestStatus
   statusIn: [RequestStatus!]
   statusNotIn: [RequestStatus!]
+  """
+  stream field predicates
+  """
+  stream: Boolean
+  streamNEQ: Boolean
   """
   user edge predicates
   """

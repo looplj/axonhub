@@ -63,6 +63,12 @@ func (s *RequestService) CreateRequest(
 	// Get source from context, default to API if not present
 	source := contexts.GetSourceOrDefault(ctx, request.SourceAPI)
 
+	// Determine if this is a streaming request
+	isStream := false
+	if llmRequest.Stream != nil {
+		isStream = *llmRequest.Stream
+	}
+
 	client := ent.FromContext(ctx)
 	mut := client.Request.Create().
 		SetUser(user).
@@ -70,7 +76,8 @@ func (s *RequestService) CreateRequest(
 		SetFormat(string(format)).
 		SetSource(source).
 		SetStatus(request.StatusProcessing).
-		SetRequestBody(requestBodyBytes)
+		SetRequestBody(requestBodyBytes).
+		SetStream(isStream)
 
 	if apiKey != nil {
 		mut = mut.SetAPIKeyID(apiKey.ID)

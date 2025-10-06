@@ -284,7 +284,7 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     r.ID,
 		Type:   "Request",
-		Fields: make([]*Field, 14),
+		Fields: make([]*Field, 15),
 		Edges:  make([]*Edge, 5),
 	}
 	var buf []byte
@@ -398,6 +398,14 @@ func (r *Request) Node(ctx context.Context) (node *Node, err error) {
 	node.Fields[13] = &Field{
 		Type:  "request.Status",
 		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(r.Stream); err != nil {
+		return nil, err
+	}
+	node.Fields[14] = &Field{
+		Type:  "bool",
+		Name:  "stream",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{

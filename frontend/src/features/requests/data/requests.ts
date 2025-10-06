@@ -47,6 +47,7 @@ function buildRequestsQuery(permissions: { canViewUsers: boolean; canViewApiKeys
             updatedAt${userFields}${apiKeyFields}
             source
             modelID
+            stream
             requestBody
             responseBody
             status
@@ -123,6 +124,7 @@ function buildRequestDetailQuery(permissions: { canViewUsers: boolean; canViewAp
           updatedAt${userFields}${apiKeyFields}${requestChannelFields}
           source
           modelID
+          stream
           requestBody
           responseBody
           status

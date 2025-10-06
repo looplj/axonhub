@@ -5,6 +5,7 @@ import { ColumnDef } from '@tanstack/react-table'
 import { zhCN, enUS } from 'date-fns/locale'
 import { Eye, MoreHorizontal } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from '@tanstack/react-router'
 import { extractNumberID } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,6 +33,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
   const { t, i18n } = useTranslation()
   const locale = i18n.language === 'zh' ? zhCN : enUS
   const permissions = useUsageLogPermissions()
+  const navigate = useNavigate()
 
   // Define all columns
   const columns: ColumnDef<UsageLog>[] = [
@@ -75,7 +77,22 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
     {
       id: 'requestId',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('usageLogs.columns.requestId')} />,
-      cell: ({ row }) => <div className='font-mono text-xs'>#{extractNumberID(row.original.requestID)}</div>,
+      cell: ({ row }) => {
+        const requestId = row.original.requestID
+        const handleClick = () => {
+          navigate({ to: '/requests/$requestId', params: { requestId } })
+        }
+        return (
+          <Button
+            variant="link"
+            size="sm"
+            onClick={handleClick}
+            className="h-auto p-0 font-mono text-xs hover:text-primary"
+          >
+            #{extractNumberID(requestId)}
+          </Button>
+        )
+      },
       enableSorting: false,
     },
     // Channel column - only show if user has permission to view channels

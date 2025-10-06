@@ -2359,6 +2359,7 @@ type RequestMutation struct {
 	appendresponse_chunks []objects.JSONRawMessage
 	external_id           *string
 	status                *request.Status
+	stream                *bool
 	clearedFields         map[string]struct{}
 	user                  *int
 	cleareduser           bool
@@ -3111,6 +3112,42 @@ func (m *RequestMutation) ResetStatus() {
 	m.status = nil
 }
 
+// SetStream sets the "stream" field.
+func (m *RequestMutation) SetStream(b bool) {
+	m.stream = &b
+}
+
+// Stream returns the value of the "stream" field in the mutation.
+func (m *RequestMutation) Stream() (r bool, exists bool) {
+	v := m.stream
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStream returns the old "stream" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldStream(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStream is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStream requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStream: %w", err)
+	}
+	return oldValue.Stream, nil
+}
+
+// ResetStream resets all changes to the "stream" field.
+func (m *RequestMutation) ResetStream() {
+	m.stream = nil
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *RequestMutation) ClearUser() {
 	m.cleareduser = true
@@ -3334,7 +3371,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 15)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -3377,6 +3414,9 @@ func (m *RequestMutation) Fields() []string {
 	if m.status != nil {
 		fields = append(fields, request.FieldStatus)
 	}
+	if m.stream != nil {
+		fields = append(fields, request.FieldStream)
+	}
 	return fields
 }
 
@@ -3413,6 +3453,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.ExternalID()
 	case request.FieldStatus:
 		return m.Status()
+	case request.FieldStream:
+		return m.Stream()
 	}
 	return nil, false
 }
@@ -3450,6 +3492,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldExternalID(ctx)
 	case request.FieldStatus:
 		return m.OldStatus(ctx)
+	case request.FieldStream:
+		return m.OldStream(ctx)
 	}
 	return nil, fmt.Errorf("unknown Request field %s", name)
 }
@@ -3556,6 +3600,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case request.FieldStream:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStream(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Request field %s", name)
@@ -3695,6 +3746,9 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case request.FieldStream:
+		m.ResetStream()
 		return nil
 	}
 	return fmt.Errorf("unknown Request field %s", name)

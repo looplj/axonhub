@@ -64,6 +64,8 @@ func (Request) Fields() []ent.Field {
 		field.String("external_id").Optional(),
 		// The status of the request.
 		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
+		// Whether the request is a streaming request
+		field.Bool("stream").Default(false).Immutable(),
 	}
 }
 

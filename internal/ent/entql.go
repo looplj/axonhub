@@ -94,6 +94,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldChannelID:      {Type: field.TypeInt, Column: request.FieldChannelID},
 			request.FieldExternalID:     {Type: field.TypeString, Column: request.FieldExternalID},
 			request.FieldStatus:         {Type: field.TypeEnum, Column: request.FieldStatus},
+			request.FieldStream:         {Type: field.TypeBool, Column: request.FieldStream},
 		},
 	}
 	graph.Nodes[3] = &sqlgraph.Node{
@@ -827,6 +828,11 @@ func (f *RequestFilter) WhereExternalID(p entql.StringP) {
 // WhereStatus applies the entql string predicate on the status field.
 func (f *RequestFilter) WhereStatus(p entql.StringP) {
 	f.Where(p.Field(request.FieldStatus))
+}
+
+// WhereStream applies the entql bool predicate on the stream field.
+func (f *RequestFilter) WhereStream(p entql.BoolP) {
+	f.Where(p.Field(request.FieldStream))
 }
 
 // WhereHasUser applies a predicate to check if query has an edge user.

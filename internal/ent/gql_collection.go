@@ -973,6 +973,11 @@ func (rq *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldStatus)
 				fieldSeen[request.FieldStatus] = struct{}{}
 			}
+		case "stream":
+			if _, ok := fieldSeen[request.FieldStream]; !ok {
+				selectedFields = append(selectedFields, request.FieldStream)
+				fieldSeen[request.FieldStream] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:
