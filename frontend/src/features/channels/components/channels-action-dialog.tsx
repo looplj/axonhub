@@ -42,7 +42,7 @@ const defaultBaseUrls: Record<string, string> = {
   zhipu: 'https://open.bigmodel.cn/api/paas/v4',
   zai: 'https://open.bigmodel.cn/api/paas/v4',
   deepseek_anthropic: 'https://api.deepseek.com/anthropic',
-  kimi_anthropic: 'https://api.moonshot.cn/anthropic',
+  moonshot_anthropic: 'https://api.moonshot.cn/anthropic',
   zhipu_anthropic: 'https://open.bigmodel.cn/api/anthropic',
   zai_anthropic: 'https://open.bigmodel.cn/api/anthropic',
   openrouter: 'https://openrouter.ai/api/v1',
