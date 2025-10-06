@@ -8,7 +8,7 @@ type Usage struct {
 	llm.Usage
 
 	// CachedTokens is the number of tokens that were cached for Moonshot.
-	CachedTokens int `json:"cached_tokens"`
+	CachedTokens int64 `json:"cached_tokens"`
 }
 
 func (u *Usage) ToLLMUsage() *llm.Usage {

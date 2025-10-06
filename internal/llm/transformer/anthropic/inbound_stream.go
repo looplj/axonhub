@@ -417,13 +417,13 @@ func (s *anthropicInboundStream) Next() bool {
 		}
 
 		usage := &Usage{
-			InputTokens:  int64(chunk.Usage.PromptTokens),
-			OutputTokens: int64(chunk.Usage.CompletionTokens),
+			InputTokens:  chunk.Usage.PromptTokens,
+			OutputTokens: chunk.Usage.CompletionTokens,
 		}
 
 		// Map detailed token information
 		if chunk.Usage.PromptTokensDetails != nil {
-			usage.CacheReadInputTokens = int64(chunk.Usage.PromptTokensDetails.CachedTokens)
+			usage.CacheReadInputTokens = chunk.Usage.PromptTokensDetails.CachedTokens
 		}
 
 		streamEvent.Usage = usage

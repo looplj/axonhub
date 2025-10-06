@@ -16458,9 +16458,9 @@ func (ec *executionContext) _UsageLog_promptTokens(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UsageLog_promptTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16502,9 +16502,9 @@ func (ec *executionContext) _UsageLog_completionTokens(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UsageLog_completionTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16546,9 +16546,9 @@ func (ec *executionContext) _UsageLog_totalTokens(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UsageLog_totalTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16587,9 +16587,9 @@ func (ec *executionContext) _UsageLog_promptAudioTokens(ctx context.Context, fie
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UsageLog_promptAudioTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16628,9 +16628,9 @@ func (ec *executionContext) _UsageLog_promptCachedTokens(ctx context.Context, fi
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UsageLog_promptCachedTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16669,9 +16669,9 @@ func (ec *executionContext) _UsageLog_completionAudioTokens(ctx context.Context,
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UsageLog_completionAudioTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16710,9 +16710,9 @@ func (ec *executionContext) _UsageLog_completionReasoningTokens(ctx context.Cont
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UsageLog_completionReasoningTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16751,9 +16751,9 @@ func (ec *executionContext) _UsageLog_completionAcceptedPredictionTokens(ctx con
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UsageLog_completionAcceptedPredictionTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16792,9 +16792,9 @@ func (ec *executionContext) _UsageLog_completionRejectedPredictionTokens(ctx con
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UsageLog_completionRejectedPredictionTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -22894,63 +22894,63 @@ func (ec *executionContext) unmarshalInputCreateUsageLogInput(ctx context.Contex
 			it.ModelID = data
 		case "promptTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptTokens = data
 		case "completionTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionTokens = data
 		case "totalTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TotalTokens = data
 		case "promptAudioTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptAudioTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptAudioTokens = data
 		case "promptCachedTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptCachedTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptCachedTokens = data
 		case "completionAudioTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAudioTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAudioTokens = data
 		case "completionReasoningTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionReasoningTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionReasoningTokens = data
 		case "completionAcceptedPredictionTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAcceptedPredictionTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAcceptedPredictionTokens = data
 		case "completionRejectedPredictionTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionRejectedPredictionTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26754,28 +26754,28 @@ func (ec *executionContext) unmarshalInputUpdateUsageLogInput(ctx context.Contex
 			it.UpdatedAt = data
 		case "promptTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptTokens = data
 		case "completionTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionTokens = data
 		case "totalTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TotalTokens = data
 		case "promptAudioTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptAudioTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26789,7 +26789,7 @@ func (ec *executionContext) unmarshalInputUpdateUsageLogInput(ctx context.Contex
 			it.ClearPromptAudioTokens = data
 		case "promptCachedTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptCachedTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26803,7 +26803,7 @@ func (ec *executionContext) unmarshalInputUpdateUsageLogInput(ctx context.Contex
 			it.ClearPromptCachedTokens = data
 		case "completionAudioTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAudioTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26817,7 +26817,7 @@ func (ec *executionContext) unmarshalInputUpdateUsageLogInput(ctx context.Contex
 			it.ClearCompletionAudioTokens = data
 		case "completionReasoningTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionReasoningTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26831,7 +26831,7 @@ func (ec *executionContext) unmarshalInputUpdateUsageLogInput(ctx context.Contex
 			it.ClearCompletionReasoningTokens = data
 		case "completionAcceptedPredictionTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAcceptedPredictionTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26845,7 +26845,7 @@ func (ec *executionContext) unmarshalInputUpdateUsageLogInput(ctx context.Contex
 			it.ClearCompletionAcceptedPredictionTokens = data
 		case "completionRejectedPredictionTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionRejectedPredictionTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27589,224 +27589,224 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 			it.ModelIDContainsFold = data
 		case "promptTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptTokens = data
 		case "promptTokensNEQ":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptTokensNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptTokensNEQ = data
 		case "promptTokensIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptTokensIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptTokensIn = data
 		case "promptTokensNotIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptTokensNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptTokensNotIn = data
 		case "promptTokensGT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptTokensGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptTokensGT = data
 		case "promptTokensGTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptTokensGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptTokensGTE = data
 		case "promptTokensLT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptTokensLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptTokensLT = data
 		case "promptTokensLTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptTokensLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptTokensLTE = data
 		case "completionTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionTokens = data
 		case "completionTokensNEQ":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionTokensNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionTokensNEQ = data
 		case "completionTokensIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionTokensIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionTokensIn = data
 		case "completionTokensNotIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionTokensNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionTokensNotIn = data
 		case "completionTokensGT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionTokensGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionTokensGT = data
 		case "completionTokensGTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionTokensGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionTokensGTE = data
 		case "completionTokensLT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionTokensLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionTokensLT = data
 		case "completionTokensLTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionTokensLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionTokensLTE = data
 		case "totalTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TotalTokens = data
 		case "totalTokensNEQ":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokensNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TotalTokensNEQ = data
 		case "totalTokensIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokensIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TotalTokensIn = data
 		case "totalTokensNotIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokensNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TotalTokensNotIn = data
 		case "totalTokensGT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokensGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TotalTokensGT = data
 		case "totalTokensGTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokensGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TotalTokensGTE = data
 		case "totalTokensLT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokensLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TotalTokensLT = data
 		case "totalTokensLTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokensLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TotalTokensLTE = data
 		case "promptAudioTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptAudioTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptAudioTokens = data
 		case "promptAudioTokensNEQ":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptAudioTokensNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptAudioTokensNEQ = data
 		case "promptAudioTokensIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptAudioTokensIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptAudioTokensIn = data
 		case "promptAudioTokensNotIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptAudioTokensNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptAudioTokensNotIn = data
 		case "promptAudioTokensGT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptAudioTokensGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptAudioTokensGT = data
 		case "promptAudioTokensGTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptAudioTokensGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptAudioTokensGTE = data
 		case "promptAudioTokensLT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptAudioTokensLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptAudioTokensLT = data
 		case "promptAudioTokensLTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptAudioTokensLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27827,56 +27827,56 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 			it.PromptAudioTokensNotNil = data
 		case "promptCachedTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptCachedTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptCachedTokens = data
 		case "promptCachedTokensNEQ":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptCachedTokensNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptCachedTokensNEQ = data
 		case "promptCachedTokensIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptCachedTokensIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptCachedTokensIn = data
 		case "promptCachedTokensNotIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptCachedTokensNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptCachedTokensNotIn = data
 		case "promptCachedTokensGT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptCachedTokensGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptCachedTokensGT = data
 		case "promptCachedTokensGTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptCachedTokensGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptCachedTokensGTE = data
 		case "promptCachedTokensLT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptCachedTokensLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PromptCachedTokensLT = data
 		case "promptCachedTokensLTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("promptCachedTokensLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27897,56 +27897,56 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 			it.PromptCachedTokensNotNil = data
 		case "completionAudioTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAudioTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAudioTokens = data
 		case "completionAudioTokensNEQ":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAudioTokensNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAudioTokensNEQ = data
 		case "completionAudioTokensIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAudioTokensIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAudioTokensIn = data
 		case "completionAudioTokensNotIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAudioTokensNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAudioTokensNotIn = data
 		case "completionAudioTokensGT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAudioTokensGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAudioTokensGT = data
 		case "completionAudioTokensGTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAudioTokensGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAudioTokensGTE = data
 		case "completionAudioTokensLT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAudioTokensLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAudioTokensLT = data
 		case "completionAudioTokensLTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAudioTokensLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27967,56 +27967,56 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 			it.CompletionAudioTokensNotNil = data
 		case "completionReasoningTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionReasoningTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionReasoningTokens = data
 		case "completionReasoningTokensNEQ":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionReasoningTokensNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionReasoningTokensNEQ = data
 		case "completionReasoningTokensIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionReasoningTokensIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionReasoningTokensIn = data
 		case "completionReasoningTokensNotIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionReasoningTokensNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionReasoningTokensNotIn = data
 		case "completionReasoningTokensGT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionReasoningTokensGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionReasoningTokensGT = data
 		case "completionReasoningTokensGTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionReasoningTokensGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionReasoningTokensGTE = data
 		case "completionReasoningTokensLT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionReasoningTokensLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionReasoningTokensLT = data
 		case "completionReasoningTokensLTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionReasoningTokensLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28037,56 +28037,56 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 			it.CompletionReasoningTokensNotNil = data
 		case "completionAcceptedPredictionTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAcceptedPredictionTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAcceptedPredictionTokens = data
 		case "completionAcceptedPredictionTokensNEQ":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAcceptedPredictionTokensNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAcceptedPredictionTokensNEQ = data
 		case "completionAcceptedPredictionTokensIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAcceptedPredictionTokensIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAcceptedPredictionTokensIn = data
 		case "completionAcceptedPredictionTokensNotIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAcceptedPredictionTokensNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAcceptedPredictionTokensNotIn = data
 		case "completionAcceptedPredictionTokensGT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAcceptedPredictionTokensGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAcceptedPredictionTokensGT = data
 		case "completionAcceptedPredictionTokensGTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAcceptedPredictionTokensGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAcceptedPredictionTokensGTE = data
 		case "completionAcceptedPredictionTokensLT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAcceptedPredictionTokensLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionAcceptedPredictionTokensLT = data
 		case "completionAcceptedPredictionTokensLTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionAcceptedPredictionTokensLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28107,56 +28107,56 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 			it.CompletionAcceptedPredictionTokensNotNil = data
 		case "completionRejectedPredictionTokens":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionRejectedPredictionTokens"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionRejectedPredictionTokens = data
 		case "completionRejectedPredictionTokensNEQ":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionRejectedPredictionTokensNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionRejectedPredictionTokensNEQ = data
 		case "completionRejectedPredictionTokensIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionRejectedPredictionTokensIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionRejectedPredictionTokensIn = data
 		case "completionRejectedPredictionTokensNotIn":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionRejectedPredictionTokensNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionRejectedPredictionTokensNotIn = data
 		case "completionRejectedPredictionTokensGT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionRejectedPredictionTokensGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionRejectedPredictionTokensGT = data
 		case "completionRejectedPredictionTokensGTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionRejectedPredictionTokensGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionRejectedPredictionTokensGTE = data
 		case "completionRejectedPredictionTokensLT":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionRejectedPredictionTokensLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CompletionRejectedPredictionTokensLT = data
 		case "completionRejectedPredictionTokensLTE":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completionRejectedPredictionTokensLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -34889,6 +34889,22 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
+func (ec *executionContext) unmarshalNInt2int64(ctx context.Context, v any) (int64, error) {
+	res, err := graphql.UnmarshalInt64(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalInt64(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx context.Context, v any) (objects.JSONRawMessage, error) {
 	var res objects.JSONRawMessage
 	err := res.UnmarshalGQL(v)
@@ -36700,6 +36716,54 @@ func (ec *executionContext) marshalOInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
+func (ec *executionContext) unmarshalOInt2int64(ctx context.Context, v any) (int64, error) {
+	res, err := graphql.UnmarshalInt64(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalInt64(v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOInt2ᚕint64ᚄ(ctx context.Context, v any) ([]int64, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]int64, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInt2int64(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOInt2ᚕint64ᚄ(ctx context.Context, sel ast.SelectionSet, v []int64) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNInt2int64(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalOInt2ᚕintᚄ(ctx context.Context, v any) ([]int, error) {
 	if v == nil {
 		return nil, nil
@@ -36751,6 +36815,24 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	_ = sel
 	_ = ctx
 	res := graphql.MarshalInt(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint64(ctx context.Context, v any) (*int64, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt64(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint64(ctx context.Context, sel ast.SelectionSet, v *int64) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalInt64(*v)
 	return res
 }
 

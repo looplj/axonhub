@@ -100,13 +100,13 @@ func (ulc *UsageLogCreate) SetModelID(s string) *UsageLogCreate {
 }
 
 // SetPromptTokens sets the "prompt_tokens" field.
-func (ulc *UsageLogCreate) SetPromptTokens(i int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetPromptTokens(i int64) *UsageLogCreate {
 	ulc.mutation.SetPromptTokens(i)
 	return ulc
 }
 
 // SetNillablePromptTokens sets the "prompt_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillablePromptTokens(i *int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetNillablePromptTokens(i *int64) *UsageLogCreate {
 	if i != nil {
 		ulc.SetPromptTokens(*i)
 	}
@@ -114,13 +114,13 @@ func (ulc *UsageLogCreate) SetNillablePromptTokens(i *int) *UsageLogCreate {
 }
 
 // SetCompletionTokens sets the "completion_tokens" field.
-func (ulc *UsageLogCreate) SetCompletionTokens(i int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetCompletionTokens(i int64) *UsageLogCreate {
 	ulc.mutation.SetCompletionTokens(i)
 	return ulc
 }
 
 // SetNillableCompletionTokens sets the "completion_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableCompletionTokens(i *int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetNillableCompletionTokens(i *int64) *UsageLogCreate {
 	if i != nil {
 		ulc.SetCompletionTokens(*i)
 	}
@@ -128,13 +128,13 @@ func (ulc *UsageLogCreate) SetNillableCompletionTokens(i *int) *UsageLogCreate {
 }
 
 // SetTotalTokens sets the "total_tokens" field.
-func (ulc *UsageLogCreate) SetTotalTokens(i int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetTotalTokens(i int64) *UsageLogCreate {
 	ulc.mutation.SetTotalTokens(i)
 	return ulc
 }
 
 // SetNillableTotalTokens sets the "total_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableTotalTokens(i *int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetNillableTotalTokens(i *int64) *UsageLogCreate {
 	if i != nil {
 		ulc.SetTotalTokens(*i)
 	}
@@ -142,13 +142,13 @@ func (ulc *UsageLogCreate) SetNillableTotalTokens(i *int) *UsageLogCreate {
 }
 
 // SetPromptAudioTokens sets the "prompt_audio_tokens" field.
-func (ulc *UsageLogCreate) SetPromptAudioTokens(i int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetPromptAudioTokens(i int64) *UsageLogCreate {
 	ulc.mutation.SetPromptAudioTokens(i)
 	return ulc
 }
 
 // SetNillablePromptAudioTokens sets the "prompt_audio_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillablePromptAudioTokens(i *int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetNillablePromptAudioTokens(i *int64) *UsageLogCreate {
 	if i != nil {
 		ulc.SetPromptAudioTokens(*i)
 	}
@@ -156,13 +156,13 @@ func (ulc *UsageLogCreate) SetNillablePromptAudioTokens(i *int) *UsageLogCreate 
 }
 
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
-func (ulc *UsageLogCreate) SetPromptCachedTokens(i int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetPromptCachedTokens(i int64) *UsageLogCreate {
 	ulc.mutation.SetPromptCachedTokens(i)
 	return ulc
 }
 
 // SetNillablePromptCachedTokens sets the "prompt_cached_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillablePromptCachedTokens(i *int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetNillablePromptCachedTokens(i *int64) *UsageLogCreate {
 	if i != nil {
 		ulc.SetPromptCachedTokens(*i)
 	}
@@ -170,13 +170,13 @@ func (ulc *UsageLogCreate) SetNillablePromptCachedTokens(i *int) *UsageLogCreate
 }
 
 // SetCompletionAudioTokens sets the "completion_audio_tokens" field.
-func (ulc *UsageLogCreate) SetCompletionAudioTokens(i int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetCompletionAudioTokens(i int64) *UsageLogCreate {
 	ulc.mutation.SetCompletionAudioTokens(i)
 	return ulc
 }
 
 // SetNillableCompletionAudioTokens sets the "completion_audio_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableCompletionAudioTokens(i *int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetNillableCompletionAudioTokens(i *int64) *UsageLogCreate {
 	if i != nil {
 		ulc.SetCompletionAudioTokens(*i)
 	}
@@ -184,13 +184,13 @@ func (ulc *UsageLogCreate) SetNillableCompletionAudioTokens(i *int) *UsageLogCre
 }
 
 // SetCompletionReasoningTokens sets the "completion_reasoning_tokens" field.
-func (ulc *UsageLogCreate) SetCompletionReasoningTokens(i int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetCompletionReasoningTokens(i int64) *UsageLogCreate {
 	ulc.mutation.SetCompletionReasoningTokens(i)
 	return ulc
 }
 
 // SetNillableCompletionReasoningTokens sets the "completion_reasoning_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableCompletionReasoningTokens(i *int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetNillableCompletionReasoningTokens(i *int64) *UsageLogCreate {
 	if i != nil {
 		ulc.SetCompletionReasoningTokens(*i)
 	}
@@ -198,13 +198,13 @@ func (ulc *UsageLogCreate) SetNillableCompletionReasoningTokens(i *int) *UsageLo
 }
 
 // SetCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field.
-func (ulc *UsageLogCreate) SetCompletionAcceptedPredictionTokens(i int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetCompletionAcceptedPredictionTokens(i int64) *UsageLogCreate {
 	ulc.mutation.SetCompletionAcceptedPredictionTokens(i)
 	return ulc
 }
 
 // SetNillableCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableCompletionAcceptedPredictionTokens(i *int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetNillableCompletionAcceptedPredictionTokens(i *int64) *UsageLogCreate {
 	if i != nil {
 		ulc.SetCompletionAcceptedPredictionTokens(*i)
 	}
@@ -212,13 +212,13 @@ func (ulc *UsageLogCreate) SetNillableCompletionAcceptedPredictionTokens(i *int)
 }
 
 // SetCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field.
-func (ulc *UsageLogCreate) SetCompletionRejectedPredictionTokens(i int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetCompletionRejectedPredictionTokens(i int64) *UsageLogCreate {
 	ulc.mutation.SetCompletionRejectedPredictionTokens(i)
 	return ulc
 }
 
 // SetNillableCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableCompletionRejectedPredictionTokens(i *int) *UsageLogCreate {
+func (ulc *UsageLogCreate) SetNillableCompletionRejectedPredictionTokens(i *int64) *UsageLogCreate {
 	if i != nil {
 		ulc.SetCompletionRejectedPredictionTokens(*i)
 	}
@@ -460,39 +460,39 @@ func (ulc *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 		_node.ModelID = value
 	}
 	if value, ok := ulc.mutation.PromptTokens(); ok {
-		_spec.SetField(usagelog.FieldPromptTokens, field.TypeInt, value)
+		_spec.SetField(usagelog.FieldPromptTokens, field.TypeInt64, value)
 		_node.PromptTokens = value
 	}
 	if value, ok := ulc.mutation.CompletionTokens(); ok {
-		_spec.SetField(usagelog.FieldCompletionTokens, field.TypeInt, value)
+		_spec.SetField(usagelog.FieldCompletionTokens, field.TypeInt64, value)
 		_node.CompletionTokens = value
 	}
 	if value, ok := ulc.mutation.TotalTokens(); ok {
-		_spec.SetField(usagelog.FieldTotalTokens, field.TypeInt, value)
+		_spec.SetField(usagelog.FieldTotalTokens, field.TypeInt64, value)
 		_node.TotalTokens = value
 	}
 	if value, ok := ulc.mutation.PromptAudioTokens(); ok {
-		_spec.SetField(usagelog.FieldPromptAudioTokens, field.TypeInt, value)
+		_spec.SetField(usagelog.FieldPromptAudioTokens, field.TypeInt64, value)
 		_node.PromptAudioTokens = value
 	}
 	if value, ok := ulc.mutation.PromptCachedTokens(); ok {
-		_spec.SetField(usagelog.FieldPromptCachedTokens, field.TypeInt, value)
+		_spec.SetField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 		_node.PromptCachedTokens = value
 	}
 	if value, ok := ulc.mutation.CompletionAudioTokens(); ok {
-		_spec.SetField(usagelog.FieldCompletionAudioTokens, field.TypeInt, value)
+		_spec.SetField(usagelog.FieldCompletionAudioTokens, field.TypeInt64, value)
 		_node.CompletionAudioTokens = value
 	}
 	if value, ok := ulc.mutation.CompletionReasoningTokens(); ok {
-		_spec.SetField(usagelog.FieldCompletionReasoningTokens, field.TypeInt, value)
+		_spec.SetField(usagelog.FieldCompletionReasoningTokens, field.TypeInt64, value)
 		_node.CompletionReasoningTokens = value
 	}
 	if value, ok := ulc.mutation.CompletionAcceptedPredictionTokens(); ok {
-		_spec.SetField(usagelog.FieldCompletionAcceptedPredictionTokens, field.TypeInt, value)
+		_spec.SetField(usagelog.FieldCompletionAcceptedPredictionTokens, field.TypeInt64, value)
 		_node.CompletionAcceptedPredictionTokens = value
 	}
 	if value, ok := ulc.mutation.CompletionRejectedPredictionTokens(); ok {
-		_spec.SetField(usagelog.FieldCompletionRejectedPredictionTokens, field.TypeInt, value)
+		_spec.SetField(usagelog.FieldCompletionRejectedPredictionTokens, field.TypeInt64, value)
 		_node.CompletionRejectedPredictionTokens = value
 	}
 	if value, ok := ulc.mutation.Source(); ok {
@@ -655,7 +655,7 @@ func (u *UsageLogUpsert) ClearChannelID() *UsageLogUpsert {
 }
 
 // SetPromptTokens sets the "prompt_tokens" field.
-func (u *UsageLogUpsert) SetPromptTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) SetPromptTokens(v int64) *UsageLogUpsert {
 	u.Set(usagelog.FieldPromptTokens, v)
 	return u
 }
@@ -667,13 +667,13 @@ func (u *UsageLogUpsert) UpdatePromptTokens() *UsageLogUpsert {
 }
 
 // AddPromptTokens adds v to the "prompt_tokens" field.
-func (u *UsageLogUpsert) AddPromptTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) AddPromptTokens(v int64) *UsageLogUpsert {
 	u.Add(usagelog.FieldPromptTokens, v)
 	return u
 }
 
 // SetCompletionTokens sets the "completion_tokens" field.
-func (u *UsageLogUpsert) SetCompletionTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) SetCompletionTokens(v int64) *UsageLogUpsert {
 	u.Set(usagelog.FieldCompletionTokens, v)
 	return u
 }
@@ -685,13 +685,13 @@ func (u *UsageLogUpsert) UpdateCompletionTokens() *UsageLogUpsert {
 }
 
 // AddCompletionTokens adds v to the "completion_tokens" field.
-func (u *UsageLogUpsert) AddCompletionTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) AddCompletionTokens(v int64) *UsageLogUpsert {
 	u.Add(usagelog.FieldCompletionTokens, v)
 	return u
 }
 
 // SetTotalTokens sets the "total_tokens" field.
-func (u *UsageLogUpsert) SetTotalTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) SetTotalTokens(v int64) *UsageLogUpsert {
 	u.Set(usagelog.FieldTotalTokens, v)
 	return u
 }
@@ -703,13 +703,13 @@ func (u *UsageLogUpsert) UpdateTotalTokens() *UsageLogUpsert {
 }
 
 // AddTotalTokens adds v to the "total_tokens" field.
-func (u *UsageLogUpsert) AddTotalTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) AddTotalTokens(v int64) *UsageLogUpsert {
 	u.Add(usagelog.FieldTotalTokens, v)
 	return u
 }
 
 // SetPromptAudioTokens sets the "prompt_audio_tokens" field.
-func (u *UsageLogUpsert) SetPromptAudioTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) SetPromptAudioTokens(v int64) *UsageLogUpsert {
 	u.Set(usagelog.FieldPromptAudioTokens, v)
 	return u
 }
@@ -721,7 +721,7 @@ func (u *UsageLogUpsert) UpdatePromptAudioTokens() *UsageLogUpsert {
 }
 
 // AddPromptAudioTokens adds v to the "prompt_audio_tokens" field.
-func (u *UsageLogUpsert) AddPromptAudioTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) AddPromptAudioTokens(v int64) *UsageLogUpsert {
 	u.Add(usagelog.FieldPromptAudioTokens, v)
 	return u
 }
@@ -733,7 +733,7 @@ func (u *UsageLogUpsert) ClearPromptAudioTokens() *UsageLogUpsert {
 }
 
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
-func (u *UsageLogUpsert) SetPromptCachedTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) SetPromptCachedTokens(v int64) *UsageLogUpsert {
 	u.Set(usagelog.FieldPromptCachedTokens, v)
 	return u
 }
@@ -745,7 +745,7 @@ func (u *UsageLogUpsert) UpdatePromptCachedTokens() *UsageLogUpsert {
 }
 
 // AddPromptCachedTokens adds v to the "prompt_cached_tokens" field.
-func (u *UsageLogUpsert) AddPromptCachedTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) AddPromptCachedTokens(v int64) *UsageLogUpsert {
 	u.Add(usagelog.FieldPromptCachedTokens, v)
 	return u
 }
@@ -757,7 +757,7 @@ func (u *UsageLogUpsert) ClearPromptCachedTokens() *UsageLogUpsert {
 }
 
 // SetCompletionAudioTokens sets the "completion_audio_tokens" field.
-func (u *UsageLogUpsert) SetCompletionAudioTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) SetCompletionAudioTokens(v int64) *UsageLogUpsert {
 	u.Set(usagelog.FieldCompletionAudioTokens, v)
 	return u
 }
@@ -769,7 +769,7 @@ func (u *UsageLogUpsert) UpdateCompletionAudioTokens() *UsageLogUpsert {
 }
 
 // AddCompletionAudioTokens adds v to the "completion_audio_tokens" field.
-func (u *UsageLogUpsert) AddCompletionAudioTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) AddCompletionAudioTokens(v int64) *UsageLogUpsert {
 	u.Add(usagelog.FieldCompletionAudioTokens, v)
 	return u
 }
@@ -781,7 +781,7 @@ func (u *UsageLogUpsert) ClearCompletionAudioTokens() *UsageLogUpsert {
 }
 
 // SetCompletionReasoningTokens sets the "completion_reasoning_tokens" field.
-func (u *UsageLogUpsert) SetCompletionReasoningTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) SetCompletionReasoningTokens(v int64) *UsageLogUpsert {
 	u.Set(usagelog.FieldCompletionReasoningTokens, v)
 	return u
 }
@@ -793,7 +793,7 @@ func (u *UsageLogUpsert) UpdateCompletionReasoningTokens() *UsageLogUpsert {
 }
 
 // AddCompletionReasoningTokens adds v to the "completion_reasoning_tokens" field.
-func (u *UsageLogUpsert) AddCompletionReasoningTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) AddCompletionReasoningTokens(v int64) *UsageLogUpsert {
 	u.Add(usagelog.FieldCompletionReasoningTokens, v)
 	return u
 }
@@ -805,7 +805,7 @@ func (u *UsageLogUpsert) ClearCompletionReasoningTokens() *UsageLogUpsert {
 }
 
 // SetCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field.
-func (u *UsageLogUpsert) SetCompletionAcceptedPredictionTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) SetCompletionAcceptedPredictionTokens(v int64) *UsageLogUpsert {
 	u.Set(usagelog.FieldCompletionAcceptedPredictionTokens, v)
 	return u
 }
@@ -817,7 +817,7 @@ func (u *UsageLogUpsert) UpdateCompletionAcceptedPredictionTokens() *UsageLogUps
 }
 
 // AddCompletionAcceptedPredictionTokens adds v to the "completion_accepted_prediction_tokens" field.
-func (u *UsageLogUpsert) AddCompletionAcceptedPredictionTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) AddCompletionAcceptedPredictionTokens(v int64) *UsageLogUpsert {
 	u.Add(usagelog.FieldCompletionAcceptedPredictionTokens, v)
 	return u
 }
@@ -829,7 +829,7 @@ func (u *UsageLogUpsert) ClearCompletionAcceptedPredictionTokens() *UsageLogUpse
 }
 
 // SetCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field.
-func (u *UsageLogUpsert) SetCompletionRejectedPredictionTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) SetCompletionRejectedPredictionTokens(v int64) *UsageLogUpsert {
 	u.Set(usagelog.FieldCompletionRejectedPredictionTokens, v)
 	return u
 }
@@ -841,7 +841,7 @@ func (u *UsageLogUpsert) UpdateCompletionRejectedPredictionTokens() *UsageLogUps
 }
 
 // AddCompletionRejectedPredictionTokens adds v to the "completion_rejected_prediction_tokens" field.
-func (u *UsageLogUpsert) AddCompletionRejectedPredictionTokens(v int) *UsageLogUpsert {
+func (u *UsageLogUpsert) AddCompletionRejectedPredictionTokens(v int64) *UsageLogUpsert {
 	u.Add(usagelog.FieldCompletionRejectedPredictionTokens, v)
 	return u
 }
@@ -969,14 +969,14 @@ func (u *UsageLogUpsertOne) ClearChannelID() *UsageLogUpsertOne {
 }
 
 // SetPromptTokens sets the "prompt_tokens" field.
-func (u *UsageLogUpsertOne) SetPromptTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) SetPromptTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetPromptTokens(v)
 	})
 }
 
 // AddPromptTokens adds v to the "prompt_tokens" field.
-func (u *UsageLogUpsertOne) AddPromptTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) AddPromptTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddPromptTokens(v)
 	})
@@ -990,14 +990,14 @@ func (u *UsageLogUpsertOne) UpdatePromptTokens() *UsageLogUpsertOne {
 }
 
 // SetCompletionTokens sets the "completion_tokens" field.
-func (u *UsageLogUpsertOne) SetCompletionTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) SetCompletionTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetCompletionTokens(v)
 	})
 }
 
 // AddCompletionTokens adds v to the "completion_tokens" field.
-func (u *UsageLogUpsertOne) AddCompletionTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) AddCompletionTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddCompletionTokens(v)
 	})
@@ -1011,14 +1011,14 @@ func (u *UsageLogUpsertOne) UpdateCompletionTokens() *UsageLogUpsertOne {
 }
 
 // SetTotalTokens sets the "total_tokens" field.
-func (u *UsageLogUpsertOne) SetTotalTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) SetTotalTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetTotalTokens(v)
 	})
 }
 
 // AddTotalTokens adds v to the "total_tokens" field.
-func (u *UsageLogUpsertOne) AddTotalTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) AddTotalTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddTotalTokens(v)
 	})
@@ -1032,14 +1032,14 @@ func (u *UsageLogUpsertOne) UpdateTotalTokens() *UsageLogUpsertOne {
 }
 
 // SetPromptAudioTokens sets the "prompt_audio_tokens" field.
-func (u *UsageLogUpsertOne) SetPromptAudioTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) SetPromptAudioTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetPromptAudioTokens(v)
 	})
 }
 
 // AddPromptAudioTokens adds v to the "prompt_audio_tokens" field.
-func (u *UsageLogUpsertOne) AddPromptAudioTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) AddPromptAudioTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddPromptAudioTokens(v)
 	})
@@ -1060,14 +1060,14 @@ func (u *UsageLogUpsertOne) ClearPromptAudioTokens() *UsageLogUpsertOne {
 }
 
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
-func (u *UsageLogUpsertOne) SetPromptCachedTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) SetPromptCachedTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetPromptCachedTokens(v)
 	})
 }
 
 // AddPromptCachedTokens adds v to the "prompt_cached_tokens" field.
-func (u *UsageLogUpsertOne) AddPromptCachedTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) AddPromptCachedTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddPromptCachedTokens(v)
 	})
@@ -1088,14 +1088,14 @@ func (u *UsageLogUpsertOne) ClearPromptCachedTokens() *UsageLogUpsertOne {
 }
 
 // SetCompletionAudioTokens sets the "completion_audio_tokens" field.
-func (u *UsageLogUpsertOne) SetCompletionAudioTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) SetCompletionAudioTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetCompletionAudioTokens(v)
 	})
 }
 
 // AddCompletionAudioTokens adds v to the "completion_audio_tokens" field.
-func (u *UsageLogUpsertOne) AddCompletionAudioTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) AddCompletionAudioTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddCompletionAudioTokens(v)
 	})
@@ -1116,14 +1116,14 @@ func (u *UsageLogUpsertOne) ClearCompletionAudioTokens() *UsageLogUpsertOne {
 }
 
 // SetCompletionReasoningTokens sets the "completion_reasoning_tokens" field.
-func (u *UsageLogUpsertOne) SetCompletionReasoningTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) SetCompletionReasoningTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetCompletionReasoningTokens(v)
 	})
 }
 
 // AddCompletionReasoningTokens adds v to the "completion_reasoning_tokens" field.
-func (u *UsageLogUpsertOne) AddCompletionReasoningTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) AddCompletionReasoningTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddCompletionReasoningTokens(v)
 	})
@@ -1144,14 +1144,14 @@ func (u *UsageLogUpsertOne) ClearCompletionReasoningTokens() *UsageLogUpsertOne 
 }
 
 // SetCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field.
-func (u *UsageLogUpsertOne) SetCompletionAcceptedPredictionTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) SetCompletionAcceptedPredictionTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetCompletionAcceptedPredictionTokens(v)
 	})
 }
 
 // AddCompletionAcceptedPredictionTokens adds v to the "completion_accepted_prediction_tokens" field.
-func (u *UsageLogUpsertOne) AddCompletionAcceptedPredictionTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) AddCompletionAcceptedPredictionTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddCompletionAcceptedPredictionTokens(v)
 	})
@@ -1172,14 +1172,14 @@ func (u *UsageLogUpsertOne) ClearCompletionAcceptedPredictionTokens() *UsageLogU
 }
 
 // SetCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field.
-func (u *UsageLogUpsertOne) SetCompletionRejectedPredictionTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) SetCompletionRejectedPredictionTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetCompletionRejectedPredictionTokens(v)
 	})
 }
 
 // AddCompletionRejectedPredictionTokens adds v to the "completion_rejected_prediction_tokens" field.
-func (u *UsageLogUpsertOne) AddCompletionRejectedPredictionTokens(v int) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) AddCompletionRejectedPredictionTokens(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddCompletionRejectedPredictionTokens(v)
 	})
@@ -1482,14 +1482,14 @@ func (u *UsageLogUpsertBulk) ClearChannelID() *UsageLogUpsertBulk {
 }
 
 // SetPromptTokens sets the "prompt_tokens" field.
-func (u *UsageLogUpsertBulk) SetPromptTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) SetPromptTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetPromptTokens(v)
 	})
 }
 
 // AddPromptTokens adds v to the "prompt_tokens" field.
-func (u *UsageLogUpsertBulk) AddPromptTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) AddPromptTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddPromptTokens(v)
 	})
@@ -1503,14 +1503,14 @@ func (u *UsageLogUpsertBulk) UpdatePromptTokens() *UsageLogUpsertBulk {
 }
 
 // SetCompletionTokens sets the "completion_tokens" field.
-func (u *UsageLogUpsertBulk) SetCompletionTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) SetCompletionTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetCompletionTokens(v)
 	})
 }
 
 // AddCompletionTokens adds v to the "completion_tokens" field.
-func (u *UsageLogUpsertBulk) AddCompletionTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) AddCompletionTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddCompletionTokens(v)
 	})
@@ -1524,14 +1524,14 @@ func (u *UsageLogUpsertBulk) UpdateCompletionTokens() *UsageLogUpsertBulk {
 }
 
 // SetTotalTokens sets the "total_tokens" field.
-func (u *UsageLogUpsertBulk) SetTotalTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) SetTotalTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetTotalTokens(v)
 	})
 }
 
 // AddTotalTokens adds v to the "total_tokens" field.
-func (u *UsageLogUpsertBulk) AddTotalTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) AddTotalTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddTotalTokens(v)
 	})
@@ -1545,14 +1545,14 @@ func (u *UsageLogUpsertBulk) UpdateTotalTokens() *UsageLogUpsertBulk {
 }
 
 // SetPromptAudioTokens sets the "prompt_audio_tokens" field.
-func (u *UsageLogUpsertBulk) SetPromptAudioTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) SetPromptAudioTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetPromptAudioTokens(v)
 	})
 }
 
 // AddPromptAudioTokens adds v to the "prompt_audio_tokens" field.
-func (u *UsageLogUpsertBulk) AddPromptAudioTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) AddPromptAudioTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddPromptAudioTokens(v)
 	})
@@ -1573,14 +1573,14 @@ func (u *UsageLogUpsertBulk) ClearPromptAudioTokens() *UsageLogUpsertBulk {
 }
 
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
-func (u *UsageLogUpsertBulk) SetPromptCachedTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) SetPromptCachedTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetPromptCachedTokens(v)
 	})
 }
 
 // AddPromptCachedTokens adds v to the "prompt_cached_tokens" field.
-func (u *UsageLogUpsertBulk) AddPromptCachedTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) AddPromptCachedTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddPromptCachedTokens(v)
 	})
@@ -1601,14 +1601,14 @@ func (u *UsageLogUpsertBulk) ClearPromptCachedTokens() *UsageLogUpsertBulk {
 }
 
 // SetCompletionAudioTokens sets the "completion_audio_tokens" field.
-func (u *UsageLogUpsertBulk) SetCompletionAudioTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) SetCompletionAudioTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetCompletionAudioTokens(v)
 	})
 }
 
 // AddCompletionAudioTokens adds v to the "completion_audio_tokens" field.
-func (u *UsageLogUpsertBulk) AddCompletionAudioTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) AddCompletionAudioTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddCompletionAudioTokens(v)
 	})
@@ -1629,14 +1629,14 @@ func (u *UsageLogUpsertBulk) ClearCompletionAudioTokens() *UsageLogUpsertBulk {
 }
 
 // SetCompletionReasoningTokens sets the "completion_reasoning_tokens" field.
-func (u *UsageLogUpsertBulk) SetCompletionReasoningTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) SetCompletionReasoningTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetCompletionReasoningTokens(v)
 	})
 }
 
 // AddCompletionReasoningTokens adds v to the "completion_reasoning_tokens" field.
-func (u *UsageLogUpsertBulk) AddCompletionReasoningTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) AddCompletionReasoningTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddCompletionReasoningTokens(v)
 	})
@@ -1657,14 +1657,14 @@ func (u *UsageLogUpsertBulk) ClearCompletionReasoningTokens() *UsageLogUpsertBul
 }
 
 // SetCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field.
-func (u *UsageLogUpsertBulk) SetCompletionAcceptedPredictionTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) SetCompletionAcceptedPredictionTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetCompletionAcceptedPredictionTokens(v)
 	})
 }
 
 // AddCompletionAcceptedPredictionTokens adds v to the "completion_accepted_prediction_tokens" field.
-func (u *UsageLogUpsertBulk) AddCompletionAcceptedPredictionTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) AddCompletionAcceptedPredictionTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddCompletionAcceptedPredictionTokens(v)
 	})
@@ -1685,14 +1685,14 @@ func (u *UsageLogUpsertBulk) ClearCompletionAcceptedPredictionTokens() *UsageLog
 }
 
 // SetCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field.
-func (u *UsageLogUpsertBulk) SetCompletionRejectedPredictionTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) SetCompletionRejectedPredictionTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetCompletionRejectedPredictionTokens(v)
 	})
 }
 
 // AddCompletionRejectedPredictionTokens adds v to the "completion_rejected_prediction_tokens" field.
-func (u *UsageLogUpsertBulk) AddCompletionRejectedPredictionTokens(v int) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) AddCompletionRejectedPredictionTokens(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.AddCompletionRejectedPredictionTokens(v)
 	})

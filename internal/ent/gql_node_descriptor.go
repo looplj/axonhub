@@ -780,7 +780,7 @@ func (ul *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[7] = &Field{
-		Type:  "int",
+		Type:  "int64",
 		Name:  "prompt_tokens",
 		Value: string(buf),
 	}
@@ -788,7 +788,7 @@ func (ul *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[8] = &Field{
-		Type:  "int",
+		Type:  "int64",
 		Name:  "completion_tokens",
 		Value: string(buf),
 	}
@@ -796,7 +796,7 @@ func (ul *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[9] = &Field{
-		Type:  "int",
+		Type:  "int64",
 		Name:  "total_tokens",
 		Value: string(buf),
 	}
@@ -804,7 +804,7 @@ func (ul *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[10] = &Field{
-		Type:  "int",
+		Type:  "int64",
 		Name:  "prompt_audio_tokens",
 		Value: string(buf),
 	}
@@ -812,7 +812,7 @@ func (ul *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[11] = &Field{
-		Type:  "int",
+		Type:  "int64",
 		Name:  "prompt_cached_tokens",
 		Value: string(buf),
 	}
@@ -820,7 +820,7 @@ func (ul *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[12] = &Field{
-		Type:  "int",
+		Type:  "int64",
 		Name:  "completion_audio_tokens",
 		Value: string(buf),
 	}
@@ -828,7 +828,7 @@ func (ul *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[13] = &Field{
-		Type:  "int",
+		Type:  "int64",
 		Name:  "completion_reasoning_tokens",
 		Value: string(buf),
 	}
@@ -836,7 +836,7 @@ func (ul *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[14] = &Field{
-		Type:  "int",
+		Type:  "int64",
 		Name:  "completion_accepted_prediction_tokens",
 		Value: string(buf),
 	}
@@ -844,7 +844,7 @@ func (ul *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Fields[15] = &Field{
-		Type:  "int",
+		Type:  "int64",
 		Name:  "completion_rejected_prediction_tokens",
 		Value: string(buf),
 	}

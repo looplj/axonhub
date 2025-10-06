@@ -184,9 +184,9 @@ func TestTransformResponse_FromResponsesAPI_ImageResult_WithMeta(t *testing.T) {
 	assert.Equal(t, "gpt-image-1", resp.Model)
 	assert.Equal(t, int64(1730000000), resp.Created)
 	assert.NotNil(t, resp.Usage)
-	assert.Equal(t, 10, resp.Usage.PromptTokens)
-	assert.Equal(t, 0, resp.Usage.CompletionTokens)
-	assert.Equal(t, 10, resp.Usage.TotalTokens)
+	assert.Equal(t, int64(10), resp.Usage.PromptTokens)
+	assert.Equal(t, int64(0), resp.Usage.CompletionTokens)
+	assert.Equal(t, int64(10), resp.Usage.TotalTokens)
 }
 
 func TestTransformResponse_DebugResponsesAPI(t *testing.T) {
@@ -582,9 +582,9 @@ func TestTransformImageGenerationResponse_WithUsage(t *testing.T) {
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Usage)
 
-	assert.Equal(t, 10, resp.Usage.PromptTokens)
-	assert.Equal(t, 256, resp.Usage.CompletionTokens)
-	assert.Equal(t, 266, resp.Usage.TotalTokens)
+	assert.Equal(t, int64(10), resp.Usage.PromptTokens)
+	assert.Equal(t, int64(256), resp.Usage.CompletionTokens)
+	assert.Equal(t, int64(266), resp.Usage.TotalTokens)
 }
 
 func TestTransformImageGenerationResponse_MultipleImages(t *testing.T) {

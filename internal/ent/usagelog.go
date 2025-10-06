@@ -35,23 +35,23 @@ type UsageLog struct {
 	// Model identifier used for the request
 	ModelID string `json:"model_id,omitempty"`
 	// Number of tokens in the prompt
-	PromptTokens int `json:"prompt_tokens,omitempty"`
+	PromptTokens int64 `json:"prompt_tokens,omitempty"`
 	// Number of tokens in the completion
-	CompletionTokens int `json:"completion_tokens,omitempty"`
+	CompletionTokens int64 `json:"completion_tokens,omitempty"`
 	// Total number of tokens used
-	TotalTokens int `json:"total_tokens,omitempty"`
+	TotalTokens int64 `json:"total_tokens,omitempty"`
 	// Number of audio tokens in the prompt
-	PromptAudioTokens int `json:"prompt_audio_tokens,omitempty"`
+	PromptAudioTokens int64 `json:"prompt_audio_tokens,omitempty"`
 	// Number of cached tokens in the prompt
-	PromptCachedTokens int `json:"prompt_cached_tokens,omitempty"`
+	PromptCachedTokens int64 `json:"prompt_cached_tokens,omitempty"`
 	// Number of audio tokens in the completion
-	CompletionAudioTokens int `json:"completion_audio_tokens,omitempty"`
+	CompletionAudioTokens int64 `json:"completion_audio_tokens,omitempty"`
 	// Number of reasoning tokens in the completion
-	CompletionReasoningTokens int `json:"completion_reasoning_tokens,omitempty"`
+	CompletionReasoningTokens int64 `json:"completion_reasoning_tokens,omitempty"`
 	// Number of accepted prediction tokens
-	CompletionAcceptedPredictionTokens int `json:"completion_accepted_prediction_tokens,omitempty"`
+	CompletionAcceptedPredictionTokens int64 `json:"completion_accepted_prediction_tokens,omitempty"`
 	// Number of rejected prediction tokens
-	CompletionRejectedPredictionTokens int `json:"completion_rejected_prediction_tokens,omitempty"`
+	CompletionRejectedPredictionTokens int64 `json:"completion_rejected_prediction_tokens,omitempty"`
 	// Source of the request
 	Source usagelog.Source `json:"source,omitempty"`
 	// Request format used
@@ -188,55 +188,55 @@ func (ul *UsageLog) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field prompt_tokens", values[i])
 			} else if value.Valid {
-				ul.PromptTokens = int(value.Int64)
+				ul.PromptTokens = value.Int64
 			}
 		case usagelog.FieldCompletionTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field completion_tokens", values[i])
 			} else if value.Valid {
-				ul.CompletionTokens = int(value.Int64)
+				ul.CompletionTokens = value.Int64
 			}
 		case usagelog.FieldTotalTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field total_tokens", values[i])
 			} else if value.Valid {
-				ul.TotalTokens = int(value.Int64)
+				ul.TotalTokens = value.Int64
 			}
 		case usagelog.FieldPromptAudioTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field prompt_audio_tokens", values[i])
 			} else if value.Valid {
-				ul.PromptAudioTokens = int(value.Int64)
+				ul.PromptAudioTokens = value.Int64
 			}
 		case usagelog.FieldPromptCachedTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field prompt_cached_tokens", values[i])
 			} else if value.Valid {
-				ul.PromptCachedTokens = int(value.Int64)
+				ul.PromptCachedTokens = value.Int64
 			}
 		case usagelog.FieldCompletionAudioTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field completion_audio_tokens", values[i])
 			} else if value.Valid {
-				ul.CompletionAudioTokens = int(value.Int64)
+				ul.CompletionAudioTokens = value.Int64
 			}
 		case usagelog.FieldCompletionReasoningTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field completion_reasoning_tokens", values[i])
 			} else if value.Valid {
-				ul.CompletionReasoningTokens = int(value.Int64)
+				ul.CompletionReasoningTokens = value.Int64
 			}
 		case usagelog.FieldCompletionAcceptedPredictionTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field completion_accepted_prediction_tokens", values[i])
 			} else if value.Valid {
-				ul.CompletionAcceptedPredictionTokens = int(value.Int64)
+				ul.CompletionAcceptedPredictionTokens = value.Int64
 			}
 		case usagelog.FieldCompletionRejectedPredictionTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field completion_rejected_prediction_tokens", values[i])
 			} else if value.Valid {
-				ul.CompletionRejectedPredictionTokens = int(value.Int64)
+				ul.CompletionRejectedPredictionTokens = value.Int64
 			}
 		case usagelog.FieldSource:
 			if value, ok := values[i].(*sql.NullString); !ok {

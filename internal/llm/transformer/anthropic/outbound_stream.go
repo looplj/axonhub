@@ -23,7 +23,7 @@ func (t *OutboundTransformer) TransformStream(
 	// Append the DONE event to the filtered stream
 	streamWithDone := streams.AppendStream(filteredStream, doneEvent)
 
-	return streams.NoNil(newOutboundStream(streamWithDone)), nil
+	return streams.NoNil(newOutboundStream(streamWithDone, t.config.Type)), nil
 }
 
 // filterStreamEvent determines if a stream event should be processed
@@ -46,9 +46,10 @@ func filterStreamEvent(event *httpclient.StreamEvent) bool {
 
 // streamState holds the state for a streaming session.
 type streamState struct {
-	streamID    string
-	streamModel string
-	streamUsage *llm.Usage
+	streamID     string
+	streamModel  string
+	streamUsage  *llm.Usage
+	platformType PlatformType
 	// Tool call tracking
 	toolIndex int
 	toolCalls map[int]*llm.ToolCall // index -> tool call
@@ -62,12 +63,13 @@ type outboundStream struct {
 	err     error
 }
 
-func newOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *outboundStream {
+func newOutboundStream(stream streams.Stream[*httpclient.StreamEvent], platformType PlatformType) *outboundStream {
 	return &outboundStream{
 		stream: stream,
 		state: &streamState{
-			toolCalls: make(map[int]*llm.ToolCall),
-			toolIndex: -1,
+			toolCalls:    make(map[int]*llm.ToolCall),
+			toolIndex:    -1,
+			platformType: platformType,
 		},
 	}
 }
@@ -144,7 +146,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			resp.Model = state.streamModel
 
 			if streamEvent.Message.Usage != nil {
-				state.streamUsage = lo.ToPtr(convertToLlmUsage(*streamEvent.Message.Usage))
+				state.streamUsage = convertToLlmUsage(streamEvent.Message.Usage, state.platformType)
 				resp.Usage = state.streamUsage
 			}
 
@@ -248,7 +250,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 	case "message_delta":
 		// Update stored usage if available (final usage information)
 		if streamEvent.Usage != nil {
-			usage := convertToLlmUsage(*streamEvent.Usage)
+			usage := convertToLlmUsage(streamEvent.Usage, state.platformType)
 			if state.streamUsage != nil {
 				usage.PromptTokens = state.streamUsage.PromptTokens
 				if state.streamUsage.PromptTokensDetails != nil {
@@ -258,7 +260,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 				usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
 			}
 
-			state.streamUsage = &usage
+			state.streamUsage = usage
 		}
 
 		resp.Usage = state.streamUsage

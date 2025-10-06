@@ -320,13 +320,13 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 	// Convert usage
 	if chatResp.Usage != nil {
 		usage := &Usage{
-			InputTokens:  int64(chatResp.Usage.PromptTokens),
-			OutputTokens: int64(chatResp.Usage.CompletionTokens),
+			InputTokens:  chatResp.Usage.PromptTokens,
+			OutputTokens: chatResp.Usage.CompletionTokens,
 		}
 
 		// Map detailed token information from unified model to Anthropic format
 		if chatResp.Usage.PromptTokensDetails != nil {
-			usage.CacheReadInputTokens = int64(chatResp.Usage.PromptTokensDetails.CachedTokens)
+			usage.CacheReadInputTokens = chatResp.Usage.PromptTokensDetails.CachedTokens
 		}
 
 		// Note: Anthropic doesn't have a direct equivalent for reasoning tokens in their current API

@@ -94,7 +94,7 @@ func (s *UsageLogService) CreateUsageLog(
 		log.Int("user_id", userID),
 		log.Int("request_id", requestID),
 		log.String("model_id", modelID),
-		log.Int("total_tokens", usage.TotalTokens),
+		log.Int64("total_tokens", usage.TotalTokens),
 	)
 
 	return usageLog, nil

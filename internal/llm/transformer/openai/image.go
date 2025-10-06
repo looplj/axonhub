@@ -394,9 +394,9 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 	// Convert usage information if present
 	if imgResp.Usage != nil {
 		resp.Usage = &llm.Usage{
-			PromptTokens:     int(imgResp.Usage.InputTokens),
-			CompletionTokens: int(imgResp.Usage.OutputTokens),
-			TotalTokens:      int(imgResp.Usage.TotalTokens),
+			PromptTokens:     imgResp.Usage.InputTokens,
+			CompletionTokens: imgResp.Usage.OutputTokens,
+			TotalTokens:      imgResp.Usage.TotalTokens,
 		}
 	}
 
