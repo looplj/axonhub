@@ -11,6 +11,9 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 )
 
+// convertToLLMRequest converts Anthropic MessageRequest to ChatCompletionRequest.
+//
+//nolint:maintidx // TODO: fix.
 func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	chatReq := &llm.Request{
 		Model:        anthropicReq.Model,
@@ -58,9 +61,13 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			Role: msg.Role,
 		}
 
-		var hasContent bool
+		var (
+			hasContent    bool
+			hasToolResult bool
+		)
 
 		// Convert content
+
 		if msg.Content.Content != nil {
 			chatMsg.Content = llm.MessageContent{
 				Content: msg.Content.Content,
@@ -99,18 +106,40 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 						hasContent = true
 					}
 				case "tool_result":
+					hasToolResult = true
 					// TODO: support other result types
-					if block.Content.Content != nil {
-						messages = append(messages, llm.Message{
-							Role:         "tool",
-							MessageIndex: lo.ToPtr(msgIndex),
-							ToolCallID:   block.ToolUseID,
-							Content: llm.MessageContent{
-								Content: block.Content.Content,
-							},
+					if block.Content != nil {
+						toolMsg := llm.Message{
+							Role:            "tool",
+							MessageIndex:    lo.ToPtr(msgIndex),
+							ToolCallID:      block.ToolUseID,
 							CacheControl:    block.CacheControl.ToLLMCacheControl(),
 							ToolCallIsError: block.IsError,
-						})
+						}
+
+						if block.Content.Content != nil {
+							toolMsg.Content = llm.MessageContent{
+								Content: block.Content.Content,
+							}
+						} else if len(block.Content.MultipleContent) > 0 {
+							// Handle multiple content blocks in tool_result
+							// Keep as MultipleContent to preserve the original format
+							toolContentParts := make([]llm.MessageContentPart, 0, len(block.Content.MultipleContent))
+							for _, contentBlock := range block.Content.MultipleContent {
+								if contentBlock.Type == "text" {
+									toolContentParts = append(toolContentParts, llm.MessageContentPart{
+										Type: "text",
+										Text: &contentBlock.Text,
+									})
+								}
+							}
+
+							toolMsg.Content = llm.MessageContent{
+								MultipleContent: toolContentParts,
+							}
+						}
+
+						messages = append(messages, toolMsg)
 					}
 				case "tool_use":
 					chatMsg.ToolCalls = append(chatMsg.ToolCalls, llm.ToolCall{
@@ -138,15 +167,21 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 				}
 
 				hasContent = true
-			} else {
+			} else if len(contentParts) > 0 {
 				chatMsg.Content = llm.MessageContent{
 					MultipleContent: contentParts,
 				}
+				hasContent = true
 			}
 		}
 
 		if !hasContent {
 			continue
+		}
+
+		// If this message had tool_result blocks, set MessageIndex so we can match it later
+		if hasToolResult {
+			chatMsg.MessageIndex = lo.ToPtr(msgIndex)
 		}
 
 		messages = append(messages, chatMsg)
