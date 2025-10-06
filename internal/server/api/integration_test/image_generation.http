@@ -4,7 +4,7 @@ Content-Type: application/json
 Authorization: Bearer {{AXONHUB_API_KEY}}
 
 {
-    "model": "gpt-image-1",
+    "model": "cogview-3-flash",
     "messages": [
         {
             "role": "user",
