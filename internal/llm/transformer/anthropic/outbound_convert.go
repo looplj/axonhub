@@ -27,6 +27,8 @@ func convertCacheControlToAnthropic(cacheControl *llm.CacheControl) *CacheContro
 }
 
 // convertToAnthropicRequestWithConfig converts ChatCompletionRequest to Anthropic MessageRequest with config.
+//
+//nolint:maintidx // TODO: fix.
 func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
 	req := &MessageRequest{
 		Model:       chatReq.Model,
@@ -67,13 +69,10 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 		for _, tool := range chatReq.Tools {
 			if tool.Type == "function" {
 				anthropicTool := Tool{
-					Name:        tool.Function.Name,
-					Description: tool.Function.Description,
-					InputSchema: tool.Function.Parameters,
-				}
-				// Use cache control from llm model if present
-				if tool.CacheControl != nil {
-					anthropicTool.CacheControl = convertCacheControlToAnthropic(tool.CacheControl)
+					Name:         tool.Function.Name,
+					Description:  tool.Function.Description,
+					InputSchema:  tool.Function.Parameters,
+					CacheControl: convertCacheControlToAnthropic(tool.CacheControl),
 				}
 
 				tools = append(tools, anthropicTool)
@@ -120,31 +119,86 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 				}
 
 				toolMsgs := lo.Filter(chatReq.Messages, func(item llm.Message, _ int) bool {
-					return item.MessageIndex != nil && *item.MessageIndex == *msg.MessageIndex
+					return item.Role == "tool" && item.MessageIndex != nil && *item.MessageIndex == *msg.MessageIndex
 				})
 				if len(toolMsgs) == 0 {
 					continue
 				}
 
+				// Build tool_result blocks
+				contentBlocks := lo.Map(toolMsgs, func(item llm.Message, _ int) MessageContentBlock {
+					var toolResultContent *MessageContent
+					if item.Content.Content != nil {
+						// String content - keep as string
+						toolResultContent = &MessageContent{
+							Content: item.Content.Content,
+						}
+					} else if len(item.Content.MultipleContent) > 0 {
+						// MultipleContent format - convert to Anthropic format
+						toolResultContent = &MessageContent{
+							MultipleContent: lo.Map(item.Content.MultipleContent, func(part llm.MessageContentPart, _ int) MessageContentBlock {
+								return MessageContentBlock{
+									Type: part.Type,
+									Text: lo.FromPtrOr(part.Text, ""),
+								}
+							}),
+						}
+					}
+
+					return MessageContentBlock{
+						Type:         "tool_result",
+						ToolUseID:    item.ToolCallID,
+						Content:      toolResultContent,
+						IsError:      item.ToolCallIsError,
+						CacheControl: convertCacheControlToAnthropic(item.CacheControl),
+					}
+				})
+
+				// Check if there's a user message with the same MessageIndex
+				// If so, merge the tool_result blocks with the user message content
+				userMsgAtSameIndex := lo.Filter(chatReq.Messages, func(item llm.Message, _ int) bool {
+					return item.Role == "user" && item.MessageIndex != nil && *item.MessageIndex == *msg.MessageIndex
+				})
+
+				if len(userMsgAtSameIndex) > 0 {
+					// There's a user message with the same MessageIndex
+					// Merge tool_result blocks with the user message content
+					for _, userMsg := range userMsgAtSameIndex {
+						if userMsg.Content.Content != nil && *userMsg.Content.Content != "" {
+							contentBlocks = append(contentBlocks, MessageContentBlock{
+								Type:         "text",
+								Text:         *userMsg.Content.Content,
+								CacheControl: convertCacheControlToAnthropic(userMsg.CacheControl),
+							})
+						} else if len(userMsg.Content.MultipleContent) > 0 {
+							// Handle multiple content parts
+							for _, part := range userMsg.Content.MultipleContent {
+								if part.Type == "text" && part.Text != nil {
+									contentBlocks = append(contentBlocks, MessageContentBlock{
+										Type:         "text",
+										Text:         *part.Text,
+										CacheControl: convertCacheControlToAnthropic(part.CacheControl),
+									})
+								}
+							}
+						}
+					}
+				}
+
 				messages = append(messages, MessageParam{
 					Role: "user",
 					Content: MessageContent{
-						MultipleContent: lo.Map(toolMsgs, func(item llm.Message, _ int) MessageContentBlock {
-							return MessageContentBlock{
-								Type:      "tool_result",
-								ToolUseID: item.ToolCallID,
-								Content: &MessageContent{
-									Content: item.Content.Content,
-								},
-								IsError:      item.ToolCallIsError,
-								CacheControl: convertCacheControlToAnthropic(item.CacheControl),
-							}
-						}),
+						MultipleContent: contentBlocks,
 					},
 				})
 				processedToolMessageIndexes[*msg.MessageIndex] = true
 			}
 
+			continue
+		}
+
+		// Skip user messages that were already merged with tool results
+		if msg.Role == "user" && msg.MessageIndex != nil && processedToolMessageIndexes[*msg.MessageIndex] {
 			continue
 		}
 
