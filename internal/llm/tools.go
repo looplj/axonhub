@@ -135,6 +135,6 @@ type ImageGeneration struct {
 	Size string `json:"size,omitempty"`
 
 	// Whether to add a watermark to the generated image. Default: false.
-	// For seedream model only.
+	// It only works for the models support watermark, it will be ignored otherwise.
 	Watermark bool `json:"watermark,omitempty"`
 }
