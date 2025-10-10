@@ -229,7 +229,7 @@ export default function Playground() {
   const modelOptions = useMemo(
     () =>
       groupedModels.flatMap((group) =>
-        group.models.map((m) => ({ value: m.value, label: `${m.label} — ${group.channelName}` }))
+        group.models.map((m) => ({ value: m.value, label: `${group.channelName} - ${m.label}` }))
       ),
     [groupedModels]
   )

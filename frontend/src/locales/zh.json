@@ -515,6 +515,9 @@
       "zhipu_anthropic": "智谱 (Anthropic)",
       "zai_anthropic": "Zai (Anthropic)",
       "xai": "xAI",
+      "ppio": "PPIO",
+      "siliconflow": "硅基流动",
+      "volcengine": "火山引擎",
       "anthropic_fake": "Anthropic Fake",
       "openai_fake": "OpenAI Fake"
     },

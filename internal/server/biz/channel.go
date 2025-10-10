@@ -168,16 +168,6 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 	//nolint:exhaustive // TODO SUPPORT more providers.
 	switch c.Type {
-	case channel.TypeOpenai, channel.TypeDeepseek, channel.TypeMoonshot, channel.TypeGeminiOpenai:
-		transformer, err := openai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
-		}
-
-		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
-		}, nil
 	case channel.TypeDoubao:
 		transformer, err := doubao.NewOutboundTransformerWithConfig(&doubao.Config{
 			BaseURL: c.BaseURL,
@@ -343,6 +333,16 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		return &Channel{
 			Channel:  c,
 			Outbound: fakeTransformer,
+		}, nil
+	case channel.TypeOpenai, channel.TypeDeepseek, channel.TypeMoonshot, channel.TypeGeminiOpenai, channel.TypePpio, channel.TypeSiliconflow, channel.TypeVolcengine:
+		transformer, err := openai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:  c,
+			Outbound: transformer,
 		}, nil
 	default:
 		return nil, errors.New("unknown channel type")

@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { AutoComplete } from '@/components/auto-complete'
-import { defaultModels } from '../../channels/components/channels-action-dialog'
+import { CHANNEL_CONFIGS } from '../../channels/data/constants'
 import { useApiKeysContext } from '../context/apikeys-context'
 import {
   updateApiKeyProfilesInputSchemaFactory,
@@ -249,8 +249,8 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCard
   // Get all available models from all providers
   const getAllAvailableModels = () => {
     const allModels = new Set<string>()
-    Object.values(defaultModels).forEach((models) => {
-      models.forEach((model) => allModels.add(model))
+    Object.values(CHANNEL_CONFIGS).forEach((config) => {
+      config.defaultModels.forEach((model: string) => allModels.add(model))
     })
     return Array.from(allModels).sort()
   }
