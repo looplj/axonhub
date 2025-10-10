@@ -72,9 +72,9 @@ export function AutoCompleteSelect<T extends string>({
   }, [labels, selectedValue])
 
   return (
-    <div className='flex items-center'>
+    <div className='flex flex-1 items-center'>
       <Popover open={open} onOpenChange={setOpen}>
-        <Command shouldFilter={false}>
+        <Command shouldFilter={false} className='flex-1'>
           <PopoverAnchor asChild>
             <CommandPrimitive.Input
               asChild
@@ -85,7 +85,7 @@ export function AutoCompleteSelect<T extends string>({
               onFocus={() => setOpen(true)}
               onBlur={onInputBlur}
             >
-              <Input placeholder={placeholder} />
+              <Input placeholder={placeholder} className='w-full' />
             </CommandPrimitive.Input>
           </PopoverAnchor>
           {!open && <CommandList aria-hidden='true' className='hidden' />}

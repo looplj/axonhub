@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X } from 'lucide-react'
+import { X, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,7 +20,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SelectDropdown } from '@/components/select-dropdown'
-import { useCreateChannel, useUpdateChannel } from '../data/channels'
+import { AutoCompleteSelect } from '@/components/auto-complete-select'
+import { useCreateChannel, useUpdateChannel, useFetchModels } from '../data/channels'
 import { Channel, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
 
 interface Props {
@@ -140,9 +141,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
   const isEdit = !!currentRow
   const createChannel = useCreateChannel()
   const updateChannel = useUpdateChannel()
+  const fetchModels = useFetchModels()
   const [supportedModels, setSupportedModels] = useState<string[]>(currentRow?.supportedModels || [])
   const [newModel, setNewModel] = useState('')
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([])
+  const [fetchedModels, setFetchedModels] = useState<string[]>([])
+  const [useFetchedModels, setUseFetchedModels] = useState(false)
 
   const channelTypes = [
     { value: 'openai', label: t('channels.types.openai') },
@@ -295,6 +299,48 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     }
   }
 
+  const handleFetchModels = async () => {
+    const channelType = form.getValues('type')
+    const baseURL = form.getValues('baseURL')
+    const apiKey = form.getValues('credentials.apiKey')
+
+    if (!channelType || !baseURL) {
+      return
+    }
+
+    try {
+      const result = await fetchModels.mutateAsync({
+        channelType,
+        baseURL,
+        apiKey: isEdit ? undefined : apiKey,
+        channelID: isEdit ? currentRow?.id : undefined,
+      })
+
+      if (result.error) {
+        return
+      }
+
+      const models = result.models.map((m) => m.id)
+      setFetchedModels(models)
+      setUseFetchedModels(true)
+
+      // Don't auto-add any models - let user select them manually
+    } catch (error) {
+      // Error is already handled by the mutation
+    }
+  }
+
+  const canFetchModels = () => {
+    const baseURL = form.watch('baseURL')
+    const apiKey = form.watch('credentials.apiKey')
+
+    if (isEdit) {
+      return !!baseURL
+    }
+
+    return !!baseURL && !!apiKey
+  }
+
   return (
     <Dialog
       open={open}
@@ -303,6 +349,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
           form.reset()
           setSupportedModels(currentRow?.supportedModels || [])
           setSelectedDefaultModels([])
+          setFetchedModels([])
+          setUseFetchedModels(false)
         }
         onOpenChange(state)
       }}
@@ -588,15 +636,34 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 </FormLabel>
                 <div className='col-span-6 space-y-2'>
                   <div className='flex gap-2'>
-                    <Input
-                      placeholder={t('channels.dialogs.fields.supportedModels.description')}
-                      value={newModel}
-                      onChange={(e) => setNewModel(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      className='flex-1'
-                    />
+                    {useFetchedModels && fetchedModels.length > 20 ? (
+                      <AutoCompleteSelect
+                        items={fetchedModels.map((model) => ({ value: model, label: model }))}
+                        selectedValue={newModel}
+                        onSelectedValueChange={setNewModel}
+                        placeholder={t('channels.dialogs.fields.supportedModels.description')}
+                      />
+                    ) : (
+                      <Input
+                        placeholder={t('channels.dialogs.fields.supportedModels.description')}
+                        value={newModel}
+                        onChange={(e) => setNewModel(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        className='flex-1'
+                      />
+                    )}
                     <Button type='button' onClick={addModel} size='sm'>
                       {t('channels.dialogs.buttons.add')}
+                    </Button>
+                    <Button
+                      type='button'
+                      onClick={handleFetchModels}
+                      size='sm'
+                      variant='outline'
+                      disabled={!canFetchModels() || fetchModels.isPending}
+                    >
+                      <RefreshCw className={`mr-1 h-4 w-4 ${fetchModels.isPending ? 'animate-spin' : ''}`} />
+                      {t('channels.dialogs.buttons.fetchModels')}
                     </Button>
                   </div>
 
@@ -615,16 +682,22 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     ))}
                   </div>
 
+                  {useFetchedModels && fetchedModels.length > 100 && (
+                    <p className='text-muted-foreground text-sm'>
+                      {t('channels.dialogs.fields.supportedModels.largeListHint', { count: fetchedModels.length })}
+                    </p>
+                  )}
+
                   {/* Quick add models section */}
                   {(() => {
                     const currentType = form.watch('type') as keyof typeof defaultModels | undefined
-                    const quickModels = currentType ? defaultModels[currentType] : undefined
-                    return quickModels && quickModels.length > 0
+                    const quickModels = useFetchedModels ? fetchedModels : (currentType ? defaultModels[currentType] : undefined)
+                    return quickModels && quickModels.length > 0 && !useFetchedModels
                   })() && (
                     <div className='pt-3'>
                       <div className='mb-2 flex items-center justify-between'>
                         <span className='text-sm font-medium'>
-                          {t('channels.dialogs.fields.supportedModels.defaultModelsLabel', 'Quick Add Models')}
+                          {t('channels.dialogs.fields.supportedModels.defaultModelsLabel')}
                         </span>
                         <Button
                           type='button'
@@ -633,7 +706,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                           variant='outline'
                           disabled={selectedDefaultModels.length === 0}
                         >
-                          {t('channels.dialogs.buttons.addSelected', 'Add Selected')}
+                          {t('channels.dialogs.buttons.addSelected')}
                         </Button>
                       </div>
                       <div className='flex flex-wrap gap-2'>
@@ -641,6 +714,39 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                           const currentType = form.watch('type') as keyof typeof defaultModels | undefined
                           return currentType ? defaultModels[currentType] : []
                         })().map((model: string) => (
+                          <Badge
+                            key={model}
+                            variant={selectedDefaultModels.includes(model) ? 'default' : 'secondary'}
+                            className='cursor-pointer text-xs'
+                            onClick={() => toggleDefaultModel(model)}
+                          >
+                            {model}
+                            {selectedDefaultModels.includes(model) && <span className='ml-1'>✓</span>}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Fetched models section - only show when models are fetched and <= 20 */}
+                  {useFetchedModels && fetchedModels.length > 0 && fetchedModels.length <= 20 && (
+                    <div className='pt-3'>
+                      <div className='mb-2 flex items-center justify-between'>
+                        <span className='text-sm font-medium'>
+                          {t('channels.dialogs.fields.supportedModels.fetchedModelsLabel')}
+                        </span>
+                        <Button
+                          type='button'
+                          onClick={addSelectedDefaultModels}
+                          size='sm'
+                          variant='outline'
+                          disabled={selectedDefaultModels.length === 0}
+                        >
+                          {t('channels.dialogs.buttons.addSelected')}
+                        </Button>
+                      </div>
+                      <div className='flex flex-wrap gap-2'>
+                        {fetchedModels.map((model: string) => (
                           <Badge
                             key={model}
                             variant={selectedDefaultModels.includes(model) ? 'default' : 'secondary'}

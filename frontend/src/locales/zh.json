@@ -550,7 +550,10 @@
       "orderingUpdateSuccess": "成功更新了 {{updated}} 个渠道的排序",
       "orderingUpdateError": "更新渠道排序失败：{{error}}",
       "pendingMappingWarning": "有未添加的映射，请在保存前添加。",
-      "duplicateMappingWarning": "检测到重复的映射，请在保存前删除重复的映射。"
+      "duplicateMappingWarning": "检测到重复的映射，请在保存前删除重复的映射。",
+      "fetchModelsSuccess": "成功获取 {{count}} 个模型",
+      "fetchModelsSuccessLarge": "成功获取 {{count}} 个模型。使用搜索查找特定模型。",
+      "fetchModelsError": "获取模型失败：{{error}}"
     },
     "filters": {
       "type": "类型",
@@ -642,7 +645,9 @@
           "label": "支持的模型",
           "description": "此渠道支持的模型列表",
           "required": "请至少添加一个支持的模型",
-          "defaultModelsLabel": "快速添加模型"
+          "defaultModelsLabel": "快速添加模型",
+          "fetchedModelsLabel": "已获取的模型",
+          "largeListHint": "已获取 {{count}} 个模型。使用上方搜索查找特定模型。"
         },
         "defaultTestModel": {
           "label": "默认测试模型",
@@ -700,7 +705,8 @@
         "save": "保存",
         "saving": "保存中...",
         "add": "添加",
-        "addSelected": "添加选中"
+        "addSelected": "添加选中",
+        "fetchModels": "获取模型"
       },
 
       "status": {

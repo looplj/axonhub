@@ -149,7 +149,25 @@ type APIKeyProfile {
   modelMappings: [ModelMapping!]
 }
 
+input FetchModelsInput {
+  channelType: String!
+  baseURL: String!
+  apiKey: String
+  channelID: ID
+}
 
+type FetchModelsPayload {
+  models: [LLMModel!]!
+  error: String
+}
+
+type LLMModel {
+  id: String!
+}
+
+extend type Query {
+  fetchModels(input: FetchModelsInput!): FetchModelsPayload!
+}
 
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!

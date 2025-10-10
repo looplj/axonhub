@@ -184,6 +184,11 @@ type ComplexityRoot struct {
 		TotalUsers          func(childComplexity int) int
 	}
 
+	FetchModelsPayload struct {
+		Error  func(childComplexity int) int
+		Models func(childComplexity int) int
+	}
+
 	GCPCredential struct {
 		JSONData  func(childComplexity int) int
 		ProjectID func(childComplexity int) int
@@ -200,6 +205,10 @@ type ComplexityRoot struct {
 		Success func(childComplexity int) int
 		Token   func(childComplexity int) int
 		User    func(childComplexity int) int
+	}
+
+	LLMModel struct {
+		ID func(childComplexity int) int
 	}
 
 	ModelMapping struct {
@@ -243,6 +252,7 @@ type ComplexityRoot struct {
 		Channels              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
 		DailyRequestStats     func(childComplexity int, days *int) int
 		DashboardOverview     func(childComplexity int) int
+		FetchModels           func(childComplexity int, input FetchModelsInput) int
 		Me                    func(childComplexity int) int
 		Node                  func(childComplexity int, id objects.GUID) int
 		Nodes                 func(childComplexity int, ids []*objects.GUID) int
@@ -562,6 +572,7 @@ type QueryResolver interface {
 	Systems(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) (*ent.SystemConnection, error)
 	UsageLogs(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) (*ent.UsageLogConnection, error)
 	Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error)
+	FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsPayload, error)
 	DashboardOverview(ctx context.Context) (*DashboardOverview, error)
 	RequestStats(ctx context.Context) (*RequestStats, error)
 	RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error)
@@ -1122,6 +1133,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.DashboardOverview.TotalUsers(childComplexity), true
 
+	case "FetchModelsPayload.error":
+		if e.complexity.FetchModelsPayload.Error == nil {
+			break
+		}
+
+		return e.complexity.FetchModelsPayload.Error(childComplexity), true
+
+	case "FetchModelsPayload.models":
+		if e.complexity.FetchModelsPayload.Models == nil {
+			break
+		}
+
+		return e.complexity.FetchModelsPayload.Models(childComplexity), true
+
 	case "GCPCredential.jsonData":
 		if e.complexity.GCPCredential.JSONData == nil {
 			break
@@ -1184,6 +1209,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.InitializeSystemPayload.User(childComplexity), true
+
+	case "LLMModel.id":
+		if e.complexity.LLMModel.ID == nil {
+			break
+		}
+
+		return e.complexity.LLMModel.ID(childComplexity), true
 
 	case "ModelMapping.from":
 		if e.complexity.ModelMapping.From == nil {
@@ -1511,6 +1543,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.DashboardOverview(childComplexity), true
+
+	case "Query.fetchModels":
+		if e.complexity.Query.FetchModels == nil {
+			break
+		}
+
+		args, err := ec.field_Query_fetchModels_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.FetchModels(childComplexity, args["input"].(FetchModelsInput)), true
 
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
@@ -2903,6 +2947,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateSystemInput,
 		ec.unmarshalInputCreateUsageLogInput,
 		ec.unmarshalInputCreateUserInput,
+		ec.unmarshalInputFetchModelsInput,
 		ec.unmarshalInputGCPCredentialInput,
 		ec.unmarshalInputInitializeSystemInput,
 		ec.unmarshalInputModelMappingInput,
@@ -3537,6 +3582,17 @@ func (ec *executionContext) field_Query_dailyRequestStats_args(ctx context.Conte
 		return nil, err
 	}
 	args["days"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_fetchModels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNFetchModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFetchModelsInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -7311,6 +7367,95 @@ func (ec *executionContext) fieldContext_DashboardOverview_averageResponseTime(_
 	return fc, nil
 }
 
+func (ec *executionContext) _FetchModelsPayload_models(ctx context.Context, field graphql.CollectedField, obj *FetchModelsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FetchModelsPayload_models(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Models, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*objects.LLMModel)
+	fc.Result = res
+	return ec.marshalNLLMModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐLLMModelᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FetchModelsPayload_models(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FetchModelsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LLMModel_id(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LLMModel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FetchModelsPayload_error(ctx context.Context, field graphql.CollectedField, obj *FetchModelsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FetchModelsPayload_error(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Error, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FetchModelsPayload_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FetchModelsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GCPCredential_region(ctx context.Context, field graphql.CollectedField, obj *objects.GCPCredential) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GCPCredential_region(ctx, field)
 	if err != nil {
@@ -7725,6 +7870,50 @@ func (ec *executionContext) _InitializeSystemPayload_token(ctx context.Context, 
 func (ec *executionContext) fieldContext_InitializeSystemPayload_token(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "InitializeSystemPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LLMModel_id(ctx context.Context, field graphql.CollectedField, obj *objects.LLMModel) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LLMModel_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LLMModel_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LLMModel",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9982,6 +10171,67 @@ func (ec *executionContext) fieldContext_Query_users(ctx context.Context, field 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_users_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_fetchModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_fetchModels(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().FetchModels(rctx, fc.Args["input"].(FetchModelsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*FetchModelsPayload)
+	fc.Result = res
+	return ec.marshalNFetchModelsPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFetchModelsPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_fetchModels(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "models":
+				return ec.fieldContext_FetchModelsPayload_models(ctx, field)
+			case "error":
+				return ec.fieldContext_FetchModelsPayload_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FetchModelsPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_fetchModels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -23181,6 +23431,54 @@ func (ec *executionContext) unmarshalInputCreateUserInput(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputFetchModelsInput(ctx context.Context, obj any) (FetchModelsInput, error) {
+	var it FetchModelsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"channelType", "baseURL", "apiKey", "channelID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "channelType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelType"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelType = data
+		case "baseURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseURL"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseURL = data
+		case "apiKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKey = data
+		case "channelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputGCPCredentialInput(ctx context.Context, obj any) (objects.GCPCredential, error) {
 	var it objects.GCPCredential
 	asMap := map[string]any{}
@@ -30492,6 +30790,47 @@ func (ec *executionContext) _DashboardOverview(ctx context.Context, sel ast.Sele
 	return out
 }
 
+var fetchModelsPayloadImplementors = []string{"FetchModelsPayload"}
+
+func (ec *executionContext) _FetchModelsPayload(ctx context.Context, sel ast.SelectionSet, obj *FetchModelsPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fetchModelsPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FetchModelsPayload")
+		case "models":
+			out.Values[i] = ec._FetchModelsPayload_models(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "error":
+			out.Values[i] = ec._FetchModelsPayload_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var gCPCredentialImplementors = []string{"GCPCredential"}
 
 func (ec *executionContext) _GCPCredential(ctx context.Context, sel ast.SelectionSet, obj *objects.GCPCredential) graphql.Marshaler {
@@ -30610,6 +30949,45 @@ func (ec *executionContext) _InitializeSystemPayload(ctx context.Context, sel as
 			out.Values[i] = ec._InitializeSystemPayload_user(ctx, field, obj)
 		case "token":
 			out.Values[i] = ec._InitializeSystemPayload_token(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var lLMModelImplementors = []string{"LLMModel"}
+
+func (ec *executionContext) _LLMModel(ctx context.Context, sel ast.SelectionSet, obj *objects.LLMModel) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, lLMModelImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LLMModel")
+		case "id":
+			out.Values[i] = ec._LLMModel_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -31102,6 +31480,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_users(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "fetchModels":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_fetchModels(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -34885,6 +35285,25 @@ func (ec *executionContext) marshalNDashboardOverview2ᚖgithubᚗcomᚋlooplj�
 	return ec._DashboardOverview(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNFetchModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFetchModelsInput(ctx context.Context, v any) (FetchModelsInput, error) {
+	res, err := ec.unmarshalInputFetchModelsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFetchModelsPayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFetchModelsPayload(ctx context.Context, sel ast.SelectionSet, v FetchModelsPayload) graphql.Marshaler {
+	return ec._FetchModelsPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNFetchModelsPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFetchModelsPayload(ctx context.Context, sel ast.SelectionSet, v *FetchModelsPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FetchModelsPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -35019,6 +35438,60 @@ func (ec *executionContext) marshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋ
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalNLLMModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐLLMModelᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.LLMModel) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNLLMModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐLLMModel(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNLLMModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐLLMModel(ctx context.Context, sel ast.SelectionSet, v *objects.LLMModel) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._LLMModel(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNModelMapping2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelMapping(ctx context.Context, sel ast.SelectionSet, v objects.ModelMapping) graphql.Marshaler {
