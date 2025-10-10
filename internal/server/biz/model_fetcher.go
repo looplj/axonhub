@@ -45,6 +45,12 @@ type FetchModelsResult struct {
 
 // FetchModels fetches available models from the provider API.
 func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsResult, error) {
+	// do not support volcengine for now.
+	if input.ChannelType == channel.TypeVolcengine.String() {
+		return &FetchModelsResult{
+			Models: []objects.LLMModel{},
+		}, nil
+	}
 	// Get API key from channel if not provided
 	apiKey := ""
 	if input.APIKey != nil && *input.APIKey != "" {
@@ -103,6 +109,13 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		return &FetchModelsResult{
 			Models: []objects.LLMModel{},
 			Error:  lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", err)),
+		}, nil
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return &FetchModelsResult{
+			Models: []objects.LLMModel{},
+			Error:  lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", resp.StatusCode)),
 		}, nil
 	}
 

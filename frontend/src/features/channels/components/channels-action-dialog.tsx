@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { X, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,10 +20,11 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { SelectDropdown } from '@/components/select-dropdown'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
+import { SelectDropdown } from '@/components/select-dropdown'
 import { useCreateChannel, useUpdateChannel, useFetchModels } from '../data/channels'
 import { Channel, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
+import { getDefaultBaseURL, getDefaultModels } from '../data/constants'
 
 interface Props {
   currentRow?: Channel
@@ -30,111 +32,6 @@ interface Props {
   onOpenChange: (open: boolean) => void
 }
 
-// Default base URLs for different channel types
-const defaultBaseUrls: Record<string, string> = {
-  openai: 'https://api.openai.com/v1',
-  anthropic: 'https://api.anthropic.com/v1',
-  anthropic_aws: 'https://bedrock-runtime.us-east-1.amazonaws.com',
-  anthropic_gcp: 'https://us-east5-aiplatform.googleapis.com',
-  gemini_openai: 'https://generativelanguage.googleapis.com/v1beta/openai',
-  deepseek: 'https://api.deepseek.com/v1',
-  doubao: 'https://ark.cn-beijing.volces.com/api/v3',
-  kimi: 'https://api.moonshot.cn/v1',
-  zhipu: 'https://open.bigmodel.cn/api/paas/v4',
-  zai: 'https://open.bigmodel.cn/api/paas/v4',
-  deepseek_anthropic: 'https://api.deepseek.com/anthropic',
-  moonshot_anthropic: 'https://api.moonshot.cn/anthropic',
-  zhipu_anthropic: 'https://open.bigmodel.cn/api/anthropic',
-  zai_anthropic: 'https://open.bigmodel.cn/api/anthropic',
-  openrouter: 'https://openrouter.ai/api/v1',
-  xai: 'https://api.x.ai/v1',
-  // Fake types are not allowed for creation
-  // anthropic_fake: 'https://api.anthropic.com/v1',
-  // openai_fake: 'https://api.openai.com/v1',
-}
-
-// Default models for different channel types
-export const defaultModels: Record<string, string[]> = {
-  openai: ['gpt-3.5-turbo', `gpt-4.5`, 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
-  anthropic: [
-    'claude-opus-4-1',
-    'claude-opus-4-0',
-    'claude-sonnet-4-0',
-    'claude-sonnet-4-1',
-    'claude-sonnet-4-5',
-    'claude-3-7-sonnet-latest',
-    'claude-3-5-haiku-latest',
-  ],
-  anthropic_aws: [
-    'anthropic.claude-opus-4-1-20250805-v1:0',
-    'anthropic.claude-opus-4-20250514-v1:0',
-    'anthropic.claude-sonnet-4-20250514-v1:0',
-    'anthropic.claude-3-7-sonnet-20250219-v1:0',
-    'anthropic.claude-3-5-haiku-20241022-v1:0',
-  ],
-  anthropic_gcp: [
-    'claude-opus-4-1@20250805',
-    'claude-opus-4@20250514',
-    'claude-sonnet-4@20250514',
-    'claude-3-7-sonnet@20250219',
-    'claude-3-5-haiku@20241022',
-  ],
-  gemini_openai: ['gemini-2.5-pro', 'gemini-2.5-flash'],
-  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
-  doubao: ['doubao-seed-1.6', 'doubao-seed-1.6-flash'],
-  moonshot: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
-  zhipu: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
-  zai: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
-  deepseek_anthropic: ['deepseek-chat', 'deepseek-reasoner'],
-  moonshot_anthropic: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
-  zhipu_anthropic: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
-  zai_anthropic: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
-  anthropic_fake: [
-    'claude-opus-4-1',
-    'claude-opus-4-0',
-    'claude-sonnet-4-0',
-    'claude-3-7-sonnet-latest',
-    'claude-3-5-haiku-latest',
-  ],
-  openai_fake: ['gpt-3.5-turbo', `gpt-4.5`, 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
-  openrouter: [
-    // DeepSeek
-    'deepseek/deepseek-chat-v3.1:free',
-    'deepseek/deepseek-chat-v3.1',
-    'deepseek/deepseek-r1-0528:free',
-    'deepseek/deepseek-r1-0528',
-    'deepseek/deepseek-r1:free',
-    'deepseek/deepseek-r1',
-    'deepseek/deepseek-chat-v3-0324:free',
-    'deepseek/deepseek-chat-v3-0324',
-
-    // Moonshot
-    'moonshotai/kimi-k2:free',
-    'moonshotai/kimi-k2-0905',
-
-    // Zai
-    'z-ai/glm-4.6',
-    'z-ai/glm-4.5',
-    'z-ai/glm-4.5-air',
-    'z-ai/glm-4.5-air:free',
-
-    // Google
-    'google/gemini-2.5-flash-lite',
-    'google/gemini-2.5-flash',
-    'google/gemini-2.5-pro',
-
-    // Anthropic
-    'anthropic/claude-opus-4',
-    'anthropic/claude-sonnet-4',
-    'anthropic/claude-3.7-sonnet',
-
-    // XAI
-    'x-ai/grok-4-fast:free',
-    'x-ai/grok-4-fast',
-    'x-ai/grok-code-fast-1',
-  ],
-  xai: ['grok-4', 'grok-3', 'grok-3-mini', 'grok-code-fast', 'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning'],
-}
 
 export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) {
   const { t } = useTranslation()
@@ -165,6 +62,9 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     { value: 'zai_anthropic', label: t('channels.types.zai_anthropic') },
     { value: 'openrouter', label: t('channels.types.openrouter') },
     { value: 'xai', label: t('channels.types.xai') },
+    { value: 'siliconflow', label: t('channels.types.siliconflow') },
+    { value: 'ppio', label: t('channels.types.ppio') },
+    { value: 'volcengine', label: t('channels.types.volcengine') },
     { value: 'anthropic_fake', label: t('channels.types.anthropic_fake') },
     { value: 'openai_fake', label: t('channels.types.openai_fake') },
   ]
@@ -200,7 +100,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
           }
         : {
             type: 'openai',
-            baseURL: defaultBaseUrls.openai,
+            baseURL: getDefaultBaseURL('openai'),
             name: '',
             credentials: {
               apiKey: '',
@@ -299,7 +199,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
     }
   }
 
-  const handleFetchModels = async () => {
+  const handleFetchModels = useCallback(async () => {
     const channelType = form.getValues('type')
     const baseURL = form.getValues('baseURL')
     const apiKey = form.getValues('credentials.apiKey')
@@ -317,18 +217,19 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
       })
 
       if (result.error) {
+        toast.error(result.error)
         return
       }
 
       const models = result.models.map((m) => m.id)
-      setFetchedModels(models)
-      setUseFetchedModels(true)
-
-      // Don't auto-add any models - let user select them manually
+      if (models?.length) {
+        setFetchedModels(models)
+        setUseFetchedModels(true)
+      }
     } catch (error) {
       // Error is already handled by the mutation
     }
-  }
+  }, [fetchModels, form, isEdit, currentRow])
 
   const canFetchModels = () => {
     const baseURL = form.watch('baseURL')
@@ -380,8 +281,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         onValueChange={(value) => {
                           field.onChange(value)
                           // Auto-fill base URL when type changes (only for new channels)
-                          if (!isEdit && defaultBaseUrls[value]) {
-                            form.setValue('baseURL', defaultBaseUrls[value])
+                          if (!isEdit) {
+                            const baseURL = getDefaultBaseURL(value as any)
+                            if (baseURL) {
+                              form.setValue('baseURL', baseURL)
+                            }
                           }
                         }}
                         items={availableChannelTypes}
@@ -690,8 +594,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
 
                   {/* Quick add models section */}
                   {(() => {
-                    const currentType = form.watch('type') as keyof typeof defaultModels | undefined
-                    const quickModels = useFetchedModels ? fetchedModels : (currentType ? defaultModels[currentType] : undefined)
+                    const currentType = form.watch('type')
+                    const quickModels = useFetchedModels
+                      ? fetchedModels
+                      : currentType
+                        ? getDefaultModels(currentType)
+                        : []
                     return quickModels && quickModels.length > 0 && !useFetchedModels
                   })() && (
                     <div className='pt-3'>
@@ -711,8 +619,8 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                       </div>
                       <div className='flex flex-wrap gap-2'>
                         {((): string[] => {
-                          const currentType = form.watch('type') as keyof typeof defaultModels | undefined
-                          return currentType ? defaultModels[currentType] : []
+                          const currentType = form.watch('type')
+                          return currentType ? getDefaultModels(currentType) : []
                         })().map((model: string) => (
                           <Badge
                             key={model}
@@ -727,7 +635,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Fetched models section - only show when models are fetched and <= 20 */}
                   {useFetchedModels && fetchedModels.length > 0 && fetchedModels.length <= 20 && (
                     <div className='pt-3'>

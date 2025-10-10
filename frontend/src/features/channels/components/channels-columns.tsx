@@ -1,7 +1,21 @@
 import { format } from 'date-fns'
 import { ColumnDef, Row } from '@tanstack/react-table'
 import { IconPlayerPlay, IconChevronDown } from '@tabler/icons-react'
-import { OpenAI, Anthropic, Google, DeepSeek, Doubao, Moonshot, Zhipu, OpenRouter, XAI } from '@lobehub/icons'
+import {
+  OpenAI,
+  Anthropic,
+  Google,
+  DeepSeek,
+  Doubao,
+  Moonshot,
+  Zhipu,
+  OpenRouter,
+  XAI,
+  Volcengine,
+  SiliconCloud,
+  PPIO,
+  ZAI,
+} from '@lobehub/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -73,7 +87,7 @@ const getChannelTypeConfig = (
   zai: {
     label: t('channels.types.zai'),
     color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
-    icon: Zhipu,
+    icon: ZAI,
   },
   deepseek_anthropic: {
     label: t('channels.types.deepseek_anthropic'),
@@ -93,7 +107,7 @@ const getChannelTypeConfig = (
   zai_anthropic: {
     label: t('channels.types.zai_anthropic'),
     color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
-    icon: Zhipu,
+    icon: ZAI,
   },
   openrouter: {
     label: t('channels.types.openrouter'),
@@ -114,6 +128,21 @@ const getChannelTypeConfig = (
     label: t('channels.types.xai'),
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: XAI,
+  },
+  ppio: {
+    label: t('channels.types.ppio'),
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: PPIO,
+  },
+  siliconflow: {
+    label: t('channels.types.siliconflow'),
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: SiliconCloud,
+  },
+  volcengine: {
+    label: t('channels.types.volcengine'),
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: Volcengine,
   },
 })
 
