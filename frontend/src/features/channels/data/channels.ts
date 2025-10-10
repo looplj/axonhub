@@ -205,6 +205,17 @@ const ALL_CHANNELS_QUERY = `
   }
 `
 
+const FETCH_MODELS_QUERY = `
+  query FetchModels($input: FetchModelsInput!) {
+    fetchModels(input: $input) {
+      models {
+        id
+      }
+      error
+    }
+  }
+`
+
 // Query hooks
 export function useChannels(
   variables?: {
@@ -463,6 +474,42 @@ export function useBulkUpdateChannelOrdering() {
     },
     onError: (error) => {
       toast.error(t('channels.messages.orderingUpdateError', { error: error.message }))
+    },
+  })
+}
+
+export function useFetchModels() {
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async (input: {
+      channelType: string
+      baseURL: string
+      apiKey?: string
+      channelID?: string
+    }) => {
+      const data = await graphqlRequest<{
+        fetchModels: {
+          models: Array<{ id: string }>
+          error?: string | null
+        }
+      }>(FETCH_MODELS_QUERY, { input })
+      return data.fetchModels
+    },
+    onSuccess: (data) => {
+      if (data.error) {
+        toast.error(t('channels.messages.fetchModelsError', { error: data.error }))
+      } else {
+        const count = data.models.length
+        if (count > 100) {
+          toast.success(t('channels.messages.fetchModelsSuccessLarge', { count }))
+        } else {
+          toast.success(t('channels.messages.fetchModelsSuccess', { count }))
+        }
+      }
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.fetchModelsError', { error: error.message }))
     },
   })
 }

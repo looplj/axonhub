@@ -61,6 +61,18 @@ type DashboardOverview struct {
 	AverageResponseTime *float64      `json:"averageResponseTime,omitempty"`
 }
 
+type FetchModelsInput struct {
+	ChannelType string        `json:"channelType"`
+	BaseURL     string        `json:"baseURL"`
+	APIKey      *string       `json:"apiKey,omitempty"`
+	ChannelID   *objects.GUID `json:"channelID,omitempty"`
+}
+
+type FetchModelsPayload struct {
+	Models []*objects.LLMModel `json:"models"`
+	Error  *string             `json:"error,omitempty"`
+}
+
 type HourlyRequestStats struct {
 	Hour  int `json:"hour"`
 	Count int `json:"count"`

@@ -525,7 +525,10 @@
       "orderingUpdateSuccess": "Successfully updated ordering for {{updated}} channels",
       "orderingUpdateError": "Failed to update channel ordering: {{error}}",
       "pendingMappingWarning": "There are pending model mappings, please add them before saving.",
-      "duplicateMappingWarning": "Duplicate model mapping detected. Please remove the duplicate mapping before saving."
+      "duplicateMappingWarning": "Duplicate model mapping detected. Please remove the duplicate mapping before saving.",
+      "fetchModelsSuccess": "Successfully fetched {{count}} models",
+      "fetchModelsSuccessLarge": "Successfully fetched {{count}} models. Use search to find specific models.",
+      "fetchModelsError": "Failed to fetch models: {{error}}"
     },
     "dialogs": {
       "create": {
@@ -610,7 +613,9 @@
           "label": "Supported Models",
           "description": "List of models supported by this channel",
           "required": "Please add at least one supported model",
-          "defaultModelsLabel": "Quick Add Models"
+          "defaultModelsLabel": "Quick Add Models",
+          "fetchedModelsLabel": "Fetched Models",
+          "largeListHint": "Fetched {{count}} models. Use the search above to find specific models."
         },
         "defaultTestModel": {
           "label": "Default Test Model",
@@ -668,7 +673,8 @@
         "save": "Save",
         "saving": "Saving...",
         "add": "Add",
-        "addSelected": "Add Selected"
+        "addSelected": "Add Selected",
+        "fetchModels": "Fetch Models"
       },
 
       "status": {

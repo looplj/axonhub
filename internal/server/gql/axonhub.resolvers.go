@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/chat"
 )
 
@@ -272,6 +273,37 @@ func (r *mutationResolver) UpdateRole(ctx context.Context, id objects.GUID, inpu
 	}
 
 	return role, nil
+}
+
+// FetchModels is the resolver for the fetchModels field.
+func (r *queryResolver) FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsPayload, error) {
+	// Convert input to biz layer input
+	bizInput := biz.FetchModelsInput{
+		ChannelType: input.ChannelType,
+		BaseURL:     input.BaseURL,
+		APIKey:      input.APIKey,
+	}
+
+	if input.ChannelID != nil {
+		bizInput.ChannelID = &input.ChannelID.ID
+	}
+
+	// Call the model fetcher service
+	result, err := r.modelFetcher.FetchModels(ctx, bizInput)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch models: %w", err)
+	}
+
+	// Convert result to GraphQL payload
+	models := make([]*objects.LLMModel, len(result.Models))
+	for i := range result.Models {
+		models[i] = &result.Models[i]
+	}
+
+	return &FetchModelsPayload{
+		Models: models,
+		Error:  result.Error,
+	}, nil
 }
 
 // Mutation returns MutationResolver implementation.
