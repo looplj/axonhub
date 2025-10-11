@@ -75,6 +75,7 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 	apiGroup.Use(middleware.WithSource(request.SourceAPI))
 	{
 		apiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)
+		apiGroup.GET("/models", handlers.OpenAI.ListModels)
 	}
 
 	anthropicGroup := server.Group("/anthropic/v1", middleware.WithTimeout(server.Config.LLMRequestTimeout))
@@ -82,5 +83,6 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 	anthropicGroup.Use(middleware.WithSource(request.SourceAPI))
 	{
 		anthropicGroup.POST("/messages", handlers.Anthropic.CreateMessage)
+		anthropicGroup.GET("/models", handlers.Anthropic.ListModels)
 	}
 }

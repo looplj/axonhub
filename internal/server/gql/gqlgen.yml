@@ -131,6 +131,6 @@ models:
   JSONRawMessageInput:
     model:
       - github.com/looplj/axonhub/internal/objects.JSONRawMessage
-  LLMModel:
+  ModelIdentify:
     model:
-      - github.com/looplj/axonhub/internal/objects.LLMModel
+      - github.com/looplj/axonhub/internal/objects.ModelIdentify

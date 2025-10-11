@@ -157,11 +157,11 @@ input FetchModelsInput {
 }
 
 type FetchModelsPayload {
-  models: [LLMModel!]!
+  models: [ModelIdentify!]!
   error: String
 }
 
-type LLMModel {
+type ModelIdentify {
   id: String!
 }
 

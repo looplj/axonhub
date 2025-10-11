@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/xai"
 	"github.com/looplj/axonhub/internal/llm/transformer/zai"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
@@ -421,4 +423,50 @@ func (svc *ChannelService) BulkUpdateChannelOrdering(ctx context.Context, update
 	}()
 
 	return updatedChannels, nil
+}
+
+// ListAllModels returns all unique models across all enabled channels,
+// considering model mappings. It returns both the original model names
+// from SupportedModels and the "From" names from model mappings.
+func (svc *ChannelService) ListAllModels(ctx context.Context) []objects.Model {
+	modelSet := make(map[string]objects.Model)
+
+	for _, ch := range svc.EnabledChannels {
+		// Add all supported models
+		for _, model := range ch.SupportedModels {
+			if _, ok := modelSet[model]; ok {
+				continue
+			}
+
+			modelSet[model] = objects.Model{
+				ID:          model,
+				DisplayName: model,
+				CreatedAt:   ch.CreatedAt,
+				Created:     ch.CreatedAt.Unix(),
+				OwnedBy:     ch.Channel.Type.String(),
+			}
+		}
+
+		// Add all "From" models from model mappings
+		if ch.Settings != nil {
+			for _, mapping := range ch.Settings.ModelMappings {
+				// Only add the mapping if the target model is supported
+				if slices.Contains(ch.SupportedModels, mapping.To) {
+					if _, ok := modelSet[mapping.From]; ok {
+						continue
+					}
+
+					modelSet[mapping.From] = objects.Model{
+						ID:          mapping.From,
+						DisplayName: mapping.From,
+						CreatedAt:   ch.CreatedAt,
+						Created:     ch.CreatedAt.Unix(),
+						OwnedBy:     ch.Channel.Type.String(),
+					}
+				}
+			}
+		}
+	}
+
+	return lo.Values(modelSet)
 }

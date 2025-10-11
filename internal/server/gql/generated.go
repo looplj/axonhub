@@ -207,7 +207,7 @@ type ComplexityRoot struct {
 		User    func(childComplexity int) int
 	}
 
-	LLMModel struct {
+	ModelIdentify struct {
 		ID func(childComplexity int) int
 	}
 
@@ -1210,12 +1210,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.InitializeSystemPayload.User(childComplexity), true
 
-	case "LLMModel.id":
-		if e.complexity.LLMModel.ID == nil {
+	case "ModelIdentify.id":
+		if e.complexity.ModelIdentify.ID == nil {
 			break
 		}
 
-		return e.complexity.LLMModel.ID(childComplexity), true
+		return e.complexity.ModelIdentify.ID(childComplexity), true
 
 	case "ModelMapping.from":
 		if e.complexity.ModelMapping.From == nil {
@@ -7393,9 +7393,9 @@ func (ec *executionContext) _FetchModelsPayload_models(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*objects.LLMModel)
+	res := resTmp.([]*objects.ModelIdentify)
 	fc.Result = res
-	return ec.marshalNLLMModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐLLMModelᚄ(ctx, field.Selections, res)
+	return ec.marshalNModelIdentify2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIdentifyᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_FetchModelsPayload_models(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -7407,9 +7407,9 @@ func (ec *executionContext) fieldContext_FetchModelsPayload_models(_ context.Con
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_LLMModel_id(ctx, field)
+				return ec.fieldContext_ModelIdentify_id(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type LLMModel", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type ModelIdentify", field.Name)
 		},
 	}
 	return fc, nil
@@ -7880,8 +7880,8 @@ func (ec *executionContext) fieldContext_InitializeSystemPayload_token(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _LLMModel_id(ctx context.Context, field graphql.CollectedField, obj *objects.LLMModel) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_LLMModel_id(ctx, field)
+func (ec *executionContext) _ModelIdentify_id(ctx context.Context, field graphql.CollectedField, obj *objects.ModelIdentify) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ModelIdentify_id(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7911,9 +7911,9 @@ func (ec *executionContext) _LLMModel_id(ctx context.Context, field graphql.Coll
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_LLMModel_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ModelIdentify_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "LLMModel",
+		Object:     "ModelIdentify",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -30972,19 +30972,19 @@ func (ec *executionContext) _InitializeSystemPayload(ctx context.Context, sel as
 	return out
 }
 
-var lLMModelImplementors = []string{"LLMModel"}
+var ModelIdentifyImplementors = []string{"ModelIdentify"}
 
-func (ec *executionContext) _LLMModel(ctx context.Context, sel ast.SelectionSet, obj *objects.LLMModel) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, lLMModelImplementors)
+func (ec *executionContext) _ModelIdentify(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelIdentify) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, ModelIdentifyImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("LLMModel")
+			out.Values[i] = graphql.MarshalString("ModelIdentify")
 		case "id":
-			out.Values[i] = ec._LLMModel_id(ctx, field, obj)
+			out.Values[i] = ec._ModelIdentify_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -35440,7 +35440,7 @@ func (ec *executionContext) marshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋ
 	return v
 }
 
-func (ec *executionContext) marshalNLLMModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐLLMModelᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.LLMModel) graphql.Marshaler {
+func (ec *executionContext) marshalNModelIdentify2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIdentifyᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.ModelIdentify) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -35464,7 +35464,7 @@ func (ec *executionContext) marshalNLLMModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonh
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNLLMModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐLLMModel(ctx, sel, v[i])
+			ret[i] = ec.marshalNModelIdentify2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIdentify(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -35484,14 +35484,14 @@ func (ec *executionContext) marshalNLLMModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonh
 	return ret
 }
 
-func (ec *executionContext) marshalNLLMModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐLLMModel(ctx context.Context, sel ast.SelectionSet, v *objects.LLMModel) graphql.Marshaler {
+func (ec *executionContext) marshalNModelIdentify2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelIdentify(ctx context.Context, sel ast.SelectionSet, v *objects.ModelIdentify) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._LLMModel(ctx, sel, v)
+	return ec._ModelIdentify(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNModelMapping2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelMapping(ctx context.Context, sel ast.SelectionSet, v objects.ModelMapping) graphql.Marshaler {

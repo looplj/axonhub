@@ -69,8 +69,8 @@ type FetchModelsInput struct {
 }
 
 type FetchModelsPayload struct {
-	Models []*objects.LLMModel `json:"models"`
-	Error  *string             `json:"error,omitempty"`
+	Models []*objects.ModelIdentify `json:"models"`
+	Error  *string                  `json:"error,omitempty"`
 }
 
 type HourlyRequestStats struct {

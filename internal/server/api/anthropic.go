@@ -2,6 +2,8 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -49,6 +51,7 @@ type AnthropicHandlersParams struct {
 }
 
 type AnthropicHandlers struct {
+	ChannelService         *biz.ChannelService
 	ChatCompletionHandlers *ChatCompletionSSEHandlers
 }
 
@@ -63,9 +66,47 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 				params.SystemService,
 			),
 		},
+		ChannelService: params.ChannelService,
 	}
 }
 
 func (handlers *AnthropicHandlers) CreateMessage(c *gin.Context) {
 	handlers.ChatCompletionHandlers.ChatCompletion(c)
+}
+
+type AnthropicModel struct {
+	ID          string    `json:"id"`
+	DisplayName string    `json:"display_name"`
+	CreatedAt   time.Time `json:"created"`
+}
+
+func (handlers *AnthropicHandlers) ListModels(c *gin.Context) {
+	models := handlers.ChannelService.ListAllModels(c.Request.Context())
+
+	anthropicModels := make([]AnthropicModel, 0, len(models))
+	for _, model := range models {
+		anthropicModels = append(anthropicModels, AnthropicModel{
+			ID:          model.ID,
+			DisplayName: model.DisplayName,
+			CreatedAt:   model.CreatedAt,
+		})
+	}
+
+	var firstID string
+	if len(anthropicModels) > 0 {
+		firstID = anthropicModels[0].ID
+	}
+
+	var lastID string
+	if len(anthropicModels) > 0 {
+		lastID = anthropicModels[len(anthropicModels)-1].ID
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"object":   "list",
+		"data":     anthropicModels,
+		"has_more": false,
+		"first_id": firstID,
+		"last_id":  lastID,
+	})
 }
