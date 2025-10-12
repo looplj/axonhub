@@ -25,9 +25,7 @@ import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/component
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning'
 import { Response as UIResponse } from '@/components/ai-elements/response'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
-import { LanguageSwitch } from '@/components/language-switch'
 import { Header } from '@/components/layout/header'
-import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { useChannels } from '@/features/channels/data/channels'
 
@@ -269,11 +267,6 @@ export default function Playground() {
         />
       )} */}
       <Header fixed>
-        <div className='ml-auto flex items-center space-x-4'>
-          <LanguageSwitch />
-          <ThemeSwitch />
-          <ProfileDropdown />
-        </div>
       </Header>
       <div className='bg-background flex h-screen w-full pt-16'>
         {/* Settings Sidebar */}

@@ -2,11 +2,8 @@ import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { LanguageSwitch } from '@/components/language-switch'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { RequestsTable } from './components'
 import { RequestsProvider } from './context'
 import { useRequests } from './data'
@@ -139,11 +136,6 @@ export default function RequestsManagement() {
   return (
     <RequestsProvider>
       <Header fixed>
-        <div className='ml-auto flex items-center space-x-4'>
-          <LanguageSwitch />
-          <ThemeSwitch />
-          <ProfileDropdown />
-        </div>
       </Header>
 
       <Main>

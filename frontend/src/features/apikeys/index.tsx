@@ -1,12 +1,9 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
-import { LanguageSwitch } from '@/components/language-switch'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { createColumns } from './components/apikeys-columns'
 import { ApiKeysDialogs } from './components/apikeys-dialogs'
 import { ApiKeysPrimaryButtons } from './components/apikeys-primary-buttons'
@@ -109,11 +106,6 @@ export default function ApiKeysManagement() {
   return (
     <ApiKeysProvider>
       <Header fixed>
-        <div className='ml-auto flex items-center space-x-4'>
-          <LanguageSwitch />
-          <ThemeSwitch />
-          <ProfileDropdown />
-        </div>
       </Header>
 
       <Main>

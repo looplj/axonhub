@@ -4,11 +4,8 @@ import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
 import { usePermissions } from '@/hooks/usePermissions'
-import { LanguageSwitch } from '@/components/language-switch'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { RolesDialogs } from './components/roles-action-dialog'
 import { createColumns } from './components/roles-columns'
 import { RolesPrimaryButtons } from './components/roles-primary-buttons'
@@ -102,11 +99,6 @@ export default function RolesPage() {
     <RolesProvider>
       <Header fixed>
         {/* <Search /> */}
-        <div className='ml-auto flex items-center space-x-4'>
-          <LanguageSwitch />
-          <ThemeSwitch />
-          <ProfileDropdown />
-        </div>
       </Header>
 
       <Main>

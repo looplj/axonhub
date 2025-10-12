@@ -3,6 +3,7 @@ import { Outlet } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
+import { AppHeader } from '@/components/layout/app-header'
 import SkipToMain from '@/components/skip-to-main'
 import { useSidebarData } from './sidebar'
 
@@ -15,23 +16,28 @@ export function AuthenticatedLayout({ children }: Props) {
   const sidebarData = useSidebarData()
   
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
-      <SkipToMain />
-      <AppSidebar sidebarData={sidebarData} />
-      <div
-        id='content'
-        className={cn(
-          'ml-auto w-full max-w-full',
-          'peer-data-[state=collapsed]:w-[calc(100%-var(--sidebar-width-icon)-1rem)]',
-          'peer-data-[state=expanded]:w-[calc(100%-var(--sidebar-width))]',
-          'sm:transition-[width] sm:duration-200 sm:ease-linear',
-          'flex h-svh flex-col',
-          'group-data-[scroll-locked=1]/body:h-full',
-          'has-[main.fixed-main]:group-data-[scroll-locked=1]/body:h-svh'
-        )}
-      >
-        {children ? children : <Outlet />}
+    <div className='flex h-screen flex-col overflow-hidden'>
+      <AppHeader />
+      <div className='flex flex-1 overflow-hidden'>
+        <SidebarProvider defaultOpen={defaultOpen}>
+          <SkipToMain />
+          <AppSidebar sidebarData={sidebarData} />
+          <div
+            id='content'
+            className={cn(
+              'ml-auto w-full max-w-full',
+              'peer-data-[state=collapsed]:w-[calc(100%-var(--sidebar-width-icon)-1rem)]',
+              'peer-data-[state=expanded]:w-[calc(100%-var(--sidebar-width))]',
+              'sm:transition-[width] sm:duration-200 sm:ease-linear',
+              'flex flex-1 flex-col overflow-auto pt-14',
+              'group-data-[scroll-locked=1]/body:h-full',
+              'has-[main.fixed-main]:group-data-[scroll-locked=1]/body:h-svh'
+            )}
+          >
+            {children ? children : <Outlet />}
+          </div>
+        </SidebarProvider>
       </div>
-    </SidebarProvider>
+    </div>
   )
 }

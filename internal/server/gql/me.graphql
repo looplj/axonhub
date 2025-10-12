@@ -1,6 +1,7 @@
 
 extend type Query {
     me: UserInfo!
+    myProjects: [Project!]!
 }
 
 input UpdateMeInput {

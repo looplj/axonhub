@@ -81,6 +81,24 @@ const UPDATE_PROJECT_STATUS_MUTATION = `
   }
 `
 
+const MY_PROJECTS_QUERY = `
+  query MyProjects {
+    projects(first: 100, where: { status: active }) {
+      edges {
+        node {
+          id
+          slug
+          name
+          description
+          status
+          createdAt
+          updatedAt
+        }
+      }
+    }
+  }
+`
+
 // Query hooks
 export function useProjects(variables: {
   first?: number
@@ -128,6 +146,40 @@ export function useProject(id: string) {
       }
     },
     enabled: !!id,
+  })
+}
+
+export function useMyProjects() {
+  const { handleError } = useErrorHandler()
+
+  return useQuery({
+    queryKey: ['myProjects'],
+    queryFn: async () => {
+      try {
+        console.log('Fetching myProjects with query:', MY_PROJECTS_QUERY)
+        const data = await graphqlRequest<{ projects: ProjectConnection }>(
+          MY_PROJECTS_QUERY
+        )
+        console.log('Raw myProjects response:', data)
+        
+        if (!data || !data.projects || !data.projects.edges) {
+          console.error('projects not found in response. Full data:', data)
+          return []
+        }
+        
+        // 从 connection 格式中提取项目列表
+        const projects = data.projects.edges
+          .map(edge => edge.node)
+          .map(project => projectSchema.parse(project))
+        
+        console.log('Parsed myProjects:', projects)
+        return projects
+      } catch (error) {
+        console.error('Error fetching myProjects:', error)
+        handleError(error, '获取我的项目')
+        return []
+      }
+    }
   })
 }
 

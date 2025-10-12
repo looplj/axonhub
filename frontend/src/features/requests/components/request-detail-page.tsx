@@ -10,11 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LanguageSwitch } from '@/components/language-switch'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { JsonViewer } from '@/components/json-tree-view'
 import { useRequest, useRequestExecutions } from '../data'
 import { useUsageLogs } from '../../usage-logs/data/usage-logs'
@@ -57,11 +54,6 @@ export default function RequestDetailPage() {
     return (
       <div className='flex h-screen flex-col'>
         <Header className='border-b'>
-          <div className='ml-auto flex items-center space-x-4'>
-            <ThemeSwitch />
-            <LanguageSwitch />
-            <ProfileDropdown />
-          </div>
         </Header>
         <Main className='flex-1'>
           <div className='flex h-full items-center justify-center'>
@@ -79,11 +71,6 @@ export default function RequestDetailPage() {
     return (
       <div className='flex h-screen flex-col'>
         <Header className='border-b'>
-          <div className='ml-auto flex items-center space-x-4'>
-            <ThemeSwitch />
-            <LanguageSwitch />
-            <ProfileDropdown />
-          </div>
         </Header>
         <Main className='flex-1'>
           <div className='flex h-full items-center justify-center'>
@@ -131,11 +118,6 @@ export default function RequestDetailPage() {
               </div>
             </div>
           </div>
-        </div>
-        <div className='ml-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <LanguageSwitch />
-          <ProfileDropdown />
         </div>
       </Header>
 
