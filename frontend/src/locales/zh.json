@@ -37,6 +37,11 @@
     },
     "teamSwitcher": {
       "teams": "团队"
+    },
+    "projectSwitcher": {
+      "projects": "项目",
+      "project": "项目",
+      "selectProject": "选择项目"
     }
   },
   "theme": {

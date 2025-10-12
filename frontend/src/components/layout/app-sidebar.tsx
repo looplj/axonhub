@@ -1,13 +1,6 @@
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
-} from '@/components/ui/sidebar'
+import { Sidebar, SidebarContent, SidebarFooter, SidebarRail } from '@/components/ui/sidebar'
 import { NavGroup } from '@/components/layout/nav-group'
 import { NavUser } from '@/components/layout/nav-user'
-import { TeamSwitcher } from '@/components/layout/team-switcher'
 import { SidebarData } from './types'
 
 type IProps = React.ComponentProps<typeof Sidebar> & {
@@ -16,10 +9,7 @@ type IProps = React.ComponentProps<typeof Sidebar> & {
 
 export function AppSidebar({ sidebarData, ...props }: IProps) {
   return (
-    <Sidebar collapsible='icon' variant='floating' {...props}>
-      <SidebarHeader>
-        <TeamSwitcher teams={sidebarData.teams} />
-      </SidebarHeader>
+    <Sidebar collapsible='icon' variant='sidebar' {...props}>
       <SidebarContent>
         {sidebarData.navGroups.map((props) => (
           <NavGroup key={props.title} {...props} />

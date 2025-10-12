@@ -3,9 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { extractNumberID } from '@/lib/utils'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
-import { LanguageSwitch } from '@/components/language-switch'
 import { useUsageLogs } from './data'
 import { 
   UsageLogsTable, 
@@ -169,11 +166,6 @@ export default function UsageLogsManagement() {
   return (
     <UsageLogsProvider>
       <Header fixed>
-        <div className='ml-auto flex items-center space-x-4'>
-          <LanguageSwitch />
-          <ThemeSwitch />
-          <ProfileDropdown />
-        </div>
       </Header>
 
       <Main>

@@ -2,10 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
-import { LanguageSwitch } from '@/components/language-switch'
 import { Header } from '@/components/layout/header'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { DailyRequestStats } from './components/daily-requests-stats'
 import { RequestsByChannelChart } from './components/requests-by-channel-chart'
 import { RequestsByModelChart } from './components/requests-by-model-chart'
@@ -59,11 +56,6 @@ export default function DashboardPage() {
     <div className='flex-1 space-y-4 p-8 pt-6'>
       <Header>
         {/* <TopNav links={topNav} /> */}
-        <div className='ml-auto flex items-center space-x-4'>
-          <LanguageSwitch />
-          <ThemeSwitch />
-          <ProfileDropdown />
-        </div>
       </Header>
       <Tabs defaultValue='overview' className='space-y-4'>
         <TabsContent value='overview' className='space-y-4'>

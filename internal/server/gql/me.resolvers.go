@@ -10,6 +10,8 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/samber/lo"
 )
 
@@ -89,4 +91,23 @@ func (r *queryResolver) Me(ctx context.Context) (*UserInfo, error) {
 		Scopes:         lo.Keys(allScopes),
 		Roles:          userRoles,
 	}, nil
+}
+
+// MyProjects is the resolver for the myProjects field.
+func (r *queryResolver) MyProjects(ctx context.Context) ([]*ent.Project, error) {
+	// Get current u from context
+	u, ok := contexts.GetUser(ctx)
+	if !ok || u == nil {
+		return nil, fmt.Errorf("user not found in context")
+	}
+
+	// Get projects where user is a member
+	projects, err := r.client.Project.Query().
+		Where(project.HasUsersWith(user.IDEQ(u.ID))).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return projects, nil
 }

@@ -22,7 +22,15 @@
     "team": {
       "name": "AxonHub",
       "plan": "AI + Unified"
-    },  
+    },
+    "teamSwitcher": {
+      "teams": "Teams"
+    },
+    "projectSwitcher": {
+      "projects": "Projects",
+      "project": "Project",
+      "selectProject": "Select Project"
+    },
     "userMenu": {
       "account": "Account",
       "logOut": "Log out"
