@@ -42,6 +42,8 @@ const (
 	FieldIsOwner = "is_owner"
 	// FieldScopes holds the string denoting the scopes field in the database.
 	FieldScopes = "scopes"
+	// EdgeProjects holds the string denoting the projects edge name in mutations.
+	EdgeProjects = "projects"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
 	EdgeRequests = "requests"
 	// EdgeAPIKeys holds the string denoting the api_keys edge name in mutations.
@@ -50,8 +52,15 @@ const (
 	EdgeRoles = "roles"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
+	// EdgeProjectUsers holds the string denoting the project_users edge name in mutations.
+	EdgeProjectUsers = "project_users"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// ProjectsTable is the table that holds the projects relation/edge. The primary key declared below.
+	ProjectsTable = "user_projects"
+	// ProjectsInverseTable is the table name for the Project entity.
+	// It exists in this package in order to avoid circular dependency with the "project" package.
+	ProjectsInverseTable = "projects"
 	// RequestsTable is the table that holds the requests relation/edge.
 	RequestsTable = "requests"
 	// RequestsInverseTable is the table name for the Request entity.
@@ -78,6 +87,13 @@ const (
 	UsageLogsInverseTable = "usage_logs"
 	// UsageLogsColumn is the table column denoting the usage_logs relation/edge.
 	UsageLogsColumn = "user_id"
+	// ProjectUsersTable is the table that holds the project_users relation/edge.
+	ProjectUsersTable = "user_projects"
+	// ProjectUsersInverseTable is the table name for the UserProject entity.
+	// It exists in this package in order to avoid circular dependency with the "userproject" package.
+	ProjectUsersInverseTable = "user_projects"
+	// ProjectUsersColumn is the table column denoting the project_users relation/edge.
+	ProjectUsersColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -98,6 +114,9 @@ var Columns = []string{
 }
 
 var (
+	// ProjectsPrimaryKey and ProjectsColumn2 are the table columns denoting the
+	// primary key for the projects relation (M2M).
+	ProjectsPrimaryKey = []string{"project_id", "user_id"}
 	// RolesPrimaryKey and RolesColumn2 are the table columns denoting the
 	// primary key for the roles relation (M2M).
 	RolesPrimaryKey = []string{"user_id", "role_id"}
@@ -231,6 +250,20 @@ func ByIsOwner(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsOwner, opts...).ToFunc()
 }
 
+// ByProjectsCount orders the results by projects count.
+func ByProjectsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newProjectsStep(), opts...)
+	}
+}
+
+// ByProjects orders the results by projects terms.
+func ByProjects(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProjectsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByRequestsCount orders the results by requests count.
 func ByRequestsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -286,6 +319,27 @@ func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newUsageLogsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByProjectUsersCount orders the results by project_users count.
+func ByProjectUsersCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newProjectUsersStep(), opts...)
+	}
+}
+
+// ByProjectUsers orders the results by project_users terms.
+func ByProjectUsers(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProjectUsersStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newProjectsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProjectsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, ProjectsTable, ProjectsPrimaryKey...),
+	)
+}
 func newRequestsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -312,6 +366,13 @@ func newUsageLogsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UsageLogsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
+	)
+}
+func newProjectUsersStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProjectUsersInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ProjectUsersTable, ProjectUsersColumn),
 	)
 }
 

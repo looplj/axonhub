@@ -16,7 +16,8 @@
       "usageLogs": "Usage Logs",
       "apiKeys": "API Keys",
       "playground": "Playground",
-      "profile": "Profile"
+      "profile": "Profile",
+      "projects":"Projects"
     },
     "team": {
       "name": "AxonHub",
@@ -435,6 +436,85 @@
         "updating": "Updating...",
         "delete": "Delete",
         "deleting": "Deleting..."
+      }
+    }
+  },
+  "projects": {
+    "title": "Project Management",
+    "description": "Manage system projects and configurations.",
+    "loadError": "Load failed:",
+    "noResults": "No results.",
+    "createProject": "Create Project",
+    "searchProjects": "Search projects by name or slug...",
+    "columns": {
+      "slug": "Project Slug",
+      "name": "Project Name",
+      "description": "Description",
+      "status": "Status",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row"
+    },
+    "status": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "actions": {
+      "openMenu": "Open menu",
+      "edit": "Edit",
+      "archive": "Archive",
+      "activate": "Activate"
+    },
+    "filters": {
+      "reset": "Reset"
+    },
+    "dialogs": {
+      "create": {
+        "title": "Create Project",
+        "description": "Create a new project."
+      },
+      "edit": {
+        "title": "Edit Project",
+        "description": "Modify project information.",
+        "slugNotEditable": "Project slug cannot be modified after creation"
+      },
+      "archive": {
+        "title": "Archive Project",
+        "description": "Are you sure you want to archive project \"{{name}}\"? Archived projects will no longer appear in the active list."
+      },
+      "activate": {
+        "title": "Activate Project",
+        "description": "Are you sure you want to activate project \"{{name}}\"? Activated projects will appear in the active list again."
+      },
+      "fields": {
+        "name": {
+          "label": "Project Name",
+          "placeholder": "My Project",
+          "description": "Display name of the project"
+        },
+        "slug": {
+          "label": "Project Slug",
+          "placeholder": "my-project",
+          "description": "URL-friendly unique identifier (leave empty to auto-generate)"
+        },
+        "description": {
+          "label": "Project Description",
+          "placeholder": "Enter project description",
+          "description": "Detailed description of the project"
+        }
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "create": "Create Project",
+        "creating": "Creating...",
+        "save": "Save",
+        "saving": "Saving...",
+        "archive": "Archive",
+        "archiving": "Archiving...",
+        "activate": "Activate",
+        "activating": "Activating..."
       }
     }
   },
@@ -1236,6 +1316,10 @@
       "roleCreated": "Role created successfully",
       "roleUpdated": "Role updated successfully",
       "roleDeleted": "Role deleted successfully",
+      "projectCreated": "Project created successfully",
+      "projectUpdated": "Project updated successfully",
+      "projectArchived": "Project archived successfully",
+      "projectActivated": "Project activated successfully",
       "signedIn": "Successfully signed in!",
       "signedOut": "Successfully signed out!",
       "userCreated": "User created successfully",

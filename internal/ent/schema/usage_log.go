@@ -29,6 +29,8 @@ func (UsageLog) Indexes() []ent.Index {
 			StorageKey("usage_logs_by_user_id"),
 		index.Fields("request_id").
 			StorageKey("usage_logs_by_request_id"),
+		index.Fields("project_id").
+			StorageKey("usage_logs_by_project_id"),
 		index.Fields("channel_id").
 			StorageKey("usage_logs_by_channel_id"),
 		// Performance indexes for analytics queries
@@ -39,6 +41,8 @@ func (UsageLog) Indexes() []ent.Index {
 		// Composite index for cost analysis
 		index.Fields("user_id", "created_at").
 			StorageKey("usage_logs_by_user_created_at"),
+		index.Fields("project_id", "created_at").
+			StorageKey("usage_logs_by_project_created_at"),
 		index.Fields("channel_id", "created_at").
 			StorageKey("usage_logs_by_channel_created_at"),
 	}
@@ -48,6 +52,7 @@ func (UsageLog) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("user_id").Immutable().Comment("User ID who made the request"),
 		field.Int("request_id").Immutable().Comment("Related request ID"),
+		field.Int("project_id").Immutable().Default(1).Comment("Project ID, default to 1 for backward compatibility"),
 		field.Int("channel_id").Optional().Comment("Channel ID used for the request"),
 		field.String("model_id").Immutable().Comment("Model identifier used for the request"),
 
@@ -85,6 +90,12 @@ func (UsageLog) Edges() []ent.Edge {
 			Field("request_id").
 			Required().
 			Immutable().
+			Unique(),
+		edge.From("project", Project.Type).
+			Ref("usage_logs").
+			Field("project_id").
+			Immutable().
+			Required().
 			Unique(),
 		edge.From("channel", Channel.Type).
 			Ref("usage_logs").

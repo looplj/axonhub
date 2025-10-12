@@ -1,0 +1,127 @@
+'use client'
+
+import React, { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useDebounce } from '@/hooks/use-debounce'
+import { usePermissions } from '@/hooks/usePermissions'
+import { LanguageSwitch } from '@/components/language-switch'
+import { Header } from '@/components/layout/header'
+import { Main } from '@/components/layout/main'
+import { ProfileDropdown } from '@/components/profile-dropdown'
+import { ThemeSwitch } from '@/components/theme-switch'
+import { ProjectsDialogs } from './components/projects-action-dialog'
+import { createColumns } from './components/projects-columns'
+import { ProjectsPrimaryButtons } from './components/projects-primary-buttons'
+import { ProjectsTable } from './components/projects-table'
+import ProjectsProvider from './context/projects-context'
+import { useProjects } from './data/projects'
+
+function ProjectsContent() {
+  const { t } = useTranslation()
+  const { projectPermissions } = usePermissions()
+  const [pageSize, setPageSize] = useState(20)
+  const [cursor, setCursor] = useState<string | undefined>(undefined)
+
+  // Filter states - combined search for name or slug
+  const [searchFilter, setSearchFilter] = useState<string>('')
+
+  const debouncedSearchFilter = useDebounce(searchFilter, 300)
+
+  // Memoize columns to prevent infinite re-renders
+  const columns = useMemo(
+    () => createColumns(t, projectPermissions.canWrite),
+    [t, projectPermissions.canWrite]
+  )
+
+  // Build where clause for API filtering with OR logic
+  const whereClause = (() => {
+    if (!debouncedSearchFilter) {
+      return undefined
+    }
+
+    // Use OR logic to search in both name and slug fields
+    return {
+      or: [
+        { nameContainsFold: debouncedSearchFilter },
+        { slugContainsFold: debouncedSearchFilter },
+      ],
+    }
+  })()
+
+  const { data, isLoading, error: _error } = useProjects({
+    first: pageSize,
+    after: cursor,
+    where: whereClause,
+  })
+
+  // Reset cursor when filters change
+  React.useEffect(() => {
+    setCursor(undefined)
+  }, [debouncedSearchFilter])
+
+  const handleNextPage = () => {
+    if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
+      setCursor(data.pageInfo.endCursor)
+    }
+  }
+
+  const handlePreviousPage = () => {
+    if (data?.pageInfo?.hasPreviousPage && data?.pageInfo?.startCursor) {
+      setCursor(data.pageInfo.startCursor)
+    }
+  }
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize)
+    setCursor(undefined) // Reset to first page
+  }
+
+  return (
+    <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+      <ProjectsTable
+        columns={columns}
+        data={data?.edges?.map((edge) => edge.node) || []}
+        loading={isLoading}
+        pageInfo={data?.pageInfo}
+        pageSize={pageSize}
+        totalCount={data?.totalCount}
+        onNextPage={handleNextPage}
+        onPreviousPage={handlePreviousPage}
+        onPageSizeChange={handlePageSizeChange}
+        searchFilter={searchFilter}
+        onSearchFilterChange={setSearchFilter}
+      />
+    </div>
+  )
+}
+
+export default function ProjectsPage() {
+  const { t } = useTranslation()
+
+  return (
+    <ProjectsProvider>
+      <Header fixed>
+        {/* <Search /> */}
+        <div className='ml-auto flex items-center space-x-4'>
+          <LanguageSwitch />
+          <ThemeSwitch />
+          <ProfileDropdown />
+        </div>
+      </Header>
+
+      <Main>
+        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+          <div>
+            <h2 className='text-2xl font-bold tracking-tight'>
+              {t('projects.title')}
+            </h2>
+            <p className='text-muted-foreground'>{t('projects.description')}</p>
+          </div>
+          <ProjectsPrimaryButtons />
+        </div>
+        <ProjectsContent />
+      </Main>
+      <ProjectsDialogs />
+    </ProjectsProvider>
+  )
+}

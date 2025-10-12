@@ -108,6 +108,18 @@ export function usePermissions() {
     [hasScope]
   )
 
+  // Common permission checks for project operations
+  const projectPermissions = useMemo(
+    () => ({
+      canRead: hasScope('read_projects'),
+      canWrite: hasScope('write_projects'),
+      canCreate: hasScope('write_projects'),
+      canEdit: hasScope('write_projects'),
+      canDelete: hasScope('write_projects'),
+    }),
+    [hasScope]
+  )
+
   return {
     user,
     isOwner,
@@ -118,5 +130,6 @@ export function usePermissions() {
     userPermissions,
     rolePermissions,
     apiKeyPermissions,
+    projectPermissions,
   }
 }

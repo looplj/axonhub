@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
@@ -32,6 +33,8 @@ type Request struct {
 	UserID int `json:"user_id,omitempty"`
 	// API Key ID of the request, null for the request from the Admin.
 	APIKeyID int `json:"api_key_id,omitempty"`
+	// Project ID, default to 1 for backward compatibility
+	ProjectID int `json:"project_id,omitempty"`
 	// Source holds the value of the "source" field.
 	Source request.Source `json:"source,omitempty"`
 	// ModelID holds the value of the "model_id" field.
@@ -64,6 +67,8 @@ type RequestEdges struct {
 	User *User `json:"user,omitempty"`
 	// APIKey holds the value of the api_key edge.
 	APIKey *APIKey `json:"api_key,omitempty"`
+	// Project holds the value of the project edge.
+	Project *Project `json:"project,omitempty"`
 	// Executions holds the value of the executions edge.
 	Executions []*RequestExecution `json:"executions,omitempty"`
 	// Channel holds the value of the channel edge.
@@ -72,9 +77,9 @@ type RequestEdges struct {
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [5]bool
+	loadedTypes [6]bool
 	// totalCount holds the count of the edges above.
-	totalCount [5]map[string]int
+	totalCount [6]map[string]int
 
 	namedExecutions map[string][]*RequestExecution
 	namedUsageLogs  map[string][]*UsageLog
@@ -102,10 +107,21 @@ func (e RequestEdges) APIKeyOrErr() (*APIKey, error) {
 	return nil, &NotLoadedError{edge: "api_key"}
 }
 
+// ProjectOrErr returns the Project value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e RequestEdges) ProjectOrErr() (*Project, error) {
+	if e.Project != nil {
+		return e.Project, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: project.Label}
+	}
+	return nil, &NotLoadedError{edge: "project"}
+}
+
 // ExecutionsOrErr returns the Executions value or an error if the edge
 // was not loaded in eager-loading.
 func (e RequestEdges) ExecutionsOrErr() ([]*RequestExecution, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.Executions, nil
 	}
 	return nil, &NotLoadedError{edge: "executions"}
@@ -116,7 +132,7 @@ func (e RequestEdges) ExecutionsOrErr() ([]*RequestExecution, error) {
 func (e RequestEdges) ChannelOrErr() (*Channel, error) {
 	if e.Channel != nil {
 		return e.Channel, nil
-	} else if e.loadedTypes[3] {
+	} else if e.loadedTypes[4] {
 		return nil, &NotFoundError{label: channel.Label}
 	}
 	return nil, &NotLoadedError{edge: "channel"}
@@ -125,7 +141,7 @@ func (e RequestEdges) ChannelOrErr() (*Channel, error) {
 // UsageLogsOrErr returns the UsageLogs value or an error if the edge
 // was not loaded in eager-loading.
 func (e RequestEdges) UsageLogsOrErr() ([]*UsageLog, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.UsageLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "usage_logs"}
@@ -140,7 +156,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case request.FieldStream:
 			values[i] = new(sql.NullBool)
-		case request.FieldID, request.FieldDeletedAt, request.FieldUserID, request.FieldAPIKeyID, request.FieldChannelID:
+		case request.FieldID, request.FieldDeletedAt, request.FieldUserID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldChannelID:
 			values[i] = new(sql.NullInt64)
 		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -155,7 +171,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Request fields.
-func (r *Request) assignValues(columns []string, values []any) error {
+func (_m *Request) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -166,60 +182,66 @@ func (r *Request) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			r.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case request.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				r.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case request.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				r.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case request.FieldDeletedAt:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
 			} else if value.Valid {
-				r.DeletedAt = int(value.Int64)
+				_m.DeletedAt = int(value.Int64)
 			}
 		case request.FieldUserID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
-				r.UserID = int(value.Int64)
+				_m.UserID = int(value.Int64)
 			}
 		case request.FieldAPIKeyID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field api_key_id", values[i])
 			} else if value.Valid {
-				r.APIKeyID = int(value.Int64)
+				_m.APIKeyID = int(value.Int64)
+			}
+		case request.FieldProjectID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field project_id", values[i])
+			} else if value.Valid {
+				_m.ProjectID = int(value.Int64)
 			}
 		case request.FieldSource:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field source", values[i])
 			} else if value.Valid {
-				r.Source = request.Source(value.String)
+				_m.Source = request.Source(value.String)
 			}
 		case request.FieldModelID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field model_id", values[i])
 			} else if value.Valid {
-				r.ModelID = value.String
+				_m.ModelID = value.String
 			}
 		case request.FieldFormat:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field format", values[i])
 			} else if value.Valid {
-				r.Format = value.String
+				_m.Format = value.String
 			}
 		case request.FieldRequestBody:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field request_body", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &r.RequestBody); err != nil {
+				if err := json.Unmarshal(*value, &_m.RequestBody); err != nil {
 					return fmt.Errorf("unmarshal field request_body: %w", err)
 				}
 			}
@@ -227,7 +249,7 @@ func (r *Request) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field response_body", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &r.ResponseBody); err != nil {
+				if err := json.Unmarshal(*value, &_m.ResponseBody); err != nil {
 					return fmt.Errorf("unmarshal field response_body: %w", err)
 				}
 			}
@@ -235,7 +257,7 @@ func (r *Request) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field response_chunks", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &r.ResponseChunks); err != nil {
+				if err := json.Unmarshal(*value, &_m.ResponseChunks); err != nil {
 					return fmt.Errorf("unmarshal field response_chunks: %w", err)
 				}
 			}
@@ -243,28 +265,28 @@ func (r *Request) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field channel_id", values[i])
 			} else if value.Valid {
-				r.ChannelID = int(value.Int64)
+				_m.ChannelID = int(value.Int64)
 			}
 		case request.FieldExternalID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field external_id", values[i])
 			} else if value.Valid {
-				r.ExternalID = value.String
+				_m.ExternalID = value.String
 			}
 		case request.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
-				r.Status = request.Status(value.String)
+				_m.Status = request.Status(value.String)
 			}
 		case request.FieldStream:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field stream", values[i])
 			} else if value.Valid {
-				r.Stream = value.Bool
+				_m.Stream = value.Bool
 			}
 		default:
-			r.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -272,151 +294,159 @@ func (r *Request) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the Request.
 // This includes values selected through modifiers, order, etc.
-func (r *Request) Value(name string) (ent.Value, error) {
-	return r.selectValues.Get(name)
+func (_m *Request) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryUser queries the "user" edge of the Request entity.
-func (r *Request) QueryUser() *UserQuery {
-	return NewRequestClient(r.config).QueryUser(r)
+func (_m *Request) QueryUser() *UserQuery {
+	return NewRequestClient(_m.config).QueryUser(_m)
 }
 
 // QueryAPIKey queries the "api_key" edge of the Request entity.
-func (r *Request) QueryAPIKey() *APIKeyQuery {
-	return NewRequestClient(r.config).QueryAPIKey(r)
+func (_m *Request) QueryAPIKey() *APIKeyQuery {
+	return NewRequestClient(_m.config).QueryAPIKey(_m)
+}
+
+// QueryProject queries the "project" edge of the Request entity.
+func (_m *Request) QueryProject() *ProjectQuery {
+	return NewRequestClient(_m.config).QueryProject(_m)
 }
 
 // QueryExecutions queries the "executions" edge of the Request entity.
-func (r *Request) QueryExecutions() *RequestExecutionQuery {
-	return NewRequestClient(r.config).QueryExecutions(r)
+func (_m *Request) QueryExecutions() *RequestExecutionQuery {
+	return NewRequestClient(_m.config).QueryExecutions(_m)
 }
 
 // QueryChannel queries the "channel" edge of the Request entity.
-func (r *Request) QueryChannel() *ChannelQuery {
-	return NewRequestClient(r.config).QueryChannel(r)
+func (_m *Request) QueryChannel() *ChannelQuery {
+	return NewRequestClient(_m.config).QueryChannel(_m)
 }
 
 // QueryUsageLogs queries the "usage_logs" edge of the Request entity.
-func (r *Request) QueryUsageLogs() *UsageLogQuery {
-	return NewRequestClient(r.config).QueryUsageLogs(r)
+func (_m *Request) QueryUsageLogs() *UsageLogQuery {
+	return NewRequestClient(_m.config).QueryUsageLogs(_m)
 }
 
 // Update returns a builder for updating this Request.
 // Note that you need to call Request.Unwrap() before calling this method if this Request
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (r *Request) Update() *RequestUpdateOne {
-	return NewRequestClient(r.config).UpdateOne(r)
+func (_m *Request) Update() *RequestUpdateOne {
+	return NewRequestClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the Request entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (r *Request) Unwrap() *Request {
-	_tx, ok := r.config.driver.(*txDriver)
+func (_m *Request) Unwrap() *Request {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Request is not a transactional entity")
 	}
-	r.config.driver = _tx.drv
-	return r
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (r *Request) String() string {
+func (_m *Request) String() string {
 	var builder strings.Builder
 	builder.WriteString("Request(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", r.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(r.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(r.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", r.DeletedAt))
+	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("user_id=")
-	builder.WriteString(fmt.Sprintf("%v", r.UserID))
+	builder.WriteString(fmt.Sprintf("%v", _m.UserID))
 	builder.WriteString(", ")
 	builder.WriteString("api_key_id=")
-	builder.WriteString(fmt.Sprintf("%v", r.APIKeyID))
+	builder.WriteString(fmt.Sprintf("%v", _m.APIKeyID))
+	builder.WriteString(", ")
+	builder.WriteString("project_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ProjectID))
 	builder.WriteString(", ")
 	builder.WriteString("source=")
-	builder.WriteString(fmt.Sprintf("%v", r.Source))
+	builder.WriteString(fmt.Sprintf("%v", _m.Source))
 	builder.WriteString(", ")
 	builder.WriteString("model_id=")
-	builder.WriteString(r.ModelID)
+	builder.WriteString(_m.ModelID)
 	builder.WriteString(", ")
 	builder.WriteString("format=")
-	builder.WriteString(r.Format)
+	builder.WriteString(_m.Format)
 	builder.WriteString(", ")
 	builder.WriteString("request_body=")
-	builder.WriteString(fmt.Sprintf("%v", r.RequestBody))
+	builder.WriteString(fmt.Sprintf("%v", _m.RequestBody))
 	builder.WriteString(", ")
 	builder.WriteString("response_body=")
-	builder.WriteString(fmt.Sprintf("%v", r.ResponseBody))
+	builder.WriteString(fmt.Sprintf("%v", _m.ResponseBody))
 	builder.WriteString(", ")
 	builder.WriteString("response_chunks=")
-	builder.WriteString(fmt.Sprintf("%v", r.ResponseChunks))
+	builder.WriteString(fmt.Sprintf("%v", _m.ResponseChunks))
 	builder.WriteString(", ")
 	builder.WriteString("channel_id=")
-	builder.WriteString(fmt.Sprintf("%v", r.ChannelID))
+	builder.WriteString(fmt.Sprintf("%v", _m.ChannelID))
 	builder.WriteString(", ")
 	builder.WriteString("external_id=")
-	builder.WriteString(r.ExternalID)
+	builder.WriteString(_m.ExternalID)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
-	builder.WriteString(fmt.Sprintf("%v", r.Status))
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
 	builder.WriteString("stream=")
-	builder.WriteString(fmt.Sprintf("%v", r.Stream))
+	builder.WriteString(fmt.Sprintf("%v", _m.Stream))
 	builder.WriteByte(')')
 	return builder.String()
 }
 
 // NamedExecutions returns the Executions named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (r *Request) NamedExecutions(name string) ([]*RequestExecution, error) {
-	if r.Edges.namedExecutions == nil {
+func (_m *Request) NamedExecutions(name string) ([]*RequestExecution, error) {
+	if _m.Edges.namedExecutions == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
-	nodes, ok := r.Edges.namedExecutions[name]
+	nodes, ok := _m.Edges.namedExecutions[name]
 	if !ok {
 		return nil, &NotLoadedError{edge: name}
 	}
 	return nodes, nil
 }
 
-func (r *Request) appendNamedExecutions(name string, edges ...*RequestExecution) {
-	if r.Edges.namedExecutions == nil {
-		r.Edges.namedExecutions = make(map[string][]*RequestExecution)
+func (_m *Request) appendNamedExecutions(name string, edges ...*RequestExecution) {
+	if _m.Edges.namedExecutions == nil {
+		_m.Edges.namedExecutions = make(map[string][]*RequestExecution)
 	}
 	if len(edges) == 0 {
-		r.Edges.namedExecutions[name] = []*RequestExecution{}
+		_m.Edges.namedExecutions[name] = []*RequestExecution{}
 	} else {
-		r.Edges.namedExecutions[name] = append(r.Edges.namedExecutions[name], edges...)
+		_m.Edges.namedExecutions[name] = append(_m.Edges.namedExecutions[name], edges...)
 	}
 }
 
 // NamedUsageLogs returns the UsageLogs named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (r *Request) NamedUsageLogs(name string) ([]*UsageLog, error) {
-	if r.Edges.namedUsageLogs == nil {
+func (_m *Request) NamedUsageLogs(name string) ([]*UsageLog, error) {
+	if _m.Edges.namedUsageLogs == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
-	nodes, ok := r.Edges.namedUsageLogs[name]
+	nodes, ok := _m.Edges.namedUsageLogs[name]
 	if !ok {
 		return nil, &NotLoadedError{edge: name}
 	}
 	return nodes, nil
 }
 
-func (r *Request) appendNamedUsageLogs(name string, edges ...*UsageLog) {
-	if r.Edges.namedUsageLogs == nil {
-		r.Edges.namedUsageLogs = make(map[string][]*UsageLog)
+func (_m *Request) appendNamedUsageLogs(name string, edges ...*UsageLog) {
+	if _m.Edges.namedUsageLogs == nil {
+		_m.Edges.namedUsageLogs = make(map[string][]*UsageLog)
 	}
 	if len(edges) == 0 {
-		r.Edges.namedUsageLogs[name] = []*UsageLog{}
+		_m.Edges.namedUsageLogs[name] = []*UsageLog{}
 	} else {
-		r.Edges.namedUsageLogs[name] = append(r.Edges.namedUsageLogs[name], edges...)
+		_m.Edges.namedUsageLogs[name] = append(_m.Edges.namedUsageLogs[name], edges...)
 	}
 }
 

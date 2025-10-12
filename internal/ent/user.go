@@ -50,6 +50,8 @@ type User struct {
 
 // UserEdges holds the relations/edges for other nodes in the graph.
 type UserEdges struct {
+	// Projects holds the value of the projects edge.
+	Projects []*Project `json:"projects,omitempty"`
 	// Requests holds the value of the requests edge.
 	Requests []*Request `json:"requests,omitempty"`
 	// APIKeys holds the value of the api_keys edge.
@@ -58,22 +60,35 @@ type UserEdges struct {
 	Roles []*Role `json:"roles,omitempty"`
 	// UsageLogs holds the value of the usage_logs edge.
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
+	// ProjectUsers holds the value of the project_users edge.
+	ProjectUsers []*UserProject `json:"project_users,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [6]bool
 	// totalCount holds the count of the edges above.
-	totalCount [4]map[string]int
+	totalCount [6]map[string]int
 
-	namedRequests  map[string][]*Request
-	namedAPIKeys   map[string][]*APIKey
-	namedRoles     map[string][]*Role
-	namedUsageLogs map[string][]*UsageLog
+	namedProjects     map[string][]*Project
+	namedRequests     map[string][]*Request
+	namedAPIKeys      map[string][]*APIKey
+	namedRoles        map[string][]*Role
+	namedUsageLogs    map[string][]*UsageLog
+	namedProjectUsers map[string][]*UserProject
+}
+
+// ProjectsOrErr returns the Projects value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ProjectsOrErr() ([]*Project, error) {
+	if e.loadedTypes[0] {
+		return e.Projects, nil
+	}
+	return nil, &NotLoadedError{edge: "projects"}
 }
 
 // RequestsOrErr returns the Requests value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) RequestsOrErr() ([]*Request, error) {
-	if e.loadedTypes[0] {
+	if e.loadedTypes[1] {
 		return e.Requests, nil
 	}
 	return nil, &NotLoadedError{edge: "requests"}
@@ -82,7 +97,7 @@ func (e UserEdges) RequestsOrErr() ([]*Request, error) {
 // APIKeysOrErr returns the APIKeys value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) APIKeysOrErr() ([]*APIKey, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.APIKeys, nil
 	}
 	return nil, &NotLoadedError{edge: "api_keys"}
@@ -91,7 +106,7 @@ func (e UserEdges) APIKeysOrErr() ([]*APIKey, error) {
 // RolesOrErr returns the Roles value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) RolesOrErr() ([]*Role, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.Roles, nil
 	}
 	return nil, &NotLoadedError{edge: "roles"}
@@ -100,10 +115,19 @@ func (e UserEdges) RolesOrErr() ([]*Role, error) {
 // UsageLogsOrErr returns the UsageLogs value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) UsageLogsOrErr() ([]*UsageLog, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[4] {
 		return e.UsageLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "usage_logs"}
+}
+
+// ProjectUsersOrErr returns the ProjectUsers value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ProjectUsersOrErr() ([]*UserProject, error) {
+	if e.loadedTypes[5] {
+		return e.ProjectUsers, nil
+	}
+	return nil, &NotLoadedError{edge: "project_users"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -130,7 +154,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the User fields.
-func (u *User) assignValues(columns []string, values []any) error {
+func (_m *User) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -141,83 +165,83 @@ func (u *User) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			u.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case user.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				u.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case user.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				u.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case user.FieldDeletedAt:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
 			} else if value.Valid {
-				u.DeletedAt = int(value.Int64)
+				_m.DeletedAt = int(value.Int64)
 			}
 		case user.FieldEmail:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field email", values[i])
 			} else if value.Valid {
-				u.Email = value.String
+				_m.Email = value.String
 			}
 		case user.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
-				u.Status = user.Status(value.String)
+				_m.Status = user.Status(value.String)
 			}
 		case user.FieldPreferLanguage:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field prefer_language", values[i])
 			} else if value.Valid {
-				u.PreferLanguage = value.String
+				_m.PreferLanguage = value.String
 			}
 		case user.FieldPassword:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field password", values[i])
 			} else if value.Valid {
-				u.Password = value.String
+				_m.Password = value.String
 			}
 		case user.FieldFirstName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field first_name", values[i])
 			} else if value.Valid {
-				u.FirstName = value.String
+				_m.FirstName = value.String
 			}
 		case user.FieldLastName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field last_name", values[i])
 			} else if value.Valid {
-				u.LastName = value.String
+				_m.LastName = value.String
 			}
 		case user.FieldAvatar:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field avatar", values[i])
 			} else if value.Valid {
-				u.Avatar = value.String
+				_m.Avatar = value.String
 			}
 		case user.FieldIsOwner:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field is_owner", values[i])
 			} else if value.Valid {
-				u.IsOwner = value.Bool
+				_m.IsOwner = value.Bool
 			}
 		case user.FieldScopes:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field scopes", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &u.Scopes); err != nil {
+				if err := json.Unmarshal(*value, &_m.Scopes); err != nil {
 					return fmt.Errorf("unmarshal field scopes: %w", err)
 				}
 			}
 		default:
-			u.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -225,184 +249,242 @@ func (u *User) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the User.
 // This includes values selected through modifiers, order, etc.
-func (u *User) Value(name string) (ent.Value, error) {
-	return u.selectValues.Get(name)
+func (_m *User) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
+}
+
+// QueryProjects queries the "projects" edge of the User entity.
+func (_m *User) QueryProjects() *ProjectQuery {
+	return NewUserClient(_m.config).QueryProjects(_m)
 }
 
 // QueryRequests queries the "requests" edge of the User entity.
-func (u *User) QueryRequests() *RequestQuery {
-	return NewUserClient(u.config).QueryRequests(u)
+func (_m *User) QueryRequests() *RequestQuery {
+	return NewUserClient(_m.config).QueryRequests(_m)
 }
 
 // QueryAPIKeys queries the "api_keys" edge of the User entity.
-func (u *User) QueryAPIKeys() *APIKeyQuery {
-	return NewUserClient(u.config).QueryAPIKeys(u)
+func (_m *User) QueryAPIKeys() *APIKeyQuery {
+	return NewUserClient(_m.config).QueryAPIKeys(_m)
 }
 
 // QueryRoles queries the "roles" edge of the User entity.
-func (u *User) QueryRoles() *RoleQuery {
-	return NewUserClient(u.config).QueryRoles(u)
+func (_m *User) QueryRoles() *RoleQuery {
+	return NewUserClient(_m.config).QueryRoles(_m)
 }
 
 // QueryUsageLogs queries the "usage_logs" edge of the User entity.
-func (u *User) QueryUsageLogs() *UsageLogQuery {
-	return NewUserClient(u.config).QueryUsageLogs(u)
+func (_m *User) QueryUsageLogs() *UsageLogQuery {
+	return NewUserClient(_m.config).QueryUsageLogs(_m)
+}
+
+// QueryProjectUsers queries the "project_users" edge of the User entity.
+func (_m *User) QueryProjectUsers() *UserProjectQuery {
+	return NewUserClient(_m.config).QueryProjectUsers(_m)
 }
 
 // Update returns a builder for updating this User.
 // Note that you need to call User.Unwrap() before calling this method if this User
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (u *User) Update() *UserUpdateOne {
-	return NewUserClient(u.config).UpdateOne(u)
+func (_m *User) Update() *UserUpdateOne {
+	return NewUserClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the User entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (u *User) Unwrap() *User {
-	_tx, ok := u.config.driver.(*txDriver)
+func (_m *User) Unwrap() *User {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: User is not a transactional entity")
 	}
-	u.config.driver = _tx.drv
-	return u
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (u *User) String() string {
+func (_m *User) String() string {
 	var builder strings.Builder
 	builder.WriteString("User(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", u.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(u.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(u.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", u.DeletedAt))
+	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("email=")
-	builder.WriteString(u.Email)
+	builder.WriteString(_m.Email)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
-	builder.WriteString(fmt.Sprintf("%v", u.Status))
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
 	builder.WriteString("prefer_language=")
-	builder.WriteString(u.PreferLanguage)
+	builder.WriteString(_m.PreferLanguage)
 	builder.WriteString(", ")
 	builder.WriteString("password=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("first_name=")
-	builder.WriteString(u.FirstName)
+	builder.WriteString(_m.FirstName)
 	builder.WriteString(", ")
 	builder.WriteString("last_name=")
-	builder.WriteString(u.LastName)
+	builder.WriteString(_m.LastName)
 	builder.WriteString(", ")
 	builder.WriteString("avatar=")
-	builder.WriteString(u.Avatar)
+	builder.WriteString(_m.Avatar)
 	builder.WriteString(", ")
 	builder.WriteString("is_owner=")
-	builder.WriteString(fmt.Sprintf("%v", u.IsOwner))
+	builder.WriteString(fmt.Sprintf("%v", _m.IsOwner))
 	builder.WriteString(", ")
 	builder.WriteString("scopes=")
-	builder.WriteString(fmt.Sprintf("%v", u.Scopes))
+	builder.WriteString(fmt.Sprintf("%v", _m.Scopes))
 	builder.WriteByte(')')
 	return builder.String()
 }
 
-// NamedRequests returns the Requests named value or an error if the edge was not
+// NamedProjects returns the Projects named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (u *User) NamedRequests(name string) ([]*Request, error) {
-	if u.Edges.namedRequests == nil {
+func (_m *User) NamedProjects(name string) ([]*Project, error) {
+	if _m.Edges.namedProjects == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
-	nodes, ok := u.Edges.namedRequests[name]
+	nodes, ok := _m.Edges.namedProjects[name]
 	if !ok {
 		return nil, &NotLoadedError{edge: name}
 	}
 	return nodes, nil
 }
 
-func (u *User) appendNamedRequests(name string, edges ...*Request) {
-	if u.Edges.namedRequests == nil {
-		u.Edges.namedRequests = make(map[string][]*Request)
+func (_m *User) appendNamedProjects(name string, edges ...*Project) {
+	if _m.Edges.namedProjects == nil {
+		_m.Edges.namedProjects = make(map[string][]*Project)
 	}
 	if len(edges) == 0 {
-		u.Edges.namedRequests[name] = []*Request{}
+		_m.Edges.namedProjects[name] = []*Project{}
 	} else {
-		u.Edges.namedRequests[name] = append(u.Edges.namedRequests[name], edges...)
+		_m.Edges.namedProjects[name] = append(_m.Edges.namedProjects[name], edges...)
+	}
+}
+
+// NamedRequests returns the Requests named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *User) NamedRequests(name string) ([]*Request, error) {
+	if _m.Edges.namedRequests == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedRequests[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *User) appendNamedRequests(name string, edges ...*Request) {
+	if _m.Edges.namedRequests == nil {
+		_m.Edges.namedRequests = make(map[string][]*Request)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedRequests[name] = []*Request{}
+	} else {
+		_m.Edges.namedRequests[name] = append(_m.Edges.namedRequests[name], edges...)
 	}
 }
 
 // NamedAPIKeys returns the APIKeys named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (u *User) NamedAPIKeys(name string) ([]*APIKey, error) {
-	if u.Edges.namedAPIKeys == nil {
+func (_m *User) NamedAPIKeys(name string) ([]*APIKey, error) {
+	if _m.Edges.namedAPIKeys == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
-	nodes, ok := u.Edges.namedAPIKeys[name]
+	nodes, ok := _m.Edges.namedAPIKeys[name]
 	if !ok {
 		return nil, &NotLoadedError{edge: name}
 	}
 	return nodes, nil
 }
 
-func (u *User) appendNamedAPIKeys(name string, edges ...*APIKey) {
-	if u.Edges.namedAPIKeys == nil {
-		u.Edges.namedAPIKeys = make(map[string][]*APIKey)
+func (_m *User) appendNamedAPIKeys(name string, edges ...*APIKey) {
+	if _m.Edges.namedAPIKeys == nil {
+		_m.Edges.namedAPIKeys = make(map[string][]*APIKey)
 	}
 	if len(edges) == 0 {
-		u.Edges.namedAPIKeys[name] = []*APIKey{}
+		_m.Edges.namedAPIKeys[name] = []*APIKey{}
 	} else {
-		u.Edges.namedAPIKeys[name] = append(u.Edges.namedAPIKeys[name], edges...)
+		_m.Edges.namedAPIKeys[name] = append(_m.Edges.namedAPIKeys[name], edges...)
 	}
 }
 
 // NamedRoles returns the Roles named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (u *User) NamedRoles(name string) ([]*Role, error) {
-	if u.Edges.namedRoles == nil {
+func (_m *User) NamedRoles(name string) ([]*Role, error) {
+	if _m.Edges.namedRoles == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
-	nodes, ok := u.Edges.namedRoles[name]
+	nodes, ok := _m.Edges.namedRoles[name]
 	if !ok {
 		return nil, &NotLoadedError{edge: name}
 	}
 	return nodes, nil
 }
 
-func (u *User) appendNamedRoles(name string, edges ...*Role) {
-	if u.Edges.namedRoles == nil {
-		u.Edges.namedRoles = make(map[string][]*Role)
+func (_m *User) appendNamedRoles(name string, edges ...*Role) {
+	if _m.Edges.namedRoles == nil {
+		_m.Edges.namedRoles = make(map[string][]*Role)
 	}
 	if len(edges) == 0 {
-		u.Edges.namedRoles[name] = []*Role{}
+		_m.Edges.namedRoles[name] = []*Role{}
 	} else {
-		u.Edges.namedRoles[name] = append(u.Edges.namedRoles[name], edges...)
+		_m.Edges.namedRoles[name] = append(_m.Edges.namedRoles[name], edges...)
 	}
 }
 
 // NamedUsageLogs returns the UsageLogs named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (u *User) NamedUsageLogs(name string) ([]*UsageLog, error) {
-	if u.Edges.namedUsageLogs == nil {
+func (_m *User) NamedUsageLogs(name string) ([]*UsageLog, error) {
+	if _m.Edges.namedUsageLogs == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
-	nodes, ok := u.Edges.namedUsageLogs[name]
+	nodes, ok := _m.Edges.namedUsageLogs[name]
 	if !ok {
 		return nil, &NotLoadedError{edge: name}
 	}
 	return nodes, nil
 }
 
-func (u *User) appendNamedUsageLogs(name string, edges ...*UsageLog) {
-	if u.Edges.namedUsageLogs == nil {
-		u.Edges.namedUsageLogs = make(map[string][]*UsageLog)
+func (_m *User) appendNamedUsageLogs(name string, edges ...*UsageLog) {
+	if _m.Edges.namedUsageLogs == nil {
+		_m.Edges.namedUsageLogs = make(map[string][]*UsageLog)
 	}
 	if len(edges) == 0 {
-		u.Edges.namedUsageLogs[name] = []*UsageLog{}
+		_m.Edges.namedUsageLogs[name] = []*UsageLog{}
 	} else {
-		u.Edges.namedUsageLogs[name] = append(u.Edges.namedUsageLogs[name], edges...)
+		_m.Edges.namedUsageLogs[name] = append(_m.Edges.namedUsageLogs[name], edges...)
+	}
+}
+
+// NamedProjectUsers returns the ProjectUsers named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *User) NamedProjectUsers(name string) ([]*UserProject, error) {
+	if _m.Edges.namedProjectUsers == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedProjectUsers[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *User) appendNamedProjectUsers(name string, edges ...*UserProject) {
+	if _m.Edges.namedProjectUsers == nil {
+		_m.Edges.namedProjectUsers = make(map[string][]*UserProject)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedProjectUsers[name] = []*UserProject{}
+	} else {
+		_m.Edges.namedProjectUsers[name] = append(_m.Edges.namedProjectUsers[name], edges...)
 	}
 }
 

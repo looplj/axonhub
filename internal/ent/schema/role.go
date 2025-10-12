@@ -29,6 +29,10 @@ func (Role) Indexes() []ent.Index {
 		index.Fields("code").
 			StorageKey("roles_by_code").
 			Unique(),
+		index.Fields("project_id").
+			StorageKey("roles_by_project_id"),
+		index.Fields("level").
+			StorageKey("roles_by_level"),
 	}
 }
 
@@ -37,6 +41,14 @@ func (Role) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("code").Unique().Immutable(),
 		field.String("name"),
+		field.Enum("level").
+			Values("global", "project").
+			Default("global").
+			Comment("Role level: global or project"),
+		field.Int("project_id").
+			Optional().
+			Nillable().
+			Comment("Project ID for project-level roles, null for global roles"),
 		field.Strings("scopes").
 			Comment("Available scopes for this role: write_channels, read_channels, add_users, read_users, etc.").
 			Default([]string{}).
@@ -52,6 +64,10 @@ func (Role) Edges() []ent.Edge {
 			Annotations(
 				entgql.RelayConnection(),
 			),
+		edge.From("project", Project.Type).
+			Ref("roles").
+			Field("project_id").
+			Unique(),
 	}
 }
 

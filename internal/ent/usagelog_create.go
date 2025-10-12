@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -26,264 +27,283 @@ type UsageLogCreate struct {
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (ulc *UsageLogCreate) SetCreatedAt(t time.Time) *UsageLogCreate {
-	ulc.mutation.SetCreatedAt(t)
-	return ulc
+func (_c *UsageLogCreate) SetCreatedAt(v time.Time) *UsageLogCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableCreatedAt(t *time.Time) *UsageLogCreate {
-	if t != nil {
-		ulc.SetCreatedAt(*t)
+func (_c *UsageLogCreate) SetNillableCreatedAt(v *time.Time) *UsageLogCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (ulc *UsageLogCreate) SetUpdatedAt(t time.Time) *UsageLogCreate {
-	ulc.mutation.SetUpdatedAt(t)
-	return ulc
+func (_c *UsageLogCreate) SetUpdatedAt(v time.Time) *UsageLogCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
 }
 
 // SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableUpdatedAt(t *time.Time) *UsageLogCreate {
-	if t != nil {
-		ulc.SetUpdatedAt(*t)
+func (_c *UsageLogCreate) SetNillableUpdatedAt(v *time.Time) *UsageLogCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (ulc *UsageLogCreate) SetDeletedAt(i int) *UsageLogCreate {
-	ulc.mutation.SetDeletedAt(i)
-	return ulc
+func (_c *UsageLogCreate) SetDeletedAt(v int) *UsageLogCreate {
+	_c.mutation.SetDeletedAt(v)
+	return _c
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableDeletedAt(i *int) *UsageLogCreate {
-	if i != nil {
-		ulc.SetDeletedAt(*i)
+func (_c *UsageLogCreate) SetNillableDeletedAt(v *int) *UsageLogCreate {
+	if v != nil {
+		_c.SetDeletedAt(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetUserID sets the "user_id" field.
-func (ulc *UsageLogCreate) SetUserID(i int) *UsageLogCreate {
-	ulc.mutation.SetUserID(i)
-	return ulc
+func (_c *UsageLogCreate) SetUserID(v int) *UsageLogCreate {
+	_c.mutation.SetUserID(v)
+	return _c
 }
 
 // SetRequestID sets the "request_id" field.
-func (ulc *UsageLogCreate) SetRequestID(i int) *UsageLogCreate {
-	ulc.mutation.SetRequestID(i)
-	return ulc
+func (_c *UsageLogCreate) SetRequestID(v int) *UsageLogCreate {
+	_c.mutation.SetRequestID(v)
+	return _c
+}
+
+// SetProjectID sets the "project_id" field.
+func (_c *UsageLogCreate) SetProjectID(v int) *UsageLogCreate {
+	_c.mutation.SetProjectID(v)
+	return _c
+}
+
+// SetNillableProjectID sets the "project_id" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableProjectID(v *int) *UsageLogCreate {
+	if v != nil {
+		_c.SetProjectID(*v)
+	}
+	return _c
 }
 
 // SetChannelID sets the "channel_id" field.
-func (ulc *UsageLogCreate) SetChannelID(i int) *UsageLogCreate {
-	ulc.mutation.SetChannelID(i)
-	return ulc
+func (_c *UsageLogCreate) SetChannelID(v int) *UsageLogCreate {
+	_c.mutation.SetChannelID(v)
+	return _c
 }
 
 // SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableChannelID(i *int) *UsageLogCreate {
-	if i != nil {
-		ulc.SetChannelID(*i)
+func (_c *UsageLogCreate) SetNillableChannelID(v *int) *UsageLogCreate {
+	if v != nil {
+		_c.SetChannelID(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetModelID sets the "model_id" field.
-func (ulc *UsageLogCreate) SetModelID(s string) *UsageLogCreate {
-	ulc.mutation.SetModelID(s)
-	return ulc
+func (_c *UsageLogCreate) SetModelID(v string) *UsageLogCreate {
+	_c.mutation.SetModelID(v)
+	return _c
 }
 
 // SetPromptTokens sets the "prompt_tokens" field.
-func (ulc *UsageLogCreate) SetPromptTokens(i int64) *UsageLogCreate {
-	ulc.mutation.SetPromptTokens(i)
-	return ulc
+func (_c *UsageLogCreate) SetPromptTokens(v int64) *UsageLogCreate {
+	_c.mutation.SetPromptTokens(v)
+	return _c
 }
 
 // SetNillablePromptTokens sets the "prompt_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillablePromptTokens(i *int64) *UsageLogCreate {
-	if i != nil {
-		ulc.SetPromptTokens(*i)
+func (_c *UsageLogCreate) SetNillablePromptTokens(v *int64) *UsageLogCreate {
+	if v != nil {
+		_c.SetPromptTokens(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetCompletionTokens sets the "completion_tokens" field.
-func (ulc *UsageLogCreate) SetCompletionTokens(i int64) *UsageLogCreate {
-	ulc.mutation.SetCompletionTokens(i)
-	return ulc
+func (_c *UsageLogCreate) SetCompletionTokens(v int64) *UsageLogCreate {
+	_c.mutation.SetCompletionTokens(v)
+	return _c
 }
 
 // SetNillableCompletionTokens sets the "completion_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableCompletionTokens(i *int64) *UsageLogCreate {
-	if i != nil {
-		ulc.SetCompletionTokens(*i)
+func (_c *UsageLogCreate) SetNillableCompletionTokens(v *int64) *UsageLogCreate {
+	if v != nil {
+		_c.SetCompletionTokens(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetTotalTokens sets the "total_tokens" field.
-func (ulc *UsageLogCreate) SetTotalTokens(i int64) *UsageLogCreate {
-	ulc.mutation.SetTotalTokens(i)
-	return ulc
+func (_c *UsageLogCreate) SetTotalTokens(v int64) *UsageLogCreate {
+	_c.mutation.SetTotalTokens(v)
+	return _c
 }
 
 // SetNillableTotalTokens sets the "total_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableTotalTokens(i *int64) *UsageLogCreate {
-	if i != nil {
-		ulc.SetTotalTokens(*i)
+func (_c *UsageLogCreate) SetNillableTotalTokens(v *int64) *UsageLogCreate {
+	if v != nil {
+		_c.SetTotalTokens(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetPromptAudioTokens sets the "prompt_audio_tokens" field.
-func (ulc *UsageLogCreate) SetPromptAudioTokens(i int64) *UsageLogCreate {
-	ulc.mutation.SetPromptAudioTokens(i)
-	return ulc
+func (_c *UsageLogCreate) SetPromptAudioTokens(v int64) *UsageLogCreate {
+	_c.mutation.SetPromptAudioTokens(v)
+	return _c
 }
 
 // SetNillablePromptAudioTokens sets the "prompt_audio_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillablePromptAudioTokens(i *int64) *UsageLogCreate {
-	if i != nil {
-		ulc.SetPromptAudioTokens(*i)
+func (_c *UsageLogCreate) SetNillablePromptAudioTokens(v *int64) *UsageLogCreate {
+	if v != nil {
+		_c.SetPromptAudioTokens(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
-func (ulc *UsageLogCreate) SetPromptCachedTokens(i int64) *UsageLogCreate {
-	ulc.mutation.SetPromptCachedTokens(i)
-	return ulc
+func (_c *UsageLogCreate) SetPromptCachedTokens(v int64) *UsageLogCreate {
+	_c.mutation.SetPromptCachedTokens(v)
+	return _c
 }
 
 // SetNillablePromptCachedTokens sets the "prompt_cached_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillablePromptCachedTokens(i *int64) *UsageLogCreate {
-	if i != nil {
-		ulc.SetPromptCachedTokens(*i)
+func (_c *UsageLogCreate) SetNillablePromptCachedTokens(v *int64) *UsageLogCreate {
+	if v != nil {
+		_c.SetPromptCachedTokens(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetCompletionAudioTokens sets the "completion_audio_tokens" field.
-func (ulc *UsageLogCreate) SetCompletionAudioTokens(i int64) *UsageLogCreate {
-	ulc.mutation.SetCompletionAudioTokens(i)
-	return ulc
+func (_c *UsageLogCreate) SetCompletionAudioTokens(v int64) *UsageLogCreate {
+	_c.mutation.SetCompletionAudioTokens(v)
+	return _c
 }
 
 // SetNillableCompletionAudioTokens sets the "completion_audio_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableCompletionAudioTokens(i *int64) *UsageLogCreate {
-	if i != nil {
-		ulc.SetCompletionAudioTokens(*i)
+func (_c *UsageLogCreate) SetNillableCompletionAudioTokens(v *int64) *UsageLogCreate {
+	if v != nil {
+		_c.SetCompletionAudioTokens(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetCompletionReasoningTokens sets the "completion_reasoning_tokens" field.
-func (ulc *UsageLogCreate) SetCompletionReasoningTokens(i int64) *UsageLogCreate {
-	ulc.mutation.SetCompletionReasoningTokens(i)
-	return ulc
+func (_c *UsageLogCreate) SetCompletionReasoningTokens(v int64) *UsageLogCreate {
+	_c.mutation.SetCompletionReasoningTokens(v)
+	return _c
 }
 
 // SetNillableCompletionReasoningTokens sets the "completion_reasoning_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableCompletionReasoningTokens(i *int64) *UsageLogCreate {
-	if i != nil {
-		ulc.SetCompletionReasoningTokens(*i)
+func (_c *UsageLogCreate) SetNillableCompletionReasoningTokens(v *int64) *UsageLogCreate {
+	if v != nil {
+		_c.SetCompletionReasoningTokens(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field.
-func (ulc *UsageLogCreate) SetCompletionAcceptedPredictionTokens(i int64) *UsageLogCreate {
-	ulc.mutation.SetCompletionAcceptedPredictionTokens(i)
-	return ulc
+func (_c *UsageLogCreate) SetCompletionAcceptedPredictionTokens(v int64) *UsageLogCreate {
+	_c.mutation.SetCompletionAcceptedPredictionTokens(v)
+	return _c
 }
 
 // SetNillableCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableCompletionAcceptedPredictionTokens(i *int64) *UsageLogCreate {
-	if i != nil {
-		ulc.SetCompletionAcceptedPredictionTokens(*i)
+func (_c *UsageLogCreate) SetNillableCompletionAcceptedPredictionTokens(v *int64) *UsageLogCreate {
+	if v != nil {
+		_c.SetCompletionAcceptedPredictionTokens(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field.
-func (ulc *UsageLogCreate) SetCompletionRejectedPredictionTokens(i int64) *UsageLogCreate {
-	ulc.mutation.SetCompletionRejectedPredictionTokens(i)
-	return ulc
+func (_c *UsageLogCreate) SetCompletionRejectedPredictionTokens(v int64) *UsageLogCreate {
+	_c.mutation.SetCompletionRejectedPredictionTokens(v)
+	return _c
 }
 
 // SetNillableCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableCompletionRejectedPredictionTokens(i *int64) *UsageLogCreate {
-	if i != nil {
-		ulc.SetCompletionRejectedPredictionTokens(*i)
+func (_c *UsageLogCreate) SetNillableCompletionRejectedPredictionTokens(v *int64) *UsageLogCreate {
+	if v != nil {
+		_c.SetCompletionRejectedPredictionTokens(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetSource sets the "source" field.
-func (ulc *UsageLogCreate) SetSource(u usagelog.Source) *UsageLogCreate {
-	ulc.mutation.SetSource(u)
-	return ulc
+func (_c *UsageLogCreate) SetSource(v usagelog.Source) *UsageLogCreate {
+	_c.mutation.SetSource(v)
+	return _c
 }
 
 // SetNillableSource sets the "source" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableSource(u *usagelog.Source) *UsageLogCreate {
-	if u != nil {
-		ulc.SetSource(*u)
+func (_c *UsageLogCreate) SetNillableSource(v *usagelog.Source) *UsageLogCreate {
+	if v != nil {
+		_c.SetSource(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetFormat sets the "format" field.
-func (ulc *UsageLogCreate) SetFormat(s string) *UsageLogCreate {
-	ulc.mutation.SetFormat(s)
-	return ulc
+func (_c *UsageLogCreate) SetFormat(v string) *UsageLogCreate {
+	_c.mutation.SetFormat(v)
+	return _c
 }
 
 // SetNillableFormat sets the "format" field if the given value is not nil.
-func (ulc *UsageLogCreate) SetNillableFormat(s *string) *UsageLogCreate {
-	if s != nil {
-		ulc.SetFormat(*s)
+func (_c *UsageLogCreate) SetNillableFormat(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetFormat(*v)
 	}
-	return ulc
+	return _c
 }
 
 // SetUser sets the "user" edge to the User entity.
-func (ulc *UsageLogCreate) SetUser(u *User) *UsageLogCreate {
-	return ulc.SetUserID(u.ID)
+func (_c *UsageLogCreate) SetUser(v *User) *UsageLogCreate {
+	return _c.SetUserID(v.ID)
 }
 
 // SetRequest sets the "request" edge to the Request entity.
-func (ulc *UsageLogCreate) SetRequest(r *Request) *UsageLogCreate {
-	return ulc.SetRequestID(r.ID)
+func (_c *UsageLogCreate) SetRequest(v *Request) *UsageLogCreate {
+	return _c.SetRequestID(v.ID)
+}
+
+// SetProject sets the "project" edge to the Project entity.
+func (_c *UsageLogCreate) SetProject(v *Project) *UsageLogCreate {
+	return _c.SetProjectID(v.ID)
 }
 
 // SetChannel sets the "channel" edge to the Channel entity.
-func (ulc *UsageLogCreate) SetChannel(c *Channel) *UsageLogCreate {
-	return ulc.SetChannelID(c.ID)
+func (_c *UsageLogCreate) SetChannel(v *Channel) *UsageLogCreate {
+	return _c.SetChannelID(v.ID)
 }
 
 // Mutation returns the UsageLogMutation object of the builder.
-func (ulc *UsageLogCreate) Mutation() *UsageLogMutation {
-	return ulc.mutation
+func (_c *UsageLogCreate) Mutation() *UsageLogMutation {
+	return _c.mutation
 }
 
 // Save creates the UsageLog in the database.
-func (ulc *UsageLogCreate) Save(ctx context.Context) (*UsageLog, error) {
-	if err := ulc.defaults(); err != nil {
+func (_c *UsageLogCreate) Save(ctx context.Context) (*UsageLog, error) {
+	if err := _c.defaults(); err != nil {
 		return nil, err
 	}
-	return withHooks(ctx, ulc.sqlSave, ulc.mutation, ulc.hooks)
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (ulc *UsageLogCreate) SaveX(ctx context.Context) *UsageLog {
-	v, err := ulc.Save(ctx)
+func (_c *UsageLogCreate) SaveX(ctx context.Context) *UsageLog {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -291,140 +311,150 @@ func (ulc *UsageLogCreate) SaveX(ctx context.Context) *UsageLog {
 }
 
 // Exec executes the query.
-func (ulc *UsageLogCreate) Exec(ctx context.Context) error {
-	_, err := ulc.Save(ctx)
+func (_c *UsageLogCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ulc *UsageLogCreate) ExecX(ctx context.Context) {
-	if err := ulc.Exec(ctx); err != nil {
+func (_c *UsageLogCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (ulc *UsageLogCreate) defaults() error {
-	if _, ok := ulc.mutation.CreatedAt(); !ok {
+func (_c *UsageLogCreate) defaults() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		if usagelog.DefaultCreatedAt == nil {
 			return fmt.Errorf("ent: uninitialized usagelog.DefaultCreatedAt (forgotten import ent/runtime?)")
 		}
 		v := usagelog.DefaultCreatedAt()
-		ulc.mutation.SetCreatedAt(v)
+		_c.mutation.SetCreatedAt(v)
 	}
-	if _, ok := ulc.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		if usagelog.DefaultUpdatedAt == nil {
 			return fmt.Errorf("ent: uninitialized usagelog.DefaultUpdatedAt (forgotten import ent/runtime?)")
 		}
 		v := usagelog.DefaultUpdatedAt()
-		ulc.mutation.SetUpdatedAt(v)
+		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := ulc.mutation.DeletedAt(); !ok {
+	if _, ok := _c.mutation.DeletedAt(); !ok {
 		v := usagelog.DefaultDeletedAt
-		ulc.mutation.SetDeletedAt(v)
+		_c.mutation.SetDeletedAt(v)
 	}
-	if _, ok := ulc.mutation.PromptTokens(); !ok {
+	if _, ok := _c.mutation.ProjectID(); !ok {
+		v := usagelog.DefaultProjectID
+		_c.mutation.SetProjectID(v)
+	}
+	if _, ok := _c.mutation.PromptTokens(); !ok {
 		v := usagelog.DefaultPromptTokens
-		ulc.mutation.SetPromptTokens(v)
+		_c.mutation.SetPromptTokens(v)
 	}
-	if _, ok := ulc.mutation.CompletionTokens(); !ok {
+	if _, ok := _c.mutation.CompletionTokens(); !ok {
 		v := usagelog.DefaultCompletionTokens
-		ulc.mutation.SetCompletionTokens(v)
+		_c.mutation.SetCompletionTokens(v)
 	}
-	if _, ok := ulc.mutation.TotalTokens(); !ok {
+	if _, ok := _c.mutation.TotalTokens(); !ok {
 		v := usagelog.DefaultTotalTokens
-		ulc.mutation.SetTotalTokens(v)
+		_c.mutation.SetTotalTokens(v)
 	}
-	if _, ok := ulc.mutation.PromptAudioTokens(); !ok {
+	if _, ok := _c.mutation.PromptAudioTokens(); !ok {
 		v := usagelog.DefaultPromptAudioTokens
-		ulc.mutation.SetPromptAudioTokens(v)
+		_c.mutation.SetPromptAudioTokens(v)
 	}
-	if _, ok := ulc.mutation.PromptCachedTokens(); !ok {
+	if _, ok := _c.mutation.PromptCachedTokens(); !ok {
 		v := usagelog.DefaultPromptCachedTokens
-		ulc.mutation.SetPromptCachedTokens(v)
+		_c.mutation.SetPromptCachedTokens(v)
 	}
-	if _, ok := ulc.mutation.CompletionAudioTokens(); !ok {
+	if _, ok := _c.mutation.CompletionAudioTokens(); !ok {
 		v := usagelog.DefaultCompletionAudioTokens
-		ulc.mutation.SetCompletionAudioTokens(v)
+		_c.mutation.SetCompletionAudioTokens(v)
 	}
-	if _, ok := ulc.mutation.CompletionReasoningTokens(); !ok {
+	if _, ok := _c.mutation.CompletionReasoningTokens(); !ok {
 		v := usagelog.DefaultCompletionReasoningTokens
-		ulc.mutation.SetCompletionReasoningTokens(v)
+		_c.mutation.SetCompletionReasoningTokens(v)
 	}
-	if _, ok := ulc.mutation.CompletionAcceptedPredictionTokens(); !ok {
+	if _, ok := _c.mutation.CompletionAcceptedPredictionTokens(); !ok {
 		v := usagelog.DefaultCompletionAcceptedPredictionTokens
-		ulc.mutation.SetCompletionAcceptedPredictionTokens(v)
+		_c.mutation.SetCompletionAcceptedPredictionTokens(v)
 	}
-	if _, ok := ulc.mutation.CompletionRejectedPredictionTokens(); !ok {
+	if _, ok := _c.mutation.CompletionRejectedPredictionTokens(); !ok {
 		v := usagelog.DefaultCompletionRejectedPredictionTokens
-		ulc.mutation.SetCompletionRejectedPredictionTokens(v)
+		_c.mutation.SetCompletionRejectedPredictionTokens(v)
 	}
-	if _, ok := ulc.mutation.Source(); !ok {
+	if _, ok := _c.mutation.Source(); !ok {
 		v := usagelog.DefaultSource
-		ulc.mutation.SetSource(v)
+		_c.mutation.SetSource(v)
 	}
-	if _, ok := ulc.mutation.Format(); !ok {
+	if _, ok := _c.mutation.Format(); !ok {
 		v := usagelog.DefaultFormat
-		ulc.mutation.SetFormat(v)
+		_c.mutation.SetFormat(v)
 	}
 	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (ulc *UsageLogCreate) check() error {
-	if _, ok := ulc.mutation.CreatedAt(); !ok {
+func (_c *UsageLogCreate) check() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "UsageLog.created_at"`)}
 	}
-	if _, ok := ulc.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "UsageLog.updated_at"`)}
 	}
-	if _, ok := ulc.mutation.DeletedAt(); !ok {
+	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "UsageLog.deleted_at"`)}
 	}
-	if _, ok := ulc.mutation.UserID(); !ok {
+	if _, ok := _c.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "UsageLog.user_id"`)}
 	}
-	if _, ok := ulc.mutation.RequestID(); !ok {
+	if _, ok := _c.mutation.RequestID(); !ok {
 		return &ValidationError{Name: "request_id", err: errors.New(`ent: missing required field "UsageLog.request_id"`)}
 	}
-	if _, ok := ulc.mutation.ModelID(); !ok {
+	if _, ok := _c.mutation.ProjectID(); !ok {
+		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "UsageLog.project_id"`)}
+	}
+	if _, ok := _c.mutation.ModelID(); !ok {
 		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "UsageLog.model_id"`)}
 	}
-	if _, ok := ulc.mutation.PromptTokens(); !ok {
+	if _, ok := _c.mutation.PromptTokens(); !ok {
 		return &ValidationError{Name: "prompt_tokens", err: errors.New(`ent: missing required field "UsageLog.prompt_tokens"`)}
 	}
-	if _, ok := ulc.mutation.CompletionTokens(); !ok {
+	if _, ok := _c.mutation.CompletionTokens(); !ok {
 		return &ValidationError{Name: "completion_tokens", err: errors.New(`ent: missing required field "UsageLog.completion_tokens"`)}
 	}
-	if _, ok := ulc.mutation.TotalTokens(); !ok {
+	if _, ok := _c.mutation.TotalTokens(); !ok {
 		return &ValidationError{Name: "total_tokens", err: errors.New(`ent: missing required field "UsageLog.total_tokens"`)}
 	}
-	if _, ok := ulc.mutation.Source(); !ok {
+	if _, ok := _c.mutation.Source(); !ok {
 		return &ValidationError{Name: "source", err: errors.New(`ent: missing required field "UsageLog.source"`)}
 	}
-	if v, ok := ulc.mutation.Source(); ok {
+	if v, ok := _c.mutation.Source(); ok {
 		if err := usagelog.SourceValidator(v); err != nil {
 			return &ValidationError{Name: "source", err: fmt.Errorf(`ent: validator failed for field "UsageLog.source": %w`, err)}
 		}
 	}
-	if _, ok := ulc.mutation.Format(); !ok {
+	if _, ok := _c.mutation.Format(); !ok {
 		return &ValidationError{Name: "format", err: errors.New(`ent: missing required field "UsageLog.format"`)}
 	}
-	if len(ulc.mutation.UserIDs()) == 0 {
+	if len(_c.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "UsageLog.user"`)}
 	}
-	if len(ulc.mutation.RequestIDs()) == 0 {
+	if len(_c.mutation.RequestIDs()) == 0 {
 		return &ValidationError{Name: "request", err: errors.New(`ent: missing required edge "UsageLog.request"`)}
+	}
+	if len(_c.mutation.ProjectIDs()) == 0 {
+		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "UsageLog.project"`)}
 	}
 	return nil
 }
 
-func (ulc *UsageLogCreate) sqlSave(ctx context.Context) (*UsageLog, error) {
-	if err := ulc.check(); err != nil {
+func (_c *UsageLogCreate) sqlSave(ctx context.Context) (*UsageLog, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := ulc.createSpec()
-	if err := sqlgraph.CreateNode(ctx, ulc.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -432,78 +462,78 @@ func (ulc *UsageLogCreate) sqlSave(ctx context.Context) (*UsageLog, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	ulc.mutation.id = &_node.ID
-	ulc.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (ulc *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
+func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	var (
-		_node = &UsageLog{config: ulc.config}
+		_node = &UsageLog{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(usagelog.Table, sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt))
 	)
-	_spec.OnConflict = ulc.conflict
-	if value, ok := ulc.mutation.CreatedAt(); ok {
+	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(usagelog.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if value, ok := ulc.mutation.UpdatedAt(); ok {
+	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(usagelog.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := ulc.mutation.DeletedAt(); ok {
+	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(usagelog.FieldDeletedAt, field.TypeInt, value)
 		_node.DeletedAt = value
 	}
-	if value, ok := ulc.mutation.ModelID(); ok {
+	if value, ok := _c.mutation.ModelID(); ok {
 		_spec.SetField(usagelog.FieldModelID, field.TypeString, value)
 		_node.ModelID = value
 	}
-	if value, ok := ulc.mutation.PromptTokens(); ok {
+	if value, ok := _c.mutation.PromptTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptTokens, field.TypeInt64, value)
 		_node.PromptTokens = value
 	}
-	if value, ok := ulc.mutation.CompletionTokens(); ok {
+	if value, ok := _c.mutation.CompletionTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionTokens, field.TypeInt64, value)
 		_node.CompletionTokens = value
 	}
-	if value, ok := ulc.mutation.TotalTokens(); ok {
+	if value, ok := _c.mutation.TotalTokens(); ok {
 		_spec.SetField(usagelog.FieldTotalTokens, field.TypeInt64, value)
 		_node.TotalTokens = value
 	}
-	if value, ok := ulc.mutation.PromptAudioTokens(); ok {
+	if value, ok := _c.mutation.PromptAudioTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptAudioTokens, field.TypeInt64, value)
 		_node.PromptAudioTokens = value
 	}
-	if value, ok := ulc.mutation.PromptCachedTokens(); ok {
+	if value, ok := _c.mutation.PromptCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 		_node.PromptCachedTokens = value
 	}
-	if value, ok := ulc.mutation.CompletionAudioTokens(); ok {
+	if value, ok := _c.mutation.CompletionAudioTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionAudioTokens, field.TypeInt64, value)
 		_node.CompletionAudioTokens = value
 	}
-	if value, ok := ulc.mutation.CompletionReasoningTokens(); ok {
+	if value, ok := _c.mutation.CompletionReasoningTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionReasoningTokens, field.TypeInt64, value)
 		_node.CompletionReasoningTokens = value
 	}
-	if value, ok := ulc.mutation.CompletionAcceptedPredictionTokens(); ok {
+	if value, ok := _c.mutation.CompletionAcceptedPredictionTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionAcceptedPredictionTokens, field.TypeInt64, value)
 		_node.CompletionAcceptedPredictionTokens = value
 	}
-	if value, ok := ulc.mutation.CompletionRejectedPredictionTokens(); ok {
+	if value, ok := _c.mutation.CompletionRejectedPredictionTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionRejectedPredictionTokens, field.TypeInt64, value)
 		_node.CompletionRejectedPredictionTokens = value
 	}
-	if value, ok := ulc.mutation.Source(); ok {
+	if value, ok := _c.mutation.Source(); ok {
 		_spec.SetField(usagelog.FieldSource, field.TypeEnum, value)
 		_node.Source = value
 	}
-	if value, ok := ulc.mutation.Format(); ok {
+	if value, ok := _c.mutation.Format(); ok {
 		_spec.SetField(usagelog.FieldFormat, field.TypeString, value)
 		_node.Format = value
 	}
-	if nodes := ulc.mutation.UserIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -520,7 +550,7 @@ func (ulc *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 		_node.UserID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := ulc.mutation.RequestIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.RequestIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -537,7 +567,24 @@ func (ulc *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 		_node.RequestID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := ulc.mutation.ChannelIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ProjectIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   usagelog.ProjectTable,
+			Columns: []string{usagelog.ProjectColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.ProjectID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChannelIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -573,10 +620,10 @@ func (ulc *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (ulc *UsageLogCreate) OnConflict(opts ...sql.ConflictOption) *UsageLogUpsertOne {
-	ulc.conflict = opts
+func (_c *UsageLogCreate) OnConflict(opts ...sql.ConflictOption) *UsageLogUpsertOne {
+	_c.conflict = opts
 	return &UsageLogUpsertOne{
-		create: ulc,
+		create: _c,
 	}
 }
 
@@ -586,10 +633,10 @@ func (ulc *UsageLogCreate) OnConflict(opts ...sql.ConflictOption) *UsageLogUpser
 //	client.UsageLog.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (ulc *UsageLogCreate) OnConflictColumns(columns ...string) *UsageLogUpsertOne {
-	ulc.conflict = append(ulc.conflict, sql.ConflictColumns(columns...))
+func (_c *UsageLogCreate) OnConflictColumns(columns ...string) *UsageLogUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &UsageLogUpsertOne{
-		create: ulc,
+		create: _c,
 	}
 }
 
@@ -871,6 +918,9 @@ func (u *UsageLogUpsertOne) UpdateNewValues() *UsageLogUpsertOne {
 		}
 		if _, exists := u.create.mutation.RequestID(); exists {
 			s.SetIgnore(usagelog.FieldRequestID)
+		}
+		if _, exists := u.create.mutation.ProjectID(); exists {
+			s.SetIgnore(usagelog.FieldProjectID)
 		}
 		if _, exists := u.create.mutation.ModelID(); exists {
 			s.SetIgnore(usagelog.FieldModelID)
@@ -1241,16 +1291,16 @@ type UsageLogCreateBulk struct {
 }
 
 // Save creates the UsageLog entities in the database.
-func (ulcb *UsageLogCreateBulk) Save(ctx context.Context) ([]*UsageLog, error) {
-	if ulcb.err != nil {
-		return nil, ulcb.err
+func (_c *UsageLogCreateBulk) Save(ctx context.Context) ([]*UsageLog, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(ulcb.builders))
-	nodes := make([]*UsageLog, len(ulcb.builders))
-	mutators := make([]Mutator, len(ulcb.builders))
-	for i := range ulcb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*UsageLog, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := ulcb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*UsageLogMutation)
@@ -1264,12 +1314,12 @@ func (ulcb *UsageLogCreateBulk) Save(ctx context.Context) ([]*UsageLog, error) {
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, ulcb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = ulcb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, ulcb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -1293,7 +1343,7 @@ func (ulcb *UsageLogCreateBulk) Save(ctx context.Context) ([]*UsageLog, error) {
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, ulcb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -1301,8 +1351,8 @@ func (ulcb *UsageLogCreateBulk) Save(ctx context.Context) ([]*UsageLog, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (ulcb *UsageLogCreateBulk) SaveX(ctx context.Context) []*UsageLog {
-	v, err := ulcb.Save(ctx)
+func (_c *UsageLogCreateBulk) SaveX(ctx context.Context) []*UsageLog {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -1310,14 +1360,14 @@ func (ulcb *UsageLogCreateBulk) SaveX(ctx context.Context) []*UsageLog {
 }
 
 // Exec executes the query.
-func (ulcb *UsageLogCreateBulk) Exec(ctx context.Context) error {
-	_, err := ulcb.Save(ctx)
+func (_c *UsageLogCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ulcb *UsageLogCreateBulk) ExecX(ctx context.Context) {
-	if err := ulcb.Exec(ctx); err != nil {
+func (_c *UsageLogCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -1337,10 +1387,10 @@ func (ulcb *UsageLogCreateBulk) ExecX(ctx context.Context) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (ulcb *UsageLogCreateBulk) OnConflict(opts ...sql.ConflictOption) *UsageLogUpsertBulk {
-	ulcb.conflict = opts
+func (_c *UsageLogCreateBulk) OnConflict(opts ...sql.ConflictOption) *UsageLogUpsertBulk {
+	_c.conflict = opts
 	return &UsageLogUpsertBulk{
-		create: ulcb,
+		create: _c,
 	}
 }
 
@@ -1350,10 +1400,10 @@ func (ulcb *UsageLogCreateBulk) OnConflict(opts ...sql.ConflictOption) *UsageLog
 //	client.UsageLog.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (ulcb *UsageLogCreateBulk) OnConflictColumns(columns ...string) *UsageLogUpsertBulk {
-	ulcb.conflict = append(ulcb.conflict, sql.ConflictColumns(columns...))
+func (_c *UsageLogCreateBulk) OnConflictColumns(columns ...string) *UsageLogUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &UsageLogUpsertBulk{
-		create: ulcb,
+		create: _c,
 	}
 }
 
@@ -1383,6 +1433,9 @@ func (u *UsageLogUpsertBulk) UpdateNewValues() *UsageLogUpsertBulk {
 			}
 			if _, exists := b.mutation.RequestID(); exists {
 				s.SetIgnore(usagelog.FieldRequestID)
+			}
+			if _, exists := b.mutation.ProjectID(); exists {
+				s.SetIgnore(usagelog.FieldProjectID)
 			}
 			if _, exists := b.mutation.ModelID(); exists {
 				s.SetIgnore(usagelog.FieldModelID)

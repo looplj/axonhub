@@ -15,6 +15,9 @@ const (
 	ScopeReadRoles  Scope = "read_roles"
 	ScopeWriteRoles Scope = "write_roles"
 
+	ScopeReadProjects  Scope = "read_projects"
+	ScopeWriteProjects Scope = "write_projects"
+
 	//nolint:gosec // This is a scope, not a secret.
 	ScopeReadAPIKeys  Scope = "read_api_keys"
 	ScopeWriteAPIKeys Scope = "write_api_keys"
@@ -37,6 +40,8 @@ func AllScopes() []Scope {
 		ScopeWriteUsers,
 		ScopeReadRoles,
 		ScopeWriteRoles,
+		ScopeReadProjects,
+		ScopeWriteProjects,
 		ScopeReadAPIKeys,
 		ScopeWriteAPIKeys,
 		ScopeReadRequests,
@@ -68,6 +73,8 @@ func ScopeDescriptions() map[Scope]string {
 		ScopeWriteUsers:    "Manage users (create, edit, delete)",
 		ScopeReadRoles:     "View role information",
 		ScopeWriteRoles:    "Manage roles (create, edit, delete)",
+		ScopeReadProjects:  "View project information",
+		ScopeWriteProjects: "Manage projects (create, edit, delete)",
 		ScopeReadAPIKeys:   "View API keys",
 		ScopeWriteAPIKeys:  "Manage API keys (create, edit, delete)",
 		ScopeReadRequests:  "View request records",

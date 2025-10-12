@@ -30,6 +30,8 @@ func (Request) Indexes() []ent.Index {
 			StorageKey("requests_by_user_id"),
 		index.Fields("api_key_id").
 			StorageKey("requests_by_api_key_id"),
+		index.Fields("project_id").
+			StorageKey("requests_by_project_id"),
 		index.Fields("channel_id").
 			StorageKey("requests_by_channel_id"),
 		// Performance indexes for dashboard queries
@@ -47,6 +49,10 @@ func (Request) Fields() []ent.Field {
 			Optional().
 			Immutable().
 			Comment("API Key ID of the request, null for the request from the Admin."),
+		field.Int("project_id").
+			Immutable().
+			Default(1).
+			Comment("Project ID, default to 1 for backward compatibility"),
 		field.Enum("source").Values("api", "playground", "test").Default("api").Immutable(),
 		field.String("model_id").Immutable(),
 		// The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
@@ -78,6 +84,12 @@ func (Request) Edges() []ent.Edge {
 			Immutable().
 			Unique(),
 		edge.From("api_key", APIKey.Type).Ref("requests").Field("api_key_id").Immutable().Unique(),
+		edge.From("project", Project.Type).
+			Ref("requests").
+			Field("project_id").
+			Immutable().
+			Required().
+			Unique(),
 		edge.To("executions", RequestExecution.Type).
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),

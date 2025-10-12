@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -30,6 +31,8 @@ type UsageLog struct {
 	UserID int `json:"user_id,omitempty"`
 	// Related request ID
 	RequestID int `json:"request_id,omitempty"`
+	// Project ID, default to 1 for backward compatibility
+	ProjectID int `json:"project_id,omitempty"`
 	// Channel ID used for the request
 	ChannelID int `json:"channel_id,omitempty"`
 	// Model identifier used for the request
@@ -68,13 +71,15 @@ type UsageLogEdges struct {
 	User *User `json:"user,omitempty"`
 	// Request holds the value of the request edge.
 	Request *Request `json:"request,omitempty"`
+	// Project holds the value of the project edge.
+	Project *Project `json:"project,omitempty"`
 	// Channel holds the value of the channel edge.
 	Channel *Channel `json:"channel,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 	// totalCount holds the count of the edges above.
-	totalCount [3]map[string]int
+	totalCount [4]map[string]int
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -99,12 +104,23 @@ func (e UsageLogEdges) RequestOrErr() (*Request, error) {
 	return nil, &NotLoadedError{edge: "request"}
 }
 
+// ProjectOrErr returns the Project value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e UsageLogEdges) ProjectOrErr() (*Project, error) {
+	if e.Project != nil {
+		return e.Project, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: project.Label}
+	}
+	return nil, &NotLoadedError{edge: "project"}
+}
+
 // ChannelOrErr returns the Channel value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
 func (e UsageLogEdges) ChannelOrErr() (*Channel, error) {
 	if e.Channel != nil {
 		return e.Channel, nil
-	} else if e.loadedTypes[2] {
+	} else if e.loadedTypes[3] {
 		return nil, &NotFoundError{label: channel.Label}
 	}
 	return nil, &NotLoadedError{edge: "channel"}
@@ -115,7 +131,7 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case usagelog.FieldID, usagelog.FieldDeletedAt, usagelog.FieldUserID, usagelog.FieldRequestID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
+		case usagelog.FieldID, usagelog.FieldDeletedAt, usagelog.FieldUserID, usagelog.FieldRequestID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
 			values[i] = new(sql.NullInt64)
 		case usagelog.FieldModelID, usagelog.FieldSource, usagelog.FieldFormat:
 			values[i] = new(sql.NullString)
@@ -130,7 +146,7 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the UsageLog fields.
-func (ul *UsageLog) assignValues(columns []string, values []any) error {
+func (_m *UsageLog) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -141,117 +157,123 @@ func (ul *UsageLog) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			ul.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case usagelog.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				ul.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case usagelog.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				ul.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case usagelog.FieldDeletedAt:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
 			} else if value.Valid {
-				ul.DeletedAt = int(value.Int64)
+				_m.DeletedAt = int(value.Int64)
 			}
 		case usagelog.FieldUserID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
-				ul.UserID = int(value.Int64)
+				_m.UserID = int(value.Int64)
 			}
 		case usagelog.FieldRequestID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field request_id", values[i])
 			} else if value.Valid {
-				ul.RequestID = int(value.Int64)
+				_m.RequestID = int(value.Int64)
+			}
+		case usagelog.FieldProjectID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field project_id", values[i])
+			} else if value.Valid {
+				_m.ProjectID = int(value.Int64)
 			}
 		case usagelog.FieldChannelID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field channel_id", values[i])
 			} else if value.Valid {
-				ul.ChannelID = int(value.Int64)
+				_m.ChannelID = int(value.Int64)
 			}
 		case usagelog.FieldModelID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field model_id", values[i])
 			} else if value.Valid {
-				ul.ModelID = value.String
+				_m.ModelID = value.String
 			}
 		case usagelog.FieldPromptTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field prompt_tokens", values[i])
 			} else if value.Valid {
-				ul.PromptTokens = value.Int64
+				_m.PromptTokens = value.Int64
 			}
 		case usagelog.FieldCompletionTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field completion_tokens", values[i])
 			} else if value.Valid {
-				ul.CompletionTokens = value.Int64
+				_m.CompletionTokens = value.Int64
 			}
 		case usagelog.FieldTotalTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field total_tokens", values[i])
 			} else if value.Valid {
-				ul.TotalTokens = value.Int64
+				_m.TotalTokens = value.Int64
 			}
 		case usagelog.FieldPromptAudioTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field prompt_audio_tokens", values[i])
 			} else if value.Valid {
-				ul.PromptAudioTokens = value.Int64
+				_m.PromptAudioTokens = value.Int64
 			}
 		case usagelog.FieldPromptCachedTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field prompt_cached_tokens", values[i])
 			} else if value.Valid {
-				ul.PromptCachedTokens = value.Int64
+				_m.PromptCachedTokens = value.Int64
 			}
 		case usagelog.FieldCompletionAudioTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field completion_audio_tokens", values[i])
 			} else if value.Valid {
-				ul.CompletionAudioTokens = value.Int64
+				_m.CompletionAudioTokens = value.Int64
 			}
 		case usagelog.FieldCompletionReasoningTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field completion_reasoning_tokens", values[i])
 			} else if value.Valid {
-				ul.CompletionReasoningTokens = value.Int64
+				_m.CompletionReasoningTokens = value.Int64
 			}
 		case usagelog.FieldCompletionAcceptedPredictionTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field completion_accepted_prediction_tokens", values[i])
 			} else if value.Valid {
-				ul.CompletionAcceptedPredictionTokens = value.Int64
+				_m.CompletionAcceptedPredictionTokens = value.Int64
 			}
 		case usagelog.FieldCompletionRejectedPredictionTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field completion_rejected_prediction_tokens", values[i])
 			} else if value.Valid {
-				ul.CompletionRejectedPredictionTokens = value.Int64
+				_m.CompletionRejectedPredictionTokens = value.Int64
 			}
 		case usagelog.FieldSource:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field source", values[i])
 			} else if value.Valid {
-				ul.Source = usagelog.Source(value.String)
+				_m.Source = usagelog.Source(value.String)
 			}
 		case usagelog.FieldFormat:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field format", values[i])
 			} else if value.Valid {
-				ul.Format = value.String
+				_m.Format = value.String
 			}
 		default:
-			ul.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -259,101 +281,109 @@ func (ul *UsageLog) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the UsageLog.
 // This includes values selected through modifiers, order, etc.
-func (ul *UsageLog) Value(name string) (ent.Value, error) {
-	return ul.selectValues.Get(name)
+func (_m *UsageLog) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryUser queries the "user" edge of the UsageLog entity.
-func (ul *UsageLog) QueryUser() *UserQuery {
-	return NewUsageLogClient(ul.config).QueryUser(ul)
+func (_m *UsageLog) QueryUser() *UserQuery {
+	return NewUsageLogClient(_m.config).QueryUser(_m)
 }
 
 // QueryRequest queries the "request" edge of the UsageLog entity.
-func (ul *UsageLog) QueryRequest() *RequestQuery {
-	return NewUsageLogClient(ul.config).QueryRequest(ul)
+func (_m *UsageLog) QueryRequest() *RequestQuery {
+	return NewUsageLogClient(_m.config).QueryRequest(_m)
+}
+
+// QueryProject queries the "project" edge of the UsageLog entity.
+func (_m *UsageLog) QueryProject() *ProjectQuery {
+	return NewUsageLogClient(_m.config).QueryProject(_m)
 }
 
 // QueryChannel queries the "channel" edge of the UsageLog entity.
-func (ul *UsageLog) QueryChannel() *ChannelQuery {
-	return NewUsageLogClient(ul.config).QueryChannel(ul)
+func (_m *UsageLog) QueryChannel() *ChannelQuery {
+	return NewUsageLogClient(_m.config).QueryChannel(_m)
 }
 
 // Update returns a builder for updating this UsageLog.
 // Note that you need to call UsageLog.Unwrap() before calling this method if this UsageLog
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (ul *UsageLog) Update() *UsageLogUpdateOne {
-	return NewUsageLogClient(ul.config).UpdateOne(ul)
+func (_m *UsageLog) Update() *UsageLogUpdateOne {
+	return NewUsageLogClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the UsageLog entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (ul *UsageLog) Unwrap() *UsageLog {
-	_tx, ok := ul.config.driver.(*txDriver)
+func (_m *UsageLog) Unwrap() *UsageLog {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: UsageLog is not a transactional entity")
 	}
-	ul.config.driver = _tx.drv
-	return ul
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (ul *UsageLog) String() string {
+func (_m *UsageLog) String() string {
 	var builder strings.Builder
 	builder.WriteString("UsageLog(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", ul.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(ul.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(ul.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", ul.DeletedAt))
+	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("user_id=")
-	builder.WriteString(fmt.Sprintf("%v", ul.UserID))
+	builder.WriteString(fmt.Sprintf("%v", _m.UserID))
 	builder.WriteString(", ")
 	builder.WriteString("request_id=")
-	builder.WriteString(fmt.Sprintf("%v", ul.RequestID))
+	builder.WriteString(fmt.Sprintf("%v", _m.RequestID))
+	builder.WriteString(", ")
+	builder.WriteString("project_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ProjectID))
 	builder.WriteString(", ")
 	builder.WriteString("channel_id=")
-	builder.WriteString(fmt.Sprintf("%v", ul.ChannelID))
+	builder.WriteString(fmt.Sprintf("%v", _m.ChannelID))
 	builder.WriteString(", ")
 	builder.WriteString("model_id=")
-	builder.WriteString(ul.ModelID)
+	builder.WriteString(_m.ModelID)
 	builder.WriteString(", ")
 	builder.WriteString("prompt_tokens=")
-	builder.WriteString(fmt.Sprintf("%v", ul.PromptTokens))
+	builder.WriteString(fmt.Sprintf("%v", _m.PromptTokens))
 	builder.WriteString(", ")
 	builder.WriteString("completion_tokens=")
-	builder.WriteString(fmt.Sprintf("%v", ul.CompletionTokens))
+	builder.WriteString(fmt.Sprintf("%v", _m.CompletionTokens))
 	builder.WriteString(", ")
 	builder.WriteString("total_tokens=")
-	builder.WriteString(fmt.Sprintf("%v", ul.TotalTokens))
+	builder.WriteString(fmt.Sprintf("%v", _m.TotalTokens))
 	builder.WriteString(", ")
 	builder.WriteString("prompt_audio_tokens=")
-	builder.WriteString(fmt.Sprintf("%v", ul.PromptAudioTokens))
+	builder.WriteString(fmt.Sprintf("%v", _m.PromptAudioTokens))
 	builder.WriteString(", ")
 	builder.WriteString("prompt_cached_tokens=")
-	builder.WriteString(fmt.Sprintf("%v", ul.PromptCachedTokens))
+	builder.WriteString(fmt.Sprintf("%v", _m.PromptCachedTokens))
 	builder.WriteString(", ")
 	builder.WriteString("completion_audio_tokens=")
-	builder.WriteString(fmt.Sprintf("%v", ul.CompletionAudioTokens))
+	builder.WriteString(fmt.Sprintf("%v", _m.CompletionAudioTokens))
 	builder.WriteString(", ")
 	builder.WriteString("completion_reasoning_tokens=")
-	builder.WriteString(fmt.Sprintf("%v", ul.CompletionReasoningTokens))
+	builder.WriteString(fmt.Sprintf("%v", _m.CompletionReasoningTokens))
 	builder.WriteString(", ")
 	builder.WriteString("completion_accepted_prediction_tokens=")
-	builder.WriteString(fmt.Sprintf("%v", ul.CompletionAcceptedPredictionTokens))
+	builder.WriteString(fmt.Sprintf("%v", _m.CompletionAcceptedPredictionTokens))
 	builder.WriteString(", ")
 	builder.WriteString("completion_rejected_prediction_tokens=")
-	builder.WriteString(fmt.Sprintf("%v", ul.CompletionRejectedPredictionTokens))
+	builder.WriteString(fmt.Sprintf("%v", _m.CompletionRejectedPredictionTokens))
 	builder.WriteString(", ")
 	builder.WriteString("source=")
-	builder.WriteString(fmt.Sprintf("%v", ul.Source))
+	builder.WriteString(fmt.Sprintf("%v", _m.Source))
 	builder.WriteString(", ")
 	builder.WriteString("format=")
-	builder.WriteString(ul.Format)
+	builder.WriteString(_m.Format)
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -15,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/objects"
 
 	"entgo.io/ent"
@@ -60,12 +62,16 @@ func init() {
 	apikeyDescDeletedAt := apikeyMixinFields1[0].Descriptor()
 	// apikey.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	apikey.DefaultDeletedAt = apikeyDescDeletedAt.Default.(int)
+	// apikeyDescProjectID is the schema descriptor for project_id field.
+	apikeyDescProjectID := apikeyFields[1].Descriptor()
+	// apikey.DefaultProjectID holds the default value on creation for the project_id field.
+	apikey.DefaultProjectID = apikeyDescProjectID.Default.(int)
 	// apikeyDescScopes is the schema descriptor for scopes field.
-	apikeyDescScopes := apikeyFields[4].Descriptor()
+	apikeyDescScopes := apikeyFields[5].Descriptor()
 	// apikey.DefaultScopes holds the default value on creation for the scopes field.
 	apikey.DefaultScopes = apikeyDescScopes.Default.([]string)
 	// apikeyDescProfiles is the schema descriptor for profiles field.
-	apikeyDescProfiles := apikeyFields[5].Descriptor()
+	apikeyDescProfiles := apikeyFields[6].Descriptor()
 	// apikey.DefaultProfiles holds the default value on creation for the profiles field.
 	apikey.DefaultProfiles = apikeyDescProfiles.Default.(*objects.APIKeyProfiles)
 	channelMixin := schema.Channel{}.Mixin()
@@ -115,6 +121,45 @@ func init() {
 	channelDescOrderingWeight := channelFields[8].Descriptor()
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
+	projectMixin := schema.Project{}.Mixin()
+	project.Policy = privacy.NewPolicies(schema.Project{})
+	project.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := project.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	projectMixinHooks1 := projectMixin[1].Hooks()
+
+	project.Hooks[1] = projectMixinHooks1[0]
+	projectMixinInters1 := projectMixin[1].Interceptors()
+	project.Interceptors[0] = projectMixinInters1[0]
+	projectMixinFields0 := projectMixin[0].Fields()
+	_ = projectMixinFields0
+	projectMixinFields1 := projectMixin[1].Fields()
+	_ = projectMixinFields1
+	projectFields := schema.Project{}.Fields()
+	_ = projectFields
+	// projectDescCreatedAt is the schema descriptor for created_at field.
+	projectDescCreatedAt := projectMixinFields0[0].Descriptor()
+	// project.DefaultCreatedAt holds the default value on creation for the created_at field.
+	project.DefaultCreatedAt = projectDescCreatedAt.Default.(func() time.Time)
+	// projectDescUpdatedAt is the schema descriptor for updated_at field.
+	projectDescUpdatedAt := projectMixinFields0[1].Descriptor()
+	// project.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	project.DefaultUpdatedAt = projectDescUpdatedAt.Default.(func() time.Time)
+	// project.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	project.UpdateDefaultUpdatedAt = projectDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// projectDescDeletedAt is the schema descriptor for deleted_at field.
+	projectDescDeletedAt := projectMixinFields1[0].Descriptor()
+	// project.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	project.DefaultDeletedAt = projectDescDeletedAt.Default.(int)
+	// projectDescDescription is the schema descriptor for description field.
+	projectDescDescription := projectFields[2].Descriptor()
+	// project.DefaultDescription holds the default value on creation for the description field.
+	project.DefaultDescription = projectDescDescription.Default.(string)
 	requestMixin := schema.Request{}.Mixin()
 	request.Policy = privacy.NewPolicies(schema.Request{})
 	request.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -150,12 +195,16 @@ func init() {
 	requestDescDeletedAt := requestMixinFields1[0].Descriptor()
 	// request.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	request.DefaultDeletedAt = requestDescDeletedAt.Default.(int)
+	// requestDescProjectID is the schema descriptor for project_id field.
+	requestDescProjectID := requestFields[2].Descriptor()
+	// request.DefaultProjectID holds the default value on creation for the project_id field.
+	request.DefaultProjectID = requestDescProjectID.Default.(int)
 	// requestDescFormat is the schema descriptor for format field.
-	requestDescFormat := requestFields[4].Descriptor()
+	requestDescFormat := requestFields[5].Descriptor()
 	// request.DefaultFormat holds the default value on creation for the format field.
 	request.DefaultFormat = requestDescFormat.Default.(string)
 	// requestDescStream is the schema descriptor for stream field.
-	requestDescStream := requestFields[11].Descriptor()
+	requestDescStream := requestFields[12].Descriptor()
 	// request.DefaultStream holds the default value on creation for the stream field.
 	request.DefaultStream = requestDescStream.Default.(bool)
 	requestexecutionMixin := schema.RequestExecution{}.Mixin()
@@ -173,8 +222,12 @@ func init() {
 	requestexecution.DefaultUpdatedAt = requestexecutionDescUpdatedAt.Default.(func() time.Time)
 	// requestexecution.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	requestexecution.UpdateDefaultUpdatedAt = requestexecutionDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// requestexecutionDescProjectID is the schema descriptor for project_id field.
+	requestexecutionDescProjectID := requestexecutionFields[1].Descriptor()
+	// requestexecution.DefaultProjectID holds the default value on creation for the project_id field.
+	requestexecution.DefaultProjectID = requestexecutionDescProjectID.Default.(int)
 	// requestexecutionDescFormat is the schema descriptor for format field.
-	requestexecutionDescFormat := requestexecutionFields[5].Descriptor()
+	requestexecutionDescFormat := requestexecutionFields[6].Descriptor()
 	// requestexecution.DefaultFormat holds the default value on creation for the format field.
 	requestexecution.DefaultFormat = requestexecutionDescFormat.Default.(string)
 	roleMixin := schema.Role{}.Mixin()
@@ -213,7 +266,7 @@ func init() {
 	// role.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	role.DefaultDeletedAt = roleDescDeletedAt.Default.(int)
 	// roleDescScopes is the schema descriptor for scopes field.
-	roleDescScopes := roleFields[2].Descriptor()
+	roleDescScopes := roleFields[4].Descriptor()
 	// role.DefaultScopes holds the default value on creation for the scopes field.
 	role.DefaultScopes = roleDescScopes.Default.([]string)
 	systemMixin := schema.System{}.Mixin()
@@ -286,44 +339,48 @@ func init() {
 	usagelogDescDeletedAt := usagelogMixinFields1[0].Descriptor()
 	// usagelog.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	usagelog.DefaultDeletedAt = usagelogDescDeletedAt.Default.(int)
+	// usagelogDescProjectID is the schema descriptor for project_id field.
+	usagelogDescProjectID := usagelogFields[2].Descriptor()
+	// usagelog.DefaultProjectID holds the default value on creation for the project_id field.
+	usagelog.DefaultProjectID = usagelogDescProjectID.Default.(int)
 	// usagelogDescPromptTokens is the schema descriptor for prompt_tokens field.
-	usagelogDescPromptTokens := usagelogFields[4].Descriptor()
+	usagelogDescPromptTokens := usagelogFields[5].Descriptor()
 	// usagelog.DefaultPromptTokens holds the default value on creation for the prompt_tokens field.
 	usagelog.DefaultPromptTokens = usagelogDescPromptTokens.Default.(int64)
 	// usagelogDescCompletionTokens is the schema descriptor for completion_tokens field.
-	usagelogDescCompletionTokens := usagelogFields[5].Descriptor()
+	usagelogDescCompletionTokens := usagelogFields[6].Descriptor()
 	// usagelog.DefaultCompletionTokens holds the default value on creation for the completion_tokens field.
 	usagelog.DefaultCompletionTokens = usagelogDescCompletionTokens.Default.(int64)
 	// usagelogDescTotalTokens is the schema descriptor for total_tokens field.
-	usagelogDescTotalTokens := usagelogFields[6].Descriptor()
+	usagelogDescTotalTokens := usagelogFields[7].Descriptor()
 	// usagelog.DefaultTotalTokens holds the default value on creation for the total_tokens field.
 	usagelog.DefaultTotalTokens = usagelogDescTotalTokens.Default.(int64)
 	// usagelogDescPromptAudioTokens is the schema descriptor for prompt_audio_tokens field.
-	usagelogDescPromptAudioTokens := usagelogFields[7].Descriptor()
+	usagelogDescPromptAudioTokens := usagelogFields[8].Descriptor()
 	// usagelog.DefaultPromptAudioTokens holds the default value on creation for the prompt_audio_tokens field.
 	usagelog.DefaultPromptAudioTokens = usagelogDescPromptAudioTokens.Default.(int64)
 	// usagelogDescPromptCachedTokens is the schema descriptor for prompt_cached_tokens field.
-	usagelogDescPromptCachedTokens := usagelogFields[8].Descriptor()
+	usagelogDescPromptCachedTokens := usagelogFields[9].Descriptor()
 	// usagelog.DefaultPromptCachedTokens holds the default value on creation for the prompt_cached_tokens field.
 	usagelog.DefaultPromptCachedTokens = usagelogDescPromptCachedTokens.Default.(int64)
 	// usagelogDescCompletionAudioTokens is the schema descriptor for completion_audio_tokens field.
-	usagelogDescCompletionAudioTokens := usagelogFields[9].Descriptor()
+	usagelogDescCompletionAudioTokens := usagelogFields[10].Descriptor()
 	// usagelog.DefaultCompletionAudioTokens holds the default value on creation for the completion_audio_tokens field.
 	usagelog.DefaultCompletionAudioTokens = usagelogDescCompletionAudioTokens.Default.(int64)
 	// usagelogDescCompletionReasoningTokens is the schema descriptor for completion_reasoning_tokens field.
-	usagelogDescCompletionReasoningTokens := usagelogFields[10].Descriptor()
+	usagelogDescCompletionReasoningTokens := usagelogFields[11].Descriptor()
 	// usagelog.DefaultCompletionReasoningTokens holds the default value on creation for the completion_reasoning_tokens field.
 	usagelog.DefaultCompletionReasoningTokens = usagelogDescCompletionReasoningTokens.Default.(int64)
 	// usagelogDescCompletionAcceptedPredictionTokens is the schema descriptor for completion_accepted_prediction_tokens field.
-	usagelogDescCompletionAcceptedPredictionTokens := usagelogFields[11].Descriptor()
+	usagelogDescCompletionAcceptedPredictionTokens := usagelogFields[12].Descriptor()
 	// usagelog.DefaultCompletionAcceptedPredictionTokens holds the default value on creation for the completion_accepted_prediction_tokens field.
 	usagelog.DefaultCompletionAcceptedPredictionTokens = usagelogDescCompletionAcceptedPredictionTokens.Default.(int64)
 	// usagelogDescCompletionRejectedPredictionTokens is the schema descriptor for completion_rejected_prediction_tokens field.
-	usagelogDescCompletionRejectedPredictionTokens := usagelogFields[12].Descriptor()
+	usagelogDescCompletionRejectedPredictionTokens := usagelogFields[13].Descriptor()
 	// usagelog.DefaultCompletionRejectedPredictionTokens holds the default value on creation for the completion_rejected_prediction_tokens field.
 	usagelog.DefaultCompletionRejectedPredictionTokens = usagelogDescCompletionRejectedPredictionTokens.Default.(int64)
 	// usagelogDescFormat is the schema descriptor for format field.
-	usagelogDescFormat := usagelogFields[14].Descriptor()
+	usagelogDescFormat := usagelogFields[15].Descriptor()
 	// usagelog.DefaultFormat holds the default value on creation for the format field.
 	usagelog.DefaultFormat = usagelogDescFormat.Default.(string)
 	userMixin := schema.User{}.Mixin()
@@ -381,9 +438,42 @@ func init() {
 	userDescScopes := userFields[8].Descriptor()
 	// user.DefaultScopes holds the default value on creation for the scopes field.
 	user.DefaultScopes = userDescScopes.Default.([]string)
+	userprojectMixin := schema.UserProject{}.Mixin()
+	userprojectMixinHooks1 := userprojectMixin[1].Hooks()
+	userproject.Hooks[0] = userprojectMixinHooks1[0]
+	userprojectMixinInters1 := userprojectMixin[1].Interceptors()
+	userproject.Interceptors[0] = userprojectMixinInters1[0]
+	userprojectMixinFields0 := userprojectMixin[0].Fields()
+	_ = userprojectMixinFields0
+	userprojectMixinFields1 := userprojectMixin[1].Fields()
+	_ = userprojectMixinFields1
+	userprojectFields := schema.UserProject{}.Fields()
+	_ = userprojectFields
+	// userprojectDescCreatedAt is the schema descriptor for created_at field.
+	userprojectDescCreatedAt := userprojectMixinFields0[0].Descriptor()
+	// userproject.DefaultCreatedAt holds the default value on creation for the created_at field.
+	userproject.DefaultCreatedAt = userprojectDescCreatedAt.Default.(func() time.Time)
+	// userprojectDescUpdatedAt is the schema descriptor for updated_at field.
+	userprojectDescUpdatedAt := userprojectMixinFields0[1].Descriptor()
+	// userproject.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	userproject.DefaultUpdatedAt = userprojectDescUpdatedAt.Default.(func() time.Time)
+	// userproject.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	userproject.UpdateDefaultUpdatedAt = userprojectDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// userprojectDescDeletedAt is the schema descriptor for deleted_at field.
+	userprojectDescDeletedAt := userprojectMixinFields1[0].Descriptor()
+	// userproject.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	userproject.DefaultDeletedAt = userprojectDescDeletedAt.Default.(int)
+	// userprojectDescIsOwner is the schema descriptor for is_owner field.
+	userprojectDescIsOwner := userprojectFields[2].Descriptor()
+	// userproject.DefaultIsOwner holds the default value on creation for the is_owner field.
+	userproject.DefaultIsOwner = userprojectDescIsOwner.Default.(bool)
+	// userprojectDescScopes is the schema descriptor for scopes field.
+	userprojectDescScopes := userprojectFields[3].Descriptor()
+	// userproject.DefaultScopes holds the default value on creation for the scopes field.
+	userproject.DefaultScopes = userprojectDescScopes.Default.([]string)
 }
 
 const (
-	Version = "v0.14.4"                                         // Version of ent codegen.
-	Sum     = "h1:/DhDraSLXIkBhyiVoJeSshr4ZYi7femzhj6/TckzZuI=" // Sum of ent codegen.
+	Version = "v0.14.5"                                         // Version of ent codegen.
+	Sum     = "h1:Rj2WOYJtCkWyFo6a+5wB3EfBRP0rnx1fMk6gGA0UUe4=" // Sum of ent codegen.
 )

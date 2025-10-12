@@ -14,12 +14,14 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userproject"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -77,20 +79,22 @@ var (
 )
 
 // checkColumn checks if the column exists in the given table.
-func checkColumn(table, column string) error {
+func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			apikey.Table:           apikey.ValidColumn,
 			channel.Table:          channel.ValidColumn,
+			project.Table:          project.ValidColumn,
 			request.Table:          request.ValidColumn,
 			requestexecution.Table: requestexecution.ValidColumn,
 			role.Table:             role.ValidColumn,
 			system.Table:           system.ValidColumn,
 			usagelog.Table:         usagelog.ValidColumn,
 			user.Table:             user.ValidColumn,
+			userproject.Table:      userproject.ValidColumn,
 		})
 	})
-	return columnCheck(table, column)
+	return columnCheck(t, c)
 }
 
 // Asc applies the given fields in ASC order.

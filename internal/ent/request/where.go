@@ -80,6 +80,11 @@ func APIKeyID(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldAPIKeyID, v))
 }
 
+// ProjectID applies equality check predicate on the "project_id" field. It's identical to ProjectIDEQ.
+func ProjectID(v int) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldProjectID, v))
+}
+
 // ModelID applies equality check predicate on the "model_id" field. It's identical to ModelIDEQ.
 func ModelID(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldModelID, v))
@@ -273,6 +278,26 @@ func APIKeyIDIsNil() predicate.Request {
 // APIKeyIDNotNil applies the NotNil predicate on the "api_key_id" field.
 func APIKeyIDNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldAPIKeyID))
+}
+
+// ProjectIDEQ applies the EQ predicate on the "project_id" field.
+func ProjectIDEQ(v int) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldProjectID, v))
+}
+
+// ProjectIDNEQ applies the NEQ predicate on the "project_id" field.
+func ProjectIDNEQ(v int) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldProjectID, v))
+}
+
+// ProjectIDIn applies the In predicate on the "project_id" field.
+func ProjectIDIn(vs ...int) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldProjectID, vs...))
+}
+
+// ProjectIDNotIn applies the NotIn predicate on the "project_id" field.
+func ProjectIDNotIn(vs ...int) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldProjectID, vs...))
 }
 
 // SourceEQ applies the EQ predicate on the "source" field.
@@ -618,6 +643,29 @@ func HasAPIKey() predicate.Request {
 func HasAPIKeyWith(preds ...predicate.APIKey) predicate.Request {
 	return predicate.Request(func(s *sql.Selector) {
 		step := newAPIKeyStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasProject applies the HasEdge predicate on the "project" edge.
+func HasProject() predicate.Request {
+	return predicate.Request(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, ProjectTable, ProjectColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasProjectWith applies the HasEdge predicate on the "project" edge with a given conditions (other predicates).
+func HasProjectWith(preds ...predicate.Project) predicate.Request {
+	return predicate.Request(func(s *sql.Selector) {
+		step := newProjectStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

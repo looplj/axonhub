@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
@@ -26,127 +27,146 @@ type APIKeyCreate struct {
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (akc *APIKeyCreate) SetCreatedAt(t time.Time) *APIKeyCreate {
-	akc.mutation.SetCreatedAt(t)
-	return akc
+func (_c *APIKeyCreate) SetCreatedAt(v time.Time) *APIKeyCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (akc *APIKeyCreate) SetNillableCreatedAt(t *time.Time) *APIKeyCreate {
-	if t != nil {
-		akc.SetCreatedAt(*t)
+func (_c *APIKeyCreate) SetNillableCreatedAt(v *time.Time) *APIKeyCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
 	}
-	return akc
+	return _c
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (akc *APIKeyCreate) SetUpdatedAt(t time.Time) *APIKeyCreate {
-	akc.mutation.SetUpdatedAt(t)
-	return akc
+func (_c *APIKeyCreate) SetUpdatedAt(v time.Time) *APIKeyCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
 }
 
 // SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (akc *APIKeyCreate) SetNillableUpdatedAt(t *time.Time) *APIKeyCreate {
-	if t != nil {
-		akc.SetUpdatedAt(*t)
+func (_c *APIKeyCreate) SetNillableUpdatedAt(v *time.Time) *APIKeyCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
 	}
-	return akc
+	return _c
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (akc *APIKeyCreate) SetDeletedAt(i int) *APIKeyCreate {
-	akc.mutation.SetDeletedAt(i)
-	return akc
+func (_c *APIKeyCreate) SetDeletedAt(v int) *APIKeyCreate {
+	_c.mutation.SetDeletedAt(v)
+	return _c
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (akc *APIKeyCreate) SetNillableDeletedAt(i *int) *APIKeyCreate {
-	if i != nil {
-		akc.SetDeletedAt(*i)
+func (_c *APIKeyCreate) SetNillableDeletedAt(v *int) *APIKeyCreate {
+	if v != nil {
+		_c.SetDeletedAt(*v)
 	}
-	return akc
+	return _c
 }
 
 // SetUserID sets the "user_id" field.
-func (akc *APIKeyCreate) SetUserID(i int) *APIKeyCreate {
-	akc.mutation.SetUserID(i)
-	return akc
+func (_c *APIKeyCreate) SetUserID(v int) *APIKeyCreate {
+	_c.mutation.SetUserID(v)
+	return _c
+}
+
+// SetProjectID sets the "project_id" field.
+func (_c *APIKeyCreate) SetProjectID(v int) *APIKeyCreate {
+	_c.mutation.SetProjectID(v)
+	return _c
+}
+
+// SetNillableProjectID sets the "project_id" field if the given value is not nil.
+func (_c *APIKeyCreate) SetNillableProjectID(v *int) *APIKeyCreate {
+	if v != nil {
+		_c.SetProjectID(*v)
+	}
+	return _c
 }
 
 // SetKey sets the "key" field.
-func (akc *APIKeyCreate) SetKey(s string) *APIKeyCreate {
-	akc.mutation.SetKey(s)
-	return akc
+func (_c *APIKeyCreate) SetKey(v string) *APIKeyCreate {
+	_c.mutation.SetKey(v)
+	return _c
 }
 
 // SetName sets the "name" field.
-func (akc *APIKeyCreate) SetName(s string) *APIKeyCreate {
-	akc.mutation.SetName(s)
-	return akc
+func (_c *APIKeyCreate) SetName(v string) *APIKeyCreate {
+	_c.mutation.SetName(v)
+	return _c
 }
 
 // SetStatus sets the "status" field.
-func (akc *APIKeyCreate) SetStatus(a apikey.Status) *APIKeyCreate {
-	akc.mutation.SetStatus(a)
-	return akc
+func (_c *APIKeyCreate) SetStatus(v apikey.Status) *APIKeyCreate {
+	_c.mutation.SetStatus(v)
+	return _c
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (akc *APIKeyCreate) SetNillableStatus(a *apikey.Status) *APIKeyCreate {
-	if a != nil {
-		akc.SetStatus(*a)
+func (_c *APIKeyCreate) SetNillableStatus(v *apikey.Status) *APIKeyCreate {
+	if v != nil {
+		_c.SetStatus(*v)
 	}
-	return akc
+	return _c
 }
 
 // SetScopes sets the "scopes" field.
-func (akc *APIKeyCreate) SetScopes(s []string) *APIKeyCreate {
-	akc.mutation.SetScopes(s)
-	return akc
+func (_c *APIKeyCreate) SetScopes(v []string) *APIKeyCreate {
+	_c.mutation.SetScopes(v)
+	return _c
 }
 
 // SetProfiles sets the "profiles" field.
-func (akc *APIKeyCreate) SetProfiles(okp *objects.APIKeyProfiles) *APIKeyCreate {
-	akc.mutation.SetProfiles(okp)
-	return akc
+func (_c *APIKeyCreate) SetProfiles(v *objects.APIKeyProfiles) *APIKeyCreate {
+	_c.mutation.SetProfiles(v)
+	return _c
 }
 
 // SetUser sets the "user" edge to the User entity.
-func (akc *APIKeyCreate) SetUser(u *User) *APIKeyCreate {
-	return akc.SetUserID(u.ID)
+func (_c *APIKeyCreate) SetUser(v *User) *APIKeyCreate {
+	return _c.SetUserID(v.ID)
+}
+
+// SetProject sets the "project" edge to the Project entity.
+func (_c *APIKeyCreate) SetProject(v *Project) *APIKeyCreate {
+	return _c.SetProjectID(v.ID)
 }
 
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
-func (akc *APIKeyCreate) AddRequestIDs(ids ...int) *APIKeyCreate {
-	akc.mutation.AddRequestIDs(ids...)
-	return akc
+func (_c *APIKeyCreate) AddRequestIDs(ids ...int) *APIKeyCreate {
+	_c.mutation.AddRequestIDs(ids...)
+	return _c
 }
 
 // AddRequests adds the "requests" edges to the Request entity.
-func (akc *APIKeyCreate) AddRequests(r ...*Request) *APIKeyCreate {
-	ids := make([]int, len(r))
-	for i := range r {
-		ids[i] = r[i].ID
+func (_c *APIKeyCreate) AddRequests(v ...*Request) *APIKeyCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return akc.AddRequestIDs(ids...)
+	return _c.AddRequestIDs(ids...)
 }
 
 // Mutation returns the APIKeyMutation object of the builder.
-func (akc *APIKeyCreate) Mutation() *APIKeyMutation {
-	return akc.mutation
+func (_c *APIKeyCreate) Mutation() *APIKeyMutation {
+	return _c.mutation
 }
 
 // Save creates the APIKey in the database.
-func (akc *APIKeyCreate) Save(ctx context.Context) (*APIKey, error) {
-	if err := akc.defaults(); err != nil {
+func (_c *APIKeyCreate) Save(ctx context.Context) (*APIKey, error) {
+	if err := _c.defaults(); err != nil {
 		return nil, err
 	}
-	return withHooks(ctx, akc.sqlSave, akc.mutation, akc.hooks)
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (akc *APIKeyCreate) SaveX(ctx context.Context) *APIKey {
-	v, err := akc.Save(ctx)
+func (_c *APIKeyCreate) SaveX(ctx context.Context) *APIKey {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -154,93 +174,103 @@ func (akc *APIKeyCreate) SaveX(ctx context.Context) *APIKey {
 }
 
 // Exec executes the query.
-func (akc *APIKeyCreate) Exec(ctx context.Context) error {
-	_, err := akc.Save(ctx)
+func (_c *APIKeyCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (akc *APIKeyCreate) ExecX(ctx context.Context) {
-	if err := akc.Exec(ctx); err != nil {
+func (_c *APIKeyCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (akc *APIKeyCreate) defaults() error {
-	if _, ok := akc.mutation.CreatedAt(); !ok {
+func (_c *APIKeyCreate) defaults() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		if apikey.DefaultCreatedAt == nil {
 			return fmt.Errorf("ent: uninitialized apikey.DefaultCreatedAt (forgotten import ent/runtime?)")
 		}
 		v := apikey.DefaultCreatedAt()
-		akc.mutation.SetCreatedAt(v)
+		_c.mutation.SetCreatedAt(v)
 	}
-	if _, ok := akc.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		if apikey.DefaultUpdatedAt == nil {
 			return fmt.Errorf("ent: uninitialized apikey.DefaultUpdatedAt (forgotten import ent/runtime?)")
 		}
 		v := apikey.DefaultUpdatedAt()
-		akc.mutation.SetUpdatedAt(v)
+		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := akc.mutation.DeletedAt(); !ok {
+	if _, ok := _c.mutation.DeletedAt(); !ok {
 		v := apikey.DefaultDeletedAt
-		akc.mutation.SetDeletedAt(v)
+		_c.mutation.SetDeletedAt(v)
 	}
-	if _, ok := akc.mutation.Status(); !ok {
+	if _, ok := _c.mutation.ProjectID(); !ok {
+		v := apikey.DefaultProjectID
+		_c.mutation.SetProjectID(v)
+	}
+	if _, ok := _c.mutation.Status(); !ok {
 		v := apikey.DefaultStatus
-		akc.mutation.SetStatus(v)
+		_c.mutation.SetStatus(v)
 	}
-	if _, ok := akc.mutation.Scopes(); !ok {
+	if _, ok := _c.mutation.Scopes(); !ok {
 		v := apikey.DefaultScopes
-		akc.mutation.SetScopes(v)
+		_c.mutation.SetScopes(v)
 	}
-	if _, ok := akc.mutation.Profiles(); !ok {
+	if _, ok := _c.mutation.Profiles(); !ok {
 		v := apikey.DefaultProfiles
-		akc.mutation.SetProfiles(v)
+		_c.mutation.SetProfiles(v)
 	}
 	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (akc *APIKeyCreate) check() error {
-	if _, ok := akc.mutation.CreatedAt(); !ok {
+func (_c *APIKeyCreate) check() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "APIKey.created_at"`)}
 	}
-	if _, ok := akc.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "APIKey.updated_at"`)}
 	}
-	if _, ok := akc.mutation.DeletedAt(); !ok {
+	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "APIKey.deleted_at"`)}
 	}
-	if _, ok := akc.mutation.UserID(); !ok {
+	if _, ok := _c.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "APIKey.user_id"`)}
 	}
-	if _, ok := akc.mutation.Key(); !ok {
+	if _, ok := _c.mutation.ProjectID(); !ok {
+		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "APIKey.project_id"`)}
+	}
+	if _, ok := _c.mutation.Key(); !ok {
 		return &ValidationError{Name: "key", err: errors.New(`ent: missing required field "APIKey.key"`)}
 	}
-	if _, ok := akc.mutation.Name(); !ok {
+	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "APIKey.name"`)}
 	}
-	if _, ok := akc.mutation.Status(); !ok {
+	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "APIKey.status"`)}
 	}
-	if v, ok := akc.mutation.Status(); ok {
+	if v, ok := _c.mutation.Status(); ok {
 		if err := apikey.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "APIKey.status": %w`, err)}
 		}
 	}
-	if len(akc.mutation.UserIDs()) == 0 {
+	if len(_c.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "APIKey.user"`)}
+	}
+	if len(_c.mutation.ProjectIDs()) == 0 {
+		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "APIKey.project"`)}
 	}
 	return nil
 }
 
-func (akc *APIKeyCreate) sqlSave(ctx context.Context) (*APIKey, error) {
-	if err := akc.check(); err != nil {
+func (_c *APIKeyCreate) sqlSave(ctx context.Context) (*APIKey, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := akc.createSpec()
-	if err := sqlgraph.CreateNode(ctx, akc.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -248,50 +278,50 @@ func (akc *APIKeyCreate) sqlSave(ctx context.Context) (*APIKey, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	akc.mutation.id = &_node.ID
-	akc.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
+func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	var (
-		_node = &APIKey{config: akc.config}
+		_node = &APIKey{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(apikey.Table, sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt))
 	)
-	_spec.OnConflict = akc.conflict
-	if value, ok := akc.mutation.CreatedAt(); ok {
+	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(apikey.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if value, ok := akc.mutation.UpdatedAt(); ok {
+	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(apikey.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := akc.mutation.DeletedAt(); ok {
+	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(apikey.FieldDeletedAt, field.TypeInt, value)
 		_node.DeletedAt = value
 	}
-	if value, ok := akc.mutation.Key(); ok {
+	if value, ok := _c.mutation.Key(); ok {
 		_spec.SetField(apikey.FieldKey, field.TypeString, value)
 		_node.Key = value
 	}
-	if value, ok := akc.mutation.Name(); ok {
+	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(apikey.FieldName, field.TypeString, value)
 		_node.Name = value
 	}
-	if value, ok := akc.mutation.Status(); ok {
+	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(apikey.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
 	}
-	if value, ok := akc.mutation.Scopes(); ok {
+	if value, ok := _c.mutation.Scopes(); ok {
 		_spec.SetField(apikey.FieldScopes, field.TypeJSON, value)
 		_node.Scopes = value
 	}
-	if value, ok := akc.mutation.Profiles(); ok {
+	if value, ok := _c.mutation.Profiles(); ok {
 		_spec.SetField(apikey.FieldProfiles, field.TypeJSON, value)
 		_node.Profiles = value
 	}
-	if nodes := akc.mutation.UserIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -308,7 +338,24 @@ func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 		_node.UserID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := akc.mutation.RequestsIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ProjectIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   apikey.ProjectTable,
+			Columns: []string{apikey.ProjectColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.ProjectID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.RequestsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -343,10 +390,10 @@ func (akc *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (akc *APIKeyCreate) OnConflict(opts ...sql.ConflictOption) *APIKeyUpsertOne {
-	akc.conflict = opts
+func (_c *APIKeyCreate) OnConflict(opts ...sql.ConflictOption) *APIKeyUpsertOne {
+	_c.conflict = opts
 	return &APIKeyUpsertOne{
-		create: akc,
+		create: _c,
 	}
 }
 
@@ -356,10 +403,10 @@ func (akc *APIKeyCreate) OnConflict(opts ...sql.ConflictOption) *APIKeyUpsertOne
 //	client.APIKey.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (akc *APIKeyCreate) OnConflictColumns(columns ...string) *APIKeyUpsertOne {
-	akc.conflict = append(akc.conflict, sql.ConflictColumns(columns...))
+func (_c *APIKeyCreate) OnConflictColumns(columns ...string) *APIKeyUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &APIKeyUpsertOne{
-		create: akc,
+		create: _c,
 	}
 }
 
@@ -482,6 +529,9 @@ func (u *APIKeyUpsertOne) UpdateNewValues() *APIKeyUpsertOne {
 		}
 		if _, exists := u.create.mutation.UserID(); exists {
 			s.SetIgnore(apikey.FieldUserID)
+		}
+		if _, exists := u.create.mutation.ProjectID(); exists {
+			s.SetIgnore(apikey.FieldProjectID)
 		}
 		if _, exists := u.create.mutation.Key(); exists {
 			s.SetIgnore(apikey.FieldKey)
@@ -664,16 +714,16 @@ type APIKeyCreateBulk struct {
 }
 
 // Save creates the APIKey entities in the database.
-func (akcb *APIKeyCreateBulk) Save(ctx context.Context) ([]*APIKey, error) {
-	if akcb.err != nil {
-		return nil, akcb.err
+func (_c *APIKeyCreateBulk) Save(ctx context.Context) ([]*APIKey, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(akcb.builders))
-	nodes := make([]*APIKey, len(akcb.builders))
-	mutators := make([]Mutator, len(akcb.builders))
-	for i := range akcb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*APIKey, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := akcb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*APIKeyMutation)
@@ -687,12 +737,12 @@ func (akcb *APIKeyCreateBulk) Save(ctx context.Context) ([]*APIKey, error) {
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, akcb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = akcb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, akcb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -716,7 +766,7 @@ func (akcb *APIKeyCreateBulk) Save(ctx context.Context) ([]*APIKey, error) {
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, akcb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -724,8 +774,8 @@ func (akcb *APIKeyCreateBulk) Save(ctx context.Context) ([]*APIKey, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (akcb *APIKeyCreateBulk) SaveX(ctx context.Context) []*APIKey {
-	v, err := akcb.Save(ctx)
+func (_c *APIKeyCreateBulk) SaveX(ctx context.Context) []*APIKey {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -733,14 +783,14 @@ func (akcb *APIKeyCreateBulk) SaveX(ctx context.Context) []*APIKey {
 }
 
 // Exec executes the query.
-func (akcb *APIKeyCreateBulk) Exec(ctx context.Context) error {
-	_, err := akcb.Save(ctx)
+func (_c *APIKeyCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (akcb *APIKeyCreateBulk) ExecX(ctx context.Context) {
-	if err := akcb.Exec(ctx); err != nil {
+func (_c *APIKeyCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -760,10 +810,10 @@ func (akcb *APIKeyCreateBulk) ExecX(ctx context.Context) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (akcb *APIKeyCreateBulk) OnConflict(opts ...sql.ConflictOption) *APIKeyUpsertBulk {
-	akcb.conflict = opts
+func (_c *APIKeyCreateBulk) OnConflict(opts ...sql.ConflictOption) *APIKeyUpsertBulk {
+	_c.conflict = opts
 	return &APIKeyUpsertBulk{
-		create: akcb,
+		create: _c,
 	}
 }
 
@@ -773,10 +823,10 @@ func (akcb *APIKeyCreateBulk) OnConflict(opts ...sql.ConflictOption) *APIKeyUpse
 //	client.APIKey.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (akcb *APIKeyCreateBulk) OnConflictColumns(columns ...string) *APIKeyUpsertBulk {
-	akcb.conflict = append(akcb.conflict, sql.ConflictColumns(columns...))
+func (_c *APIKeyCreateBulk) OnConflictColumns(columns ...string) *APIKeyUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &APIKeyUpsertBulk{
-		create: akcb,
+		create: _c,
 	}
 }
 
@@ -803,6 +853,9 @@ func (u *APIKeyUpsertBulk) UpdateNewValues() *APIKeyUpsertBulk {
 			}
 			if _, exists := b.mutation.UserID(); exists {
 				s.SetIgnore(apikey.FieldUserID)
+			}
+			if _, exists := b.mutation.ProjectID(); exists {
+				s.SetIgnore(apikey.FieldProjectID)
 			}
 			if _, exists := b.mutation.Key(); exists {
 				s.SetIgnore(apikey.FieldKey)

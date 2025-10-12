@@ -51,6 +51,12 @@ func (User) Fields() []ent.Field {
 // Edges of the User.
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
+		edge.From("projects", Project.Type).
+			Through("project_users", UserProject.Type).
+			Ref("users").
+			Annotations(
+				entgql.RelayConnection(),
+			),
 		edge.To("requests", Request.Type).
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),

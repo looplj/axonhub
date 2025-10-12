@@ -28,6 +28,8 @@ const (
 	FieldUserID = "user_id"
 	// FieldAPIKeyID holds the string denoting the api_key_id field in the database.
 	FieldAPIKeyID = "api_key_id"
+	// FieldProjectID holds the string denoting the project_id field in the database.
+	FieldProjectID = "project_id"
 	// FieldSource holds the string denoting the source field in the database.
 	FieldSource = "source"
 	// FieldModelID holds the string denoting the model_id field in the database.
@@ -52,6 +54,8 @@ const (
 	EdgeUser = "user"
 	// EdgeAPIKey holds the string denoting the api_key edge name in mutations.
 	EdgeAPIKey = "api_key"
+	// EdgeProject holds the string denoting the project edge name in mutations.
+	EdgeProject = "project"
 	// EdgeExecutions holds the string denoting the executions edge name in mutations.
 	EdgeExecutions = "executions"
 	// EdgeChannel holds the string denoting the channel edge name in mutations.
@@ -74,6 +78,13 @@ const (
 	APIKeyInverseTable = "api_keys"
 	// APIKeyColumn is the table column denoting the api_key relation/edge.
 	APIKeyColumn = "api_key_id"
+	// ProjectTable is the table that holds the project relation/edge.
+	ProjectTable = "requests"
+	// ProjectInverseTable is the table name for the Project entity.
+	// It exists in this package in order to avoid circular dependency with the "project" package.
+	ProjectInverseTable = "projects"
+	// ProjectColumn is the table column denoting the project relation/edge.
+	ProjectColumn = "project_id"
 	// ExecutionsTable is the table that holds the executions relation/edge.
 	ExecutionsTable = "request_executions"
 	// ExecutionsInverseTable is the table name for the RequestExecution entity.
@@ -105,6 +116,7 @@ var Columns = []string{
 	FieldDeletedAt,
 	FieldUserID,
 	FieldAPIKeyID,
+	FieldProjectID,
 	FieldSource,
 	FieldModelID,
 	FieldFormat,
@@ -144,6 +156,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
+	// DefaultProjectID holds the default value on creation for the "project_id" field.
+	DefaultProjectID int
 	// DefaultFormat holds the default value on creation for the "format" field.
 	DefaultFormat string
 	// DefaultStream holds the default value on creation for the "stream" field.
@@ -236,6 +250,11 @@ func ByAPIKeyID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAPIKeyID, opts...).ToFunc()
 }
 
+// ByProjectID orders the results by the project_id field.
+func ByProjectID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProjectID, opts...).ToFunc()
+}
+
 // BySource orders the results by the source field.
 func BySource(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSource, opts...).ToFunc()
@@ -285,6 +304,13 @@ func ByAPIKeyField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
+// ByProjectField orders the results by project field.
+func ByProjectField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProjectStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByExecutionsCount orders the results by executions count.
 func ByExecutionsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -331,6 +357,13 @@ func newAPIKeyStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(APIKeyInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, APIKeyTable, APIKeyColumn),
+	)
+}
+func newProjectStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProjectInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, ProjectTable, ProjectColumn),
 	)
 }
 func newExecutionsStep() *sqlgraph.Step {

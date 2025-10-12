@@ -17,12 +17,14 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userproject"
 )
 
 // Client is the client that holds all ent builders.
@@ -34,6 +36,8 @@ type Client struct {
 	APIKey *APIKeyClient
 	// Channel is the client for interacting with the Channel builders.
 	Channel *ChannelClient
+	// Project is the client for interacting with the Project builders.
+	Project *ProjectClient
 	// Request is the client for interacting with the Request builders.
 	Request *RequestClient
 	// RequestExecution is the client for interacting with the RequestExecution builders.
@@ -46,6 +50,8 @@ type Client struct {
 	UsageLog *UsageLogClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// UserProject is the client for interacting with the UserProject builders.
+	UserProject *UserProjectClient
 	// additional fields for node api
 	tables tables
 }
@@ -61,12 +67,14 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.APIKey = NewAPIKeyClient(c.config)
 	c.Channel = NewChannelClient(c.config)
+	c.Project = NewProjectClient(c.config)
 	c.Request = NewRequestClient(c.config)
 	c.RequestExecution = NewRequestExecutionClient(c.config)
 	c.Role = NewRoleClient(c.config)
 	c.System = NewSystemClient(c.config)
 	c.UsageLog = NewUsageLogClient(c.config)
 	c.User = NewUserClient(c.config)
+	c.UserProject = NewUserProjectClient(c.config)
 }
 
 type (
@@ -161,12 +169,14 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:           cfg,
 		APIKey:           NewAPIKeyClient(cfg),
 		Channel:          NewChannelClient(cfg),
+		Project:          NewProjectClient(cfg),
 		Request:          NewRequestClient(cfg),
 		RequestExecution: NewRequestExecutionClient(cfg),
 		Role:             NewRoleClient(cfg),
 		System:           NewSystemClient(cfg),
 		UsageLog:         NewUsageLogClient(cfg),
 		User:             NewUserClient(cfg),
+		UserProject:      NewUserProjectClient(cfg),
 	}, nil
 }
 
@@ -188,12 +198,14 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:           cfg,
 		APIKey:           NewAPIKeyClient(cfg),
 		Channel:          NewChannelClient(cfg),
+		Project:          NewProjectClient(cfg),
 		Request:          NewRequestClient(cfg),
 		RequestExecution: NewRequestExecutionClient(cfg),
 		Role:             NewRoleClient(cfg),
 		System:           NewSystemClient(cfg),
 		UsageLog:         NewUsageLogClient(cfg),
 		User:             NewUserClient(cfg),
+		UserProject:      NewUserProjectClient(cfg),
 	}, nil
 }
 
@@ -223,8 +235,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.APIKey, c.Channel, c.Request, c.RequestExecution, c.Role, c.System,
-		c.UsageLog, c.User,
+		c.APIKey, c.Channel, c.Project, c.Request, c.RequestExecution, c.Role, c.System,
+		c.UsageLog, c.User, c.UserProject,
 	} {
 		n.Use(hooks...)
 	}
@@ -234,8 +246,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.APIKey, c.Channel, c.Request, c.RequestExecution, c.Role, c.System,
-		c.UsageLog, c.User,
+		c.APIKey, c.Channel, c.Project, c.Request, c.RequestExecution, c.Role, c.System,
+		c.UsageLog, c.User, c.UserProject,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -248,6 +260,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.APIKey.mutate(ctx, m)
 	case *ChannelMutation:
 		return c.Channel.mutate(ctx, m)
+	case *ProjectMutation:
+		return c.Project.mutate(ctx, m)
 	case *RequestMutation:
 		return c.Request.mutate(ctx, m)
 	case *RequestExecutionMutation:
@@ -260,6 +274,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.UsageLog.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
+	case *UserProjectMutation:
+		return c.UserProject.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -320,8 +336,8 @@ func (c *APIKeyClient) Update() *APIKeyUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *APIKeyClient) UpdateOne(ak *APIKey) *APIKeyUpdateOne {
-	mutation := newAPIKeyMutation(c.config, OpUpdateOne, withAPIKey(ak))
+func (c *APIKeyClient) UpdateOne(_m *APIKey) *APIKeyUpdateOne {
+	mutation := newAPIKeyMutation(c.config, OpUpdateOne, withAPIKey(_m))
 	return &APIKeyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -338,8 +354,8 @@ func (c *APIKeyClient) Delete() *APIKeyDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *APIKeyClient) DeleteOne(ak *APIKey) *APIKeyDeleteOne {
-	return c.DeleteOneID(ak.ID)
+func (c *APIKeyClient) DeleteOne(_m *APIKey) *APIKeyDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
@@ -374,32 +390,48 @@ func (c *APIKeyClient) GetX(ctx context.Context, id int) *APIKey {
 }
 
 // QueryUser queries the user edge of a APIKey.
-func (c *APIKeyClient) QueryUser(ak *APIKey) *UserQuery {
+func (c *APIKeyClient) QueryUser(_m *APIKey) *UserQuery {
 	query := (&UserClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := ak.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(apikey.Table, apikey.FieldID, id),
 			sqlgraph.To(user.Table, user.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, apikey.UserTable, apikey.UserColumn),
 		)
-		fromV = sqlgraph.Neighbors(ak.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryProject queries the project edge of a APIKey.
+func (c *APIKeyClient) QueryProject(_m *APIKey) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(apikey.Table, apikey.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, apikey.ProjectTable, apikey.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryRequests queries the requests edge of a APIKey.
-func (c *APIKeyClient) QueryRequests(ak *APIKey) *RequestQuery {
+func (c *APIKeyClient) QueryRequests(_m *APIKey) *RequestQuery {
 	query := (&RequestClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := ak.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(apikey.Table, apikey.FieldID, id),
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, apikey.RequestsTable, apikey.RequestsColumn),
 		)
-		fromV = sqlgraph.Neighbors(ak.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
@@ -487,8 +519,8 @@ func (c *ChannelClient) Update() *ChannelUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *ChannelClient) UpdateOne(ch *Channel) *ChannelUpdateOne {
-	mutation := newChannelMutation(c.config, OpUpdateOne, withChannel(ch))
+func (c *ChannelClient) UpdateOne(_m *Channel) *ChannelUpdateOne {
+	mutation := newChannelMutation(c.config, OpUpdateOne, withChannel(_m))
 	return &ChannelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -505,8 +537,8 @@ func (c *ChannelClient) Delete() *ChannelDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *ChannelClient) DeleteOne(ch *Channel) *ChannelDeleteOne {
-	return c.DeleteOneID(ch.ID)
+func (c *ChannelClient) DeleteOne(_m *Channel) *ChannelDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
@@ -541,48 +573,48 @@ func (c *ChannelClient) GetX(ctx context.Context, id int) *Channel {
 }
 
 // QueryRequests queries the requests edge of a Channel.
-func (c *ChannelClient) QueryRequests(ch *Channel) *RequestQuery {
+func (c *ChannelClient) QueryRequests(_m *Channel) *RequestQuery {
 	query := (&RequestClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := ch.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(channel.Table, channel.FieldID, id),
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, channel.RequestsTable, channel.RequestsColumn),
 		)
-		fromV = sqlgraph.Neighbors(ch.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryExecutions queries the executions edge of a Channel.
-func (c *ChannelClient) QueryExecutions(ch *Channel) *RequestExecutionQuery {
+func (c *ChannelClient) QueryExecutions(_m *Channel) *RequestExecutionQuery {
 	query := (&RequestExecutionClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := ch.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(channel.Table, channel.FieldID, id),
 			sqlgraph.To(requestexecution.Table, requestexecution.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, channel.ExecutionsTable, channel.ExecutionsColumn),
 		)
-		fromV = sqlgraph.Neighbors(ch.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryUsageLogs queries the usage_logs edge of a Channel.
-func (c *ChannelClient) QueryUsageLogs(ch *Channel) *UsageLogQuery {
+func (c *ChannelClient) QueryUsageLogs(_m *Channel) *UsageLogQuery {
 	query := (&UsageLogClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := ch.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(channel.Table, channel.FieldID, id),
 			sqlgraph.To(usagelog.Table, usagelog.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, channel.UsageLogsTable, channel.UsageLogsColumn),
 		)
-		fromV = sqlgraph.Neighbors(ch.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
@@ -612,6 +644,237 @@ func (c *ChannelClient) mutate(ctx context.Context, m *ChannelMutation) (Value, 
 		return (&ChannelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Channel mutation op: %q", m.Op())
+	}
+}
+
+// ProjectClient is a client for the Project schema.
+type ProjectClient struct {
+	config
+}
+
+// NewProjectClient returns a client for the Project from the given config.
+func NewProjectClient(c config) *ProjectClient {
+	return &ProjectClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `project.Hooks(f(g(h())))`.
+func (c *ProjectClient) Use(hooks ...Hook) {
+	c.hooks.Project = append(c.hooks.Project, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `project.Intercept(f(g(h())))`.
+func (c *ProjectClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Project = append(c.inters.Project, interceptors...)
+}
+
+// Create returns a builder for creating a Project entity.
+func (c *ProjectClient) Create() *ProjectCreate {
+	mutation := newProjectMutation(c.config, OpCreate)
+	return &ProjectCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Project entities.
+func (c *ProjectClient) CreateBulk(builders ...*ProjectCreate) *ProjectCreateBulk {
+	return &ProjectCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ProjectClient) MapCreateBulk(slice any, setFunc func(*ProjectCreate, int)) *ProjectCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ProjectCreateBulk{err: fmt.Errorf("calling to ProjectClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ProjectCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ProjectCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Project.
+func (c *ProjectClient) Update() *ProjectUpdate {
+	mutation := newProjectMutation(c.config, OpUpdate)
+	return &ProjectUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ProjectClient) UpdateOne(_m *Project) *ProjectUpdateOne {
+	mutation := newProjectMutation(c.config, OpUpdateOne, withProject(_m))
+	return &ProjectUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ProjectClient) UpdateOneID(id int) *ProjectUpdateOne {
+	mutation := newProjectMutation(c.config, OpUpdateOne, withProjectID(id))
+	return &ProjectUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Project.
+func (c *ProjectClient) Delete() *ProjectDelete {
+	mutation := newProjectMutation(c.config, OpDelete)
+	return &ProjectDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ProjectClient) DeleteOne(_m *Project) *ProjectDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ProjectClient) DeleteOneID(id int) *ProjectDeleteOne {
+	builder := c.Delete().Where(project.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ProjectDeleteOne{builder}
+}
+
+// Query returns a query builder for Project.
+func (c *ProjectClient) Query() *ProjectQuery {
+	return &ProjectQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeProject},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Project entity by its id.
+func (c *ProjectClient) Get(ctx context.Context, id int) (*Project, error) {
+	return c.Query().Where(project.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ProjectClient) GetX(ctx context.Context, id int) *Project {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUsers queries the users edge of a Project.
+func (c *ProjectClient) QueryUsers(_m *Project) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, project.UsersTable, project.UsersPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRoles queries the roles edge of a Project.
+func (c *ProjectClient) QueryRoles(_m *Project) *RoleQuery {
+	query := (&RoleClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(role.Table, role.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.RolesTable, project.RolesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryAPIKeys queries the api_keys edge of a Project.
+func (c *ProjectClient) QueryAPIKeys(_m *Project) *APIKeyQuery {
+	query := (&APIKeyClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(apikey.Table, apikey.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.APIKeysTable, project.APIKeysColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRequests queries the requests edge of a Project.
+func (c *ProjectClient) QueryRequests(_m *Project) *RequestQuery {
+	query := (&RequestClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(request.Table, request.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.RequestsTable, project.RequestsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryUsageLogs queries the usage_logs edge of a Project.
+func (c *ProjectClient) QueryUsageLogs(_m *Project) *UsageLogQuery {
+	query := (&UsageLogClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(usagelog.Table, usagelog.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.UsageLogsTable, project.UsageLogsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryProjectUsers queries the project_users edge of a Project.
+func (c *ProjectClient) QueryProjectUsers(_m *Project) *UserProjectQuery {
+	query := (&UserProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(userproject.Table, userproject.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, project.ProjectUsersTable, project.ProjectUsersColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ProjectClient) Hooks() []Hook {
+	hooks := c.hooks.Project
+	return append(hooks[:len(hooks):len(hooks)], project.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *ProjectClient) Interceptors() []Interceptor {
+	inters := c.inters.Project
+	return append(inters[:len(inters):len(inters)], project.Interceptors[:]...)
+}
+
+func (c *ProjectClient) mutate(ctx context.Context, m *ProjectMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ProjectCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ProjectUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ProjectUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ProjectDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Project mutation op: %q", m.Op())
 	}
 }
 
@@ -670,8 +933,8 @@ func (c *RequestClient) Update() *RequestUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *RequestClient) UpdateOne(r *Request) *RequestUpdateOne {
-	mutation := newRequestMutation(c.config, OpUpdateOne, withRequest(r))
+func (c *RequestClient) UpdateOne(_m *Request) *RequestUpdateOne {
+	mutation := newRequestMutation(c.config, OpUpdateOne, withRequest(_m))
 	return &RequestUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -688,8 +951,8 @@ func (c *RequestClient) Delete() *RequestDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *RequestClient) DeleteOne(r *Request) *RequestDeleteOne {
-	return c.DeleteOneID(r.ID)
+func (c *RequestClient) DeleteOne(_m *Request) *RequestDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
@@ -724,80 +987,96 @@ func (c *RequestClient) GetX(ctx context.Context, id int) *Request {
 }
 
 // QueryUser queries the user edge of a Request.
-func (c *RequestClient) QueryUser(r *Request) *UserQuery {
+func (c *RequestClient) QueryUser(_m *Request) *UserQuery {
 	query := (&UserClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := r.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(request.Table, request.FieldID, id),
 			sqlgraph.To(user.Table, user.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, request.UserTable, request.UserColumn),
 		)
-		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryAPIKey queries the api_key edge of a Request.
-func (c *RequestClient) QueryAPIKey(r *Request) *APIKeyQuery {
+func (c *RequestClient) QueryAPIKey(_m *Request) *APIKeyQuery {
 	query := (&APIKeyClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := r.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(request.Table, request.FieldID, id),
 			sqlgraph.To(apikey.Table, apikey.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, request.APIKeyTable, request.APIKeyColumn),
 		)
-		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryProject queries the project edge of a Request.
+func (c *RequestClient) QueryProject(_m *Request) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(request.Table, request.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, request.ProjectTable, request.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryExecutions queries the executions edge of a Request.
-func (c *RequestClient) QueryExecutions(r *Request) *RequestExecutionQuery {
+func (c *RequestClient) QueryExecutions(_m *Request) *RequestExecutionQuery {
 	query := (&RequestExecutionClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := r.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(request.Table, request.FieldID, id),
 			sqlgraph.To(requestexecution.Table, requestexecution.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, request.ExecutionsTable, request.ExecutionsColumn),
 		)
-		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryChannel queries the channel edge of a Request.
-func (c *RequestClient) QueryChannel(r *Request) *ChannelQuery {
+func (c *RequestClient) QueryChannel(_m *Request) *ChannelQuery {
 	query := (&ChannelClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := r.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(request.Table, request.FieldID, id),
 			sqlgraph.To(channel.Table, channel.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, request.ChannelTable, request.ChannelColumn),
 		)
-		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryUsageLogs queries the usage_logs edge of a Request.
-func (c *RequestClient) QueryUsageLogs(r *Request) *UsageLogQuery {
+func (c *RequestClient) QueryUsageLogs(_m *Request) *UsageLogQuery {
 	query := (&UsageLogClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := r.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(request.Table, request.FieldID, id),
 			sqlgraph.To(usagelog.Table, usagelog.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, request.UsageLogsTable, request.UsageLogsColumn),
 		)
-		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
@@ -885,8 +1164,8 @@ func (c *RequestExecutionClient) Update() *RequestExecutionUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *RequestExecutionClient) UpdateOne(re *RequestExecution) *RequestExecutionUpdateOne {
-	mutation := newRequestExecutionMutation(c.config, OpUpdateOne, withRequestExecution(re))
+func (c *RequestExecutionClient) UpdateOne(_m *RequestExecution) *RequestExecutionUpdateOne {
+	mutation := newRequestExecutionMutation(c.config, OpUpdateOne, withRequestExecution(_m))
 	return &RequestExecutionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -903,8 +1182,8 @@ func (c *RequestExecutionClient) Delete() *RequestExecutionDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *RequestExecutionClient) DeleteOne(re *RequestExecution) *RequestExecutionDeleteOne {
-	return c.DeleteOneID(re.ID)
+func (c *RequestExecutionClient) DeleteOne(_m *RequestExecution) *RequestExecutionDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
@@ -939,32 +1218,32 @@ func (c *RequestExecutionClient) GetX(ctx context.Context, id int) *RequestExecu
 }
 
 // QueryRequest queries the request edge of a RequestExecution.
-func (c *RequestExecutionClient) QueryRequest(re *RequestExecution) *RequestQuery {
+func (c *RequestExecutionClient) QueryRequest(_m *RequestExecution) *RequestQuery {
 	query := (&RequestClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := re.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, id),
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, requestexecution.RequestTable, requestexecution.RequestColumn),
 		)
-		fromV = sqlgraph.Neighbors(re.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryChannel queries the channel edge of a RequestExecution.
-func (c *RequestExecutionClient) QueryChannel(re *RequestExecution) *ChannelQuery {
+func (c *RequestExecutionClient) QueryChannel(_m *RequestExecution) *ChannelQuery {
 	query := (&ChannelClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := re.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, id),
 			sqlgraph.To(channel.Table, channel.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, requestexecution.ChannelTable, requestexecution.ChannelColumn),
 		)
-		fromV = sqlgraph.Neighbors(re.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
@@ -1050,8 +1329,8 @@ func (c *RoleClient) Update() *RoleUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *RoleClient) UpdateOne(r *Role) *RoleUpdateOne {
-	mutation := newRoleMutation(c.config, OpUpdateOne, withRole(r))
+func (c *RoleClient) UpdateOne(_m *Role) *RoleUpdateOne {
+	mutation := newRoleMutation(c.config, OpUpdateOne, withRole(_m))
 	return &RoleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -1068,8 +1347,8 @@ func (c *RoleClient) Delete() *RoleDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *RoleClient) DeleteOne(r *Role) *RoleDeleteOne {
-	return c.DeleteOneID(r.ID)
+func (c *RoleClient) DeleteOne(_m *Role) *RoleDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
@@ -1104,16 +1383,32 @@ func (c *RoleClient) GetX(ctx context.Context, id int) *Role {
 }
 
 // QueryUsers queries the users edge of a Role.
-func (c *RoleClient) QueryUsers(r *Role) *UserQuery {
+func (c *RoleClient) QueryUsers(_m *Role) *UserQuery {
 	query := (&UserClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := r.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(role.Table, role.FieldID, id),
 			sqlgraph.To(user.Table, user.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, role.UsersTable, role.UsersPrimaryKey...),
 		)
-		fromV = sqlgraph.Neighbors(r.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryProject queries the project edge of a Role.
+func (c *RoleClient) QueryProject(_m *Role) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(role.Table, role.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, role.ProjectTable, role.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
@@ -1201,8 +1496,8 @@ func (c *SystemClient) Update() *SystemUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *SystemClient) UpdateOne(s *System) *SystemUpdateOne {
-	mutation := newSystemMutation(c.config, OpUpdateOne, withSystem(s))
+func (c *SystemClient) UpdateOne(_m *System) *SystemUpdateOne {
+	mutation := newSystemMutation(c.config, OpUpdateOne, withSystem(_m))
 	return &SystemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -1219,8 +1514,8 @@ func (c *SystemClient) Delete() *SystemDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *SystemClient) DeleteOne(s *System) *SystemDeleteOne {
-	return c.DeleteOneID(s.ID)
+func (c *SystemClient) DeleteOne(_m *System) *SystemDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
@@ -1336,8 +1631,8 @@ func (c *UsageLogClient) Update() *UsageLogUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *UsageLogClient) UpdateOne(ul *UsageLog) *UsageLogUpdateOne {
-	mutation := newUsageLogMutation(c.config, OpUpdateOne, withUsageLog(ul))
+func (c *UsageLogClient) UpdateOne(_m *UsageLog) *UsageLogUpdateOne {
+	mutation := newUsageLogMutation(c.config, OpUpdateOne, withUsageLog(_m))
 	return &UsageLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -1354,8 +1649,8 @@ func (c *UsageLogClient) Delete() *UsageLogDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *UsageLogClient) DeleteOne(ul *UsageLog) *UsageLogDeleteOne {
-	return c.DeleteOneID(ul.ID)
+func (c *UsageLogClient) DeleteOne(_m *UsageLog) *UsageLogDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
@@ -1390,48 +1685,64 @@ func (c *UsageLogClient) GetX(ctx context.Context, id int) *UsageLog {
 }
 
 // QueryUser queries the user edge of a UsageLog.
-func (c *UsageLogClient) QueryUser(ul *UsageLog) *UserQuery {
+func (c *UsageLogClient) QueryUser(_m *UsageLog) *UserQuery {
 	query := (&UserClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := ul.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(usagelog.Table, usagelog.FieldID, id),
 			sqlgraph.To(user.Table, user.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.UserTable, usagelog.UserColumn),
 		)
-		fromV = sqlgraph.Neighbors(ul.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryRequest queries the request edge of a UsageLog.
-func (c *UsageLogClient) QueryRequest(ul *UsageLog) *RequestQuery {
+func (c *UsageLogClient) QueryRequest(_m *UsageLog) *RequestQuery {
 	query := (&RequestClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := ul.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(usagelog.Table, usagelog.FieldID, id),
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.RequestTable, usagelog.RequestColumn),
 		)
-		fromV = sqlgraph.Neighbors(ul.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryProject queries the project edge of a UsageLog.
+func (c *UsageLogClient) QueryProject(_m *UsageLog) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(usagelog.Table, usagelog.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.ProjectTable, usagelog.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryChannel queries the channel edge of a UsageLog.
-func (c *UsageLogClient) QueryChannel(ul *UsageLog) *ChannelQuery {
+func (c *UsageLogClient) QueryChannel(_m *UsageLog) *ChannelQuery {
 	query := (&ChannelClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := ul.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(usagelog.Table, usagelog.FieldID, id),
 			sqlgraph.To(channel.Table, channel.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.ChannelTable, usagelog.ChannelColumn),
 		)
-		fromV = sqlgraph.Neighbors(ul.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
@@ -1519,8 +1830,8 @@ func (c *UserClient) Update() *UserUpdate {
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *UserClient) UpdateOne(u *User) *UserUpdateOne {
-	mutation := newUserMutation(c.config, OpUpdateOne, withUser(u))
+func (c *UserClient) UpdateOne(_m *User) *UserUpdateOne {
+	mutation := newUserMutation(c.config, OpUpdateOne, withUser(_m))
 	return &UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
@@ -1537,8 +1848,8 @@ func (c *UserClient) Delete() *UserDelete {
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *UserClient) DeleteOne(u *User) *UserDeleteOne {
-	return c.DeleteOneID(u.ID)
+func (c *UserClient) DeleteOne(_m *User) *UserDeleteOne {
+	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
@@ -1572,65 +1883,97 @@ func (c *UserClient) GetX(ctx context.Context, id int) *User {
 	return obj
 }
 
+// QueryProjects queries the projects edge of a User.
+func (c *UserClient) QueryProjects(_m *User) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, user.ProjectsTable, user.ProjectsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryRequests queries the requests edge of a User.
-func (c *UserClient) QueryRequests(u *User) *RequestQuery {
+func (c *UserClient) QueryRequests(_m *User) *RequestQuery {
 	query := (&RequestClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := u.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.RequestsTable, user.RequestsColumn),
 		)
-		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryAPIKeys queries the api_keys edge of a User.
-func (c *UserClient) QueryAPIKeys(u *User) *APIKeyQuery {
+func (c *UserClient) QueryAPIKeys(_m *User) *APIKeyQuery {
 	query := (&APIKeyClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := u.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(apikey.Table, apikey.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.APIKeysTable, user.APIKeysColumn),
 		)
-		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryRoles queries the roles edge of a User.
-func (c *UserClient) QueryRoles(u *User) *RoleQuery {
+func (c *UserClient) QueryRoles(_m *User) *RoleQuery {
 	query := (&RoleClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := u.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(role.Table, role.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, user.RolesTable, user.RolesPrimaryKey...),
 		)
-		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
 }
 
 // QueryUsageLogs queries the usage_logs edge of a User.
-func (c *UserClient) QueryUsageLogs(u *User) *UsageLogQuery {
+func (c *UserClient) QueryUsageLogs(_m *User) *UsageLogQuery {
 	query := (&UsageLogClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := u.ID
+		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(usagelog.Table, usagelog.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.UsageLogsTable, user.UsageLogsColumn),
 		)
-		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryProjectUsers queries the project_users edge of a User.
+func (c *UserClient) QueryProjectUsers(_m *User) *UserProjectQuery {
+	query := (&UserProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(userproject.Table, userproject.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, user.ProjectUsersTable, user.ProjectUsersColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
 	}
 	return query
@@ -1663,14 +2006,181 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 	}
 }
 
+// UserProjectClient is a client for the UserProject schema.
+type UserProjectClient struct {
+	config
+}
+
+// NewUserProjectClient returns a client for the UserProject from the given config.
+func NewUserProjectClient(c config) *UserProjectClient {
+	return &UserProjectClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `userproject.Hooks(f(g(h())))`.
+func (c *UserProjectClient) Use(hooks ...Hook) {
+	c.hooks.UserProject = append(c.hooks.UserProject, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `userproject.Intercept(f(g(h())))`.
+func (c *UserProjectClient) Intercept(interceptors ...Interceptor) {
+	c.inters.UserProject = append(c.inters.UserProject, interceptors...)
+}
+
+// Create returns a builder for creating a UserProject entity.
+func (c *UserProjectClient) Create() *UserProjectCreate {
+	mutation := newUserProjectMutation(c.config, OpCreate)
+	return &UserProjectCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of UserProject entities.
+func (c *UserProjectClient) CreateBulk(builders ...*UserProjectCreate) *UserProjectCreateBulk {
+	return &UserProjectCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *UserProjectClient) MapCreateBulk(slice any, setFunc func(*UserProjectCreate, int)) *UserProjectCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &UserProjectCreateBulk{err: fmt.Errorf("calling to UserProjectClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*UserProjectCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &UserProjectCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for UserProject.
+func (c *UserProjectClient) Update() *UserProjectUpdate {
+	mutation := newUserProjectMutation(c.config, OpUpdate)
+	return &UserProjectUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *UserProjectClient) UpdateOne(_m *UserProject) *UserProjectUpdateOne {
+	mutation := newUserProjectMutation(c.config, OpUpdateOne, withUserProject(_m))
+	return &UserProjectUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *UserProjectClient) UpdateOneID(id int) *UserProjectUpdateOne {
+	mutation := newUserProjectMutation(c.config, OpUpdateOne, withUserProjectID(id))
+	return &UserProjectUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for UserProject.
+func (c *UserProjectClient) Delete() *UserProjectDelete {
+	mutation := newUserProjectMutation(c.config, OpDelete)
+	return &UserProjectDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *UserProjectClient) DeleteOne(_m *UserProject) *UserProjectDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *UserProjectClient) DeleteOneID(id int) *UserProjectDeleteOne {
+	builder := c.Delete().Where(userproject.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &UserProjectDeleteOne{builder}
+}
+
+// Query returns a query builder for UserProject.
+func (c *UserProjectClient) Query() *UserProjectQuery {
+	return &UserProjectQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeUserProject},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a UserProject entity by its id.
+func (c *UserProjectClient) Get(ctx context.Context, id int) (*UserProject, error) {
+	return c.Query().Where(userproject.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *UserProjectClient) GetX(ctx context.Context, id int) *UserProject {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUsers queries the users edge of a UserProject.
+func (c *UserProjectClient) QueryUsers(_m *UserProject) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(userproject.Table, userproject.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, userproject.UsersTable, userproject.UsersColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryProjects queries the projects edge of a UserProject.
+func (c *UserProjectClient) QueryProjects(_m *UserProject) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(userproject.Table, userproject.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, userproject.ProjectsTable, userproject.ProjectsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *UserProjectClient) Hooks() []Hook {
+	hooks := c.hooks.UserProject
+	return append(hooks[:len(hooks):len(hooks)], userproject.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *UserProjectClient) Interceptors() []Interceptor {
+	inters := c.inters.UserProject
+	return append(inters[:len(inters):len(inters)], userproject.Interceptors[:]...)
+}
+
+func (c *UserProjectClient) mutate(ctx context.Context, m *UserProjectMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&UserProjectCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&UserProjectUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&UserProjectUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&UserProjectDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown UserProject mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, Channel, Request, RequestExecution, Role, System, UsageLog,
-		User []ent.Hook
+		APIKey, Channel, Project, Request, RequestExecution, Role, System, UsageLog,
+		User, UserProject []ent.Hook
 	}
 	inters struct {
-		APIKey, Channel, Request, RequestExecution, Role, System, UsageLog,
-		User []ent.Interceptor
+		APIKey, Channel, Project, Request, RequestExecution, Role, System, UsageLog,
+		User, UserProject []ent.Interceptor
 	}
 )

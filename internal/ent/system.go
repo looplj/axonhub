@@ -50,7 +50,7 @@ func (*System) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the System fields.
-func (s *System) assignValues(columns []string, values []any) error {
+func (_m *System) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -61,39 +61,39 @@ func (s *System) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			s.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case system.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				s.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case system.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				s.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case system.FieldDeletedAt:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
 			} else if value.Valid {
-				s.DeletedAt = int(value.Int64)
+				_m.DeletedAt = int(value.Int64)
 			}
 		case system.FieldKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field key", values[i])
 			} else if value.Valid {
-				s.Key = value.String
+				_m.Key = value.String
 			}
 		case system.FieldValue:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field value", values[i])
 			} else if value.Valid {
-				s.Value = value.String
+				_m.Value = value.String
 			}
 		default:
-			s.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -101,47 +101,47 @@ func (s *System) assignValues(columns []string, values []any) error {
 
 // GetValue returns the ent.Value that was dynamically selected and assigned to the System.
 // This includes values selected through modifiers, order, etc.
-func (s *System) GetValue(name string) (ent.Value, error) {
-	return s.selectValues.Get(name)
+func (_m *System) GetValue(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // Update returns a builder for updating this System.
 // Note that you need to call System.Unwrap() before calling this method if this System
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (s *System) Update() *SystemUpdateOne {
-	return NewSystemClient(s.config).UpdateOne(s)
+func (_m *System) Update() *SystemUpdateOne {
+	return NewSystemClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the System entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (s *System) Unwrap() *System {
-	_tx, ok := s.config.driver.(*txDriver)
+func (_m *System) Unwrap() *System {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: System is not a transactional entity")
 	}
-	s.config.driver = _tx.drv
-	return s
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (s *System) String() string {
+func (_m *System) String() string {
 	var builder strings.Builder
 	builder.WriteString("System(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", s.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(s.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(s.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", s.DeletedAt))
+	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("key=")
-	builder.WriteString(s.Key)
+	builder.WriteString(_m.Key)
 	builder.WriteString(", ")
 	builder.WriteString("value=")
-	builder.WriteString(s.Value)
+	builder.WriteString(_m.Value)
 	builder.WriteByte(')')
 	return builder.String()
 }

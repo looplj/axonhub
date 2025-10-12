@@ -10,12 +10,14 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userproject"
 )
 
 // APIKeyWhereInput represents a where input for filtering APIKey queries.
@@ -71,6 +73,12 @@ type APIKeyWhereInput struct {
 	UserIDIn    []int `json:"userIDIn,omitempty"`
 	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
 
+	// "project_id" field predicates.
+	ProjectID      *int  `json:"projectID,omitempty"`
+	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
+	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
+	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
+
 	// "key" field predicates.
 	Key             *string  `json:"key,omitempty"`
 	KeyNEQ          *string  `json:"keyNEQ,omitempty"`
@@ -110,6 +118,10 @@ type APIKeyWhereInput struct {
 	// "user" edge predicates.
 	HasUser     *bool             `json:"hasUser,omitempty"`
 	HasUserWith []*UserWhereInput `json:"hasUserWith,omitempty"`
+
+	// "project" edge predicates.
+	HasProject     *bool                `json:"hasProject,omitempty"`
+	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
 
 	// "requests" edge predicates.
 	HasRequests     *bool                `json:"hasRequests,omitempty"`
@@ -295,6 +307,18 @@ func (i *APIKeyWhereInput) P() (predicate.APIKey, error) {
 	if len(i.UserIDNotIn) > 0 {
 		predicates = append(predicates, apikey.UserIDNotIn(i.UserIDNotIn...))
 	}
+	if i.ProjectID != nil {
+		predicates = append(predicates, apikey.ProjectIDEQ(*i.ProjectID))
+	}
+	if i.ProjectIDNEQ != nil {
+		predicates = append(predicates, apikey.ProjectIDNEQ(*i.ProjectIDNEQ))
+	}
+	if len(i.ProjectIDIn) > 0 {
+		predicates = append(predicates, apikey.ProjectIDIn(i.ProjectIDIn...))
+	}
+	if len(i.ProjectIDNotIn) > 0 {
+		predicates = append(predicates, apikey.ProjectIDNotIn(i.ProjectIDNotIn...))
+	}
 	if i.Key != nil {
 		predicates = append(predicates, apikey.KeyEQ(*i.Key))
 	}
@@ -403,6 +427,24 @@ func (i *APIKeyWhereInput) P() (predicate.APIKey, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, apikey.HasUserWith(with...))
+	}
+	if i.HasProject != nil {
+		p := apikey.HasProject()
+		if !*i.HasProject {
+			p = apikey.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProjectWith) > 0 {
+		with := make([]predicate.Project, 0, len(i.HasProjectWith))
+		for _, w := range i.HasProjectWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProjectWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, apikey.HasProjectWith(with...))
 	}
 	if i.HasRequests != nil {
 		p := apikey.HasRequests()
@@ -964,6 +1006,544 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 	}
 }
 
+// ProjectWhereInput represents a where input for filtering Project queries.
+type ProjectWhereInput struct {
+	Predicates []predicate.Project  `json:"-"`
+	Not        *ProjectWhereInput   `json:"not,omitempty"`
+	Or         []*ProjectWhereInput `json:"or,omitempty"`
+	And        []*ProjectWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+
+	// "updated_at" field predicates.
+	UpdatedAt      *time.Time  `json:"updatedAt,omitempty"`
+	UpdatedAtNEQ   *time.Time  `json:"updatedAtNEQ,omitempty"`
+	UpdatedAtIn    []time.Time `json:"updatedAtIn,omitempty"`
+	UpdatedAtNotIn []time.Time `json:"updatedAtNotIn,omitempty"`
+	UpdatedAtGT    *time.Time  `json:"updatedAtGT,omitempty"`
+	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
+	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
+	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
+
+	// "deleted_at" field predicates.
+	DeletedAt      *int  `json:"deletedAt,omitempty"`
+	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
+	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
+	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
+	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
+	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
+	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
+	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
+
+	// "slug" field predicates.
+	Slug             *string  `json:"slug,omitempty"`
+	SlugNEQ          *string  `json:"slugNEQ,omitempty"`
+	SlugIn           []string `json:"slugIn,omitempty"`
+	SlugNotIn        []string `json:"slugNotIn,omitempty"`
+	SlugGT           *string  `json:"slugGT,omitempty"`
+	SlugGTE          *string  `json:"slugGTE,omitempty"`
+	SlugLT           *string  `json:"slugLT,omitempty"`
+	SlugLTE          *string  `json:"slugLTE,omitempty"`
+	SlugContains     *string  `json:"slugContains,omitempty"`
+	SlugHasPrefix    *string  `json:"slugHasPrefix,omitempty"`
+	SlugHasSuffix    *string  `json:"slugHasSuffix,omitempty"`
+	SlugEqualFold    *string  `json:"slugEqualFold,omitempty"`
+	SlugContainsFold *string  `json:"slugContainsFold,omitempty"`
+
+	// "name" field predicates.
+	Name             *string  `json:"name,omitempty"`
+	NameNEQ          *string  `json:"nameNEQ,omitempty"`
+	NameIn           []string `json:"nameIn,omitempty"`
+	NameNotIn        []string `json:"nameNotIn,omitempty"`
+	NameGT           *string  `json:"nameGT,omitempty"`
+	NameGTE          *string  `json:"nameGTE,omitempty"`
+	NameLT           *string  `json:"nameLT,omitempty"`
+	NameLTE          *string  `json:"nameLTE,omitempty"`
+	NameContains     *string  `json:"nameContains,omitempty"`
+	NameHasPrefix    *string  `json:"nameHasPrefix,omitempty"`
+	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
+	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
+	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+
+	// "description" field predicates.
+	Description             *string  `json:"description,omitempty"`
+	DescriptionNEQ          *string  `json:"descriptionNEQ,omitempty"`
+	DescriptionIn           []string `json:"descriptionIn,omitempty"`
+	DescriptionNotIn        []string `json:"descriptionNotIn,omitempty"`
+	DescriptionGT           *string  `json:"descriptionGT,omitempty"`
+	DescriptionGTE          *string  `json:"descriptionGTE,omitempty"`
+	DescriptionLT           *string  `json:"descriptionLT,omitempty"`
+	DescriptionLTE          *string  `json:"descriptionLTE,omitempty"`
+	DescriptionContains     *string  `json:"descriptionContains,omitempty"`
+	DescriptionHasPrefix    *string  `json:"descriptionHasPrefix,omitempty"`
+	DescriptionHasSuffix    *string  `json:"descriptionHasSuffix,omitempty"`
+	DescriptionEqualFold    *string  `json:"descriptionEqualFold,omitempty"`
+	DescriptionContainsFold *string  `json:"descriptionContainsFold,omitempty"`
+
+	// "status" field predicates.
+	Status      *project.Status  `json:"status,omitempty"`
+	StatusNEQ   *project.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []project.Status `json:"statusIn,omitempty"`
+	StatusNotIn []project.Status `json:"statusNotIn,omitempty"`
+
+	// "users" edge predicates.
+	HasUsers     *bool             `json:"hasUsers,omitempty"`
+	HasUsersWith []*UserWhereInput `json:"hasUsersWith,omitempty"`
+
+	// "roles" edge predicates.
+	HasRoles     *bool             `json:"hasRoles,omitempty"`
+	HasRolesWith []*RoleWhereInput `json:"hasRolesWith,omitempty"`
+
+	// "api_keys" edge predicates.
+	HasAPIKeys     *bool               `json:"hasAPIKeys,omitempty"`
+	HasAPIKeysWith []*APIKeyWhereInput `json:"hasAPIKeysWith,omitempty"`
+
+	// "requests" edge predicates.
+	HasRequests     *bool                `json:"hasRequests,omitempty"`
+	HasRequestsWith []*RequestWhereInput `json:"hasRequestsWith,omitempty"`
+
+	// "usage_logs" edge predicates.
+	HasUsageLogs     *bool                 `json:"hasUsageLogs,omitempty"`
+	HasUsageLogsWith []*UsageLogWhereInput `json:"hasUsageLogsWith,omitempty"`
+
+	// "project_users" edge predicates.
+	HasProjectUsers     *bool                    `json:"hasProjectUsers,omitempty"`
+	HasProjectUsersWith []*UserProjectWhereInput `json:"hasProjectUsersWith,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *ProjectWhereInput) AddPredicates(predicates ...predicate.Project) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the ProjectWhereInput filter on the ProjectQuery builder.
+func (i *ProjectWhereInput) Filter(q *ProjectQuery) (*ProjectQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyProjectWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyProjectWhereInput is returned in case the ProjectWhereInput is empty.
+var ErrEmptyProjectWhereInput = errors.New("ent: empty predicate ProjectWhereInput")
+
+// P returns a predicate for filtering projects.
+// An error is returned if the input is empty or invalid.
+func (i *ProjectWhereInput) P() (predicate.Project, error) {
+	var predicates []predicate.Project
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, project.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.Project, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, project.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.Project, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, project.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, project.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, project.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, project.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, project.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, project.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, project.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, project.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, project.IDLTE(*i.IDLTE))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, project.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, project.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, project.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, project.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, project.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, project.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, project.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, project.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+	if i.UpdatedAt != nil {
+		predicates = append(predicates, project.UpdatedAtEQ(*i.UpdatedAt))
+	}
+	if i.UpdatedAtNEQ != nil {
+		predicates = append(predicates, project.UpdatedAtNEQ(*i.UpdatedAtNEQ))
+	}
+	if len(i.UpdatedAtIn) > 0 {
+		predicates = append(predicates, project.UpdatedAtIn(i.UpdatedAtIn...))
+	}
+	if len(i.UpdatedAtNotIn) > 0 {
+		predicates = append(predicates, project.UpdatedAtNotIn(i.UpdatedAtNotIn...))
+	}
+	if i.UpdatedAtGT != nil {
+		predicates = append(predicates, project.UpdatedAtGT(*i.UpdatedAtGT))
+	}
+	if i.UpdatedAtGTE != nil {
+		predicates = append(predicates, project.UpdatedAtGTE(*i.UpdatedAtGTE))
+	}
+	if i.UpdatedAtLT != nil {
+		predicates = append(predicates, project.UpdatedAtLT(*i.UpdatedAtLT))
+	}
+	if i.UpdatedAtLTE != nil {
+		predicates = append(predicates, project.UpdatedAtLTE(*i.UpdatedAtLTE))
+	}
+	if i.DeletedAt != nil {
+		predicates = append(predicates, project.DeletedAtEQ(*i.DeletedAt))
+	}
+	if i.DeletedAtNEQ != nil {
+		predicates = append(predicates, project.DeletedAtNEQ(*i.DeletedAtNEQ))
+	}
+	if len(i.DeletedAtIn) > 0 {
+		predicates = append(predicates, project.DeletedAtIn(i.DeletedAtIn...))
+	}
+	if len(i.DeletedAtNotIn) > 0 {
+		predicates = append(predicates, project.DeletedAtNotIn(i.DeletedAtNotIn...))
+	}
+	if i.DeletedAtGT != nil {
+		predicates = append(predicates, project.DeletedAtGT(*i.DeletedAtGT))
+	}
+	if i.DeletedAtGTE != nil {
+		predicates = append(predicates, project.DeletedAtGTE(*i.DeletedAtGTE))
+	}
+	if i.DeletedAtLT != nil {
+		predicates = append(predicates, project.DeletedAtLT(*i.DeletedAtLT))
+	}
+	if i.DeletedAtLTE != nil {
+		predicates = append(predicates, project.DeletedAtLTE(*i.DeletedAtLTE))
+	}
+	if i.Slug != nil {
+		predicates = append(predicates, project.SlugEQ(*i.Slug))
+	}
+	if i.SlugNEQ != nil {
+		predicates = append(predicates, project.SlugNEQ(*i.SlugNEQ))
+	}
+	if len(i.SlugIn) > 0 {
+		predicates = append(predicates, project.SlugIn(i.SlugIn...))
+	}
+	if len(i.SlugNotIn) > 0 {
+		predicates = append(predicates, project.SlugNotIn(i.SlugNotIn...))
+	}
+	if i.SlugGT != nil {
+		predicates = append(predicates, project.SlugGT(*i.SlugGT))
+	}
+	if i.SlugGTE != nil {
+		predicates = append(predicates, project.SlugGTE(*i.SlugGTE))
+	}
+	if i.SlugLT != nil {
+		predicates = append(predicates, project.SlugLT(*i.SlugLT))
+	}
+	if i.SlugLTE != nil {
+		predicates = append(predicates, project.SlugLTE(*i.SlugLTE))
+	}
+	if i.SlugContains != nil {
+		predicates = append(predicates, project.SlugContains(*i.SlugContains))
+	}
+	if i.SlugHasPrefix != nil {
+		predicates = append(predicates, project.SlugHasPrefix(*i.SlugHasPrefix))
+	}
+	if i.SlugHasSuffix != nil {
+		predicates = append(predicates, project.SlugHasSuffix(*i.SlugHasSuffix))
+	}
+	if i.SlugEqualFold != nil {
+		predicates = append(predicates, project.SlugEqualFold(*i.SlugEqualFold))
+	}
+	if i.SlugContainsFold != nil {
+		predicates = append(predicates, project.SlugContainsFold(*i.SlugContainsFold))
+	}
+	if i.Name != nil {
+		predicates = append(predicates, project.NameEQ(*i.Name))
+	}
+	if i.NameNEQ != nil {
+		predicates = append(predicates, project.NameNEQ(*i.NameNEQ))
+	}
+	if len(i.NameIn) > 0 {
+		predicates = append(predicates, project.NameIn(i.NameIn...))
+	}
+	if len(i.NameNotIn) > 0 {
+		predicates = append(predicates, project.NameNotIn(i.NameNotIn...))
+	}
+	if i.NameGT != nil {
+		predicates = append(predicates, project.NameGT(*i.NameGT))
+	}
+	if i.NameGTE != nil {
+		predicates = append(predicates, project.NameGTE(*i.NameGTE))
+	}
+	if i.NameLT != nil {
+		predicates = append(predicates, project.NameLT(*i.NameLT))
+	}
+	if i.NameLTE != nil {
+		predicates = append(predicates, project.NameLTE(*i.NameLTE))
+	}
+	if i.NameContains != nil {
+		predicates = append(predicates, project.NameContains(*i.NameContains))
+	}
+	if i.NameHasPrefix != nil {
+		predicates = append(predicates, project.NameHasPrefix(*i.NameHasPrefix))
+	}
+	if i.NameHasSuffix != nil {
+		predicates = append(predicates, project.NameHasSuffix(*i.NameHasSuffix))
+	}
+	if i.NameEqualFold != nil {
+		predicates = append(predicates, project.NameEqualFold(*i.NameEqualFold))
+	}
+	if i.NameContainsFold != nil {
+		predicates = append(predicates, project.NameContainsFold(*i.NameContainsFold))
+	}
+	if i.Description != nil {
+		predicates = append(predicates, project.DescriptionEQ(*i.Description))
+	}
+	if i.DescriptionNEQ != nil {
+		predicates = append(predicates, project.DescriptionNEQ(*i.DescriptionNEQ))
+	}
+	if len(i.DescriptionIn) > 0 {
+		predicates = append(predicates, project.DescriptionIn(i.DescriptionIn...))
+	}
+	if len(i.DescriptionNotIn) > 0 {
+		predicates = append(predicates, project.DescriptionNotIn(i.DescriptionNotIn...))
+	}
+	if i.DescriptionGT != nil {
+		predicates = append(predicates, project.DescriptionGT(*i.DescriptionGT))
+	}
+	if i.DescriptionGTE != nil {
+		predicates = append(predicates, project.DescriptionGTE(*i.DescriptionGTE))
+	}
+	if i.DescriptionLT != nil {
+		predicates = append(predicates, project.DescriptionLT(*i.DescriptionLT))
+	}
+	if i.DescriptionLTE != nil {
+		predicates = append(predicates, project.DescriptionLTE(*i.DescriptionLTE))
+	}
+	if i.DescriptionContains != nil {
+		predicates = append(predicates, project.DescriptionContains(*i.DescriptionContains))
+	}
+	if i.DescriptionHasPrefix != nil {
+		predicates = append(predicates, project.DescriptionHasPrefix(*i.DescriptionHasPrefix))
+	}
+	if i.DescriptionHasSuffix != nil {
+		predicates = append(predicates, project.DescriptionHasSuffix(*i.DescriptionHasSuffix))
+	}
+	if i.DescriptionEqualFold != nil {
+		predicates = append(predicates, project.DescriptionEqualFold(*i.DescriptionEqualFold))
+	}
+	if i.DescriptionContainsFold != nil {
+		predicates = append(predicates, project.DescriptionContainsFold(*i.DescriptionContainsFold))
+	}
+	if i.Status != nil {
+		predicates = append(predicates, project.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, project.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, project.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, project.StatusNotIn(i.StatusNotIn...))
+	}
+
+	if i.HasUsers != nil {
+		p := project.HasUsers()
+		if !*i.HasUsers {
+			p = project.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasUsersWith) > 0 {
+		with := make([]predicate.User, 0, len(i.HasUsersWith))
+		for _, w := range i.HasUsersWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasUsersWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, project.HasUsersWith(with...))
+	}
+	if i.HasRoles != nil {
+		p := project.HasRoles()
+		if !*i.HasRoles {
+			p = project.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasRolesWith) > 0 {
+		with := make([]predicate.Role, 0, len(i.HasRolesWith))
+		for _, w := range i.HasRolesWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasRolesWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, project.HasRolesWith(with...))
+	}
+	if i.HasAPIKeys != nil {
+		p := project.HasAPIKeys()
+		if !*i.HasAPIKeys {
+			p = project.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasAPIKeysWith) > 0 {
+		with := make([]predicate.APIKey, 0, len(i.HasAPIKeysWith))
+		for _, w := range i.HasAPIKeysWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasAPIKeysWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, project.HasAPIKeysWith(with...))
+	}
+	if i.HasRequests != nil {
+		p := project.HasRequests()
+		if !*i.HasRequests {
+			p = project.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasRequestsWith) > 0 {
+		with := make([]predicate.Request, 0, len(i.HasRequestsWith))
+		for _, w := range i.HasRequestsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasRequestsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, project.HasRequestsWith(with...))
+	}
+	if i.HasUsageLogs != nil {
+		p := project.HasUsageLogs()
+		if !*i.HasUsageLogs {
+			p = project.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasUsageLogsWith) > 0 {
+		with := make([]predicate.UsageLog, 0, len(i.HasUsageLogsWith))
+		for _, w := range i.HasUsageLogsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasUsageLogsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, project.HasUsageLogsWith(with...))
+	}
+	if i.HasProjectUsers != nil {
+		p := project.HasProjectUsers()
+		if !*i.HasProjectUsers {
+			p = project.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProjectUsersWith) > 0 {
+		with := make([]predicate.UserProject, 0, len(i.HasProjectUsersWith))
+		for _, w := range i.HasProjectUsersWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProjectUsersWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, project.HasProjectUsersWith(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyProjectWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return project.And(predicates...), nil
+	}
+}
+
 // RequestWhereInput represents a where input for filtering Request queries.
 type RequestWhereInput struct {
 	Predicates []predicate.Request  `json:"-"`
@@ -1024,6 +1604,12 @@ type RequestWhereInput struct {
 	APIKeyIDNotIn  []int `json:"apiKeyIDNotIn,omitempty"`
 	APIKeyIDIsNil  bool  `json:"apiKeyIDIsNil,omitempty"`
 	APIKeyIDNotNil bool  `json:"apiKeyIDNotNil,omitempty"`
+
+	// "project_id" field predicates.
+	ProjectID      *int  `json:"projectID,omitempty"`
+	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
+	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
+	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
 
 	// "source" field predicates.
 	Source      *request.Source  `json:"source,omitempty"`
@@ -1103,6 +1689,10 @@ type RequestWhereInput struct {
 	// "api_key" edge predicates.
 	HasAPIKey     *bool               `json:"hasAPIKey,omitempty"`
 	HasAPIKeyWith []*APIKeyWhereInput `json:"hasAPIKeyWith,omitempty"`
+
+	// "project" edge predicates.
+	HasProject     *bool                `json:"hasProject,omitempty"`
+	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
 
 	// "executions" edge predicates.
 	HasExecutions     *bool                         `json:"hasExecutions,omitempty"`
@@ -1314,6 +1904,18 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	if i.APIKeyIDNotNil {
 		predicates = append(predicates, request.APIKeyIDNotNil())
 	}
+	if i.ProjectID != nil {
+		predicates = append(predicates, request.ProjectIDEQ(*i.ProjectID))
+	}
+	if i.ProjectIDNEQ != nil {
+		predicates = append(predicates, request.ProjectIDNEQ(*i.ProjectIDNEQ))
+	}
+	if len(i.ProjectIDIn) > 0 {
+		predicates = append(predicates, request.ProjectIDIn(i.ProjectIDIn...))
+	}
+	if len(i.ProjectIDNotIn) > 0 {
+		predicates = append(predicates, request.ProjectIDNotIn(i.ProjectIDNotIn...))
+	}
 	if i.Source != nil {
 		predicates = append(predicates, request.SourceEQ(*i.Source))
 	}
@@ -1522,6 +2124,24 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 		}
 		predicates = append(predicates, request.HasAPIKeyWith(with...))
 	}
+	if i.HasProject != nil {
+		p := request.HasProject()
+		if !*i.HasProject {
+			p = request.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProjectWith) > 0 {
+		with := make([]predicate.Project, 0, len(i.HasProjectWith))
+		for _, w := range i.HasProjectWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProjectWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, request.HasProjectWith(with...))
+	}
 	if i.HasExecutions != nil {
 		p := request.HasExecutions()
 		if !*i.HasExecutions {
@@ -1632,6 +2252,16 @@ type RequestExecutionWhereInput struct {
 	UserIDGTE   *int  `json:"userIDGTE,omitempty"`
 	UserIDLT    *int  `json:"userIDLT,omitempty"`
 	UserIDLTE   *int  `json:"userIDLTE,omitempty"`
+
+	// "project_id" field predicates.
+	ProjectID      *int  `json:"projectID,omitempty"`
+	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
+	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
+	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
+	ProjectIDGT    *int  `json:"projectIDGT,omitempty"`
+	ProjectIDGTE   *int  `json:"projectIDGTE,omitempty"`
+	ProjectIDLT    *int  `json:"projectIDLT,omitempty"`
+	ProjectIDLTE   *int  `json:"projectIDLTE,omitempty"`
 
 	// "request_id" field predicates.
 	RequestID      *int  `json:"requestID,omitempty"`
@@ -1890,6 +2520,30 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.UserIDLTE != nil {
 		predicates = append(predicates, requestexecution.UserIDLTE(*i.UserIDLTE))
+	}
+	if i.ProjectID != nil {
+		predicates = append(predicates, requestexecution.ProjectIDEQ(*i.ProjectID))
+	}
+	if i.ProjectIDNEQ != nil {
+		predicates = append(predicates, requestexecution.ProjectIDNEQ(*i.ProjectIDNEQ))
+	}
+	if len(i.ProjectIDIn) > 0 {
+		predicates = append(predicates, requestexecution.ProjectIDIn(i.ProjectIDIn...))
+	}
+	if len(i.ProjectIDNotIn) > 0 {
+		predicates = append(predicates, requestexecution.ProjectIDNotIn(i.ProjectIDNotIn...))
+	}
+	if i.ProjectIDGT != nil {
+		predicates = append(predicates, requestexecution.ProjectIDGT(*i.ProjectIDGT))
+	}
+	if i.ProjectIDGTE != nil {
+		predicates = append(predicates, requestexecution.ProjectIDGTE(*i.ProjectIDGTE))
+	}
+	if i.ProjectIDLT != nil {
+		predicates = append(predicates, requestexecution.ProjectIDLT(*i.ProjectIDLT))
+	}
+	if i.ProjectIDLTE != nil {
+		predicates = append(predicates, requestexecution.ProjectIDLTE(*i.ProjectIDLTE))
 	}
 	if i.RequestID != nil {
 		predicates = append(predicates, requestexecution.RequestIDEQ(*i.RequestID))
@@ -2219,9 +2873,27 @@ type RoleWhereInput struct {
 	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
 	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
 
+	// "level" field predicates.
+	Level      *role.Level  `json:"level,omitempty"`
+	LevelNEQ   *role.Level  `json:"levelNEQ,omitempty"`
+	LevelIn    []role.Level `json:"levelIn,omitempty"`
+	LevelNotIn []role.Level `json:"levelNotIn,omitempty"`
+
+	// "project_id" field predicates.
+	ProjectID       *int  `json:"projectID,omitempty"`
+	ProjectIDNEQ    *int  `json:"projectIDNEQ,omitempty"`
+	ProjectIDIn     []int `json:"projectIDIn,omitempty"`
+	ProjectIDNotIn  []int `json:"projectIDNotIn,omitempty"`
+	ProjectIDIsNil  bool  `json:"projectIDIsNil,omitempty"`
+	ProjectIDNotNil bool  `json:"projectIDNotNil,omitempty"`
+
 	// "users" edge predicates.
 	HasUsers     *bool             `json:"hasUsers,omitempty"`
 	HasUsersWith []*UserWhereInput `json:"hasUsersWith,omitempty"`
+
+	// "project" edge predicates.
+	HasProject     *bool                `json:"hasProject,omitempty"`
+	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -2469,6 +3141,36 @@ func (i *RoleWhereInput) P() (predicate.Role, error) {
 	if i.NameContainsFold != nil {
 		predicates = append(predicates, role.NameContainsFold(*i.NameContainsFold))
 	}
+	if i.Level != nil {
+		predicates = append(predicates, role.LevelEQ(*i.Level))
+	}
+	if i.LevelNEQ != nil {
+		predicates = append(predicates, role.LevelNEQ(*i.LevelNEQ))
+	}
+	if len(i.LevelIn) > 0 {
+		predicates = append(predicates, role.LevelIn(i.LevelIn...))
+	}
+	if len(i.LevelNotIn) > 0 {
+		predicates = append(predicates, role.LevelNotIn(i.LevelNotIn...))
+	}
+	if i.ProjectID != nil {
+		predicates = append(predicates, role.ProjectIDEQ(*i.ProjectID))
+	}
+	if i.ProjectIDNEQ != nil {
+		predicates = append(predicates, role.ProjectIDNEQ(*i.ProjectIDNEQ))
+	}
+	if len(i.ProjectIDIn) > 0 {
+		predicates = append(predicates, role.ProjectIDIn(i.ProjectIDIn...))
+	}
+	if len(i.ProjectIDNotIn) > 0 {
+		predicates = append(predicates, role.ProjectIDNotIn(i.ProjectIDNotIn...))
+	}
+	if i.ProjectIDIsNil {
+		predicates = append(predicates, role.ProjectIDIsNil())
+	}
+	if i.ProjectIDNotNil {
+		predicates = append(predicates, role.ProjectIDNotNil())
+	}
 
 	if i.HasUsers != nil {
 		p := role.HasUsers()
@@ -2487,6 +3189,24 @@ func (i *RoleWhereInput) P() (predicate.Role, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, role.HasUsersWith(with...))
+	}
+	if i.HasProject != nil {
+		p := role.HasProject()
+		if !*i.HasProject {
+			p = role.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProjectWith) > 0 {
+		with := make([]predicate.Project, 0, len(i.HasProjectWith))
+		for _, w := range i.HasProjectWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProjectWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, role.HasProjectWith(with...))
 	}
 	switch len(predicates) {
 	case 0:
@@ -2891,6 +3611,12 @@ type UsageLogWhereInput struct {
 	RequestIDIn    []int `json:"requestIDIn,omitempty"`
 	RequestIDNotIn []int `json:"requestIDNotIn,omitempty"`
 
+	// "project_id" field predicates.
+	ProjectID      *int  `json:"projectID,omitempty"`
+	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
+	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
+	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
+
 	// "channel_id" field predicates.
 	ChannelID       *int  `json:"channelID,omitempty"`
 	ChannelIDNEQ    *int  `json:"channelIDNEQ,omitempty"`
@@ -3044,6 +3770,10 @@ type UsageLogWhereInput struct {
 	// "request" edge predicates.
 	HasRequest     *bool                `json:"hasRequest,omitempty"`
 	HasRequestWith []*RequestWhereInput `json:"hasRequestWith,omitempty"`
+
+	// "project" edge predicates.
+	HasProject     *bool                `json:"hasProject,omitempty"`
+	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
 
 	// "channel" edge predicates.
 	HasChannel     *bool                `json:"hasChannel,omitempty"`
@@ -3240,6 +3970,18 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if len(i.RequestIDNotIn) > 0 {
 		predicates = append(predicates, usagelog.RequestIDNotIn(i.RequestIDNotIn...))
+	}
+	if i.ProjectID != nil {
+		predicates = append(predicates, usagelog.ProjectIDEQ(*i.ProjectID))
+	}
+	if i.ProjectIDNEQ != nil {
+		predicates = append(predicates, usagelog.ProjectIDNEQ(*i.ProjectIDNEQ))
+	}
+	if len(i.ProjectIDIn) > 0 {
+		predicates = append(predicates, usagelog.ProjectIDIn(i.ProjectIDIn...))
+	}
+	if len(i.ProjectIDNotIn) > 0 {
+		predicates = append(predicates, usagelog.ProjectIDNotIn(i.ProjectIDNotIn...))
 	}
 	if i.ChannelID != nil {
 		predicates = append(predicates, usagelog.ChannelIDEQ(*i.ChannelID))
@@ -3638,6 +4380,24 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 		}
 		predicates = append(predicates, usagelog.HasRequestWith(with...))
 	}
+	if i.HasProject != nil {
+		p := usagelog.HasProject()
+		if !*i.HasProject {
+			p = usagelog.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProjectWith) > 0 {
+		with := make([]predicate.Project, 0, len(i.HasProjectWith))
+		for _, w := range i.HasProjectWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProjectWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, usagelog.HasProjectWith(with...))
+	}
 	if i.HasChannel != nil {
 		p := usagelog.HasChannel()
 		if !*i.HasChannel {
@@ -3815,6 +4575,10 @@ type UserWhereInput struct {
 	IsOwner    *bool `json:"isOwner,omitempty"`
 	IsOwnerNEQ *bool `json:"isOwnerNEQ,omitempty"`
 
+	// "projects" edge predicates.
+	HasProjects     *bool                `json:"hasProjects,omitempty"`
+	HasProjectsWith []*ProjectWhereInput `json:"hasProjectsWith,omitempty"`
+
 	// "requests" edge predicates.
 	HasRequests     *bool                `json:"hasRequests,omitempty"`
 	HasRequestsWith []*RequestWhereInput `json:"hasRequestsWith,omitempty"`
@@ -3830,6 +4594,10 @@ type UserWhereInput struct {
 	// "usage_logs" edge predicates.
 	HasUsageLogs     *bool                 `json:"hasUsageLogs,omitempty"`
 	HasUsageLogsWith []*UsageLogWhereInput `json:"hasUsageLogsWith,omitempty"`
+
+	// "project_users" edge predicates.
+	HasProjectUsers     *bool                    `json:"hasProjectUsers,omitempty"`
+	HasProjectUsersWith []*UserProjectWhereInput `json:"hasProjectUsersWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -4258,6 +5026,24 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 		predicates = append(predicates, user.IsOwnerNEQ(*i.IsOwnerNEQ))
 	}
 
+	if i.HasProjects != nil {
+		p := user.HasProjects()
+		if !*i.HasProjects {
+			p = user.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProjectsWith) > 0 {
+		with := make([]predicate.Project, 0, len(i.HasProjectsWith))
+		for _, w := range i.HasProjectsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProjectsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, user.HasProjectsWith(with...))
+	}
 	if i.HasRequests != nil {
 		p := user.HasRequests()
 		if !*i.HasRequests {
@@ -4330,6 +5116,24 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 		}
 		predicates = append(predicates, user.HasUsageLogsWith(with...))
 	}
+	if i.HasProjectUsers != nil {
+		p := user.HasProjectUsers()
+		if !*i.HasProjectUsers {
+			p = user.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProjectUsersWith) > 0 {
+		with := make([]predicate.UserProject, 0, len(i.HasProjectUsersWith))
+		for _, w := range i.HasProjectUsersWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProjectUsersWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, user.HasProjectUsersWith(with...))
+	}
 	switch len(predicates) {
 	case 0:
 		return nil, ErrEmptyUserWhereInput
@@ -4337,5 +5141,321 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 		return predicates[0], nil
 	default:
 		return user.And(predicates...), nil
+	}
+}
+
+// UserProjectWhereInput represents a where input for filtering UserProject queries.
+type UserProjectWhereInput struct {
+	Predicates []predicate.UserProject  `json:"-"`
+	Not        *UserProjectWhereInput   `json:"not,omitempty"`
+	Or         []*UserProjectWhereInput `json:"or,omitempty"`
+	And        []*UserProjectWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+
+	// "updated_at" field predicates.
+	UpdatedAt      *time.Time  `json:"updatedAt,omitempty"`
+	UpdatedAtNEQ   *time.Time  `json:"updatedAtNEQ,omitempty"`
+	UpdatedAtIn    []time.Time `json:"updatedAtIn,omitempty"`
+	UpdatedAtNotIn []time.Time `json:"updatedAtNotIn,omitempty"`
+	UpdatedAtGT    *time.Time  `json:"updatedAtGT,omitempty"`
+	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
+	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
+	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
+
+	// "deleted_at" field predicates.
+	DeletedAt      *int  `json:"deletedAt,omitempty"`
+	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
+	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
+	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
+	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
+	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
+	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
+	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
+
+	// "user_id" field predicates.
+	UserID      *int  `json:"userID,omitempty"`
+	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
+	UserIDIn    []int `json:"userIDIn,omitempty"`
+	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
+
+	// "project_id" field predicates.
+	ProjectID      *int  `json:"projectID,omitempty"`
+	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
+	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
+	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
+
+	// "is_owner" field predicates.
+	IsOwner    *bool `json:"isOwner,omitempty"`
+	IsOwnerNEQ *bool `json:"isOwnerNEQ,omitempty"`
+
+	// "users" edge predicates.
+	HasUsers     *bool             `json:"hasUsers,omitempty"`
+	HasUsersWith []*UserWhereInput `json:"hasUsersWith,omitempty"`
+
+	// "projects" edge predicates.
+	HasProjects     *bool                `json:"hasProjects,omitempty"`
+	HasProjectsWith []*ProjectWhereInput `json:"hasProjectsWith,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *UserProjectWhereInput) AddPredicates(predicates ...predicate.UserProject) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the UserProjectWhereInput filter on the UserProjectQuery builder.
+func (i *UserProjectWhereInput) Filter(q *UserProjectQuery) (*UserProjectQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyUserProjectWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyUserProjectWhereInput is returned in case the UserProjectWhereInput is empty.
+var ErrEmptyUserProjectWhereInput = errors.New("ent: empty predicate UserProjectWhereInput")
+
+// P returns a predicate for filtering userprojects.
+// An error is returned if the input is empty or invalid.
+func (i *UserProjectWhereInput) P() (predicate.UserProject, error) {
+	var predicates []predicate.UserProject
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, userproject.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.UserProject, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, userproject.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.UserProject, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, userproject.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, userproject.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, userproject.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, userproject.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, userproject.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, userproject.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, userproject.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, userproject.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, userproject.IDLTE(*i.IDLTE))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, userproject.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, userproject.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, userproject.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, userproject.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, userproject.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, userproject.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, userproject.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, userproject.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+	if i.UpdatedAt != nil {
+		predicates = append(predicates, userproject.UpdatedAtEQ(*i.UpdatedAt))
+	}
+	if i.UpdatedAtNEQ != nil {
+		predicates = append(predicates, userproject.UpdatedAtNEQ(*i.UpdatedAtNEQ))
+	}
+	if len(i.UpdatedAtIn) > 0 {
+		predicates = append(predicates, userproject.UpdatedAtIn(i.UpdatedAtIn...))
+	}
+	if len(i.UpdatedAtNotIn) > 0 {
+		predicates = append(predicates, userproject.UpdatedAtNotIn(i.UpdatedAtNotIn...))
+	}
+	if i.UpdatedAtGT != nil {
+		predicates = append(predicates, userproject.UpdatedAtGT(*i.UpdatedAtGT))
+	}
+	if i.UpdatedAtGTE != nil {
+		predicates = append(predicates, userproject.UpdatedAtGTE(*i.UpdatedAtGTE))
+	}
+	if i.UpdatedAtLT != nil {
+		predicates = append(predicates, userproject.UpdatedAtLT(*i.UpdatedAtLT))
+	}
+	if i.UpdatedAtLTE != nil {
+		predicates = append(predicates, userproject.UpdatedAtLTE(*i.UpdatedAtLTE))
+	}
+	if i.DeletedAt != nil {
+		predicates = append(predicates, userproject.DeletedAtEQ(*i.DeletedAt))
+	}
+	if i.DeletedAtNEQ != nil {
+		predicates = append(predicates, userproject.DeletedAtNEQ(*i.DeletedAtNEQ))
+	}
+	if len(i.DeletedAtIn) > 0 {
+		predicates = append(predicates, userproject.DeletedAtIn(i.DeletedAtIn...))
+	}
+	if len(i.DeletedAtNotIn) > 0 {
+		predicates = append(predicates, userproject.DeletedAtNotIn(i.DeletedAtNotIn...))
+	}
+	if i.DeletedAtGT != nil {
+		predicates = append(predicates, userproject.DeletedAtGT(*i.DeletedAtGT))
+	}
+	if i.DeletedAtGTE != nil {
+		predicates = append(predicates, userproject.DeletedAtGTE(*i.DeletedAtGTE))
+	}
+	if i.DeletedAtLT != nil {
+		predicates = append(predicates, userproject.DeletedAtLT(*i.DeletedAtLT))
+	}
+	if i.DeletedAtLTE != nil {
+		predicates = append(predicates, userproject.DeletedAtLTE(*i.DeletedAtLTE))
+	}
+	if i.UserID != nil {
+		predicates = append(predicates, userproject.UserIDEQ(*i.UserID))
+	}
+	if i.UserIDNEQ != nil {
+		predicates = append(predicates, userproject.UserIDNEQ(*i.UserIDNEQ))
+	}
+	if len(i.UserIDIn) > 0 {
+		predicates = append(predicates, userproject.UserIDIn(i.UserIDIn...))
+	}
+	if len(i.UserIDNotIn) > 0 {
+		predicates = append(predicates, userproject.UserIDNotIn(i.UserIDNotIn...))
+	}
+	if i.ProjectID != nil {
+		predicates = append(predicates, userproject.ProjectIDEQ(*i.ProjectID))
+	}
+	if i.ProjectIDNEQ != nil {
+		predicates = append(predicates, userproject.ProjectIDNEQ(*i.ProjectIDNEQ))
+	}
+	if len(i.ProjectIDIn) > 0 {
+		predicates = append(predicates, userproject.ProjectIDIn(i.ProjectIDIn...))
+	}
+	if len(i.ProjectIDNotIn) > 0 {
+		predicates = append(predicates, userproject.ProjectIDNotIn(i.ProjectIDNotIn...))
+	}
+	if i.IsOwner != nil {
+		predicates = append(predicates, userproject.IsOwnerEQ(*i.IsOwner))
+	}
+	if i.IsOwnerNEQ != nil {
+		predicates = append(predicates, userproject.IsOwnerNEQ(*i.IsOwnerNEQ))
+	}
+
+	if i.HasUsers != nil {
+		p := userproject.HasUsers()
+		if !*i.HasUsers {
+			p = userproject.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasUsersWith) > 0 {
+		with := make([]predicate.User, 0, len(i.HasUsersWith))
+		for _, w := range i.HasUsersWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasUsersWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, userproject.HasUsersWith(with...))
+	}
+	if i.HasProjects != nil {
+		p := userproject.HasProjects()
+		if !*i.HasProjects {
+			p = userproject.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProjectsWith) > 0 {
+		with := make([]predicate.Project, 0, len(i.HasProjectsWith))
+		for _, w := range i.HasProjectsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProjectsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, userproject.HasProjectsWith(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyUserProjectWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return userproject.And(predicates...), nil
 	}
 }

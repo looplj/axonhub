@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
@@ -273,6 +274,28 @@ func (r *mutationResolver) UpdateRole(ctx context.Context, id objects.GUID, inpu
 	}
 
 	return role, nil
+}
+
+// CreateProject is the resolver for the createProject field.
+func (r *mutationResolver) CreateProject(ctx context.Context, input ent.CreateProjectInput) (*ent.Project, error) {
+	// Get current user from context
+	currentUser, ok := contexts.GetUser(ctx)
+	if !ok || currentUser == nil {
+		return nil, fmt.Errorf("user not found in context")
+	}
+
+	// Use ProjectService to create the project with transaction
+	return r.projectService.CreateProject(ctx, input, currentUser.ID)
+}
+
+// UpdateProject is the resolver for the updateProject field.
+func (r *mutationResolver) UpdateProject(ctx context.Context, id objects.GUID, input ent.UpdateProjectInput) (*ent.Project, error) {
+	return r.projectService.UpdateProject(ctx, id.ID, input)
+}
+
+// UpdateProjectStatus is the resolver for the updateProjectStatus field.
+func (r *mutationResolver) UpdateProjectStatus(ctx context.Context, id objects.GUID, status project.Status) (*ent.Project, error) {
+	return r.projectService.UpdateProjectStatus(ctx, id.ID, status)
 }
 
 // FetchModels is the resolver for the fetchModels field.

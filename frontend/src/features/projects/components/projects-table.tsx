@@ -1,0 +1,200 @@
+import React, { useState } from 'react'
+import {
+  ColumnDef,
+  ColumnFiltersState,
+  RowData,
+  SortingState,
+  VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  useReactTable,
+} from '@tanstack/react-table'
+import { t } from 'i18next'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { ServerSidePagination } from '@/components/server-side-pagination'
+import { Project, ProjectConnection } from '../data/schema'
+import { DataTableToolbar } from './data-table-toolbar'
+
+declare module '@tanstack/react-table' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
+    className: string
+  }
+}
+
+interface DataTableProps {
+  columns: ColumnDef<Project>[]
+  loading?: boolean
+  data: Project[]
+  pageInfo?: ProjectConnection['pageInfo']
+  pageSize: number
+  totalCount?: number
+  onNextPage: () => void
+  onPreviousPage: () => void
+  onPageSizeChange: (pageSize: number) => void
+  searchFilter: string
+  onSearchFilterChange: (value: string) => void
+}
+
+export function ProjectsTable({
+  columns,
+  data,
+  loading,
+  pageInfo,
+  pageSize,
+  totalCount,
+  onNextPage,
+  onPreviousPage,
+  onPageSizeChange,
+  searchFilter,
+  onSearchFilterChange,
+}: DataTableProps) {
+  const [rowSelection, setRowSelection] = useState({})
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [sorting, setSorting] = useState<SortingState>([])
+
+  // Sync server state to local column filters (for UI display)
+  React.useEffect(() => {
+    const newFilters: ColumnFiltersState = []
+    if (searchFilter) {
+      // Use 'search' as a virtual column ID for the combined search
+      newFilters.push({ id: 'search', value: searchFilter })
+    }
+    setColumnFilters(newFilters)
+  }, [searchFilter])
+
+  const handleColumnFiltersChange = (
+    updater:
+      | ColumnFiltersState
+      | ((prev: ColumnFiltersState) => ColumnFiltersState)
+  ) => {
+    const newFilters =
+      typeof updater === 'function' ? updater(columnFilters) : updater
+    setColumnFilters(newFilters)
+
+    // Extract search filter value
+    const searchFilterValue = newFilters.find((f) => f.id === 'search')?.value
+
+    // Only update if values actually change to prevent reset issues
+    const newSearchFilter =
+      typeof searchFilterValue === 'string' ? searchFilterValue : ''
+    if (newSearchFilter !== searchFilter) {
+      onSearchFilterChange(newSearchFilter)
+    }
+  }
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      columnFilters,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: handleColumnFiltersChange,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    manualFiltering: true,
+    manualPagination: true,
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+  })
+
+  return (
+    <div className='space-y-4' data-testid='projects-table'>
+      <DataTableToolbar table={table} />
+      <div className='rounded-md border'>
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className='group/row'>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className={header.column.columnDef.meta?.className ?? ''}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  )
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
+                >
+                  {t('loading')}
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && 'selected'}
+                  className='group/row'
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={cell.column.columnDef.meta?.className ?? ''}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className='h-24 text-center'
+                >
+                  暂无数据
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <ServerSidePagination
+        pageInfo={pageInfo}
+        pageSize={pageSize}
+        dataLength={data.length}
+        totalCount={totalCount}
+        selectedRows={Object.keys(rowSelection).length}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
+        onPageSizeChange={onPageSizeChange}
+        data-testid='pagination'
+      />
+    </div>
+  )
+}

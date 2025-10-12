@@ -2,17 +2,20 @@ package biz
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
@@ -320,12 +323,30 @@ func TestAuthService_AnthenticateAPIKey(t *testing.T) {
 	require.NoError(t, err)
 
 	testUser, err := client.User.Create().
-		SetEmail("test@example.com").
+		SetEmail(fmt.Sprintf("test-%d@example.com", time.Now().UnixNano())).
 		SetPassword(hashedPassword).
 		SetFirstName("Test").
 		SetLastName("User").
 		SetStatus(user.StatusActivated).
 		Save(ctx)
+	require.NoError(t, err)
+
+	projectName := uuid.NewString()
+	testProject, err := client.Project.Create().SetName(
+		projectName,
+	).SetSlug(
+		GenerateSlug(projectName),
+	).SetDescription(
+		projectName,
+	).SetStatus(
+		project.StatusActive,
+	).SetCreatedAt(
+		time.Now(),
+	).SetUpdatedAt(
+		time.Now(),
+	).Save(
+		ctx,
+	)
 	require.NoError(t, err)
 
 	// Generate API key
@@ -337,6 +358,7 @@ func TestAuthService_AnthenticateAPIKey(t *testing.T) {
 		SetKey(apiKeyString).
 		SetName("Test API Key").
 		SetUser(testUser).
+		SetProject(testProject).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -473,12 +495,30 @@ func TestAuthService_CacheExpiration(t *testing.T) {
 	require.NoError(t, err)
 
 	testUser, err := client.User.Create().
-		SetEmail("test@example.com").
+		SetEmail(fmt.Sprintf("test-%d@example.com", time.Now().UnixNano())).
 		SetPassword(hashedPassword).
 		SetFirstName("Test").
 		SetLastName("User").
 		SetStatus(user.StatusActivated).
 		Save(ctx)
+	require.NoError(t, err)
+
+	projectName := uuid.NewString()
+	testProject, err := client.Project.Create().SetName(
+		projectName,
+	).SetSlug(
+		GenerateSlug(projectName),
+	).SetDescription(
+		projectName,
+	).SetStatus(
+		project.StatusActive,
+	).SetCreatedAt(
+		time.Now(),
+	).SetUpdatedAt(
+		time.Now(),
+	).Save(
+		ctx,
+	)
 	require.NoError(t, err)
 
 	// Generate API key
@@ -489,6 +529,7 @@ func TestAuthService_CacheExpiration(t *testing.T) {
 		SetKey(apiKeyString).
 		SetName("Test API Key").
 		SetUser(testUser).
+		SetProject(testProject).
 		Save(ctx)
 	require.NoError(t, err)
 
