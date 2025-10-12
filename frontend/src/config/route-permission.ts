@@ -22,6 +22,11 @@ export const routeConfigs: RouteGroup[] = [
         mode: 'hidden',
       },
       {
+        path: '/projects',
+        requiredScopes: ['read_projects'],
+        mode: 'hidden',
+      },
+      {
         path: '/users',
         requiredScopes: ['read_users'],
         mode: 'hidden',

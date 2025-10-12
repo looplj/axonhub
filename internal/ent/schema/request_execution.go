@@ -33,6 +33,7 @@ func (RequestExecution) Indexes() []ent.Index {
 func (RequestExecution) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("user_id").Immutable(),
+		field.Int("project_id").Immutable().Default(1),
 		field.Int("request_id").Immutable(),
 		field.Int("channel_id").Immutable(),
 		// External ID for tracking requests in external systems

@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
@@ -184,6 +186,92 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 	return c
 }
 
+// CreateProjectInput represents a mutation input for creating projects.
+type CreateProjectInput struct {
+	CreatedAt   *time.Time
+	UpdatedAt   *time.Time
+	Slug        string
+	Name        string
+	Description *string
+	Status      *project.Status
+	UserIDs     []int
+}
+
+// Mutate applies the CreateProjectInput on the ProjectMutation builder.
+func (i *CreateProjectInput) Mutate(m *ProjectMutation) {
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
+	m.SetSlug(i.Slug)
+	m.SetName(i.Name)
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if v := i.UserIDs; len(v) > 0 {
+		m.AddUserIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the CreateProjectInput on the ProjectCreate builder.
+func (c *ProjectCreate) SetInput(i CreateProjectInput) *ProjectCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateProjectInput represents a mutation input for updating projects.
+type UpdateProjectInput struct {
+	UpdatedAt     *time.Time
+	Name          *string
+	Description   *string
+	Status        *project.Status
+	ClearUsers    bool
+	AddUserIDs    []int
+	RemoveUserIDs []int
+}
+
+// Mutate applies the UpdateProjectInput on the ProjectMutation builder.
+func (i *UpdateProjectInput) Mutate(m *ProjectMutation) {
+	if v := i.UpdatedAt; v != nil {
+		m.SetUpdatedAt(*v)
+	}
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if i.ClearUsers {
+		m.ClearUsers()
+	}
+	if v := i.AddUserIDs; len(v) > 0 {
+		m.AddUserIDs(v...)
+	}
+	if v := i.RemoveUserIDs; len(v) > 0 {
+		m.RemoveUserIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the UpdateProjectInput on the ProjectUpdate builder.
+func (c *ProjectUpdate) SetInput(i UpdateProjectInput) *ProjectUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateProjectInput on the ProjectUpdateOne builder.
+func (c *ProjectUpdateOne) SetInput(i UpdateProjectInput) *ProjectUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
 // CreateRequestInput represents a mutation input for creating requests.
 type CreateRequestInput struct {
 	CreatedAt      *time.Time
@@ -199,6 +287,7 @@ type CreateRequestInput struct {
 	Stream         *bool
 	UserID         int
 	APIKeyID       *int
+	ProjectID      int
 	ChannelID      *int
 }
 
@@ -237,6 +326,7 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	if v := i.APIKeyID; v != nil {
 		m.SetAPIKeyID(*v)
 	}
+	m.SetProjectID(i.ProjectID)
 	if v := i.ChannelID; v != nil {
 		m.SetChannelID(*v)
 	}
@@ -322,8 +412,10 @@ type CreateRoleInput struct {
 	UpdatedAt *time.Time
 	Code      string
 	Name      string
+	Level     *role.Level
 	Scopes    []string
 	UserIDs   []int
+	ProjectID *int
 }
 
 // Mutate applies the CreateRoleInput on the RoleMutation builder.
@@ -336,11 +428,17 @@ func (i *CreateRoleInput) Mutate(m *RoleMutation) {
 	}
 	m.SetCode(i.Code)
 	m.SetName(i.Name)
+	if v := i.Level; v != nil {
+		m.SetLevel(*v)
+	}
 	if v := i.Scopes; v != nil {
 		m.SetScopes(v)
 	}
 	if v := i.UserIDs; len(v) > 0 {
 		m.AddUserIDs(v...)
+	}
+	if v := i.ProjectID; v != nil {
+		m.SetProjectID(*v)
 	}
 }
 
@@ -354,12 +452,15 @@ func (c *RoleCreate) SetInput(i CreateRoleInput) *RoleCreate {
 type UpdateRoleInput struct {
 	UpdatedAt     *time.Time
 	Name          *string
+	Level         *role.Level
 	ClearScopes   bool
 	Scopes        []string
 	AppendScopes  []string
 	ClearUsers    bool
 	AddUserIDs    []int
 	RemoveUserIDs []int
+	ClearProject  bool
+	ProjectID     *int
 }
 
 // Mutate applies the UpdateRoleInput on the RoleMutation builder.
@@ -369,6 +470,9 @@ func (i *UpdateRoleInput) Mutate(m *RoleMutation) {
 	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
+	}
+	if v := i.Level; v != nil {
+		m.SetLevel(*v)
 	}
 	if i.ClearScopes {
 		m.ClearScopes()
@@ -387,6 +491,12 @@ func (i *UpdateRoleInput) Mutate(m *RoleMutation) {
 	}
 	if v := i.RemoveUserIDs; len(v) > 0 {
 		m.RemoveUserIDs(v...)
+	}
+	if i.ClearProject {
+		m.ClearProject()
+	}
+	if v := i.ProjectID; v != nil {
+		m.SetProjectID(*v)
 	}
 }
 
@@ -478,6 +588,7 @@ type CreateUsageLogInput struct {
 	Format                             *string
 	UserID                             int
 	RequestID                          int
+	ProjectID                          int
 	ChannelID                          *int
 }
 
@@ -525,6 +636,7 @@ func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
 	}
 	m.SetUserID(i.UserID)
 	m.SetRequestID(i.RequestID)
+	m.SetProjectID(i.ProjectID)
 	if v := i.ChannelID; v != nil {
 		m.SetChannelID(*v)
 	}
@@ -641,6 +753,7 @@ type CreateUserInput struct {
 	Avatar         *string
 	IsOwner        *bool
 	Scopes         []string
+	ProjectIDs     []int
 	RoleIDs        []int
 }
 
@@ -675,6 +788,9 @@ func (i *CreateUserInput) Mutate(m *UserMutation) {
 	if v := i.Scopes; v != nil {
 		m.SetScopes(v)
 	}
+	if v := i.ProjectIDs; len(v) > 0 {
+		m.AddProjectIDs(v...)
+	}
 	if v := i.RoleIDs; len(v) > 0 {
 		m.AddRoleIDs(v...)
 	}
@@ -688,22 +804,25 @@ func (c *UserCreate) SetInput(i CreateUserInput) *UserCreate {
 
 // UpdateUserInput represents a mutation input for updating users.
 type UpdateUserInput struct {
-	UpdatedAt      *time.Time
-	Email          *string
-	Status         *user.Status
-	PreferLanguage *string
-	Password       *string
-	FirstName      *string
-	LastName       *string
-	ClearAvatar    bool
-	Avatar         *string
-	IsOwner        *bool
-	ClearScopes    bool
-	Scopes         []string
-	AppendScopes   []string
-	ClearRoles     bool
-	AddRoleIDs     []int
-	RemoveRoleIDs  []int
+	UpdatedAt        *time.Time
+	Email            *string
+	Status           *user.Status
+	PreferLanguage   *string
+	Password         *string
+	FirstName        *string
+	LastName         *string
+	ClearAvatar      bool
+	Avatar           *string
+	IsOwner          *bool
+	ClearScopes      bool
+	Scopes           []string
+	AppendScopes     []string
+	ClearProjects    bool
+	AddProjectIDs    []int
+	RemoveProjectIDs []int
+	ClearRoles       bool
+	AddRoleIDs       []int
+	RemoveRoleIDs    []int
 }
 
 // Mutate applies the UpdateUserInput on the UserMutation builder.
@@ -746,6 +865,15 @@ func (i *UpdateUserInput) Mutate(m *UserMutation) {
 	}
 	if i.AppendScopes != nil {
 		m.AppendScopes(i.Scopes)
+	}
+	if i.ClearProjects {
+		m.ClearProjects()
+	}
+	if v := i.AddProjectIDs; len(v) > 0 {
+		m.AddProjectIDs(v...)
+	}
+	if v := i.RemoveProjectIDs; len(v) > 0 {
+		m.RemoveProjectIDs(v...)
 	}
 	if i.ClearRoles {
 		m.ClearRoles()

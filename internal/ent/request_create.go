@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -29,228 +30,247 @@ type RequestCreate struct {
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (rc *RequestCreate) SetCreatedAt(t time.Time) *RequestCreate {
-	rc.mutation.SetCreatedAt(t)
-	return rc
+func (_c *RequestCreate) SetCreatedAt(v time.Time) *RequestCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableCreatedAt(t *time.Time) *RequestCreate {
-	if t != nil {
-		rc.SetCreatedAt(*t)
+func (_c *RequestCreate) SetNillableCreatedAt(v *time.Time) *RequestCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (rc *RequestCreate) SetUpdatedAt(t time.Time) *RequestCreate {
-	rc.mutation.SetUpdatedAt(t)
-	return rc
+func (_c *RequestCreate) SetUpdatedAt(v time.Time) *RequestCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
 }
 
 // SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableUpdatedAt(t *time.Time) *RequestCreate {
-	if t != nil {
-		rc.SetUpdatedAt(*t)
+func (_c *RequestCreate) SetNillableUpdatedAt(v *time.Time) *RequestCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (rc *RequestCreate) SetDeletedAt(i int) *RequestCreate {
-	rc.mutation.SetDeletedAt(i)
-	return rc
+func (_c *RequestCreate) SetDeletedAt(v int) *RequestCreate {
+	_c.mutation.SetDeletedAt(v)
+	return _c
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableDeletedAt(i *int) *RequestCreate {
-	if i != nil {
-		rc.SetDeletedAt(*i)
+func (_c *RequestCreate) SetNillableDeletedAt(v *int) *RequestCreate {
+	if v != nil {
+		_c.SetDeletedAt(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetUserID sets the "user_id" field.
-func (rc *RequestCreate) SetUserID(i int) *RequestCreate {
-	rc.mutation.SetUserID(i)
-	return rc
+func (_c *RequestCreate) SetUserID(v int) *RequestCreate {
+	_c.mutation.SetUserID(v)
+	return _c
 }
 
 // SetAPIKeyID sets the "api_key_id" field.
-func (rc *RequestCreate) SetAPIKeyID(i int) *RequestCreate {
-	rc.mutation.SetAPIKeyID(i)
-	return rc
+func (_c *RequestCreate) SetAPIKeyID(v int) *RequestCreate {
+	_c.mutation.SetAPIKeyID(v)
+	return _c
 }
 
 // SetNillableAPIKeyID sets the "api_key_id" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableAPIKeyID(i *int) *RequestCreate {
-	if i != nil {
-		rc.SetAPIKeyID(*i)
+func (_c *RequestCreate) SetNillableAPIKeyID(v *int) *RequestCreate {
+	if v != nil {
+		_c.SetAPIKeyID(*v)
 	}
-	return rc
+	return _c
+}
+
+// SetProjectID sets the "project_id" field.
+func (_c *RequestCreate) SetProjectID(v int) *RequestCreate {
+	_c.mutation.SetProjectID(v)
+	return _c
+}
+
+// SetNillableProjectID sets the "project_id" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableProjectID(v *int) *RequestCreate {
+	if v != nil {
+		_c.SetProjectID(*v)
+	}
+	return _c
 }
 
 // SetSource sets the "source" field.
-func (rc *RequestCreate) SetSource(r request.Source) *RequestCreate {
-	rc.mutation.SetSource(r)
-	return rc
+func (_c *RequestCreate) SetSource(v request.Source) *RequestCreate {
+	_c.mutation.SetSource(v)
+	return _c
 }
 
 // SetNillableSource sets the "source" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableSource(r *request.Source) *RequestCreate {
-	if r != nil {
-		rc.SetSource(*r)
+func (_c *RequestCreate) SetNillableSource(v *request.Source) *RequestCreate {
+	if v != nil {
+		_c.SetSource(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetModelID sets the "model_id" field.
-func (rc *RequestCreate) SetModelID(s string) *RequestCreate {
-	rc.mutation.SetModelID(s)
-	return rc
+func (_c *RequestCreate) SetModelID(v string) *RequestCreate {
+	_c.mutation.SetModelID(v)
+	return _c
 }
 
 // SetFormat sets the "format" field.
-func (rc *RequestCreate) SetFormat(s string) *RequestCreate {
-	rc.mutation.SetFormat(s)
-	return rc
+func (_c *RequestCreate) SetFormat(v string) *RequestCreate {
+	_c.mutation.SetFormat(v)
+	return _c
 }
 
 // SetNillableFormat sets the "format" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableFormat(s *string) *RequestCreate {
-	if s != nil {
-		rc.SetFormat(*s)
+func (_c *RequestCreate) SetNillableFormat(v *string) *RequestCreate {
+	if v != nil {
+		_c.SetFormat(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetRequestBody sets the "request_body" field.
-func (rc *RequestCreate) SetRequestBody(orm objects.JSONRawMessage) *RequestCreate {
-	rc.mutation.SetRequestBody(orm)
-	return rc
+func (_c *RequestCreate) SetRequestBody(v objects.JSONRawMessage) *RequestCreate {
+	_c.mutation.SetRequestBody(v)
+	return _c
 }
 
 // SetResponseBody sets the "response_body" field.
-func (rc *RequestCreate) SetResponseBody(orm objects.JSONRawMessage) *RequestCreate {
-	rc.mutation.SetResponseBody(orm)
-	return rc
+func (_c *RequestCreate) SetResponseBody(v objects.JSONRawMessage) *RequestCreate {
+	_c.mutation.SetResponseBody(v)
+	return _c
 }
 
 // SetResponseChunks sets the "response_chunks" field.
-func (rc *RequestCreate) SetResponseChunks(orm []objects.JSONRawMessage) *RequestCreate {
-	rc.mutation.SetResponseChunks(orm)
-	return rc
+func (_c *RequestCreate) SetResponseChunks(v []objects.JSONRawMessage) *RequestCreate {
+	_c.mutation.SetResponseChunks(v)
+	return _c
 }
 
 // SetChannelID sets the "channel_id" field.
-func (rc *RequestCreate) SetChannelID(i int) *RequestCreate {
-	rc.mutation.SetChannelID(i)
-	return rc
+func (_c *RequestCreate) SetChannelID(v int) *RequestCreate {
+	_c.mutation.SetChannelID(v)
+	return _c
 }
 
 // SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableChannelID(i *int) *RequestCreate {
-	if i != nil {
-		rc.SetChannelID(*i)
+func (_c *RequestCreate) SetNillableChannelID(v *int) *RequestCreate {
+	if v != nil {
+		_c.SetChannelID(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetExternalID sets the "external_id" field.
-func (rc *RequestCreate) SetExternalID(s string) *RequestCreate {
-	rc.mutation.SetExternalID(s)
-	return rc
+func (_c *RequestCreate) SetExternalID(v string) *RequestCreate {
+	_c.mutation.SetExternalID(v)
+	return _c
 }
 
 // SetNillableExternalID sets the "external_id" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableExternalID(s *string) *RequestCreate {
-	if s != nil {
-		rc.SetExternalID(*s)
+func (_c *RequestCreate) SetNillableExternalID(v *string) *RequestCreate {
+	if v != nil {
+		_c.SetExternalID(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetStatus sets the "status" field.
-func (rc *RequestCreate) SetStatus(r request.Status) *RequestCreate {
-	rc.mutation.SetStatus(r)
-	return rc
+func (_c *RequestCreate) SetStatus(v request.Status) *RequestCreate {
+	_c.mutation.SetStatus(v)
+	return _c
 }
 
 // SetStream sets the "stream" field.
-func (rc *RequestCreate) SetStream(b bool) *RequestCreate {
-	rc.mutation.SetStream(b)
-	return rc
+func (_c *RequestCreate) SetStream(v bool) *RequestCreate {
+	_c.mutation.SetStream(v)
+	return _c
 }
 
 // SetNillableStream sets the "stream" field if the given value is not nil.
-func (rc *RequestCreate) SetNillableStream(b *bool) *RequestCreate {
-	if b != nil {
-		rc.SetStream(*b)
+func (_c *RequestCreate) SetNillableStream(v *bool) *RequestCreate {
+	if v != nil {
+		_c.SetStream(*v)
 	}
-	return rc
+	return _c
 }
 
 // SetUser sets the "user" edge to the User entity.
-func (rc *RequestCreate) SetUser(u *User) *RequestCreate {
-	return rc.SetUserID(u.ID)
+func (_c *RequestCreate) SetUser(v *User) *RequestCreate {
+	return _c.SetUserID(v.ID)
 }
 
 // SetAPIKey sets the "api_key" edge to the APIKey entity.
-func (rc *RequestCreate) SetAPIKey(a *APIKey) *RequestCreate {
-	return rc.SetAPIKeyID(a.ID)
+func (_c *RequestCreate) SetAPIKey(v *APIKey) *RequestCreate {
+	return _c.SetAPIKeyID(v.ID)
+}
+
+// SetProject sets the "project" edge to the Project entity.
+func (_c *RequestCreate) SetProject(v *Project) *RequestCreate {
+	return _c.SetProjectID(v.ID)
 }
 
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
-func (rc *RequestCreate) AddExecutionIDs(ids ...int) *RequestCreate {
-	rc.mutation.AddExecutionIDs(ids...)
-	return rc
+func (_c *RequestCreate) AddExecutionIDs(ids ...int) *RequestCreate {
+	_c.mutation.AddExecutionIDs(ids...)
+	return _c
 }
 
 // AddExecutions adds the "executions" edges to the RequestExecution entity.
-func (rc *RequestCreate) AddExecutions(r ...*RequestExecution) *RequestCreate {
-	ids := make([]int, len(r))
-	for i := range r {
-		ids[i] = r[i].ID
+func (_c *RequestCreate) AddExecutions(v ...*RequestExecution) *RequestCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return rc.AddExecutionIDs(ids...)
+	return _c.AddExecutionIDs(ids...)
 }
 
 // SetChannel sets the "channel" edge to the Channel entity.
-func (rc *RequestCreate) SetChannel(c *Channel) *RequestCreate {
-	return rc.SetChannelID(c.ID)
+func (_c *RequestCreate) SetChannel(v *Channel) *RequestCreate {
+	return _c.SetChannelID(v.ID)
 }
 
 // AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
-func (rc *RequestCreate) AddUsageLogIDs(ids ...int) *RequestCreate {
-	rc.mutation.AddUsageLogIDs(ids...)
-	return rc
+func (_c *RequestCreate) AddUsageLogIDs(ids ...int) *RequestCreate {
+	_c.mutation.AddUsageLogIDs(ids...)
+	return _c
 }
 
 // AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
-func (rc *RequestCreate) AddUsageLogs(u ...*UsageLog) *RequestCreate {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
+func (_c *RequestCreate) AddUsageLogs(v ...*UsageLog) *RequestCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return rc.AddUsageLogIDs(ids...)
+	return _c.AddUsageLogIDs(ids...)
 }
 
 // Mutation returns the RequestMutation object of the builder.
-func (rc *RequestCreate) Mutation() *RequestMutation {
-	return rc.mutation
+func (_c *RequestCreate) Mutation() *RequestMutation {
+	return _c.mutation
 }
 
 // Save creates the Request in the database.
-func (rc *RequestCreate) Save(ctx context.Context) (*Request, error) {
-	if err := rc.defaults(); err != nil {
+func (_c *RequestCreate) Save(ctx context.Context) (*Request, error) {
+	if err := _c.defaults(); err != nil {
 		return nil, err
 	}
-	return withHooks(ctx, rc.sqlSave, rc.mutation, rc.hooks)
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (rc *RequestCreate) SaveX(ctx context.Context) *Request {
-	v, err := rc.Save(ctx)
+func (_c *RequestCreate) SaveX(ctx context.Context) *Request {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -258,107 +278,117 @@ func (rc *RequestCreate) SaveX(ctx context.Context) *Request {
 }
 
 // Exec executes the query.
-func (rc *RequestCreate) Exec(ctx context.Context) error {
-	_, err := rc.Save(ctx)
+func (_c *RequestCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (rc *RequestCreate) ExecX(ctx context.Context) {
-	if err := rc.Exec(ctx); err != nil {
+func (_c *RequestCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (rc *RequestCreate) defaults() error {
-	if _, ok := rc.mutation.CreatedAt(); !ok {
+func (_c *RequestCreate) defaults() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		if request.DefaultCreatedAt == nil {
 			return fmt.Errorf("ent: uninitialized request.DefaultCreatedAt (forgotten import ent/runtime?)")
 		}
 		v := request.DefaultCreatedAt()
-		rc.mutation.SetCreatedAt(v)
+		_c.mutation.SetCreatedAt(v)
 	}
-	if _, ok := rc.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		if request.DefaultUpdatedAt == nil {
 			return fmt.Errorf("ent: uninitialized request.DefaultUpdatedAt (forgotten import ent/runtime?)")
 		}
 		v := request.DefaultUpdatedAt()
-		rc.mutation.SetUpdatedAt(v)
+		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := rc.mutation.DeletedAt(); !ok {
+	if _, ok := _c.mutation.DeletedAt(); !ok {
 		v := request.DefaultDeletedAt
-		rc.mutation.SetDeletedAt(v)
+		_c.mutation.SetDeletedAt(v)
 	}
-	if _, ok := rc.mutation.Source(); !ok {
+	if _, ok := _c.mutation.ProjectID(); !ok {
+		v := request.DefaultProjectID
+		_c.mutation.SetProjectID(v)
+	}
+	if _, ok := _c.mutation.Source(); !ok {
 		v := request.DefaultSource
-		rc.mutation.SetSource(v)
+		_c.mutation.SetSource(v)
 	}
-	if _, ok := rc.mutation.Format(); !ok {
+	if _, ok := _c.mutation.Format(); !ok {
 		v := request.DefaultFormat
-		rc.mutation.SetFormat(v)
+		_c.mutation.SetFormat(v)
 	}
-	if _, ok := rc.mutation.Stream(); !ok {
+	if _, ok := _c.mutation.Stream(); !ok {
 		v := request.DefaultStream
-		rc.mutation.SetStream(v)
+		_c.mutation.SetStream(v)
 	}
 	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (rc *RequestCreate) check() error {
-	if _, ok := rc.mutation.CreatedAt(); !ok {
+func (_c *RequestCreate) check() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Request.created_at"`)}
 	}
-	if _, ok := rc.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Request.updated_at"`)}
 	}
-	if _, ok := rc.mutation.DeletedAt(); !ok {
+	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Request.deleted_at"`)}
 	}
-	if _, ok := rc.mutation.UserID(); !ok {
+	if _, ok := _c.mutation.UserID(); !ok {
 		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "Request.user_id"`)}
 	}
-	if _, ok := rc.mutation.Source(); !ok {
+	if _, ok := _c.mutation.ProjectID(); !ok {
+		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "Request.project_id"`)}
+	}
+	if _, ok := _c.mutation.Source(); !ok {
 		return &ValidationError{Name: "source", err: errors.New(`ent: missing required field "Request.source"`)}
 	}
-	if v, ok := rc.mutation.Source(); ok {
+	if v, ok := _c.mutation.Source(); ok {
 		if err := request.SourceValidator(v); err != nil {
 			return &ValidationError{Name: "source", err: fmt.Errorf(`ent: validator failed for field "Request.source": %w`, err)}
 		}
 	}
-	if _, ok := rc.mutation.ModelID(); !ok {
+	if _, ok := _c.mutation.ModelID(); !ok {
 		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "Request.model_id"`)}
 	}
-	if _, ok := rc.mutation.Format(); !ok {
+	if _, ok := _c.mutation.Format(); !ok {
 		return &ValidationError{Name: "format", err: errors.New(`ent: missing required field "Request.format"`)}
 	}
-	if _, ok := rc.mutation.RequestBody(); !ok {
+	if _, ok := _c.mutation.RequestBody(); !ok {
 		return &ValidationError{Name: "request_body", err: errors.New(`ent: missing required field "Request.request_body"`)}
 	}
-	if _, ok := rc.mutation.Status(); !ok {
+	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Request.status"`)}
 	}
-	if v, ok := rc.mutation.Status(); ok {
+	if v, ok := _c.mutation.Status(); ok {
 		if err := request.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Request.status": %w`, err)}
 		}
 	}
-	if _, ok := rc.mutation.Stream(); !ok {
+	if _, ok := _c.mutation.Stream(); !ok {
 		return &ValidationError{Name: "stream", err: errors.New(`ent: missing required field "Request.stream"`)}
 	}
-	if len(rc.mutation.UserIDs()) == 0 {
+	if len(_c.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Request.user"`)}
+	}
+	if len(_c.mutation.ProjectIDs()) == 0 {
+		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "Request.project"`)}
 	}
 	return nil
 }
 
-func (rc *RequestCreate) sqlSave(ctx context.Context) (*Request, error) {
-	if err := rc.check(); err != nil {
+func (_c *RequestCreate) sqlSave(ctx context.Context) (*Request, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := rc.createSpec()
-	if err := sqlgraph.CreateNode(ctx, rc.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -366,66 +396,66 @@ func (rc *RequestCreate) sqlSave(ctx context.Context) (*Request, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	rc.mutation.id = &_node.ID
-	rc.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
+func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Request{config: rc.config}
+		_node = &Request{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(request.Table, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt))
 	)
-	_spec.OnConflict = rc.conflict
-	if value, ok := rc.mutation.CreatedAt(); ok {
+	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(request.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if value, ok := rc.mutation.UpdatedAt(); ok {
+	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := rc.mutation.DeletedAt(); ok {
+	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
 		_node.DeletedAt = value
 	}
-	if value, ok := rc.mutation.Source(); ok {
+	if value, ok := _c.mutation.Source(); ok {
 		_spec.SetField(request.FieldSource, field.TypeEnum, value)
 		_node.Source = value
 	}
-	if value, ok := rc.mutation.ModelID(); ok {
+	if value, ok := _c.mutation.ModelID(); ok {
 		_spec.SetField(request.FieldModelID, field.TypeString, value)
 		_node.ModelID = value
 	}
-	if value, ok := rc.mutation.Format(); ok {
+	if value, ok := _c.mutation.Format(); ok {
 		_spec.SetField(request.FieldFormat, field.TypeString, value)
 		_node.Format = value
 	}
-	if value, ok := rc.mutation.RequestBody(); ok {
+	if value, ok := _c.mutation.RequestBody(); ok {
 		_spec.SetField(request.FieldRequestBody, field.TypeJSON, value)
 		_node.RequestBody = value
 	}
-	if value, ok := rc.mutation.ResponseBody(); ok {
+	if value, ok := _c.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
 		_node.ResponseBody = value
 	}
-	if value, ok := rc.mutation.ResponseChunks(); ok {
+	if value, ok := _c.mutation.ResponseChunks(); ok {
 		_spec.SetField(request.FieldResponseChunks, field.TypeJSON, value)
 		_node.ResponseChunks = value
 	}
-	if value, ok := rc.mutation.ExternalID(); ok {
+	if value, ok := _c.mutation.ExternalID(); ok {
 		_spec.SetField(request.FieldExternalID, field.TypeString, value)
 		_node.ExternalID = value
 	}
-	if value, ok := rc.mutation.Status(); ok {
+	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
 	}
-	if value, ok := rc.mutation.Stream(); ok {
+	if value, ok := _c.mutation.Stream(); ok {
 		_spec.SetField(request.FieldStream, field.TypeBool, value)
 		_node.Stream = value
 	}
-	if nodes := rc.mutation.UserIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -442,7 +472,7 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_node.UserID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := rc.mutation.APIKeyIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.APIKeyIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -459,7 +489,24 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_node.APIKeyID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := rc.mutation.ExecutionsIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ProjectIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   request.ProjectTable,
+			Columns: []string{request.ProjectColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.ProjectID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ExecutionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -475,7 +522,7 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := rc.mutation.ChannelIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ChannelIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -492,7 +539,7 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_node.ChannelID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := rc.mutation.UsageLogsIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.UsageLogsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -527,10 +574,10 @@ func (rc *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (rc *RequestCreate) OnConflict(opts ...sql.ConflictOption) *RequestUpsertOne {
-	rc.conflict = opts
+func (_c *RequestCreate) OnConflict(opts ...sql.ConflictOption) *RequestUpsertOne {
+	_c.conflict = opts
 	return &RequestUpsertOne{
-		create: rc,
+		create: _c,
 	}
 }
 
@@ -540,10 +587,10 @@ func (rc *RequestCreate) OnConflict(opts ...sql.ConflictOption) *RequestUpsertOn
 //	client.Request.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (rc *RequestCreate) OnConflictColumns(columns ...string) *RequestUpsertOne {
-	rc.conflict = append(rc.conflict, sql.ConflictColumns(columns...))
+func (_c *RequestCreate) OnConflictColumns(columns ...string) *RequestUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &RequestUpsertOne{
-		create: rc,
+		create: _c,
 	}
 }
 
@@ -693,6 +740,9 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 		}
 		if _, exists := u.create.mutation.APIKeyID(); exists {
 			s.SetIgnore(request.FieldAPIKeyID)
+		}
+		if _, exists := u.create.mutation.ProjectID(); exists {
+			s.SetIgnore(request.FieldProjectID)
 		}
 		if _, exists := u.create.mutation.Source(); exists {
 			s.SetIgnore(request.FieldSource)
@@ -915,16 +965,16 @@ type RequestCreateBulk struct {
 }
 
 // Save creates the Request entities in the database.
-func (rcb *RequestCreateBulk) Save(ctx context.Context) ([]*Request, error) {
-	if rcb.err != nil {
-		return nil, rcb.err
+func (_c *RequestCreateBulk) Save(ctx context.Context) ([]*Request, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(rcb.builders))
-	nodes := make([]*Request, len(rcb.builders))
-	mutators := make([]Mutator, len(rcb.builders))
-	for i := range rcb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*Request, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := rcb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*RequestMutation)
@@ -938,12 +988,12 @@ func (rcb *RequestCreateBulk) Save(ctx context.Context) ([]*Request, error) {
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, rcb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = rcb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, rcb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -967,7 +1017,7 @@ func (rcb *RequestCreateBulk) Save(ctx context.Context) ([]*Request, error) {
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, rcb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -975,8 +1025,8 @@ func (rcb *RequestCreateBulk) Save(ctx context.Context) ([]*Request, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (rcb *RequestCreateBulk) SaveX(ctx context.Context) []*Request {
-	v, err := rcb.Save(ctx)
+func (_c *RequestCreateBulk) SaveX(ctx context.Context) []*Request {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -984,14 +1034,14 @@ func (rcb *RequestCreateBulk) SaveX(ctx context.Context) []*Request {
 }
 
 // Exec executes the query.
-func (rcb *RequestCreateBulk) Exec(ctx context.Context) error {
-	_, err := rcb.Save(ctx)
+func (_c *RequestCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (rcb *RequestCreateBulk) ExecX(ctx context.Context) {
-	if err := rcb.Exec(ctx); err != nil {
+func (_c *RequestCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -1011,10 +1061,10 @@ func (rcb *RequestCreateBulk) ExecX(ctx context.Context) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (rcb *RequestCreateBulk) OnConflict(opts ...sql.ConflictOption) *RequestUpsertBulk {
-	rcb.conflict = opts
+func (_c *RequestCreateBulk) OnConflict(opts ...sql.ConflictOption) *RequestUpsertBulk {
+	_c.conflict = opts
 	return &RequestUpsertBulk{
-		create: rcb,
+		create: _c,
 	}
 }
 
@@ -1024,10 +1074,10 @@ func (rcb *RequestCreateBulk) OnConflict(opts ...sql.ConflictOption) *RequestUps
 //	client.Request.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (rcb *RequestCreateBulk) OnConflictColumns(columns ...string) *RequestUpsertBulk {
-	rcb.conflict = append(rcb.conflict, sql.ConflictColumns(columns...))
+func (_c *RequestCreateBulk) OnConflictColumns(columns ...string) *RequestUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &RequestUpsertBulk{
-		create: rcb,
+		create: _c,
 	}
 }
 
@@ -1057,6 +1107,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 			}
 			if _, exists := b.mutation.APIKeyID(); exists {
 				s.SetIgnore(request.FieldAPIKeyID)
+			}
+			if _, exists := b.mutation.ProjectID(); exists {
+				s.SetIgnore(request.FieldProjectID)
 			}
 			if _, exists := b.mutation.Source(); exists {
 				s.SetIgnore(request.FieldSource)

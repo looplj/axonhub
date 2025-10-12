@@ -25,310 +25,310 @@ type UsageLogUpdate struct {
 }
 
 // Where appends a list predicates to the UsageLogUpdate builder.
-func (ulu *UsageLogUpdate) Where(ps ...predicate.UsageLog) *UsageLogUpdate {
-	ulu.mutation.Where(ps...)
-	return ulu
+func (_u *UsageLogUpdate) Where(ps ...predicate.UsageLog) *UsageLogUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (ulu *UsageLogUpdate) SetUpdatedAt(t time.Time) *UsageLogUpdate {
-	ulu.mutation.SetUpdatedAt(t)
-	return ulu
+func (_u *UsageLogUpdate) SetUpdatedAt(v time.Time) *UsageLogUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (ulu *UsageLogUpdate) SetDeletedAt(i int) *UsageLogUpdate {
-	ulu.mutation.ResetDeletedAt()
-	ulu.mutation.SetDeletedAt(i)
-	return ulu
+func (_u *UsageLogUpdate) SetDeletedAt(v int) *UsageLogUpdate {
+	_u.mutation.ResetDeletedAt()
+	_u.mutation.SetDeletedAt(v)
+	return _u
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (ulu *UsageLogUpdate) SetNillableDeletedAt(i *int) *UsageLogUpdate {
-	if i != nil {
-		ulu.SetDeletedAt(*i)
+func (_u *UsageLogUpdate) SetNillableDeletedAt(v *int) *UsageLogUpdate {
+	if v != nil {
+		_u.SetDeletedAt(*v)
 	}
-	return ulu
+	return _u
 }
 
-// AddDeletedAt adds i to the "deleted_at" field.
-func (ulu *UsageLogUpdate) AddDeletedAt(i int) *UsageLogUpdate {
-	ulu.mutation.AddDeletedAt(i)
-	return ulu
+// AddDeletedAt adds value to the "deleted_at" field.
+func (_u *UsageLogUpdate) AddDeletedAt(v int) *UsageLogUpdate {
+	_u.mutation.AddDeletedAt(v)
+	return _u
 }
 
 // SetChannelID sets the "channel_id" field.
-func (ulu *UsageLogUpdate) SetChannelID(i int) *UsageLogUpdate {
-	ulu.mutation.SetChannelID(i)
-	return ulu
+func (_u *UsageLogUpdate) SetChannelID(v int) *UsageLogUpdate {
+	_u.mutation.SetChannelID(v)
+	return _u
 }
 
 // SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (ulu *UsageLogUpdate) SetNillableChannelID(i *int) *UsageLogUpdate {
-	if i != nil {
-		ulu.SetChannelID(*i)
+func (_u *UsageLogUpdate) SetNillableChannelID(v *int) *UsageLogUpdate {
+	if v != nil {
+		_u.SetChannelID(*v)
 	}
-	return ulu
+	return _u
 }
 
 // ClearChannelID clears the value of the "channel_id" field.
-func (ulu *UsageLogUpdate) ClearChannelID() *UsageLogUpdate {
-	ulu.mutation.ClearChannelID()
-	return ulu
+func (_u *UsageLogUpdate) ClearChannelID() *UsageLogUpdate {
+	_u.mutation.ClearChannelID()
+	return _u
 }
 
 // SetPromptTokens sets the "prompt_tokens" field.
-func (ulu *UsageLogUpdate) SetPromptTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.ResetPromptTokens()
-	ulu.mutation.SetPromptTokens(i)
-	return ulu
+func (_u *UsageLogUpdate) SetPromptTokens(v int64) *UsageLogUpdate {
+	_u.mutation.ResetPromptTokens()
+	_u.mutation.SetPromptTokens(v)
+	return _u
 }
 
 // SetNillablePromptTokens sets the "prompt_tokens" field if the given value is not nil.
-func (ulu *UsageLogUpdate) SetNillablePromptTokens(i *int64) *UsageLogUpdate {
-	if i != nil {
-		ulu.SetPromptTokens(*i)
+func (_u *UsageLogUpdate) SetNillablePromptTokens(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetPromptTokens(*v)
 	}
-	return ulu
+	return _u
 }
 
-// AddPromptTokens adds i to the "prompt_tokens" field.
-func (ulu *UsageLogUpdate) AddPromptTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.AddPromptTokens(i)
-	return ulu
+// AddPromptTokens adds value to the "prompt_tokens" field.
+func (_u *UsageLogUpdate) AddPromptTokens(v int64) *UsageLogUpdate {
+	_u.mutation.AddPromptTokens(v)
+	return _u
 }
 
 // SetCompletionTokens sets the "completion_tokens" field.
-func (ulu *UsageLogUpdate) SetCompletionTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.ResetCompletionTokens()
-	ulu.mutation.SetCompletionTokens(i)
-	return ulu
+func (_u *UsageLogUpdate) SetCompletionTokens(v int64) *UsageLogUpdate {
+	_u.mutation.ResetCompletionTokens()
+	_u.mutation.SetCompletionTokens(v)
+	return _u
 }
 
 // SetNillableCompletionTokens sets the "completion_tokens" field if the given value is not nil.
-func (ulu *UsageLogUpdate) SetNillableCompletionTokens(i *int64) *UsageLogUpdate {
-	if i != nil {
-		ulu.SetCompletionTokens(*i)
+func (_u *UsageLogUpdate) SetNillableCompletionTokens(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetCompletionTokens(*v)
 	}
-	return ulu
+	return _u
 }
 
-// AddCompletionTokens adds i to the "completion_tokens" field.
-func (ulu *UsageLogUpdate) AddCompletionTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.AddCompletionTokens(i)
-	return ulu
+// AddCompletionTokens adds value to the "completion_tokens" field.
+func (_u *UsageLogUpdate) AddCompletionTokens(v int64) *UsageLogUpdate {
+	_u.mutation.AddCompletionTokens(v)
+	return _u
 }
 
 // SetTotalTokens sets the "total_tokens" field.
-func (ulu *UsageLogUpdate) SetTotalTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.ResetTotalTokens()
-	ulu.mutation.SetTotalTokens(i)
-	return ulu
+func (_u *UsageLogUpdate) SetTotalTokens(v int64) *UsageLogUpdate {
+	_u.mutation.ResetTotalTokens()
+	_u.mutation.SetTotalTokens(v)
+	return _u
 }
 
 // SetNillableTotalTokens sets the "total_tokens" field if the given value is not nil.
-func (ulu *UsageLogUpdate) SetNillableTotalTokens(i *int64) *UsageLogUpdate {
-	if i != nil {
-		ulu.SetTotalTokens(*i)
+func (_u *UsageLogUpdate) SetNillableTotalTokens(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetTotalTokens(*v)
 	}
-	return ulu
+	return _u
 }
 
-// AddTotalTokens adds i to the "total_tokens" field.
-func (ulu *UsageLogUpdate) AddTotalTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.AddTotalTokens(i)
-	return ulu
+// AddTotalTokens adds value to the "total_tokens" field.
+func (_u *UsageLogUpdate) AddTotalTokens(v int64) *UsageLogUpdate {
+	_u.mutation.AddTotalTokens(v)
+	return _u
 }
 
 // SetPromptAudioTokens sets the "prompt_audio_tokens" field.
-func (ulu *UsageLogUpdate) SetPromptAudioTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.ResetPromptAudioTokens()
-	ulu.mutation.SetPromptAudioTokens(i)
-	return ulu
+func (_u *UsageLogUpdate) SetPromptAudioTokens(v int64) *UsageLogUpdate {
+	_u.mutation.ResetPromptAudioTokens()
+	_u.mutation.SetPromptAudioTokens(v)
+	return _u
 }
 
 // SetNillablePromptAudioTokens sets the "prompt_audio_tokens" field if the given value is not nil.
-func (ulu *UsageLogUpdate) SetNillablePromptAudioTokens(i *int64) *UsageLogUpdate {
-	if i != nil {
-		ulu.SetPromptAudioTokens(*i)
+func (_u *UsageLogUpdate) SetNillablePromptAudioTokens(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetPromptAudioTokens(*v)
 	}
-	return ulu
+	return _u
 }
 
-// AddPromptAudioTokens adds i to the "prompt_audio_tokens" field.
-func (ulu *UsageLogUpdate) AddPromptAudioTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.AddPromptAudioTokens(i)
-	return ulu
+// AddPromptAudioTokens adds value to the "prompt_audio_tokens" field.
+func (_u *UsageLogUpdate) AddPromptAudioTokens(v int64) *UsageLogUpdate {
+	_u.mutation.AddPromptAudioTokens(v)
+	return _u
 }
 
 // ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
-func (ulu *UsageLogUpdate) ClearPromptAudioTokens() *UsageLogUpdate {
-	ulu.mutation.ClearPromptAudioTokens()
-	return ulu
+func (_u *UsageLogUpdate) ClearPromptAudioTokens() *UsageLogUpdate {
+	_u.mutation.ClearPromptAudioTokens()
+	return _u
 }
 
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
-func (ulu *UsageLogUpdate) SetPromptCachedTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.ResetPromptCachedTokens()
-	ulu.mutation.SetPromptCachedTokens(i)
-	return ulu
+func (_u *UsageLogUpdate) SetPromptCachedTokens(v int64) *UsageLogUpdate {
+	_u.mutation.ResetPromptCachedTokens()
+	_u.mutation.SetPromptCachedTokens(v)
+	return _u
 }
 
 // SetNillablePromptCachedTokens sets the "prompt_cached_tokens" field if the given value is not nil.
-func (ulu *UsageLogUpdate) SetNillablePromptCachedTokens(i *int64) *UsageLogUpdate {
-	if i != nil {
-		ulu.SetPromptCachedTokens(*i)
+func (_u *UsageLogUpdate) SetNillablePromptCachedTokens(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetPromptCachedTokens(*v)
 	}
-	return ulu
+	return _u
 }
 
-// AddPromptCachedTokens adds i to the "prompt_cached_tokens" field.
-func (ulu *UsageLogUpdate) AddPromptCachedTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.AddPromptCachedTokens(i)
-	return ulu
+// AddPromptCachedTokens adds value to the "prompt_cached_tokens" field.
+func (_u *UsageLogUpdate) AddPromptCachedTokens(v int64) *UsageLogUpdate {
+	_u.mutation.AddPromptCachedTokens(v)
+	return _u
 }
 
 // ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
-func (ulu *UsageLogUpdate) ClearPromptCachedTokens() *UsageLogUpdate {
-	ulu.mutation.ClearPromptCachedTokens()
-	return ulu
+func (_u *UsageLogUpdate) ClearPromptCachedTokens() *UsageLogUpdate {
+	_u.mutation.ClearPromptCachedTokens()
+	return _u
 }
 
 // SetCompletionAudioTokens sets the "completion_audio_tokens" field.
-func (ulu *UsageLogUpdate) SetCompletionAudioTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.ResetCompletionAudioTokens()
-	ulu.mutation.SetCompletionAudioTokens(i)
-	return ulu
+func (_u *UsageLogUpdate) SetCompletionAudioTokens(v int64) *UsageLogUpdate {
+	_u.mutation.ResetCompletionAudioTokens()
+	_u.mutation.SetCompletionAudioTokens(v)
+	return _u
 }
 
 // SetNillableCompletionAudioTokens sets the "completion_audio_tokens" field if the given value is not nil.
-func (ulu *UsageLogUpdate) SetNillableCompletionAudioTokens(i *int64) *UsageLogUpdate {
-	if i != nil {
-		ulu.SetCompletionAudioTokens(*i)
+func (_u *UsageLogUpdate) SetNillableCompletionAudioTokens(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetCompletionAudioTokens(*v)
 	}
-	return ulu
+	return _u
 }
 
-// AddCompletionAudioTokens adds i to the "completion_audio_tokens" field.
-func (ulu *UsageLogUpdate) AddCompletionAudioTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.AddCompletionAudioTokens(i)
-	return ulu
+// AddCompletionAudioTokens adds value to the "completion_audio_tokens" field.
+func (_u *UsageLogUpdate) AddCompletionAudioTokens(v int64) *UsageLogUpdate {
+	_u.mutation.AddCompletionAudioTokens(v)
+	return _u
 }
 
 // ClearCompletionAudioTokens clears the value of the "completion_audio_tokens" field.
-func (ulu *UsageLogUpdate) ClearCompletionAudioTokens() *UsageLogUpdate {
-	ulu.mutation.ClearCompletionAudioTokens()
-	return ulu
+func (_u *UsageLogUpdate) ClearCompletionAudioTokens() *UsageLogUpdate {
+	_u.mutation.ClearCompletionAudioTokens()
+	return _u
 }
 
 // SetCompletionReasoningTokens sets the "completion_reasoning_tokens" field.
-func (ulu *UsageLogUpdate) SetCompletionReasoningTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.ResetCompletionReasoningTokens()
-	ulu.mutation.SetCompletionReasoningTokens(i)
-	return ulu
+func (_u *UsageLogUpdate) SetCompletionReasoningTokens(v int64) *UsageLogUpdate {
+	_u.mutation.ResetCompletionReasoningTokens()
+	_u.mutation.SetCompletionReasoningTokens(v)
+	return _u
 }
 
 // SetNillableCompletionReasoningTokens sets the "completion_reasoning_tokens" field if the given value is not nil.
-func (ulu *UsageLogUpdate) SetNillableCompletionReasoningTokens(i *int64) *UsageLogUpdate {
-	if i != nil {
-		ulu.SetCompletionReasoningTokens(*i)
+func (_u *UsageLogUpdate) SetNillableCompletionReasoningTokens(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetCompletionReasoningTokens(*v)
 	}
-	return ulu
+	return _u
 }
 
-// AddCompletionReasoningTokens adds i to the "completion_reasoning_tokens" field.
-func (ulu *UsageLogUpdate) AddCompletionReasoningTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.AddCompletionReasoningTokens(i)
-	return ulu
+// AddCompletionReasoningTokens adds value to the "completion_reasoning_tokens" field.
+func (_u *UsageLogUpdate) AddCompletionReasoningTokens(v int64) *UsageLogUpdate {
+	_u.mutation.AddCompletionReasoningTokens(v)
+	return _u
 }
 
 // ClearCompletionReasoningTokens clears the value of the "completion_reasoning_tokens" field.
-func (ulu *UsageLogUpdate) ClearCompletionReasoningTokens() *UsageLogUpdate {
-	ulu.mutation.ClearCompletionReasoningTokens()
-	return ulu
+func (_u *UsageLogUpdate) ClearCompletionReasoningTokens() *UsageLogUpdate {
+	_u.mutation.ClearCompletionReasoningTokens()
+	return _u
 }
 
 // SetCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field.
-func (ulu *UsageLogUpdate) SetCompletionAcceptedPredictionTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.ResetCompletionAcceptedPredictionTokens()
-	ulu.mutation.SetCompletionAcceptedPredictionTokens(i)
-	return ulu
+func (_u *UsageLogUpdate) SetCompletionAcceptedPredictionTokens(v int64) *UsageLogUpdate {
+	_u.mutation.ResetCompletionAcceptedPredictionTokens()
+	_u.mutation.SetCompletionAcceptedPredictionTokens(v)
+	return _u
 }
 
 // SetNillableCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field if the given value is not nil.
-func (ulu *UsageLogUpdate) SetNillableCompletionAcceptedPredictionTokens(i *int64) *UsageLogUpdate {
-	if i != nil {
-		ulu.SetCompletionAcceptedPredictionTokens(*i)
+func (_u *UsageLogUpdate) SetNillableCompletionAcceptedPredictionTokens(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetCompletionAcceptedPredictionTokens(*v)
 	}
-	return ulu
+	return _u
 }
 
-// AddCompletionAcceptedPredictionTokens adds i to the "completion_accepted_prediction_tokens" field.
-func (ulu *UsageLogUpdate) AddCompletionAcceptedPredictionTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.AddCompletionAcceptedPredictionTokens(i)
-	return ulu
+// AddCompletionAcceptedPredictionTokens adds value to the "completion_accepted_prediction_tokens" field.
+func (_u *UsageLogUpdate) AddCompletionAcceptedPredictionTokens(v int64) *UsageLogUpdate {
+	_u.mutation.AddCompletionAcceptedPredictionTokens(v)
+	return _u
 }
 
 // ClearCompletionAcceptedPredictionTokens clears the value of the "completion_accepted_prediction_tokens" field.
-func (ulu *UsageLogUpdate) ClearCompletionAcceptedPredictionTokens() *UsageLogUpdate {
-	ulu.mutation.ClearCompletionAcceptedPredictionTokens()
-	return ulu
+func (_u *UsageLogUpdate) ClearCompletionAcceptedPredictionTokens() *UsageLogUpdate {
+	_u.mutation.ClearCompletionAcceptedPredictionTokens()
+	return _u
 }
 
 // SetCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field.
-func (ulu *UsageLogUpdate) SetCompletionRejectedPredictionTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.ResetCompletionRejectedPredictionTokens()
-	ulu.mutation.SetCompletionRejectedPredictionTokens(i)
-	return ulu
+func (_u *UsageLogUpdate) SetCompletionRejectedPredictionTokens(v int64) *UsageLogUpdate {
+	_u.mutation.ResetCompletionRejectedPredictionTokens()
+	_u.mutation.SetCompletionRejectedPredictionTokens(v)
+	return _u
 }
 
 // SetNillableCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field if the given value is not nil.
-func (ulu *UsageLogUpdate) SetNillableCompletionRejectedPredictionTokens(i *int64) *UsageLogUpdate {
-	if i != nil {
-		ulu.SetCompletionRejectedPredictionTokens(*i)
+func (_u *UsageLogUpdate) SetNillableCompletionRejectedPredictionTokens(v *int64) *UsageLogUpdate {
+	if v != nil {
+		_u.SetCompletionRejectedPredictionTokens(*v)
 	}
-	return ulu
+	return _u
 }
 
-// AddCompletionRejectedPredictionTokens adds i to the "completion_rejected_prediction_tokens" field.
-func (ulu *UsageLogUpdate) AddCompletionRejectedPredictionTokens(i int64) *UsageLogUpdate {
-	ulu.mutation.AddCompletionRejectedPredictionTokens(i)
-	return ulu
+// AddCompletionRejectedPredictionTokens adds value to the "completion_rejected_prediction_tokens" field.
+func (_u *UsageLogUpdate) AddCompletionRejectedPredictionTokens(v int64) *UsageLogUpdate {
+	_u.mutation.AddCompletionRejectedPredictionTokens(v)
+	return _u
 }
 
 // ClearCompletionRejectedPredictionTokens clears the value of the "completion_rejected_prediction_tokens" field.
-func (ulu *UsageLogUpdate) ClearCompletionRejectedPredictionTokens() *UsageLogUpdate {
-	ulu.mutation.ClearCompletionRejectedPredictionTokens()
-	return ulu
+func (_u *UsageLogUpdate) ClearCompletionRejectedPredictionTokens() *UsageLogUpdate {
+	_u.mutation.ClearCompletionRejectedPredictionTokens()
+	return _u
 }
 
 // SetChannel sets the "channel" edge to the Channel entity.
-func (ulu *UsageLogUpdate) SetChannel(c *Channel) *UsageLogUpdate {
-	return ulu.SetChannelID(c.ID)
+func (_u *UsageLogUpdate) SetChannel(v *Channel) *UsageLogUpdate {
+	return _u.SetChannelID(v.ID)
 }
 
 // Mutation returns the UsageLogMutation object of the builder.
-func (ulu *UsageLogUpdate) Mutation() *UsageLogMutation {
-	return ulu.mutation
+func (_u *UsageLogUpdate) Mutation() *UsageLogMutation {
+	return _u.mutation
 }
 
 // ClearChannel clears the "channel" edge to the Channel entity.
-func (ulu *UsageLogUpdate) ClearChannel() *UsageLogUpdate {
-	ulu.mutation.ClearChannel()
-	return ulu
+func (_u *UsageLogUpdate) ClearChannel() *UsageLogUpdate {
+	_u.mutation.ClearChannel()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (ulu *UsageLogUpdate) Save(ctx context.Context) (int, error) {
-	if err := ulu.defaults(); err != nil {
+func (_u *UsageLogUpdate) Save(ctx context.Context) (int, error) {
+	if err := _u.defaults(); err != nil {
 		return 0, err
 	}
-	return withHooks(ctx, ulu.sqlSave, ulu.mutation, ulu.hooks)
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (ulu *UsageLogUpdate) SaveX(ctx context.Context) int {
-	affected, err := ulu.Save(ctx)
+func (_u *UsageLogUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -336,141 +336,144 @@ func (ulu *UsageLogUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (ulu *UsageLogUpdate) Exec(ctx context.Context) error {
-	_, err := ulu.Save(ctx)
+func (_u *UsageLogUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ulu *UsageLogUpdate) ExecX(ctx context.Context) {
-	if err := ulu.Exec(ctx); err != nil {
+func (_u *UsageLogUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (ulu *UsageLogUpdate) defaults() error {
-	if _, ok := ulu.mutation.UpdatedAt(); !ok {
+func (_u *UsageLogUpdate) defaults() error {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		if usagelog.UpdateDefaultUpdatedAt == nil {
 			return fmt.Errorf("ent: uninitialized usagelog.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
 		}
 		v := usagelog.UpdateDefaultUpdatedAt()
-		ulu.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (ulu *UsageLogUpdate) check() error {
-	if ulu.mutation.UserCleared() && len(ulu.mutation.UserIDs()) > 0 {
+func (_u *UsageLogUpdate) check() error {
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UsageLog.user"`)
 	}
-	if ulu.mutation.RequestCleared() && len(ulu.mutation.RequestIDs()) > 0 {
+	if _u.mutation.RequestCleared() && len(_u.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UsageLog.request"`)
+	}
+	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UsageLog.project"`)
 	}
 	return nil
 }
 
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
-func (ulu *UsageLogUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *UsageLogUpdate {
-	ulu.modifiers = append(ulu.modifiers, modifiers...)
-	return ulu
+func (_u *UsageLogUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *UsageLogUpdate {
+	_u.modifiers = append(_u.modifiers, modifiers...)
+	return _u
 }
 
-func (ulu *UsageLogUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	if err := ulu.check(); err != nil {
-		return n, err
+func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(usagelog.Table, usagelog.Columns, sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt))
-	if ps := ulu.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := ulu.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(usagelog.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := ulu.mutation.DeletedAt(); ok {
+	if value, ok := _u.mutation.DeletedAt(); ok {
 		_spec.SetField(usagelog.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := ulu.mutation.AddedDeletedAt(); ok {
+	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(usagelog.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := ulu.mutation.PromptTokens(); ok {
+	if value, ok := _u.mutation.PromptTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.AddedPromptTokens(); ok {
+	if value, ok := _u.mutation.AddedPromptTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.CompletionTokens(); ok {
+	if value, ok := _u.mutation.CompletionTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.AddedCompletionTokens(); ok {
+	if value, ok := _u.mutation.AddedCompletionTokens(); ok {
 		_spec.AddField(usagelog.FieldCompletionTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.TotalTokens(); ok {
+	if value, ok := _u.mutation.TotalTokens(); ok {
 		_spec.SetField(usagelog.FieldTotalTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.AddedTotalTokens(); ok {
+	if value, ok := _u.mutation.AddedTotalTokens(); ok {
 		_spec.AddField(usagelog.FieldTotalTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.PromptAudioTokens(); ok {
+	if value, ok := _u.mutation.PromptAudioTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptAudioTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.AddedPromptAudioTokens(); ok {
+	if value, ok := _u.mutation.AddedPromptAudioTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptAudioTokens, field.TypeInt64, value)
 	}
-	if ulu.mutation.PromptAudioTokensCleared() {
+	if _u.mutation.PromptAudioTokensCleared() {
 		_spec.ClearField(usagelog.FieldPromptAudioTokens, field.TypeInt64)
 	}
-	if value, ok := ulu.mutation.PromptCachedTokens(); ok {
+	if value, ok := _u.mutation.PromptCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.AddedPromptCachedTokens(); ok {
+	if value, ok := _u.mutation.AddedPromptCachedTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 	}
-	if ulu.mutation.PromptCachedTokensCleared() {
+	if _u.mutation.PromptCachedTokensCleared() {
 		_spec.ClearField(usagelog.FieldPromptCachedTokens, field.TypeInt64)
 	}
-	if value, ok := ulu.mutation.CompletionAudioTokens(); ok {
+	if value, ok := _u.mutation.CompletionAudioTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionAudioTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.AddedCompletionAudioTokens(); ok {
+	if value, ok := _u.mutation.AddedCompletionAudioTokens(); ok {
 		_spec.AddField(usagelog.FieldCompletionAudioTokens, field.TypeInt64, value)
 	}
-	if ulu.mutation.CompletionAudioTokensCleared() {
+	if _u.mutation.CompletionAudioTokensCleared() {
 		_spec.ClearField(usagelog.FieldCompletionAudioTokens, field.TypeInt64)
 	}
-	if value, ok := ulu.mutation.CompletionReasoningTokens(); ok {
+	if value, ok := _u.mutation.CompletionReasoningTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionReasoningTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.AddedCompletionReasoningTokens(); ok {
+	if value, ok := _u.mutation.AddedCompletionReasoningTokens(); ok {
 		_spec.AddField(usagelog.FieldCompletionReasoningTokens, field.TypeInt64, value)
 	}
-	if ulu.mutation.CompletionReasoningTokensCleared() {
+	if _u.mutation.CompletionReasoningTokensCleared() {
 		_spec.ClearField(usagelog.FieldCompletionReasoningTokens, field.TypeInt64)
 	}
-	if value, ok := ulu.mutation.CompletionAcceptedPredictionTokens(); ok {
+	if value, ok := _u.mutation.CompletionAcceptedPredictionTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionAcceptedPredictionTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.AddedCompletionAcceptedPredictionTokens(); ok {
+	if value, ok := _u.mutation.AddedCompletionAcceptedPredictionTokens(); ok {
 		_spec.AddField(usagelog.FieldCompletionAcceptedPredictionTokens, field.TypeInt64, value)
 	}
-	if ulu.mutation.CompletionAcceptedPredictionTokensCleared() {
+	if _u.mutation.CompletionAcceptedPredictionTokensCleared() {
 		_spec.ClearField(usagelog.FieldCompletionAcceptedPredictionTokens, field.TypeInt64)
 	}
-	if value, ok := ulu.mutation.CompletionRejectedPredictionTokens(); ok {
+	if value, ok := _u.mutation.CompletionRejectedPredictionTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionRejectedPredictionTokens, field.TypeInt64, value)
 	}
-	if value, ok := ulu.mutation.AddedCompletionRejectedPredictionTokens(); ok {
+	if value, ok := _u.mutation.AddedCompletionRejectedPredictionTokens(); ok {
 		_spec.AddField(usagelog.FieldCompletionRejectedPredictionTokens, field.TypeInt64, value)
 	}
-	if ulu.mutation.CompletionRejectedPredictionTokensCleared() {
+	if _u.mutation.CompletionRejectedPredictionTokensCleared() {
 		_spec.ClearField(usagelog.FieldCompletionRejectedPredictionTokens, field.TypeInt64)
 	}
-	if ulu.mutation.ChannelCleared() {
+	if _u.mutation.ChannelCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -483,7 +486,7 @@ func (ulu *UsageLogUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ulu.mutation.ChannelIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ChannelIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -499,8 +502,8 @@ func (ulu *UsageLogUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_spec.AddModifiers(ulu.modifiers...)
-	if n, err = sqlgraph.UpdateNodes(ctx, ulu.driver, _spec); err != nil {
+	_spec.AddModifiers(_u.modifiers...)
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{usagelog.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -508,8 +511,8 @@ func (ulu *UsageLogUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	ulu.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // UsageLogUpdateOne is the builder for updating a single UsageLog entity.
@@ -522,317 +525,317 @@ type UsageLogUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (uluo *UsageLogUpdateOne) SetUpdatedAt(t time.Time) *UsageLogUpdateOne {
-	uluo.mutation.SetUpdatedAt(t)
-	return uluo
+func (_u *UsageLogUpdateOne) SetUpdatedAt(v time.Time) *UsageLogUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (uluo *UsageLogUpdateOne) SetDeletedAt(i int) *UsageLogUpdateOne {
-	uluo.mutation.ResetDeletedAt()
-	uluo.mutation.SetDeletedAt(i)
-	return uluo
+func (_u *UsageLogUpdateOne) SetDeletedAt(v int) *UsageLogUpdateOne {
+	_u.mutation.ResetDeletedAt()
+	_u.mutation.SetDeletedAt(v)
+	return _u
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (uluo *UsageLogUpdateOne) SetNillableDeletedAt(i *int) *UsageLogUpdateOne {
-	if i != nil {
-		uluo.SetDeletedAt(*i)
+func (_u *UsageLogUpdateOne) SetNillableDeletedAt(v *int) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetDeletedAt(*v)
 	}
-	return uluo
+	return _u
 }
 
-// AddDeletedAt adds i to the "deleted_at" field.
-func (uluo *UsageLogUpdateOne) AddDeletedAt(i int) *UsageLogUpdateOne {
-	uluo.mutation.AddDeletedAt(i)
-	return uluo
+// AddDeletedAt adds value to the "deleted_at" field.
+func (_u *UsageLogUpdateOne) AddDeletedAt(v int) *UsageLogUpdateOne {
+	_u.mutation.AddDeletedAt(v)
+	return _u
 }
 
 // SetChannelID sets the "channel_id" field.
-func (uluo *UsageLogUpdateOne) SetChannelID(i int) *UsageLogUpdateOne {
-	uluo.mutation.SetChannelID(i)
-	return uluo
+func (_u *UsageLogUpdateOne) SetChannelID(v int) *UsageLogUpdateOne {
+	_u.mutation.SetChannelID(v)
+	return _u
 }
 
 // SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (uluo *UsageLogUpdateOne) SetNillableChannelID(i *int) *UsageLogUpdateOne {
-	if i != nil {
-		uluo.SetChannelID(*i)
+func (_u *UsageLogUpdateOne) SetNillableChannelID(v *int) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetChannelID(*v)
 	}
-	return uluo
+	return _u
 }
 
 // ClearChannelID clears the value of the "channel_id" field.
-func (uluo *UsageLogUpdateOne) ClearChannelID() *UsageLogUpdateOne {
-	uluo.mutation.ClearChannelID()
-	return uluo
+func (_u *UsageLogUpdateOne) ClearChannelID() *UsageLogUpdateOne {
+	_u.mutation.ClearChannelID()
+	return _u
 }
 
 // SetPromptTokens sets the "prompt_tokens" field.
-func (uluo *UsageLogUpdateOne) SetPromptTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.ResetPromptTokens()
-	uluo.mutation.SetPromptTokens(i)
-	return uluo
+func (_u *UsageLogUpdateOne) SetPromptTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetPromptTokens()
+	_u.mutation.SetPromptTokens(v)
+	return _u
 }
 
 // SetNillablePromptTokens sets the "prompt_tokens" field if the given value is not nil.
-func (uluo *UsageLogUpdateOne) SetNillablePromptTokens(i *int64) *UsageLogUpdateOne {
-	if i != nil {
-		uluo.SetPromptTokens(*i)
+func (_u *UsageLogUpdateOne) SetNillablePromptTokens(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetPromptTokens(*v)
 	}
-	return uluo
+	return _u
 }
 
-// AddPromptTokens adds i to the "prompt_tokens" field.
-func (uluo *UsageLogUpdateOne) AddPromptTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.AddPromptTokens(i)
-	return uluo
+// AddPromptTokens adds value to the "prompt_tokens" field.
+func (_u *UsageLogUpdateOne) AddPromptTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddPromptTokens(v)
+	return _u
 }
 
 // SetCompletionTokens sets the "completion_tokens" field.
-func (uluo *UsageLogUpdateOne) SetCompletionTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.ResetCompletionTokens()
-	uluo.mutation.SetCompletionTokens(i)
-	return uluo
+func (_u *UsageLogUpdateOne) SetCompletionTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetCompletionTokens()
+	_u.mutation.SetCompletionTokens(v)
+	return _u
 }
 
 // SetNillableCompletionTokens sets the "completion_tokens" field if the given value is not nil.
-func (uluo *UsageLogUpdateOne) SetNillableCompletionTokens(i *int64) *UsageLogUpdateOne {
-	if i != nil {
-		uluo.SetCompletionTokens(*i)
+func (_u *UsageLogUpdateOne) SetNillableCompletionTokens(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetCompletionTokens(*v)
 	}
-	return uluo
+	return _u
 }
 
-// AddCompletionTokens adds i to the "completion_tokens" field.
-func (uluo *UsageLogUpdateOne) AddCompletionTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.AddCompletionTokens(i)
-	return uluo
+// AddCompletionTokens adds value to the "completion_tokens" field.
+func (_u *UsageLogUpdateOne) AddCompletionTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddCompletionTokens(v)
+	return _u
 }
 
 // SetTotalTokens sets the "total_tokens" field.
-func (uluo *UsageLogUpdateOne) SetTotalTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.ResetTotalTokens()
-	uluo.mutation.SetTotalTokens(i)
-	return uluo
+func (_u *UsageLogUpdateOne) SetTotalTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetTotalTokens()
+	_u.mutation.SetTotalTokens(v)
+	return _u
 }
 
 // SetNillableTotalTokens sets the "total_tokens" field if the given value is not nil.
-func (uluo *UsageLogUpdateOne) SetNillableTotalTokens(i *int64) *UsageLogUpdateOne {
-	if i != nil {
-		uluo.SetTotalTokens(*i)
+func (_u *UsageLogUpdateOne) SetNillableTotalTokens(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetTotalTokens(*v)
 	}
-	return uluo
+	return _u
 }
 
-// AddTotalTokens adds i to the "total_tokens" field.
-func (uluo *UsageLogUpdateOne) AddTotalTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.AddTotalTokens(i)
-	return uluo
+// AddTotalTokens adds value to the "total_tokens" field.
+func (_u *UsageLogUpdateOne) AddTotalTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddTotalTokens(v)
+	return _u
 }
 
 // SetPromptAudioTokens sets the "prompt_audio_tokens" field.
-func (uluo *UsageLogUpdateOne) SetPromptAudioTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.ResetPromptAudioTokens()
-	uluo.mutation.SetPromptAudioTokens(i)
-	return uluo
+func (_u *UsageLogUpdateOne) SetPromptAudioTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetPromptAudioTokens()
+	_u.mutation.SetPromptAudioTokens(v)
+	return _u
 }
 
 // SetNillablePromptAudioTokens sets the "prompt_audio_tokens" field if the given value is not nil.
-func (uluo *UsageLogUpdateOne) SetNillablePromptAudioTokens(i *int64) *UsageLogUpdateOne {
-	if i != nil {
-		uluo.SetPromptAudioTokens(*i)
+func (_u *UsageLogUpdateOne) SetNillablePromptAudioTokens(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetPromptAudioTokens(*v)
 	}
-	return uluo
+	return _u
 }
 
-// AddPromptAudioTokens adds i to the "prompt_audio_tokens" field.
-func (uluo *UsageLogUpdateOne) AddPromptAudioTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.AddPromptAudioTokens(i)
-	return uluo
+// AddPromptAudioTokens adds value to the "prompt_audio_tokens" field.
+func (_u *UsageLogUpdateOne) AddPromptAudioTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddPromptAudioTokens(v)
+	return _u
 }
 
 // ClearPromptAudioTokens clears the value of the "prompt_audio_tokens" field.
-func (uluo *UsageLogUpdateOne) ClearPromptAudioTokens() *UsageLogUpdateOne {
-	uluo.mutation.ClearPromptAudioTokens()
-	return uluo
+func (_u *UsageLogUpdateOne) ClearPromptAudioTokens() *UsageLogUpdateOne {
+	_u.mutation.ClearPromptAudioTokens()
+	return _u
 }
 
 // SetPromptCachedTokens sets the "prompt_cached_tokens" field.
-func (uluo *UsageLogUpdateOne) SetPromptCachedTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.ResetPromptCachedTokens()
-	uluo.mutation.SetPromptCachedTokens(i)
-	return uluo
+func (_u *UsageLogUpdateOne) SetPromptCachedTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetPromptCachedTokens()
+	_u.mutation.SetPromptCachedTokens(v)
+	return _u
 }
 
 // SetNillablePromptCachedTokens sets the "prompt_cached_tokens" field if the given value is not nil.
-func (uluo *UsageLogUpdateOne) SetNillablePromptCachedTokens(i *int64) *UsageLogUpdateOne {
-	if i != nil {
-		uluo.SetPromptCachedTokens(*i)
+func (_u *UsageLogUpdateOne) SetNillablePromptCachedTokens(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetPromptCachedTokens(*v)
 	}
-	return uluo
+	return _u
 }
 
-// AddPromptCachedTokens adds i to the "prompt_cached_tokens" field.
-func (uluo *UsageLogUpdateOne) AddPromptCachedTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.AddPromptCachedTokens(i)
-	return uluo
+// AddPromptCachedTokens adds value to the "prompt_cached_tokens" field.
+func (_u *UsageLogUpdateOne) AddPromptCachedTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddPromptCachedTokens(v)
+	return _u
 }
 
 // ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
-func (uluo *UsageLogUpdateOne) ClearPromptCachedTokens() *UsageLogUpdateOne {
-	uluo.mutation.ClearPromptCachedTokens()
-	return uluo
+func (_u *UsageLogUpdateOne) ClearPromptCachedTokens() *UsageLogUpdateOne {
+	_u.mutation.ClearPromptCachedTokens()
+	return _u
 }
 
 // SetCompletionAudioTokens sets the "completion_audio_tokens" field.
-func (uluo *UsageLogUpdateOne) SetCompletionAudioTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.ResetCompletionAudioTokens()
-	uluo.mutation.SetCompletionAudioTokens(i)
-	return uluo
+func (_u *UsageLogUpdateOne) SetCompletionAudioTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetCompletionAudioTokens()
+	_u.mutation.SetCompletionAudioTokens(v)
+	return _u
 }
 
 // SetNillableCompletionAudioTokens sets the "completion_audio_tokens" field if the given value is not nil.
-func (uluo *UsageLogUpdateOne) SetNillableCompletionAudioTokens(i *int64) *UsageLogUpdateOne {
-	if i != nil {
-		uluo.SetCompletionAudioTokens(*i)
+func (_u *UsageLogUpdateOne) SetNillableCompletionAudioTokens(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetCompletionAudioTokens(*v)
 	}
-	return uluo
+	return _u
 }
 
-// AddCompletionAudioTokens adds i to the "completion_audio_tokens" field.
-func (uluo *UsageLogUpdateOne) AddCompletionAudioTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.AddCompletionAudioTokens(i)
-	return uluo
+// AddCompletionAudioTokens adds value to the "completion_audio_tokens" field.
+func (_u *UsageLogUpdateOne) AddCompletionAudioTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddCompletionAudioTokens(v)
+	return _u
 }
 
 // ClearCompletionAudioTokens clears the value of the "completion_audio_tokens" field.
-func (uluo *UsageLogUpdateOne) ClearCompletionAudioTokens() *UsageLogUpdateOne {
-	uluo.mutation.ClearCompletionAudioTokens()
-	return uluo
+func (_u *UsageLogUpdateOne) ClearCompletionAudioTokens() *UsageLogUpdateOne {
+	_u.mutation.ClearCompletionAudioTokens()
+	return _u
 }
 
 // SetCompletionReasoningTokens sets the "completion_reasoning_tokens" field.
-func (uluo *UsageLogUpdateOne) SetCompletionReasoningTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.ResetCompletionReasoningTokens()
-	uluo.mutation.SetCompletionReasoningTokens(i)
-	return uluo
+func (_u *UsageLogUpdateOne) SetCompletionReasoningTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetCompletionReasoningTokens()
+	_u.mutation.SetCompletionReasoningTokens(v)
+	return _u
 }
 
 // SetNillableCompletionReasoningTokens sets the "completion_reasoning_tokens" field if the given value is not nil.
-func (uluo *UsageLogUpdateOne) SetNillableCompletionReasoningTokens(i *int64) *UsageLogUpdateOne {
-	if i != nil {
-		uluo.SetCompletionReasoningTokens(*i)
+func (_u *UsageLogUpdateOne) SetNillableCompletionReasoningTokens(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetCompletionReasoningTokens(*v)
 	}
-	return uluo
+	return _u
 }
 
-// AddCompletionReasoningTokens adds i to the "completion_reasoning_tokens" field.
-func (uluo *UsageLogUpdateOne) AddCompletionReasoningTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.AddCompletionReasoningTokens(i)
-	return uluo
+// AddCompletionReasoningTokens adds value to the "completion_reasoning_tokens" field.
+func (_u *UsageLogUpdateOne) AddCompletionReasoningTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddCompletionReasoningTokens(v)
+	return _u
 }
 
 // ClearCompletionReasoningTokens clears the value of the "completion_reasoning_tokens" field.
-func (uluo *UsageLogUpdateOne) ClearCompletionReasoningTokens() *UsageLogUpdateOne {
-	uluo.mutation.ClearCompletionReasoningTokens()
-	return uluo
+func (_u *UsageLogUpdateOne) ClearCompletionReasoningTokens() *UsageLogUpdateOne {
+	_u.mutation.ClearCompletionReasoningTokens()
+	return _u
 }
 
 // SetCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field.
-func (uluo *UsageLogUpdateOne) SetCompletionAcceptedPredictionTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.ResetCompletionAcceptedPredictionTokens()
-	uluo.mutation.SetCompletionAcceptedPredictionTokens(i)
-	return uluo
+func (_u *UsageLogUpdateOne) SetCompletionAcceptedPredictionTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetCompletionAcceptedPredictionTokens()
+	_u.mutation.SetCompletionAcceptedPredictionTokens(v)
+	return _u
 }
 
 // SetNillableCompletionAcceptedPredictionTokens sets the "completion_accepted_prediction_tokens" field if the given value is not nil.
-func (uluo *UsageLogUpdateOne) SetNillableCompletionAcceptedPredictionTokens(i *int64) *UsageLogUpdateOne {
-	if i != nil {
-		uluo.SetCompletionAcceptedPredictionTokens(*i)
+func (_u *UsageLogUpdateOne) SetNillableCompletionAcceptedPredictionTokens(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetCompletionAcceptedPredictionTokens(*v)
 	}
-	return uluo
+	return _u
 }
 
-// AddCompletionAcceptedPredictionTokens adds i to the "completion_accepted_prediction_tokens" field.
-func (uluo *UsageLogUpdateOne) AddCompletionAcceptedPredictionTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.AddCompletionAcceptedPredictionTokens(i)
-	return uluo
+// AddCompletionAcceptedPredictionTokens adds value to the "completion_accepted_prediction_tokens" field.
+func (_u *UsageLogUpdateOne) AddCompletionAcceptedPredictionTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddCompletionAcceptedPredictionTokens(v)
+	return _u
 }
 
 // ClearCompletionAcceptedPredictionTokens clears the value of the "completion_accepted_prediction_tokens" field.
-func (uluo *UsageLogUpdateOne) ClearCompletionAcceptedPredictionTokens() *UsageLogUpdateOne {
-	uluo.mutation.ClearCompletionAcceptedPredictionTokens()
-	return uluo
+func (_u *UsageLogUpdateOne) ClearCompletionAcceptedPredictionTokens() *UsageLogUpdateOne {
+	_u.mutation.ClearCompletionAcceptedPredictionTokens()
+	return _u
 }
 
 // SetCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field.
-func (uluo *UsageLogUpdateOne) SetCompletionRejectedPredictionTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.ResetCompletionRejectedPredictionTokens()
-	uluo.mutation.SetCompletionRejectedPredictionTokens(i)
-	return uluo
+func (_u *UsageLogUpdateOne) SetCompletionRejectedPredictionTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetCompletionRejectedPredictionTokens()
+	_u.mutation.SetCompletionRejectedPredictionTokens(v)
+	return _u
 }
 
 // SetNillableCompletionRejectedPredictionTokens sets the "completion_rejected_prediction_tokens" field if the given value is not nil.
-func (uluo *UsageLogUpdateOne) SetNillableCompletionRejectedPredictionTokens(i *int64) *UsageLogUpdateOne {
-	if i != nil {
-		uluo.SetCompletionRejectedPredictionTokens(*i)
+func (_u *UsageLogUpdateOne) SetNillableCompletionRejectedPredictionTokens(v *int64) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetCompletionRejectedPredictionTokens(*v)
 	}
-	return uluo
+	return _u
 }
 
-// AddCompletionRejectedPredictionTokens adds i to the "completion_rejected_prediction_tokens" field.
-func (uluo *UsageLogUpdateOne) AddCompletionRejectedPredictionTokens(i int64) *UsageLogUpdateOne {
-	uluo.mutation.AddCompletionRejectedPredictionTokens(i)
-	return uluo
+// AddCompletionRejectedPredictionTokens adds value to the "completion_rejected_prediction_tokens" field.
+func (_u *UsageLogUpdateOne) AddCompletionRejectedPredictionTokens(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddCompletionRejectedPredictionTokens(v)
+	return _u
 }
 
 // ClearCompletionRejectedPredictionTokens clears the value of the "completion_rejected_prediction_tokens" field.
-func (uluo *UsageLogUpdateOne) ClearCompletionRejectedPredictionTokens() *UsageLogUpdateOne {
-	uluo.mutation.ClearCompletionRejectedPredictionTokens()
-	return uluo
+func (_u *UsageLogUpdateOne) ClearCompletionRejectedPredictionTokens() *UsageLogUpdateOne {
+	_u.mutation.ClearCompletionRejectedPredictionTokens()
+	return _u
 }
 
 // SetChannel sets the "channel" edge to the Channel entity.
-func (uluo *UsageLogUpdateOne) SetChannel(c *Channel) *UsageLogUpdateOne {
-	return uluo.SetChannelID(c.ID)
+func (_u *UsageLogUpdateOne) SetChannel(v *Channel) *UsageLogUpdateOne {
+	return _u.SetChannelID(v.ID)
 }
 
 // Mutation returns the UsageLogMutation object of the builder.
-func (uluo *UsageLogUpdateOne) Mutation() *UsageLogMutation {
-	return uluo.mutation
+func (_u *UsageLogUpdateOne) Mutation() *UsageLogMutation {
+	return _u.mutation
 }
 
 // ClearChannel clears the "channel" edge to the Channel entity.
-func (uluo *UsageLogUpdateOne) ClearChannel() *UsageLogUpdateOne {
-	uluo.mutation.ClearChannel()
-	return uluo
+func (_u *UsageLogUpdateOne) ClearChannel() *UsageLogUpdateOne {
+	_u.mutation.ClearChannel()
+	return _u
 }
 
 // Where appends a list predicates to the UsageLogUpdate builder.
-func (uluo *UsageLogUpdateOne) Where(ps ...predicate.UsageLog) *UsageLogUpdateOne {
-	uluo.mutation.Where(ps...)
-	return uluo
+func (_u *UsageLogUpdateOne) Where(ps ...predicate.UsageLog) *UsageLogUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (uluo *UsageLogUpdateOne) Select(field string, fields ...string) *UsageLogUpdateOne {
-	uluo.fields = append([]string{field}, fields...)
-	return uluo
+func (_u *UsageLogUpdateOne) Select(field string, fields ...string) *UsageLogUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated UsageLog entity.
-func (uluo *UsageLogUpdateOne) Save(ctx context.Context) (*UsageLog, error) {
-	if err := uluo.defaults(); err != nil {
+func (_u *UsageLogUpdateOne) Save(ctx context.Context) (*UsageLog, error) {
+	if err := _u.defaults(); err != nil {
 		return nil, err
 	}
-	return withHooks(ctx, uluo.sqlSave, uluo.mutation, uluo.hooks)
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (uluo *UsageLogUpdateOne) SaveX(ctx context.Context) *UsageLog {
-	node, err := uluo.Save(ctx)
+func (_u *UsageLogUpdateOne) SaveX(ctx context.Context) *UsageLog {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -840,58 +843,61 @@ func (uluo *UsageLogUpdateOne) SaveX(ctx context.Context) *UsageLog {
 }
 
 // Exec executes the query on the entity.
-func (uluo *UsageLogUpdateOne) Exec(ctx context.Context) error {
-	_, err := uluo.Save(ctx)
+func (_u *UsageLogUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (uluo *UsageLogUpdateOne) ExecX(ctx context.Context) {
-	if err := uluo.Exec(ctx); err != nil {
+func (_u *UsageLogUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (uluo *UsageLogUpdateOne) defaults() error {
-	if _, ok := uluo.mutation.UpdatedAt(); !ok {
+func (_u *UsageLogUpdateOne) defaults() error {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		if usagelog.UpdateDefaultUpdatedAt == nil {
 			return fmt.Errorf("ent: uninitialized usagelog.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
 		}
 		v := usagelog.UpdateDefaultUpdatedAt()
-		uluo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (uluo *UsageLogUpdateOne) check() error {
-	if uluo.mutation.UserCleared() && len(uluo.mutation.UserIDs()) > 0 {
+func (_u *UsageLogUpdateOne) check() error {
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UsageLog.user"`)
 	}
-	if uluo.mutation.RequestCleared() && len(uluo.mutation.RequestIDs()) > 0 {
+	if _u.mutation.RequestCleared() && len(_u.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UsageLog.request"`)
+	}
+	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UsageLog.project"`)
 	}
 	return nil
 }
 
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
-func (uluo *UsageLogUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *UsageLogUpdateOne {
-	uluo.modifiers = append(uluo.modifiers, modifiers...)
-	return uluo
+func (_u *UsageLogUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *UsageLogUpdateOne {
+	_u.modifiers = append(_u.modifiers, modifiers...)
+	return _u
 }
 
-func (uluo *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err error) {
-	if err := uluo.check(); err != nil {
+func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err error) {
+	if err := _u.check(); err != nil {
 		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(usagelog.Table, usagelog.Columns, sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt))
-	id, ok := uluo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "UsageLog.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := uluo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, usagelog.FieldID)
 		for _, f := range fields {
@@ -903,95 +909,95 @@ func (uluo *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, er
 			}
 		}
 	}
-	if ps := uluo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := uluo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(usagelog.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := uluo.mutation.DeletedAt(); ok {
+	if value, ok := _u.mutation.DeletedAt(); ok {
 		_spec.SetField(usagelog.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := uluo.mutation.AddedDeletedAt(); ok {
+	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(usagelog.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := uluo.mutation.PromptTokens(); ok {
+	if value, ok := _u.mutation.PromptTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.AddedPromptTokens(); ok {
+	if value, ok := _u.mutation.AddedPromptTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.CompletionTokens(); ok {
+	if value, ok := _u.mutation.CompletionTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.AddedCompletionTokens(); ok {
+	if value, ok := _u.mutation.AddedCompletionTokens(); ok {
 		_spec.AddField(usagelog.FieldCompletionTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.TotalTokens(); ok {
+	if value, ok := _u.mutation.TotalTokens(); ok {
 		_spec.SetField(usagelog.FieldTotalTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.AddedTotalTokens(); ok {
+	if value, ok := _u.mutation.AddedTotalTokens(); ok {
 		_spec.AddField(usagelog.FieldTotalTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.PromptAudioTokens(); ok {
+	if value, ok := _u.mutation.PromptAudioTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptAudioTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.AddedPromptAudioTokens(); ok {
+	if value, ok := _u.mutation.AddedPromptAudioTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptAudioTokens, field.TypeInt64, value)
 	}
-	if uluo.mutation.PromptAudioTokensCleared() {
+	if _u.mutation.PromptAudioTokensCleared() {
 		_spec.ClearField(usagelog.FieldPromptAudioTokens, field.TypeInt64)
 	}
-	if value, ok := uluo.mutation.PromptCachedTokens(); ok {
+	if value, ok := _u.mutation.PromptCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.AddedPromptCachedTokens(); ok {
+	if value, ok := _u.mutation.AddedPromptCachedTokens(); ok {
 		_spec.AddField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 	}
-	if uluo.mutation.PromptCachedTokensCleared() {
+	if _u.mutation.PromptCachedTokensCleared() {
 		_spec.ClearField(usagelog.FieldPromptCachedTokens, field.TypeInt64)
 	}
-	if value, ok := uluo.mutation.CompletionAudioTokens(); ok {
+	if value, ok := _u.mutation.CompletionAudioTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionAudioTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.AddedCompletionAudioTokens(); ok {
+	if value, ok := _u.mutation.AddedCompletionAudioTokens(); ok {
 		_spec.AddField(usagelog.FieldCompletionAudioTokens, field.TypeInt64, value)
 	}
-	if uluo.mutation.CompletionAudioTokensCleared() {
+	if _u.mutation.CompletionAudioTokensCleared() {
 		_spec.ClearField(usagelog.FieldCompletionAudioTokens, field.TypeInt64)
 	}
-	if value, ok := uluo.mutation.CompletionReasoningTokens(); ok {
+	if value, ok := _u.mutation.CompletionReasoningTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionReasoningTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.AddedCompletionReasoningTokens(); ok {
+	if value, ok := _u.mutation.AddedCompletionReasoningTokens(); ok {
 		_spec.AddField(usagelog.FieldCompletionReasoningTokens, field.TypeInt64, value)
 	}
-	if uluo.mutation.CompletionReasoningTokensCleared() {
+	if _u.mutation.CompletionReasoningTokensCleared() {
 		_spec.ClearField(usagelog.FieldCompletionReasoningTokens, field.TypeInt64)
 	}
-	if value, ok := uluo.mutation.CompletionAcceptedPredictionTokens(); ok {
+	if value, ok := _u.mutation.CompletionAcceptedPredictionTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionAcceptedPredictionTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.AddedCompletionAcceptedPredictionTokens(); ok {
+	if value, ok := _u.mutation.AddedCompletionAcceptedPredictionTokens(); ok {
 		_spec.AddField(usagelog.FieldCompletionAcceptedPredictionTokens, field.TypeInt64, value)
 	}
-	if uluo.mutation.CompletionAcceptedPredictionTokensCleared() {
+	if _u.mutation.CompletionAcceptedPredictionTokensCleared() {
 		_spec.ClearField(usagelog.FieldCompletionAcceptedPredictionTokens, field.TypeInt64)
 	}
-	if value, ok := uluo.mutation.CompletionRejectedPredictionTokens(); ok {
+	if value, ok := _u.mutation.CompletionRejectedPredictionTokens(); ok {
 		_spec.SetField(usagelog.FieldCompletionRejectedPredictionTokens, field.TypeInt64, value)
 	}
-	if value, ok := uluo.mutation.AddedCompletionRejectedPredictionTokens(); ok {
+	if value, ok := _u.mutation.AddedCompletionRejectedPredictionTokens(); ok {
 		_spec.AddField(usagelog.FieldCompletionRejectedPredictionTokens, field.TypeInt64, value)
 	}
-	if uluo.mutation.CompletionRejectedPredictionTokensCleared() {
+	if _u.mutation.CompletionRejectedPredictionTokensCleared() {
 		_spec.ClearField(usagelog.FieldCompletionRejectedPredictionTokens, field.TypeInt64)
 	}
-	if uluo.mutation.ChannelCleared() {
+	if _u.mutation.ChannelCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -1004,7 +1010,7 @@ func (uluo *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, er
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := uluo.mutation.ChannelIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ChannelIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -1020,11 +1026,11 @@ func (uluo *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, er
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_spec.AddModifiers(uluo.modifiers...)
-	_node = &UsageLog{config: uluo.config}
+	_spec.AddModifiers(_u.modifiers...)
+	_node = &UsageLog{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, uluo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{usagelog.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -1032,6 +1038,6 @@ func (uluo *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, er
 		}
 		return nil, err
 	}
-	uluo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

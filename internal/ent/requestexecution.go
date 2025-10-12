@@ -27,6 +27,8 @@ type RequestExecution struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// UserID holds the value of the "user_id" field.
 	UserID int `json:"user_id,omitempty"`
+	// ProjectID holds the value of the "project_id" field.
+	ProjectID int `json:"project_id,omitempty"`
 	// RequestID holds the value of the "request_id" field.
 	RequestID int `json:"request_id,omitempty"`
 	// ChannelID holds the value of the "channel_id" field.
@@ -95,7 +97,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case requestexecution.FieldRequestBody, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks:
 			values[i] = new([]byte)
-		case requestexecution.FieldID, requestexecution.FieldUserID, requestexecution.FieldRequestID, requestexecution.FieldChannelID:
+		case requestexecution.FieldID, requestexecution.FieldUserID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID:
 			values[i] = new(sql.NullInt64)
 		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -110,7 +112,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the RequestExecution fields.
-func (re *RequestExecution) assignValues(columns []string, values []any) error {
+func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -121,60 +123,66 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			re.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case requestexecution.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				re.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case requestexecution.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				re.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case requestexecution.FieldUserID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
-				re.UserID = int(value.Int64)
+				_m.UserID = int(value.Int64)
+			}
+		case requestexecution.FieldProjectID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field project_id", values[i])
+			} else if value.Valid {
+				_m.ProjectID = int(value.Int64)
 			}
 		case requestexecution.FieldRequestID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field request_id", values[i])
 			} else if value.Valid {
-				re.RequestID = int(value.Int64)
+				_m.RequestID = int(value.Int64)
 			}
 		case requestexecution.FieldChannelID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field channel_id", values[i])
 			} else if value.Valid {
-				re.ChannelID = int(value.Int64)
+				_m.ChannelID = int(value.Int64)
 			}
 		case requestexecution.FieldExternalID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field external_id", values[i])
 			} else if value.Valid {
-				re.ExternalID = value.String
+				_m.ExternalID = value.String
 			}
 		case requestexecution.FieldModelID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field model_id", values[i])
 			} else if value.Valid {
-				re.ModelID = value.String
+				_m.ModelID = value.String
 			}
 		case requestexecution.FieldFormat:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field format", values[i])
 			} else if value.Valid {
-				re.Format = value.String
+				_m.Format = value.String
 			}
 		case requestexecution.FieldRequestBody:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field request_body", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &re.RequestBody); err != nil {
+				if err := json.Unmarshal(*value, &_m.RequestBody); err != nil {
 					return fmt.Errorf("unmarshal field request_body: %w", err)
 				}
 			}
@@ -182,7 +190,7 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field response_body", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &re.ResponseBody); err != nil {
+				if err := json.Unmarshal(*value, &_m.ResponseBody); err != nil {
 					return fmt.Errorf("unmarshal field response_body: %w", err)
 				}
 			}
@@ -190,7 +198,7 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field response_chunks", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &re.ResponseChunks); err != nil {
+				if err := json.Unmarshal(*value, &_m.ResponseChunks); err != nil {
 					return fmt.Errorf("unmarshal field response_chunks: %w", err)
 				}
 			}
@@ -198,16 +206,16 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field error_message", values[i])
 			} else if value.Valid {
-				re.ErrorMessage = value.String
+				_m.ErrorMessage = value.String
 			}
 		case requestexecution.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
-				re.Status = requestexecution.Status(value.String)
+				_m.Status = requestexecution.Status(value.String)
 			}
 		default:
-			re.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -215,81 +223,84 @@ func (re *RequestExecution) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the RequestExecution.
 // This includes values selected through modifiers, order, etc.
-func (re *RequestExecution) Value(name string) (ent.Value, error) {
-	return re.selectValues.Get(name)
+func (_m *RequestExecution) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryRequest queries the "request" edge of the RequestExecution entity.
-func (re *RequestExecution) QueryRequest() *RequestQuery {
-	return NewRequestExecutionClient(re.config).QueryRequest(re)
+func (_m *RequestExecution) QueryRequest() *RequestQuery {
+	return NewRequestExecutionClient(_m.config).QueryRequest(_m)
 }
 
 // QueryChannel queries the "channel" edge of the RequestExecution entity.
-func (re *RequestExecution) QueryChannel() *ChannelQuery {
-	return NewRequestExecutionClient(re.config).QueryChannel(re)
+func (_m *RequestExecution) QueryChannel() *ChannelQuery {
+	return NewRequestExecutionClient(_m.config).QueryChannel(_m)
 }
 
 // Update returns a builder for updating this RequestExecution.
 // Note that you need to call RequestExecution.Unwrap() before calling this method if this RequestExecution
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (re *RequestExecution) Update() *RequestExecutionUpdateOne {
-	return NewRequestExecutionClient(re.config).UpdateOne(re)
+func (_m *RequestExecution) Update() *RequestExecutionUpdateOne {
+	return NewRequestExecutionClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the RequestExecution entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (re *RequestExecution) Unwrap() *RequestExecution {
-	_tx, ok := re.config.driver.(*txDriver)
+func (_m *RequestExecution) Unwrap() *RequestExecution {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: RequestExecution is not a transactional entity")
 	}
-	re.config.driver = _tx.drv
-	return re
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (re *RequestExecution) String() string {
+func (_m *RequestExecution) String() string {
 	var builder strings.Builder
 	builder.WriteString("RequestExecution(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", re.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(re.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(re.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("user_id=")
-	builder.WriteString(fmt.Sprintf("%v", re.UserID))
+	builder.WriteString(fmt.Sprintf("%v", _m.UserID))
+	builder.WriteString(", ")
+	builder.WriteString("project_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ProjectID))
 	builder.WriteString(", ")
 	builder.WriteString("request_id=")
-	builder.WriteString(fmt.Sprintf("%v", re.RequestID))
+	builder.WriteString(fmt.Sprintf("%v", _m.RequestID))
 	builder.WriteString(", ")
 	builder.WriteString("channel_id=")
-	builder.WriteString(fmt.Sprintf("%v", re.ChannelID))
+	builder.WriteString(fmt.Sprintf("%v", _m.ChannelID))
 	builder.WriteString(", ")
 	builder.WriteString("external_id=")
-	builder.WriteString(re.ExternalID)
+	builder.WriteString(_m.ExternalID)
 	builder.WriteString(", ")
 	builder.WriteString("model_id=")
-	builder.WriteString(re.ModelID)
+	builder.WriteString(_m.ModelID)
 	builder.WriteString(", ")
 	builder.WriteString("format=")
-	builder.WriteString(re.Format)
+	builder.WriteString(_m.Format)
 	builder.WriteString(", ")
 	builder.WriteString("request_body=")
-	builder.WriteString(fmt.Sprintf("%v", re.RequestBody))
+	builder.WriteString(fmt.Sprintf("%v", _m.RequestBody))
 	builder.WriteString(", ")
 	builder.WriteString("response_body=")
-	builder.WriteString(fmt.Sprintf("%v", re.ResponseBody))
+	builder.WriteString(fmt.Sprintf("%v", _m.ResponseBody))
 	builder.WriteString(", ")
 	builder.WriteString("response_chunks=")
-	builder.WriteString(fmt.Sprintf("%v", re.ResponseChunks))
+	builder.WriteString(fmt.Sprintf("%v", _m.ResponseChunks))
 	builder.WriteString(", ")
 	builder.WriteString("error_message=")
-	builder.WriteString(re.ErrorMessage)
+	builder.WriteString(_m.ErrorMessage)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
-	builder.WriteString(fmt.Sprintf("%v", re.Status))
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteByte(')')
 	return builder.String()
 }

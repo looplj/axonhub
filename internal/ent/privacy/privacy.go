@@ -159,6 +159,30 @@ func (f ChannelMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutatio
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ChannelMutation", m)
 }
 
+// The ProjectQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type ProjectQueryRuleFunc func(context.Context, *ent.ProjectQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f ProjectQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ProjectQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.ProjectQuery", q)
+}
+
+// The ProjectMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type ProjectMutationRuleFunc func(context.Context, *ent.ProjectMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f ProjectMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.ProjectMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ProjectMutation", m)
+}
+
 // The RequestQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type RequestQueryRuleFunc func(context.Context, *ent.RequestQuery) error
@@ -303,6 +327,30 @@ func (f UserMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) 
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.UserMutation", m)
 }
 
+// The UserProjectQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type UserProjectQueryRuleFunc func(context.Context, *ent.UserProjectQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f UserProjectQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.UserProjectQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.UserProjectQuery", q)
+}
+
+// The UserProjectMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type UserProjectMutationRuleFunc func(context.Context, *ent.UserProjectMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f UserProjectMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.UserProjectMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.UserProjectMutation", m)
+}
+
 type (
 	// Filter is the interface that wraps the Where function
 	// for filtering nodes in queries and mutations.
@@ -342,6 +390,8 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.ChannelQuery:
 		return q.Filter(), nil
+	case *ent.ProjectQuery:
+		return q.Filter(), nil
 	case *ent.RequestQuery:
 		return q.Filter(), nil
 	case *ent.RequestExecutionQuery:
@@ -354,6 +404,8 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.UserQuery:
 		return q.Filter(), nil
+	case *ent.UserProjectQuery:
+		return q.Filter(), nil
 	default:
 		return nil, Denyf("ent/privacy: unexpected query type %T for query filter", q)
 	}
@@ -364,6 +416,8 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.APIKeyMutation:
 		return m.Filter(), nil
 	case *ent.ChannelMutation:
+		return m.Filter(), nil
+	case *ent.ProjectMutation:
 		return m.Filter(), nil
 	case *ent.RequestMutation:
 		return m.Filter(), nil
@@ -376,6 +430,8 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.UsageLogMutation:
 		return m.Filter(), nil
 	case *ent.UserMutation:
+		return m.Filter(), nil
+	case *ent.UserProjectMutation:
 		return m.Filter(), nil
 	default:
 		return nil, Denyf("ent/privacy: unexpected mutation type %T for mutation filter", m)

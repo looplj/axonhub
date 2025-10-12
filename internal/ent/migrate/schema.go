@@ -19,6 +19,7 @@ var (
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "enabled"},
 		{Name: "scopes", Type: field.TypeJSON, Nullable: true},
 		{Name: "profiles", Type: field.TypeJSON, Nullable: true},
+		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "user_id", Type: field.TypeInt},
 	}
 	// APIKeysTable holds the schema information for the "api_keys" table.
@@ -28,8 +29,14 @@ var (
 		PrimaryKey: []*schema.Column{APIKeysColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "api_keys_users_api_keys",
+				Symbol:     "api_keys_projects_api_keys",
 				Columns:    []*schema.Column{APIKeysColumns[9]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "api_keys_users_api_keys",
+				Columns:    []*schema.Column{APIKeysColumns[10]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -37,6 +44,11 @@ var (
 		Indexes: []*schema.Index{
 			{
 				Name:    "api_keys_by_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{APIKeysColumns[10]},
+			},
+			{
+				Name:    "api_keys_by_project_id",
 				Unique:  false,
 				Columns: []*schema.Column{APIKeysColumns[9]},
 			},
@@ -76,6 +88,35 @@ var (
 			},
 		},
 	}
+	// ProjectsColumns holds the columns for the "projects" table.
+	ProjectsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "slug", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived"}, Default: "active"},
+	}
+	// ProjectsTable holds the schema information for the "projects" table.
+	ProjectsTable = &schema.Table{
+		Name:       "projects",
+		Columns:    ProjectsColumns,
+		PrimaryKey: []*schema.Column{ProjectsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "projects_by_slug",
+				Unique:  true,
+				Columns: []*schema.Column{ProjectsColumns[4]},
+			},
+			{
+				Name:    "projects_by_name",
+				Unique:  true,
+				Columns: []*schema.Column{ProjectsColumns[5]},
+			},
+		},
+	}
 	// RequestsColumns holds the columns for the "requests" table.
 	RequestsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -93,6 +134,7 @@ var (
 		{Name: "stream", Type: field.TypeBool, Default: false},
 		{Name: "api_key_id", Type: field.TypeInt, Nullable: true},
 		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
+		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "user_id", Type: field.TypeInt},
 	}
 	// RequestsTable holds the schema information for the "requests" table.
@@ -114,8 +156,14 @@ var (
 				OnDelete:   schema.SetNull,
 			},
 			{
-				Symbol:     "requests_users_requests",
+				Symbol:     "requests_projects_requests",
 				Columns:    []*schema.Column{RequestsColumns[15]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "requests_users_requests",
+				Columns:    []*schema.Column{RequestsColumns[16]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -124,12 +172,17 @@ var (
 			{
 				Name:    "requests_by_user_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[15]},
+				Columns: []*schema.Column{RequestsColumns[16]},
 			},
 			{
 				Name:    "requests_by_api_key_id",
 				Unique:  false,
 				Columns: []*schema.Column{RequestsColumns[13]},
+			},
+			{
+				Name:    "requests_by_project_id",
+				Unique:  false,
+				Columns: []*schema.Column{RequestsColumns[15]},
 			},
 			{
 				Name:    "requests_by_channel_id",
@@ -154,6 +207,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "user_id", Type: field.TypeInt},
+		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "external_id", Type: field.TypeString, Nullable: true},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "format", Type: field.TypeString, Default: "openai/chat_completions"},
@@ -173,13 +227,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "request_executions_channels_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[12]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[13]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "request_executions_requests_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[13]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[14]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -188,12 +242,12 @@ var (
 			{
 				Name:    "request_executions_by_request_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[13]},
+				Columns: []*schema.Column{RequestExecutionsColumns[14]},
 			},
 			{
 				Name:    "request_executions_by_channel_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[12]},
+				Columns: []*schema.Column{RequestExecutionsColumns[13]},
 			},
 		},
 	}
@@ -205,18 +259,38 @@ var (
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "code", Type: field.TypeString, Unique: true},
 		{Name: "name", Type: field.TypeString},
+		{Name: "level", Type: field.TypeEnum, Enums: []string{"global", "project"}, Default: "global"},
 		{Name: "scopes", Type: field.TypeJSON, Nullable: true},
+		{Name: "project_id", Type: field.TypeInt, Nullable: true},
 	}
 	// RolesTable holds the schema information for the "roles" table.
 	RolesTable = &schema.Table{
 		Name:       "roles",
 		Columns:    RolesColumns,
 		PrimaryKey: []*schema.Column{RolesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "roles_projects_roles",
+				Columns:    []*schema.Column{RolesColumns[8]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "roles_by_code",
 				Unique:  true,
 				Columns: []*schema.Column{RolesColumns[4]},
+			},
+			{
+				Name:    "roles_by_project_id",
+				Unique:  false,
+				Columns: []*schema.Column{RolesColumns[8]},
+			},
+			{
+				Name:    "roles_by_level",
+				Unique:  false,
+				Columns: []*schema.Column{RolesColumns[6]},
 			},
 		},
 	}
@@ -254,6 +328,7 @@ var (
 		{Name: "source", Type: field.TypeEnum, Enums: []string{"api", "playground", "test"}, Default: "api"},
 		{Name: "format", Type: field.TypeString, Default: "openai/chat_completions"},
 		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
+		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "request_id", Type: field.TypeInt},
 		{Name: "user_id", Type: field.TypeInt},
 	}
@@ -270,14 +345,20 @@ var (
 				OnDelete:   schema.SetNull,
 			},
 			{
-				Symbol:     "usage_logs_requests_usage_logs",
+				Symbol:     "usage_logs_projects_usage_logs",
 				Columns:    []*schema.Column{UsageLogsColumns[17]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "usage_logs_requests_usage_logs",
+				Columns:    []*schema.Column{UsageLogsColumns[18]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "usage_logs_users_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[18]},
+				Columns:    []*schema.Column{UsageLogsColumns[19]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -286,10 +367,15 @@ var (
 			{
 				Name:    "usage_logs_by_user_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[18]},
+				Columns: []*schema.Column{UsageLogsColumns[19]},
 			},
 			{
 				Name:    "usage_logs_by_request_id",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[18]},
+			},
+			{
+				Name:    "usage_logs_by_project_id",
 				Unique:  false,
 				Columns: []*schema.Column{UsageLogsColumns[17]},
 			},
@@ -311,7 +397,12 @@ var (
 			{
 				Name:    "usage_logs_by_user_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[18], UsageLogsColumns[1]},
+				Columns: []*schema.Column{UsageLogsColumns[19], UsageLogsColumns[1]},
+			},
+			{
+				Name:    "usage_logs_by_project_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[17], UsageLogsColumns[1]},
 			},
 			{
 				Name:    "usage_logs_by_channel_created_at",
@@ -342,6 +433,54 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
+	// UserProjectsColumns holds the columns for the "user_projects" table.
+	UserProjectsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "is_owner", Type: field.TypeBool, Default: false},
+		{Name: "scopes", Type: field.TypeJSON, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt},
+		{Name: "project_id", Type: field.TypeInt},
+	}
+	// UserProjectsTable holds the schema information for the "user_projects" table.
+	UserProjectsTable = &schema.Table{
+		Name:       "user_projects",
+		Columns:    UserProjectsColumns,
+		PrimaryKey: []*schema.Column{UserProjectsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "user_projects_users_users",
+				Columns:    []*schema.Column{UserProjectsColumns[6]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "user_projects_projects_projects",
+				Columns:    []*schema.Column{UserProjectsColumns[7]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "user_projects_by_user_id_project_id",
+				Unique:  true,
+				Columns: []*schema.Column{UserProjectsColumns[6], UserProjectsColumns[7], UserProjectsColumns[3]},
+			},
+			{
+				Name:    "user_projects_by_project_id",
+				Unique:  true,
+				Columns: []*schema.Column{UserProjectsColumns[7]},
+			},
+			{
+				Name:    "userproject_project_id_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{UserProjectsColumns[7], UserProjectsColumns[6]},
+			},
+		},
+	}
 	// UserRolesColumns holds the columns for the "user_roles" table.
 	UserRolesColumns = []*schema.Column{
 		{Name: "user_id", Type: field.TypeInt},
@@ -371,26 +510,34 @@ var (
 	Tables = []*schema.Table{
 		APIKeysTable,
 		ChannelsTable,
+		ProjectsTable,
 		RequestsTable,
 		RequestExecutionsTable,
 		RolesTable,
 		SystemsTable,
 		UsageLogsTable,
 		UsersTable,
+		UserProjectsTable,
 		UserRolesTable,
 	}
 )
 
 func init() {
-	APIKeysTable.ForeignKeys[0].RefTable = UsersTable
+	APIKeysTable.ForeignKeys[0].RefTable = ProjectsTable
+	APIKeysTable.ForeignKeys[1].RefTable = UsersTable
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
-	RequestsTable.ForeignKeys[2].RefTable = UsersTable
+	RequestsTable.ForeignKeys[2].RefTable = ProjectsTable
+	RequestsTable.ForeignKeys[3].RefTable = UsersTable
 	RequestExecutionsTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestExecutionsTable.ForeignKeys[1].RefTable = RequestsTable
+	RolesTable.ForeignKeys[0].RefTable = ProjectsTable
 	UsageLogsTable.ForeignKeys[0].RefTable = ChannelsTable
-	UsageLogsTable.ForeignKeys[1].RefTable = RequestsTable
-	UsageLogsTable.ForeignKeys[2].RefTable = UsersTable
+	UsageLogsTable.ForeignKeys[1].RefTable = ProjectsTable
+	UsageLogsTable.ForeignKeys[2].RefTable = RequestsTable
+	UsageLogsTable.ForeignKeys[3].RefTable = UsersTable
+	UserProjectsTable.ForeignKeys[0].RefTable = UsersTable
+	UserProjectsTable.ForeignKeys[1].RefTable = ProjectsTable
 	UserRolesTable.ForeignKeys[0].RefTable = UsersTable
 	UserRolesTable.ForeignKeys[1].RefTable = RolesTable
 }

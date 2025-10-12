@@ -14,12 +14,14 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -34,12 +36,14 @@ const (
 	// Node types.
 	TypeAPIKey           = "APIKey"
 	TypeChannel          = "Channel"
+	TypeProject          = "Project"
 	TypeRequest          = "Request"
 	TypeRequestExecution = "RequestExecution"
 	TypeRole             = "Role"
 	TypeSystem           = "System"
 	TypeUsageLog         = "UsageLog"
 	TypeUser             = "User"
+	TypeUserProject      = "UserProject"
 )
 
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
@@ -61,6 +65,8 @@ type APIKeyMutation struct {
 	clearedFields   map[string]struct{}
 	user            *int
 	cleareduser     bool
+	project         *int
+	clearedproject  bool
 	requests        map[int]struct{}
 	removedrequests map[int]struct{}
 	clearedrequests bool
@@ -331,6 +337,42 @@ func (m *APIKeyMutation) ResetUserID() {
 	m.user = nil
 }
 
+// SetProjectID sets the "project_id" field.
+func (m *APIKeyMutation) SetProjectID(i int) {
+	m.project = &i
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *APIKeyMutation) ProjectID() (r int, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldProjectID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *APIKeyMutation) ResetProjectID() {
+	m.project = nil
+}
+
 // SetKey sets the "key" field.
 func (m *APIKeyMutation) SetKey(s string) {
 	m.key = &s
@@ -580,6 +622,33 @@ func (m *APIKeyMutation) ResetUser() {
 	m.cleareduser = false
 }
 
+// ClearProject clears the "project" edge to the Project entity.
+func (m *APIKeyMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[apikey.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *APIKeyMutation) ProjectCleared() bool {
+	return m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *APIKeyMutation) ProjectIDs() (ids []int) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *APIKeyMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by ids.
 func (m *APIKeyMutation) AddRequestIDs(ids ...int) {
 	if m.requests == nil {
@@ -668,7 +737,7 @@ func (m *APIKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *APIKeyMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.created_at != nil {
 		fields = append(fields, apikey.FieldCreatedAt)
 	}
@@ -680,6 +749,9 @@ func (m *APIKeyMutation) Fields() []string {
 	}
 	if m.user != nil {
 		fields = append(fields, apikey.FieldUserID)
+	}
+	if m.project != nil {
+		fields = append(fields, apikey.FieldProjectID)
 	}
 	if m.key != nil {
 		fields = append(fields, apikey.FieldKey)
@@ -712,6 +784,8 @@ func (m *APIKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.DeletedAt()
 	case apikey.FieldUserID:
 		return m.UserID()
+	case apikey.FieldProjectID:
+		return m.ProjectID()
 	case apikey.FieldKey:
 		return m.Key()
 	case apikey.FieldName:
@@ -739,6 +813,8 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldDeletedAt(ctx)
 	case apikey.FieldUserID:
 		return m.OldUserID(ctx)
+	case apikey.FieldProjectID:
+		return m.OldProjectID(ctx)
 	case apikey.FieldKey:
 		return m.OldKey(ctx)
 	case apikey.FieldName:
@@ -785,6 +861,13 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUserID(v)
+		return nil
+	case apikey.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
 		return nil
 	case apikey.FieldKey:
 		v, ok := value.(string)
@@ -912,6 +995,9 @@ func (m *APIKeyMutation) ResetField(name string) error {
 	case apikey.FieldUserID:
 		m.ResetUserID()
 		return nil
+	case apikey.FieldProjectID:
+		m.ResetProjectID()
+		return nil
 	case apikey.FieldKey:
 		m.ResetKey()
 		return nil
@@ -933,9 +1019,12 @@ func (m *APIKeyMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *APIKeyMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.user != nil {
 		edges = append(edges, apikey.EdgeUser)
+	}
+	if m.project != nil {
+		edges = append(edges, apikey.EdgeProject)
 	}
 	if m.requests != nil {
 		edges = append(edges, apikey.EdgeRequests)
@@ -951,6 +1040,10 @@ func (m *APIKeyMutation) AddedIDs(name string) []ent.Value {
 		if id := m.user; id != nil {
 			return []ent.Value{*id}
 		}
+	case apikey.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
 	case apikey.EdgeRequests:
 		ids := make([]ent.Value, 0, len(m.requests))
 		for id := range m.requests {
@@ -963,7 +1056,7 @@ func (m *APIKeyMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *APIKeyMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.removedrequests != nil {
 		edges = append(edges, apikey.EdgeRequests)
 	}
@@ -986,9 +1079,12 @@ func (m *APIKeyMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *APIKeyMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.cleareduser {
 		edges = append(edges, apikey.EdgeUser)
+	}
+	if m.clearedproject {
+		edges = append(edges, apikey.EdgeProject)
 	}
 	if m.clearedrequests {
 		edges = append(edges, apikey.EdgeRequests)
@@ -1002,6 +1098,8 @@ func (m *APIKeyMutation) EdgeCleared(name string) bool {
 	switch name {
 	case apikey.EdgeUser:
 		return m.cleareduser
+	case apikey.EdgeProject:
+		return m.clearedproject
 	case apikey.EdgeRequests:
 		return m.clearedrequests
 	}
@@ -1015,6 +1113,9 @@ func (m *APIKeyMutation) ClearEdge(name string) error {
 	case apikey.EdgeUser:
 		m.ClearUser()
 		return nil
+	case apikey.EdgeProject:
+		m.ClearProject()
+		return nil
 	}
 	return fmt.Errorf("unknown APIKey unique edge %s", name)
 }
@@ -1025,6 +1126,9 @@ func (m *APIKeyMutation) ResetEdge(name string) error {
 	switch name {
 	case apikey.EdgeUser:
 		m.ResetUser()
+		return nil
+	case apikey.EdgeProject:
+		m.ResetProject()
 		return nil
 	case apikey.EdgeRequests:
 		m.ResetRequests()
@@ -2338,6 +2442,1200 @@ func (m *ChannelMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Channel edge %s", name)
 }
 
+// ProjectMutation represents an operation that mutates the Project nodes in the graph.
+type ProjectMutation struct {
+	config
+	op                   Op
+	typ                  string
+	id                   *int
+	created_at           *time.Time
+	updated_at           *time.Time
+	deleted_at           *int
+	adddeleted_at        *int
+	slug                 *string
+	name                 *string
+	description          *string
+	status               *project.Status
+	clearedFields        map[string]struct{}
+	users                map[int]struct{}
+	removedusers         map[int]struct{}
+	clearedusers         bool
+	roles                map[int]struct{}
+	removedroles         map[int]struct{}
+	clearedroles         bool
+	api_keys             map[int]struct{}
+	removedapi_keys      map[int]struct{}
+	clearedapi_keys      bool
+	requests             map[int]struct{}
+	removedrequests      map[int]struct{}
+	clearedrequests      bool
+	usage_logs           map[int]struct{}
+	removedusage_logs    map[int]struct{}
+	clearedusage_logs    bool
+	project_users        map[int]struct{}
+	removedproject_users map[int]struct{}
+	clearedproject_users bool
+	done                 bool
+	oldValue             func(context.Context) (*Project, error)
+	predicates           []predicate.Project
+}
+
+var _ ent.Mutation = (*ProjectMutation)(nil)
+
+// projectOption allows management of the mutation configuration using functional options.
+type projectOption func(*ProjectMutation)
+
+// newProjectMutation creates new mutation for the Project entity.
+func newProjectMutation(c config, op Op, opts ...projectOption) *ProjectMutation {
+	m := &ProjectMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeProject,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withProjectID sets the ID field of the mutation.
+func withProjectID(id int) projectOption {
+	return func(m *ProjectMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Project
+		)
+		m.oldValue = func(ctx context.Context) (*Project, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Project.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withProject sets the old Project of the mutation.
+func withProject(node *Project) projectOption {
+	return func(m *ProjectMutation) {
+		m.oldValue = func(context.Context) (*Project, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ProjectMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ProjectMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ProjectMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ProjectMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Project.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ProjectMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ProjectMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ProjectMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ProjectMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ProjectMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ProjectMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *ProjectMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *ProjectMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *ProjectMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *ProjectMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *ProjectMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetSlug sets the "slug" field.
+func (m *ProjectMutation) SetSlug(s string) {
+	m.slug = &s
+}
+
+// Slug returns the value of the "slug" field in the mutation.
+func (m *ProjectMutation) Slug() (r string, exists bool) {
+	v := m.slug
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSlug returns the old "slug" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldSlug(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSlug is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSlug requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSlug: %w", err)
+	}
+	return oldValue.Slug, nil
+}
+
+// ResetSlug resets all changes to the "slug" field.
+func (m *ProjectMutation) ResetSlug() {
+	m.slug = nil
+}
+
+// SetName sets the "name" field.
+func (m *ProjectMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *ProjectMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *ProjectMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *ProjectMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *ProjectMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *ProjectMutation) ResetDescription() {
+	m.description = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *ProjectMutation) SetStatus(pr project.Status) {
+	m.status = &pr
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *ProjectMutation) Status() (r project.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldStatus(ctx context.Context) (v project.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *ProjectMutation) ResetStatus() {
+	m.status = nil
+}
+
+// AddUserIDs adds the "users" edge to the User entity by ids.
+func (m *ProjectMutation) AddUserIDs(ids ...int) {
+	if m.users == nil {
+		m.users = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.users[ids[i]] = struct{}{}
+	}
+}
+
+// ClearUsers clears the "users" edge to the User entity.
+func (m *ProjectMutation) ClearUsers() {
+	m.clearedusers = true
+}
+
+// UsersCleared reports if the "users" edge to the User entity was cleared.
+func (m *ProjectMutation) UsersCleared() bool {
+	return m.clearedusers
+}
+
+// RemoveUserIDs removes the "users" edge to the User entity by IDs.
+func (m *ProjectMutation) RemoveUserIDs(ids ...int) {
+	if m.removedusers == nil {
+		m.removedusers = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.users, ids[i])
+		m.removedusers[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedUsers returns the removed IDs of the "users" edge to the User entity.
+func (m *ProjectMutation) RemovedUsersIDs() (ids []int) {
+	for id := range m.removedusers {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// UsersIDs returns the "users" edge IDs in the mutation.
+func (m *ProjectMutation) UsersIDs() (ids []int) {
+	for id := range m.users {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetUsers resets all changes to the "users" edge.
+func (m *ProjectMutation) ResetUsers() {
+	m.users = nil
+	m.clearedusers = false
+	m.removedusers = nil
+}
+
+// AddRoleIDs adds the "roles" edge to the Role entity by ids.
+func (m *ProjectMutation) AddRoleIDs(ids ...int) {
+	if m.roles == nil {
+		m.roles = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.roles[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRoles clears the "roles" edge to the Role entity.
+func (m *ProjectMutation) ClearRoles() {
+	m.clearedroles = true
+}
+
+// RolesCleared reports if the "roles" edge to the Role entity was cleared.
+func (m *ProjectMutation) RolesCleared() bool {
+	return m.clearedroles
+}
+
+// RemoveRoleIDs removes the "roles" edge to the Role entity by IDs.
+func (m *ProjectMutation) RemoveRoleIDs(ids ...int) {
+	if m.removedroles == nil {
+		m.removedroles = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.roles, ids[i])
+		m.removedroles[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRoles returns the removed IDs of the "roles" edge to the Role entity.
+func (m *ProjectMutation) RemovedRolesIDs() (ids []int) {
+	for id := range m.removedroles {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RolesIDs returns the "roles" edge IDs in the mutation.
+func (m *ProjectMutation) RolesIDs() (ids []int) {
+	for id := range m.roles {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRoles resets all changes to the "roles" edge.
+func (m *ProjectMutation) ResetRoles() {
+	m.roles = nil
+	m.clearedroles = false
+	m.removedroles = nil
+}
+
+// AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by ids.
+func (m *ProjectMutation) AddAPIKeyIDs(ids ...int) {
+	if m.api_keys == nil {
+		m.api_keys = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.api_keys[ids[i]] = struct{}{}
+	}
+}
+
+// ClearAPIKeys clears the "api_keys" edge to the APIKey entity.
+func (m *ProjectMutation) ClearAPIKeys() {
+	m.clearedapi_keys = true
+}
+
+// APIKeysCleared reports if the "api_keys" edge to the APIKey entity was cleared.
+func (m *ProjectMutation) APIKeysCleared() bool {
+	return m.clearedapi_keys
+}
+
+// RemoveAPIKeyIDs removes the "api_keys" edge to the APIKey entity by IDs.
+func (m *ProjectMutation) RemoveAPIKeyIDs(ids ...int) {
+	if m.removedapi_keys == nil {
+		m.removedapi_keys = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.api_keys, ids[i])
+		m.removedapi_keys[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedAPIKeys returns the removed IDs of the "api_keys" edge to the APIKey entity.
+func (m *ProjectMutation) RemovedAPIKeysIDs() (ids []int) {
+	for id := range m.removedapi_keys {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// APIKeysIDs returns the "api_keys" edge IDs in the mutation.
+func (m *ProjectMutation) APIKeysIDs() (ids []int) {
+	for id := range m.api_keys {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetAPIKeys resets all changes to the "api_keys" edge.
+func (m *ProjectMutation) ResetAPIKeys() {
+	m.api_keys = nil
+	m.clearedapi_keys = false
+	m.removedapi_keys = nil
+}
+
+// AddRequestIDs adds the "requests" edge to the Request entity by ids.
+func (m *ProjectMutation) AddRequestIDs(ids ...int) {
+	if m.requests == nil {
+		m.requests = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.requests[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRequests clears the "requests" edge to the Request entity.
+func (m *ProjectMutation) ClearRequests() {
+	m.clearedrequests = true
+}
+
+// RequestsCleared reports if the "requests" edge to the Request entity was cleared.
+func (m *ProjectMutation) RequestsCleared() bool {
+	return m.clearedrequests
+}
+
+// RemoveRequestIDs removes the "requests" edge to the Request entity by IDs.
+func (m *ProjectMutation) RemoveRequestIDs(ids ...int) {
+	if m.removedrequests == nil {
+		m.removedrequests = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.requests, ids[i])
+		m.removedrequests[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRequests returns the removed IDs of the "requests" edge to the Request entity.
+func (m *ProjectMutation) RemovedRequestsIDs() (ids []int) {
+	for id := range m.removedrequests {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RequestsIDs returns the "requests" edge IDs in the mutation.
+func (m *ProjectMutation) RequestsIDs() (ids []int) {
+	for id := range m.requests {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRequests resets all changes to the "requests" edge.
+func (m *ProjectMutation) ResetRequests() {
+	m.requests = nil
+	m.clearedrequests = false
+	m.removedrequests = nil
+}
+
+// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by ids.
+func (m *ProjectMutation) AddUsageLogIDs(ids ...int) {
+	if m.usage_logs == nil {
+		m.usage_logs = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.usage_logs[ids[i]] = struct{}{}
+	}
+}
+
+// ClearUsageLogs clears the "usage_logs" edge to the UsageLog entity.
+func (m *ProjectMutation) ClearUsageLogs() {
+	m.clearedusage_logs = true
+}
+
+// UsageLogsCleared reports if the "usage_logs" edge to the UsageLog entity was cleared.
+func (m *ProjectMutation) UsageLogsCleared() bool {
+	return m.clearedusage_logs
+}
+
+// RemoveUsageLogIDs removes the "usage_logs" edge to the UsageLog entity by IDs.
+func (m *ProjectMutation) RemoveUsageLogIDs(ids ...int) {
+	if m.removedusage_logs == nil {
+		m.removedusage_logs = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.usage_logs, ids[i])
+		m.removedusage_logs[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedUsageLogs returns the removed IDs of the "usage_logs" edge to the UsageLog entity.
+func (m *ProjectMutation) RemovedUsageLogsIDs() (ids []int) {
+	for id := range m.removedusage_logs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// UsageLogsIDs returns the "usage_logs" edge IDs in the mutation.
+func (m *ProjectMutation) UsageLogsIDs() (ids []int) {
+	for id := range m.usage_logs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetUsageLogs resets all changes to the "usage_logs" edge.
+func (m *ProjectMutation) ResetUsageLogs() {
+	m.usage_logs = nil
+	m.clearedusage_logs = false
+	m.removedusage_logs = nil
+}
+
+// AddProjectUserIDs adds the "project_users" edge to the UserProject entity by ids.
+func (m *ProjectMutation) AddProjectUserIDs(ids ...int) {
+	if m.project_users == nil {
+		m.project_users = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.project_users[ids[i]] = struct{}{}
+	}
+}
+
+// ClearProjectUsers clears the "project_users" edge to the UserProject entity.
+func (m *ProjectMutation) ClearProjectUsers() {
+	m.clearedproject_users = true
+}
+
+// ProjectUsersCleared reports if the "project_users" edge to the UserProject entity was cleared.
+func (m *ProjectMutation) ProjectUsersCleared() bool {
+	return m.clearedproject_users
+}
+
+// RemoveProjectUserIDs removes the "project_users" edge to the UserProject entity by IDs.
+func (m *ProjectMutation) RemoveProjectUserIDs(ids ...int) {
+	if m.removedproject_users == nil {
+		m.removedproject_users = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.project_users, ids[i])
+		m.removedproject_users[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedProjectUsers returns the removed IDs of the "project_users" edge to the UserProject entity.
+func (m *ProjectMutation) RemovedProjectUsersIDs() (ids []int) {
+	for id := range m.removedproject_users {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ProjectUsersIDs returns the "project_users" edge IDs in the mutation.
+func (m *ProjectMutation) ProjectUsersIDs() (ids []int) {
+	for id := range m.project_users {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetProjectUsers resets all changes to the "project_users" edge.
+func (m *ProjectMutation) ResetProjectUsers() {
+	m.project_users = nil
+	m.clearedproject_users = false
+	m.removedproject_users = nil
+}
+
+// Where appends a list predicates to the ProjectMutation builder.
+func (m *ProjectMutation) Where(ps ...predicate.Project) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ProjectMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ProjectMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Project, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ProjectMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ProjectMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Project).
+func (m *ProjectMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ProjectMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.created_at != nil {
+		fields = append(fields, project.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, project.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, project.FieldDeletedAt)
+	}
+	if m.slug != nil {
+		fields = append(fields, project.FieldSlug)
+	}
+	if m.name != nil {
+		fields = append(fields, project.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, project.FieldDescription)
+	}
+	if m.status != nil {
+		fields = append(fields, project.FieldStatus)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ProjectMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case project.FieldCreatedAt:
+		return m.CreatedAt()
+	case project.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case project.FieldDeletedAt:
+		return m.DeletedAt()
+	case project.FieldSlug:
+		return m.Slug()
+	case project.FieldName:
+		return m.Name()
+	case project.FieldDescription:
+		return m.Description()
+	case project.FieldStatus:
+		return m.Status()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ProjectMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case project.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case project.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case project.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case project.FieldSlug:
+		return m.OldSlug(ctx)
+	case project.FieldName:
+		return m.OldName(ctx)
+	case project.FieldDescription:
+		return m.OldDescription(ctx)
+	case project.FieldStatus:
+		return m.OldStatus(ctx)
+	}
+	return nil, fmt.Errorf("unknown Project field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ProjectMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case project.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case project.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case project.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case project.FieldSlug:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSlug(v)
+		return nil
+	case project.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case project.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case project.FieldStatus:
+		v, ok := value.(project.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Project field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ProjectMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, project.FieldDeletedAt)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ProjectMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case project.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ProjectMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case project.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Project numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ProjectMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ProjectMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ProjectMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Project nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ProjectMutation) ResetField(name string) error {
+	switch name {
+	case project.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case project.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case project.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case project.FieldSlug:
+		m.ResetSlug()
+		return nil
+	case project.FieldName:
+		m.ResetName()
+		return nil
+	case project.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case project.FieldStatus:
+		m.ResetStatus()
+		return nil
+	}
+	return fmt.Errorf("unknown Project field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ProjectMutation) AddedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.users != nil {
+		edges = append(edges, project.EdgeUsers)
+	}
+	if m.roles != nil {
+		edges = append(edges, project.EdgeRoles)
+	}
+	if m.api_keys != nil {
+		edges = append(edges, project.EdgeAPIKeys)
+	}
+	if m.requests != nil {
+		edges = append(edges, project.EdgeRequests)
+	}
+	if m.usage_logs != nil {
+		edges = append(edges, project.EdgeUsageLogs)
+	}
+	if m.project_users != nil {
+		edges = append(edges, project.EdgeProjectUsers)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case project.EdgeUsers:
+		ids := make([]ent.Value, 0, len(m.users))
+		for id := range m.users {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeRoles:
+		ids := make([]ent.Value, 0, len(m.roles))
+		for id := range m.roles {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeAPIKeys:
+		ids := make([]ent.Value, 0, len(m.api_keys))
+		for id := range m.api_keys {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeRequests:
+		ids := make([]ent.Value, 0, len(m.requests))
+		for id := range m.requests {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeUsageLogs:
+		ids := make([]ent.Value, 0, len(m.usage_logs))
+		for id := range m.usage_logs {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeProjectUsers:
+		ids := make([]ent.Value, 0, len(m.project_users))
+		for id := range m.project_users {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ProjectMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.removedusers != nil {
+		edges = append(edges, project.EdgeUsers)
+	}
+	if m.removedroles != nil {
+		edges = append(edges, project.EdgeRoles)
+	}
+	if m.removedapi_keys != nil {
+		edges = append(edges, project.EdgeAPIKeys)
+	}
+	if m.removedrequests != nil {
+		edges = append(edges, project.EdgeRequests)
+	}
+	if m.removedusage_logs != nil {
+		edges = append(edges, project.EdgeUsageLogs)
+	}
+	if m.removedproject_users != nil {
+		edges = append(edges, project.EdgeProjectUsers)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case project.EdgeUsers:
+		ids := make([]ent.Value, 0, len(m.removedusers))
+		for id := range m.removedusers {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeRoles:
+		ids := make([]ent.Value, 0, len(m.removedroles))
+		for id := range m.removedroles {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeAPIKeys:
+		ids := make([]ent.Value, 0, len(m.removedapi_keys))
+		for id := range m.removedapi_keys {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeRequests:
+		ids := make([]ent.Value, 0, len(m.removedrequests))
+		for id := range m.removedrequests {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeUsageLogs:
+		ids := make([]ent.Value, 0, len(m.removedusage_logs))
+		for id := range m.removedusage_logs {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeProjectUsers:
+		ids := make([]ent.Value, 0, len(m.removedproject_users))
+		for id := range m.removedproject_users {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ProjectMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.clearedusers {
+		edges = append(edges, project.EdgeUsers)
+	}
+	if m.clearedroles {
+		edges = append(edges, project.EdgeRoles)
+	}
+	if m.clearedapi_keys {
+		edges = append(edges, project.EdgeAPIKeys)
+	}
+	if m.clearedrequests {
+		edges = append(edges, project.EdgeRequests)
+	}
+	if m.clearedusage_logs {
+		edges = append(edges, project.EdgeUsageLogs)
+	}
+	if m.clearedproject_users {
+		edges = append(edges, project.EdgeProjectUsers)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ProjectMutation) EdgeCleared(name string) bool {
+	switch name {
+	case project.EdgeUsers:
+		return m.clearedusers
+	case project.EdgeRoles:
+		return m.clearedroles
+	case project.EdgeAPIKeys:
+		return m.clearedapi_keys
+	case project.EdgeRequests:
+		return m.clearedrequests
+	case project.EdgeUsageLogs:
+		return m.clearedusage_logs
+	case project.EdgeProjectUsers:
+		return m.clearedproject_users
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ProjectMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Project unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ProjectMutation) ResetEdge(name string) error {
+	switch name {
+	case project.EdgeUsers:
+		m.ResetUsers()
+		return nil
+	case project.EdgeRoles:
+		m.ResetRoles()
+		return nil
+	case project.EdgeAPIKeys:
+		m.ResetAPIKeys()
+		return nil
+	case project.EdgeRequests:
+		m.ResetRequests()
+		return nil
+	case project.EdgeUsageLogs:
+		m.ResetUsageLogs()
+		return nil
+	case project.EdgeProjectUsers:
+		m.ResetProjectUsers()
+		return nil
+	}
+	return fmt.Errorf("unknown Project edge %s", name)
+}
+
 // RequestMutation represents an operation that mutates the Request nodes in the graph.
 type RequestMutation struct {
 	config
@@ -2365,6 +3663,8 @@ type RequestMutation struct {
 	cleareduser           bool
 	api_key               *int
 	clearedapi_key        bool
+	project               *int
+	clearedproject        bool
 	executions            map[int]struct{}
 	removedexecutions     map[int]struct{}
 	clearedexecutions     bool
@@ -2687,6 +3987,42 @@ func (m *RequestMutation) APIKeyIDCleared() bool {
 func (m *RequestMutation) ResetAPIKeyID() {
 	m.api_key = nil
 	delete(m.clearedFields, request.FieldAPIKeyID)
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *RequestMutation) SetProjectID(i int) {
+	m.project = &i
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *RequestMutation) ProjectID() (r int, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldProjectID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *RequestMutation) ResetProjectID() {
+	m.project = nil
 }
 
 // SetSource sets the "source" field.
@@ -3202,6 +4538,33 @@ func (m *RequestMutation) ResetAPIKey() {
 	m.clearedapi_key = false
 }
 
+// ClearProject clears the "project" edge to the Project entity.
+func (m *RequestMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[request.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *RequestMutation) ProjectCleared() bool {
+	return m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *RequestMutation) ProjectIDs() (ids []int) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *RequestMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by ids.
 func (m *RequestMutation) AddExecutionIDs(ids ...int) {
 	if m.executions == nil {
@@ -3371,7 +4734,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -3386,6 +4749,9 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.api_key != nil {
 		fields = append(fields, request.FieldAPIKeyID)
+	}
+	if m.project != nil {
+		fields = append(fields, request.FieldProjectID)
 	}
 	if m.source != nil {
 		fields = append(fields, request.FieldSource)
@@ -3435,6 +4801,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.UserID()
 	case request.FieldAPIKeyID:
 		return m.APIKeyID()
+	case request.FieldProjectID:
+		return m.ProjectID()
 	case request.FieldSource:
 		return m.Source()
 	case request.FieldModelID:
@@ -3474,6 +4842,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldUserID(ctx)
 	case request.FieldAPIKeyID:
 		return m.OldAPIKeyID(ctx)
+	case request.FieldProjectID:
+		return m.OldProjectID(ctx)
 	case request.FieldSource:
 		return m.OldSource(ctx)
 	case request.FieldModelID:
@@ -3537,6 +4907,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAPIKeyID(v)
+		return nil
+	case request.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
 		return nil
 	case request.FieldSource:
 		v, ok := value.(request.Source)
@@ -3720,6 +5097,9 @@ func (m *RequestMutation) ResetField(name string) error {
 	case request.FieldAPIKeyID:
 		m.ResetAPIKeyID()
 		return nil
+	case request.FieldProjectID:
+		m.ResetProjectID()
+		return nil
 	case request.FieldSource:
 		m.ResetSource()
 		return nil
@@ -3756,12 +5136,15 @@ func (m *RequestMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RequestMutation) AddedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.user != nil {
 		edges = append(edges, request.EdgeUser)
 	}
 	if m.api_key != nil {
 		edges = append(edges, request.EdgeAPIKey)
+	}
+	if m.project != nil {
+		edges = append(edges, request.EdgeProject)
 	}
 	if m.executions != nil {
 		edges = append(edges, request.EdgeExecutions)
@@ -3787,6 +5170,10 @@ func (m *RequestMutation) AddedIDs(name string) []ent.Value {
 		if id := m.api_key; id != nil {
 			return []ent.Value{*id}
 		}
+	case request.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
 	case request.EdgeExecutions:
 		ids := make([]ent.Value, 0, len(m.executions))
 		for id := range m.executions {
@@ -3809,7 +5196,7 @@ func (m *RequestMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RequestMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.removedexecutions != nil {
 		edges = append(edges, request.EdgeExecutions)
 	}
@@ -3841,12 +5228,15 @@ func (m *RequestMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RequestMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.cleareduser {
 		edges = append(edges, request.EdgeUser)
 	}
 	if m.clearedapi_key {
 		edges = append(edges, request.EdgeAPIKey)
+	}
+	if m.clearedproject {
+		edges = append(edges, request.EdgeProject)
 	}
 	if m.clearedexecutions {
 		edges = append(edges, request.EdgeExecutions)
@@ -3868,6 +5258,8 @@ func (m *RequestMutation) EdgeCleared(name string) bool {
 		return m.cleareduser
 	case request.EdgeAPIKey:
 		return m.clearedapi_key
+	case request.EdgeProject:
+		return m.clearedproject
 	case request.EdgeExecutions:
 		return m.clearedexecutions
 	case request.EdgeChannel:
@@ -3888,6 +5280,9 @@ func (m *RequestMutation) ClearEdge(name string) error {
 	case request.EdgeAPIKey:
 		m.ClearAPIKey()
 		return nil
+	case request.EdgeProject:
+		m.ClearProject()
+		return nil
 	case request.EdgeChannel:
 		m.ClearChannel()
 		return nil
@@ -3904,6 +5299,9 @@ func (m *RequestMutation) ResetEdge(name string) error {
 		return nil
 	case request.EdgeAPIKey:
 		m.ResetAPIKey()
+		return nil
+	case request.EdgeProject:
+		m.ResetProject()
 		return nil
 	case request.EdgeExecutions:
 		m.ResetExecutions()
@@ -3928,6 +5326,8 @@ type RequestExecutionMutation struct {
 	updated_at            *time.Time
 	user_id               *int
 	adduser_id            *int
+	project_id            *int
+	addproject_id         *int
 	external_id           *string
 	model_id              *string
 	format                *string
@@ -4173,6 +5573,62 @@ func (m *RequestExecutionMutation) AddedUserID() (r int, exists bool) {
 func (m *RequestExecutionMutation) ResetUserID() {
 	m.user_id = nil
 	m.adduser_id = nil
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *RequestExecutionMutation) SetProjectID(i int) {
+	m.project_id = &i
+	m.addproject_id = nil
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *RequestExecutionMutation) ProjectID() (r int, exists bool) {
+	v := m.project_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldProjectID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// AddProjectID adds i to the "project_id" field.
+func (m *RequestExecutionMutation) AddProjectID(i int) {
+	if m.addproject_id != nil {
+		*m.addproject_id += i
+	} else {
+		m.addproject_id = &i
+	}
+}
+
+// AddedProjectID returns the value that was added to the "project_id" field in this mutation.
+func (m *RequestExecutionMutation) AddedProjectID() (r int, exists bool) {
+	v := m.addproject_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *RequestExecutionMutation) ResetProjectID() {
+	m.project_id = nil
+	m.addproject_id = nil
 }
 
 // SetRequestID sets the "request_id" field.
@@ -4722,7 +6178,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 14)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -4731,6 +6187,9 @@ func (m *RequestExecutionMutation) Fields() []string {
 	}
 	if m.user_id != nil {
 		fields = append(fields, requestexecution.FieldUserID)
+	}
+	if m.project_id != nil {
+		fields = append(fields, requestexecution.FieldProjectID)
 	}
 	if m.request != nil {
 		fields = append(fields, requestexecution.FieldRequestID)
@@ -4776,6 +6235,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case requestexecution.FieldUserID:
 		return m.UserID()
+	case requestexecution.FieldProjectID:
+		return m.ProjectID()
 	case requestexecution.FieldRequestID:
 		return m.RequestID()
 	case requestexecution.FieldChannelID:
@@ -4811,6 +6272,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldUpdatedAt(ctx)
 	case requestexecution.FieldUserID:
 		return m.OldUserID(ctx)
+	case requestexecution.FieldProjectID:
+		return m.OldProjectID(ctx)
 	case requestexecution.FieldRequestID:
 		return m.OldRequestID(ctx)
 	case requestexecution.FieldChannelID:
@@ -4860,6 +6323,13 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUserID(v)
+		return nil
+	case requestexecution.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
 		return nil
 	case requestexecution.FieldRequestID:
 		v, ok := value.(int)
@@ -4942,6 +6412,9 @@ func (m *RequestExecutionMutation) AddedFields() []string {
 	if m.adduser_id != nil {
 		fields = append(fields, requestexecution.FieldUserID)
 	}
+	if m.addproject_id != nil {
+		fields = append(fields, requestexecution.FieldProjectID)
+	}
 	return fields
 }
 
@@ -4952,6 +6425,8 @@ func (m *RequestExecutionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case requestexecution.FieldUserID:
 		return m.AddedUserID()
+	case requestexecution.FieldProjectID:
+		return m.AddedProjectID()
 	}
 	return nil, false
 }
@@ -4967,6 +6442,13 @@ func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddUserID(v)
+		return nil
+	case requestexecution.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddProjectID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution numeric field %s", name)
@@ -5030,6 +6512,9 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldUserID:
 		m.ResetUserID()
+		return nil
+	case requestexecution.FieldProjectID:
+		m.ResetProjectID()
 		return nil
 	case requestexecution.FieldRequestID:
 		m.ResetRequestID()
@@ -5160,24 +6645,27 @@ func (m *RequestExecutionMutation) ResetEdge(name string) error {
 // RoleMutation represents an operation that mutates the Role nodes in the graph.
 type RoleMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	created_at    *time.Time
-	updated_at    *time.Time
-	deleted_at    *int
-	adddeleted_at *int
-	code          *string
-	name          *string
-	scopes        *[]string
-	appendscopes  []string
-	clearedFields map[string]struct{}
-	users         map[int]struct{}
-	removedusers  map[int]struct{}
-	clearedusers  bool
-	done          bool
-	oldValue      func(context.Context) (*Role, error)
-	predicates    []predicate.Role
+	op             Op
+	typ            string
+	id             *int
+	created_at     *time.Time
+	updated_at     *time.Time
+	deleted_at     *int
+	adddeleted_at  *int
+	code           *string
+	name           *string
+	level          *role.Level
+	scopes         *[]string
+	appendscopes   []string
+	clearedFields  map[string]struct{}
+	users          map[int]struct{}
+	removedusers   map[int]struct{}
+	clearedusers   bool
+	project        *int
+	clearedproject bool
+	done           bool
+	oldValue       func(context.Context) (*Role, error)
+	predicates     []predicate.Role
 }
 
 var _ ent.Mutation = (*RoleMutation)(nil)
@@ -5478,6 +6966,91 @@ func (m *RoleMutation) ResetName() {
 	m.name = nil
 }
 
+// SetLevel sets the "level" field.
+func (m *RoleMutation) SetLevel(r role.Level) {
+	m.level = &r
+}
+
+// Level returns the value of the "level" field in the mutation.
+func (m *RoleMutation) Level() (r role.Level, exists bool) {
+	v := m.level
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLevel returns the old "level" field's value of the Role entity.
+// If the Role object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RoleMutation) OldLevel(ctx context.Context) (v role.Level, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLevel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLevel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLevel: %w", err)
+	}
+	return oldValue.Level, nil
+}
+
+// ResetLevel resets all changes to the "level" field.
+func (m *RoleMutation) ResetLevel() {
+	m.level = nil
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *RoleMutation) SetProjectID(i int) {
+	m.project = &i
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *RoleMutation) ProjectID() (r int, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the Role entity.
+// If the Role object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RoleMutation) OldProjectID(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ClearProjectID clears the value of the "project_id" field.
+func (m *RoleMutation) ClearProjectID() {
+	m.project = nil
+	m.clearedFields[role.FieldProjectID] = struct{}{}
+}
+
+// ProjectIDCleared returns if the "project_id" field was cleared in this mutation.
+func (m *RoleMutation) ProjectIDCleared() bool {
+	_, ok := m.clearedFields[role.FieldProjectID]
+	return ok
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *RoleMutation) ResetProjectID() {
+	m.project = nil
+	delete(m.clearedFields, role.FieldProjectID)
+}
+
 // SetScopes sets the "scopes" field.
 func (m *RoleMutation) SetScopes(s []string) {
 	m.scopes = &s
@@ -5597,6 +7170,33 @@ func (m *RoleMutation) ResetUsers() {
 	m.removedusers = nil
 }
 
+// ClearProject clears the "project" edge to the Project entity.
+func (m *RoleMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[role.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *RoleMutation) ProjectCleared() bool {
+	return m.ProjectIDCleared() || m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *RoleMutation) ProjectIDs() (ids []int) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *RoleMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
 // Where appends a list predicates to the RoleMutation builder.
 func (m *RoleMutation) Where(ps ...predicate.Role) {
 	m.predicates = append(m.predicates, ps...)
@@ -5631,7 +7231,7 @@ func (m *RoleMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RoleMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 8)
 	if m.created_at != nil {
 		fields = append(fields, role.FieldCreatedAt)
 	}
@@ -5646,6 +7246,12 @@ func (m *RoleMutation) Fields() []string {
 	}
 	if m.name != nil {
 		fields = append(fields, role.FieldName)
+	}
+	if m.level != nil {
+		fields = append(fields, role.FieldLevel)
+	}
+	if m.project != nil {
+		fields = append(fields, role.FieldProjectID)
 	}
 	if m.scopes != nil {
 		fields = append(fields, role.FieldScopes)
@@ -5668,6 +7274,10 @@ func (m *RoleMutation) Field(name string) (ent.Value, bool) {
 		return m.Code()
 	case role.FieldName:
 		return m.Name()
+	case role.FieldLevel:
+		return m.Level()
+	case role.FieldProjectID:
+		return m.ProjectID()
 	case role.FieldScopes:
 		return m.Scopes()
 	}
@@ -5689,6 +7299,10 @@ func (m *RoleMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldCode(ctx)
 	case role.FieldName:
 		return m.OldName(ctx)
+	case role.FieldLevel:
+		return m.OldLevel(ctx)
+	case role.FieldProjectID:
+		return m.OldProjectID(ctx)
 	case role.FieldScopes:
 		return m.OldScopes(ctx)
 	}
@@ -5734,6 +7348,20 @@ func (m *RoleMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetName(v)
+		return nil
+	case role.FieldLevel:
+		v, ok := value.(role.Level)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLevel(v)
+		return nil
+	case role.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
 		return nil
 	case role.FieldScopes:
 		v, ok := value.([]string)
@@ -5787,6 +7415,9 @@ func (m *RoleMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *RoleMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(role.FieldProjectID) {
+		fields = append(fields, role.FieldProjectID)
+	}
 	if m.FieldCleared(role.FieldScopes) {
 		fields = append(fields, role.FieldScopes)
 	}
@@ -5804,6 +7435,9 @@ func (m *RoleMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *RoleMutation) ClearField(name string) error {
 	switch name {
+	case role.FieldProjectID:
+		m.ClearProjectID()
+		return nil
 	case role.FieldScopes:
 		m.ClearScopes()
 		return nil
@@ -5830,6 +7464,12 @@ func (m *RoleMutation) ResetField(name string) error {
 	case role.FieldName:
 		m.ResetName()
 		return nil
+	case role.FieldLevel:
+		m.ResetLevel()
+		return nil
+	case role.FieldProjectID:
+		m.ResetProjectID()
+		return nil
 	case role.FieldScopes:
 		m.ResetScopes()
 		return nil
@@ -5839,9 +7479,12 @@ func (m *RoleMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RoleMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.users != nil {
 		edges = append(edges, role.EdgeUsers)
+	}
+	if m.project != nil {
+		edges = append(edges, role.EdgeProject)
 	}
 	return edges
 }
@@ -5856,13 +7499,17 @@ func (m *RoleMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case role.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RoleMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedusers != nil {
 		edges = append(edges, role.EdgeUsers)
 	}
@@ -5885,9 +7532,12 @@ func (m *RoleMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RoleMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedusers {
 		edges = append(edges, role.EdgeUsers)
+	}
+	if m.clearedproject {
+		edges = append(edges, role.EdgeProject)
 	}
 	return edges
 }
@@ -5898,6 +7548,8 @@ func (m *RoleMutation) EdgeCleared(name string) bool {
 	switch name {
 	case role.EdgeUsers:
 		return m.clearedusers
+	case role.EdgeProject:
+		return m.clearedproject
 	}
 	return false
 }
@@ -5906,6 +7558,9 @@ func (m *RoleMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *RoleMutation) ClearEdge(name string) error {
 	switch name {
+	case role.EdgeProject:
+		m.ClearProject()
+		return nil
 	}
 	return fmt.Errorf("unknown Role unique edge %s", name)
 }
@@ -5916,6 +7571,9 @@ func (m *RoleMutation) ResetEdge(name string) error {
 	switch name {
 	case role.EdgeUsers:
 		m.ResetUsers()
+		return nil
+	case role.EdgeProject:
+		m.ResetProject()
 		return nil
 	}
 	return fmt.Errorf("unknown Role edge %s", name)
@@ -6535,6 +8193,8 @@ type UsageLogMutation struct {
 	cleareduser                              bool
 	request                                  *int
 	clearedrequest                           bool
+	project                                  *int
+	clearedproject                           bool
 	channel                                  *int
 	clearedchannel                           bool
 	done                                     bool
@@ -6838,6 +8498,42 @@ func (m *UsageLogMutation) OldRequestID(ctx context.Context) (v int, err error) 
 // ResetRequestID resets all changes to the "request_id" field.
 func (m *UsageLogMutation) ResetRequestID() {
 	m.request = nil
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *UsageLogMutation) SetProjectID(i int) {
+	m.project = &i
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *UsageLogMutation) ProjectID() (r int, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldProjectID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *UsageLogMutation) ResetProjectID() {
+	m.project = nil
 }
 
 // SetChannelID sets the "channel_id" field.
@@ -7639,6 +9335,33 @@ func (m *UsageLogMutation) ResetRequest() {
 	m.clearedrequest = false
 }
 
+// ClearProject clears the "project" edge to the Project entity.
+func (m *UsageLogMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[usagelog.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *UsageLogMutation) ProjectCleared() bool {
+	return m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *UsageLogMutation) ProjectIDs() (ids []int) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *UsageLogMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
 // ClearChannel clears the "channel" edge to the Channel entity.
 func (m *UsageLogMutation) ClearChannel() {
 	m.clearedchannel = true
@@ -7700,7 +9423,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 18)
+	fields := make([]string, 0, 19)
 	if m.created_at != nil {
 		fields = append(fields, usagelog.FieldCreatedAt)
 	}
@@ -7715,6 +9438,9 @@ func (m *UsageLogMutation) Fields() []string {
 	}
 	if m.request != nil {
 		fields = append(fields, usagelog.FieldRequestID)
+	}
+	if m.project != nil {
+		fields = append(fields, usagelog.FieldProjectID)
 	}
 	if m.channel != nil {
 		fields = append(fields, usagelog.FieldChannelID)
@@ -7773,6 +9499,8 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.UserID()
 	case usagelog.FieldRequestID:
 		return m.RequestID()
+	case usagelog.FieldProjectID:
+		return m.ProjectID()
 	case usagelog.FieldChannelID:
 		return m.ChannelID()
 	case usagelog.FieldModelID:
@@ -7818,6 +9546,8 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldUserID(ctx)
 	case usagelog.FieldRequestID:
 		return m.OldRequestID(ctx)
+	case usagelog.FieldProjectID:
+		return m.OldProjectID(ctx)
 	case usagelog.FieldChannelID:
 		return m.OldChannelID(ctx)
 	case usagelog.FieldModelID:
@@ -7887,6 +9617,13 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRequestID(v)
+		return nil
+	case usagelog.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
 		return nil
 	case usagelog.FieldChannelID:
 		v, ok := value.(int)
@@ -8211,6 +9948,9 @@ func (m *UsageLogMutation) ResetField(name string) error {
 	case usagelog.FieldRequestID:
 		m.ResetRequestID()
 		return nil
+	case usagelog.FieldProjectID:
+		m.ResetProjectID()
+		return nil
 	case usagelog.FieldChannelID:
 		m.ResetChannelID()
 		return nil
@@ -8256,12 +9996,15 @@ func (m *UsageLogMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UsageLogMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.user != nil {
 		edges = append(edges, usagelog.EdgeUser)
 	}
 	if m.request != nil {
 		edges = append(edges, usagelog.EdgeRequest)
+	}
+	if m.project != nil {
+		edges = append(edges, usagelog.EdgeProject)
 	}
 	if m.channel != nil {
 		edges = append(edges, usagelog.EdgeChannel)
@@ -8281,6 +10024,10 @@ func (m *UsageLogMutation) AddedIDs(name string) []ent.Value {
 		if id := m.request; id != nil {
 			return []ent.Value{*id}
 		}
+	case usagelog.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
 	case usagelog.EdgeChannel:
 		if id := m.channel; id != nil {
 			return []ent.Value{*id}
@@ -8291,7 +10038,7 @@ func (m *UsageLogMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UsageLogMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	return edges
 }
 
@@ -8303,12 +10050,15 @@ func (m *UsageLogMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UsageLogMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.cleareduser {
 		edges = append(edges, usagelog.EdgeUser)
 	}
 	if m.clearedrequest {
 		edges = append(edges, usagelog.EdgeRequest)
+	}
+	if m.clearedproject {
+		edges = append(edges, usagelog.EdgeProject)
 	}
 	if m.clearedchannel {
 		edges = append(edges, usagelog.EdgeChannel)
@@ -8324,6 +10074,8 @@ func (m *UsageLogMutation) EdgeCleared(name string) bool {
 		return m.cleareduser
 	case usagelog.EdgeRequest:
 		return m.clearedrequest
+	case usagelog.EdgeProject:
+		return m.clearedproject
 	case usagelog.EdgeChannel:
 		return m.clearedchannel
 	}
@@ -8339,6 +10091,9 @@ func (m *UsageLogMutation) ClearEdge(name string) error {
 		return nil
 	case usagelog.EdgeRequest:
 		m.ClearRequest()
+		return nil
+	case usagelog.EdgeProject:
+		m.ClearProject()
 		return nil
 	case usagelog.EdgeChannel:
 		m.ClearChannel()
@@ -8357,6 +10112,9 @@ func (m *UsageLogMutation) ResetEdge(name string) error {
 	case usagelog.EdgeRequest:
 		m.ResetRequest()
 		return nil
+	case usagelog.EdgeProject:
+		m.ResetProject()
+		return nil
 	case usagelog.EdgeChannel:
 		m.ResetChannel()
 		return nil
@@ -8367,39 +10125,45 @@ func (m *UsageLogMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *int
-	created_at        *time.Time
-	updated_at        *time.Time
-	deleted_at        *int
-	adddeleted_at     *int
-	email             *string
-	status            *user.Status
-	prefer_language   *string
-	password          *string
-	first_name        *string
-	last_name         *string
-	avatar            *string
-	is_owner          *bool
-	scopes            *[]string
-	appendscopes      []string
-	clearedFields     map[string]struct{}
-	requests          map[int]struct{}
-	removedrequests   map[int]struct{}
-	clearedrequests   bool
-	api_keys          map[int]struct{}
-	removedapi_keys   map[int]struct{}
-	clearedapi_keys   bool
-	roles             map[int]struct{}
-	removedroles      map[int]struct{}
-	clearedroles      bool
-	usage_logs        map[int]struct{}
-	removedusage_logs map[int]struct{}
-	clearedusage_logs bool
-	done              bool
-	oldValue          func(context.Context) (*User, error)
-	predicates        []predicate.User
+	op                   Op
+	typ                  string
+	id                   *int
+	created_at           *time.Time
+	updated_at           *time.Time
+	deleted_at           *int
+	adddeleted_at        *int
+	email                *string
+	status               *user.Status
+	prefer_language      *string
+	password             *string
+	first_name           *string
+	last_name            *string
+	avatar               *string
+	is_owner             *bool
+	scopes               *[]string
+	appendscopes         []string
+	clearedFields        map[string]struct{}
+	projects             map[int]struct{}
+	removedprojects      map[int]struct{}
+	clearedprojects      bool
+	requests             map[int]struct{}
+	removedrequests      map[int]struct{}
+	clearedrequests      bool
+	api_keys             map[int]struct{}
+	removedapi_keys      map[int]struct{}
+	clearedapi_keys      bool
+	roles                map[int]struct{}
+	removedroles         map[int]struct{}
+	clearedroles         bool
+	usage_logs           map[int]struct{}
+	removedusage_logs    map[int]struct{}
+	clearedusage_logs    bool
+	project_users        map[int]struct{}
+	removedproject_users map[int]struct{}
+	clearedproject_users bool
+	done                 bool
+	oldValue             func(context.Context) (*User, error)
+	predicates           []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -8994,6 +10758,60 @@ func (m *UserMutation) ResetScopes() {
 	delete(m.clearedFields, user.FieldScopes)
 }
 
+// AddProjectIDs adds the "projects" edge to the Project entity by ids.
+func (m *UserMutation) AddProjectIDs(ids ...int) {
+	if m.projects == nil {
+		m.projects = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.projects[ids[i]] = struct{}{}
+	}
+}
+
+// ClearProjects clears the "projects" edge to the Project entity.
+func (m *UserMutation) ClearProjects() {
+	m.clearedprojects = true
+}
+
+// ProjectsCleared reports if the "projects" edge to the Project entity was cleared.
+func (m *UserMutation) ProjectsCleared() bool {
+	return m.clearedprojects
+}
+
+// RemoveProjectIDs removes the "projects" edge to the Project entity by IDs.
+func (m *UserMutation) RemoveProjectIDs(ids ...int) {
+	if m.removedprojects == nil {
+		m.removedprojects = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.projects, ids[i])
+		m.removedprojects[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedProjects returns the removed IDs of the "projects" edge to the Project entity.
+func (m *UserMutation) RemovedProjectsIDs() (ids []int) {
+	for id := range m.removedprojects {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ProjectsIDs returns the "projects" edge IDs in the mutation.
+func (m *UserMutation) ProjectsIDs() (ids []int) {
+	for id := range m.projects {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetProjects resets all changes to the "projects" edge.
+func (m *UserMutation) ResetProjects() {
+	m.projects = nil
+	m.clearedprojects = false
+	m.removedprojects = nil
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by ids.
 func (m *UserMutation) AddRequestIDs(ids ...int) {
 	if m.requests == nil {
@@ -9208,6 +11026,60 @@ func (m *UserMutation) ResetUsageLogs() {
 	m.usage_logs = nil
 	m.clearedusage_logs = false
 	m.removedusage_logs = nil
+}
+
+// AddProjectUserIDs adds the "project_users" edge to the UserProject entity by ids.
+func (m *UserMutation) AddProjectUserIDs(ids ...int) {
+	if m.project_users == nil {
+		m.project_users = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.project_users[ids[i]] = struct{}{}
+	}
+}
+
+// ClearProjectUsers clears the "project_users" edge to the UserProject entity.
+func (m *UserMutation) ClearProjectUsers() {
+	m.clearedproject_users = true
+}
+
+// ProjectUsersCleared reports if the "project_users" edge to the UserProject entity was cleared.
+func (m *UserMutation) ProjectUsersCleared() bool {
+	return m.clearedproject_users
+}
+
+// RemoveProjectUserIDs removes the "project_users" edge to the UserProject entity by IDs.
+func (m *UserMutation) RemoveProjectUserIDs(ids ...int) {
+	if m.removedproject_users == nil {
+		m.removedproject_users = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.project_users, ids[i])
+		m.removedproject_users[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedProjectUsers returns the removed IDs of the "project_users" edge to the UserProject entity.
+func (m *UserMutation) RemovedProjectUsersIDs() (ids []int) {
+	for id := range m.removedproject_users {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ProjectUsersIDs returns the "project_users" edge IDs in the mutation.
+func (m *UserMutation) ProjectUsersIDs() (ids []int) {
+	for id := range m.project_users {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetProjectUsers resets all changes to the "project_users" edge.
+func (m *UserMutation) ResetProjectUsers() {
+	m.project_users = nil
+	m.clearedproject_users = false
+	m.removedproject_users = nil
 }
 
 // Where appends a list predicates to the UserMutation builder.
@@ -9560,7 +11432,10 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 6)
+	if m.projects != nil {
+		edges = append(edges, user.EdgeProjects)
+	}
 	if m.requests != nil {
 		edges = append(edges, user.EdgeRequests)
 	}
@@ -9573,6 +11448,9 @@ func (m *UserMutation) AddedEdges() []string {
 	if m.usage_logs != nil {
 		edges = append(edges, user.EdgeUsageLogs)
 	}
+	if m.project_users != nil {
+		edges = append(edges, user.EdgeProjectUsers)
+	}
 	return edges
 }
 
@@ -9580,6 +11458,12 @@ func (m *UserMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *UserMutation) AddedIDs(name string) []ent.Value {
 	switch name {
+	case user.EdgeProjects:
+		ids := make([]ent.Value, 0, len(m.projects))
+		for id := range m.projects {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeRequests:
 		ids := make([]ent.Value, 0, len(m.requests))
 		for id := range m.requests {
@@ -9604,13 +11488,22 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeProjectUsers:
+		ids := make([]ent.Value, 0, len(m.project_users))
+		for id := range m.project_users {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 6)
+	if m.removedprojects != nil {
+		edges = append(edges, user.EdgeProjects)
+	}
 	if m.removedrequests != nil {
 		edges = append(edges, user.EdgeRequests)
 	}
@@ -9623,6 +11516,9 @@ func (m *UserMutation) RemovedEdges() []string {
 	if m.removedusage_logs != nil {
 		edges = append(edges, user.EdgeUsageLogs)
 	}
+	if m.removedproject_users != nil {
+		edges = append(edges, user.EdgeProjectUsers)
+	}
 	return edges
 }
 
@@ -9630,6 +11526,12 @@ func (m *UserMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
+	case user.EdgeProjects:
+		ids := make([]ent.Value, 0, len(m.removedprojects))
+		for id := range m.removedprojects {
+			ids = append(ids, id)
+		}
+		return ids
 	case user.EdgeRequests:
 		ids := make([]ent.Value, 0, len(m.removedrequests))
 		for id := range m.removedrequests {
@@ -9654,13 +11556,22 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeProjectUsers:
+		ids := make([]ent.Value, 0, len(m.removedproject_users))
+		for id := range m.removedproject_users {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 6)
+	if m.clearedprojects {
+		edges = append(edges, user.EdgeProjects)
+	}
 	if m.clearedrequests {
 		edges = append(edges, user.EdgeRequests)
 	}
@@ -9673,6 +11584,9 @@ func (m *UserMutation) ClearedEdges() []string {
 	if m.clearedusage_logs {
 		edges = append(edges, user.EdgeUsageLogs)
 	}
+	if m.clearedproject_users {
+		edges = append(edges, user.EdgeProjectUsers)
+	}
 	return edges
 }
 
@@ -9680,6 +11594,8 @@ func (m *UserMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *UserMutation) EdgeCleared(name string) bool {
 	switch name {
+	case user.EdgeProjects:
+		return m.clearedprojects
 	case user.EdgeRequests:
 		return m.clearedrequests
 	case user.EdgeAPIKeys:
@@ -9688,6 +11604,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedroles
 	case user.EdgeUsageLogs:
 		return m.clearedusage_logs
+	case user.EdgeProjectUsers:
+		return m.clearedproject_users
 	}
 	return false
 }
@@ -9704,6 +11622,9 @@ func (m *UserMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *UserMutation) ResetEdge(name string) error {
 	switch name {
+	case user.EdgeProjects:
+		m.ResetProjects()
+		return nil
 	case user.EdgeRequests:
 		m.ResetRequests()
 		return nil
@@ -9716,6 +11637,860 @@ func (m *UserMutation) ResetEdge(name string) error {
 	case user.EdgeUsageLogs:
 		m.ResetUsageLogs()
 		return nil
+	case user.EdgeProjectUsers:
+		m.ResetProjectUsers()
+		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)
+}
+
+// UserProjectMutation represents an operation that mutates the UserProject nodes in the graph.
+type UserProjectMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int
+	created_at      *time.Time
+	updated_at      *time.Time
+	deleted_at      *int
+	adddeleted_at   *int
+	is_owner        *bool
+	scopes          *[]string
+	appendscopes    []string
+	clearedFields   map[string]struct{}
+	users           *int
+	clearedusers    bool
+	projects        *int
+	clearedprojects bool
+	done            bool
+	oldValue        func(context.Context) (*UserProject, error)
+	predicates      []predicate.UserProject
+}
+
+var _ ent.Mutation = (*UserProjectMutation)(nil)
+
+// userprojectOption allows management of the mutation configuration using functional options.
+type userprojectOption func(*UserProjectMutation)
+
+// newUserProjectMutation creates new mutation for the UserProject entity.
+func newUserProjectMutation(c config, op Op, opts ...userprojectOption) *UserProjectMutation {
+	m := &UserProjectMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeUserProject,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withUserProjectID sets the ID field of the mutation.
+func withUserProjectID(id int) userprojectOption {
+	return func(m *UserProjectMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *UserProject
+		)
+		m.oldValue = func(ctx context.Context) (*UserProject, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().UserProject.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withUserProject sets the old UserProject of the mutation.
+func withUserProject(node *UserProject) userprojectOption {
+	return func(m *UserProjectMutation) {
+		m.oldValue = func(context.Context) (*UserProject, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m UserProjectMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m UserProjectMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *UserProjectMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *UserProjectMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().UserProject.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *UserProjectMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *UserProjectMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the UserProject entity.
+// If the UserProject object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserProjectMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *UserProjectMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *UserProjectMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *UserProjectMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the UserProject entity.
+// If the UserProject object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserProjectMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *UserProjectMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *UserProjectMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *UserProjectMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the UserProject entity.
+// If the UserProject object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserProjectMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *UserProjectMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *UserProjectMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *UserProjectMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *UserProjectMutation) SetUserID(i int) {
+	m.users = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *UserProjectMutation) UserID() (r int, exists bool) {
+	v := m.users
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the UserProject entity.
+// If the UserProject object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserProjectMutation) OldUserID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *UserProjectMutation) ResetUserID() {
+	m.users = nil
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *UserProjectMutation) SetProjectID(i int) {
+	m.projects = &i
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *UserProjectMutation) ProjectID() (r int, exists bool) {
+	v := m.projects
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the UserProject entity.
+// If the UserProject object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserProjectMutation) OldProjectID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *UserProjectMutation) ResetProjectID() {
+	m.projects = nil
+}
+
+// SetIsOwner sets the "is_owner" field.
+func (m *UserProjectMutation) SetIsOwner(b bool) {
+	m.is_owner = &b
+}
+
+// IsOwner returns the value of the "is_owner" field in the mutation.
+func (m *UserProjectMutation) IsOwner() (r bool, exists bool) {
+	v := m.is_owner
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsOwner returns the old "is_owner" field's value of the UserProject entity.
+// If the UserProject object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserProjectMutation) OldIsOwner(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsOwner is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsOwner requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsOwner: %w", err)
+	}
+	return oldValue.IsOwner, nil
+}
+
+// ResetIsOwner resets all changes to the "is_owner" field.
+func (m *UserProjectMutation) ResetIsOwner() {
+	m.is_owner = nil
+}
+
+// SetScopes sets the "scopes" field.
+func (m *UserProjectMutation) SetScopes(s []string) {
+	m.scopes = &s
+	m.appendscopes = nil
+}
+
+// Scopes returns the value of the "scopes" field in the mutation.
+func (m *UserProjectMutation) Scopes() (r []string, exists bool) {
+	v := m.scopes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScopes returns the old "scopes" field's value of the UserProject entity.
+// If the UserProject object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserProjectMutation) OldScopes(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScopes is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScopes requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScopes: %w", err)
+	}
+	return oldValue.Scopes, nil
+}
+
+// AppendScopes adds s to the "scopes" field.
+func (m *UserProjectMutation) AppendScopes(s []string) {
+	m.appendscopes = append(m.appendscopes, s...)
+}
+
+// AppendedScopes returns the list of values that were appended to the "scopes" field in this mutation.
+func (m *UserProjectMutation) AppendedScopes() ([]string, bool) {
+	if len(m.appendscopes) == 0 {
+		return nil, false
+	}
+	return m.appendscopes, true
+}
+
+// ClearScopes clears the value of the "scopes" field.
+func (m *UserProjectMutation) ClearScopes() {
+	m.scopes = nil
+	m.appendscopes = nil
+	m.clearedFields[userproject.FieldScopes] = struct{}{}
+}
+
+// ScopesCleared returns if the "scopes" field was cleared in this mutation.
+func (m *UserProjectMutation) ScopesCleared() bool {
+	_, ok := m.clearedFields[userproject.FieldScopes]
+	return ok
+}
+
+// ResetScopes resets all changes to the "scopes" field.
+func (m *UserProjectMutation) ResetScopes() {
+	m.scopes = nil
+	m.appendscopes = nil
+	delete(m.clearedFields, userproject.FieldScopes)
+}
+
+// SetUsersID sets the "users" edge to the User entity by id.
+func (m *UserProjectMutation) SetUsersID(id int) {
+	m.users = &id
+}
+
+// ClearUsers clears the "users" edge to the User entity.
+func (m *UserProjectMutation) ClearUsers() {
+	m.clearedusers = true
+	m.clearedFields[userproject.FieldUserID] = struct{}{}
+}
+
+// UsersCleared reports if the "users" edge to the User entity was cleared.
+func (m *UserProjectMutation) UsersCleared() bool {
+	return m.clearedusers
+}
+
+// UsersID returns the "users" edge ID in the mutation.
+func (m *UserProjectMutation) UsersID() (id int, exists bool) {
+	if m.users != nil {
+		return *m.users, true
+	}
+	return
+}
+
+// UsersIDs returns the "users" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UsersID instead. It exists only for internal usage by the builders.
+func (m *UserProjectMutation) UsersIDs() (ids []int) {
+	if id := m.users; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUsers resets all changes to the "users" edge.
+func (m *UserProjectMutation) ResetUsers() {
+	m.users = nil
+	m.clearedusers = false
+}
+
+// SetProjectsID sets the "projects" edge to the Project entity by id.
+func (m *UserProjectMutation) SetProjectsID(id int) {
+	m.projects = &id
+}
+
+// ClearProjects clears the "projects" edge to the Project entity.
+func (m *UserProjectMutation) ClearProjects() {
+	m.clearedprojects = true
+	m.clearedFields[userproject.FieldProjectID] = struct{}{}
+}
+
+// ProjectsCleared reports if the "projects" edge to the Project entity was cleared.
+func (m *UserProjectMutation) ProjectsCleared() bool {
+	return m.clearedprojects
+}
+
+// ProjectsID returns the "projects" edge ID in the mutation.
+func (m *UserProjectMutation) ProjectsID() (id int, exists bool) {
+	if m.projects != nil {
+		return *m.projects, true
+	}
+	return
+}
+
+// ProjectsIDs returns the "projects" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectsID instead. It exists only for internal usage by the builders.
+func (m *UserProjectMutation) ProjectsIDs() (ids []int) {
+	if id := m.projects; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProjects resets all changes to the "projects" edge.
+func (m *UserProjectMutation) ResetProjects() {
+	m.projects = nil
+	m.clearedprojects = false
+}
+
+// Where appends a list predicates to the UserProjectMutation builder.
+func (m *UserProjectMutation) Where(ps ...predicate.UserProject) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the UserProjectMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *UserProjectMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.UserProject, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *UserProjectMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *UserProjectMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (UserProject).
+func (m *UserProjectMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *UserProjectMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.created_at != nil {
+		fields = append(fields, userproject.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, userproject.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, userproject.FieldDeletedAt)
+	}
+	if m.users != nil {
+		fields = append(fields, userproject.FieldUserID)
+	}
+	if m.projects != nil {
+		fields = append(fields, userproject.FieldProjectID)
+	}
+	if m.is_owner != nil {
+		fields = append(fields, userproject.FieldIsOwner)
+	}
+	if m.scopes != nil {
+		fields = append(fields, userproject.FieldScopes)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *UserProjectMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case userproject.FieldCreatedAt:
+		return m.CreatedAt()
+	case userproject.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case userproject.FieldDeletedAt:
+		return m.DeletedAt()
+	case userproject.FieldUserID:
+		return m.UserID()
+	case userproject.FieldProjectID:
+		return m.ProjectID()
+	case userproject.FieldIsOwner:
+		return m.IsOwner()
+	case userproject.FieldScopes:
+		return m.Scopes()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *UserProjectMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case userproject.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case userproject.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case userproject.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case userproject.FieldUserID:
+		return m.OldUserID(ctx)
+	case userproject.FieldProjectID:
+		return m.OldProjectID(ctx)
+	case userproject.FieldIsOwner:
+		return m.OldIsOwner(ctx)
+	case userproject.FieldScopes:
+		return m.OldScopes(ctx)
+	}
+	return nil, fmt.Errorf("unknown UserProject field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *UserProjectMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case userproject.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case userproject.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case userproject.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case userproject.FieldUserID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case userproject.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
+		return nil
+	case userproject.FieldIsOwner:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsOwner(v)
+		return nil
+	case userproject.FieldScopes:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScopes(v)
+		return nil
+	}
+	return fmt.Errorf("unknown UserProject field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *UserProjectMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, userproject.FieldDeletedAt)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *UserProjectMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case userproject.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *UserProjectMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case userproject.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown UserProject numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *UserProjectMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(userproject.FieldScopes) {
+		fields = append(fields, userproject.FieldScopes)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *UserProjectMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *UserProjectMutation) ClearField(name string) error {
+	switch name {
+	case userproject.FieldScopes:
+		m.ClearScopes()
+		return nil
+	}
+	return fmt.Errorf("unknown UserProject nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *UserProjectMutation) ResetField(name string) error {
+	switch name {
+	case userproject.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case userproject.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case userproject.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case userproject.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case userproject.FieldProjectID:
+		m.ResetProjectID()
+		return nil
+	case userproject.FieldIsOwner:
+		m.ResetIsOwner()
+		return nil
+	case userproject.FieldScopes:
+		m.ResetScopes()
+		return nil
+	}
+	return fmt.Errorf("unknown UserProject field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *UserProjectMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.users != nil {
+		edges = append(edges, userproject.EdgeUsers)
+	}
+	if m.projects != nil {
+		edges = append(edges, userproject.EdgeProjects)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *UserProjectMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case userproject.EdgeUsers:
+		if id := m.users; id != nil {
+			return []ent.Value{*id}
+		}
+	case userproject.EdgeProjects:
+		if id := m.projects; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *UserProjectMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *UserProjectMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *UserProjectMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedusers {
+		edges = append(edges, userproject.EdgeUsers)
+	}
+	if m.clearedprojects {
+		edges = append(edges, userproject.EdgeProjects)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *UserProjectMutation) EdgeCleared(name string) bool {
+	switch name {
+	case userproject.EdgeUsers:
+		return m.clearedusers
+	case userproject.EdgeProjects:
+		return m.clearedprojects
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *UserProjectMutation) ClearEdge(name string) error {
+	switch name {
+	case userproject.EdgeUsers:
+		m.ClearUsers()
+		return nil
+	case userproject.EdgeProjects:
+		m.ClearProjects()
+		return nil
+	}
+	return fmt.Errorf("unknown UserProject unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *UserProjectMutation) ResetEdge(name string) error {
+	switch name {
+	case userproject.EdgeUsers:
+		m.ResetUsers()
+		return nil
+	case userproject.EdgeProjects:
+		m.ResetProjects()
+		return nil
+	}
+	return fmt.Errorf("unknown UserProject edge %s", name)
 }

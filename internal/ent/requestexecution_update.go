@@ -26,121 +26,121 @@ type RequestExecutionUpdate struct {
 }
 
 // Where appends a list predicates to the RequestExecutionUpdate builder.
-func (reu *RequestExecutionUpdate) Where(ps ...predicate.RequestExecution) *RequestExecutionUpdate {
-	reu.mutation.Where(ps...)
-	return reu
+func (_u *RequestExecutionUpdate) Where(ps ...predicate.RequestExecution) *RequestExecutionUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (reu *RequestExecutionUpdate) SetUpdatedAt(t time.Time) *RequestExecutionUpdate {
-	reu.mutation.SetUpdatedAt(t)
-	return reu
+func (_u *RequestExecutionUpdate) SetUpdatedAt(v time.Time) *RequestExecutionUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetExternalID sets the "external_id" field.
-func (reu *RequestExecutionUpdate) SetExternalID(s string) *RequestExecutionUpdate {
-	reu.mutation.SetExternalID(s)
-	return reu
+func (_u *RequestExecutionUpdate) SetExternalID(v string) *RequestExecutionUpdate {
+	_u.mutation.SetExternalID(v)
+	return _u
 }
 
 // SetNillableExternalID sets the "external_id" field if the given value is not nil.
-func (reu *RequestExecutionUpdate) SetNillableExternalID(s *string) *RequestExecutionUpdate {
-	if s != nil {
-		reu.SetExternalID(*s)
+func (_u *RequestExecutionUpdate) SetNillableExternalID(v *string) *RequestExecutionUpdate {
+	if v != nil {
+		_u.SetExternalID(*v)
 	}
-	return reu
+	return _u
 }
 
 // ClearExternalID clears the value of the "external_id" field.
-func (reu *RequestExecutionUpdate) ClearExternalID() *RequestExecutionUpdate {
-	reu.mutation.ClearExternalID()
-	return reu
+func (_u *RequestExecutionUpdate) ClearExternalID() *RequestExecutionUpdate {
+	_u.mutation.ClearExternalID()
+	return _u
 }
 
 // SetResponseBody sets the "response_body" field.
-func (reu *RequestExecutionUpdate) SetResponseBody(orm objects.JSONRawMessage) *RequestExecutionUpdate {
-	reu.mutation.SetResponseBody(orm)
-	return reu
+func (_u *RequestExecutionUpdate) SetResponseBody(v objects.JSONRawMessage) *RequestExecutionUpdate {
+	_u.mutation.SetResponseBody(v)
+	return _u
 }
 
-// AppendResponseBody appends orm to the "response_body" field.
-func (reu *RequestExecutionUpdate) AppendResponseBody(orm objects.JSONRawMessage) *RequestExecutionUpdate {
-	reu.mutation.AppendResponseBody(orm)
-	return reu
+// AppendResponseBody appends value to the "response_body" field.
+func (_u *RequestExecutionUpdate) AppendResponseBody(v objects.JSONRawMessage) *RequestExecutionUpdate {
+	_u.mutation.AppendResponseBody(v)
+	return _u
 }
 
 // ClearResponseBody clears the value of the "response_body" field.
-func (reu *RequestExecutionUpdate) ClearResponseBody() *RequestExecutionUpdate {
-	reu.mutation.ClearResponseBody()
-	return reu
+func (_u *RequestExecutionUpdate) ClearResponseBody() *RequestExecutionUpdate {
+	_u.mutation.ClearResponseBody()
+	return _u
 }
 
 // SetResponseChunks sets the "response_chunks" field.
-func (reu *RequestExecutionUpdate) SetResponseChunks(orm []objects.JSONRawMessage) *RequestExecutionUpdate {
-	reu.mutation.SetResponseChunks(orm)
-	return reu
+func (_u *RequestExecutionUpdate) SetResponseChunks(v []objects.JSONRawMessage) *RequestExecutionUpdate {
+	_u.mutation.SetResponseChunks(v)
+	return _u
 }
 
-// AppendResponseChunks appends orm to the "response_chunks" field.
-func (reu *RequestExecutionUpdate) AppendResponseChunks(orm []objects.JSONRawMessage) *RequestExecutionUpdate {
-	reu.mutation.AppendResponseChunks(orm)
-	return reu
+// AppendResponseChunks appends value to the "response_chunks" field.
+func (_u *RequestExecutionUpdate) AppendResponseChunks(v []objects.JSONRawMessage) *RequestExecutionUpdate {
+	_u.mutation.AppendResponseChunks(v)
+	return _u
 }
 
 // ClearResponseChunks clears the value of the "response_chunks" field.
-func (reu *RequestExecutionUpdate) ClearResponseChunks() *RequestExecutionUpdate {
-	reu.mutation.ClearResponseChunks()
-	return reu
+func (_u *RequestExecutionUpdate) ClearResponseChunks() *RequestExecutionUpdate {
+	_u.mutation.ClearResponseChunks()
+	return _u
 }
 
 // SetErrorMessage sets the "error_message" field.
-func (reu *RequestExecutionUpdate) SetErrorMessage(s string) *RequestExecutionUpdate {
-	reu.mutation.SetErrorMessage(s)
-	return reu
+func (_u *RequestExecutionUpdate) SetErrorMessage(v string) *RequestExecutionUpdate {
+	_u.mutation.SetErrorMessage(v)
+	return _u
 }
 
 // SetNillableErrorMessage sets the "error_message" field if the given value is not nil.
-func (reu *RequestExecutionUpdate) SetNillableErrorMessage(s *string) *RequestExecutionUpdate {
-	if s != nil {
-		reu.SetErrorMessage(*s)
+func (_u *RequestExecutionUpdate) SetNillableErrorMessage(v *string) *RequestExecutionUpdate {
+	if v != nil {
+		_u.SetErrorMessage(*v)
 	}
-	return reu
+	return _u
 }
 
 // ClearErrorMessage clears the value of the "error_message" field.
-func (reu *RequestExecutionUpdate) ClearErrorMessage() *RequestExecutionUpdate {
-	reu.mutation.ClearErrorMessage()
-	return reu
+func (_u *RequestExecutionUpdate) ClearErrorMessage() *RequestExecutionUpdate {
+	_u.mutation.ClearErrorMessage()
+	return _u
 }
 
 // SetStatus sets the "status" field.
-func (reu *RequestExecutionUpdate) SetStatus(r requestexecution.Status) *RequestExecutionUpdate {
-	reu.mutation.SetStatus(r)
-	return reu
+func (_u *RequestExecutionUpdate) SetStatus(v requestexecution.Status) *RequestExecutionUpdate {
+	_u.mutation.SetStatus(v)
+	return _u
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (reu *RequestExecutionUpdate) SetNillableStatus(r *requestexecution.Status) *RequestExecutionUpdate {
-	if r != nil {
-		reu.SetStatus(*r)
+func (_u *RequestExecutionUpdate) SetNillableStatus(v *requestexecution.Status) *RequestExecutionUpdate {
+	if v != nil {
+		_u.SetStatus(*v)
 	}
-	return reu
+	return _u
 }
 
 // Mutation returns the RequestExecutionMutation object of the builder.
-func (reu *RequestExecutionUpdate) Mutation() *RequestExecutionMutation {
-	return reu.mutation
+func (_u *RequestExecutionUpdate) Mutation() *RequestExecutionMutation {
+	return _u.mutation
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (reu *RequestExecutionUpdate) Save(ctx context.Context) (int, error) {
-	reu.defaults()
-	return withHooks(ctx, reu.sqlSave, reu.mutation, reu.hooks)
+func (_u *RequestExecutionUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (reu *RequestExecutionUpdate) SaveX(ctx context.Context) int {
-	affected, err := reu.Save(ctx)
+func (_u *RequestExecutionUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -148,102 +148,102 @@ func (reu *RequestExecutionUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (reu *RequestExecutionUpdate) Exec(ctx context.Context) error {
-	_, err := reu.Save(ctx)
+func (_u *RequestExecutionUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (reu *RequestExecutionUpdate) ExecX(ctx context.Context) {
-	if err := reu.Exec(ctx); err != nil {
+func (_u *RequestExecutionUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (reu *RequestExecutionUpdate) defaults() {
-	if _, ok := reu.mutation.UpdatedAt(); !ok {
+func (_u *RequestExecutionUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := requestexecution.UpdateDefaultUpdatedAt()
-		reu.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (reu *RequestExecutionUpdate) check() error {
-	if v, ok := reu.mutation.Status(); ok {
+func (_u *RequestExecutionUpdate) check() error {
+	if v, ok := _u.mutation.Status(); ok {
 		if err := requestexecution.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.status": %w`, err)}
 		}
 	}
-	if reu.mutation.RequestCleared() && len(reu.mutation.RequestIDs()) > 0 {
+	if _u.mutation.RequestCleared() && len(_u.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "RequestExecution.request"`)
 	}
-	if reu.mutation.ChannelCleared() && len(reu.mutation.ChannelIDs()) > 0 {
+	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "RequestExecution.channel"`)
 	}
 	return nil
 }
 
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
-func (reu *RequestExecutionUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestExecutionUpdate {
-	reu.modifiers = append(reu.modifiers, modifiers...)
-	return reu
+func (_u *RequestExecutionUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestExecutionUpdate {
+	_u.modifiers = append(_u.modifiers, modifiers...)
+	return _u
 }
 
-func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	if err := reu.check(); err != nil {
-		return n, err
+func (_u *RequestExecutionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(requestexecution.Table, requestexecution.Columns, sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt))
-	if ps := reu.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := reu.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(requestexecution.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := reu.mutation.ExternalID(); ok {
+	if value, ok := _u.mutation.ExternalID(); ok {
 		_spec.SetField(requestexecution.FieldExternalID, field.TypeString, value)
 	}
-	if reu.mutation.ExternalIDCleared() {
+	if _u.mutation.ExternalIDCleared() {
 		_spec.ClearField(requestexecution.FieldExternalID, field.TypeString)
 	}
-	if value, ok := reu.mutation.ResponseBody(); ok {
+	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)
 	}
-	if value, ok := reu.mutation.AppendedResponseBody(); ok {
+	if value, ok := _u.mutation.AppendedResponseBody(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, requestexecution.FieldResponseBody, value)
 		})
 	}
-	if reu.mutation.ResponseBodyCleared() {
+	if _u.mutation.ResponseBodyCleared() {
 		_spec.ClearField(requestexecution.FieldResponseBody, field.TypeJSON)
 	}
-	if value, ok := reu.mutation.ResponseChunks(); ok {
+	if value, ok := _u.mutation.ResponseChunks(); ok {
 		_spec.SetField(requestexecution.FieldResponseChunks, field.TypeJSON, value)
 	}
-	if value, ok := reu.mutation.AppendedResponseChunks(); ok {
+	if value, ok := _u.mutation.AppendedResponseChunks(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, requestexecution.FieldResponseChunks, value)
 		})
 	}
-	if reu.mutation.ResponseChunksCleared() {
+	if _u.mutation.ResponseChunksCleared() {
 		_spec.ClearField(requestexecution.FieldResponseChunks, field.TypeJSON)
 	}
-	if value, ok := reu.mutation.ErrorMessage(); ok {
+	if value, ok := _u.mutation.ErrorMessage(); ok {
 		_spec.SetField(requestexecution.FieldErrorMessage, field.TypeString, value)
 	}
-	if reu.mutation.ErrorMessageCleared() {
+	if _u.mutation.ErrorMessageCleared() {
 		_spec.ClearField(requestexecution.FieldErrorMessage, field.TypeString)
 	}
-	if value, ok := reu.mutation.Status(); ok {
+	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 	}
-	_spec.AddModifiers(reu.modifiers...)
-	if n, err = sqlgraph.UpdateNodes(ctx, reu.driver, _spec); err != nil {
+	_spec.AddModifiers(_u.modifiers...)
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{requestexecution.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -251,8 +251,8 @@ func (reu *RequestExecutionUpdate) sqlSave(ctx context.Context) (n int, err erro
 		}
 		return 0, err
 	}
-	reu.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // RequestExecutionUpdateOne is the builder for updating a single RequestExecution entity.
@@ -265,128 +265,128 @@ type RequestExecutionUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (reuo *RequestExecutionUpdateOne) SetUpdatedAt(t time.Time) *RequestExecutionUpdateOne {
-	reuo.mutation.SetUpdatedAt(t)
-	return reuo
+func (_u *RequestExecutionUpdateOne) SetUpdatedAt(v time.Time) *RequestExecutionUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetExternalID sets the "external_id" field.
-func (reuo *RequestExecutionUpdateOne) SetExternalID(s string) *RequestExecutionUpdateOne {
-	reuo.mutation.SetExternalID(s)
-	return reuo
+func (_u *RequestExecutionUpdateOne) SetExternalID(v string) *RequestExecutionUpdateOne {
+	_u.mutation.SetExternalID(v)
+	return _u
 }
 
 // SetNillableExternalID sets the "external_id" field if the given value is not nil.
-func (reuo *RequestExecutionUpdateOne) SetNillableExternalID(s *string) *RequestExecutionUpdateOne {
-	if s != nil {
-		reuo.SetExternalID(*s)
+func (_u *RequestExecutionUpdateOne) SetNillableExternalID(v *string) *RequestExecutionUpdateOne {
+	if v != nil {
+		_u.SetExternalID(*v)
 	}
-	return reuo
+	return _u
 }
 
 // ClearExternalID clears the value of the "external_id" field.
-func (reuo *RequestExecutionUpdateOne) ClearExternalID() *RequestExecutionUpdateOne {
-	reuo.mutation.ClearExternalID()
-	return reuo
+func (_u *RequestExecutionUpdateOne) ClearExternalID() *RequestExecutionUpdateOne {
+	_u.mutation.ClearExternalID()
+	return _u
 }
 
 // SetResponseBody sets the "response_body" field.
-func (reuo *RequestExecutionUpdateOne) SetResponseBody(orm objects.JSONRawMessage) *RequestExecutionUpdateOne {
-	reuo.mutation.SetResponseBody(orm)
-	return reuo
+func (_u *RequestExecutionUpdateOne) SetResponseBody(v objects.JSONRawMessage) *RequestExecutionUpdateOne {
+	_u.mutation.SetResponseBody(v)
+	return _u
 }
 
-// AppendResponseBody appends orm to the "response_body" field.
-func (reuo *RequestExecutionUpdateOne) AppendResponseBody(orm objects.JSONRawMessage) *RequestExecutionUpdateOne {
-	reuo.mutation.AppendResponseBody(orm)
-	return reuo
+// AppendResponseBody appends value to the "response_body" field.
+func (_u *RequestExecutionUpdateOne) AppendResponseBody(v objects.JSONRawMessage) *RequestExecutionUpdateOne {
+	_u.mutation.AppendResponseBody(v)
+	return _u
 }
 
 // ClearResponseBody clears the value of the "response_body" field.
-func (reuo *RequestExecutionUpdateOne) ClearResponseBody() *RequestExecutionUpdateOne {
-	reuo.mutation.ClearResponseBody()
-	return reuo
+func (_u *RequestExecutionUpdateOne) ClearResponseBody() *RequestExecutionUpdateOne {
+	_u.mutation.ClearResponseBody()
+	return _u
 }
 
 // SetResponseChunks sets the "response_chunks" field.
-func (reuo *RequestExecutionUpdateOne) SetResponseChunks(orm []objects.JSONRawMessage) *RequestExecutionUpdateOne {
-	reuo.mutation.SetResponseChunks(orm)
-	return reuo
+func (_u *RequestExecutionUpdateOne) SetResponseChunks(v []objects.JSONRawMessage) *RequestExecutionUpdateOne {
+	_u.mutation.SetResponseChunks(v)
+	return _u
 }
 
-// AppendResponseChunks appends orm to the "response_chunks" field.
-func (reuo *RequestExecutionUpdateOne) AppendResponseChunks(orm []objects.JSONRawMessage) *RequestExecutionUpdateOne {
-	reuo.mutation.AppendResponseChunks(orm)
-	return reuo
+// AppendResponseChunks appends value to the "response_chunks" field.
+func (_u *RequestExecutionUpdateOne) AppendResponseChunks(v []objects.JSONRawMessage) *RequestExecutionUpdateOne {
+	_u.mutation.AppendResponseChunks(v)
+	return _u
 }
 
 // ClearResponseChunks clears the value of the "response_chunks" field.
-func (reuo *RequestExecutionUpdateOne) ClearResponseChunks() *RequestExecutionUpdateOne {
-	reuo.mutation.ClearResponseChunks()
-	return reuo
+func (_u *RequestExecutionUpdateOne) ClearResponseChunks() *RequestExecutionUpdateOne {
+	_u.mutation.ClearResponseChunks()
+	return _u
 }
 
 // SetErrorMessage sets the "error_message" field.
-func (reuo *RequestExecutionUpdateOne) SetErrorMessage(s string) *RequestExecutionUpdateOne {
-	reuo.mutation.SetErrorMessage(s)
-	return reuo
+func (_u *RequestExecutionUpdateOne) SetErrorMessage(v string) *RequestExecutionUpdateOne {
+	_u.mutation.SetErrorMessage(v)
+	return _u
 }
 
 // SetNillableErrorMessage sets the "error_message" field if the given value is not nil.
-func (reuo *RequestExecutionUpdateOne) SetNillableErrorMessage(s *string) *RequestExecutionUpdateOne {
-	if s != nil {
-		reuo.SetErrorMessage(*s)
+func (_u *RequestExecutionUpdateOne) SetNillableErrorMessage(v *string) *RequestExecutionUpdateOne {
+	if v != nil {
+		_u.SetErrorMessage(*v)
 	}
-	return reuo
+	return _u
 }
 
 // ClearErrorMessage clears the value of the "error_message" field.
-func (reuo *RequestExecutionUpdateOne) ClearErrorMessage() *RequestExecutionUpdateOne {
-	reuo.mutation.ClearErrorMessage()
-	return reuo
+func (_u *RequestExecutionUpdateOne) ClearErrorMessage() *RequestExecutionUpdateOne {
+	_u.mutation.ClearErrorMessage()
+	return _u
 }
 
 // SetStatus sets the "status" field.
-func (reuo *RequestExecutionUpdateOne) SetStatus(r requestexecution.Status) *RequestExecutionUpdateOne {
-	reuo.mutation.SetStatus(r)
-	return reuo
+func (_u *RequestExecutionUpdateOne) SetStatus(v requestexecution.Status) *RequestExecutionUpdateOne {
+	_u.mutation.SetStatus(v)
+	return _u
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (reuo *RequestExecutionUpdateOne) SetNillableStatus(r *requestexecution.Status) *RequestExecutionUpdateOne {
-	if r != nil {
-		reuo.SetStatus(*r)
+func (_u *RequestExecutionUpdateOne) SetNillableStatus(v *requestexecution.Status) *RequestExecutionUpdateOne {
+	if v != nil {
+		_u.SetStatus(*v)
 	}
-	return reuo
+	return _u
 }
 
 // Mutation returns the RequestExecutionMutation object of the builder.
-func (reuo *RequestExecutionUpdateOne) Mutation() *RequestExecutionMutation {
-	return reuo.mutation
+func (_u *RequestExecutionUpdateOne) Mutation() *RequestExecutionMutation {
+	return _u.mutation
 }
 
 // Where appends a list predicates to the RequestExecutionUpdate builder.
-func (reuo *RequestExecutionUpdateOne) Where(ps ...predicate.RequestExecution) *RequestExecutionUpdateOne {
-	reuo.mutation.Where(ps...)
-	return reuo
+func (_u *RequestExecutionUpdateOne) Where(ps ...predicate.RequestExecution) *RequestExecutionUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (reuo *RequestExecutionUpdateOne) Select(field string, fields ...string) *RequestExecutionUpdateOne {
-	reuo.fields = append([]string{field}, fields...)
-	return reuo
+func (_u *RequestExecutionUpdateOne) Select(field string, fields ...string) *RequestExecutionUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated RequestExecution entity.
-func (reuo *RequestExecutionUpdateOne) Save(ctx context.Context) (*RequestExecution, error) {
-	reuo.defaults()
-	return withHooks(ctx, reuo.sqlSave, reuo.mutation, reuo.hooks)
+func (_u *RequestExecutionUpdateOne) Save(ctx context.Context) (*RequestExecution, error) {
+	_u.defaults()
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (reuo *RequestExecutionUpdateOne) SaveX(ctx context.Context) *RequestExecution {
-	node, err := reuo.Save(ctx)
+func (_u *RequestExecutionUpdateOne) SaveX(ctx context.Context) *RequestExecution {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -394,59 +394,59 @@ func (reuo *RequestExecutionUpdateOne) SaveX(ctx context.Context) *RequestExecut
 }
 
 // Exec executes the query on the entity.
-func (reuo *RequestExecutionUpdateOne) Exec(ctx context.Context) error {
-	_, err := reuo.Save(ctx)
+func (_u *RequestExecutionUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (reuo *RequestExecutionUpdateOne) ExecX(ctx context.Context) {
-	if err := reuo.Exec(ctx); err != nil {
+func (_u *RequestExecutionUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (reuo *RequestExecutionUpdateOne) defaults() {
-	if _, ok := reuo.mutation.UpdatedAt(); !ok {
+func (_u *RequestExecutionUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		v := requestexecution.UpdateDefaultUpdatedAt()
-		reuo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (reuo *RequestExecutionUpdateOne) check() error {
-	if v, ok := reuo.mutation.Status(); ok {
+func (_u *RequestExecutionUpdateOne) check() error {
+	if v, ok := _u.mutation.Status(); ok {
 		if err := requestexecution.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.status": %w`, err)}
 		}
 	}
-	if reuo.mutation.RequestCleared() && len(reuo.mutation.RequestIDs()) > 0 {
+	if _u.mutation.RequestCleared() && len(_u.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "RequestExecution.request"`)
 	}
-	if reuo.mutation.ChannelCleared() && len(reuo.mutation.ChannelIDs()) > 0 {
+	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "RequestExecution.channel"`)
 	}
 	return nil
 }
 
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
-func (reuo *RequestExecutionUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestExecutionUpdateOne {
-	reuo.modifiers = append(reuo.modifiers, modifiers...)
-	return reuo
+func (_u *RequestExecutionUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestExecutionUpdateOne {
+	_u.modifiers = append(_u.modifiers, modifiers...)
+	return _u
 }
 
-func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *RequestExecution, err error) {
-	if err := reuo.check(); err != nil {
+func (_u *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *RequestExecution, err error) {
+	if err := _u.check(); err != nil {
 		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(requestexecution.Table, requestexecution.Columns, sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt))
-	id, ok := reuo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "RequestExecution.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := reuo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, requestexecution.FieldID)
 		for _, f := range fields {
@@ -458,58 +458,58 @@ func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Requ
 			}
 		}
 	}
-	if ps := reuo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := reuo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(requestexecution.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := reuo.mutation.ExternalID(); ok {
+	if value, ok := _u.mutation.ExternalID(); ok {
 		_spec.SetField(requestexecution.FieldExternalID, field.TypeString, value)
 	}
-	if reuo.mutation.ExternalIDCleared() {
+	if _u.mutation.ExternalIDCleared() {
 		_spec.ClearField(requestexecution.FieldExternalID, field.TypeString)
 	}
-	if value, ok := reuo.mutation.ResponseBody(); ok {
+	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)
 	}
-	if value, ok := reuo.mutation.AppendedResponseBody(); ok {
+	if value, ok := _u.mutation.AppendedResponseBody(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, requestexecution.FieldResponseBody, value)
 		})
 	}
-	if reuo.mutation.ResponseBodyCleared() {
+	if _u.mutation.ResponseBodyCleared() {
 		_spec.ClearField(requestexecution.FieldResponseBody, field.TypeJSON)
 	}
-	if value, ok := reuo.mutation.ResponseChunks(); ok {
+	if value, ok := _u.mutation.ResponseChunks(); ok {
 		_spec.SetField(requestexecution.FieldResponseChunks, field.TypeJSON, value)
 	}
-	if value, ok := reuo.mutation.AppendedResponseChunks(); ok {
+	if value, ok := _u.mutation.AppendedResponseChunks(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, requestexecution.FieldResponseChunks, value)
 		})
 	}
-	if reuo.mutation.ResponseChunksCleared() {
+	if _u.mutation.ResponseChunksCleared() {
 		_spec.ClearField(requestexecution.FieldResponseChunks, field.TypeJSON)
 	}
-	if value, ok := reuo.mutation.ErrorMessage(); ok {
+	if value, ok := _u.mutation.ErrorMessage(); ok {
 		_spec.SetField(requestexecution.FieldErrorMessage, field.TypeString, value)
 	}
-	if reuo.mutation.ErrorMessageCleared() {
+	if _u.mutation.ErrorMessageCleared() {
 		_spec.ClearField(requestexecution.FieldErrorMessage, field.TypeString)
 	}
-	if value, ok := reuo.mutation.Status(); ok {
+	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 	}
-	_spec.AddModifiers(reuo.modifiers...)
-	_node = &RequestExecution{config: reuo.config}
+	_spec.AddModifiers(_u.modifiers...)
+	_node = &RequestExecution{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, reuo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{requestexecution.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -517,6 +517,6 @@ func (reuo *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Requ
 		}
 		return nil, err
 	}
-	reuo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

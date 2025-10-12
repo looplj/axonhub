@@ -20,56 +20,56 @@ type UsageLogDelete struct {
 }
 
 // Where appends a list predicates to the UsageLogDelete builder.
-func (uld *UsageLogDelete) Where(ps ...predicate.UsageLog) *UsageLogDelete {
-	uld.mutation.Where(ps...)
-	return uld
+func (_d *UsageLogDelete) Where(ps ...predicate.UsageLog) *UsageLogDelete {
+	_d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query and returns how many vertices were deleted.
-func (uld *UsageLogDelete) Exec(ctx context.Context) (int, error) {
-	return withHooks(ctx, uld.sqlExec, uld.mutation, uld.hooks)
+func (_d *UsageLogDelete) Exec(ctx context.Context) (int, error) {
+	return withHooks(ctx, _d.sqlExec, _d.mutation, _d.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (uld *UsageLogDelete) ExecX(ctx context.Context) int {
-	n, err := uld.Exec(ctx)
+func (_d *UsageLogDelete) ExecX(ctx context.Context) int {
+	n, err := _d.Exec(ctx)
 	if err != nil {
 		panic(err)
 	}
 	return n
 }
 
-func (uld *UsageLogDelete) sqlExec(ctx context.Context) (int, error) {
+func (_d *UsageLogDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(usagelog.Table, sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt))
-	if ps := uld.mutation.predicates; len(ps) > 0 {
+	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	affected, err := sqlgraph.DeleteNodes(ctx, uld.driver, _spec)
+	affected, err := sqlgraph.DeleteNodes(ctx, _d.driver, _spec)
 	if err != nil && sqlgraph.IsConstraintError(err) {
 		err = &ConstraintError{msg: err.Error(), wrap: err}
 	}
-	uld.mutation.done = true
+	_d.mutation.done = true
 	return affected, err
 }
 
 // UsageLogDeleteOne is the builder for deleting a single UsageLog entity.
 type UsageLogDeleteOne struct {
-	uld *UsageLogDelete
+	_d *UsageLogDelete
 }
 
 // Where appends a list predicates to the UsageLogDelete builder.
-func (uldo *UsageLogDeleteOne) Where(ps ...predicate.UsageLog) *UsageLogDeleteOne {
-	uldo.uld.mutation.Where(ps...)
-	return uldo
+func (_d *UsageLogDeleteOne) Where(ps ...predicate.UsageLog) *UsageLogDeleteOne {
+	_d._d.mutation.Where(ps...)
+	return _d
 }
 
 // Exec executes the deletion query.
-func (uldo *UsageLogDeleteOne) Exec(ctx context.Context) error {
-	n, err := uldo.uld.Exec(ctx)
+func (_d *UsageLogDeleteOne) Exec(ctx context.Context) error {
+	n, err := _d._d.Exec(ctx)
 	switch {
 	case err != nil:
 		return err
@@ -81,8 +81,8 @@ func (uldo *UsageLogDeleteOne) Exec(ctx context.Context) error {
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (uldo *UsageLogDeleteOne) ExecX(ctx context.Context) {
-	if err := uldo.Exec(ctx); err != nil {
+func (_d *UsageLogDeleteOne) ExecX(ctx context.Context) {
+	if err := _d.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

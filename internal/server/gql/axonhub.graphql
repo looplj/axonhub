@@ -188,4 +188,8 @@ type Mutation {
 
   createRole(input: CreateRoleInput!): Role!
   updateRole(id: ID!, input: UpdateRoleInput!): Role!
+
+  createProject(input: CreateProjectInput!): Project!
+  updateProject(id: ID!, input: UpdateProjectInput!): Project!
+  updateProjectStatus(id: ID!, status: ProjectStatus!): Project!
 }

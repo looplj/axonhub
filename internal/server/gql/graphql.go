@@ -15,12 +15,14 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -34,6 +36,7 @@ type Dependencies struct {
 	SystemService  *biz.SystemService
 	ChannelService *biz.ChannelService
 	RequestService *biz.RequestService
+	ProjectService *biz.ProjectService
 }
 
 type GraphqlHandler struct {
@@ -42,7 +45,9 @@ type GraphqlHandler struct {
 }
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
-	gqlSrv := handler.New(NewSchema(deps.Ent, deps.AuthService, deps.APIKeyService, deps.UserService, deps.SystemService, deps.ChannelService, deps.RequestService))
+	gqlSrv := handler.New(
+		NewSchema(deps.Ent, deps.AuthService, deps.APIKeyService, deps.UserService, deps.SystemService, deps.ChannelService, deps.RequestService, deps.ProjectService),
+	)
 
 	gqlSrv.AddTransport(transport.Options{})
 	gqlSrv.AddTransport(transport.GET{})
@@ -72,4 +77,6 @@ var guidTypeToNodeType = map[string]string{
 	ent.TypeRole:             role.Table,
 	ent.TypeSystem:           system.Table,
 	ent.TypeUsageLog:         usagelog.Table,
+	ent.TypeProject:          project.Table,
+	ent.TypeUserProject:      userproject.Table,
 }

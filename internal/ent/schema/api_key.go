@@ -28,6 +28,8 @@ func (APIKey) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("user_id").
 			StorageKey("api_keys_by_user_id"),
+		index.Fields("project_id").
+			StorageKey("api_keys_by_project_id"),
 		index.Fields("key").
 			StorageKey("api_keys_by_key").
 			Unique(),
@@ -37,6 +39,13 @@ func (APIKey) Indexes() []ent.Index {
 func (APIKey) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("user_id").Immutable().
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
+		field.Int("project_id").
+			Immutable().
+			Default(1).
+			Comment("Project ID, default to 1 for backward compatibility").
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
@@ -74,6 +83,14 @@ func (APIKey) Edges() []ent.Edge {
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			).
 			Ref("api_keys").Field("user_id"),
+		edge.From("project", Project.Type).
+			Unique().
+			Immutable().
+			Required().
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			).
+			Ref("api_keys").Field("project_id"),
 		edge.To("requests", Request.Type).
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),

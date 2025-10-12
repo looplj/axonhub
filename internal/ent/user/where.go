@@ -665,6 +665,29 @@ func ScopesNotNil() predicate.User {
 	return predicate.User(sql.FieldNotNull(FieldScopes))
 }
 
+// HasProjects applies the HasEdge predicate on the "projects" edge.
+func HasProjects() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, ProjectsTable, ProjectsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasProjectsWith applies the HasEdge predicate on the "projects" edge with a given conditions (other predicates).
+func HasProjectsWith(preds ...predicate.Project) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newProjectsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasRequests applies the HasEdge predicate on the "requests" edge.
 func HasRequests() predicate.User {
 	return predicate.User(func(s *sql.Selector) {
@@ -749,6 +772,29 @@ func HasUsageLogs() predicate.User {
 func HasUsageLogsWith(preds ...predicate.UsageLog) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := newUsageLogsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasProjectUsers applies the HasEdge predicate on the "project_users" edge.
+func HasProjectUsers() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ProjectUsersTable, ProjectUsersColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasProjectUsersWith applies the HasEdge predicate on the "project_users" edge with a given conditions (other predicates).
+func HasProjectUsersWith(preds ...predicate.UserProject) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newProjectUsersStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

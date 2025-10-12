@@ -23,75 +23,75 @@ type SystemCreate struct {
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (sc *SystemCreate) SetCreatedAt(t time.Time) *SystemCreate {
-	sc.mutation.SetCreatedAt(t)
-	return sc
+func (_c *SystemCreate) SetCreatedAt(v time.Time) *SystemCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
 }
 
 // SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (sc *SystemCreate) SetNillableCreatedAt(t *time.Time) *SystemCreate {
-	if t != nil {
-		sc.SetCreatedAt(*t)
+func (_c *SystemCreate) SetNillableCreatedAt(v *time.Time) *SystemCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
 	}
-	return sc
+	return _c
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (sc *SystemCreate) SetUpdatedAt(t time.Time) *SystemCreate {
-	sc.mutation.SetUpdatedAt(t)
-	return sc
+func (_c *SystemCreate) SetUpdatedAt(v time.Time) *SystemCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
 }
 
 // SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (sc *SystemCreate) SetNillableUpdatedAt(t *time.Time) *SystemCreate {
-	if t != nil {
-		sc.SetUpdatedAt(*t)
+func (_c *SystemCreate) SetNillableUpdatedAt(v *time.Time) *SystemCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
 	}
-	return sc
+	return _c
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (sc *SystemCreate) SetDeletedAt(i int) *SystemCreate {
-	sc.mutation.SetDeletedAt(i)
-	return sc
+func (_c *SystemCreate) SetDeletedAt(v int) *SystemCreate {
+	_c.mutation.SetDeletedAt(v)
+	return _c
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (sc *SystemCreate) SetNillableDeletedAt(i *int) *SystemCreate {
-	if i != nil {
-		sc.SetDeletedAt(*i)
+func (_c *SystemCreate) SetNillableDeletedAt(v *int) *SystemCreate {
+	if v != nil {
+		_c.SetDeletedAt(*v)
 	}
-	return sc
+	return _c
 }
 
 // SetKey sets the "key" field.
-func (sc *SystemCreate) SetKey(s string) *SystemCreate {
-	sc.mutation.SetKey(s)
-	return sc
+func (_c *SystemCreate) SetKey(v string) *SystemCreate {
+	_c.mutation.SetKey(v)
+	return _c
 }
 
 // SetValue sets the "value" field.
-func (sc *SystemCreate) SetValue(s string) *SystemCreate {
-	sc.mutation.SetValue(s)
-	return sc
+func (_c *SystemCreate) SetValue(v string) *SystemCreate {
+	_c.mutation.SetValue(v)
+	return _c
 }
 
 // Mutation returns the SystemMutation object of the builder.
-func (sc *SystemCreate) Mutation() *SystemMutation {
-	return sc.mutation
+func (_c *SystemCreate) Mutation() *SystemMutation {
+	return _c.mutation
 }
 
 // Save creates the System in the database.
-func (sc *SystemCreate) Save(ctx context.Context) (*System, error) {
-	if err := sc.defaults(); err != nil {
+func (_c *SystemCreate) Save(ctx context.Context) (*System, error) {
+	if err := _c.defaults(); err != nil {
 		return nil, err
 	}
-	return withHooks(ctx, sc.sqlSave, sc.mutation, sc.hooks)
+	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (sc *SystemCreate) SaveX(ctx context.Context) *System {
-	v, err := sc.Save(ctx)
+func (_c *SystemCreate) SaveX(ctx context.Context) *System {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -99,67 +99,67 @@ func (sc *SystemCreate) SaveX(ctx context.Context) *System {
 }
 
 // Exec executes the query.
-func (sc *SystemCreate) Exec(ctx context.Context) error {
-	_, err := sc.Save(ctx)
+func (_c *SystemCreate) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (sc *SystemCreate) ExecX(ctx context.Context) {
-	if err := sc.Exec(ctx); err != nil {
+func (_c *SystemCreate) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (sc *SystemCreate) defaults() error {
-	if _, ok := sc.mutation.CreatedAt(); !ok {
+func (_c *SystemCreate) defaults() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		if system.DefaultCreatedAt == nil {
 			return fmt.Errorf("ent: uninitialized system.DefaultCreatedAt (forgotten import ent/runtime?)")
 		}
 		v := system.DefaultCreatedAt()
-		sc.mutation.SetCreatedAt(v)
+		_c.mutation.SetCreatedAt(v)
 	}
-	if _, ok := sc.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		if system.DefaultUpdatedAt == nil {
 			return fmt.Errorf("ent: uninitialized system.DefaultUpdatedAt (forgotten import ent/runtime?)")
 		}
 		v := system.DefaultUpdatedAt()
-		sc.mutation.SetUpdatedAt(v)
+		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := sc.mutation.DeletedAt(); !ok {
+	if _, ok := _c.mutation.DeletedAt(); !ok {
 		v := system.DefaultDeletedAt
-		sc.mutation.SetDeletedAt(v)
+		_c.mutation.SetDeletedAt(v)
 	}
 	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (sc *SystemCreate) check() error {
-	if _, ok := sc.mutation.CreatedAt(); !ok {
+func (_c *SystemCreate) check() error {
+	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "System.created_at"`)}
 	}
-	if _, ok := sc.mutation.UpdatedAt(); !ok {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "System.updated_at"`)}
 	}
-	if _, ok := sc.mutation.DeletedAt(); !ok {
+	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "System.deleted_at"`)}
 	}
-	if _, ok := sc.mutation.Key(); !ok {
+	if _, ok := _c.mutation.Key(); !ok {
 		return &ValidationError{Name: "key", err: errors.New(`ent: missing required field "System.key"`)}
 	}
-	if _, ok := sc.mutation.Value(); !ok {
+	if _, ok := _c.mutation.Value(); !ok {
 		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "System.value"`)}
 	}
 	return nil
 }
 
-func (sc *SystemCreate) sqlSave(ctx context.Context) (*System, error) {
-	if err := sc.check(); err != nil {
+func (_c *SystemCreate) sqlSave(ctx context.Context) (*System, error) {
+	if err := _c.check(); err != nil {
 		return nil, err
 	}
-	_node, _spec := sc.createSpec()
-	if err := sqlgraph.CreateNode(ctx, sc.driver, _spec); err != nil {
+	_node, _spec := _c.createSpec()
+	if err := sqlgraph.CreateNode(ctx, _c.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
 			err = &ConstraintError{msg: err.Error(), wrap: err}
 		}
@@ -167,34 +167,34 @@ func (sc *SystemCreate) sqlSave(ctx context.Context) (*System, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
-	sc.mutation.id = &_node.ID
-	sc.mutation.done = true
+	_c.mutation.id = &_node.ID
+	_c.mutation.done = true
 	return _node, nil
 }
 
-func (sc *SystemCreate) createSpec() (*System, *sqlgraph.CreateSpec) {
+func (_c *SystemCreate) createSpec() (*System, *sqlgraph.CreateSpec) {
 	var (
-		_node = &System{config: sc.config}
+		_node = &System{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(system.Table, sqlgraph.NewFieldSpec(system.FieldID, field.TypeInt))
 	)
-	_spec.OnConflict = sc.conflict
-	if value, ok := sc.mutation.CreatedAt(); ok {
+	_spec.OnConflict = _c.conflict
+	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(system.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if value, ok := sc.mutation.UpdatedAt(); ok {
+	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(system.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := sc.mutation.DeletedAt(); ok {
+	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(system.FieldDeletedAt, field.TypeInt, value)
 		_node.DeletedAt = value
 	}
-	if value, ok := sc.mutation.Key(); ok {
+	if value, ok := _c.mutation.Key(); ok {
 		_spec.SetField(system.FieldKey, field.TypeString, value)
 		_node.Key = value
 	}
-	if value, ok := sc.mutation.Value(); ok {
+	if value, ok := _c.mutation.Value(); ok {
 		_spec.SetField(system.FieldValue, field.TypeString, value)
 		_node.Value = value
 	}
@@ -217,10 +217,10 @@ func (sc *SystemCreate) createSpec() (*System, *sqlgraph.CreateSpec) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (sc *SystemCreate) OnConflict(opts ...sql.ConflictOption) *SystemUpsertOne {
-	sc.conflict = opts
+func (_c *SystemCreate) OnConflict(opts ...sql.ConflictOption) *SystemUpsertOne {
+	_c.conflict = opts
 	return &SystemUpsertOne{
-		create: sc,
+		create: _c,
 	}
 }
 
@@ -230,10 +230,10 @@ func (sc *SystemCreate) OnConflict(opts ...sql.ConflictOption) *SystemUpsertOne 
 //	client.System.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (sc *SystemCreate) OnConflictColumns(columns ...string) *SystemUpsertOne {
-	sc.conflict = append(sc.conflict, sql.ConflictColumns(columns...))
+func (_c *SystemCreate) OnConflictColumns(columns ...string) *SystemUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &SystemUpsertOne{
-		create: sc,
+		create: _c,
 	}
 }
 
@@ -454,16 +454,16 @@ type SystemCreateBulk struct {
 }
 
 // Save creates the System entities in the database.
-func (scb *SystemCreateBulk) Save(ctx context.Context) ([]*System, error) {
-	if scb.err != nil {
-		return nil, scb.err
+func (_c *SystemCreateBulk) Save(ctx context.Context) ([]*System, error) {
+	if _c.err != nil {
+		return nil, _c.err
 	}
-	specs := make([]*sqlgraph.CreateSpec, len(scb.builders))
-	nodes := make([]*System, len(scb.builders))
-	mutators := make([]Mutator, len(scb.builders))
-	for i := range scb.builders {
+	specs := make([]*sqlgraph.CreateSpec, len(_c.builders))
+	nodes := make([]*System, len(_c.builders))
+	mutators := make([]Mutator, len(_c.builders))
+	for i := range _c.builders {
 		func(i int, root context.Context) {
-			builder := scb.builders[i]
+			builder := _c.builders[i]
 			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*SystemMutation)
@@ -477,12 +477,12 @@ func (scb *SystemCreateBulk) Save(ctx context.Context) ([]*System, error) {
 				var err error
 				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
-					_, err = mutators[i+1].Mutate(root, scb.builders[i+1].mutation)
+					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
-					spec.OnConflict = scb.conflict
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, scb.driver, spec); err != nil {
+					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
 							err = &ConstraintError{msg: err.Error(), wrap: err}
 						}
@@ -506,7 +506,7 @@ func (scb *SystemCreateBulk) Save(ctx context.Context) ([]*System, error) {
 		}(i, ctx)
 	}
 	if len(mutators) > 0 {
-		if _, err := mutators[0].Mutate(ctx, scb.builders[0].mutation); err != nil {
+		if _, err := mutators[0].Mutate(ctx, _c.builders[0].mutation); err != nil {
 			return nil, err
 		}
 	}
@@ -514,8 +514,8 @@ func (scb *SystemCreateBulk) Save(ctx context.Context) ([]*System, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (scb *SystemCreateBulk) SaveX(ctx context.Context) []*System {
-	v, err := scb.Save(ctx)
+func (_c *SystemCreateBulk) SaveX(ctx context.Context) []*System {
+	v, err := _c.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -523,14 +523,14 @@ func (scb *SystemCreateBulk) SaveX(ctx context.Context) []*System {
 }
 
 // Exec executes the query.
-func (scb *SystemCreateBulk) Exec(ctx context.Context) error {
-	_, err := scb.Save(ctx)
+func (_c *SystemCreateBulk) Exec(ctx context.Context) error {
+	_, err := _c.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (scb *SystemCreateBulk) ExecX(ctx context.Context) {
-	if err := scb.Exec(ctx); err != nil {
+func (_c *SystemCreateBulk) ExecX(ctx context.Context) {
+	if err := _c.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -550,10 +550,10 @@ func (scb *SystemCreateBulk) ExecX(ctx context.Context) {
 //			SetCreatedAt(v+v).
 //		}).
 //		Exec(ctx)
-func (scb *SystemCreateBulk) OnConflict(opts ...sql.ConflictOption) *SystemUpsertBulk {
-	scb.conflict = opts
+func (_c *SystemCreateBulk) OnConflict(opts ...sql.ConflictOption) *SystemUpsertBulk {
+	_c.conflict = opts
 	return &SystemUpsertBulk{
-		create: scb,
+		create: _c,
 	}
 }
 
@@ -563,10 +563,10 @@ func (scb *SystemCreateBulk) OnConflict(opts ...sql.ConflictOption) *SystemUpser
 //	client.System.Create().
 //		OnConflict(sql.ConflictColumns(columns...)).
 //		Exec(ctx)
-func (scb *SystemCreateBulk) OnConflictColumns(columns ...string) *SystemUpsertBulk {
-	scb.conflict = append(scb.conflict, sql.ConflictColumns(columns...))
+func (_c *SystemCreateBulk) OnConflictColumns(columns ...string) *SystemUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
 	return &SystemUpsertBulk{
-		create: scb,
+		create: _c,
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -28,6 +29,8 @@ type APIKey struct {
 	DeletedAt int `json:"deleted_at,omitempty"`
 	// UserID holds the value of the "user_id" field.
 	UserID int `json:"user_id,omitempty"`
+	// Project ID, default to 1 for backward compatibility
+	ProjectID int `json:"project_id,omitempty"`
 	// Key holds the value of the "key" field.
 	Key string `json:"key,omitempty"`
 	// Name holds the value of the "name" field.
@@ -48,13 +51,15 @@ type APIKey struct {
 type APIKeyEdges struct {
 	// User holds the value of the user edge.
 	User *User `json:"user,omitempty"`
+	// Project holds the value of the project edge.
+	Project *Project `json:"project,omitempty"`
 	// Requests holds the value of the requests edge.
 	Requests []*Request `json:"requests,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 	// totalCount holds the count of the edges above.
-	totalCount [2]map[string]int
+	totalCount [3]map[string]int
 
 	namedRequests map[string][]*Request
 }
@@ -70,10 +75,21 @@ func (e APIKeyEdges) UserOrErr() (*User, error) {
 	return nil, &NotLoadedError{edge: "user"}
 }
 
+// ProjectOrErr returns the Project value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e APIKeyEdges) ProjectOrErr() (*Project, error) {
+	if e.Project != nil {
+		return e.Project, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: project.Label}
+	}
+	return nil, &NotLoadedError{edge: "project"}
+}
+
 // RequestsOrErr returns the Requests value or an error if the edge
 // was not loaded in eager-loading.
 func (e APIKeyEdges) RequestsOrErr() ([]*Request, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.Requests, nil
 	}
 	return nil, &NotLoadedError{edge: "requests"}
@@ -86,7 +102,7 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case apikey.FieldScopes, apikey.FieldProfiles:
 			values[i] = new([]byte)
-		case apikey.FieldID, apikey.FieldDeletedAt, apikey.FieldUserID:
+		case apikey.FieldID, apikey.FieldDeletedAt, apikey.FieldUserID, apikey.FieldProjectID:
 			values[i] = new(sql.NullInt64)
 		case apikey.FieldKey, apikey.FieldName, apikey.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -101,7 +117,7 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the APIKey fields.
-func (ak *APIKey) assignValues(columns []string, values []any) error {
+func (_m *APIKey) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -112,54 +128,60 @@ func (ak *APIKey) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			ak.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case apikey.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				ak.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case apikey.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				ak.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case apikey.FieldDeletedAt:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
 			} else if value.Valid {
-				ak.DeletedAt = int(value.Int64)
+				_m.DeletedAt = int(value.Int64)
 			}
 		case apikey.FieldUserID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
-				ak.UserID = int(value.Int64)
+				_m.UserID = int(value.Int64)
+			}
+		case apikey.FieldProjectID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field project_id", values[i])
+			} else if value.Valid {
+				_m.ProjectID = int(value.Int64)
 			}
 		case apikey.FieldKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field key", values[i])
 			} else if value.Valid {
-				ak.Key = value.String
+				_m.Key = value.String
 			}
 		case apikey.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
-				ak.Name = value.String
+				_m.Name = value.String
 			}
 		case apikey.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
-				ak.Status = apikey.Status(value.String)
+				_m.Status = apikey.Status(value.String)
 			}
 		case apikey.FieldScopes:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field scopes", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &ak.Scopes); err != nil {
+				if err := json.Unmarshal(*value, &_m.Scopes); err != nil {
 					return fmt.Errorf("unmarshal field scopes: %w", err)
 				}
 			}
@@ -167,12 +189,12 @@ func (ak *APIKey) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field profiles", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &ak.Profiles); err != nil {
+				if err := json.Unmarshal(*value, &_m.Profiles); err != nil {
 					return fmt.Errorf("unmarshal field profiles: %w", err)
 				}
 			}
 		default:
-			ak.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -180,94 +202,102 @@ func (ak *APIKey) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the APIKey.
 // This includes values selected through modifiers, order, etc.
-func (ak *APIKey) Value(name string) (ent.Value, error) {
-	return ak.selectValues.Get(name)
+func (_m *APIKey) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryUser queries the "user" edge of the APIKey entity.
-func (ak *APIKey) QueryUser() *UserQuery {
-	return NewAPIKeyClient(ak.config).QueryUser(ak)
+func (_m *APIKey) QueryUser() *UserQuery {
+	return NewAPIKeyClient(_m.config).QueryUser(_m)
+}
+
+// QueryProject queries the "project" edge of the APIKey entity.
+func (_m *APIKey) QueryProject() *ProjectQuery {
+	return NewAPIKeyClient(_m.config).QueryProject(_m)
 }
 
 // QueryRequests queries the "requests" edge of the APIKey entity.
-func (ak *APIKey) QueryRequests() *RequestQuery {
-	return NewAPIKeyClient(ak.config).QueryRequests(ak)
+func (_m *APIKey) QueryRequests() *RequestQuery {
+	return NewAPIKeyClient(_m.config).QueryRequests(_m)
 }
 
 // Update returns a builder for updating this APIKey.
 // Note that you need to call APIKey.Unwrap() before calling this method if this APIKey
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (ak *APIKey) Update() *APIKeyUpdateOne {
-	return NewAPIKeyClient(ak.config).UpdateOne(ak)
+func (_m *APIKey) Update() *APIKeyUpdateOne {
+	return NewAPIKeyClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the APIKey entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (ak *APIKey) Unwrap() *APIKey {
-	_tx, ok := ak.config.driver.(*txDriver)
+func (_m *APIKey) Unwrap() *APIKey {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: APIKey is not a transactional entity")
 	}
-	ak.config.driver = _tx.drv
-	return ak
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (ak *APIKey) String() string {
+func (_m *APIKey) String() string {
 	var builder strings.Builder
 	builder.WriteString("APIKey(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", ak.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(ak.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(ak.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", ak.DeletedAt))
+	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("user_id=")
-	builder.WriteString(fmt.Sprintf("%v", ak.UserID))
+	builder.WriteString(fmt.Sprintf("%v", _m.UserID))
+	builder.WriteString(", ")
+	builder.WriteString("project_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ProjectID))
 	builder.WriteString(", ")
 	builder.WriteString("key=")
-	builder.WriteString(ak.Key)
+	builder.WriteString(_m.Key)
 	builder.WriteString(", ")
 	builder.WriteString("name=")
-	builder.WriteString(ak.Name)
+	builder.WriteString(_m.Name)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
-	builder.WriteString(fmt.Sprintf("%v", ak.Status))
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
 	builder.WriteString("scopes=")
-	builder.WriteString(fmt.Sprintf("%v", ak.Scopes))
+	builder.WriteString(fmt.Sprintf("%v", _m.Scopes))
 	builder.WriteString(", ")
 	builder.WriteString("profiles=")
-	builder.WriteString(fmt.Sprintf("%v", ak.Profiles))
+	builder.WriteString(fmt.Sprintf("%v", _m.Profiles))
 	builder.WriteByte(')')
 	return builder.String()
 }
 
 // NamedRequests returns the Requests named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (ak *APIKey) NamedRequests(name string) ([]*Request, error) {
-	if ak.Edges.namedRequests == nil {
+func (_m *APIKey) NamedRequests(name string) ([]*Request, error) {
+	if _m.Edges.namedRequests == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
-	nodes, ok := ak.Edges.namedRequests[name]
+	nodes, ok := _m.Edges.namedRequests[name]
 	if !ok {
 		return nil, &NotLoadedError{edge: name}
 	}
 	return nodes, nil
 }
 
-func (ak *APIKey) appendNamedRequests(name string, edges ...*Request) {
-	if ak.Edges.namedRequests == nil {
-		ak.Edges.namedRequests = make(map[string][]*Request)
+func (_m *APIKey) appendNamedRequests(name string, edges ...*Request) {
+	if _m.Edges.namedRequests == nil {
+		_m.Edges.namedRequests = make(map[string][]*Request)
 	}
 	if len(edges) == 0 {
-		ak.Edges.namedRequests[name] = []*Request{}
+		_m.Edges.namedRequests[name] = []*Request{}
 	} else {
-		ak.Edges.namedRequests[name] = append(ak.Edges.namedRequests[name], edges...)
+		_m.Edges.namedRequests[name] = append(_m.Edges.namedRequests[name], edges...)
 	}
 }
 

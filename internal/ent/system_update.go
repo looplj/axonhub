@@ -24,82 +24,82 @@ type SystemUpdate struct {
 }
 
 // Where appends a list predicates to the SystemUpdate builder.
-func (su *SystemUpdate) Where(ps ...predicate.System) *SystemUpdate {
-	su.mutation.Where(ps...)
-	return su
+func (_u *SystemUpdate) Where(ps ...predicate.System) *SystemUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (su *SystemUpdate) SetUpdatedAt(t time.Time) *SystemUpdate {
-	su.mutation.SetUpdatedAt(t)
-	return su
+func (_u *SystemUpdate) SetUpdatedAt(v time.Time) *SystemUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (su *SystemUpdate) SetDeletedAt(i int) *SystemUpdate {
-	su.mutation.ResetDeletedAt()
-	su.mutation.SetDeletedAt(i)
-	return su
+func (_u *SystemUpdate) SetDeletedAt(v int) *SystemUpdate {
+	_u.mutation.ResetDeletedAt()
+	_u.mutation.SetDeletedAt(v)
+	return _u
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (su *SystemUpdate) SetNillableDeletedAt(i *int) *SystemUpdate {
-	if i != nil {
-		su.SetDeletedAt(*i)
+func (_u *SystemUpdate) SetNillableDeletedAt(v *int) *SystemUpdate {
+	if v != nil {
+		_u.SetDeletedAt(*v)
 	}
-	return su
+	return _u
 }
 
-// AddDeletedAt adds i to the "deleted_at" field.
-func (su *SystemUpdate) AddDeletedAt(i int) *SystemUpdate {
-	su.mutation.AddDeletedAt(i)
-	return su
+// AddDeletedAt adds value to the "deleted_at" field.
+func (_u *SystemUpdate) AddDeletedAt(v int) *SystemUpdate {
+	_u.mutation.AddDeletedAt(v)
+	return _u
 }
 
 // SetKey sets the "key" field.
-func (su *SystemUpdate) SetKey(s string) *SystemUpdate {
-	su.mutation.SetKey(s)
-	return su
+func (_u *SystemUpdate) SetKey(v string) *SystemUpdate {
+	_u.mutation.SetKey(v)
+	return _u
 }
 
 // SetNillableKey sets the "key" field if the given value is not nil.
-func (su *SystemUpdate) SetNillableKey(s *string) *SystemUpdate {
-	if s != nil {
-		su.SetKey(*s)
+func (_u *SystemUpdate) SetNillableKey(v *string) *SystemUpdate {
+	if v != nil {
+		_u.SetKey(*v)
 	}
-	return su
+	return _u
 }
 
 // SetValue sets the "value" field.
-func (su *SystemUpdate) SetValue(s string) *SystemUpdate {
-	su.mutation.SetValue(s)
-	return su
+func (_u *SystemUpdate) SetValue(v string) *SystemUpdate {
+	_u.mutation.SetValue(v)
+	return _u
 }
 
 // SetNillableValue sets the "value" field if the given value is not nil.
-func (su *SystemUpdate) SetNillableValue(s *string) *SystemUpdate {
-	if s != nil {
-		su.SetValue(*s)
+func (_u *SystemUpdate) SetNillableValue(v *string) *SystemUpdate {
+	if v != nil {
+		_u.SetValue(*v)
 	}
-	return su
+	return _u
 }
 
 // Mutation returns the SystemMutation object of the builder.
-func (su *SystemUpdate) Mutation() *SystemMutation {
-	return su.mutation
+func (_u *SystemUpdate) Mutation() *SystemMutation {
+	return _u.mutation
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (su *SystemUpdate) Save(ctx context.Context) (int, error) {
-	if err := su.defaults(); err != nil {
+func (_u *SystemUpdate) Save(ctx context.Context) (int, error) {
+	if err := _u.defaults(); err != nil {
 		return 0, err
 	}
-	return withHooks(ctx, su.sqlSave, su.mutation, su.hooks)
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (su *SystemUpdate) SaveX(ctx context.Context) int {
-	affected, err := su.Save(ctx)
+func (_u *SystemUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -107,62 +107,62 @@ func (su *SystemUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (su *SystemUpdate) Exec(ctx context.Context) error {
-	_, err := su.Save(ctx)
+func (_u *SystemUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (su *SystemUpdate) ExecX(ctx context.Context) {
-	if err := su.Exec(ctx); err != nil {
+func (_u *SystemUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (su *SystemUpdate) defaults() error {
-	if _, ok := su.mutation.UpdatedAt(); !ok {
+func (_u *SystemUpdate) defaults() error {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		if system.UpdateDefaultUpdatedAt == nil {
 			return fmt.Errorf("ent: uninitialized system.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
 		}
 		v := system.UpdateDefaultUpdatedAt()
-		su.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 	return nil
 }
 
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
-func (su *SystemUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *SystemUpdate {
-	su.modifiers = append(su.modifiers, modifiers...)
-	return su
+func (_u *SystemUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *SystemUpdate {
+	_u.modifiers = append(_u.modifiers, modifiers...)
+	return _u
 }
 
-func (su *SystemUpdate) sqlSave(ctx context.Context) (n int, err error) {
+func (_u *SystemUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	_spec := sqlgraph.NewUpdateSpec(system.Table, system.Columns, sqlgraph.NewFieldSpec(system.FieldID, field.TypeInt))
-	if ps := su.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := su.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(system.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := su.mutation.DeletedAt(); ok {
+	if value, ok := _u.mutation.DeletedAt(); ok {
 		_spec.SetField(system.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := su.mutation.AddedDeletedAt(); ok {
+	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(system.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := su.mutation.Key(); ok {
+	if value, ok := _u.mutation.Key(); ok {
 		_spec.SetField(system.FieldKey, field.TypeString, value)
 	}
-	if value, ok := su.mutation.Value(); ok {
+	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(system.FieldValue, field.TypeString, value)
 	}
-	_spec.AddModifiers(su.modifiers...)
-	if n, err = sqlgraph.UpdateNodes(ctx, su.driver, _spec); err != nil {
+	_spec.AddModifiers(_u.modifiers...)
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{system.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -170,8 +170,8 @@ func (su *SystemUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	su.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // SystemUpdateOne is the builder for updating a single System entity.
@@ -184,89 +184,89 @@ type SystemUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (suo *SystemUpdateOne) SetUpdatedAt(t time.Time) *SystemUpdateOne {
-	suo.mutation.SetUpdatedAt(t)
-	return suo
+func (_u *SystemUpdateOne) SetUpdatedAt(v time.Time) *SystemUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (suo *SystemUpdateOne) SetDeletedAt(i int) *SystemUpdateOne {
-	suo.mutation.ResetDeletedAt()
-	suo.mutation.SetDeletedAt(i)
-	return suo
+func (_u *SystemUpdateOne) SetDeletedAt(v int) *SystemUpdateOne {
+	_u.mutation.ResetDeletedAt()
+	_u.mutation.SetDeletedAt(v)
+	return _u
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (suo *SystemUpdateOne) SetNillableDeletedAt(i *int) *SystemUpdateOne {
-	if i != nil {
-		suo.SetDeletedAt(*i)
+func (_u *SystemUpdateOne) SetNillableDeletedAt(v *int) *SystemUpdateOne {
+	if v != nil {
+		_u.SetDeletedAt(*v)
 	}
-	return suo
+	return _u
 }
 
-// AddDeletedAt adds i to the "deleted_at" field.
-func (suo *SystemUpdateOne) AddDeletedAt(i int) *SystemUpdateOne {
-	suo.mutation.AddDeletedAt(i)
-	return suo
+// AddDeletedAt adds value to the "deleted_at" field.
+func (_u *SystemUpdateOne) AddDeletedAt(v int) *SystemUpdateOne {
+	_u.mutation.AddDeletedAt(v)
+	return _u
 }
 
 // SetKey sets the "key" field.
-func (suo *SystemUpdateOne) SetKey(s string) *SystemUpdateOne {
-	suo.mutation.SetKey(s)
-	return suo
+func (_u *SystemUpdateOne) SetKey(v string) *SystemUpdateOne {
+	_u.mutation.SetKey(v)
+	return _u
 }
 
 // SetNillableKey sets the "key" field if the given value is not nil.
-func (suo *SystemUpdateOne) SetNillableKey(s *string) *SystemUpdateOne {
-	if s != nil {
-		suo.SetKey(*s)
+func (_u *SystemUpdateOne) SetNillableKey(v *string) *SystemUpdateOne {
+	if v != nil {
+		_u.SetKey(*v)
 	}
-	return suo
+	return _u
 }
 
 // SetValue sets the "value" field.
-func (suo *SystemUpdateOne) SetValue(s string) *SystemUpdateOne {
-	suo.mutation.SetValue(s)
-	return suo
+func (_u *SystemUpdateOne) SetValue(v string) *SystemUpdateOne {
+	_u.mutation.SetValue(v)
+	return _u
 }
 
 // SetNillableValue sets the "value" field if the given value is not nil.
-func (suo *SystemUpdateOne) SetNillableValue(s *string) *SystemUpdateOne {
-	if s != nil {
-		suo.SetValue(*s)
+func (_u *SystemUpdateOne) SetNillableValue(v *string) *SystemUpdateOne {
+	if v != nil {
+		_u.SetValue(*v)
 	}
-	return suo
+	return _u
 }
 
 // Mutation returns the SystemMutation object of the builder.
-func (suo *SystemUpdateOne) Mutation() *SystemMutation {
-	return suo.mutation
+func (_u *SystemUpdateOne) Mutation() *SystemMutation {
+	return _u.mutation
 }
 
 // Where appends a list predicates to the SystemUpdate builder.
-func (suo *SystemUpdateOne) Where(ps ...predicate.System) *SystemUpdateOne {
-	suo.mutation.Where(ps...)
-	return suo
+func (_u *SystemUpdateOne) Where(ps ...predicate.System) *SystemUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (suo *SystemUpdateOne) Select(field string, fields ...string) *SystemUpdateOne {
-	suo.fields = append([]string{field}, fields...)
-	return suo
+func (_u *SystemUpdateOne) Select(field string, fields ...string) *SystemUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated System entity.
-func (suo *SystemUpdateOne) Save(ctx context.Context) (*System, error) {
-	if err := suo.defaults(); err != nil {
+func (_u *SystemUpdateOne) Save(ctx context.Context) (*System, error) {
+	if err := _u.defaults(); err != nil {
 		return nil, err
 	}
-	return withHooks(ctx, suo.sqlSave, suo.mutation, suo.hooks)
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (suo *SystemUpdateOne) SaveX(ctx context.Context) *System {
-	node, err := suo.Save(ctx)
+func (_u *SystemUpdateOne) SaveX(ctx context.Context) *System {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -274,44 +274,44 @@ func (suo *SystemUpdateOne) SaveX(ctx context.Context) *System {
 }
 
 // Exec executes the query on the entity.
-func (suo *SystemUpdateOne) Exec(ctx context.Context) error {
-	_, err := suo.Save(ctx)
+func (_u *SystemUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (suo *SystemUpdateOne) ExecX(ctx context.Context) {
-	if err := suo.Exec(ctx); err != nil {
+func (_u *SystemUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (suo *SystemUpdateOne) defaults() error {
-	if _, ok := suo.mutation.UpdatedAt(); !ok {
+func (_u *SystemUpdateOne) defaults() error {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		if system.UpdateDefaultUpdatedAt == nil {
 			return fmt.Errorf("ent: uninitialized system.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
 		}
 		v := system.UpdateDefaultUpdatedAt()
-		suo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 	return nil
 }
 
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
-func (suo *SystemUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *SystemUpdateOne {
-	suo.modifiers = append(suo.modifiers, modifiers...)
-	return suo
+func (_u *SystemUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *SystemUpdateOne {
+	_u.modifiers = append(_u.modifiers, modifiers...)
+	return _u
 }
 
-func (suo *SystemUpdateOne) sqlSave(ctx context.Context) (_node *System, err error) {
+func (_u *SystemUpdateOne) sqlSave(ctx context.Context) (_node *System, err error) {
 	_spec := sqlgraph.NewUpdateSpec(system.Table, system.Columns, sqlgraph.NewFieldSpec(system.FieldID, field.TypeInt))
-	id, ok := suo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "System.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := suo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, system.FieldID)
 		for _, f := range fields {
@@ -323,33 +323,33 @@ func (suo *SystemUpdateOne) sqlSave(ctx context.Context) (_node *System, err err
 			}
 		}
 	}
-	if ps := suo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := suo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(system.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := suo.mutation.DeletedAt(); ok {
+	if value, ok := _u.mutation.DeletedAt(); ok {
 		_spec.SetField(system.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := suo.mutation.AddedDeletedAt(); ok {
+	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(system.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := suo.mutation.Key(); ok {
+	if value, ok := _u.mutation.Key(); ok {
 		_spec.SetField(system.FieldKey, field.TypeString, value)
 	}
-	if value, ok := suo.mutation.Value(); ok {
+	if value, ok := _u.mutation.Value(); ok {
 		_spec.SetField(system.FieldValue, field.TypeString, value)
 	}
-	_spec.AddModifiers(suo.modifiers...)
-	_node = &System{config: suo.config}
+	_spec.AddModifiers(_u.modifiers...)
+	_node = &System{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, suo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{system.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -357,6 +357,6 @@ func (suo *SystemUpdateOne) sqlSave(ctx context.Context) (_node *System, err err
 		}
 		return nil, err
 	}
-	suo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

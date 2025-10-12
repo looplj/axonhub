@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -28,6 +29,7 @@ type UsageLogQuery struct {
 	predicates  []predicate.UsageLog
 	withUser    *UserQuery
 	withRequest *RequestQuery
+	withProject *ProjectQuery
 	withChannel *ChannelQuery
 	loadTotal   []func(context.Context, []*UsageLog) error
 	modifiers   []func(*sql.Selector)
@@ -37,44 +39,44 @@ type UsageLogQuery struct {
 }
 
 // Where adds a new predicate for the UsageLogQuery builder.
-func (ulq *UsageLogQuery) Where(ps ...predicate.UsageLog) *UsageLogQuery {
-	ulq.predicates = append(ulq.predicates, ps...)
-	return ulq
+func (_q *UsageLogQuery) Where(ps ...predicate.UsageLog) *UsageLogQuery {
+	_q.predicates = append(_q.predicates, ps...)
+	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (ulq *UsageLogQuery) Limit(limit int) *UsageLogQuery {
-	ulq.ctx.Limit = &limit
-	return ulq
+func (_q *UsageLogQuery) Limit(limit int) *UsageLogQuery {
+	_q.ctx.Limit = &limit
+	return _q
 }
 
 // Offset to start from.
-func (ulq *UsageLogQuery) Offset(offset int) *UsageLogQuery {
-	ulq.ctx.Offset = &offset
-	return ulq
+func (_q *UsageLogQuery) Offset(offset int) *UsageLogQuery {
+	_q.ctx.Offset = &offset
+	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (ulq *UsageLogQuery) Unique(unique bool) *UsageLogQuery {
-	ulq.ctx.Unique = &unique
-	return ulq
+func (_q *UsageLogQuery) Unique(unique bool) *UsageLogQuery {
+	_q.ctx.Unique = &unique
+	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (ulq *UsageLogQuery) Order(o ...usagelog.OrderOption) *UsageLogQuery {
-	ulq.order = append(ulq.order, o...)
-	return ulq
+func (_q *UsageLogQuery) Order(o ...usagelog.OrderOption) *UsageLogQuery {
+	_q.order = append(_q.order, o...)
+	return _q
 }
 
 // QueryUser chains the current query on the "user" edge.
-func (ulq *UsageLogQuery) QueryUser() *UserQuery {
-	query := (&UserClient{config: ulq.config}).Query()
+func (_q *UsageLogQuery) QueryUser() *UserQuery {
+	query := (&UserClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := ulq.prepareQuery(ctx); err != nil {
+		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := ulq.sqlQuery(ctx)
+		selector := _q.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -83,20 +85,20 @@ func (ulq *UsageLogQuery) QueryUser() *UserQuery {
 			sqlgraph.To(user.Table, user.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.UserTable, usagelog.UserColumn),
 		)
-		fromU = sqlgraph.SetNeighbors(ulq.driver.Dialect(), step)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
 	}
 	return query
 }
 
 // QueryRequest chains the current query on the "request" edge.
-func (ulq *UsageLogQuery) QueryRequest() *RequestQuery {
-	query := (&RequestClient{config: ulq.config}).Query()
+func (_q *UsageLogQuery) QueryRequest() *RequestQuery {
+	query := (&RequestClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := ulq.prepareQuery(ctx); err != nil {
+		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := ulq.sqlQuery(ctx)
+		selector := _q.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -105,20 +107,42 @@ func (ulq *UsageLogQuery) QueryRequest() *RequestQuery {
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.RequestTable, usagelog.RequestColumn),
 		)
-		fromU = sqlgraph.SetNeighbors(ulq.driver.Dialect(), step)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryProject chains the current query on the "project" edge.
+func (_q *UsageLogQuery) QueryProject() *ProjectQuery {
+	query := (&ProjectClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(usagelog.Table, usagelog.FieldID, selector),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.ProjectTable, usagelog.ProjectColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
 	}
 	return query
 }
 
 // QueryChannel chains the current query on the "channel" edge.
-func (ulq *UsageLogQuery) QueryChannel() *ChannelQuery {
-	query := (&ChannelClient{config: ulq.config}).Query()
+func (_q *UsageLogQuery) QueryChannel() *ChannelQuery {
+	query := (&ChannelClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := ulq.prepareQuery(ctx); err != nil {
+		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := ulq.sqlQuery(ctx)
+		selector := _q.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -127,7 +151,7 @@ func (ulq *UsageLogQuery) QueryChannel() *ChannelQuery {
 			sqlgraph.To(channel.Table, channel.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.ChannelTable, usagelog.ChannelColumn),
 		)
-		fromU = sqlgraph.SetNeighbors(ulq.driver.Dialect(), step)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
 	}
 	return query
@@ -135,8 +159,8 @@ func (ulq *UsageLogQuery) QueryChannel() *ChannelQuery {
 
 // First returns the first UsageLog entity from the query.
 // Returns a *NotFoundError when no UsageLog was found.
-func (ulq *UsageLogQuery) First(ctx context.Context) (*UsageLog, error) {
-	nodes, err := ulq.Limit(1).All(setContextOp(ctx, ulq.ctx, ent.OpQueryFirst))
+func (_q *UsageLogQuery) First(ctx context.Context) (*UsageLog, error) {
+	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
@@ -147,8 +171,8 @@ func (ulq *UsageLogQuery) First(ctx context.Context) (*UsageLog, error) {
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (ulq *UsageLogQuery) FirstX(ctx context.Context) *UsageLog {
-	node, err := ulq.First(ctx)
+func (_q *UsageLogQuery) FirstX(ctx context.Context) *UsageLog {
+	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
@@ -157,9 +181,9 @@ func (ulq *UsageLogQuery) FirstX(ctx context.Context) *UsageLog {
 
 // FirstID returns the first UsageLog ID from the query.
 // Returns a *NotFoundError when no UsageLog ID was found.
-func (ulq *UsageLogQuery) FirstID(ctx context.Context) (id int, err error) {
+func (_q *UsageLogQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = ulq.Limit(1).IDs(setContextOp(ctx, ulq.ctx, ent.OpQueryFirstID)); err != nil {
+	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -170,8 +194,8 @@ func (ulq *UsageLogQuery) FirstID(ctx context.Context) (id int, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (ulq *UsageLogQuery) FirstIDX(ctx context.Context) int {
-	id, err := ulq.FirstID(ctx)
+func (_q *UsageLogQuery) FirstIDX(ctx context.Context) int {
+	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
@@ -181,8 +205,8 @@ func (ulq *UsageLogQuery) FirstIDX(ctx context.Context) int {
 // Only returns a single UsageLog entity found by the query, ensuring it only returns one.
 // Returns a *NotSingularError when more than one UsageLog entity is found.
 // Returns a *NotFoundError when no UsageLog entities are found.
-func (ulq *UsageLogQuery) Only(ctx context.Context) (*UsageLog, error) {
-	nodes, err := ulq.Limit(2).All(setContextOp(ctx, ulq.ctx, ent.OpQueryOnly))
+func (_q *UsageLogQuery) Only(ctx context.Context) (*UsageLog, error) {
+	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -197,8 +221,8 @@ func (ulq *UsageLogQuery) Only(ctx context.Context) (*UsageLog, error) {
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (ulq *UsageLogQuery) OnlyX(ctx context.Context) *UsageLog {
-	node, err := ulq.Only(ctx)
+func (_q *UsageLogQuery) OnlyX(ctx context.Context) *UsageLog {
+	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -208,9 +232,9 @@ func (ulq *UsageLogQuery) OnlyX(ctx context.Context) *UsageLog {
 // OnlyID is like Only, but returns the only UsageLog ID in the query.
 // Returns a *NotSingularError when more than one UsageLog ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (ulq *UsageLogQuery) OnlyID(ctx context.Context) (id int, err error) {
+func (_q *UsageLogQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = ulq.Limit(2).IDs(setContextOp(ctx, ulq.ctx, ent.OpQueryOnlyID)); err != nil {
+	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -225,8 +249,8 @@ func (ulq *UsageLogQuery) OnlyID(ctx context.Context) (id int, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (ulq *UsageLogQuery) OnlyIDX(ctx context.Context) int {
-	id, err := ulq.OnlyID(ctx)
+func (_q *UsageLogQuery) OnlyIDX(ctx context.Context) int {
+	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -234,18 +258,18 @@ func (ulq *UsageLogQuery) OnlyIDX(ctx context.Context) int {
 }
 
 // All executes the query and returns a list of UsageLogs.
-func (ulq *UsageLogQuery) All(ctx context.Context) ([]*UsageLog, error) {
-	ctx = setContextOp(ctx, ulq.ctx, ent.OpQueryAll)
-	if err := ulq.prepareQuery(ctx); err != nil {
+func (_q *UsageLogQuery) All(ctx context.Context) ([]*UsageLog, error) {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
+	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
 	qr := querierAll[[]*UsageLog, *UsageLogQuery]()
-	return withInterceptors[[]*UsageLog](ctx, ulq, qr, ulq.inters)
+	return withInterceptors[[]*UsageLog](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (ulq *UsageLogQuery) AllX(ctx context.Context) []*UsageLog {
-	nodes, err := ulq.All(ctx)
+func (_q *UsageLogQuery) AllX(ctx context.Context) []*UsageLog {
+	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -253,20 +277,20 @@ func (ulq *UsageLogQuery) AllX(ctx context.Context) []*UsageLog {
 }
 
 // IDs executes the query and returns a list of UsageLog IDs.
-func (ulq *UsageLogQuery) IDs(ctx context.Context) (ids []int, err error) {
-	if ulq.ctx.Unique == nil && ulq.path != nil {
-		ulq.Unique(true)
+func (_q *UsageLogQuery) IDs(ctx context.Context) (ids []int, err error) {
+	if _q.ctx.Unique == nil && _q.path != nil {
+		_q.Unique(true)
 	}
-	ctx = setContextOp(ctx, ulq.ctx, ent.OpQueryIDs)
-	if err = ulq.Select(usagelog.FieldID).Scan(ctx, &ids); err != nil {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
+	if err = _q.Select(usagelog.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (ulq *UsageLogQuery) IDsX(ctx context.Context) []int {
-	ids, err := ulq.IDs(ctx)
+func (_q *UsageLogQuery) IDsX(ctx context.Context) []int {
+	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -274,17 +298,17 @@ func (ulq *UsageLogQuery) IDsX(ctx context.Context) []int {
 }
 
 // Count returns the count of the given query.
-func (ulq *UsageLogQuery) Count(ctx context.Context) (int, error) {
-	ctx = setContextOp(ctx, ulq.ctx, ent.OpQueryCount)
-	if err := ulq.prepareQuery(ctx); err != nil {
+func (_q *UsageLogQuery) Count(ctx context.Context) (int, error) {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
+	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, ulq, querierCount[*UsageLogQuery](), ulq.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*UsageLogQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (ulq *UsageLogQuery) CountX(ctx context.Context) int {
-	count, err := ulq.Count(ctx)
+func (_q *UsageLogQuery) CountX(ctx context.Context) int {
+	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -292,9 +316,9 @@ func (ulq *UsageLogQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (ulq *UsageLogQuery) Exist(ctx context.Context) (bool, error) {
-	ctx = setContextOp(ctx, ulq.ctx, ent.OpQueryExist)
-	switch _, err := ulq.FirstID(ctx); {
+func (_q *UsageLogQuery) Exist(ctx context.Context) (bool, error) {
+	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
+	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
 		return false, nil
 	case err != nil:
@@ -305,8 +329,8 @@ func (ulq *UsageLogQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (ulq *UsageLogQuery) ExistX(ctx context.Context) bool {
-	exist, err := ulq.Exist(ctx)
+func (_q *UsageLogQuery) ExistX(ctx context.Context) bool {
+	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -315,57 +339,69 @@ func (ulq *UsageLogQuery) ExistX(ctx context.Context) bool {
 
 // Clone returns a duplicate of the UsageLogQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (ulq *UsageLogQuery) Clone() *UsageLogQuery {
-	if ulq == nil {
+func (_q *UsageLogQuery) Clone() *UsageLogQuery {
+	if _q == nil {
 		return nil
 	}
 	return &UsageLogQuery{
-		config:      ulq.config,
-		ctx:         ulq.ctx.Clone(),
-		order:       append([]usagelog.OrderOption{}, ulq.order...),
-		inters:      append([]Interceptor{}, ulq.inters...),
-		predicates:  append([]predicate.UsageLog{}, ulq.predicates...),
-		withUser:    ulq.withUser.Clone(),
-		withRequest: ulq.withRequest.Clone(),
-		withChannel: ulq.withChannel.Clone(),
+		config:      _q.config,
+		ctx:         _q.ctx.Clone(),
+		order:       append([]usagelog.OrderOption{}, _q.order...),
+		inters:      append([]Interceptor{}, _q.inters...),
+		predicates:  append([]predicate.UsageLog{}, _q.predicates...),
+		withUser:    _q.withUser.Clone(),
+		withRequest: _q.withRequest.Clone(),
+		withProject: _q.withProject.Clone(),
+		withChannel: _q.withChannel.Clone(),
 		// clone intermediate query.
-		sql:       ulq.sql.Clone(),
-		path:      ulq.path,
-		modifiers: append([]func(*sql.Selector){}, ulq.modifiers...),
+		sql:       _q.sql.Clone(),
+		path:      _q.path,
+		modifiers: append([]func(*sql.Selector){}, _q.modifiers...),
 	}
 }
 
 // WithUser tells the query-builder to eager-load the nodes that are connected to
 // the "user" edge. The optional arguments are used to configure the query builder of the edge.
-func (ulq *UsageLogQuery) WithUser(opts ...func(*UserQuery)) *UsageLogQuery {
-	query := (&UserClient{config: ulq.config}).Query()
+func (_q *UsageLogQuery) WithUser(opts ...func(*UserQuery)) *UsageLogQuery {
+	query := (&UserClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	ulq.withUser = query
-	return ulq
+	_q.withUser = query
+	return _q
 }
 
 // WithRequest tells the query-builder to eager-load the nodes that are connected to
 // the "request" edge. The optional arguments are used to configure the query builder of the edge.
-func (ulq *UsageLogQuery) WithRequest(opts ...func(*RequestQuery)) *UsageLogQuery {
-	query := (&RequestClient{config: ulq.config}).Query()
+func (_q *UsageLogQuery) WithRequest(opts ...func(*RequestQuery)) *UsageLogQuery {
+	query := (&RequestClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	ulq.withRequest = query
-	return ulq
+	_q.withRequest = query
+	return _q
+}
+
+// WithProject tells the query-builder to eager-load the nodes that are connected to
+// the "project" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UsageLogQuery) WithProject(opts ...func(*ProjectQuery)) *UsageLogQuery {
+	query := (&ProjectClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withProject = query
+	return _q
 }
 
 // WithChannel tells the query-builder to eager-load the nodes that are connected to
 // the "channel" edge. The optional arguments are used to configure the query builder of the edge.
-func (ulq *UsageLogQuery) WithChannel(opts ...func(*ChannelQuery)) *UsageLogQuery {
-	query := (&ChannelClient{config: ulq.config}).Query()
+func (_q *UsageLogQuery) WithChannel(opts ...func(*ChannelQuery)) *UsageLogQuery {
+	query := (&ChannelClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	ulq.withChannel = query
-	return ulq
+	_q.withChannel = query
+	return _q
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -382,10 +418,10 @@ func (ulq *UsageLogQuery) WithChannel(opts ...func(*ChannelQuery)) *UsageLogQuer
 //		GroupBy(usagelog.FieldCreatedAt).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (ulq *UsageLogQuery) GroupBy(field string, fields ...string) *UsageLogGroupBy {
-	ulq.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &UsageLogGroupBy{build: ulq}
-	grbuild.flds = &ulq.ctx.Fields
+func (_q *UsageLogQuery) GroupBy(field string, fields ...string) *UsageLogGroupBy {
+	_q.ctx.Fields = append([]string{field}, fields...)
+	grbuild := &UsageLogGroupBy{build: _q}
+	grbuild.flds = &_q.ctx.Fields
 	grbuild.label = usagelog.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
@@ -403,109 +439,116 @@ func (ulq *UsageLogQuery) GroupBy(field string, fields ...string) *UsageLogGroup
 //	client.UsageLog.Query().
 //		Select(usagelog.FieldCreatedAt).
 //		Scan(ctx, &v)
-func (ulq *UsageLogQuery) Select(fields ...string) *UsageLogSelect {
-	ulq.ctx.Fields = append(ulq.ctx.Fields, fields...)
-	sbuild := &UsageLogSelect{UsageLogQuery: ulq}
+func (_q *UsageLogQuery) Select(fields ...string) *UsageLogSelect {
+	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
+	sbuild := &UsageLogSelect{UsageLogQuery: _q}
 	sbuild.label = usagelog.Label
-	sbuild.flds, sbuild.scan = &ulq.ctx.Fields, sbuild.Scan
+	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
 // Aggregate returns a UsageLogSelect configured with the given aggregations.
-func (ulq *UsageLogQuery) Aggregate(fns ...AggregateFunc) *UsageLogSelect {
-	return ulq.Select().Aggregate(fns...)
+func (_q *UsageLogQuery) Aggregate(fns ...AggregateFunc) *UsageLogSelect {
+	return _q.Select().Aggregate(fns...)
 }
 
-func (ulq *UsageLogQuery) prepareQuery(ctx context.Context) error {
-	for _, inter := range ulq.inters {
+func (_q *UsageLogQuery) prepareQuery(ctx context.Context) error {
+	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
 		}
 		if trv, ok := inter.(Traverser); ok {
-			if err := trv.Traverse(ctx, ulq); err != nil {
+			if err := trv.Traverse(ctx, _q); err != nil {
 				return err
 			}
 		}
 	}
-	for _, f := range ulq.ctx.Fields {
+	for _, f := range _q.ctx.Fields {
 		if !usagelog.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
-	if ulq.path != nil {
-		prev, err := ulq.path(ctx)
+	if _q.path != nil {
+		prev, err := _q.path(ctx)
 		if err != nil {
 			return err
 		}
-		ulq.sql = prev
+		_q.sql = prev
 	}
 	if usagelog.Policy == nil {
 		return errors.New("ent: uninitialized usagelog.Policy (forgotten import ent/runtime?)")
 	}
-	if err := usagelog.Policy.EvalQuery(ctx, ulq); err != nil {
+	if err := usagelog.Policy.EvalQuery(ctx, _q); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (ulq *UsageLogQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*UsageLog, error) {
+func (_q *UsageLogQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*UsageLog, error) {
 	var (
 		nodes       = []*UsageLog{}
-		_spec       = ulq.querySpec()
-		loadedTypes = [3]bool{
-			ulq.withUser != nil,
-			ulq.withRequest != nil,
-			ulq.withChannel != nil,
+		_spec       = _q.querySpec()
+		loadedTypes = [4]bool{
+			_q.withUser != nil,
+			_q.withRequest != nil,
+			_q.withProject != nil,
+			_q.withChannel != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*UsageLog).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &UsageLog{config: ulq.config}
+		node := &UsageLog{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
-	if len(ulq.modifiers) > 0 {
-		_spec.Modifiers = ulq.modifiers
+	if len(_q.modifiers) > 0 {
+		_spec.Modifiers = _q.modifiers
 	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
-	if err := sqlgraph.QueryNodes(ctx, ulq.driver, _spec); err != nil {
+	if err := sqlgraph.QueryNodes(ctx, _q.driver, _spec); err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := ulq.withUser; query != nil {
-		if err := ulq.loadUser(ctx, query, nodes, nil,
+	if query := _q.withUser; query != nil {
+		if err := _q.loadUser(ctx, query, nodes, nil,
 			func(n *UsageLog, e *User) { n.Edges.User = e }); err != nil {
 			return nil, err
 		}
 	}
-	if query := ulq.withRequest; query != nil {
-		if err := ulq.loadRequest(ctx, query, nodes, nil,
+	if query := _q.withRequest; query != nil {
+		if err := _q.loadRequest(ctx, query, nodes, nil,
 			func(n *UsageLog, e *Request) { n.Edges.Request = e }); err != nil {
 			return nil, err
 		}
 	}
-	if query := ulq.withChannel; query != nil {
-		if err := ulq.loadChannel(ctx, query, nodes, nil,
+	if query := _q.withProject; query != nil {
+		if err := _q.loadProject(ctx, query, nodes, nil,
+			func(n *UsageLog, e *Project) { n.Edges.Project = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withChannel; query != nil {
+		if err := _q.loadChannel(ctx, query, nodes, nil,
 			func(n *UsageLog, e *Channel) { n.Edges.Channel = e }); err != nil {
 			return nil, err
 		}
 	}
-	for i := range ulq.loadTotal {
-		if err := ulq.loadTotal[i](ctx, nodes); err != nil {
+	for i := range _q.loadTotal {
+		if err := _q.loadTotal[i](ctx, nodes); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (ulq *UsageLogQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*UsageLog, init func(*UsageLog), assign func(*UsageLog, *User)) error {
+func (_q *UsageLogQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*UsageLog, init func(*UsageLog), assign func(*UsageLog, *User)) error {
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*UsageLog)
 	for i := range nodes {
@@ -534,7 +577,7 @@ func (ulq *UsageLogQuery) loadUser(ctx context.Context, query *UserQuery, nodes 
 	}
 	return nil
 }
-func (ulq *UsageLogQuery) loadRequest(ctx context.Context, query *RequestQuery, nodes []*UsageLog, init func(*UsageLog), assign func(*UsageLog, *Request)) error {
+func (_q *UsageLogQuery) loadRequest(ctx context.Context, query *RequestQuery, nodes []*UsageLog, init func(*UsageLog), assign func(*UsageLog, *Request)) error {
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*UsageLog)
 	for i := range nodes {
@@ -563,7 +606,36 @@ func (ulq *UsageLogQuery) loadRequest(ctx context.Context, query *RequestQuery, 
 	}
 	return nil
 }
-func (ulq *UsageLogQuery) loadChannel(ctx context.Context, query *ChannelQuery, nodes []*UsageLog, init func(*UsageLog), assign func(*UsageLog, *Channel)) error {
+func (_q *UsageLogQuery) loadProject(ctx context.Context, query *ProjectQuery, nodes []*UsageLog, init func(*UsageLog), assign func(*UsageLog, *Project)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*UsageLog)
+	for i := range nodes {
+		fk := nodes[i].ProjectID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(project.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "project_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (_q *UsageLogQuery) loadChannel(ctx context.Context, query *ChannelQuery, nodes []*UsageLog, init func(*UsageLog), assign func(*UsageLog, *Channel)) error {
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*UsageLog)
 	for i := range nodes {
@@ -593,27 +665,27 @@ func (ulq *UsageLogQuery) loadChannel(ctx context.Context, query *ChannelQuery, 
 	return nil
 }
 
-func (ulq *UsageLogQuery) sqlCount(ctx context.Context) (int, error) {
-	_spec := ulq.querySpec()
-	if len(ulq.modifiers) > 0 {
-		_spec.Modifiers = ulq.modifiers
+func (_q *UsageLogQuery) sqlCount(ctx context.Context) (int, error) {
+	_spec := _q.querySpec()
+	if len(_q.modifiers) > 0 {
+		_spec.Modifiers = _q.modifiers
 	}
-	_spec.Node.Columns = ulq.ctx.Fields
-	if len(ulq.ctx.Fields) > 0 {
-		_spec.Unique = ulq.ctx.Unique != nil && *ulq.ctx.Unique
+	_spec.Node.Columns = _q.ctx.Fields
+	if len(_q.ctx.Fields) > 0 {
+		_spec.Unique = _q.ctx.Unique != nil && *_q.ctx.Unique
 	}
-	return sqlgraph.CountNodes(ctx, ulq.driver, _spec)
+	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (ulq *UsageLogQuery) querySpec() *sqlgraph.QuerySpec {
+func (_q *UsageLogQuery) querySpec() *sqlgraph.QuerySpec {
 	_spec := sqlgraph.NewQuerySpec(usagelog.Table, usagelog.Columns, sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt))
-	_spec.From = ulq.sql
-	if unique := ulq.ctx.Unique; unique != nil {
+	_spec.From = _q.sql
+	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
-	} else if ulq.path != nil {
+	} else if _q.path != nil {
 		_spec.Unique = true
 	}
-	if fields := ulq.ctx.Fields; len(fields) > 0 {
+	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, usagelog.FieldID)
 		for i := range fields {
@@ -621,30 +693,33 @@ func (ulq *UsageLogQuery) querySpec() *sqlgraph.QuerySpec {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
-		if ulq.withUser != nil {
+		if _q.withUser != nil {
 			_spec.Node.AddColumnOnce(usagelog.FieldUserID)
 		}
-		if ulq.withRequest != nil {
+		if _q.withRequest != nil {
 			_spec.Node.AddColumnOnce(usagelog.FieldRequestID)
 		}
-		if ulq.withChannel != nil {
+		if _q.withProject != nil {
+			_spec.Node.AddColumnOnce(usagelog.FieldProjectID)
+		}
+		if _q.withChannel != nil {
 			_spec.Node.AddColumnOnce(usagelog.FieldChannelID)
 		}
 	}
-	if ps := ulq.predicates; len(ps) > 0 {
+	if ps := _q.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if limit := ulq.ctx.Limit; limit != nil {
+	if limit := _q.ctx.Limit; limit != nil {
 		_spec.Limit = *limit
 	}
-	if offset := ulq.ctx.Offset; offset != nil {
+	if offset := _q.ctx.Offset; offset != nil {
 		_spec.Offset = *offset
 	}
-	if ps := ulq.order; len(ps) > 0 {
+	if ps := _q.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
@@ -654,45 +729,45 @@ func (ulq *UsageLogQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (ulq *UsageLogQuery) sqlQuery(ctx context.Context) *sql.Selector {
-	builder := sql.Dialect(ulq.driver.Dialect())
+func (_q *UsageLogQuery) sqlQuery(ctx context.Context) *sql.Selector {
+	builder := sql.Dialect(_q.driver.Dialect())
 	t1 := builder.Table(usagelog.Table)
-	columns := ulq.ctx.Fields
+	columns := _q.ctx.Fields
 	if len(columns) == 0 {
 		columns = usagelog.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
-	if ulq.sql != nil {
-		selector = ulq.sql
+	if _q.sql != nil {
+		selector = _q.sql
 		selector.Select(selector.Columns(columns...)...)
 	}
-	if ulq.ctx.Unique != nil && *ulq.ctx.Unique {
+	if _q.ctx.Unique != nil && *_q.ctx.Unique {
 		selector.Distinct()
 	}
-	for _, m := range ulq.modifiers {
+	for _, m := range _q.modifiers {
 		m(selector)
 	}
-	for _, p := range ulq.predicates {
+	for _, p := range _q.predicates {
 		p(selector)
 	}
-	for _, p := range ulq.order {
+	for _, p := range _q.order {
 		p(selector)
 	}
-	if offset := ulq.ctx.Offset; offset != nil {
+	if offset := _q.ctx.Offset; offset != nil {
 		// limit is mandatory for offset clause. We start
 		// with default value, and override it below if needed.
 		selector.Offset(*offset).Limit(math.MaxInt32)
 	}
-	if limit := ulq.ctx.Limit; limit != nil {
+	if limit := _q.ctx.Limit; limit != nil {
 		selector.Limit(*limit)
 	}
 	return selector
 }
 
 // Modify adds a query modifier for attaching custom logic to queries.
-func (ulq *UsageLogQuery) Modify(modifiers ...func(s *sql.Selector)) *UsageLogSelect {
-	ulq.modifiers = append(ulq.modifiers, modifiers...)
-	return ulq.Select()
+func (_q *UsageLogQuery) Modify(modifiers ...func(s *sql.Selector)) *UsageLogSelect {
+	_q.modifiers = append(_q.modifiers, modifiers...)
+	return _q.Select()
 }
 
 // UsageLogGroupBy is the group-by builder for UsageLog entities.
@@ -702,41 +777,41 @@ type UsageLogGroupBy struct {
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (ulgb *UsageLogGroupBy) Aggregate(fns ...AggregateFunc) *UsageLogGroupBy {
-	ulgb.fns = append(ulgb.fns, fns...)
-	return ulgb
+func (_g *UsageLogGroupBy) Aggregate(fns ...AggregateFunc) *UsageLogGroupBy {
+	_g.fns = append(_g.fns, fns...)
+	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (ulgb *UsageLogGroupBy) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, ulgb.build.ctx, ent.OpQueryGroupBy)
-	if err := ulgb.build.prepareQuery(ctx); err != nil {
+func (_g *UsageLogGroupBy) Scan(ctx context.Context, v any) error {
+	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
+	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*UsageLogQuery, *UsageLogGroupBy](ctx, ulgb.build, ulgb, ulgb.build.inters, v)
+	return scanWithInterceptors[*UsageLogQuery, *UsageLogGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (ulgb *UsageLogGroupBy) sqlScan(ctx context.Context, root *UsageLogQuery, v any) error {
+func (_g *UsageLogGroupBy) sqlScan(ctx context.Context, root *UsageLogQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
-	aggregation := make([]string, 0, len(ulgb.fns))
-	for _, fn := range ulgb.fns {
+	aggregation := make([]string, 0, len(_g.fns))
+	for _, fn := range _g.fns {
 		aggregation = append(aggregation, fn(selector))
 	}
 	if len(selector.SelectedColumns()) == 0 {
-		columns := make([]string, 0, len(*ulgb.flds)+len(ulgb.fns))
-		for _, f := range *ulgb.flds {
+		columns := make([]string, 0, len(*_g.flds)+len(_g.fns))
+		for _, f := range *_g.flds {
 			columns = append(columns, selector.C(f))
 		}
 		columns = append(columns, aggregation...)
 		selector.Select(columns...)
 	}
-	selector.GroupBy(selector.Columns(*ulgb.flds...)...)
+	selector.GroupBy(selector.Columns(*_g.flds...)...)
 	if err := selector.Err(); err != nil {
 		return err
 	}
 	rows := &sql.Rows{}
 	query, args := selector.Query()
-	if err := ulgb.build.driver.Query(ctx, query, args, rows); err != nil {
+	if err := _g.build.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
@@ -750,27 +825,27 @@ type UsageLogSelect struct {
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (uls *UsageLogSelect) Aggregate(fns ...AggregateFunc) *UsageLogSelect {
-	uls.fns = append(uls.fns, fns...)
-	return uls
+func (_s *UsageLogSelect) Aggregate(fns ...AggregateFunc) *UsageLogSelect {
+	_s.fns = append(_s.fns, fns...)
+	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (uls *UsageLogSelect) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, uls.ctx, ent.OpQuerySelect)
-	if err := uls.prepareQuery(ctx); err != nil {
+func (_s *UsageLogSelect) Scan(ctx context.Context, v any) error {
+	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
+	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*UsageLogQuery, *UsageLogSelect](ctx, uls.UsageLogQuery, uls, uls.inters, v)
+	return scanWithInterceptors[*UsageLogQuery, *UsageLogSelect](ctx, _s.UsageLogQuery, _s, _s.inters, v)
 }
 
-func (uls *UsageLogSelect) sqlScan(ctx context.Context, root *UsageLogQuery, v any) error {
+func (_s *UsageLogSelect) sqlScan(ctx context.Context, root *UsageLogQuery, v any) error {
 	selector := root.sqlQuery(ctx)
-	aggregation := make([]string, 0, len(uls.fns))
-	for _, fn := range uls.fns {
+	aggregation := make([]string, 0, len(_s.fns))
+	for _, fn := range _s.fns {
 		aggregation = append(aggregation, fn(selector))
 	}
-	switch n := len(*uls.selector.flds); {
+	switch n := len(*_s.selector.flds); {
 	case n == 0 && len(aggregation) > 0:
 		selector.Select(aggregation...)
 	case n != 0 && len(aggregation) > 0:
@@ -778,7 +853,7 @@ func (uls *UsageLogSelect) sqlScan(ctx context.Context, root *UsageLogQuery, v a
 	}
 	rows := &sql.Rows{}
 	query, args := selector.Query()
-	if err := uls.driver.Query(ctx, query, args, rows); err != nil {
+	if err := _s.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
@@ -786,7 +861,7 @@ func (uls *UsageLogSelect) sqlScan(ctx context.Context, root *UsageLogQuery, v a
 }
 
 // Modify adds a query modifier for attaching custom logic to queries.
-func (uls *UsageLogSelect) Modify(modifiers ...func(s *sql.Selector)) *UsageLogSelect {
-	uls.modifiers = append(uls.modifiers, modifiers...)
-	return uls
+func (_s *UsageLogSelect) Modify(modifiers ...func(s *sql.Selector)) *UsageLogSelect {
+	_s.modifiers = append(_s.modifiers, modifiers...)
+	return _s
 }

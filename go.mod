@@ -18,7 +18,7 @@ require (
 require (
 	dario.cat/mergo v1.0.2
 	entgo.io/contrib v0.6.1-0.20250319063240-8a7f182943cb
-	entgo.io/ent v0.14.4
+	entgo.io/ent v0.14.5
 	github.com/99designs/gqlgen v0.17.76
 	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/andreazorzetto/yh v0.4.0

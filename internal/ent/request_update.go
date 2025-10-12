@@ -29,227 +29,227 @@ type RequestUpdate struct {
 }
 
 // Where appends a list predicates to the RequestUpdate builder.
-func (ru *RequestUpdate) Where(ps ...predicate.Request) *RequestUpdate {
-	ru.mutation.Where(ps...)
-	return ru
+func (_u *RequestUpdate) Where(ps ...predicate.Request) *RequestUpdate {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (ru *RequestUpdate) SetUpdatedAt(t time.Time) *RequestUpdate {
-	ru.mutation.SetUpdatedAt(t)
-	return ru
+func (_u *RequestUpdate) SetUpdatedAt(v time.Time) *RequestUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (ru *RequestUpdate) SetDeletedAt(i int) *RequestUpdate {
-	ru.mutation.ResetDeletedAt()
-	ru.mutation.SetDeletedAt(i)
-	return ru
+func (_u *RequestUpdate) SetDeletedAt(v int) *RequestUpdate {
+	_u.mutation.ResetDeletedAt()
+	_u.mutation.SetDeletedAt(v)
+	return _u
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (ru *RequestUpdate) SetNillableDeletedAt(i *int) *RequestUpdate {
-	if i != nil {
-		ru.SetDeletedAt(*i)
+func (_u *RequestUpdate) SetNillableDeletedAt(v *int) *RequestUpdate {
+	if v != nil {
+		_u.SetDeletedAt(*v)
 	}
-	return ru
+	return _u
 }
 
-// AddDeletedAt adds i to the "deleted_at" field.
-func (ru *RequestUpdate) AddDeletedAt(i int) *RequestUpdate {
-	ru.mutation.AddDeletedAt(i)
-	return ru
+// AddDeletedAt adds value to the "deleted_at" field.
+func (_u *RequestUpdate) AddDeletedAt(v int) *RequestUpdate {
+	_u.mutation.AddDeletedAt(v)
+	return _u
 }
 
 // SetResponseBody sets the "response_body" field.
-func (ru *RequestUpdate) SetResponseBody(orm objects.JSONRawMessage) *RequestUpdate {
-	ru.mutation.SetResponseBody(orm)
-	return ru
+func (_u *RequestUpdate) SetResponseBody(v objects.JSONRawMessage) *RequestUpdate {
+	_u.mutation.SetResponseBody(v)
+	return _u
 }
 
-// AppendResponseBody appends orm to the "response_body" field.
-func (ru *RequestUpdate) AppendResponseBody(orm objects.JSONRawMessage) *RequestUpdate {
-	ru.mutation.AppendResponseBody(orm)
-	return ru
+// AppendResponseBody appends value to the "response_body" field.
+func (_u *RequestUpdate) AppendResponseBody(v objects.JSONRawMessage) *RequestUpdate {
+	_u.mutation.AppendResponseBody(v)
+	return _u
 }
 
 // ClearResponseBody clears the value of the "response_body" field.
-func (ru *RequestUpdate) ClearResponseBody() *RequestUpdate {
-	ru.mutation.ClearResponseBody()
-	return ru
+func (_u *RequestUpdate) ClearResponseBody() *RequestUpdate {
+	_u.mutation.ClearResponseBody()
+	return _u
 }
 
 // SetResponseChunks sets the "response_chunks" field.
-func (ru *RequestUpdate) SetResponseChunks(orm []objects.JSONRawMessage) *RequestUpdate {
-	ru.mutation.SetResponseChunks(orm)
-	return ru
+func (_u *RequestUpdate) SetResponseChunks(v []objects.JSONRawMessage) *RequestUpdate {
+	_u.mutation.SetResponseChunks(v)
+	return _u
 }
 
-// AppendResponseChunks appends orm to the "response_chunks" field.
-func (ru *RequestUpdate) AppendResponseChunks(orm []objects.JSONRawMessage) *RequestUpdate {
-	ru.mutation.AppendResponseChunks(orm)
-	return ru
+// AppendResponseChunks appends value to the "response_chunks" field.
+func (_u *RequestUpdate) AppendResponseChunks(v []objects.JSONRawMessage) *RequestUpdate {
+	_u.mutation.AppendResponseChunks(v)
+	return _u
 }
 
 // ClearResponseChunks clears the value of the "response_chunks" field.
-func (ru *RequestUpdate) ClearResponseChunks() *RequestUpdate {
-	ru.mutation.ClearResponseChunks()
-	return ru
+func (_u *RequestUpdate) ClearResponseChunks() *RequestUpdate {
+	_u.mutation.ClearResponseChunks()
+	return _u
 }
 
 // SetChannelID sets the "channel_id" field.
-func (ru *RequestUpdate) SetChannelID(i int) *RequestUpdate {
-	ru.mutation.SetChannelID(i)
-	return ru
+func (_u *RequestUpdate) SetChannelID(v int) *RequestUpdate {
+	_u.mutation.SetChannelID(v)
+	return _u
 }
 
 // SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (ru *RequestUpdate) SetNillableChannelID(i *int) *RequestUpdate {
-	if i != nil {
-		ru.SetChannelID(*i)
+func (_u *RequestUpdate) SetNillableChannelID(v *int) *RequestUpdate {
+	if v != nil {
+		_u.SetChannelID(*v)
 	}
-	return ru
+	return _u
 }
 
 // ClearChannelID clears the value of the "channel_id" field.
-func (ru *RequestUpdate) ClearChannelID() *RequestUpdate {
-	ru.mutation.ClearChannelID()
-	return ru
+func (_u *RequestUpdate) ClearChannelID() *RequestUpdate {
+	_u.mutation.ClearChannelID()
+	return _u
 }
 
 // SetExternalID sets the "external_id" field.
-func (ru *RequestUpdate) SetExternalID(s string) *RequestUpdate {
-	ru.mutation.SetExternalID(s)
-	return ru
+func (_u *RequestUpdate) SetExternalID(v string) *RequestUpdate {
+	_u.mutation.SetExternalID(v)
+	return _u
 }
 
 // SetNillableExternalID sets the "external_id" field if the given value is not nil.
-func (ru *RequestUpdate) SetNillableExternalID(s *string) *RequestUpdate {
-	if s != nil {
-		ru.SetExternalID(*s)
+func (_u *RequestUpdate) SetNillableExternalID(v *string) *RequestUpdate {
+	if v != nil {
+		_u.SetExternalID(*v)
 	}
-	return ru
+	return _u
 }
 
 // ClearExternalID clears the value of the "external_id" field.
-func (ru *RequestUpdate) ClearExternalID() *RequestUpdate {
-	ru.mutation.ClearExternalID()
-	return ru
+func (_u *RequestUpdate) ClearExternalID() *RequestUpdate {
+	_u.mutation.ClearExternalID()
+	return _u
 }
 
 // SetStatus sets the "status" field.
-func (ru *RequestUpdate) SetStatus(r request.Status) *RequestUpdate {
-	ru.mutation.SetStatus(r)
-	return ru
+func (_u *RequestUpdate) SetStatus(v request.Status) *RequestUpdate {
+	_u.mutation.SetStatus(v)
+	return _u
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (ru *RequestUpdate) SetNillableStatus(r *request.Status) *RequestUpdate {
-	if r != nil {
-		ru.SetStatus(*r)
+func (_u *RequestUpdate) SetNillableStatus(v *request.Status) *RequestUpdate {
+	if v != nil {
+		_u.SetStatus(*v)
 	}
-	return ru
+	return _u
 }
 
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
-func (ru *RequestUpdate) AddExecutionIDs(ids ...int) *RequestUpdate {
-	ru.mutation.AddExecutionIDs(ids...)
-	return ru
+func (_u *RequestUpdate) AddExecutionIDs(ids ...int) *RequestUpdate {
+	_u.mutation.AddExecutionIDs(ids...)
+	return _u
 }
 
 // AddExecutions adds the "executions" edges to the RequestExecution entity.
-func (ru *RequestUpdate) AddExecutions(r ...*RequestExecution) *RequestUpdate {
-	ids := make([]int, len(r))
-	for i := range r {
-		ids[i] = r[i].ID
+func (_u *RequestUpdate) AddExecutions(v ...*RequestExecution) *RequestUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return ru.AddExecutionIDs(ids...)
+	return _u.AddExecutionIDs(ids...)
 }
 
 // SetChannel sets the "channel" edge to the Channel entity.
-func (ru *RequestUpdate) SetChannel(c *Channel) *RequestUpdate {
-	return ru.SetChannelID(c.ID)
+func (_u *RequestUpdate) SetChannel(v *Channel) *RequestUpdate {
+	return _u.SetChannelID(v.ID)
 }
 
 // AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
-func (ru *RequestUpdate) AddUsageLogIDs(ids ...int) *RequestUpdate {
-	ru.mutation.AddUsageLogIDs(ids...)
-	return ru
+func (_u *RequestUpdate) AddUsageLogIDs(ids ...int) *RequestUpdate {
+	_u.mutation.AddUsageLogIDs(ids...)
+	return _u
 }
 
 // AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
-func (ru *RequestUpdate) AddUsageLogs(u ...*UsageLog) *RequestUpdate {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
+func (_u *RequestUpdate) AddUsageLogs(v ...*UsageLog) *RequestUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return ru.AddUsageLogIDs(ids...)
+	return _u.AddUsageLogIDs(ids...)
 }
 
 // Mutation returns the RequestMutation object of the builder.
-func (ru *RequestUpdate) Mutation() *RequestMutation {
-	return ru.mutation
+func (_u *RequestUpdate) Mutation() *RequestMutation {
+	return _u.mutation
 }
 
 // ClearExecutions clears all "executions" edges to the RequestExecution entity.
-func (ru *RequestUpdate) ClearExecutions() *RequestUpdate {
-	ru.mutation.ClearExecutions()
-	return ru
+func (_u *RequestUpdate) ClearExecutions() *RequestUpdate {
+	_u.mutation.ClearExecutions()
+	return _u
 }
 
 // RemoveExecutionIDs removes the "executions" edge to RequestExecution entities by IDs.
-func (ru *RequestUpdate) RemoveExecutionIDs(ids ...int) *RequestUpdate {
-	ru.mutation.RemoveExecutionIDs(ids...)
-	return ru
+func (_u *RequestUpdate) RemoveExecutionIDs(ids ...int) *RequestUpdate {
+	_u.mutation.RemoveExecutionIDs(ids...)
+	return _u
 }
 
 // RemoveExecutions removes "executions" edges to RequestExecution entities.
-func (ru *RequestUpdate) RemoveExecutions(r ...*RequestExecution) *RequestUpdate {
-	ids := make([]int, len(r))
-	for i := range r {
-		ids[i] = r[i].ID
+func (_u *RequestUpdate) RemoveExecutions(v ...*RequestExecution) *RequestUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return ru.RemoveExecutionIDs(ids...)
+	return _u.RemoveExecutionIDs(ids...)
 }
 
 // ClearChannel clears the "channel" edge to the Channel entity.
-func (ru *RequestUpdate) ClearChannel() *RequestUpdate {
-	ru.mutation.ClearChannel()
-	return ru
+func (_u *RequestUpdate) ClearChannel() *RequestUpdate {
+	_u.mutation.ClearChannel()
+	return _u
 }
 
 // ClearUsageLogs clears all "usage_logs" edges to the UsageLog entity.
-func (ru *RequestUpdate) ClearUsageLogs() *RequestUpdate {
-	ru.mutation.ClearUsageLogs()
-	return ru
+func (_u *RequestUpdate) ClearUsageLogs() *RequestUpdate {
+	_u.mutation.ClearUsageLogs()
+	return _u
 }
 
 // RemoveUsageLogIDs removes the "usage_logs" edge to UsageLog entities by IDs.
-func (ru *RequestUpdate) RemoveUsageLogIDs(ids ...int) *RequestUpdate {
-	ru.mutation.RemoveUsageLogIDs(ids...)
-	return ru
+func (_u *RequestUpdate) RemoveUsageLogIDs(ids ...int) *RequestUpdate {
+	_u.mutation.RemoveUsageLogIDs(ids...)
+	return _u
 }
 
 // RemoveUsageLogs removes "usage_logs" edges to UsageLog entities.
-func (ru *RequestUpdate) RemoveUsageLogs(u ...*UsageLog) *RequestUpdate {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
+func (_u *RequestUpdate) RemoveUsageLogs(v ...*UsageLog) *RequestUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return ru.RemoveUsageLogIDs(ids...)
+	return _u.RemoveUsageLogIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
-func (ru *RequestUpdate) Save(ctx context.Context) (int, error) {
-	if err := ru.defaults(); err != nil {
+func (_u *RequestUpdate) Save(ctx context.Context) (int, error) {
+	if err := _u.defaults(); err != nil {
 		return 0, err
 	}
-	return withHooks(ctx, ru.sqlSave, ru.mutation, ru.hooks)
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (ru *RequestUpdate) SaveX(ctx context.Context) int {
-	affected, err := ru.Save(ctx)
+func (_u *RequestUpdate) SaveX(ctx context.Context) int {
+	affected, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -257,102 +257,105 @@ func (ru *RequestUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (ru *RequestUpdate) Exec(ctx context.Context) error {
-	_, err := ru.Save(ctx)
+func (_u *RequestUpdate) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ru *RequestUpdate) ExecX(ctx context.Context) {
-	if err := ru.Exec(ctx); err != nil {
+func (_u *RequestUpdate) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (ru *RequestUpdate) defaults() error {
-	if _, ok := ru.mutation.UpdatedAt(); !ok {
+func (_u *RequestUpdate) defaults() error {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		if request.UpdateDefaultUpdatedAt == nil {
 			return fmt.Errorf("ent: uninitialized request.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
 		}
 		v := request.UpdateDefaultUpdatedAt()
-		ru.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (ru *RequestUpdate) check() error {
-	if v, ok := ru.mutation.Status(); ok {
+func (_u *RequestUpdate) check() error {
+	if v, ok := _u.mutation.Status(); ok {
 		if err := request.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Request.status": %w`, err)}
 		}
 	}
-	if ru.mutation.UserCleared() && len(ru.mutation.UserIDs()) > 0 {
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Request.user"`)
+	}
+	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Request.project"`)
 	}
 	return nil
 }
 
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
-func (ru *RequestUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestUpdate {
-	ru.modifiers = append(ru.modifiers, modifiers...)
-	return ru
+func (_u *RequestUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestUpdate {
+	_u.modifiers = append(_u.modifiers, modifiers...)
+	return _u
 }
 
-func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	if err := ru.check(); err != nil {
-		return n, err
+func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt))
-	if ps := ru.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := ru.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := ru.mutation.DeletedAt(); ok {
+	if value, ok := _u.mutation.DeletedAt(); ok {
 		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := ru.mutation.AddedDeletedAt(); ok {
+	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(request.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := ru.mutation.ResponseBody(); ok {
+	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
 	}
-	if value, ok := ru.mutation.AppendedResponseBody(); ok {
+	if value, ok := _u.mutation.AppendedResponseBody(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, request.FieldResponseBody, value)
 		})
 	}
-	if ru.mutation.ResponseBodyCleared() {
+	if _u.mutation.ResponseBodyCleared() {
 		_spec.ClearField(request.FieldResponseBody, field.TypeJSON)
 	}
-	if value, ok := ru.mutation.ResponseChunks(); ok {
+	if value, ok := _u.mutation.ResponseChunks(); ok {
 		_spec.SetField(request.FieldResponseChunks, field.TypeJSON, value)
 	}
-	if value, ok := ru.mutation.AppendedResponseChunks(); ok {
+	if value, ok := _u.mutation.AppendedResponseChunks(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, request.FieldResponseChunks, value)
 		})
 	}
-	if ru.mutation.ResponseChunksCleared() {
+	if _u.mutation.ResponseChunksCleared() {
 		_spec.ClearField(request.FieldResponseChunks, field.TypeJSON)
 	}
-	if value, ok := ru.mutation.ExternalID(); ok {
+	if value, ok := _u.mutation.ExternalID(); ok {
 		_spec.SetField(request.FieldExternalID, field.TypeString, value)
 	}
-	if ru.mutation.ExternalIDCleared() {
+	if _u.mutation.ExternalIDCleared() {
 		_spec.ClearField(request.FieldExternalID, field.TypeString)
 	}
-	if value, ok := ru.mutation.Status(); ok {
+	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 	}
-	if ru.mutation.ExecutionsCleared() {
+	if _u.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -365,7 +368,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ru.mutation.RemovedExecutionsIDs(); len(nodes) > 0 && !ru.mutation.ExecutionsCleared() {
+	if nodes := _u.mutation.RemovedExecutionsIDs(); len(nodes) > 0 && !_u.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -381,7 +384,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ru.mutation.ExecutionsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ExecutionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -397,7 +400,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if ru.mutation.ChannelCleared() {
+	if _u.mutation.ChannelCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -410,7 +413,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ru.mutation.ChannelIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ChannelIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -426,7 +429,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if ru.mutation.UsageLogsCleared() {
+	if _u.mutation.UsageLogsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -439,7 +442,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ru.mutation.RemovedUsageLogsIDs(); len(nodes) > 0 && !ru.mutation.UsageLogsCleared() {
+	if nodes := _u.mutation.RemovedUsageLogsIDs(); len(nodes) > 0 && !_u.mutation.UsageLogsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -455,7 +458,7 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ru.mutation.UsageLogsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.UsageLogsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -471,8 +474,8 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_spec.AddModifiers(ru.modifiers...)
-	if n, err = sqlgraph.UpdateNodes(ctx, ru.driver, _spec); err != nil {
+	_spec.AddModifiers(_u.modifiers...)
+	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{request.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -480,8 +483,8 @@ func (ru *RequestUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
-	ru.mutation.done = true
-	return n, nil
+	_u.mutation.done = true
+	return _node, nil
 }
 
 // RequestUpdateOne is the builder for updating a single Request entity.
@@ -494,234 +497,234 @@ type RequestUpdateOne struct {
 }
 
 // SetUpdatedAt sets the "updated_at" field.
-func (ruo *RequestUpdateOne) SetUpdatedAt(t time.Time) *RequestUpdateOne {
-	ruo.mutation.SetUpdatedAt(t)
-	return ruo
+func (_u *RequestUpdateOne) SetUpdatedAt(v time.Time) *RequestUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
 }
 
 // SetDeletedAt sets the "deleted_at" field.
-func (ruo *RequestUpdateOne) SetDeletedAt(i int) *RequestUpdateOne {
-	ruo.mutation.ResetDeletedAt()
-	ruo.mutation.SetDeletedAt(i)
-	return ruo
+func (_u *RequestUpdateOne) SetDeletedAt(v int) *RequestUpdateOne {
+	_u.mutation.ResetDeletedAt()
+	_u.mutation.SetDeletedAt(v)
+	return _u
 }
 
 // SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (ruo *RequestUpdateOne) SetNillableDeletedAt(i *int) *RequestUpdateOne {
-	if i != nil {
-		ruo.SetDeletedAt(*i)
+func (_u *RequestUpdateOne) SetNillableDeletedAt(v *int) *RequestUpdateOne {
+	if v != nil {
+		_u.SetDeletedAt(*v)
 	}
-	return ruo
+	return _u
 }
 
-// AddDeletedAt adds i to the "deleted_at" field.
-func (ruo *RequestUpdateOne) AddDeletedAt(i int) *RequestUpdateOne {
-	ruo.mutation.AddDeletedAt(i)
-	return ruo
+// AddDeletedAt adds value to the "deleted_at" field.
+func (_u *RequestUpdateOne) AddDeletedAt(v int) *RequestUpdateOne {
+	_u.mutation.AddDeletedAt(v)
+	return _u
 }
 
 // SetResponseBody sets the "response_body" field.
-func (ruo *RequestUpdateOne) SetResponseBody(orm objects.JSONRawMessage) *RequestUpdateOne {
-	ruo.mutation.SetResponseBody(orm)
-	return ruo
+func (_u *RequestUpdateOne) SetResponseBody(v objects.JSONRawMessage) *RequestUpdateOne {
+	_u.mutation.SetResponseBody(v)
+	return _u
 }
 
-// AppendResponseBody appends orm to the "response_body" field.
-func (ruo *RequestUpdateOne) AppendResponseBody(orm objects.JSONRawMessage) *RequestUpdateOne {
-	ruo.mutation.AppendResponseBody(orm)
-	return ruo
+// AppendResponseBody appends value to the "response_body" field.
+func (_u *RequestUpdateOne) AppendResponseBody(v objects.JSONRawMessage) *RequestUpdateOne {
+	_u.mutation.AppendResponseBody(v)
+	return _u
 }
 
 // ClearResponseBody clears the value of the "response_body" field.
-func (ruo *RequestUpdateOne) ClearResponseBody() *RequestUpdateOne {
-	ruo.mutation.ClearResponseBody()
-	return ruo
+func (_u *RequestUpdateOne) ClearResponseBody() *RequestUpdateOne {
+	_u.mutation.ClearResponseBody()
+	return _u
 }
 
 // SetResponseChunks sets the "response_chunks" field.
-func (ruo *RequestUpdateOne) SetResponseChunks(orm []objects.JSONRawMessage) *RequestUpdateOne {
-	ruo.mutation.SetResponseChunks(orm)
-	return ruo
+func (_u *RequestUpdateOne) SetResponseChunks(v []objects.JSONRawMessage) *RequestUpdateOne {
+	_u.mutation.SetResponseChunks(v)
+	return _u
 }
 
-// AppendResponseChunks appends orm to the "response_chunks" field.
-func (ruo *RequestUpdateOne) AppendResponseChunks(orm []objects.JSONRawMessage) *RequestUpdateOne {
-	ruo.mutation.AppendResponseChunks(orm)
-	return ruo
+// AppendResponseChunks appends value to the "response_chunks" field.
+func (_u *RequestUpdateOne) AppendResponseChunks(v []objects.JSONRawMessage) *RequestUpdateOne {
+	_u.mutation.AppendResponseChunks(v)
+	return _u
 }
 
 // ClearResponseChunks clears the value of the "response_chunks" field.
-func (ruo *RequestUpdateOne) ClearResponseChunks() *RequestUpdateOne {
-	ruo.mutation.ClearResponseChunks()
-	return ruo
+func (_u *RequestUpdateOne) ClearResponseChunks() *RequestUpdateOne {
+	_u.mutation.ClearResponseChunks()
+	return _u
 }
 
 // SetChannelID sets the "channel_id" field.
-func (ruo *RequestUpdateOne) SetChannelID(i int) *RequestUpdateOne {
-	ruo.mutation.SetChannelID(i)
-	return ruo
+func (_u *RequestUpdateOne) SetChannelID(v int) *RequestUpdateOne {
+	_u.mutation.SetChannelID(v)
+	return _u
 }
 
 // SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (ruo *RequestUpdateOne) SetNillableChannelID(i *int) *RequestUpdateOne {
-	if i != nil {
-		ruo.SetChannelID(*i)
+func (_u *RequestUpdateOne) SetNillableChannelID(v *int) *RequestUpdateOne {
+	if v != nil {
+		_u.SetChannelID(*v)
 	}
-	return ruo
+	return _u
 }
 
 // ClearChannelID clears the value of the "channel_id" field.
-func (ruo *RequestUpdateOne) ClearChannelID() *RequestUpdateOne {
-	ruo.mutation.ClearChannelID()
-	return ruo
+func (_u *RequestUpdateOne) ClearChannelID() *RequestUpdateOne {
+	_u.mutation.ClearChannelID()
+	return _u
 }
 
 // SetExternalID sets the "external_id" field.
-func (ruo *RequestUpdateOne) SetExternalID(s string) *RequestUpdateOne {
-	ruo.mutation.SetExternalID(s)
-	return ruo
+func (_u *RequestUpdateOne) SetExternalID(v string) *RequestUpdateOne {
+	_u.mutation.SetExternalID(v)
+	return _u
 }
 
 // SetNillableExternalID sets the "external_id" field if the given value is not nil.
-func (ruo *RequestUpdateOne) SetNillableExternalID(s *string) *RequestUpdateOne {
-	if s != nil {
-		ruo.SetExternalID(*s)
+func (_u *RequestUpdateOne) SetNillableExternalID(v *string) *RequestUpdateOne {
+	if v != nil {
+		_u.SetExternalID(*v)
 	}
-	return ruo
+	return _u
 }
 
 // ClearExternalID clears the value of the "external_id" field.
-func (ruo *RequestUpdateOne) ClearExternalID() *RequestUpdateOne {
-	ruo.mutation.ClearExternalID()
-	return ruo
+func (_u *RequestUpdateOne) ClearExternalID() *RequestUpdateOne {
+	_u.mutation.ClearExternalID()
+	return _u
 }
 
 // SetStatus sets the "status" field.
-func (ruo *RequestUpdateOne) SetStatus(r request.Status) *RequestUpdateOne {
-	ruo.mutation.SetStatus(r)
-	return ruo
+func (_u *RequestUpdateOne) SetStatus(v request.Status) *RequestUpdateOne {
+	_u.mutation.SetStatus(v)
+	return _u
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (ruo *RequestUpdateOne) SetNillableStatus(r *request.Status) *RequestUpdateOne {
-	if r != nil {
-		ruo.SetStatus(*r)
+func (_u *RequestUpdateOne) SetNillableStatus(v *request.Status) *RequestUpdateOne {
+	if v != nil {
+		_u.SetStatus(*v)
 	}
-	return ruo
+	return _u
 }
 
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
-func (ruo *RequestUpdateOne) AddExecutionIDs(ids ...int) *RequestUpdateOne {
-	ruo.mutation.AddExecutionIDs(ids...)
-	return ruo
+func (_u *RequestUpdateOne) AddExecutionIDs(ids ...int) *RequestUpdateOne {
+	_u.mutation.AddExecutionIDs(ids...)
+	return _u
 }
 
 // AddExecutions adds the "executions" edges to the RequestExecution entity.
-func (ruo *RequestUpdateOne) AddExecutions(r ...*RequestExecution) *RequestUpdateOne {
-	ids := make([]int, len(r))
-	for i := range r {
-		ids[i] = r[i].ID
+func (_u *RequestUpdateOne) AddExecutions(v ...*RequestExecution) *RequestUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return ruo.AddExecutionIDs(ids...)
+	return _u.AddExecutionIDs(ids...)
 }
 
 // SetChannel sets the "channel" edge to the Channel entity.
-func (ruo *RequestUpdateOne) SetChannel(c *Channel) *RequestUpdateOne {
-	return ruo.SetChannelID(c.ID)
+func (_u *RequestUpdateOne) SetChannel(v *Channel) *RequestUpdateOne {
+	return _u.SetChannelID(v.ID)
 }
 
 // AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
-func (ruo *RequestUpdateOne) AddUsageLogIDs(ids ...int) *RequestUpdateOne {
-	ruo.mutation.AddUsageLogIDs(ids...)
-	return ruo
+func (_u *RequestUpdateOne) AddUsageLogIDs(ids ...int) *RequestUpdateOne {
+	_u.mutation.AddUsageLogIDs(ids...)
+	return _u
 }
 
 // AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
-func (ruo *RequestUpdateOne) AddUsageLogs(u ...*UsageLog) *RequestUpdateOne {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
+func (_u *RequestUpdateOne) AddUsageLogs(v ...*UsageLog) *RequestUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return ruo.AddUsageLogIDs(ids...)
+	return _u.AddUsageLogIDs(ids...)
 }
 
 // Mutation returns the RequestMutation object of the builder.
-func (ruo *RequestUpdateOne) Mutation() *RequestMutation {
-	return ruo.mutation
+func (_u *RequestUpdateOne) Mutation() *RequestMutation {
+	return _u.mutation
 }
 
 // ClearExecutions clears all "executions" edges to the RequestExecution entity.
-func (ruo *RequestUpdateOne) ClearExecutions() *RequestUpdateOne {
-	ruo.mutation.ClearExecutions()
-	return ruo
+func (_u *RequestUpdateOne) ClearExecutions() *RequestUpdateOne {
+	_u.mutation.ClearExecutions()
+	return _u
 }
 
 // RemoveExecutionIDs removes the "executions" edge to RequestExecution entities by IDs.
-func (ruo *RequestUpdateOne) RemoveExecutionIDs(ids ...int) *RequestUpdateOne {
-	ruo.mutation.RemoveExecutionIDs(ids...)
-	return ruo
+func (_u *RequestUpdateOne) RemoveExecutionIDs(ids ...int) *RequestUpdateOne {
+	_u.mutation.RemoveExecutionIDs(ids...)
+	return _u
 }
 
 // RemoveExecutions removes "executions" edges to RequestExecution entities.
-func (ruo *RequestUpdateOne) RemoveExecutions(r ...*RequestExecution) *RequestUpdateOne {
-	ids := make([]int, len(r))
-	for i := range r {
-		ids[i] = r[i].ID
+func (_u *RequestUpdateOne) RemoveExecutions(v ...*RequestExecution) *RequestUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return ruo.RemoveExecutionIDs(ids...)
+	return _u.RemoveExecutionIDs(ids...)
 }
 
 // ClearChannel clears the "channel" edge to the Channel entity.
-func (ruo *RequestUpdateOne) ClearChannel() *RequestUpdateOne {
-	ruo.mutation.ClearChannel()
-	return ruo
+func (_u *RequestUpdateOne) ClearChannel() *RequestUpdateOne {
+	_u.mutation.ClearChannel()
+	return _u
 }
 
 // ClearUsageLogs clears all "usage_logs" edges to the UsageLog entity.
-func (ruo *RequestUpdateOne) ClearUsageLogs() *RequestUpdateOne {
-	ruo.mutation.ClearUsageLogs()
-	return ruo
+func (_u *RequestUpdateOne) ClearUsageLogs() *RequestUpdateOne {
+	_u.mutation.ClearUsageLogs()
+	return _u
 }
 
 // RemoveUsageLogIDs removes the "usage_logs" edge to UsageLog entities by IDs.
-func (ruo *RequestUpdateOne) RemoveUsageLogIDs(ids ...int) *RequestUpdateOne {
-	ruo.mutation.RemoveUsageLogIDs(ids...)
-	return ruo
+func (_u *RequestUpdateOne) RemoveUsageLogIDs(ids ...int) *RequestUpdateOne {
+	_u.mutation.RemoveUsageLogIDs(ids...)
+	return _u
 }
 
 // RemoveUsageLogs removes "usage_logs" edges to UsageLog entities.
-func (ruo *RequestUpdateOne) RemoveUsageLogs(u ...*UsageLog) *RequestUpdateOne {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
+func (_u *RequestUpdateOne) RemoveUsageLogs(v ...*UsageLog) *RequestUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return ruo.RemoveUsageLogIDs(ids...)
+	return _u.RemoveUsageLogIDs(ids...)
 }
 
 // Where appends a list predicates to the RequestUpdate builder.
-func (ruo *RequestUpdateOne) Where(ps ...predicate.Request) *RequestUpdateOne {
-	ruo.mutation.Where(ps...)
-	return ruo
+func (_u *RequestUpdateOne) Where(ps ...predicate.Request) *RequestUpdateOne {
+	_u.mutation.Where(ps...)
+	return _u
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
-func (ruo *RequestUpdateOne) Select(field string, fields ...string) *RequestUpdateOne {
-	ruo.fields = append([]string{field}, fields...)
-	return ruo
+func (_u *RequestUpdateOne) Select(field string, fields ...string) *RequestUpdateOne {
+	_u.fields = append([]string{field}, fields...)
+	return _u
 }
 
 // Save executes the query and returns the updated Request entity.
-func (ruo *RequestUpdateOne) Save(ctx context.Context) (*Request, error) {
-	if err := ruo.defaults(); err != nil {
+func (_u *RequestUpdateOne) Save(ctx context.Context) (*Request, error) {
+	if err := _u.defaults(); err != nil {
 		return nil, err
 	}
-	return withHooks(ctx, ruo.sqlSave, ruo.mutation, ruo.hooks)
+	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (ruo *RequestUpdateOne) SaveX(ctx context.Context) *Request {
-	node, err := ruo.Save(ctx)
+func (_u *RequestUpdateOne) SaveX(ctx context.Context) *Request {
+	node, err := _u.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -729,60 +732,63 @@ func (ruo *RequestUpdateOne) SaveX(ctx context.Context) *Request {
 }
 
 // Exec executes the query on the entity.
-func (ruo *RequestUpdateOne) Exec(ctx context.Context) error {
-	_, err := ruo.Save(ctx)
+func (_u *RequestUpdateOne) Exec(ctx context.Context) error {
+	_, err := _u.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (ruo *RequestUpdateOne) ExecX(ctx context.Context) {
-	if err := ruo.Exec(ctx); err != nil {
+func (_u *RequestUpdateOne) ExecX(ctx context.Context) {
+	if err := _u.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
 // defaults sets the default values of the builder before save.
-func (ruo *RequestUpdateOne) defaults() error {
-	if _, ok := ruo.mutation.UpdatedAt(); !ok {
+func (_u *RequestUpdateOne) defaults() error {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
 		if request.UpdateDefaultUpdatedAt == nil {
 			return fmt.Errorf("ent: uninitialized request.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
 		}
 		v := request.UpdateDefaultUpdatedAt()
-		ruo.mutation.SetUpdatedAt(v)
+		_u.mutation.SetUpdatedAt(v)
 	}
 	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
-func (ruo *RequestUpdateOne) check() error {
-	if v, ok := ruo.mutation.Status(); ok {
+func (_u *RequestUpdateOne) check() error {
+	if v, ok := _u.mutation.Status(); ok {
 		if err := request.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Request.status": %w`, err)}
 		}
 	}
-	if ruo.mutation.UserCleared() && len(ruo.mutation.UserIDs()) > 0 {
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Request.user"`)
+	}
+	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Request.project"`)
 	}
 	return nil
 }
 
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
-func (ruo *RequestUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestUpdateOne {
-	ruo.modifiers = append(ruo.modifiers, modifiers...)
-	return ruo
+func (_u *RequestUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RequestUpdateOne {
+	_u.modifiers = append(_u.modifiers, modifiers...)
+	return _u
 }
 
-func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err error) {
-	if err := ruo.check(); err != nil {
+func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err error) {
+	if err := _u.check(); err != nil {
 		return _node, err
 	}
 	_spec := sqlgraph.NewUpdateSpec(request.Table, request.Columns, sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt))
-	id, ok := ruo.mutation.ID()
+	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Request.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
-	if fields := ruo.fields; len(fields) > 0 {
+	if fields := _u.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, request.FieldID)
 		for _, f := range fields {
@@ -794,54 +800,54 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 			}
 		}
 	}
-	if ps := ruo.mutation.predicates; len(ps) > 0 {
+	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
 			}
 		}
 	}
-	if value, ok := ruo.mutation.UpdatedAt(); ok {
+	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := ruo.mutation.DeletedAt(); ok {
+	if value, ok := _u.mutation.DeletedAt(); ok {
 		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := ruo.mutation.AddedDeletedAt(); ok {
+	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(request.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := ruo.mutation.ResponseBody(); ok {
+	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
 	}
-	if value, ok := ruo.mutation.AppendedResponseBody(); ok {
+	if value, ok := _u.mutation.AppendedResponseBody(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, request.FieldResponseBody, value)
 		})
 	}
-	if ruo.mutation.ResponseBodyCleared() {
+	if _u.mutation.ResponseBodyCleared() {
 		_spec.ClearField(request.FieldResponseBody, field.TypeJSON)
 	}
-	if value, ok := ruo.mutation.ResponseChunks(); ok {
+	if value, ok := _u.mutation.ResponseChunks(); ok {
 		_spec.SetField(request.FieldResponseChunks, field.TypeJSON, value)
 	}
-	if value, ok := ruo.mutation.AppendedResponseChunks(); ok {
+	if value, ok := _u.mutation.AppendedResponseChunks(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, request.FieldResponseChunks, value)
 		})
 	}
-	if ruo.mutation.ResponseChunksCleared() {
+	if _u.mutation.ResponseChunksCleared() {
 		_spec.ClearField(request.FieldResponseChunks, field.TypeJSON)
 	}
-	if value, ok := ruo.mutation.ExternalID(); ok {
+	if value, ok := _u.mutation.ExternalID(); ok {
 		_spec.SetField(request.FieldExternalID, field.TypeString, value)
 	}
-	if ruo.mutation.ExternalIDCleared() {
+	if _u.mutation.ExternalIDCleared() {
 		_spec.ClearField(request.FieldExternalID, field.TypeString)
 	}
-	if value, ok := ruo.mutation.Status(); ok {
+	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 	}
-	if ruo.mutation.ExecutionsCleared() {
+	if _u.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -854,7 +860,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ruo.mutation.RemovedExecutionsIDs(); len(nodes) > 0 && !ruo.mutation.ExecutionsCleared() {
+	if nodes := _u.mutation.RemovedExecutionsIDs(); len(nodes) > 0 && !_u.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -870,7 +876,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ruo.mutation.ExecutionsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ExecutionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -886,7 +892,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if ruo.mutation.ChannelCleared() {
+	if _u.mutation.ChannelCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -899,7 +905,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ruo.mutation.ChannelIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ChannelIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
@@ -915,7 +921,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if ruo.mutation.UsageLogsCleared() {
+	if _u.mutation.UsageLogsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -928,7 +934,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ruo.mutation.RemovedUsageLogsIDs(); len(nodes) > 0 && !ruo.mutation.UsageLogsCleared() {
+	if nodes := _u.mutation.RemovedUsageLogsIDs(); len(nodes) > 0 && !_u.mutation.UsageLogsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -944,7 +950,7 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := ruo.mutation.UsageLogsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.UsageLogsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -960,11 +966,11 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_spec.AddModifiers(ruo.modifiers...)
-	_node = &Request{config: ruo.config}
+	_spec.AddModifiers(_u.modifiers...)
+	_node = &Request{config: _u.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues
-	if err = sqlgraph.UpdateNode(ctx, ruo.driver, _spec); err != nil {
+	if err = sqlgraph.UpdateNode(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{request.Label}
 		} else if sqlgraph.IsConstraintError(err) {
@@ -972,6 +978,6 @@ func (ruo *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err e
 		}
 		return nil, err
 	}
-	ruo.mutation.done = true
+	_u.mutation.done = true
 	return _node, nil
 }

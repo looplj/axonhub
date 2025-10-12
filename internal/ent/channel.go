@@ -117,7 +117,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Channel fields.
-func (c *Channel) assignValues(columns []string, values []any) error {
+func (_m *Channel) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
@@ -128,54 +128,54 @@ func (c *Channel) assignValues(columns []string, values []any) error {
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
-			c.ID = int(value.Int64)
+			_m.ID = int(value.Int64)
 		case channel.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				c.CreatedAt = value.Time
+				_m.CreatedAt = value.Time
 			}
 		case channel.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				c.UpdatedAt = value.Time
+				_m.UpdatedAt = value.Time
 			}
 		case channel.FieldDeletedAt:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
 			} else if value.Valid {
-				c.DeletedAt = int(value.Int64)
+				_m.DeletedAt = int(value.Int64)
 			}
 		case channel.FieldType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field type", values[i])
 			} else if value.Valid {
-				c.Type = channel.Type(value.String)
+				_m.Type = channel.Type(value.String)
 			}
 		case channel.FieldBaseURL:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field base_url", values[i])
 			} else if value.Valid {
-				c.BaseURL = value.String
+				_m.BaseURL = value.String
 			}
 		case channel.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
-				c.Name = value.String
+				_m.Name = value.String
 			}
 		case channel.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
-				c.Status = channel.Status(value.String)
+				_m.Status = channel.Status(value.String)
 			}
 		case channel.FieldCredentials:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field credentials", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &c.Credentials); err != nil {
+				if err := json.Unmarshal(*value, &_m.Credentials); err != nil {
 					return fmt.Errorf("unmarshal field credentials: %w", err)
 				}
 			}
@@ -183,7 +183,7 @@ func (c *Channel) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field supported_models", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &c.SupportedModels); err != nil {
+				if err := json.Unmarshal(*value, &_m.SupportedModels); err != nil {
 					return fmt.Errorf("unmarshal field supported_models: %w", err)
 				}
 			}
@@ -191,13 +191,13 @@ func (c *Channel) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field default_test_model", values[i])
 			} else if value.Valid {
-				c.DefaultTestModel = value.String
+				_m.DefaultTestModel = value.String
 			}
 		case channel.FieldSettings:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field settings", values[i])
 			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &c.Settings); err != nil {
+				if err := json.Unmarshal(*value, &_m.Settings); err != nil {
 					return fmt.Errorf("unmarshal field settings: %w", err)
 				}
 			}
@@ -205,10 +205,10 @@ func (c *Channel) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field ordering_weight", values[i])
 			} else if value.Valid {
-				c.OrderingWeight = int(value.Int64)
+				_m.OrderingWeight = int(value.Int64)
 			}
 		default:
-			c.selectValues.Set(columns[i], values[i])
+			_m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
@@ -216,155 +216,155 @@ func (c *Channel) assignValues(columns []string, values []any) error {
 
 // Value returns the ent.Value that was dynamically selected and assigned to the Channel.
 // This includes values selected through modifiers, order, etc.
-func (c *Channel) Value(name string) (ent.Value, error) {
-	return c.selectValues.Get(name)
+func (_m *Channel) Value(name string) (ent.Value, error) {
+	return _m.selectValues.Get(name)
 }
 
 // QueryRequests queries the "requests" edge of the Channel entity.
-func (c *Channel) QueryRequests() *RequestQuery {
-	return NewChannelClient(c.config).QueryRequests(c)
+func (_m *Channel) QueryRequests() *RequestQuery {
+	return NewChannelClient(_m.config).QueryRequests(_m)
 }
 
 // QueryExecutions queries the "executions" edge of the Channel entity.
-func (c *Channel) QueryExecutions() *RequestExecutionQuery {
-	return NewChannelClient(c.config).QueryExecutions(c)
+func (_m *Channel) QueryExecutions() *RequestExecutionQuery {
+	return NewChannelClient(_m.config).QueryExecutions(_m)
 }
 
 // QueryUsageLogs queries the "usage_logs" edge of the Channel entity.
-func (c *Channel) QueryUsageLogs() *UsageLogQuery {
-	return NewChannelClient(c.config).QueryUsageLogs(c)
+func (_m *Channel) QueryUsageLogs() *UsageLogQuery {
+	return NewChannelClient(_m.config).QueryUsageLogs(_m)
 }
 
 // Update returns a builder for updating this Channel.
 // Note that you need to call Channel.Unwrap() before calling this method if this Channel
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (c *Channel) Update() *ChannelUpdateOne {
-	return NewChannelClient(c.config).UpdateOne(c)
+func (_m *Channel) Update() *ChannelUpdateOne {
+	return NewChannelClient(_m.config).UpdateOne(_m)
 }
 
 // Unwrap unwraps the Channel entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (c *Channel) Unwrap() *Channel {
-	_tx, ok := c.config.driver.(*txDriver)
+func (_m *Channel) Unwrap() *Channel {
+	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
 		panic("ent: Channel is not a transactional entity")
 	}
-	c.config.driver = _tx.drv
-	return c
+	_m.config.driver = _tx.drv
+	return _m
 }
 
 // String implements the fmt.Stringer.
-func (c *Channel) String() string {
+func (_m *Channel) String() string {
 	var builder strings.Builder
 	builder.WriteString("Channel(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", c.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("created_at=")
-	builder.WriteString(c.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
-	builder.WriteString(c.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", c.DeletedAt))
+	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("type=")
-	builder.WriteString(fmt.Sprintf("%v", c.Type))
+	builder.WriteString(fmt.Sprintf("%v", _m.Type))
 	builder.WriteString(", ")
 	builder.WriteString("base_url=")
-	builder.WriteString(c.BaseURL)
+	builder.WriteString(_m.BaseURL)
 	builder.WriteString(", ")
 	builder.WriteString("name=")
-	builder.WriteString(c.Name)
+	builder.WriteString(_m.Name)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
-	builder.WriteString(fmt.Sprintf("%v", c.Status))
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
 	builder.WriteString("credentials=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("supported_models=")
-	builder.WriteString(fmt.Sprintf("%v", c.SupportedModels))
+	builder.WriteString(fmt.Sprintf("%v", _m.SupportedModels))
 	builder.WriteString(", ")
 	builder.WriteString("default_test_model=")
-	builder.WriteString(c.DefaultTestModel)
+	builder.WriteString(_m.DefaultTestModel)
 	builder.WriteString(", ")
 	builder.WriteString("settings=")
-	builder.WriteString(fmt.Sprintf("%v", c.Settings))
+	builder.WriteString(fmt.Sprintf("%v", _m.Settings))
 	builder.WriteString(", ")
 	builder.WriteString("ordering_weight=")
-	builder.WriteString(fmt.Sprintf("%v", c.OrderingWeight))
+	builder.WriteString(fmt.Sprintf("%v", _m.OrderingWeight))
 	builder.WriteByte(')')
 	return builder.String()
 }
 
 // NamedRequests returns the Requests named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (c *Channel) NamedRequests(name string) ([]*Request, error) {
-	if c.Edges.namedRequests == nil {
+func (_m *Channel) NamedRequests(name string) ([]*Request, error) {
+	if _m.Edges.namedRequests == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
-	nodes, ok := c.Edges.namedRequests[name]
+	nodes, ok := _m.Edges.namedRequests[name]
 	if !ok {
 		return nil, &NotLoadedError{edge: name}
 	}
 	return nodes, nil
 }
 
-func (c *Channel) appendNamedRequests(name string, edges ...*Request) {
-	if c.Edges.namedRequests == nil {
-		c.Edges.namedRequests = make(map[string][]*Request)
+func (_m *Channel) appendNamedRequests(name string, edges ...*Request) {
+	if _m.Edges.namedRequests == nil {
+		_m.Edges.namedRequests = make(map[string][]*Request)
 	}
 	if len(edges) == 0 {
-		c.Edges.namedRequests[name] = []*Request{}
+		_m.Edges.namedRequests[name] = []*Request{}
 	} else {
-		c.Edges.namedRequests[name] = append(c.Edges.namedRequests[name], edges...)
+		_m.Edges.namedRequests[name] = append(_m.Edges.namedRequests[name], edges...)
 	}
 }
 
 // NamedExecutions returns the Executions named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (c *Channel) NamedExecutions(name string) ([]*RequestExecution, error) {
-	if c.Edges.namedExecutions == nil {
+func (_m *Channel) NamedExecutions(name string) ([]*RequestExecution, error) {
+	if _m.Edges.namedExecutions == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
-	nodes, ok := c.Edges.namedExecutions[name]
+	nodes, ok := _m.Edges.namedExecutions[name]
 	if !ok {
 		return nil, &NotLoadedError{edge: name}
 	}
 	return nodes, nil
 }
 
-func (c *Channel) appendNamedExecutions(name string, edges ...*RequestExecution) {
-	if c.Edges.namedExecutions == nil {
-		c.Edges.namedExecutions = make(map[string][]*RequestExecution)
+func (_m *Channel) appendNamedExecutions(name string, edges ...*RequestExecution) {
+	if _m.Edges.namedExecutions == nil {
+		_m.Edges.namedExecutions = make(map[string][]*RequestExecution)
 	}
 	if len(edges) == 0 {
-		c.Edges.namedExecutions[name] = []*RequestExecution{}
+		_m.Edges.namedExecutions[name] = []*RequestExecution{}
 	} else {
-		c.Edges.namedExecutions[name] = append(c.Edges.namedExecutions[name], edges...)
+		_m.Edges.namedExecutions[name] = append(_m.Edges.namedExecutions[name], edges...)
 	}
 }
 
 // NamedUsageLogs returns the UsageLogs named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (c *Channel) NamedUsageLogs(name string) ([]*UsageLog, error) {
-	if c.Edges.namedUsageLogs == nil {
+func (_m *Channel) NamedUsageLogs(name string) ([]*UsageLog, error) {
+	if _m.Edges.namedUsageLogs == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
-	nodes, ok := c.Edges.namedUsageLogs[name]
+	nodes, ok := _m.Edges.namedUsageLogs[name]
 	if !ok {
 		return nil, &NotLoadedError{edge: name}
 	}
 	return nodes, nil
 }
 
-func (c *Channel) appendNamedUsageLogs(name string, edges ...*UsageLog) {
-	if c.Edges.namedUsageLogs == nil {
-		c.Edges.namedUsageLogs = make(map[string][]*UsageLog)
+func (_m *Channel) appendNamedUsageLogs(name string, edges ...*UsageLog) {
+	if _m.Edges.namedUsageLogs == nil {
+		_m.Edges.namedUsageLogs = make(map[string][]*UsageLog)
 	}
 	if len(edges) == 0 {
-		c.Edges.namedUsageLogs[name] = []*UsageLog{}
+		_m.Edges.namedUsageLogs[name] = []*UsageLog{}
 	} else {
-		c.Edges.namedUsageLogs[name] = append(c.Edges.namedUsageLogs[name], edges...)
+		_m.Edges.namedUsageLogs[name] = append(_m.Edges.namedUsageLogs[name], edges...)
 	}
 }
 

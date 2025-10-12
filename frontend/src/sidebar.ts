@@ -8,17 +8,14 @@ import {
   IconRobot,
   IconShield,
   IconSettings,
+  IconKey,
 } from '@tabler/icons-react'
 import { Command } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { useRoutePermissions } from '@/hooks/useRoutePermissions'
 import { useMe } from '@/features/auth/data/auth'
-import {
-  type SidebarData,
-  type NavGroup,
-  type NavLink,
-} from './components/layout/types'
+import { type SidebarData, type NavGroup, type NavLink } from './components/layout/types'
 
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
@@ -30,11 +27,7 @@ export function useSidebarData(): SidebarData {
   const user = meData || authUser
 
   // Generate user initials for avatar
-  const getInitials = (
-    firstName?: string,
-    lastName?: string,
-    email?: string
-  ) => {
+  const getInitials = (firstName?: string, lastName?: string, email?: string) => {
     if (firstName && lastName) {
       return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
     }
@@ -48,11 +41,7 @@ export function useSidebarData(): SidebarData {
   }
 
   // Generate user display name
-  const getDisplayName = (
-    firstName?: string,
-    lastName?: string,
-    email?: string
-  ) => {
+  const getDisplayName = (firstName?: string, lastName?: string, email?: string) => {
     if (firstName && lastName) {
       return `${firstName} ${lastName}`
     }
@@ -75,6 +64,11 @@ export function useSidebarData(): SidebarData {
           title: t('sidebar.items.dashboard'),
           url: '/',
           icon: IconLayoutDashboard,
+        } as NavLink,
+        {
+          title: t('sidebar.items.projects'),
+          url: '/projects',
+          icon: IconPackages,
         } as NavLink,
         {
           title: t('sidebar.items.channels'),
@@ -120,7 +114,7 @@ export function useSidebarData(): SidebarData {
         {
           title: t('sidebar.items.apiKeys'),
           url: '/api-keys',
-          icon: IconPackages,
+          icon: IconKey,
         } as NavLink,
         {
           title: t('sidebar.items.playground'),
