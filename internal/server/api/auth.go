@@ -5,10 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/samber/lo"
 	"go.uber.org/fx"
 
-	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -37,8 +35,8 @@ type SignInRequest struct {
 
 // SignInResponse 登录响应.
 type SignInResponse struct {
-	User  objects.UserInfo `json:"user"`
-	Token string           `json:"token"`
+	User  *objects.UserInfo `json:"user"`
+	Token string            `json:"token"`
 }
 
 // SignIn handles user authentication.
@@ -86,20 +84,7 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 	}
 
 	response := SignInResponse{
-		User: objects.UserInfo{
-			Email:          user.Email,
-			FirstName:      user.FirstName,
-			LastName:       user.LastName,
-			IsOwner:        user.IsOwner,
-			PreferLanguage: user.PreferLanguage,
-			Scopes:         user.Scopes,
-			Roles: lo.Map(user.Edges.Roles, func(role *ent.Role, _ int) objects.Role {
-				return objects.Role{
-					Code: role.Code,
-					Name: role.Name,
-				}
-			}),
-		},
+		User:  biz.ConvertUserToUserInfo(ctx, user),
 		Token: token,
 	}
 

@@ -577,6 +577,7 @@ type ComplexityRoot struct {
 		IsOwner        func(childComplexity int) int
 		LastName       func(childComplexity int) int
 		PreferLanguage func(childComplexity int) int
+		Projects       func(childComplexity int) int
 		Roles          func(childComplexity int) int
 		Scopes         func(childComplexity int) int
 	}
@@ -592,6 +593,13 @@ type ComplexityRoot struct {
 		UpdatedAt func(childComplexity int) int
 		UserID    func(childComplexity int) int
 		Users     func(childComplexity int) int
+	}
+
+	UserProjectInfo struct {
+		IsOwner   func(childComplexity int) int
+		ProjectID func(childComplexity int) int
+		Roles     func(childComplexity int) int
+		Scopes    func(childComplexity int) int
 	}
 }
 
@@ -653,7 +661,7 @@ type QueryResolver interface {
 	TopRequestsUsers(ctx context.Context, limit *int) ([]*TopRequestsUsers, error)
 	TokenStats(ctx context.Context) (*TokenStats, error)
 	AllScopes(ctx context.Context) ([]*ScopeInfo, error)
-	Me(ctx context.Context) (*UserInfo, error)
+	Me(ctx context.Context) (*objects.UserInfo, error)
 	MyProjects(ctx context.Context) ([]*ent.Project, error)
 	SystemStatus(ctx context.Context) (*SystemStatus, error)
 	BrandSettings(ctx context.Context) (*BrandSettings, error)
@@ -3292,6 +3300,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UserInfo.PreferLanguage(childComplexity), true
 
+	case "UserInfo.projects":
+		if e.complexity.UserInfo.Projects == nil {
+			break
+		}
+
+		return e.complexity.UserInfo.Projects(childComplexity), true
+
 	case "UserInfo.roles":
 		if e.complexity.UserInfo.Roles == nil {
 			break
@@ -3375,6 +3390,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserProject.Users(childComplexity), true
+
+	case "UserProjectInfo.isOwner":
+		if e.complexity.UserProjectInfo.IsOwner == nil {
+			break
+		}
+
+		return e.complexity.UserProjectInfo.IsOwner(childComplexity), true
+
+	case "UserProjectInfo.projectID":
+		if e.complexity.UserProjectInfo.ProjectID == nil {
+			break
+		}
+
+		return e.complexity.UserProjectInfo.ProjectID(childComplexity), true
+
+	case "UserProjectInfo.roles":
+		if e.complexity.UserProjectInfo.Roles == nil {
+			break
+		}
+
+		return e.complexity.UserProjectInfo.Roles(childComplexity), true
+
+	case "UserProjectInfo.scopes":
+		if e.complexity.UserProjectInfo.Scopes == nil {
+			break
+		}
+
+		return e.complexity.UserProjectInfo.Scopes(childComplexity), true
 
 	}
 	return 0, false
@@ -12956,9 +12999,9 @@ func (ec *executionContext) _Query_me(ctx context.Context, field graphql.Collect
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*UserInfo)
+	res := resTmp.(*objects.UserInfo)
 	fc.Result = res
-	return ec.marshalNUserInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUserInfo(ctx, field.Selections, res)
+	return ec.marshalNUserInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐUserInfo(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -12985,6 +13028,8 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 				return ec.fieldContext_UserInfo_scopes(ctx, field)
 			case "roles":
 				return ec.fieldContext_UserInfo_roles(ctx, field)
+			case "projects":
+				return ec.fieldContext_UserInfo_projects(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UserInfo", field.Name)
 		},
@@ -17228,7 +17273,7 @@ func (ec *executionContext) fieldContext_RoleEdge_cursor(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _RoleInfo_code(ctx context.Context, field graphql.CollectedField, obj *RoleInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _RoleInfo_code(ctx context.Context, field graphql.CollectedField, obj *objects.RoleInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RoleInfo_code(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -17272,7 +17317,7 @@ func (ec *executionContext) fieldContext_RoleInfo_code(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _RoleInfo_name(ctx context.Context, field graphql.CollectedField, obj *RoleInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _RoleInfo_name(ctx context.Context, field graphql.CollectedField, obj *objects.RoleInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RoleInfo_name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21677,7 +21722,7 @@ func (ec *executionContext) fieldContext_UserEdge_cursor(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _UserInfo_email(ctx context.Context, field graphql.CollectedField, obj *UserInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserInfo_email(ctx context.Context, field graphql.CollectedField, obj *objects.UserInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserInfo_email(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21721,7 +21766,7 @@ func (ec *executionContext) fieldContext_UserInfo_email(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _UserInfo_firstName(ctx context.Context, field graphql.CollectedField, obj *UserInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserInfo_firstName(ctx context.Context, field graphql.CollectedField, obj *objects.UserInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserInfo_firstName(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21765,7 +21810,7 @@ func (ec *executionContext) fieldContext_UserInfo_firstName(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _UserInfo_lastName(ctx context.Context, field graphql.CollectedField, obj *UserInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserInfo_lastName(ctx context.Context, field graphql.CollectedField, obj *objects.UserInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserInfo_lastName(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21809,7 +21854,7 @@ func (ec *executionContext) fieldContext_UserInfo_lastName(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _UserInfo_isOwner(ctx context.Context, field graphql.CollectedField, obj *UserInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserInfo_isOwner(ctx context.Context, field graphql.CollectedField, obj *objects.UserInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserInfo_isOwner(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21853,7 +21898,7 @@ func (ec *executionContext) fieldContext_UserInfo_isOwner(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _UserInfo_preferLanguage(ctx context.Context, field graphql.CollectedField, obj *UserInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserInfo_preferLanguage(ctx context.Context, field graphql.CollectedField, obj *objects.UserInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserInfo_preferLanguage(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21897,7 +21942,7 @@ func (ec *executionContext) fieldContext_UserInfo_preferLanguage(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _UserInfo_avatar(ctx context.Context, field graphql.CollectedField, obj *UserInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserInfo_avatar(ctx context.Context, field graphql.CollectedField, obj *objects.UserInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserInfo_avatar(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21938,7 +21983,7 @@ func (ec *executionContext) fieldContext_UserInfo_avatar(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _UserInfo_scopes(ctx context.Context, field graphql.CollectedField, obj *UserInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserInfo_scopes(ctx context.Context, field graphql.CollectedField, obj *objects.UserInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserInfo_scopes(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21982,7 +22027,7 @@ func (ec *executionContext) fieldContext_UserInfo_scopes(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _UserInfo_roles(ctx context.Context, field graphql.CollectedField, obj *UserInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserInfo_roles(ctx context.Context, field graphql.CollectedField, obj *objects.UserInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserInfo_roles(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22008,9 +22053,9 @@ func (ec *executionContext) _UserInfo_roles(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*RoleInfo)
+	res := resTmp.([]objects.RoleInfo)
 	fc.Result = res
-	return ec.marshalNRoleInfo2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRoleInfoᚄ(ctx, field.Selections, res)
+	return ec.marshalNRoleInfo2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoleInfoᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UserInfo_roles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -22027,6 +22072,60 @@ func (ec *executionContext) fieldContext_UserInfo_roles(_ context.Context, field
 				return ec.fieldContext_RoleInfo_name(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RoleInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserInfo_projects(ctx context.Context, field graphql.CollectedField, obj *objects.UserInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserInfo_projects(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Projects, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]objects.UserProjectInfo)
+	fc.Result = res
+	return ec.marshalNUserProjectInfo2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐUserProjectInfoᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserInfo_projects(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "projectID":
+				return ec.fieldContext_UserProjectInfo_projectID(ctx, field)
+			case "isOwner":
+				return ec.fieldContext_UserProjectInfo_isOwner(ctx, field)
+			case "scopes":
+				return ec.fieldContext_UserProjectInfo_scopes(ctx, field)
+			case "roles":
+				return ec.fieldContext_UserProjectInfo_roles(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserProjectInfo", field.Name)
 		},
 	}
 	return fc, nil
@@ -22532,6 +22631,188 @@ func (ec *executionContext) fieldContext_UserProject_projects(_ context.Context,
 				return ec.fieldContext_Project_projectUsers(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserProjectInfo_projectID(ctx context.Context, field graphql.CollectedField, obj *objects.UserProjectInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserProjectInfo_projectID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(objects.GUID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserProjectInfo_projectID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserProjectInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserProjectInfo_isOwner(ctx context.Context, field graphql.CollectedField, obj *objects.UserProjectInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserProjectInfo_isOwner(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsOwner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserProjectInfo_isOwner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserProjectInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserProjectInfo_scopes(ctx context.Context, field graphql.CollectedField, obj *objects.UserProjectInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserProjectInfo_scopes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Scopes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserProjectInfo_scopes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserProjectInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserProjectInfo_roles(ctx context.Context, field graphql.CollectedField, obj *objects.UserProjectInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserProjectInfo_roles(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Roles, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]objects.RoleInfo)
+	fc.Result = res
+	return ec.marshalNRoleInfo2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoleInfoᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserProjectInfo_roles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserProjectInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "code":
+				return ec.fieldContext_RoleInfo_code(ctx, field)
+			case "name":
+				return ec.fieldContext_RoleInfo_name(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RoleInfo", field.Name)
 		},
 	}
 	return fc, nil
@@ -38895,7 +39176,7 @@ func (ec *executionContext) _RoleEdge(ctx context.Context, sel ast.SelectionSet,
 
 var roleInfoImplementors = []string{"RoleInfo"}
 
-func (ec *executionContext) _RoleInfo(ctx context.Context, sel ast.SelectionSet, obj *RoleInfo) graphql.Marshaler {
+func (ec *executionContext) _RoleInfo(ctx context.Context, sel ast.SelectionSet, obj *objects.RoleInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, roleInfoImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -40400,7 +40681,7 @@ func (ec *executionContext) _UserEdge(ctx context.Context, sel ast.SelectionSet,
 
 var userInfoImplementors = []string{"UserInfo"}
 
-func (ec *executionContext) _UserInfo(ctx context.Context, sel ast.SelectionSet, obj *UserInfo) graphql.Marshaler {
+func (ec *executionContext) _UserInfo(ctx context.Context, sel ast.SelectionSet, obj *objects.UserInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userInfoImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -40443,6 +40724,11 @@ func (ec *executionContext) _UserInfo(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "roles":
 			out.Values[i] = ec._UserInfo_roles(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "projects":
+			out.Values[i] = ec._UserInfo_projects(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -40682,6 +40968,60 @@ func (ec *executionContext) _UserProject(ctx context.Context, sel ast.SelectionS
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var userProjectInfoImplementors = []string{"UserProjectInfo"}
+
+func (ec *executionContext) _UserProjectInfo(ctx context.Context, sel ast.SelectionSet, obj *objects.UserProjectInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, userProjectInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UserProjectInfo")
+		case "projectID":
+			out.Values[i] = ec._UserProjectInfo_projectID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isOwner":
+			out.Values[i] = ec._UserProjectInfo_isOwner(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "scopes":
+			out.Values[i] = ec._UserProjectInfo_scopes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roles":
+			out.Values[i] = ec._UserProjectInfo_roles(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -42128,7 +42468,11 @@ func (ec *executionContext) marshalNRoleConnection2ᚖgithubᚗcomᚋloopljᚋax
 	return ec._RoleConnection(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNRoleInfo2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRoleInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*RoleInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNRoleInfo2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoleInfo(ctx context.Context, sel ast.SelectionSet, v objects.RoleInfo) graphql.Marshaler {
+	return ec._RoleInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRoleInfo2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoleInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.RoleInfo) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -42152,7 +42496,7 @@ func (ec *executionContext) marshalNRoleInfo2ᚕᚖgithubᚗcomᚋloopljᚋaxonh
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNRoleInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRoleInfo(ctx, sel, v[i])
+			ret[i] = ec.marshalNRoleInfo2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoleInfo(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -42170,16 +42514,6 @@ func (ec *executionContext) marshalNRoleInfo2ᚕᚖgithubᚗcomᚋloopljᚋaxonh
 	}
 
 	return ret
-}
-
-func (ec *executionContext) marshalNRoleInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRoleInfo(ctx context.Context, sel ast.SelectionSet, v *RoleInfo) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._RoleInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRoleLevel2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋroleᚐLevel(ctx context.Context, v any) (role.Level, error) {
@@ -42602,11 +42936,11 @@ func (ec *executionContext) marshalNUserConnection2ᚖgithubᚗcomᚋloopljᚋax
 	return ec._UserConnection(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUserInfo2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUserInfo(ctx context.Context, sel ast.SelectionSet, v UserInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNUserInfo2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐUserInfo(ctx context.Context, sel ast.SelectionSet, v objects.UserInfo) graphql.Marshaler {
 	return ec._UserInfo(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNUserInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUserInfo(ctx context.Context, sel ast.SelectionSet, v *UserInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNUserInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐUserInfo(ctx context.Context, sel ast.SelectionSet, v *objects.UserInfo) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -42640,6 +42974,54 @@ func (ec *executionContext) marshalNUserProject2ᚖgithubᚗcomᚋloopljᚋaxonh
 		return graphql.Null
 	}
 	return ec._UserProject(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNUserProjectInfo2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐUserProjectInfo(ctx context.Context, sel ast.SelectionSet, v objects.UserProjectInfo) graphql.Marshaler {
+	return ec._UserProjectInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNUserProjectInfo2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐUserProjectInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.UserProjectInfo) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNUserProjectInfo2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐUserProjectInfo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNUserProjectOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUserProjectOrderField(ctx context.Context, v any) (*ent.UserProjectOrderField, error) {

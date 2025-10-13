@@ -12,7 +12,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
-	"github.com/samber/lo"
+	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 // UpdateMe is the resolver for the updateMe field.
@@ -50,47 +51,15 @@ func (r *mutationResolver) UpdateMe(ctx context.Context, input UpdateMeInput) (*
 }
 
 // Me is the resolver for the me field.
-func (r *queryResolver) Me(ctx context.Context) (*UserInfo, error) {
+func (r *queryResolver) Me(ctx context.Context) (*objects.UserInfo, error) {
 	// Get current user from context
 	user, ok := contexts.GetUser(ctx)
 	if !ok || user == nil {
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	// Convert ent.Role to RoleInfo
-	userRoles := make([]*RoleInfo, len(user.Edges.Roles))
-	for i, role := range user.Edges.Roles {
-		userRoles[i] = &RoleInfo{
-			Code: role.Code,
-			Name: role.Name,
-		}
-	}
-
-	// Calculate all scopes (user scopes + role scopes)
-	allScopes := make(map[string]bool)
-
-	// Add user's direct scopes
-	for _, scope := range user.Scopes {
-		allScopes[scope] = true
-	}
-
-	// Add scopes from all roles
-	for _, role := range user.Edges.Roles {
-		for _, scope := range role.Scopes {
-			allScopes[scope] = true
-		}
-	}
-
-	return &UserInfo{
-		Email:          user.Email,
-		FirstName:      user.FirstName,
-		LastName:       user.LastName,
-		IsOwner:        user.IsOwner,
-		PreferLanguage: user.PreferLanguage,
-		Avatar:         &user.Avatar,
-		Scopes:         lo.Keys(allScopes),
-		Roles:          userRoles,
-	}, nil
+	// Use UserService to convert user to UserInfo
+	return biz.ConvertUserToUserInfo(ctx, user), nil
 }
 
 // MyProjects is the resolver for the myProjects field.

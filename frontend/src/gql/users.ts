@@ -12,6 +12,15 @@ export const ME_QUERY = `
         code
         name
       }
+      projects {
+        projectID
+        isOwner
+        scopes
+        roles {
+          code
+          name
+        }
+      }
     }
   }
 `;

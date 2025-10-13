@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
@@ -152,6 +154,8 @@ func (s *UserService) GetUserByID(ctx context.Context, id int) (*ent.User, error
 	user, err := client.User.Query().
 		Where(user.IDEQ(id)).
 		WithRoles().
+		WithProjects().
+		WithProjectUsers().
 		Only(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
@@ -175,4 +179,81 @@ func buildUserCacheKey(id int) string {
 func (s *UserService) invalidateUserCache(ctx context.Context, id int) {
 	cacheKey := buildUserCacheKey(id)
 	_ = s.UserCache.Delete(ctx, cacheKey)
+}
+
+// ConvertUserToUserInfo converts ent.User to objects.UserInfo.
+// This method handles the conversion of user data including roles, scopes, and projects.
+// Note: This function panics if the provided user is nil.
+func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
+	// Convert ent.Role to objects.RoleInfo (global roles only)
+	userRoles := make([]objects.RoleInfo, 0)
+
+	for _, r := range u.Edges.Roles {
+		if r.ProjectID != nil {
+			// Skip project-specific roles, they will be included in project info
+			continue
+		}
+
+		userRoles = append(userRoles, objects.RoleInfo{
+			Code: r.Code,
+			Name: r.Name,
+		})
+	}
+
+	// Calculate all scopes (user scopes + global role scopes)
+	allScopes := make(map[string]bool)
+
+	// Add user's direct scopes
+	for _, scope := range u.Scopes {
+		allScopes[scope] = true
+	}
+
+	projectRoles := map[int][]*ent.Role{}
+
+	// Add scopes from all global roles
+	for _, r := range u.Edges.Roles {
+		if r.ProjectID != nil {
+			projectRoles[*r.ProjectID] = append(projectRoles[*r.ProjectID], r)
+			continue
+		}
+
+		for _, scope := range r.Scopes {
+			allScopes[scope] = true
+		}
+	}
+
+	// Convert user projects to objects.UserProjectInfo
+	userProjects := make([]objects.UserProjectInfo, 0, len(u.Edges.ProjectUsers))
+
+	for _, up := range u.Edges.ProjectUsers {
+		// Convert project roles to objects.RoleInfo
+		roles := projectRoles[up.ProjectID]
+
+		projectRoleInfos := make([]objects.RoleInfo, 0, len(roles))
+		for _, r := range roles {
+			projectRoleInfos = append(projectRoleInfos, objects.RoleInfo{
+				Code: r.Code,
+				Name: r.Name,
+			})
+		}
+
+		userProjects = append(userProjects, objects.UserProjectInfo{
+			ProjectID: objects.GUID{Type: ent.TypeProject, ID: up.ProjectID},
+			IsOwner:   up.IsOwner,
+			Scopes:    up.Scopes,
+			Roles:     projectRoleInfos,
+		})
+	}
+
+	return &objects.UserInfo{
+		Email:          u.Email,
+		FirstName:      u.FirstName,
+		LastName:       u.LastName,
+		IsOwner:        u.IsOwner,
+		PreferLanguage: u.PreferLanguage,
+		Avatar:         &u.Avatar,
+		Scopes:         lo.Keys(allScopes),
+		Roles:          userRoles,
+		Projects:       userProjects,
+	}
 }
