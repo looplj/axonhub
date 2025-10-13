@@ -183,6 +183,7 @@ func (s *UserService) invalidateUserCache(ctx context.Context, id int) {
 
 // ConvertUserToUserInfo converts ent.User to objects.UserInfo.
 // This method handles the conversion of user data including roles, scopes, and projects.
+// Note: This function panics if the provided user is nil.
 func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 	// Convert ent.Role to objects.RoleInfo (global roles only)
 	userRoles := make([]objects.RoleInfo, 0)
