@@ -8,7 +8,14 @@ interface Role {
   name: string
 }
 
-interface AuthUser {
+interface Project {
+  projectID: string
+  isOwner: boolean
+  scopes: string[]
+  roles: Role[]
+}
+
+export interface AuthUser {
   email: string
   firstName: string
   lastName: string
@@ -17,6 +24,7 @@ interface AuthUser {
   avatar?: string
   scopes: string[]
   roles: Role[]
+  projects: Project[]
 }
 
 interface AuthState {

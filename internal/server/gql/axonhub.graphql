@@ -65,21 +65,6 @@ type SignInPayload {
   token: String!
 }
 
-type UserInfo {
-  email: String!
-  firstName: String!
-  lastName: String!
-  isOwner: Boolean!
-  preferLanguage: String!
-  avatar: String
-  scopes: [String!]!
-  roles: [RoleInfo!]!
-}
-
-type RoleInfo {
-  code: String!
-  name: String!
-}
 
 input TestChannelInput {
   channelID: ID!

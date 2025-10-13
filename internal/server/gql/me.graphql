@@ -1,4 +1,28 @@
 
+type UserInfo {
+  email: String!
+  firstName: String!
+  lastName: String!
+  isOwner: Boolean!
+  preferLanguage: String!
+  avatar: String
+  scopes: [String!]!
+  roles: [RoleInfo!]!
+  projects: [UserProjectInfo!]!
+}
+
+type RoleInfo {
+  code: String!
+  name: String!
+}
+
+type UserProjectInfo {
+  projectID: ID!
+  isOwner: Boolean!
+  scopes: [String!]!
+  roles: [RoleInfo!]!
+}
+
 extend type Query {
     me: UserInfo!
     myProjects: [Project!]!

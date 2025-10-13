@@ -1,4 +1,4 @@
-import { getTokenFromStorage } from '@/stores/authStore'
+import { AuthUser, getTokenFromStorage } from '@/stores/authStore'
 
 // Same domain, no need to add baseURL.
 export const API_BASE_URL = ''
@@ -21,10 +21,7 @@ class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(
-  endpoint: string,
-  options: ApiRequestOptions = {}
-): Promise<T> {
+export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
   const { method = 'GET', headers = {}, body, requireAuth = false } = options
 
   const url = `${API_BASE_URL}${endpoint}`
@@ -86,17 +83,13 @@ export async function apiRequest<T>(
 
     // Network or other errors
     console.error('API request failed:', error)
-    throw new ApiError(
-      error instanceof Error ? error.message : 'Network error occurred',
-      0
-    )
+    throw new ApiError(error instanceof Error ? error.message : 'Network error occurred', 0)
   }
 }
 
 // System API endpoints
 export const systemApi = {
-  getStatus: (): Promise<{ isInitialized: boolean }> =>
-    apiRequest('/admin/system/status'),
+  getStatus: (): Promise<{ isInitialized: boolean }> => apiRequest('/admin/system/status'),
 
   initialize: (data: {
     ownerEmail: string
@@ -117,16 +110,7 @@ export const authApi = {
     email: string
     password: string
   }): Promise<{
-    user: {
-      id: string
-      email: string
-      firstName?: string
-      lastName?: string
-      isOwner: boolean
-      preferLanguage?: string
-      scopes: string[]
-      roles: Array<{ code: string; name: string }>
-    }
+    user: AuthUser
     token: string
   }> =>
     apiRequest('/admin/auth/signin', {

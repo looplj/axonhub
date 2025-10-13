@@ -11,6 +11,7 @@ import {
 } from '@/stores/authStore'
 import { authApi } from '@/lib/api-client'
 import i18n from '@/lib/i18n'
+import { AuthUser } from '@/stores/authStore'
 
 export interface SignInInput {
   email: string
@@ -18,19 +19,7 @@ export interface SignInInput {
 }
 
 interface MeResponse {
-  me: {
-    email: string
-    firstName: string
-    lastName: string
-    isOwner: boolean
-    preferLanguage: string
-    avatar?: string
-    scopes: string[]
-    roles: Array<{
-      code: string
-      name: string
-    }>
-  }
+  me: AuthUser
 }
 
 export function useMe() {
@@ -51,19 +40,7 @@ export function useMe() {
     if (query.data) {
       const userLanguage = query.data.preferLanguage || 'en'
 
-      setUser({
-        email: query.data.email,
-        firstName: query.data.firstName,
-        lastName: query.data.lastName,
-        isOwner: query.data.isOwner,
-        preferLanguage: userLanguage,
-        avatar: query.data.avatar,
-        scopes: query.data.scopes,
-        roles: query.data.roles.map((role) => ({
-          code: role.code,
-          name: role.name,
-        })),
-      })
+      setUser(query.data)
 
       // Initialize i18n with user's preferred language
       if (userLanguage !== i18n.language) {
@@ -91,18 +68,7 @@ export function useSignIn() {
 
       // Update auth store
       setAccessToken(data.token)
-      setUser({
-        email: data.user.email,
-        firstName: data.user.firstName || '',
-        lastName: data.user.lastName || '',
-        isOwner: data.user.isOwner,
-        preferLanguage: userLanguage,
-        scopes: data.user.scopes,
-        roles: data.user.roles.map((role) => ({
-          code: role.code,
-          name: role.name,
-        })),
-      })
+      setUser(data.user)
 
       // Initialize i18n with user's preferred language
       if (userLanguage !== i18n.language) {

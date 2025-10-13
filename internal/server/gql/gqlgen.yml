@@ -134,3 +134,12 @@ models:
   ModelIdentify:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelIdentify
+  UserInfo:
+    model:
+      - github.com/looplj/axonhub/internal/objects.UserInfo
+  RoleInfo:
+    model:
+      - github.com/looplj/axonhub/internal/objects.RoleInfo
+  UserProjectInfo:
+    model:
+      - github.com/looplj/axonhub/internal/objects.UserProjectInfo

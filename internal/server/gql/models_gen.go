@@ -110,11 +110,6 @@ type RequestStatsByModel struct {
 	Count   int    `json:"count"`
 }
 
-type RoleInfo struct {
-	Code string `json:"code"`
-	Name string `json:"name"`
-}
-
 type ScopeInfo struct {
 	Scope       string `json:"scope"`
 	Description string `json:"description"`
@@ -177,15 +172,4 @@ type UpdateMeInput struct {
 	LastName       *string `json:"lastName,omitempty"`
 	PreferLanguage *string `json:"preferLanguage,omitempty"`
 	Avatar         *string `json:"avatar,omitempty"`
-}
-
-type UserInfo struct {
-	Email          string      `json:"email"`
-	FirstName      string      `json:"firstName"`
-	LastName       string      `json:"lastName"`
-	IsOwner        bool        `json:"isOwner"`
-	PreferLanguage string      `json:"preferLanguage"`
-	Avatar         *string     `json:"avatar,omitempty"`
-	Scopes         []string    `json:"scopes"`
-	Roles          []*RoleInfo `json:"roles"`
 }
