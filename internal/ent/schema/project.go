@@ -99,7 +99,6 @@ func (Project) Policy() ent.Policy {
 		Query: scopes.QueryPolicy{
 			scopes.OwnerRule(), // owner 用户可以访问所有项目
 			scopes.UserReadScopeRule(scopes.ScopeReadProjects), // 需要 projects 读取权限
-			// TODO: Add ProjectMemberQueryRule after ent code generation
 		},
 		Mutation: scopes.MutationPolicy{
 			scopes.OwnerRule(), // owner 用户可以修改所有项目

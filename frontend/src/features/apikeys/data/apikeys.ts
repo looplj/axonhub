@@ -2,9 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { useSelectedProjectId } from '@/stores/projectStore'
+import { extractNumberID } from '@/lib/utils'
 import { useErrorHandler } from '@/hooks/use-error-handler'
 import { useRequestPermissions } from '../../../gql/useRequestPermissions'
-import { useSelectedProjectId } from '@/stores/projectStore'
 import type {
   ApiKey,
   ApiKeyConnection,
@@ -169,21 +170,13 @@ export function useApiKeys(variables?: {
   const permissions = useRequestPermissions()
   const selectedProjectId = useSelectedProjectId()
 
-  // Automatically add projectID filter if a project is selected
-  const variablesWithProject = {
-    ...variables,
-    where: {
-      ...variables?.where,
-      ...(selectedProjectId && { projectID: selectedProjectId }),
-    },
-  }
-
   return useQuery({
-    queryKey: ['apiKeys', variablesWithProject, permissions],
+    queryKey: ['apiKeys', variables, permissions, selectedProjectId],
     queryFn: async () => {
       try {
         const query = buildApiKeysQuery(permissions)
-        const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(query, variablesWithProject)
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
+        const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(query, variables, headers)
         return apiKeyConnectionSchema.parse(data?.apiKeys)
       } catch (error) {
         handleError(error, t('apikeys.errors.fetchData'))
@@ -198,13 +191,15 @@ export function useApiKey(id: string) {
   const { t } = useTranslation()
   const { handleError } = useErrorHandler()
   const permissions = useRequestPermissions()
+  const selectedProjectId = useSelectedProjectId()
 
   return useQuery({
-    queryKey: ['apiKey', id, permissions],
+    queryKey: ['apiKey', id, permissions, selectedProjectId],
     queryFn: async () => {
       try {
         const query = buildApiKeyQuery(permissions)
-        const data = await graphqlRequest<{ node: ApiKey }>(query, { id })
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
+        const data = await graphqlRequest<{ node: ApiKey }>(query, { id }, headers)
         return apiKeySchema.parse(data.node)
       } catch (error) {
         handleError(error, t('apikeys.errors.fetchDetails'))
@@ -227,9 +222,10 @@ export function useCreateApiKey() {
       // Automatically add projectID if not provided and a project is selected
       const inputWithProject = {
         ...input,
-        projectID: input.projectID ?? (selectedProjectId ? parseInt(selectedProjectId) : undefined),
+        projectID: input.projectID ?? (selectedProjectId ? selectedProjectId : undefined),
       }
-      return graphqlRequest<{ createAPIKey: ApiKey }>(mutation, { input: inputWithProject })
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
+      return graphqlRequest<{ createAPIKey: ApiKey }>(mutation, { input: inputWithProject }, headers)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
@@ -246,11 +242,13 @@ export function useUpdateApiKey() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const permissions = useRequestPermissions()
+  const selectedProjectId = useSelectedProjectId()
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyInput }) => {
       const mutation = buildUpdateApiKeyMutation(permissions)
-      return graphqlRequest<{ updateAPIKey: ApiKey }>(mutation, { id, input })
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
+      return graphqlRequest<{ updateAPIKey: ApiKey }>(mutation, { id, input }, headers)
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
@@ -267,10 +265,13 @@ export function useUpdateApiKey() {
 export function useUpdateApiKeyStatus() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const selectedProjectId = useSelectedProjectId()
 
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'enabled' | 'disabled' | 'archived' }) =>
-      graphqlRequest<{ updateAPIKeyStatus: ApiKey }>(UPDATE_APIKEY_STATUS_MUTATION, { id, status }),
+    mutationFn: ({ id, status }: { id: string; status: 'enabled' | 'disabled' | 'archived' }) => {
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
+      return graphqlRequest<{ updateAPIKeyStatus: ApiKey }>(UPDATE_APIKEY_STATUS_MUTATION, { id, status }, headers)
+    },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] })
@@ -292,10 +293,13 @@ export function useUpdateApiKeyStatus() {
 export function useUpdateApiKeyProfiles() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const selectedProjectId = useSelectedProjectId()
 
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyProfilesInput }) =>
-      graphqlRequest<{ updateAPIKeyProfiles: ApiKey }>(UPDATE_APIKEY_PROFILES_MUTATION, { id, input }),
+    mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyProfilesInput }) => {
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
+      return graphqlRequest<{ updateAPIKeyProfiles: ApiKey }>(UPDATE_APIKEY_PROFILES_MUTATION, { id, input }, headers)
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] })

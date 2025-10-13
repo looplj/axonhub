@@ -49,7 +49,7 @@ func (policies QueryPolicy) EvalQuery(ctx context.Context, q ent.Query) error {
 		}
 	}
 
-	return privacy.Deny
+	return privacy.Denyf("default deny")
 }
 
 // EvalMutation evaluates a mutation against a mutation policy.
@@ -68,5 +68,5 @@ func (policies MutationPolicy) EvalMutation(ctx context.Context, m ent.Mutation)
 		}
 	}
 
-	return privacy.Deny
+	return privacy.Denyf("default deny")
 }

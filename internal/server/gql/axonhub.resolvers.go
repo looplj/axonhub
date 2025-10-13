@@ -201,19 +201,7 @@ func (r *mutationResolver) BulkUpdateChannelOrdering(ctx context.Context, input 
 
 // CreateAPIKey is the resolver for the createAPIKey field.
 func (r *mutationResolver) CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error) {
-	// Get current user from context
-	user, ok := contexts.GetUser(ctx)
-	if !ok || user == nil {
-		return nil, fmt.Errorf("user not found in context")
-	}
-
-	// Use APIKeyService to create the API key
-	apiKey, err := r.apiKeyService.CreateAPIKey(ctx, input, user.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return apiKey, nil
+	return r.apiKeyService.CreateAPIKey(ctx, input)
 }
 
 // UpdateAPIKey is the resolver for the updateAPIKey field.

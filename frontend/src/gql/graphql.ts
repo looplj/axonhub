@@ -7,7 +7,8 @@ export const GRAPHQL_ENDPOINT = '/admin/graphql'
 // GraphQL client function with token support
 export async function graphqlRequest<T>(
   query: string,
-  variables?: Record<string, any>
+  variables?: Record<string, any>,
+  customHeaders?: Record<string, string>
 ): Promise<T> {
   // Get token from localStorage
   const token = getTokenFromStorage()
@@ -19,6 +20,11 @@ export async function graphqlRequest<T>(
   // Add Authorization header if token exists
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
+  }
+
+  // Merge custom headers
+  if (customHeaders) {
+    Object.assign(headers, customHeaders)
   }
 
   const response = await fetch(GRAPHQL_ENDPOINT, {

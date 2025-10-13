@@ -229,23 +229,16 @@ export function useRequests(variables?: {
   const permissions = useRequestPermissions()
   const selectedProjectId = useSelectedProjectId()
   
-  // Automatically add projectID filter if a project is selected
-  const variablesWithProject = {
-    ...variables,
-    where: {
-      ...variables?.where,
-      ...(selectedProjectId && { projectID: selectedProjectId }),
-    },
-  }
-  
   return useQuery({
-    queryKey: ['requests', variablesWithProject, permissions],
+    queryKey: ['requests', variables, permissions, selectedProjectId],
     queryFn: async () => {
       try {
         const query = buildRequestsQuery(permissions)
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
         const data = await graphqlRequest<{ requests: RequestConnection }>(
           query,
-          variablesWithProject
+          variables,
+          headers
         )
         return requestConnectionSchema.parse(data?.requests)
       } catch (error) {
@@ -260,15 +253,18 @@ export function useRequests(variables?: {
 export function useRequest(id: string) {
   const { handleError } = useErrorHandler()
   const permissions = useRequestPermissions()
+  const selectedProjectId = useSelectedProjectId()
   
   return useQuery({
-    queryKey: ['request', id, permissions],
+    queryKey: ['request', id, permissions, selectedProjectId],
     queryFn: async () => {
       try {
         const query = buildRequestDetailQuery(permissions)
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
         const data = await graphqlRequest<{ node: Request }>(
           query,
-          { id }
+          { id },
+          headers
         )
         if (!data.node) {
           throw new Error('Request not found')
@@ -290,14 +286,17 @@ export function useRequestExecutions(requestID: string, variables?: {
   where?: Record<string, any>
 }) {
   const permissions = useRequestPermissions()
+  const selectedProjectId = useSelectedProjectId()
   
   return useQuery({
-    queryKey: ['request-executions', requestID, variables, permissions],
+    queryKey: ['request-executions', requestID, variables, permissions, selectedProjectId],
     queryFn: async () => {
       const query = buildRequestExecutionsQuery(permissions)
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
       const data = await graphqlRequest<{ node: { executions: RequestExecutionConnection } }>(
         query,
-        { requestID, ...variables }
+        { requestID, ...variables },
+        headers
       )
       return requestExecutionConnectionSchema.parse(data?.node?.executions)
     },

@@ -119,15 +119,15 @@ func (Request) Annotations() []schema.Annotation {
 func (Request) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
+			scopes.UserProjectScopeReadRule(scopes.ScopeReadRequests),
 			scopes.OwnerRule(), // owner 用户可以访问所有请求
 			scopes.UserReadScopeRule(scopes.ScopeReadRequests), // 需要 requests 读取权限
-			scopes.UserOwnedQueryRule(),                        // 用户只能查看自己的请求
 		},
 		Mutation: scopes.MutationPolicy{
 			scopes.APIKeyScopeMutationRule(scopes.ScopeWriteRequests),
+			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteRequests),
 			scopes.OwnerRule(), // owner 用户可以修改所有请求
 			scopes.UserWriteScopeRule(scopes.ScopeWriteRequests), // 需要 requests 写入权限
-			scopes.UserOwnedMutationRule(),
 		},
 	}
 }

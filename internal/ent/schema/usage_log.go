@@ -116,14 +116,14 @@ func (UsageLog) Annotations() []schema.Annotation {
 func (UsageLog) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
+			scopes.UserProjectScopeReadRule(scopes.ScopeReadRequests),
 			scopes.OwnerRule(), // owner users can access all usage logs
 			scopes.UserReadScopeRule(scopes.ScopeReadRequests), // requires requests read permission
-			scopes.UserOwnedQueryRule(),                        // users can only view their own usage logs
 		},
 		Mutation: scopes.MutationPolicy{
+			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteRequests),
 			scopes.OwnerRule(), // owner users can modify all usage logs
 			scopes.UserWriteScopeRule(scopes.ScopeWriteRequests), // requires requests write permission
-			scopes.UserOwnedMutationRule(),
 		},
 	}
 }

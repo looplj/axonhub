@@ -123,23 +123,16 @@ export function useUsageLogs(variables?: {
   const permissions = useUsageLogPermissions()
   const selectedProjectId = useSelectedProjectId()
   
-  // Automatically add projectID filter if a project is selected
-  const variablesWithProject = {
-    ...variables,
-    where: {
-      ...variables?.where,
-      ...(selectedProjectId && { projectID: selectedProjectId }),
-    },
-  }
-  
   return useQuery({
-    queryKey: ['usageLogs', variablesWithProject, permissions],
+    queryKey: ['usageLogs', variables, permissions, selectedProjectId],
     queryFn: async () => {
       try {
         const query = buildUsageLogsQuery(permissions)
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
         const data = await graphqlRequest<{ usageLogs: UsageLogConnection }>(
           query,
-          variablesWithProject
+          variables,
+          headers
         )
         return usageLogConnectionSchema.parse(data?.usageLogs)
       } catch (error) {
@@ -154,15 +147,18 @@ export function useUsageLogs(variables?: {
 export function useUsageLog(id: string) {
   const { handleError } = useErrorHandler()
   const permissions = useUsageLogPermissions()
+  const selectedProjectId = useSelectedProjectId()
   
   return useQuery({
-    queryKey: ['usageLog', id, permissions],
+    queryKey: ['usageLog', id, permissions, selectedProjectId],
     queryFn: async () => {
       try {
         const query = buildUsageLogDetailQuery(permissions)
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
         const data = await graphqlRequest<{ node: UsageLog }>(
           query,
-          { id }
+          { id },
+          headers
         )
         if (!data.node) {
           throw new Error('Usage log not found')
