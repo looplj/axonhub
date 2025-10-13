@@ -1,7 +1,5 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
-import { Separator } from '@/components/ui/separator'
-import { SidebarTrigger } from '@/components/ui/sidebar'
 
 interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
   fixed?: boolean
@@ -28,6 +26,11 @@ export const Header = ({
     return () => document.removeEventListener('scroll', onScroll)
   }, [])
 
+  // Don't render if there's no children
+  if (!children) {
+    return null
+  }
+
   return (
     <header
       className={cn(
@@ -38,8 +41,6 @@ export const Header = ({
       )}
       {...props}
     >
-      <SidebarTrigger variant='outline' className='scale-125 sm:scale-100' />
-      <Separator orientation='vertical' className='h-6' />
       {children}
     </header>
   )
