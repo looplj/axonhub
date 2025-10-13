@@ -83,11 +83,12 @@ func (Role) Annotations() []schema.Annotation {
 func (Role) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
+			scopes.UserProjectScopeReadRule(scopes.ScopeReadRoles),
 			scopes.OwnerRule(),
 			scopes.UserReadScopeRule(scopes.ScopeReadRoles), // 需要 roles 读取权限
-			scopes.UserOwnedQueryRule(),                     // 用户可以查询自己的角色
 		},
 		Mutation: scopes.MutationPolicy{
+			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteRoles),
 			scopes.OwnerRule(), // owner 用户可以修改所有角色
 			scopes.UserWriteScopeRule(scopes.ScopeWriteRoles), // 需要 roles 写入权限
 		},

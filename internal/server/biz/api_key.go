@@ -10,6 +10,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/privacy"
@@ -52,8 +53,12 @@ func GenerateAPIKey() (string, error) {
 }
 
 // CreateAPIKey creates a new API key for a user.
-func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput, userID int) (*ent.APIKey, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error) {
+	user, ok := contexts.GetUser(ctx)
+	if !ok {
+		return nil, fmt.Errorf("user not found in context")
+	}
+
 	client := ent.FromContext(ctx)
 
 	// Generate API key with ah- prefix (similar to OpenAI format)
@@ -65,7 +70,7 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 	create := client.APIKey.Create().
 		SetName(input.Name).
 		SetKey(generatedKey).
-		SetUserID(userID).
+		SetUserID(user.ID).
 		SetProjectID(input.ProjectID)
 
 	apiKey, err := create.Save(ctx)

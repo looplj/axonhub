@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
 import { toast } from 'sonner'
-import { useErrorHandler } from '@/hooks/use-error-handler'
 import i18n from '@/lib/i18n'
+import { useErrorHandler } from '@/hooks/use-error-handler'
 import {
   Project,
   ProjectConnection,
@@ -83,44 +83,39 @@ const UPDATE_PROJECT_STATUS_MUTATION = `
 
 const MY_PROJECTS_QUERY = `
   query MyProjects {
-    projects(first: 100, where: { status: active }) {
-      edges {
-        node {
-          id
-          slug
-          name
-          description
-          status
-          createdAt
-          updatedAt
-        }
-      }
+    myProjects {
+        id
+        slug
+        name
+        description
+        status
+        createdAt
+        updatedAt
     }
   }
 `
 
 // Query hooks
-export function useProjects(variables: {
-  first?: number
-  after?: string
-  where?: any
-} = {}) {
+export function useProjects(
+  variables: {
+    first?: number
+    after?: string
+    where?: any
+  } = {}
+) {
   const { handleError } = useErrorHandler()
 
   return useQuery({
     queryKey: ['projects', variables],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ projects: ProjectConnection }>(
-          PROJECTS_QUERY,
-          variables
-        )
+        const data = await graphqlRequest<{ projects: ProjectConnection }>(PROJECTS_QUERY, variables)
         return projectConnectionSchema.parse(data?.projects)
       } catch (error) {
         handleError(error, '获取项目数据')
         throw error
       }
-    }
+    },
   })
 }
 
@@ -131,10 +126,7 @@ export function useProject(id: string) {
     queryKey: ['project', id],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ projects: ProjectConnection }>(
-          PROJECTS_QUERY,
-          { where: { id } }
-        )
+        const data = await graphqlRequest<{ projects: ProjectConnection }>(PROJECTS_QUERY, { where: { id } })
         const project = data.projects.edges[0]?.node
         if (!project) {
           throw new Error('Project not found')
@@ -156,30 +148,21 @@ export function useMyProjects() {
     queryKey: ['myProjects'],
     queryFn: async () => {
       try {
-        console.log('Fetching myProjects with query:', MY_PROJECTS_QUERY)
-        const data = await graphqlRequest<{ projects: ProjectConnection }>(
-          MY_PROJECTS_QUERY
-        )
-        console.log('Raw myProjects response:', data)
-        
-        if (!data || !data.projects || !data.projects.edges) {
-          console.error('projects not found in response. Full data:', data)
+        const data = await graphqlRequest<{ myProjects: Project[] }>(MY_PROJECTS_QUERY)
+
+        if (!data || !data.myProjects) {
           return []
         }
-        
-        // 从 connection 格式中提取项目列表
-        const projects = data.projects.edges
-          .map(edge => edge.node)
-          .map(project => projectSchema.parse(project))
-        
-        console.log('Parsed myProjects:', projects)
+
+        // myProjects 直接返回项目数组，不是 connection 格式
+        const projects = data.myProjects.map((project) => projectSchema.parse(project))
+
         return projects
       } catch (error) {
-        console.error('Error fetching myProjects:', error)
         handleError(error, '获取我的项目')
         return []
       }
-    }
+    },
   })
 }
 
@@ -191,10 +174,7 @@ export function useCreateProject() {
   return useMutation({
     mutationFn: async (input: CreateProjectInput) => {
       try {
-        const data = await graphqlRequest<{ createProject: Project }>(
-          CREATE_PROJECT_MUTATION,
-          { input }
-        )
+        const data = await graphqlRequest<{ createProject: Project }>(CREATE_PROJECT_MUTATION, { input })
         return projectSchema.parse(data.createProject)
       } catch (error) {
         handleError(error, '创建项目')
@@ -203,6 +183,7 @@ export function useCreateProject() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['myProjects'] })
       toast.success(i18n.t('common.success.projectCreated'))
     },
   })
@@ -215,10 +196,7 @@ export function useUpdateProject() {
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateProjectInput }) => {
       try {
-        const data = await graphqlRequest<{ updateProject: Project }>(
-          UPDATE_PROJECT_MUTATION,
-          { id, input }
-        )
+        const data = await graphqlRequest<{ updateProject: Project }>(UPDATE_PROJECT_MUTATION, { id, input })
         return projectSchema.parse(data.updateProject)
       } catch (error) {
         handleError(error, '更新项目')
@@ -228,6 +206,7 @@ export function useUpdateProject() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       queryClient.invalidateQueries({ queryKey: ['project'] })
+      queryClient.invalidateQueries({ queryKey: ['myProjects'] })
       toast.success(i18n.t('common.success.projectUpdated'))
     },
   })
@@ -240,10 +219,10 @@ export function useArchiveProject() {
   return useMutation({
     mutationFn: async (id: string) => {
       try {
-        const data = await graphqlRequest<{ updateProjectStatus: Project }>(
-          UPDATE_PROJECT_STATUS_MUTATION,
-          { id, status: 'archived' }
-        )
+        const data = await graphqlRequest<{ updateProjectStatus: Project }>(UPDATE_PROJECT_STATUS_MUTATION, {
+          id,
+          status: 'archived',
+        })
         return projectSchema.parse(data.updateProjectStatus)
       } catch (error) {
         handleError(error, '归档项目')
@@ -253,6 +232,7 @@ export function useArchiveProject() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       queryClient.invalidateQueries({ queryKey: ['project'] })
+      queryClient.invalidateQueries({ queryKey: ['myProjects'] })
       toast.success(i18n.t('common.success.projectArchived'))
     },
   })
@@ -265,10 +245,10 @@ export function useActivateProject() {
   return useMutation({
     mutationFn: async (id: string) => {
       try {
-        const data = await graphqlRequest<{ updateProjectStatus: Project }>(
-          UPDATE_PROJECT_STATUS_MUTATION,
-          { id, status: 'active' }
-        )
+        const data = await graphqlRequest<{ updateProjectStatus: Project }>(UPDATE_PROJECT_STATUS_MUTATION, {
+          id,
+          status: 'active',
+        })
         return projectSchema.parse(data.updateProjectStatus)
       } catch (error) {
         handleError(error, '激活项目')
@@ -278,6 +258,7 @@ export function useActivateProject() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       queryClient.invalidateQueries({ queryKey: ['project'] })
+      queryClient.invalidateQueries({ queryKey: ['myProjects'] })
       toast.success(i18n.t('common.success.projectActivated'))
     },
   })

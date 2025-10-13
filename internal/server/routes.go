@@ -39,7 +39,9 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 		publicGroup.GET("/favicon", handlers.System.GetFavicon)
 	}
 
-	unSecureAdminGroup := server.Group("/admin", middleware.WithTimeout(server.Config.RequestTimeout))
+	unSecureAdminGroup := server.Group("/admin",
+		middleware.WithTimeout(server.Config.RequestTimeout),
+	)
 	{
 		// System Status and Initialize - DO NOT AUTH
 		unSecureAdminGroup.GET("/system/status", handlers.System.GetSystemStatus)
@@ -51,7 +53,7 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 	// Health check endpoint - no authentication required
 	server.GET("/health", handlers.System.Health)
 
-	adminGroup := server.Group("/admin", middleware.WithJWTAuth(auth))
+	adminGroup := server.Group("/admin", middleware.WithJWTAuth(auth), middleware.WithProjectID())
 	// 管理员路由 - 使用 JWT 认证
 	{
 		adminGroup.GET("/playground", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {

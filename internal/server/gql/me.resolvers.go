@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
@@ -70,13 +71,9 @@ func (r *queryResolver) MyProjects(ctx context.Context) ([]*ent.Project, error) 
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	// Get projects where user is a member
-	projects, err := r.client.Project.Query().
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	return r.client.Project.Query().
 		Where(project.HasUsersWith(user.IDEQ(u.ID))).
 		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return projects, nil
 }

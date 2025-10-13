@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { Search } from '@/components/search'
 import { createColumns } from './components/apikeys-columns'
 import { ApiKeysDialogs } from './components/apikeys-dialogs'
 import { ApiKeysPrimaryButtons } from './components/apikeys-primary-buttons'
@@ -45,6 +44,7 @@ function ApiKeysContent() {
     first: pageSize,
     after: cursor,
     where: whereClause,
+    orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   })
 
   // Reset cursor when filters change
@@ -105,8 +105,7 @@ export default function ApiKeysManagement() {
 
   return (
     <ApiKeysProvider>
-      <Header fixed>
-      </Header>
+      <Header fixed></Header>
 
       <Main>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>

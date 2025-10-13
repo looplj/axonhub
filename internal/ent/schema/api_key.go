@@ -111,14 +111,12 @@ func (APIKey) Annotations() []schema.Annotation {
 func (APIKey) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
+			scopes.UserProjectScopeReadRule(scopes.ScopeReadAPIKeys), // 需要 API Keys 读取权限
 			scopes.OwnerRule(), // owner 用户可以访问所有 API Keys
-			scopes.UserReadScopeRule(scopes.ScopeReadAPIKeys), // 需要 API Keys 读取权限
-			scopes.UserOwnedQueryRule(),                       // 用户只能查看自己的 API Keys
 		},
 		Mutation: scopes.MutationPolicy{
+			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteAPIKeys), // 需要 API Keys 写入权限
 			scopes.OwnerRule(), // owner 用户可以修改所有 API Keys
-			scopes.UserWriteScopeRule(scopes.ScopeWriteAPIKeys), // 需要 API Keys 写入权限
-			scopes.UserOwnedMutationRule(),                      // 用户只能修改自己的 API Keys
 		},
 	}
 }
