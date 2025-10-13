@@ -69,9 +69,21 @@ func (s *RequestService) CreateRequest(
 		isStream = *llmRequest.Stream
 	}
 
+	// Determine project_id: priority is context > API key > default
+	projectID := 1 // Default project ID for backward compatibility
+
+	// First, try to get from context (e.g., from playground)
+	if ctxProjectID, ok := contexts.GetProjectID(ctx); ok {
+		projectID = ctxProjectID
+	} else if apiKey != nil {
+		// Fallback to API key's project
+		projectID = apiKey.ProjectID
+	}
+
 	client := ent.FromContext(ctx)
 	mut := client.Request.Create().
 		SetUser(user).
+		SetProjectID(projectID).
 		SetModelID(llmRequest.Model).
 		SetFormat(string(format)).
 		SetSource(source).
@@ -131,6 +143,7 @@ func (s *RequestService) CreateRequestExecution(
 		SetFormat(string(format)).
 		SetRequestID(request.ID).
 		SetUserID(request.UserID).
+		SetProjectID(request.ProjectID).
 		SetChannelID(channel.ID).
 		SetModelID(modelID).
 		SetRequestBody(requestBodyBytes).

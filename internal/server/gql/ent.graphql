@@ -575,6 +575,7 @@ input CreateAPIKeyInput {
   createdAt: Time
   updatedAt: Time
   name: String!
+  projectID: ID!
 }
 """
 CreateChannelInput is used for create Channel object.

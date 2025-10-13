@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useErrorHandler } from '@/hooks/use-error-handler'
 import { useRequestPermissions } from '../../../gql/useRequestPermissions'
+import { useSelectedProjectId } from '@/stores/projectStore'
 import type {
   ApiKey,
   ApiKeyConnection,
@@ -159,25 +160,37 @@ export function useApiKeys(variables?: {
     nameContainsFold?: string
     status?: string
     userID?: string
+    projectID?: string
     [key: string]: any
   }
 }) {
   const { t } = useTranslation()
   const { handleError } = useErrorHandler()
   const permissions = useRequestPermissions()
+  const selectedProjectId = useSelectedProjectId()
+
+  // Automatically add projectID filter if a project is selected
+  const variablesWithProject = {
+    ...variables,
+    where: {
+      ...variables?.where,
+      ...(selectedProjectId && { projectID: selectedProjectId }),
+    },
+  }
 
   return useQuery({
-    queryKey: ['apiKeys', variables, permissions],
+    queryKey: ['apiKeys', variablesWithProject, permissions],
     queryFn: async () => {
       try {
         const query = buildApiKeysQuery(permissions)
-        const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(query, variables)
+        const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(query, variablesWithProject)
         return apiKeyConnectionSchema.parse(data?.apiKeys)
       } catch (error) {
         handleError(error, t('apikeys.errors.fetchData'))
         throw error
       }
     },
+    enabled: !!selectedProjectId, // Only query when a project is selected
   })
 }
 
@@ -206,11 +219,17 @@ export function useCreateApiKey() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const permissions = useRequestPermissions()
+  const selectedProjectId = useSelectedProjectId()
 
   return useMutation({
     mutationFn: (input: CreateApiKeyInput) => {
       const mutation = buildCreateApiKeyMutation(permissions)
-      return graphqlRequest<{ createAPIKey: ApiKey }>(mutation, { input })
+      // Automatically add projectID if not provided and a project is selected
+      const inputWithProject = {
+        ...input,
+        projectID: input.projectID ?? (selectedProjectId ? parseInt(selectedProjectId) : undefined),
+      }
+      return graphqlRequest<{ createAPIKey: ApiKey }>(mutation, { input: inputWithProject })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] })

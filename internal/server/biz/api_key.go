@@ -62,11 +62,13 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 		return nil, fmt.Errorf("failed to generate API key: %w", err)
 	}
 
-	apiKey, err := client.APIKey.Create().
+	create := client.APIKey.Create().
 		SetName(input.Name).
 		SetKey(generatedKey).
 		SetUserID(userID).
-		Save(ctx)
+		SetProjectID(input.ProjectID)
+
+	apiKey, err := create.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API key: %w", err)
 	}

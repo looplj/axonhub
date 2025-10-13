@@ -9,39 +9,29 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useMyProjects } from '@/features/projects/data/projects'
+import { useProjectStore } from '@/stores/projectStore'
 import { useTranslation } from 'react-i18next'
-
-const PROJECT_STORAGE_KEY = 'axonhub_selected_project_id'
 
 export function ProjectSwitcher() {
   const { data: myProjects, isLoading: isLoadingProjects } = useMyProjects()
   const { t } = useTranslation()
-
-  // 管理选中的项目
-  const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(() => {
-    return localStorage.getItem(PROJECT_STORAGE_KEY)
-  })
+  const { selectedProjectId, setSelectedProjectId } = useProjectStore()
 
   // 当项目列表加载完成后，验证并设置选中的项目
   React.useEffect(() => {
     if (!myProjects || myProjects.length === 0) return
 
-    const savedProjectId = localStorage.getItem(PROJECT_STORAGE_KEY)
-    const projectExists = myProjects.some(p => p.id === savedProjectId)
+    const projectExists = myProjects.some(p => p.id === selectedProjectId)
 
-    if (!savedProjectId || !projectExists) {
+    if (!selectedProjectId || !projectExists) {
       const firstProject = myProjects[0]
       setSelectedProjectId(firstProject.id)
-      localStorage.setItem(PROJECT_STORAGE_KEY, firstProject.id)
-    } else {
-      setSelectedProjectId(savedProjectId)
     }
-  }, [myProjects])
+  }, [myProjects, selectedProjectId, setSelectedProjectId])
 
   // 处理项目切换
   const handleProjectChange = (projectId: string) => {
     setSelectedProjectId(projectId)
-    localStorage.setItem(PROJECT_STORAGE_KEY, projectId)
   }
 
   // 获取当前选中的项目

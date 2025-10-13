@@ -19,6 +19,7 @@ type CreateAPIKeyInput struct {
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
 	Name      string
+	ProjectID int
 }
 
 // Mutate applies the CreateAPIKeyInput on the APIKeyMutation builder.
@@ -30,6 +31,7 @@ func (i *CreateAPIKeyInput) Mutate(m *APIKeyMutation) {
 		m.SetUpdatedAt(*v)
 	}
 	m.SetName(i.Name)
+	m.SetProjectID(i.ProjectID)
 }
 
 // SetInput applies the change-set in the CreateAPIKeyInput on the APIKeyCreate builder.
