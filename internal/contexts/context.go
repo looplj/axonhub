@@ -14,6 +14,8 @@ const (
 	APIKeyContextKey ContextKey = "api_key"
 	// UserContextKey 用于在 context 中存储用户 entity.
 	UserContextKey ContextKey = "user"
+	// ProjectIDContextKey 用于在 context 中存储项目 ID.
+	ProjectIDContextKey ContextKey = "project_id"
 )
 
 // WithAPIKey 将 API key entity 存储到 context 中.
@@ -46,4 +48,15 @@ func WithUser(ctx context.Context, user *ent.User) context.Context {
 func GetUser(ctx context.Context) (*ent.User, bool) {
 	user, ok := ctx.Value(UserContextKey).(*ent.User)
 	return user, ok
+}
+
+// WithProjectID 将项目 ID 存储到 context 中.
+func WithProjectID(ctx context.Context, projectID int) context.Context {
+	return context.WithValue(ctx, ProjectIDContextKey, projectID)
+}
+
+// GetProjectID 从 context 中获取项目 ID.
+func GetProjectID(ctx context.Context) (int, bool) {
+	projectID, ok := ctx.Value(ProjectIDContextKey).(int)
+	return projectID, ok
 }

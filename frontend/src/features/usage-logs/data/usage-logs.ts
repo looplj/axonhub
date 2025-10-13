@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
 import { useErrorHandler } from '@/hooks/use-error-handler'
-import { useRequestPermissions } from '../../../gql/useRequestPermissions'
 import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions'
+import { useSelectedProjectId } from '@/stores/projectStore'
 import {
   UsageLog,
   UsageLogConnection,
@@ -115,20 +115,31 @@ export function useUsageLogs(variables?: {
     source?: string
     modelID?: string
     channelID?: string
+    projectID?: string
     [key: string]: any
   }
 }) {
   const { handleError } = useErrorHandler()
   const permissions = useUsageLogPermissions()
+  const selectedProjectId = useSelectedProjectId()
+  
+  // Automatically add projectID filter if a project is selected
+  const variablesWithProject = {
+    ...variables,
+    where: {
+      ...variables?.where,
+      ...(selectedProjectId && { projectID: selectedProjectId }),
+    },
+  }
   
   return useQuery({
-    queryKey: ['usageLogs', variables, permissions],
+    queryKey: ['usageLogs', variablesWithProject, permissions],
     queryFn: async () => {
       try {
         const query = buildUsageLogsQuery(permissions)
         const data = await graphqlRequest<{ usageLogs: UsageLogConnection }>(
           query,
-          variables
+          variablesWithProject
         )
         return usageLogConnectionSchema.parse(data?.usageLogs)
       } catch (error) {
@@ -136,6 +147,7 @@ export function useUsageLogs(variables?: {
         throw error
       }
     },
+    enabled: !!selectedProjectId, // Only query when a project is selected
   })
 }
 

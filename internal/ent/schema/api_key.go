@@ -47,7 +47,7 @@ func (APIKey) Fields() []ent.Field {
 			Default(1).
 			Comment("Project ID, default to 1 for backward compatibility").
 			Annotations(
-				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entgql.Skip(entgql.SkipMutationUpdateInput),
 			),
 		field.String("key").Immutable().
 			Annotations(
@@ -88,7 +88,7 @@ func (APIKey) Edges() []ent.Edge {
 			Immutable().
 			Required().
 			Annotations(
-				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entgql.Skip(entgql.SkipMutationUpdateInput),
 			).
 			Ref("api_keys").Field("project_id"),
 		edge.To("requests", Request.Type).

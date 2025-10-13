@@ -59,11 +59,13 @@ export const createApiKeyInputSchemaFactory = (t: (key: string) => string) => z.
   name: z.string().min(1, t('apikeys.validation.nameRequired')),
   userID: z.string().min(1, t('apikeys.validation.userIdRequired')),
   key: z.string().min(1, t('apikeys.validation.keyRequired')),
+  projectID: z.number().optional(),
 })
 
 // Default schema for backward compatibility
 export const createApiKeyInputSchema = z.object({
   name: z.string().min(1, '名称不能为空'),
+  projectID: z.number().optional(),
 })
 export type CreateApiKeyInput = z.infer<typeof createApiKeyInputSchema>
 

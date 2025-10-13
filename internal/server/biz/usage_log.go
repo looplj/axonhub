@@ -26,6 +26,7 @@ func (s *UsageLogService) CreateUsageLog(
 	ctx context.Context,
 	userID int,
 	requestID int,
+	projectID int,
 	channelID *int,
 	modelID string,
 	usage *llm.Usage,
@@ -41,6 +42,7 @@ func (s *UsageLogService) CreateUsageLog(
 	mut := client.UsageLog.Create().
 		SetUserID(userID).
 		SetRequestID(requestID).
+		SetProjectID(projectID).
 		SetModelID(modelID).
 		SetPromptTokens(usage.PromptTokens).
 		SetCompletionTokens(usage.CompletionTokens).
@@ -125,6 +127,7 @@ func (s *UsageLogService) CreateUsageLogFromRequest(
 		ctx,
 		request.UserID,
 		request.ID,
+		request.ProjectID,
 		channelID,
 		request.ModelID,
 		usage,

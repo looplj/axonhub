@@ -3,6 +3,7 @@
     "groups": {
       "admin": "Admin",
       "general": "General",
+      "project": "Project",
       "api": "API",
       "settings": "Settings"
     },

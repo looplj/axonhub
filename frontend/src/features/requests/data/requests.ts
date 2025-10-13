@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
 import { useErrorHandler } from '@/hooks/use-error-handler'
 import { useRequestPermissions } from '../../../gql/useRequestPermissions'
+import { useSelectedProjectId } from '@/stores/projectStore'
 import {
   Request,
   RequestConnection,
@@ -220,20 +221,31 @@ export function useRequests(variables?: {
     channelIDIn?: string[]
     statusIn?: string[]
     sourceIn?: string[]
+    projectID?: string
     [key: string]: any
   }
 }) {
   const { handleError } = useErrorHandler()
   const permissions = useRequestPermissions()
+  const selectedProjectId = useSelectedProjectId()
+  
+  // Automatically add projectID filter if a project is selected
+  const variablesWithProject = {
+    ...variables,
+    where: {
+      ...variables?.where,
+      ...(selectedProjectId && { projectID: selectedProjectId }),
+    },
+  }
   
   return useQuery({
-    queryKey: ['requests', variables, permissions],
+    queryKey: ['requests', variablesWithProject, permissions],
     queryFn: async () => {
       try {
         const query = buildRequestsQuery(permissions)
         const data = await graphqlRequest<{ requests: RequestConnection }>(
           query,
-          variables
+          variablesWithProject
         )
         return requestConnectionSchema.parse(data?.requests)
       } catch (error) {
@@ -241,6 +253,7 @@ export function useRequests(variables?: {
         throw error
       }
     },
+    enabled: !!selectedProjectId, // Only query when a project is selected
   })
 }
 

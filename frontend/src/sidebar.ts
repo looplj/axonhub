@@ -99,7 +99,7 @@ export function useSidebarData(): SidebarData {
       ],
     },
     {
-      title: t('sidebar.groups.api'),
+      title: t('sidebar.groups.project'),
       items: [
         {
           title: t('sidebar.items.requests'),
