@@ -31,11 +31,29 @@ import { NavCollapsible, NavItem, NavLink, type NavGroup } from './types'
 export function NavGroup({ title, items }: NavGroup) {
   const { state, isMobile } = useSidebar()
   const href = useLocation({ select: (location) => location.href })
+  
+  // 过滤掉被禁用的菜单项
+  const visibleItems = items.filter((item) => {
+    // 如果是简单链接，直接检查 isDisabled
+    if (!item.items) {
+      return !item.isDisabled
+    }
+    
+    // 如果是可折叠菜单，检查是否有至少一个可见的子项
+    const hasVisibleSubItems = item.items.some((subItem) => !subItem.isDisabled)
+    return hasVisibleSubItems && !item.isDisabled
+  })
+  
+  // 如果没有可见的菜单项，不渲染整个分组
+  if (visibleItems.length === 0) {
+    return null
+  }
+  
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{title}</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           const key = `${item.title}-${item.url}`
 
           if (!item.items)
@@ -59,22 +77,6 @@ const NavBadge = ({ children }: { children: ReactNode }) => (
 
 const SidebarMenuLink = ({ item, href }: { item: NavLink; href: string }) => {
   const { setOpenMobile } = useSidebar()
-  
-  if (item.isDisabled) {
-    return (
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          disabled
-          tooltip={`${item.title} (无权限)`}
-          className="opacity-50 cursor-not-allowed"
-        >
-          {item.icon && <item.icon />}
-          <span>{item.title}</span>
-          {item.badge && <NavBadge>{item.badge}</NavBadge>}
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    )
-  }
   
   return (
     <SidebarMenuItem>
@@ -101,6 +103,9 @@ const SidebarMenuCollapsible = ({
   href: string
 }) => {
   const { setOpenMobile } = useSidebar()
+  // 只渲染未被禁用的子项
+  const visibleSubItems = item.items.filter((subItem) => !subItem.isDisabled)
+  
   return (
     <Collapsible
       asChild
@@ -118,7 +123,7 @@ const SidebarMenuCollapsible = ({
         </CollapsibleTrigger>
         <CollapsibleContent className='CollapsibleContent'>
           <SidebarMenuSub>
-            {item.items.map((subItem) => (
+            {visibleSubItems.map((subItem) => (
               <SidebarMenuSubItem key={subItem.title}>
                 <SidebarMenuSubButton
                   asChild
@@ -146,6 +151,9 @@ const SidebarMenuCollapsedDropdown = ({
   item: NavCollapsible
   href: string
 }) => {
+  // 只渲染未被禁用的子项
+  const visibleSubItems = item.items.filter((subItem) => !subItem.isDisabled)
+  
   return (
     <SidebarMenuItem>
       <DropdownMenu>
@@ -165,7 +173,7 @@ const SidebarMenuCollapsedDropdown = ({
             {item.title} {item.badge ? `(${item.badge})` : ''}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {item.items.map((sub) => (
+          {visibleSubItems.map((sub) => (
             <DropdownMenuItem key={`${sub.title}-${sub.url}`} asChild>
               <Link
                 to={sub.url}
