@@ -44,36 +44,6 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
       enableSorting: true,
       enableHiding: false,
     },
-    // User column - only show if user has permission to view users
-    ...(permissions.canViewUsers
-      ? ([
-          {
-            id: 'user',
-            accessorKey: 'user',
-            header: ({ column }) => <DataTableColumnHeader column={column} title={t('usageLogs.columns.user')} />,
-            cell: ({ row }) => {
-              const user = row.original.user
-              return (
-                <div className='text-sm'>
-                  {user?.firstName && user?.lastName
-                    ? `${user.firstName} ${user.lastName}`
-                    : user?.email || t('usageLogs.columns.unknown')}
-                </div>
-              )
-            },
-            enableSorting: false,
-            filterFn: (row, _id, value) => {
-              // For client-side filtering, check if any of the selected users match
-              if (value.length === 0) return true // No filter applied
-
-              const user = row.original.user
-              if (!user) return false
-
-              return value.includes(user.id)
-            },
-          },
-        ] as ColumnDef<UsageLog>[])
-      : []),
     {
       id: 'requestId',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('usageLogs.columns.requestId')} />,

@@ -41,13 +41,11 @@ interface UsageLogsTableProps {
   pageInfo?: UsageLogConnection['pageInfo']
   pageSize: number
   totalCount?: number
-  userFilter: string
   sourceFilter: string[]
   channelFilter: string[]
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
-  onUserFilterChange: (filter: string) => void
   onSourceFilterChange: (filters: string[]) => void
   onChannelFilterChange: (filters: string[]) => void
 }
@@ -58,13 +56,11 @@ export function UsageLogsTable({
   pageInfo,
   totalCount,
   pageSize,
-  userFilter,
   sourceFilter,
   channelFilter,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
-  onUserFilterChange,
   onSourceFilterChange,
   onChannelFilterChange,
 }: UsageLogsTableProps) {
@@ -81,20 +77,8 @@ export function UsageLogsTable({
     setColumnFilters(newFilters)
     
     // Find and sync filters with the server
-    const userFilterValue = newFilters.find((filter: any) => filter.id === 'user')?.value
     const sourceFilterValue = newFilters.find((filter: any) => filter.id === 'source')?.value
     const channelFilterValue = newFilters.find((filter: any) => filter.id === 'channel')?.value
-    
-    // Handle user filter
-    let userFilterString = ''
-    if (userFilterValue) {
-      if (Array.isArray(userFilterValue)) {
-        userFilterString = userFilterValue[0] || ''
-      } else {
-        userFilterString = userFilterValue
-      }
-    }
-    onUserFilterChange(userFilterString)
     
     // Handle source filter
     if (Array.isArray(sourceFilterValue)) {

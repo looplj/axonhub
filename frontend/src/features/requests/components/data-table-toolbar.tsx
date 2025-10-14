@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input'
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { useMe } from '@/features/auth/data/auth'
 import { useChannels } from '@/features/channels/data/channels'
-import { useUsers } from '@/features/users/data/users'
 import { RequestStatus } from '../data/schema'
 import { DataTableViewOptions } from './data-table-view-options'
 
@@ -27,23 +26,8 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
   const userScopes = user?.scopes || []
   const isOwner = user?.isOwner || false
 
-  // Check if user has permission to view users and requests
-  const canViewUsers =
-    isOwner || userScopes.includes('*') || (userScopes.includes('read_users') && userScopes.includes('read_requests'))
-
   // Check if user has permission to view channels
   const canViewChannels = isOwner || userScopes.includes('*') || userScopes.includes('read_channels')
-
-  // Fetch users data if user has permission
-  const { data: usersData } = useUsers(
-    {
-      first: 100,
-      orderBy: { field: 'CREATED_AT', direction: 'DESC' },
-    },
-    {
-      disableAutoFetch: !canViewUsers, // Disable auto-fetch if user doesn't have permission
-    }
-  )
 
   // Fetch channels data if user has permission
   const { data: channelsData } = useChannels(
@@ -55,16 +39,6 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
       disableAutoFetch: !canViewChannels, // Disable auto-fetch if user doesn't have permission
     }
   )
-
-  // Prepare user options for filter
-  const userOptions = useMemo(() => {
-    if (!canViewUsers || !usersData?.edges) return []
-
-    return usersData.edges.map((edge) => ({
-      value: edge.node.id,
-      label: `${edge.node.firstName} ${edge.node.lastName} (${edge.node.email})`,
-    }))
-  }, [canViewUsers, usersData])
 
   // Prepare channel options for filter
   const channelOptions = useMemo(() => {
@@ -138,13 +112,6 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
             column={table.getColumn('channel')}
             title={t('requests.filters.channel')}
             options={channelOptions}
-          />
-        )}
-        {canViewUsers && table.getColumn('user') && userOptions.length > 0 && (
-          <DataTableFacetedFilter
-            column={table.getColumn('user')}
-            title={t('requests.filters.user')}
-            options={userOptions}
           />
         )}
         {isFiltered && (

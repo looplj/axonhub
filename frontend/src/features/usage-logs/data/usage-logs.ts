@@ -11,15 +11,7 @@ import {
 } from './schema'
 
 // Dynamic GraphQL query builder
-function buildUsageLogsQuery(permissions: { canViewUsers: boolean; canViewChannels: boolean }) {
-  const userFields = permissions.canViewUsers ? `
-          user {
-            id
-            firstName
-            lastName
-            email
-          }` : ''
-  
+function buildUsageLogsQuery(permissions: { canViewChannels: boolean }) {
   const channelFields = permissions.canViewChannels ? `
           channel {
             id
@@ -34,7 +26,7 @@ function buildUsageLogsQuery(permissions: { canViewUsers: boolean; canViewChanne
           node {
             id
             createdAt
-            updatedAt${userFields}
+            updatedAt
             requestID${channelFields}
             modelID
             promptTokens
@@ -63,15 +55,7 @@ function buildUsageLogsQuery(permissions: { canViewUsers: boolean; canViewChanne
   `
 }
 
-function buildUsageLogDetailQuery(permissions: { canViewUsers: boolean; canViewChannels: boolean }) {
-  const userFields = permissions.canViewUsers ? `
-        user {
-          id
-          firstName
-          lastName
-          email
-        }` : ''
-  
+function buildUsageLogDetailQuery(permissions: { canViewChannels: boolean }) {
   const channelFields = permissions.canViewChannels ? `
         channel {
           id
@@ -85,7 +69,7 @@ function buildUsageLogDetailQuery(permissions: { canViewUsers: boolean; canViewC
         ... on UsageLog {
           id
           createdAt
-          updatedAt${userFields}
+          updatedAt
           requestID${channelFields}
           modelID
           promptTokens
@@ -111,7 +95,6 @@ export function useUsageLogs(variables?: {
   after?: string
   orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
   where?: {
-    userID?: string
     source?: string
     modelID?: string
     channelID?: string

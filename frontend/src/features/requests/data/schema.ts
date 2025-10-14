@@ -1,6 +1,5 @@
 import { z } from 'zod'
 import { apiKeySchema } from '@/features/apikeys/data/schema'
-import { userSchema } from '@/features/users/data/schema'
 import { channelSchema } from '@/features/channels/data'
 
 // Request Status
@@ -56,16 +55,14 @@ export const requestSchema = z.object({
   id: z.string(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
-  // userID: z.string().optional().nullable(),
-  user: userSchema.partial().optional(),
   // apiKeyID: z.string().optional().nullable(),
   apiKey: apiKeySchema.partial().nullable().optional(),
   // channelID: z.string().optional().nullable(),
   channel: channelSchema.partial().nullable().optional(),
   source: requestSourceSchema,
   modelID: z.string(),
-  requestBody: z.any(), // JSONRawMessage
-  responseBody: z.any().nullable(), // JSONRawMessage
+  requestBody: z.any().nullable().optional(), // JSONRawMessage
+  responseBody: z.any().nullable().optional(), // JSONRawMessage
   status: requestStatusSchema,
   stream: z.boolean().nullable(),
   executions: z

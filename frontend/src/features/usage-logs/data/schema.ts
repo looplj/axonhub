@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { userSchema } from '@/features/users/data/schema'
 import { channelSchema } from '@/features/channels/data'
 
 // Usage Log Source
@@ -15,7 +14,6 @@ export const usageLogSchema = z.object({
   id: z.string(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
-  user: userSchema.partial().optional(),
   requestID: z.string(),
   channel: channelSchema.partial().nullable().optional(),
   modelID: z.string(),

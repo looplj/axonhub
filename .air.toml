@@ -17,7 +17,7 @@ include_ext = ["go","yml"]
 # Ignore these filename extensions or directories.
 exclude_dir = ["assets", "tmp", "vendor", "frontend/node_modules"]
 # Watch these directories if you specified.
-include_dir = []
+include_dir = ["frontend"]
 # Exclude files.
 exclude_file = []
 # This log file places in your tmp_dir.

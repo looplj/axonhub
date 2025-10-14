@@ -109,6 +109,7 @@ func (UsageLog) Policy() ent.Policy {
 			scopes.UserReadScopeRule(scopes.ScopeReadRequests), // requires requests read permission
 		},
 		Mutation: scopes.MutationPolicy{
+			scopes.APIKeyScopeMutationRule(scopes.ScopeWriteRequests),
 			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteRequests),
 			scopes.OwnerRule(), // owner users can modify all usage logs
 			scopes.UserWriteScopeRule(scopes.ScopeWriteRequests), // requires requests write permission
