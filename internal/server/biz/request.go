@@ -82,7 +82,6 @@ func (s *RequestService) CreateRequest(
 
 	client := ent.FromContext(ctx)
 	mut := client.Request.Create().
-		SetUser(user).
 		SetProjectID(projectID).
 		SetModelID(llmRequest.Model).
 		SetFormat(string(format)).
@@ -142,7 +141,6 @@ func (s *RequestService) CreateRequestExecution(
 	return client.RequestExecution.Create().
 		SetFormat(string(format)).
 		SetRequestID(request.ID).
-		SetUserID(request.UserID).
 		SetProjectID(request.ProjectID).
 		SetChannelID(channel.ID).
 		SetModelID(modelID).

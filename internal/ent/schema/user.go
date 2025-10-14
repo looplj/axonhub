@@ -57,11 +57,6 @@ func (User) Edges() []ent.Edge {
 			Annotations(
 				entgql.RelayConnection(),
 			),
-		edge.To("requests", Request.Type).
-			Annotations(
-				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
-				entgql.RelayConnection(),
-			),
 		edge.To("api_keys", APIKey.Type).
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
@@ -69,11 +64,6 @@ func (User) Edges() []ent.Edge {
 			),
 		edge.To("roles", Role.Type).
 			Annotations(
-				entgql.RelayConnection(),
-			),
-		edge.To("usage_logs", UsageLog.Type).
-			Annotations(
-				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
 			),
 	}

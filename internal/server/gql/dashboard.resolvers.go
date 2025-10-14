@@ -13,9 +13,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
-	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
@@ -293,8 +293,8 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context, days *int) ([]*Da
 	return response, nil
 }
 
-// TopRequestsUsers is the resolver for the topRequestsUsers field.
-func (r *queryResolver) TopRequestsUsers(ctx context.Context, limit *int) ([]*TopRequestsUsers, error) {
+// TopRequestsProjects is the resolver for the topRequestsProjects field.
+func (r *queryResolver) TopRequestsProjects(ctx context.Context, limit *int) ([]*TopRequestsProjects, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	limitCount := 10
@@ -305,65 +305,60 @@ func (r *queryResolver) TopRequestsUsers(ctx context.Context, limit *int) ([]*To
 		}
 	}
 
-	type userRequestCount struct {
-		UserID       int `json:"user_id"`
+	type projectRequestCount struct {
+		ProjectID    int `json:"project_id"`
 		RequestCount int `json:"request_count"`
 	}
 
-	var results []userRequestCount
+	var results []projectRequestCount
 
 	// Use database aggregation without ordering (GroupBy doesn't support Order)
 	err := r.client.Request.Query().
 		Limit(limitCount).
 		Modify(func(s *sql.Selector) {
 			s.Select(
-				request.FieldUserID,
+				request.FieldProjectID,
 				sql.As(sql.Count("*"), "request_count"),
 			).
-				GroupBy(request.FieldUserID).
+				GroupBy(request.FieldProjectID).
 				OrderBy(sql.Desc("request_count"))
 		}).
 		Scan(ctx, &results)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get top users: %w", err)
+		return nil, fmt.Errorf("failed to get top projects: %w", err)
 	}
 
 	if len(results) == 0 {
-		return []*TopRequestsUsers{}, nil
+		return []*TopRequestsProjects{}, nil
 	}
 
-	// Get user details for the top users
-	userIDs := lo.Map(results, func(item userRequestCount, _ int) int {
-		return item.UserID
+	// Get project details for the top projects
+	projectIDs := lo.Map(results, func(item projectRequestCount, _ int) int {
+		return item.ProjectID
 	})
 
-	users, err := r.client.User.Query().
-		Where(user.IDIn(userIDs...)).
+	projects, err := r.client.Project.Query().
+		Where(project.IDIn(projectIDs...)).
 		All(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user details: %w", err)
+		return nil, fmt.Errorf("failed to get project details: %w", err)
 	}
 
-	userMap := lo.SliceToMap(users, func(u *ent.User) (int, *ent.User) {
-		return u.ID, u
+	projectMap := lo.SliceToMap(projects, func(p *ent.Project) (int, *ent.Project) {
+		return p.ID, p
 	})
 
-	// Build response with user details
-	var response []*TopRequestsUsers
+	// Build response with project details
+	var response []*TopRequestsProjects
 
 	for _, result := range results {
-		if u, exists := userMap[result.UserID]; exists {
-			fullName := u.FirstName
-			if u.LastName != "" {
-				fullName = fullName + " " + u.LastName
-			}
-
-			response = append(response, &TopRequestsUsers{
-				UserID:       objects.GUID{Type: "User", ID: u.ID},
-				UserName:     fullName,
-				UserEmail:    u.Email,
-				Avatar:       &u.Avatar,
-				RequestCount: result.RequestCount,
+		if p, exists := projectMap[result.ProjectID]; exists {
+			response = append(response, &TopRequestsProjects{
+				ProjectID:          objects.GUID{Type: "Project", ID: p.ID},
+				ProjectName:        p.Name,
+				ProjectSlug:        p.Slug,
+				ProjectDescription: p.Description,
+				RequestCount:       result.RequestCount,
 			})
 		}
 	}

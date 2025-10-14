@@ -65,11 +65,6 @@ func UpdatedAt(v time.Time) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
-// UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
-func UserID(v int) predicate.RequestExecution {
-	return predicate.RequestExecution(sql.FieldEQ(FieldUserID, v))
-}
-
 // ProjectID applies equality check predicate on the "project_id" field. It's identical to ProjectIDEQ.
 func ProjectID(v int) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldProjectID, v))
@@ -183,46 +178,6 @@ func UpdatedAtLT(v time.Time) predicate.RequestExecution {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldLTE(FieldUpdatedAt, v))
-}
-
-// UserIDEQ applies the EQ predicate on the "user_id" field.
-func UserIDEQ(v int) predicate.RequestExecution {
-	return predicate.RequestExecution(sql.FieldEQ(FieldUserID, v))
-}
-
-// UserIDNEQ applies the NEQ predicate on the "user_id" field.
-func UserIDNEQ(v int) predicate.RequestExecution {
-	return predicate.RequestExecution(sql.FieldNEQ(FieldUserID, v))
-}
-
-// UserIDIn applies the In predicate on the "user_id" field.
-func UserIDIn(vs ...int) predicate.RequestExecution {
-	return predicate.RequestExecution(sql.FieldIn(FieldUserID, vs...))
-}
-
-// UserIDNotIn applies the NotIn predicate on the "user_id" field.
-func UserIDNotIn(vs ...int) predicate.RequestExecution {
-	return predicate.RequestExecution(sql.FieldNotIn(FieldUserID, vs...))
-}
-
-// UserIDGT applies the GT predicate on the "user_id" field.
-func UserIDGT(v int) predicate.RequestExecution {
-	return predicate.RequestExecution(sql.FieldGT(FieldUserID, v))
-}
-
-// UserIDGTE applies the GTE predicate on the "user_id" field.
-func UserIDGTE(v int) predicate.RequestExecution {
-	return predicate.RequestExecution(sql.FieldGTE(FieldUserID, v))
-}
-
-// UserIDLT applies the LT predicate on the "user_id" field.
-func UserIDLT(v int) predicate.RequestExecution {
-	return predicate.RequestExecution(sql.FieldLT(FieldUserID, v))
-}
-
-// UserIDLTE applies the LTE predicate on the "user_id" field.
-func UserIDLTE(v int) predicate.RequestExecution {
-	return predicate.RequestExecution(sql.FieldLTE(FieldUserID, v))
 }
 
 // ProjectIDEQ applies the EQ predicate on the "project_id" field.

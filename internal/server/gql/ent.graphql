@@ -5,6 +5,9 @@ type APIKey implements Node {
   createdAt: Time!
   updatedAt: Time!
   deletedAt: Int!
+  """
+  The creator of the API key
+  """
   userID: ID!
   """
   Project ID, default to 1 for backward compatibility
@@ -638,7 +641,6 @@ input CreateRequestInput {
   externalID: String
   status: RequestStatus!
   stream: Boolean
-  userID: ID!
   apiKeyID: ID
   projectID: ID!
   channelID: ID
@@ -728,7 +730,6 @@ input CreateUsageLogInput {
   Request format used
   """
   format: String
-  userID: ID!
   requestID: ID!
   projectID: ID!
   channelID: ID
@@ -1456,7 +1457,6 @@ type Request implements Node {
   createdAt: Time!
   updatedAt: Time!
   deletedAt: Int!
-  userID: ID!
   """
   API Key ID of the request, null for the request from the Admin.
   """
@@ -1475,7 +1475,6 @@ type Request implements Node {
   externalID: String
   status: RequestStatus!
   stream: Boolean!
-  user: User!
   apiKey: APIKey
   project: Project!
   executions(
@@ -1576,7 +1575,6 @@ type RequestExecution implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  userID: Int!
   projectID: Int!
   requestID: ID!
   channelID: ID!
@@ -1691,17 +1689,6 @@ input RequestExecutionWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  user_id field predicates
-  """
-  userID: Int
-  userIDNEQ: Int
-  userIDIn: [Int!]
-  userIDNotIn: [Int!]
-  userIDGT: Int
-  userIDGTE: Int
-  userIDLT: Int
-  userIDLTE: Int
   """
   project_id field predicates
   """
@@ -1903,13 +1890,6 @@ input RequestWhereInput {
   deletedAtLT: Int
   deletedAtLTE: Int
   """
-  user_id field predicates
-  """
-  userID: ID
-  userIDNEQ: ID
-  userIDIn: [ID!]
-  userIDNotIn: [ID!]
-  """
   api_key_id field predicates
   """
   apiKeyID: ID
@@ -2003,11 +1983,6 @@ input RequestWhereInput {
   """
   stream: Boolean
   streamNEQ: Boolean
-  """
-  user edge predicates
-  """
-  hasUser: Boolean
-  hasUserWith: [UserWhereInput!]
   """
   api_key edge predicates
   """
@@ -2591,10 +2566,6 @@ type UsageLog implements Node {
   updatedAt: Time!
   deletedAt: Int!
   """
-  User ID who made the request
-  """
-  userID: ID!
-  """
   Related request ID
   """
   requestID: ID!
@@ -2654,7 +2625,6 @@ type UsageLog implements Node {
   Request format used
   """
   format: String!
-  user: User!
   request: Request!
   project: Project!
   channel: Channel
@@ -2768,13 +2738,6 @@ input UsageLogWhereInput {
   deletedAtGTE: Int
   deletedAtLT: Int
   deletedAtLTE: Int
-  """
-  user_id field predicates
-  """
-  userID: ID
-  userIDNEQ: ID
-  userIDIn: [ID!]
-  userIDNotIn: [ID!]
   """
   request_id field predicates
   """
@@ -2949,11 +2912,6 @@ input UsageLogWhereInput {
   formatEqualFold: String
   formatContainsFold: String
   """
-  user edge predicates
-  """
-  hasUser: Boolean
-  hasUserWith: [UserWhereInput!]
-  """
   request edge predicates
   """
   hasRequest: Boolean
@@ -3022,37 +2980,6 @@ type User implements Node {
     """
     where: ProjectWhereInput
   ): ProjectConnection!
-  requests(
-    """
-    Returns the elements in the list that come after the specified cursor.
-    """
-    after: Cursor
-
-    """
-    Returns the first _n_ elements from the list.
-    """
-    first: Int
-
-    """
-    Returns the elements in the list that come before the specified cursor.
-    """
-    before: Cursor
-
-    """
-    Returns the last _n_ elements from the list.
-    """
-    last: Int
-
-    """
-    Ordering options for Requests returned from the connection.
-    """
-    orderBy: RequestOrder
-
-    """
-    Filtering options for Requests returned from the connection.
-    """
-    where: RequestWhereInput
-  ): RequestConnection!
   apiKeys(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -3115,37 +3042,6 @@ type User implements Node {
     """
     where: RoleWhereInput
   ): RoleConnection!
-  usageLogs(
-    """
-    Returns the elements in the list that come after the specified cursor.
-    """
-    after: Cursor
-
-    """
-    Returns the first _n_ elements from the list.
-    """
-    first: Int
-
-    """
-    Returns the elements in the list that come before the specified cursor.
-    """
-    before: Cursor
-
-    """
-    Returns the last _n_ elements from the list.
-    """
-    last: Int
-
-    """
-    Ordering options for UsageLogs returned from the connection.
-    """
-    orderBy: UsageLogOrder
-
-    """
-    Filtering options for UsageLogs returned from the connection.
-    """
-    where: UsageLogWhereInput
-  ): UsageLogConnection!
   projectUsers: [UserProject!]
 }
 """
@@ -3448,11 +3344,6 @@ input UserWhereInput {
   hasProjects: Boolean
   hasProjectsWith: [ProjectWhereInput!]
   """
-  requests edge predicates
-  """
-  hasRequests: Boolean
-  hasRequestsWith: [RequestWhereInput!]
-  """
   api_keys edge predicates
   """
   hasAPIKeys: Boolean
@@ -3462,11 +3353,6 @@ input UserWhereInput {
   """
   hasRoles: Boolean
   hasRolesWith: [RoleWhereInput!]
-  """
-  usage_logs edge predicates
-  """
-  hasUsageLogs: Boolean
-  hasUsageLogsWith: [UsageLogWhereInput!]
   """
   project_users edge predicates
   """

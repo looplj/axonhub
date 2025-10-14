@@ -67,6 +67,8 @@ func NewEntClient(cfg Config) *ent.Client {
 		context.Background(),
 		migrate.WithGlobalUniqueID(false),
 		migrate.WithForeignKeys(false),
+		migrate.WithDropIndex(true),
+		migrate.WithDropColumn(true),
 		schema.WithHooks(schemahook.V0_3_0),
 	)
 	if err != nil {

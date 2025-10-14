@@ -17,7 +17,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
-	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -68,12 +67,6 @@ func (_c *RequestCreate) SetNillableDeletedAt(v *int) *RequestCreate {
 	if v != nil {
 		_c.SetDeletedAt(*v)
 	}
-	return _c
-}
-
-// SetUserID sets the "user_id" field.
-func (_c *RequestCreate) SetUserID(v int) *RequestCreate {
-	_c.mutation.SetUserID(v)
 	return _c
 }
 
@@ -203,11 +196,6 @@ func (_c *RequestCreate) SetNillableStream(v *bool) *RequestCreate {
 		_c.SetStream(*v)
 	}
 	return _c
-}
-
-// SetUser sets the "user" edge to the User entity.
-func (_c *RequestCreate) SetUser(v *User) *RequestCreate {
-	return _c.SetUserID(v.ID)
 }
 
 // SetAPIKey sets the "api_key" edge to the APIKey entity.
@@ -340,9 +328,6 @@ func (_c *RequestCreate) check() error {
 	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Request.deleted_at"`)}
 	}
-	if _, ok := _c.mutation.UserID(); !ok {
-		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "Request.user_id"`)}
-	}
 	if _, ok := _c.mutation.ProjectID(); !ok {
 		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "Request.project_id"`)}
 	}
@@ -373,9 +358,6 @@ func (_c *RequestCreate) check() error {
 	}
 	if _, ok := _c.mutation.Stream(); !ok {
 		return &ValidationError{Name: "stream", err: errors.New(`ent: missing required field "Request.stream"`)}
-	}
-	if len(_c.mutation.UserIDs()) == 0 {
-		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Request.user"`)}
 	}
 	if len(_c.mutation.ProjectIDs()) == 0 {
 		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "Request.project"`)}
@@ -454,23 +436,6 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Stream(); ok {
 		_spec.SetField(request.FieldStream, field.TypeBool, value)
 		_node.Stream = value
-	}
-	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   request.UserTable,
-			Columns: []string{request.UserColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.UserID = nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.APIKeyIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -734,9 +699,6 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(request.FieldCreatedAt)
-		}
-		if _, exists := u.create.mutation.UserID(); exists {
-			s.SetIgnore(request.FieldUserID)
 		}
 		if _, exists := u.create.mutation.APIKeyID(); exists {
 			s.SetIgnore(request.FieldAPIKeyID)
@@ -1101,9 +1063,6 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 		for _, b := range u.create.builders {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(request.FieldCreatedAt)
-			}
-			if _, exists := b.mutation.UserID(); exists {
-				s.SetIgnore(request.FieldUserID)
 			}
 			if _, exists := b.mutation.APIKeyID(); exists {
 				s.SetIgnore(request.FieldAPIKeyID)

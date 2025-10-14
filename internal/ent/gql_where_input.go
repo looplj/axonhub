@@ -1591,12 +1591,6 @@ type RequestWhereInput struct {
 	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
 	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
 
-	// "user_id" field predicates.
-	UserID      *int  `json:"userID,omitempty"`
-	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
-	UserIDIn    []int `json:"userIDIn,omitempty"`
-	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
-
 	// "api_key_id" field predicates.
 	APIKeyID       *int  `json:"apiKeyID,omitempty"`
 	APIKeyIDNEQ    *int  `json:"apiKeyIDNEQ,omitempty"`
@@ -1681,10 +1675,6 @@ type RequestWhereInput struct {
 	// "stream" field predicates.
 	Stream    *bool `json:"stream,omitempty"`
 	StreamNEQ *bool `json:"streamNEQ,omitempty"`
-
-	// "user" edge predicates.
-	HasUser     *bool             `json:"hasUser,omitempty"`
-	HasUserWith []*UserWhereInput `json:"hasUserWith,omitempty"`
 
 	// "api_key" edge predicates.
 	HasAPIKey     *bool               `json:"hasAPIKey,omitempty"`
@@ -1873,18 +1863,6 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if i.DeletedAtLTE != nil {
 		predicates = append(predicates, request.DeletedAtLTE(*i.DeletedAtLTE))
-	}
-	if i.UserID != nil {
-		predicates = append(predicates, request.UserIDEQ(*i.UserID))
-	}
-	if i.UserIDNEQ != nil {
-		predicates = append(predicates, request.UserIDNEQ(*i.UserIDNEQ))
-	}
-	if len(i.UserIDIn) > 0 {
-		predicates = append(predicates, request.UserIDIn(i.UserIDIn...))
-	}
-	if len(i.UserIDNotIn) > 0 {
-		predicates = append(predicates, request.UserIDNotIn(i.UserIDNotIn...))
 	}
 	if i.APIKeyID != nil {
 		predicates = append(predicates, request.APIKeyIDEQ(*i.APIKeyID))
@@ -2088,24 +2066,6 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 		predicates = append(predicates, request.StreamNEQ(*i.StreamNEQ))
 	}
 
-	if i.HasUser != nil {
-		p := request.HasUser()
-		if !*i.HasUser {
-			p = request.Not(p)
-		}
-		predicates = append(predicates, p)
-	}
-	if len(i.HasUserWith) > 0 {
-		with := make([]predicate.User, 0, len(i.HasUserWith))
-		for _, w := range i.HasUserWith {
-			p, err := w.P()
-			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasUserWith'", err)
-			}
-			with = append(with, p)
-		}
-		predicates = append(predicates, request.HasUserWith(with...))
-	}
 	if i.HasAPIKey != nil {
 		p := request.HasAPIKey()
 		if !*i.HasAPIKey {
@@ -2242,16 +2202,6 @@ type RequestExecutionWhereInput struct {
 	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
-
-	// "user_id" field predicates.
-	UserID      *int  `json:"userID,omitempty"`
-	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
-	UserIDIn    []int `json:"userIDIn,omitempty"`
-	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
-	UserIDGT    *int  `json:"userIDGT,omitempty"`
-	UserIDGTE   *int  `json:"userIDGTE,omitempty"`
-	UserIDLT    *int  `json:"userIDLT,omitempty"`
-	UserIDLTE   *int  `json:"userIDLTE,omitempty"`
 
 	// "project_id" field predicates.
 	ProjectID      *int  `json:"projectID,omitempty"`
@@ -2496,30 +2446,6 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, requestexecution.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.UserID != nil {
-		predicates = append(predicates, requestexecution.UserIDEQ(*i.UserID))
-	}
-	if i.UserIDNEQ != nil {
-		predicates = append(predicates, requestexecution.UserIDNEQ(*i.UserIDNEQ))
-	}
-	if len(i.UserIDIn) > 0 {
-		predicates = append(predicates, requestexecution.UserIDIn(i.UserIDIn...))
-	}
-	if len(i.UserIDNotIn) > 0 {
-		predicates = append(predicates, requestexecution.UserIDNotIn(i.UserIDNotIn...))
-	}
-	if i.UserIDGT != nil {
-		predicates = append(predicates, requestexecution.UserIDGT(*i.UserIDGT))
-	}
-	if i.UserIDGTE != nil {
-		predicates = append(predicates, requestexecution.UserIDGTE(*i.UserIDGTE))
-	}
-	if i.UserIDLT != nil {
-		predicates = append(predicates, requestexecution.UserIDLT(*i.UserIDLT))
-	}
-	if i.UserIDLTE != nil {
-		predicates = append(predicates, requestexecution.UserIDLTE(*i.UserIDLTE))
 	}
 	if i.ProjectID != nil {
 		predicates = append(predicates, requestexecution.ProjectIDEQ(*i.ProjectID))
@@ -3599,12 +3525,6 @@ type UsageLogWhereInput struct {
 	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
 	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
 
-	// "user_id" field predicates.
-	UserID      *int  `json:"userID,omitempty"`
-	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
-	UserIDIn    []int `json:"userIDIn,omitempty"`
-	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
-
 	// "request_id" field predicates.
 	RequestID      *int  `json:"requestID,omitempty"`
 	RequestIDNEQ   *int  `json:"requestIDNEQ,omitempty"`
@@ -3762,10 +3682,6 @@ type UsageLogWhereInput struct {
 	FormatHasSuffix    *string  `json:"formatHasSuffix,omitempty"`
 	FormatEqualFold    *string  `json:"formatEqualFold,omitempty"`
 	FormatContainsFold *string  `json:"formatContainsFold,omitempty"`
-
-	// "user" edge predicates.
-	HasUser     *bool             `json:"hasUser,omitempty"`
-	HasUserWith []*UserWhereInput `json:"hasUserWith,omitempty"`
 
 	// "request" edge predicates.
 	HasRequest     *bool                `json:"hasRequest,omitempty"`
@@ -3946,18 +3862,6 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if i.DeletedAtLTE != nil {
 		predicates = append(predicates, usagelog.DeletedAtLTE(*i.DeletedAtLTE))
-	}
-	if i.UserID != nil {
-		predicates = append(predicates, usagelog.UserIDEQ(*i.UserID))
-	}
-	if i.UserIDNEQ != nil {
-		predicates = append(predicates, usagelog.UserIDNEQ(*i.UserIDNEQ))
-	}
-	if len(i.UserIDIn) > 0 {
-		predicates = append(predicates, usagelog.UserIDIn(i.UserIDIn...))
-	}
-	if len(i.UserIDNotIn) > 0 {
-		predicates = append(predicates, usagelog.UserIDNotIn(i.UserIDNotIn...))
 	}
 	if i.RequestID != nil {
 		predicates = append(predicates, usagelog.RequestIDEQ(*i.RequestID))
@@ -4344,24 +4248,6 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 		predicates = append(predicates, usagelog.FormatContainsFold(*i.FormatContainsFold))
 	}
 
-	if i.HasUser != nil {
-		p := usagelog.HasUser()
-		if !*i.HasUser {
-			p = usagelog.Not(p)
-		}
-		predicates = append(predicates, p)
-	}
-	if len(i.HasUserWith) > 0 {
-		with := make([]predicate.User, 0, len(i.HasUserWith))
-		for _, w := range i.HasUserWith {
-			p, err := w.P()
-			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasUserWith'", err)
-			}
-			with = append(with, p)
-		}
-		predicates = append(predicates, usagelog.HasUserWith(with...))
-	}
 	if i.HasRequest != nil {
 		p := usagelog.HasRequest()
 		if !*i.HasRequest {
@@ -4579,10 +4465,6 @@ type UserWhereInput struct {
 	HasProjects     *bool                `json:"hasProjects,omitempty"`
 	HasProjectsWith []*ProjectWhereInput `json:"hasProjectsWith,omitempty"`
 
-	// "requests" edge predicates.
-	HasRequests     *bool                `json:"hasRequests,omitempty"`
-	HasRequestsWith []*RequestWhereInput `json:"hasRequestsWith,omitempty"`
-
 	// "api_keys" edge predicates.
 	HasAPIKeys     *bool               `json:"hasAPIKeys,omitempty"`
 	HasAPIKeysWith []*APIKeyWhereInput `json:"hasAPIKeysWith,omitempty"`
@@ -4590,10 +4472,6 @@ type UserWhereInput struct {
 	// "roles" edge predicates.
 	HasRoles     *bool             `json:"hasRoles,omitempty"`
 	HasRolesWith []*RoleWhereInput `json:"hasRolesWith,omitempty"`
-
-	// "usage_logs" edge predicates.
-	HasUsageLogs     *bool                 `json:"hasUsageLogs,omitempty"`
-	HasUsageLogsWith []*UsageLogWhereInput `json:"hasUsageLogsWith,omitempty"`
 
 	// "project_users" edge predicates.
 	HasProjectUsers     *bool                    `json:"hasProjectUsers,omitempty"`
@@ -5044,24 +4922,6 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 		}
 		predicates = append(predicates, user.HasProjectsWith(with...))
 	}
-	if i.HasRequests != nil {
-		p := user.HasRequests()
-		if !*i.HasRequests {
-			p = user.Not(p)
-		}
-		predicates = append(predicates, p)
-	}
-	if len(i.HasRequestsWith) > 0 {
-		with := make([]predicate.Request, 0, len(i.HasRequestsWith))
-		for _, w := range i.HasRequestsWith {
-			p, err := w.P()
-			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasRequestsWith'", err)
-			}
-			with = append(with, p)
-		}
-		predicates = append(predicates, user.HasRequestsWith(with...))
-	}
 	if i.HasAPIKeys != nil {
 		p := user.HasAPIKeys()
 		if !*i.HasAPIKeys {
@@ -5097,24 +4957,6 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, user.HasRolesWith(with...))
-	}
-	if i.HasUsageLogs != nil {
-		p := user.HasUsageLogs()
-		if !*i.HasUsageLogs {
-			p = user.Not(p)
-		}
-		predicates = append(predicates, p)
-	}
-	if len(i.HasUsageLogsWith) > 0 {
-		with := make([]predicate.UsageLog, 0, len(i.HasUsageLogsWith))
-		for _, w := range i.HasUsageLogsWith {
-			p, err := w.P()
-			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasUsageLogsWith'", err)
-			}
-			with = append(with, p)
-		}
-		predicates = append(predicates, user.HasUsageLogsWith(with...))
 	}
 	if i.HasProjectUsers != nil {
 		p := user.HasProjectUsers()

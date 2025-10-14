@@ -70,11 +70,6 @@ func DeletedAt(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldDeletedAt, v))
 }
 
-// UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
-func UserID(v int) predicate.Request {
-	return predicate.Request(sql.FieldEQ(FieldUserID, v))
-}
-
 // APIKeyID applies equality check predicate on the "api_key_id" field. It's identical to APIKeyIDEQ.
 func APIKeyID(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldAPIKeyID, v))
@@ -228,26 +223,6 @@ func DeletedAtLT(v int) predicate.Request {
 // DeletedAtLTE applies the LTE predicate on the "deleted_at" field.
 func DeletedAtLTE(v int) predicate.Request {
 	return predicate.Request(sql.FieldLTE(FieldDeletedAt, v))
-}
-
-// UserIDEQ applies the EQ predicate on the "user_id" field.
-func UserIDEQ(v int) predicate.Request {
-	return predicate.Request(sql.FieldEQ(FieldUserID, v))
-}
-
-// UserIDNEQ applies the NEQ predicate on the "user_id" field.
-func UserIDNEQ(v int) predicate.Request {
-	return predicate.Request(sql.FieldNEQ(FieldUserID, v))
-}
-
-// UserIDIn applies the In predicate on the "user_id" field.
-func UserIDIn(vs ...int) predicate.Request {
-	return predicate.Request(sql.FieldIn(FieldUserID, vs...))
-}
-
-// UserIDNotIn applies the NotIn predicate on the "user_id" field.
-func UserIDNotIn(vs ...int) predicate.Request {
-	return predicate.Request(sql.FieldNotIn(FieldUserID, vs...))
 }
 
 // APIKeyIDEQ applies the EQ predicate on the "api_key_id" field.
@@ -603,29 +578,6 @@ func StreamEQ(v bool) predicate.Request {
 // StreamNEQ applies the NEQ predicate on the "stream" field.
 func StreamNEQ(v bool) predicate.Request {
 	return predicate.Request(sql.FieldNEQ(FieldStream, v))
-}
-
-// HasUser applies the HasEdge predicate on the "user" edge.
-func HasUser() predicate.Request {
-	return predicate.Request(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasUserWith applies the HasEdge predicate on the "user" edge with a given conditions (other predicates).
-func HasUserWith(preds ...predicate.User) predicate.Request {
-	return predicate.Request(func(s *sql.Selector) {
-		step := newUserStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
 }
 
 // HasAPIKey applies the HasEdge predicate on the "api_key" edge.

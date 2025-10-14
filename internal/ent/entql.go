@@ -106,7 +106,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldCreatedAt:      {Type: field.TypeTime, Column: request.FieldCreatedAt},
 			request.FieldUpdatedAt:      {Type: field.TypeTime, Column: request.FieldUpdatedAt},
 			request.FieldDeletedAt:      {Type: field.TypeInt, Column: request.FieldDeletedAt},
-			request.FieldUserID:         {Type: field.TypeInt, Column: request.FieldUserID},
 			request.FieldAPIKeyID:       {Type: field.TypeInt, Column: request.FieldAPIKeyID},
 			request.FieldProjectID:      {Type: field.TypeInt, Column: request.FieldProjectID},
 			request.FieldSource:         {Type: field.TypeEnum, Column: request.FieldSource},
@@ -134,7 +133,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		Fields: map[string]*sqlgraph.FieldSpec{
 			requestexecution.FieldCreatedAt:      {Type: field.TypeTime, Column: requestexecution.FieldCreatedAt},
 			requestexecution.FieldUpdatedAt:      {Type: field.TypeTime, Column: requestexecution.FieldUpdatedAt},
-			requestexecution.FieldUserID:         {Type: field.TypeInt, Column: requestexecution.FieldUserID},
 			requestexecution.FieldProjectID:      {Type: field.TypeInt, Column: requestexecution.FieldProjectID},
 			requestexecution.FieldRequestID:      {Type: field.TypeInt, Column: requestexecution.FieldRequestID},
 			requestexecution.FieldChannelID:      {Type: field.TypeInt, Column: requestexecution.FieldChannelID},
@@ -201,7 +199,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usagelog.FieldCreatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldCreatedAt},
 			usagelog.FieldUpdatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldUpdatedAt},
 			usagelog.FieldDeletedAt:                          {Type: field.TypeInt, Column: usagelog.FieldDeletedAt},
-			usagelog.FieldUserID:                             {Type: field.TypeInt, Column: usagelog.FieldUserID},
 			usagelog.FieldRequestID:                          {Type: field.TypeInt, Column: usagelog.FieldRequestID},
 			usagelog.FieldProjectID:                          {Type: field.TypeInt, Column: usagelog.FieldProjectID},
 			usagelog.FieldChannelID:                          {Type: field.TypeInt, Column: usagelog.FieldChannelID},
@@ -409,18 +406,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"UserProject",
 	)
 	graph.MustAddE(
-		"user",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   request.UserTable,
-			Columns: []string{request.UserColumn},
-			Bidi:    false,
-		},
-		"Request",
-		"User",
-	)
-	graph.MustAddE(
 		"api_key",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -529,18 +514,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"Project",
 	)
 	graph.MustAddE(
-		"user",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   usagelog.UserTable,
-			Columns: []string{usagelog.UserColumn},
-			Bidi:    false,
-		},
-		"UsageLog",
-		"User",
-	)
-	graph.MustAddE(
 		"request",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -589,18 +562,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"Project",
 	)
 	graph.MustAddE(
-		"requests",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   user.RequestsTable,
-			Columns: []string{user.RequestsColumn},
-			Bidi:    false,
-		},
-		"User",
-		"Request",
-	)
-	graph.MustAddE(
 		"api_keys",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -623,18 +584,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		"User",
 		"Role",
-	)
-	graph.MustAddE(
-		"usage_logs",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   user.UsageLogsTable,
-			Columns: []string{user.UsageLogsColumn},
-			Bidi:    false,
-		},
-		"User",
-		"UsageLog",
 	)
 	graph.MustAddE(
 		"project_users",
@@ -1169,11 +1118,6 @@ func (f *RequestFilter) WhereDeletedAt(p entql.IntP) {
 	f.Where(p.Field(request.FieldDeletedAt))
 }
 
-// WhereUserID applies the entql int predicate on the user_id field.
-func (f *RequestFilter) WhereUserID(p entql.IntP) {
-	f.Where(p.Field(request.FieldUserID))
-}
-
 // WhereAPIKeyID applies the entql int predicate on the api_key_id field.
 func (f *RequestFilter) WhereAPIKeyID(p entql.IntP) {
 	f.Where(p.Field(request.FieldAPIKeyID))
@@ -1232,20 +1176,6 @@ func (f *RequestFilter) WhereStatus(p entql.StringP) {
 // WhereStream applies the entql bool predicate on the stream field.
 func (f *RequestFilter) WhereStream(p entql.BoolP) {
 	f.Where(p.Field(request.FieldStream))
-}
-
-// WhereHasUser applies a predicate to check if query has an edge user.
-func (f *RequestFilter) WhereHasUser() {
-	f.Where(entql.HasEdge("user"))
-}
-
-// WhereHasUserWith applies a predicate to check if query has an edge user with a given conditions (other predicates).
-func (f *RequestFilter) WhereHasUserWith(preds ...predicate.User) {
-	f.Where(entql.HasEdgeWith("user", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
 }
 
 // WhereHasAPIKey applies a predicate to check if query has an edge api_key.
@@ -1366,11 +1296,6 @@ func (f *RequestExecutionFilter) WhereCreatedAt(p entql.TimeP) {
 // WhereUpdatedAt applies the entql time.Time predicate on the updated_at field.
 func (f *RequestExecutionFilter) WhereUpdatedAt(p entql.TimeP) {
 	f.Where(p.Field(requestexecution.FieldUpdatedAt))
-}
-
-// WhereUserID applies the entql int predicate on the user_id field.
-func (f *RequestExecutionFilter) WhereUserID(p entql.IntP) {
-	f.Where(p.Field(requestexecution.FieldUserID))
 }
 
 // WhereProjectID applies the entql int predicate on the project_id field.
@@ -1684,11 +1609,6 @@ func (f *UsageLogFilter) WhereDeletedAt(p entql.IntP) {
 	f.Where(p.Field(usagelog.FieldDeletedAt))
 }
 
-// WhereUserID applies the entql int predicate on the user_id field.
-func (f *UsageLogFilter) WhereUserID(p entql.IntP) {
-	f.Where(p.Field(usagelog.FieldUserID))
-}
-
 // WhereRequestID applies the entql int predicate on the request_id field.
 func (f *UsageLogFilter) WhereRequestID(p entql.IntP) {
 	f.Where(p.Field(usagelog.FieldRequestID))
@@ -1762,20 +1682,6 @@ func (f *UsageLogFilter) WhereSource(p entql.StringP) {
 // WhereFormat applies the entql string predicate on the format field.
 func (f *UsageLogFilter) WhereFormat(p entql.StringP) {
 	f.Where(p.Field(usagelog.FieldFormat))
-}
-
-// WhereHasUser applies a predicate to check if query has an edge user.
-func (f *UsageLogFilter) WhereHasUser() {
-	f.Where(entql.HasEdge("user"))
-}
-
-// WhereHasUserWith applies a predicate to check if query has an edge user with a given conditions (other predicates).
-func (f *UsageLogFilter) WhereHasUserWith(preds ...predicate.User) {
-	f.Where(entql.HasEdgeWith("user", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
 }
 
 // WhereHasRequest applies a predicate to check if query has an edge request.
@@ -1934,20 +1840,6 @@ func (f *UserFilter) WhereHasProjectsWith(preds ...predicate.Project) {
 	})))
 }
 
-// WhereHasRequests applies a predicate to check if query has an edge requests.
-func (f *UserFilter) WhereHasRequests() {
-	f.Where(entql.HasEdge("requests"))
-}
-
-// WhereHasRequestsWith applies a predicate to check if query has an edge requests with a given conditions (other predicates).
-func (f *UserFilter) WhereHasRequestsWith(preds ...predicate.Request) {
-	f.Where(entql.HasEdgeWith("requests", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
-}
-
 // WhereHasAPIKeys applies a predicate to check if query has an edge api_keys.
 func (f *UserFilter) WhereHasAPIKeys() {
 	f.Where(entql.HasEdge("api_keys"))
@@ -1970,20 +1862,6 @@ func (f *UserFilter) WhereHasRoles() {
 // WhereHasRolesWith applies a predicate to check if query has an edge roles with a given conditions (other predicates).
 func (f *UserFilter) WhereHasRolesWith(preds ...predicate.Role) {
 	f.Where(entql.HasEdgeWith("roles", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
-}
-
-// WhereHasUsageLogs applies a predicate to check if query has an edge usage_logs.
-func (f *UserFilter) WhereHasUsageLogs() {
-	f.Where(entql.HasEdge("usage_logs"))
-}
-
-// WhereHasUsageLogsWith applies a predicate to check if query has an edge usage_logs with a given conditions (other predicates).
-func (f *UserFilter) WhereHasUsageLogsWith(preds ...predicate.UsageLog) {
-	f.Where(entql.HasEdgeWith("usage_logs", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}

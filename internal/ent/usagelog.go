@@ -13,7 +13,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
-	"github.com/looplj/axonhub/internal/ent/user"
 )
 
 // UsageLog is the model entity for the UsageLog schema.
@@ -27,8 +26,6 @@ type UsageLog struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// DeletedAt holds the value of the "deleted_at" field.
 	DeletedAt int `json:"deleted_at,omitempty"`
-	// User ID who made the request
-	UserID int `json:"user_id,omitempty"`
 	// Related request ID
 	RequestID int `json:"request_id,omitempty"`
 	// Project ID, default to 1 for backward compatibility
@@ -67,8 +64,6 @@ type UsageLog struct {
 
 // UsageLogEdges holds the relations/edges for other nodes in the graph.
 type UsageLogEdges struct {
-	// User holds the value of the user edge.
-	User *User `json:"user,omitempty"`
 	// Request holds the value of the request edge.
 	Request *Request `json:"request,omitempty"`
 	// Project holds the value of the project edge.
@@ -77,20 +72,9 @@ type UsageLogEdges struct {
 	Channel *Channel `json:"channel,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [3]bool
 	// totalCount holds the count of the edges above.
-	totalCount [4]map[string]int
-}
-
-// UserOrErr returns the User value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e UsageLogEdges) UserOrErr() (*User, error) {
-	if e.User != nil {
-		return e.User, nil
-	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: user.Label}
-	}
-	return nil, &NotLoadedError{edge: "user"}
+	totalCount [3]map[string]int
 }
 
 // RequestOrErr returns the Request value or an error if the edge
@@ -98,7 +82,7 @@ func (e UsageLogEdges) UserOrErr() (*User, error) {
 func (e UsageLogEdges) RequestOrErr() (*Request, error) {
 	if e.Request != nil {
 		return e.Request, nil
-	} else if e.loadedTypes[1] {
+	} else if e.loadedTypes[0] {
 		return nil, &NotFoundError{label: request.Label}
 	}
 	return nil, &NotLoadedError{edge: "request"}
@@ -109,7 +93,7 @@ func (e UsageLogEdges) RequestOrErr() (*Request, error) {
 func (e UsageLogEdges) ProjectOrErr() (*Project, error) {
 	if e.Project != nil {
 		return e.Project, nil
-	} else if e.loadedTypes[2] {
+	} else if e.loadedTypes[1] {
 		return nil, &NotFoundError{label: project.Label}
 	}
 	return nil, &NotLoadedError{edge: "project"}
@@ -120,7 +104,7 @@ func (e UsageLogEdges) ProjectOrErr() (*Project, error) {
 func (e UsageLogEdges) ChannelOrErr() (*Channel, error) {
 	if e.Channel != nil {
 		return e.Channel, nil
-	} else if e.loadedTypes[3] {
+	} else if e.loadedTypes[2] {
 		return nil, &NotFoundError{label: channel.Label}
 	}
 	return nil, &NotLoadedError{edge: "channel"}
@@ -131,7 +115,7 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case usagelog.FieldID, usagelog.FieldDeletedAt, usagelog.FieldUserID, usagelog.FieldRequestID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
+		case usagelog.FieldID, usagelog.FieldDeletedAt, usagelog.FieldRequestID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
 			values[i] = new(sql.NullInt64)
 		case usagelog.FieldModelID, usagelog.FieldSource, usagelog.FieldFormat:
 			values[i] = new(sql.NullString)
@@ -175,12 +159,6 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
 			} else if value.Valid {
 				_m.DeletedAt = int(value.Int64)
-			}
-		case usagelog.FieldUserID:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field user_id", values[i])
-			} else if value.Valid {
-				_m.UserID = int(value.Int64)
 			}
 		case usagelog.FieldRequestID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -285,11 +263,6 @@ func (_m *UsageLog) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryUser queries the "user" edge of the UsageLog entity.
-func (_m *UsageLog) QueryUser() *UserQuery {
-	return NewUsageLogClient(_m.config).QueryUser(_m)
-}
-
 // QueryRequest queries the "request" edge of the UsageLog entity.
 func (_m *UsageLog) QueryRequest() *RequestQuery {
 	return NewUsageLogClient(_m.config).QueryRequest(_m)
@@ -336,9 +309,6 @@ func (_m *UsageLog) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("deleted_at=")
 	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
-	builder.WriteString(", ")
-	builder.WriteString("user_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.UserID))
 	builder.WriteString(", ")
 	builder.WriteString("request_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RequestID))

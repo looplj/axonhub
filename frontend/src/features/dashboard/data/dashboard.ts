@@ -38,11 +38,11 @@ export const hourlyRequestStatsSchema = z.object({
   count: z.number(),
 })
 
-export const topUsersSchema = z.object({
-  userId: z.string(),
-  userName: z.string(),
-  userEmail: z.string(),
-  avatar: z.string().optional(),
+export const topProjectsSchema = z.object({
+  projectId: z.string(),
+  projectName: z.string(),
+  projectSlug: z.string(),
+  projectDescription: z.string(),
   requestCount: z.number(),
 })
 
@@ -52,7 +52,7 @@ export type RequestsByChannel = z.infer<typeof requestsByChannelSchema>
 export type RequestsByModel = z.infer<typeof requestsByModelSchema>
 export type DailyRequestStats = z.infer<typeof dailyRequestStatsSchema>
 export type HourlyRequestStats = z.infer<typeof hourlyRequestStatsSchema>
-export type TopUsers = z.infer<typeof topUsersSchema>
+export type TopProjects = z.infer<typeof topProjectsSchema>
 
 export const tokenStatsSchema = z.object({
   totalInputTokensToday: z.number(),
@@ -122,13 +122,13 @@ const HOURLY_REQUEST_STATS_QUERY = `
   }
 `
 
-const TOP_USERS_QUERY = `
-  query GetTopUsers($limit: Int) {
-    topRequestsUsers(limit: $limit) {
-      userId
-      userName
-      userEmail
-      avatar
+const TOP_PROJECTS_QUERY = `
+  query GetTopProjects($limit: Int) {
+    topRequestsProjects(limit: $limit) {
+      projectId
+      projectName
+      projectSlug
+      projectDescription
       requestCount
     }
   }
@@ -221,15 +221,15 @@ export function useHourlyRequestStats(date?: string) {
   })
 }
 
-export function useTopUsers(limit?: number) {
+export function useTopProjects(limit?: number) {
   return useQuery({
-    queryKey: ['topRequestsUsers', limit],
+    queryKey: ['topRequestsProjects', limit],
     queryFn: async () => {
-      const data = await graphqlRequest<{ topRequestsUsers: TopUsers[] }>(
-        TOP_USERS_QUERY,
+      const data = await graphqlRequest<{ topRequestsProjects: TopProjects[] }>(
+        TOP_PROJECTS_QUERY,
         { limit }
       )
-      return data.topRequestsUsers.map(item => topUsersSchema.parse(item))
+      return data.topRequestsProjects.map(item => topProjectsSchema.parse(item))
     },
     refetchInterval: 300000,
   })

@@ -53,12 +53,6 @@ func (_c *RequestExecutionCreate) SetNillableUpdatedAt(v *time.Time) *RequestExe
 	return _c
 }
 
-// SetUserID sets the "user_id" field.
-func (_c *RequestExecutionCreate) SetUserID(v int) *RequestExecutionCreate {
-	_c.mutation.SetUserID(v)
-	return _c
-}
-
 // SetProjectID sets the "project_id" field.
 func (_c *RequestExecutionCreate) SetProjectID(v int) *RequestExecutionCreate {
 	_c.mutation.SetProjectID(v)
@@ -228,9 +222,6 @@ func (_c *RequestExecutionCreate) check() error {
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "RequestExecution.updated_at"`)}
 	}
-	if _, ok := _c.mutation.UserID(); !ok {
-		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "RequestExecution.user_id"`)}
-	}
 	if _, ok := _c.mutation.ProjectID(); !ok {
 		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "RequestExecution.project_id"`)}
 	}
@@ -297,10 +288,6 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(requestexecution.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
-	}
-	if value, ok := _c.mutation.UserID(); ok {
-		_spec.SetField(requestexecution.FieldUserID, field.TypeInt, value)
-		_node.UserID = value
 	}
 	if value, ok := _c.mutation.ProjectID(); ok {
 		_spec.SetField(requestexecution.FieldProjectID, field.TypeInt, value)
@@ -533,9 +520,6 @@ func (u *RequestExecutionUpsertOne) UpdateNewValues() *RequestExecutionUpsertOne
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(requestexecution.FieldCreatedAt)
-		}
-		if _, exists := u.create.mutation.UserID(); exists {
-			s.SetIgnore(requestexecution.FieldUserID)
 		}
 		if _, exists := u.create.mutation.ProjectID(); exists {
 			s.SetIgnore(requestexecution.FieldProjectID)
@@ -876,9 +860,6 @@ func (u *RequestExecutionUpsertBulk) UpdateNewValues() *RequestExecutionUpsertBu
 		for _, b := range u.create.builders {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(requestexecution.FieldCreatedAt)
-			}
-			if _, exists := b.mutation.UserID(); exists {
-				s.SetIgnore(requestexecution.FieldUserID)
 			}
 			if _, exists := b.mutation.ProjectID(); exists {
 				s.SetIgnore(requestexecution.FieldProjectID)

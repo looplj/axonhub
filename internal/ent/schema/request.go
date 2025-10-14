@@ -26,8 +26,6 @@ func (Request) Mixin() []ent.Mixin {
 
 func (Request) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("user_id").
-			StorageKey("requests_by_user_id"),
 		index.Fields("api_key_id").
 			StorageKey("requests_by_api_key_id"),
 		index.Fields("project_id").
@@ -44,7 +42,6 @@ func (Request) Indexes() []ent.Index {
 
 func (Request) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id").Immutable(),
 		field.Int("api_key_id").
 			Optional().
 			Immutable().
@@ -77,12 +74,6 @@ func (Request) Fields() []ent.Field {
 
 func (Request) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("user", User.Type).
-			Ref("requests").
-			Field("user_id").
-			Required().
-			Immutable().
-			Unique(),
 		edge.From("api_key", APIKey.Type).Ref("requests").Field("api_key_id").Immutable().Unique(),
 		edge.From("project", Project.Type).
 			Ref("requests").

@@ -40,7 +40,6 @@ func (s *UsageLogService) CreateUsageLog(
 	client := ent.FromContext(ctx)
 
 	mut := client.UsageLog.Create().
-		SetUserID(userID).
 		SetRequestID(requestID).
 		SetProjectID(projectID).
 		SetModelID(modelID).
@@ -125,7 +124,7 @@ func (s *UsageLogService) CreateUsageLogFromRequest(
 
 	return s.CreateUsageLog(
 		ctx,
-		request.UserID,
+		0, // userID removed, passing 0 as placeholder
 		request.ID,
 		request.ProjectID,
 		channelID,

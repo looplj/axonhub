@@ -52,27 +52,21 @@ type User struct {
 type UserEdges struct {
 	// Projects holds the value of the projects edge.
 	Projects []*Project `json:"projects,omitempty"`
-	// Requests holds the value of the requests edge.
-	Requests []*Request `json:"requests,omitempty"`
 	// APIKeys holds the value of the api_keys edge.
 	APIKeys []*APIKey `json:"api_keys,omitempty"`
 	// Roles holds the value of the roles edge.
 	Roles []*Role `json:"roles,omitempty"`
-	// UsageLogs holds the value of the usage_logs edge.
-	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
 	// ProjectUsers holds the value of the project_users edge.
 	ProjectUsers []*UserProject `json:"project_users,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [6]bool
+	loadedTypes [4]bool
 	// totalCount holds the count of the edges above.
-	totalCount [6]map[string]int
+	totalCount [4]map[string]int
 
 	namedProjects     map[string][]*Project
-	namedRequests     map[string][]*Request
 	namedAPIKeys      map[string][]*APIKey
 	namedRoles        map[string][]*Role
-	namedUsageLogs    map[string][]*UsageLog
 	namedProjectUsers map[string][]*UserProject
 }
 
@@ -85,19 +79,10 @@ func (e UserEdges) ProjectsOrErr() ([]*Project, error) {
 	return nil, &NotLoadedError{edge: "projects"}
 }
 
-// RequestsOrErr returns the Requests value or an error if the edge
-// was not loaded in eager-loading.
-func (e UserEdges) RequestsOrErr() ([]*Request, error) {
-	if e.loadedTypes[1] {
-		return e.Requests, nil
-	}
-	return nil, &NotLoadedError{edge: "requests"}
-}
-
 // APIKeysOrErr returns the APIKeys value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) APIKeysOrErr() ([]*APIKey, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[1] {
 		return e.APIKeys, nil
 	}
 	return nil, &NotLoadedError{edge: "api_keys"}
@@ -106,25 +91,16 @@ func (e UserEdges) APIKeysOrErr() ([]*APIKey, error) {
 // RolesOrErr returns the Roles value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) RolesOrErr() ([]*Role, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[2] {
 		return e.Roles, nil
 	}
 	return nil, &NotLoadedError{edge: "roles"}
 }
 
-// UsageLogsOrErr returns the UsageLogs value or an error if the edge
-// was not loaded in eager-loading.
-func (e UserEdges) UsageLogsOrErr() ([]*UsageLog, error) {
-	if e.loadedTypes[4] {
-		return e.UsageLogs, nil
-	}
-	return nil, &NotLoadedError{edge: "usage_logs"}
-}
-
 // ProjectUsersOrErr returns the ProjectUsers value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) ProjectUsersOrErr() ([]*UserProject, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[3] {
 		return e.ProjectUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "project_users"}
@@ -258,11 +234,6 @@ func (_m *User) QueryProjects() *ProjectQuery {
 	return NewUserClient(_m.config).QueryProjects(_m)
 }
 
-// QueryRequests queries the "requests" edge of the User entity.
-func (_m *User) QueryRequests() *RequestQuery {
-	return NewUserClient(_m.config).QueryRequests(_m)
-}
-
 // QueryAPIKeys queries the "api_keys" edge of the User entity.
 func (_m *User) QueryAPIKeys() *APIKeyQuery {
 	return NewUserClient(_m.config).QueryAPIKeys(_m)
@@ -271,11 +242,6 @@ func (_m *User) QueryAPIKeys() *APIKeyQuery {
 // QueryRoles queries the "roles" edge of the User entity.
 func (_m *User) QueryRoles() *RoleQuery {
 	return NewUserClient(_m.config).QueryRoles(_m)
-}
-
-// QueryUsageLogs queries the "usage_logs" edge of the User entity.
-func (_m *User) QueryUsageLogs() *UsageLogQuery {
-	return NewUserClient(_m.config).QueryUsageLogs(_m)
 }
 
 // QueryProjectUsers queries the "project_users" edge of the User entity.
@@ -368,30 +334,6 @@ func (_m *User) appendNamedProjects(name string, edges ...*Project) {
 	}
 }
 
-// NamedRequests returns the Requests named value or an error if the edge was not
-// loaded in eager-loading with this name.
-func (_m *User) NamedRequests(name string) ([]*Request, error) {
-	if _m.Edges.namedRequests == nil {
-		return nil, &NotLoadedError{edge: name}
-	}
-	nodes, ok := _m.Edges.namedRequests[name]
-	if !ok {
-		return nil, &NotLoadedError{edge: name}
-	}
-	return nodes, nil
-}
-
-func (_m *User) appendNamedRequests(name string, edges ...*Request) {
-	if _m.Edges.namedRequests == nil {
-		_m.Edges.namedRequests = make(map[string][]*Request)
-	}
-	if len(edges) == 0 {
-		_m.Edges.namedRequests[name] = []*Request{}
-	} else {
-		_m.Edges.namedRequests[name] = append(_m.Edges.namedRequests[name], edges...)
-	}
-}
-
 // NamedAPIKeys returns the APIKeys named value or an error if the edge was not
 // loaded in eager-loading with this name.
 func (_m *User) NamedAPIKeys(name string) ([]*APIKey, error) {
@@ -437,30 +379,6 @@ func (_m *User) appendNamedRoles(name string, edges ...*Role) {
 		_m.Edges.namedRoles[name] = []*Role{}
 	} else {
 		_m.Edges.namedRoles[name] = append(_m.Edges.namedRoles[name], edges...)
-	}
-}
-
-// NamedUsageLogs returns the UsageLogs named value or an error if the edge was not
-// loaded in eager-loading with this name.
-func (_m *User) NamedUsageLogs(name string) ([]*UsageLog, error) {
-	if _m.Edges.namedUsageLogs == nil {
-		return nil, &NotLoadedError{edge: name}
-	}
-	nodes, ok := _m.Edges.namedUsageLogs[name]
-	if !ok {
-		return nil, &NotLoadedError{edge: name}
-	}
-	return nodes, nil
-}
-
-func (_m *User) appendNamedUsageLogs(name string, edges ...*UsageLog) {
-	if _m.Edges.namedUsageLogs == nil {
-		_m.Edges.namedUsageLogs = make(map[string][]*UsageLog)
-	}
-	if len(edges) == 0 {
-		_m.Edges.namedUsageLogs[name] = []*UsageLog{}
-	} else {
-		_m.Edges.namedUsageLogs[name] = append(_m.Edges.namedUsageLogs[name], edges...)
 	}
 }
 
