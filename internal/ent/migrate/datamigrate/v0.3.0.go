@@ -2,29 +2,21 @@ package datamigrate
 
 import (
 	"context"
-	"time"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 // V0_3_0 creates a default project if it doesn't exist.
 func V0_3_0(ctx context.Context, client *ent.Client) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	tx, err := client.Tx(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
-
-	exists, err := tx.Project.Query().Limit(1).Exist(ctx)
+	// Check if a project already exists
+	exists, err := client.Project.Query().Limit(1).Exist(ctx)
 	if err != nil {
 		return err
 	}
@@ -34,28 +26,29 @@ func V0_3_0(ctx context.Context, client *ent.Client) error {
 		return nil
 	}
 
-	err = tx.Project.Create().
-		SetSlug("default").
-		SetName("Default").
-		SetDescription("Default project").
-		SetStatus("active").
-		SetCreatedAt(time.Now()).
-		SetUpdatedAt(time.Now()).
-		Exec(ctx)
+	// Find the owner user
+	owner, err := client.User.Query().Where(user.IsOwner(true)).First(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = tx.UserProject.Create().
-		SetUserID(1).
-		SetProjectID(1).
-		SetIsOwner(true).
-		SetCreatedAt(time.Now()).
-		SetUpdatedAt(time.Now()).
-		Exec(ctx)
+	// Use the ProjectService to create the default project
+	// This will automatically create the three default roles (admin, developer, viewer)
+	projectService := biz.NewProjectService(biz.ProjectServiceParams{})
+	description := "Default project"
+	input := ent.CreateProjectInput{
+		Slug:        "default",
+		Name:        "Default",
+		Description: &description,
+	}
+
+	ctx = contexts.WithUser(ctx, owner)
+	ctx = ent.NewContext(ctx, client)
+
+	_, err = projectService.CreateProject(ctx, input)
 	if err != nil {
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }

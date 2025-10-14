@@ -266,14 +266,7 @@ func (r *mutationResolver) UpdateRole(ctx context.Context, id objects.GUID, inpu
 
 // CreateProject is the resolver for the createProject field.
 func (r *mutationResolver) CreateProject(ctx context.Context, input ent.CreateProjectInput) (*ent.Project, error) {
-	// Get current user from context
-	currentUser, ok := contexts.GetUser(ctx)
-	if !ok || currentUser == nil {
-		return nil, fmt.Errorf("user not found in context")
-	}
-
-	// Use ProjectService to create the project with transaction
-	return r.projectService.CreateProject(ctx, input, currentUser.ID)
+	return r.projectService.CreateProject(ctx, input)
 }
 
 // UpdateProject is the resolver for the updateProject field.

@@ -8,8 +8,11 @@ import (
 
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 // GenerateSlug generates a URL-friendly slug from a given string
@@ -46,7 +49,13 @@ func NewProjectService(params ProjectServiceParams) *ProjectService {
 }
 
 // CreateProject creates a new project with owner role and assigns the creator as owner.
-func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProjectInput, userID int) (*ent.Project, error) {
+// It also creates three default project-level roles: admin, developer, and viewer.
+func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProjectInput) (*ent.Project, error) {
+	currentUser, ok := contexts.GetUser(ctx)
+	if !ok || currentUser == nil {
+		return nil, fmt.Errorf("user not found in context")
+	}
+
 	client := ent.FromContext(ctx)
 
 	// Generate slug from name if not provided
@@ -64,25 +73,83 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 		createProject.SetDescription(*input.Description)
 	}
 
-	project, err := createProject.Save(ctx)
+	proj, err := createProject.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create project: %w", err)
 	}
 
+	// Create three default project-level roles
+	// Admin role - full permissions
+	adminScopes := []string{
+		string(scopes.ScopeReadUsers),
+		string(scopes.ScopeWriteUsers),
+		string(scopes.ScopeReadRoles),
+		string(scopes.ScopeWriteRoles),
+		string(scopes.ScopeReadAPIKeys),
+		string(scopes.ScopeWriteAPIKeys),
+		string(scopes.ScopeReadRequests),
+		string(scopes.ScopeWriteRequests),
+	}
+
+	_, err = client.Role.Create().
+		SetCode(fmt.Sprintf("%s-admin", slug)).
+		SetName("Admin").
+		SetLevel(role.LevelProject).
+		SetProjectID(proj.ID).
+		SetScopes(adminScopes).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create admin role: %w", err)
+	}
+
+	// Developer role - read/write channels, read users, read requests
+	developerScopes := []string{
+		string(scopes.ScopeReadUsers),
+		string(scopes.ScopeReadAPIKeys),
+		string(scopes.ScopeWriteAPIKeys),
+		string(scopes.ScopeReadRequests),
+	}
+
+	_, err = client.Role.Create().
+		SetCode(fmt.Sprintf("%s-developer", slug)).
+		SetName("Developer").
+		SetLevel(role.LevelProject).
+		SetProjectID(proj.ID).
+		SetScopes(developerScopes).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create developer role: %w", err)
+	}
+
+	// Viewer role - read-only permissions
+	viewerScopes := []string{
+		string(scopes.ScopeReadUsers),
+		string(scopes.ScopeReadRequests),
+	}
+
+	_, err = client.Role.Create().
+		SetCode(fmt.Sprintf("%s-viewer", slug)).
+		SetName("Viewer").
+		SetLevel(role.LevelProject).
+		SetProjectID(proj.ID).
+		SetScopes(viewerScopes).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create viewer role: %w", err)
+	}
+
 	// Assign the creator as project owner
 	_, err = client.UserProject.Create().
-		SetUserID(userID).
-		SetProjectID(project.ID).
+		SetUserID(currentUser.ID).
+		SetProjectID(proj.ID).
 		SetIsOwner(true).
-		SetScopes([]string{
-			"*",
-		}).
+		SetScopes([]string{}).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assign user to project: %w", err)
 	}
 
-	return project, nil
+	return proj, nil
 }
 
 // UpdateProject updates an existing project.

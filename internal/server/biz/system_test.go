@@ -14,14 +14,10 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
-	"github.com/looplj/axonhub/internal/server/db"
 )
 
 func TestSystemService_Initialize(t *testing.T) {
-	client := db.NewEntClient(db.Config{
-		Dialect: "sqlite3",
-		DSN:     "file:ent?mode=memory&cache=shared&_fk=1",
-	})
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
 	defer client.Close()
 
 	service := NewSystemService(SystemServiceParams{})
@@ -63,10 +59,7 @@ func TestSystemService_Initialize(t *testing.T) {
 }
 
 func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
-	client := db.NewEntClient(db.Config{
-		Dialect: "sqlite3",
-		DSN:     "file:ent?mode=memory&cache=shared&_fk=1",
-	})
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
 	defer client.Close()
 
 	service := NewSystemService(SystemServiceParams{})
@@ -83,7 +76,7 @@ func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 
 func setupTestSystemService(t *testing.T, cacheConfig xcache.Config) (*SystemService, *ent.Client) {
 	t.Helper()
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
 
 	systemService := &SystemService{
 		Cache: xcache.NewFromConfig[ent.System](cacheConfig),
