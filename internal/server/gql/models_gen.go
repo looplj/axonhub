@@ -153,12 +153,12 @@ type TokenStats struct {
 	TotalCachedTokensThisMonth int `json:"totalCachedTokensThisMonth"`
 }
 
-type TopRequestsUsers struct {
-	UserID       objects.GUID `json:"userId"`
-	UserName     string       `json:"userName"`
-	UserEmail    string       `json:"userEmail"`
-	Avatar       *string      `json:"avatar,omitempty"`
-	RequestCount int          `json:"requestCount"`
+type TopRequestsProjects struct {
+	ProjectID          objects.GUID `json:"projectId"`
+	ProjectName        string       `json:"projectName"`
+	ProjectSlug        string       `json:"projectSlug"`
+	ProjectDescription string       `json:"projectDescription"`
+	RequestCount       int          `json:"requestCount"`
 }
 
 type UpdateBrandSettingsInput struct {

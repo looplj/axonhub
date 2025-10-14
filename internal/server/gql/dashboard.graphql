@@ -49,11 +49,11 @@ type TokenStats {
   totalCachedTokensThisMonth: Int!
 }
 
-type TopRequestsUsers {
-  userId: ID!
-  userName: String!
-  userEmail: String!
-  avatar: String
+type TopRequestsProjects {
+  projectId: ID!
+  projectName: String!
+  projectSlug: String!
+  projectDescription: String!
   requestCount: Int!
 }
 
@@ -63,6 +63,6 @@ extend type Query {
   requestStatsByChannel: [RequestStatsByChannel!]!
   requestStatsByModel: [RequestStatsByModel!]!
   dailyRequestStats(days: Int = 30): [DailyRequestStats!]!
-  topRequestsUsers(limit: Int = 10): [TopRequestsUsers!]!
+  topRequestsProjects(limit: Int = 10): [TopRequestsProjects!]!
   tokenStats: TokenStats!
 }

@@ -7,7 +7,7 @@ import { DailyRequestStats } from './components/daily-requests-stats'
 import { RequestsByChannelChart } from './components/requests-by-channel-chart'
 import { RequestsByModelChart } from './components/requests-by-model-chart'
 import { TokenStatsCard } from './components/token-stats-card'
-import { TopUsers } from './components/top-users'
+import { TopProjects } from './components/top-projects'
 import { useDashboardStats } from './data/dashboard'
 
 export default function DashboardPage() {
@@ -168,11 +168,11 @@ export default function DashboardPage() {
             </Card>
             <Card className='col-span-3'>
               <CardHeader>
-                <CardTitle>{t('dashboard.charts.topUsers')}</CardTitle>
-                <CardDescription>{t('dashboard.stats.usersWithMostRequests')}</CardDescription>
+                <CardTitle>{t('dashboard.charts.topProjects')}</CardTitle>
+                <CardDescription>{t('dashboard.stats.projectsWithMostRequests')}</CardDescription>
               </CardHeader>
               <CardContent>
-                <TopUsers />
+                <TopProjects />
               </CardContent>
             </Card>
           </div>

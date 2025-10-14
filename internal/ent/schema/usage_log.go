@@ -25,8 +25,6 @@ func (UsageLog) Mixin() []ent.Mixin {
 
 func (UsageLog) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("user_id").
-			StorageKey("usage_logs_by_user_id"),
 		index.Fields("request_id").
 			StorageKey("usage_logs_by_request_id"),
 		index.Fields("project_id").
@@ -38,9 +36,6 @@ func (UsageLog) Indexes() []ent.Index {
 			StorageKey("usage_logs_by_created_at"),
 		index.Fields("model_id").
 			StorageKey("usage_logs_by_model_id"),
-		// Composite index for cost analysis
-		index.Fields("user_id", "created_at").
-			StorageKey("usage_logs_by_user_created_at"),
 		index.Fields("project_id", "created_at").
 			StorageKey("usage_logs_by_project_created_at"),
 		index.Fields("channel_id", "created_at").
@@ -50,7 +45,6 @@ func (UsageLog) Indexes() []ent.Index {
 
 func (UsageLog) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id").Immutable().Comment("User ID who made the request"),
 		field.Int("request_id").Immutable().Comment("Related request ID"),
 		field.Int("project_id").Immutable().Default(1).Comment("Project ID, default to 1 for backward compatibility"),
 		field.Int("channel_id").Optional().Comment("Channel ID used for the request"),
@@ -79,12 +73,6 @@ func (UsageLog) Fields() []ent.Field {
 
 func (UsageLog) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("user", User.Type).
-			Ref("usage_logs").
-			Field("user_id").
-			Required().
-			Immutable().
-			Unique(),
 		edge.From("request", Request.Type).
 			Ref("usage_logs").
 			Field("request_id").

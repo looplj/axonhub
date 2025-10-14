@@ -3659,8 +3659,6 @@ type RequestMutation struct {
 	status                *request.Status
 	stream                *bool
 	clearedFields         map[string]struct{}
-	user                  *int
-	cleareduser           bool
 	api_key               *int
 	clearedapi_key        bool
 	project               *int
@@ -3902,42 +3900,6 @@ func (m *RequestMutation) AddedDeletedAt() (r int, exists bool) {
 func (m *RequestMutation) ResetDeletedAt() {
 	m.deleted_at = nil
 	m.adddeleted_at = nil
-}
-
-// SetUserID sets the "user_id" field.
-func (m *RequestMutation) SetUserID(i int) {
-	m.user = &i
-}
-
-// UserID returns the value of the "user_id" field in the mutation.
-func (m *RequestMutation) UserID() (r int, exists bool) {
-	v := m.user
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldUserID returns the old "user_id" field's value of the Request entity.
-// If the Request object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldUserID(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldUserID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
-	}
-	return oldValue.UserID, nil
-}
-
-// ResetUserID resets all changes to the "user_id" field.
-func (m *RequestMutation) ResetUserID() {
-	m.user = nil
 }
 
 // SetAPIKeyID sets the "api_key_id" field.
@@ -4484,33 +4446,6 @@ func (m *RequestMutation) ResetStream() {
 	m.stream = nil
 }
 
-// ClearUser clears the "user" edge to the User entity.
-func (m *RequestMutation) ClearUser() {
-	m.cleareduser = true
-	m.clearedFields[request.FieldUserID] = struct{}{}
-}
-
-// UserCleared reports if the "user" edge to the User entity was cleared.
-func (m *RequestMutation) UserCleared() bool {
-	return m.cleareduser
-}
-
-// UserIDs returns the "user" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// UserID instead. It exists only for internal usage by the builders.
-func (m *RequestMutation) UserIDs() (ids []int) {
-	if id := m.user; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetUser resets all changes to the "user" edge.
-func (m *RequestMutation) ResetUser() {
-	m.user = nil
-	m.cleareduser = false
-}
-
 // ClearAPIKey clears the "api_key" edge to the APIKey entity.
 func (m *RequestMutation) ClearAPIKey() {
 	m.clearedapi_key = true
@@ -4734,7 +4669,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 15)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -4743,9 +4678,6 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.deleted_at != nil {
 		fields = append(fields, request.FieldDeletedAt)
-	}
-	if m.user != nil {
-		fields = append(fields, request.FieldUserID)
 	}
 	if m.api_key != nil {
 		fields = append(fields, request.FieldAPIKeyID)
@@ -4797,8 +4729,6 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case request.FieldDeletedAt:
 		return m.DeletedAt()
-	case request.FieldUserID:
-		return m.UserID()
 	case request.FieldAPIKeyID:
 		return m.APIKeyID()
 	case request.FieldProjectID:
@@ -4838,8 +4768,6 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldUpdatedAt(ctx)
 	case request.FieldDeletedAt:
 		return m.OldDeletedAt(ctx)
-	case request.FieldUserID:
-		return m.OldUserID(ctx)
 	case request.FieldAPIKeyID:
 		return m.OldAPIKeyID(ctx)
 	case request.FieldProjectID:
@@ -4893,13 +4821,6 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDeletedAt(v)
-		return nil
-	case request.FieldUserID:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetUserID(v)
 		return nil
 	case request.FieldAPIKeyID:
 		v, ok := value.(int)
@@ -5091,9 +5012,6 @@ func (m *RequestMutation) ResetField(name string) error {
 	case request.FieldDeletedAt:
 		m.ResetDeletedAt()
 		return nil
-	case request.FieldUserID:
-		m.ResetUserID()
-		return nil
 	case request.FieldAPIKeyID:
 		m.ResetAPIKeyID()
 		return nil
@@ -5136,10 +5054,7 @@ func (m *RequestMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RequestMutation) AddedEdges() []string {
-	edges := make([]string, 0, 6)
-	if m.user != nil {
-		edges = append(edges, request.EdgeUser)
-	}
+	edges := make([]string, 0, 5)
 	if m.api_key != nil {
 		edges = append(edges, request.EdgeAPIKey)
 	}
@@ -5162,10 +5077,6 @@ func (m *RequestMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *RequestMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case request.EdgeUser:
-		if id := m.user; id != nil {
-			return []ent.Value{*id}
-		}
 	case request.EdgeAPIKey:
 		if id := m.api_key; id != nil {
 			return []ent.Value{*id}
@@ -5196,7 +5107,7 @@ func (m *RequestMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RequestMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 5)
 	if m.removedexecutions != nil {
 		edges = append(edges, request.EdgeExecutions)
 	}
@@ -5228,10 +5139,7 @@ func (m *RequestMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RequestMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 6)
-	if m.cleareduser {
-		edges = append(edges, request.EdgeUser)
-	}
+	edges := make([]string, 0, 5)
 	if m.clearedapi_key {
 		edges = append(edges, request.EdgeAPIKey)
 	}
@@ -5254,8 +5162,6 @@ func (m *RequestMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *RequestMutation) EdgeCleared(name string) bool {
 	switch name {
-	case request.EdgeUser:
-		return m.cleareduser
 	case request.EdgeAPIKey:
 		return m.clearedapi_key
 	case request.EdgeProject:
@@ -5274,9 +5180,6 @@ func (m *RequestMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *RequestMutation) ClearEdge(name string) error {
 	switch name {
-	case request.EdgeUser:
-		m.ClearUser()
-		return nil
 	case request.EdgeAPIKey:
 		m.ClearAPIKey()
 		return nil
@@ -5294,9 +5197,6 @@ func (m *RequestMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *RequestMutation) ResetEdge(name string) error {
 	switch name {
-	case request.EdgeUser:
-		m.ResetUser()
-		return nil
 	case request.EdgeAPIKey:
 		m.ResetAPIKey()
 		return nil
@@ -5324,8 +5224,6 @@ type RequestExecutionMutation struct {
 	id                    *int
 	created_at            *time.Time
 	updated_at            *time.Time
-	user_id               *int
-	adduser_id            *int
 	project_id            *int
 	addproject_id         *int
 	external_id           *string
@@ -5517,62 +5415,6 @@ func (m *RequestExecutionMutation) OldUpdatedAt(ctx context.Context) (v time.Tim
 // ResetUpdatedAt resets all changes to the "updated_at" field.
 func (m *RequestExecutionMutation) ResetUpdatedAt() {
 	m.updated_at = nil
-}
-
-// SetUserID sets the "user_id" field.
-func (m *RequestExecutionMutation) SetUserID(i int) {
-	m.user_id = &i
-	m.adduser_id = nil
-}
-
-// UserID returns the value of the "user_id" field in the mutation.
-func (m *RequestExecutionMutation) UserID() (r int, exists bool) {
-	v := m.user_id
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldUserID returns the old "user_id" field's value of the RequestExecution entity.
-// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestExecutionMutation) OldUserID(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldUserID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
-	}
-	return oldValue.UserID, nil
-}
-
-// AddUserID adds i to the "user_id" field.
-func (m *RequestExecutionMutation) AddUserID(i int) {
-	if m.adduser_id != nil {
-		*m.adduser_id += i
-	} else {
-		m.adduser_id = &i
-	}
-}
-
-// AddedUserID returns the value that was added to the "user_id" field in this mutation.
-func (m *RequestExecutionMutation) AddedUserID() (r int, exists bool) {
-	v := m.adduser_id
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetUserID resets all changes to the "user_id" field.
-func (m *RequestExecutionMutation) ResetUserID() {
-	m.user_id = nil
-	m.adduser_id = nil
 }
 
 // SetProjectID sets the "project_id" field.
@@ -6178,15 +6020,12 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 13)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, requestexecution.FieldUpdatedAt)
-	}
-	if m.user_id != nil {
-		fields = append(fields, requestexecution.FieldUserID)
 	}
 	if m.project_id != nil {
 		fields = append(fields, requestexecution.FieldProjectID)
@@ -6233,8 +6072,6 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case requestexecution.FieldUpdatedAt:
 		return m.UpdatedAt()
-	case requestexecution.FieldUserID:
-		return m.UserID()
 	case requestexecution.FieldProjectID:
 		return m.ProjectID()
 	case requestexecution.FieldRequestID:
@@ -6270,8 +6107,6 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldCreatedAt(ctx)
 	case requestexecution.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
-	case requestexecution.FieldUserID:
-		return m.OldUserID(ctx)
 	case requestexecution.FieldProjectID:
 		return m.OldProjectID(ctx)
 	case requestexecution.FieldRequestID:
@@ -6316,13 +6151,6 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
-		return nil
-	case requestexecution.FieldUserID:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetUserID(v)
 		return nil
 	case requestexecution.FieldProjectID:
 		v, ok := value.(int)
@@ -6409,9 +6237,6 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 // this mutation.
 func (m *RequestExecutionMutation) AddedFields() []string {
 	var fields []string
-	if m.adduser_id != nil {
-		fields = append(fields, requestexecution.FieldUserID)
-	}
 	if m.addproject_id != nil {
 		fields = append(fields, requestexecution.FieldProjectID)
 	}
@@ -6423,8 +6248,6 @@ func (m *RequestExecutionMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *RequestExecutionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case requestexecution.FieldUserID:
-		return m.AddedUserID()
 	case requestexecution.FieldProjectID:
 		return m.AddedProjectID()
 	}
@@ -6436,13 +6259,6 @@ func (m *RequestExecutionMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case requestexecution.FieldUserID:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddUserID(v)
-		return nil
 	case requestexecution.FieldProjectID:
 		v, ok := value.(int)
 		if !ok {
@@ -6509,9 +6325,6 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldUpdatedAt:
 		m.ResetUpdatedAt()
-		return nil
-	case requestexecution.FieldUserID:
-		m.ResetUserID()
 		return nil
 	case requestexecution.FieldProjectID:
 		m.ResetProjectID()
@@ -8189,8 +8002,6 @@ type UsageLogMutation struct {
 	source                                   *usagelog.Source
 	format                                   *string
 	clearedFields                            map[string]struct{}
-	user                                     *int
-	cleareduser                              bool
 	request                                  *int
 	clearedrequest                           bool
 	project                                  *int
@@ -8426,42 +8237,6 @@ func (m *UsageLogMutation) AddedDeletedAt() (r int, exists bool) {
 func (m *UsageLogMutation) ResetDeletedAt() {
 	m.deleted_at = nil
 	m.adddeleted_at = nil
-}
-
-// SetUserID sets the "user_id" field.
-func (m *UsageLogMutation) SetUserID(i int) {
-	m.user = &i
-}
-
-// UserID returns the value of the "user_id" field in the mutation.
-func (m *UsageLogMutation) UserID() (r int, exists bool) {
-	v := m.user
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldUserID returns the old "user_id" field's value of the UsageLog entity.
-// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldUserID(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldUserID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
-	}
-	return oldValue.UserID, nil
-}
-
-// ResetUserID resets all changes to the "user_id" field.
-func (m *UsageLogMutation) ResetUserID() {
-	m.user = nil
 }
 
 // SetRequestID sets the "request_id" field.
@@ -9281,33 +9056,6 @@ func (m *UsageLogMutation) ResetFormat() {
 	m.format = nil
 }
 
-// ClearUser clears the "user" edge to the User entity.
-func (m *UsageLogMutation) ClearUser() {
-	m.cleareduser = true
-	m.clearedFields[usagelog.FieldUserID] = struct{}{}
-}
-
-// UserCleared reports if the "user" edge to the User entity was cleared.
-func (m *UsageLogMutation) UserCleared() bool {
-	return m.cleareduser
-}
-
-// UserIDs returns the "user" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// UserID instead. It exists only for internal usage by the builders.
-func (m *UsageLogMutation) UserIDs() (ids []int) {
-	if id := m.user; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetUser resets all changes to the "user" edge.
-func (m *UsageLogMutation) ResetUser() {
-	m.user = nil
-	m.cleareduser = false
-}
-
 // ClearRequest clears the "request" edge to the Request entity.
 func (m *UsageLogMutation) ClearRequest() {
 	m.clearedrequest = true
@@ -9423,7 +9171,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 19)
+	fields := make([]string, 0, 18)
 	if m.created_at != nil {
 		fields = append(fields, usagelog.FieldCreatedAt)
 	}
@@ -9432,9 +9180,6 @@ func (m *UsageLogMutation) Fields() []string {
 	}
 	if m.deleted_at != nil {
 		fields = append(fields, usagelog.FieldDeletedAt)
-	}
-	if m.user != nil {
-		fields = append(fields, usagelog.FieldUserID)
 	}
 	if m.request != nil {
 		fields = append(fields, usagelog.FieldRequestID)
@@ -9495,8 +9240,6 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case usagelog.FieldDeletedAt:
 		return m.DeletedAt()
-	case usagelog.FieldUserID:
-		return m.UserID()
 	case usagelog.FieldRequestID:
 		return m.RequestID()
 	case usagelog.FieldProjectID:
@@ -9542,8 +9285,6 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldUpdatedAt(ctx)
 	case usagelog.FieldDeletedAt:
 		return m.OldDeletedAt(ctx)
-	case usagelog.FieldUserID:
-		return m.OldUserID(ctx)
 	case usagelog.FieldRequestID:
 		return m.OldRequestID(ctx)
 	case usagelog.FieldProjectID:
@@ -9603,13 +9344,6 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDeletedAt(v)
-		return nil
-	case usagelog.FieldUserID:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetUserID(v)
 		return nil
 	case usagelog.FieldRequestID:
 		v, ok := value.(int)
@@ -9942,9 +9676,6 @@ func (m *UsageLogMutation) ResetField(name string) error {
 	case usagelog.FieldDeletedAt:
 		m.ResetDeletedAt()
 		return nil
-	case usagelog.FieldUserID:
-		m.ResetUserID()
-		return nil
 	case usagelog.FieldRequestID:
 		m.ResetRequestID()
 		return nil
@@ -9996,10 +9727,7 @@ func (m *UsageLogMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UsageLogMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
-	if m.user != nil {
-		edges = append(edges, usagelog.EdgeUser)
-	}
+	edges := make([]string, 0, 3)
 	if m.request != nil {
 		edges = append(edges, usagelog.EdgeRequest)
 	}
@@ -10016,10 +9744,6 @@ func (m *UsageLogMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *UsageLogMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case usagelog.EdgeUser:
-		if id := m.user; id != nil {
-			return []ent.Value{*id}
-		}
 	case usagelog.EdgeRequest:
 		if id := m.request; id != nil {
 			return []ent.Value{*id}
@@ -10038,7 +9762,7 @@ func (m *UsageLogMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UsageLogMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 3)
 	return edges
 }
 
@@ -10050,10 +9774,7 @@ func (m *UsageLogMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UsageLogMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
-	if m.cleareduser {
-		edges = append(edges, usagelog.EdgeUser)
-	}
+	edges := make([]string, 0, 3)
 	if m.clearedrequest {
 		edges = append(edges, usagelog.EdgeRequest)
 	}
@@ -10070,8 +9791,6 @@ func (m *UsageLogMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *UsageLogMutation) EdgeCleared(name string) bool {
 	switch name {
-	case usagelog.EdgeUser:
-		return m.cleareduser
 	case usagelog.EdgeRequest:
 		return m.clearedrequest
 	case usagelog.EdgeProject:
@@ -10086,9 +9805,6 @@ func (m *UsageLogMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *UsageLogMutation) ClearEdge(name string) error {
 	switch name {
-	case usagelog.EdgeUser:
-		m.ClearUser()
-		return nil
 	case usagelog.EdgeRequest:
 		m.ClearRequest()
 		return nil
@@ -10106,9 +9822,6 @@ func (m *UsageLogMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *UsageLogMutation) ResetEdge(name string) error {
 	switch name {
-	case usagelog.EdgeUser:
-		m.ResetUser()
-		return nil
 	case usagelog.EdgeRequest:
 		m.ResetRequest()
 		return nil
@@ -10146,18 +9859,12 @@ type UserMutation struct {
 	projects             map[int]struct{}
 	removedprojects      map[int]struct{}
 	clearedprojects      bool
-	requests             map[int]struct{}
-	removedrequests      map[int]struct{}
-	clearedrequests      bool
 	api_keys             map[int]struct{}
 	removedapi_keys      map[int]struct{}
 	clearedapi_keys      bool
 	roles                map[int]struct{}
 	removedroles         map[int]struct{}
 	clearedroles         bool
-	usage_logs           map[int]struct{}
-	removedusage_logs    map[int]struct{}
-	clearedusage_logs    bool
 	project_users        map[int]struct{}
 	removedproject_users map[int]struct{}
 	clearedproject_users bool
@@ -10812,60 +10519,6 @@ func (m *UserMutation) ResetProjects() {
 	m.removedprojects = nil
 }
 
-// AddRequestIDs adds the "requests" edge to the Request entity by ids.
-func (m *UserMutation) AddRequestIDs(ids ...int) {
-	if m.requests == nil {
-		m.requests = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.requests[ids[i]] = struct{}{}
-	}
-}
-
-// ClearRequests clears the "requests" edge to the Request entity.
-func (m *UserMutation) ClearRequests() {
-	m.clearedrequests = true
-}
-
-// RequestsCleared reports if the "requests" edge to the Request entity was cleared.
-func (m *UserMutation) RequestsCleared() bool {
-	return m.clearedrequests
-}
-
-// RemoveRequestIDs removes the "requests" edge to the Request entity by IDs.
-func (m *UserMutation) RemoveRequestIDs(ids ...int) {
-	if m.removedrequests == nil {
-		m.removedrequests = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.requests, ids[i])
-		m.removedrequests[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedRequests returns the removed IDs of the "requests" edge to the Request entity.
-func (m *UserMutation) RemovedRequestsIDs() (ids []int) {
-	for id := range m.removedrequests {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// RequestsIDs returns the "requests" edge IDs in the mutation.
-func (m *UserMutation) RequestsIDs() (ids []int) {
-	for id := range m.requests {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetRequests resets all changes to the "requests" edge.
-func (m *UserMutation) ResetRequests() {
-	m.requests = nil
-	m.clearedrequests = false
-	m.removedrequests = nil
-}
-
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by ids.
 func (m *UserMutation) AddAPIKeyIDs(ids ...int) {
 	if m.api_keys == nil {
@@ -10972,60 +10625,6 @@ func (m *UserMutation) ResetRoles() {
 	m.roles = nil
 	m.clearedroles = false
 	m.removedroles = nil
-}
-
-// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by ids.
-func (m *UserMutation) AddUsageLogIDs(ids ...int) {
-	if m.usage_logs == nil {
-		m.usage_logs = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.usage_logs[ids[i]] = struct{}{}
-	}
-}
-
-// ClearUsageLogs clears the "usage_logs" edge to the UsageLog entity.
-func (m *UserMutation) ClearUsageLogs() {
-	m.clearedusage_logs = true
-}
-
-// UsageLogsCleared reports if the "usage_logs" edge to the UsageLog entity was cleared.
-func (m *UserMutation) UsageLogsCleared() bool {
-	return m.clearedusage_logs
-}
-
-// RemoveUsageLogIDs removes the "usage_logs" edge to the UsageLog entity by IDs.
-func (m *UserMutation) RemoveUsageLogIDs(ids ...int) {
-	if m.removedusage_logs == nil {
-		m.removedusage_logs = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.usage_logs, ids[i])
-		m.removedusage_logs[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedUsageLogs returns the removed IDs of the "usage_logs" edge to the UsageLog entity.
-func (m *UserMutation) RemovedUsageLogsIDs() (ids []int) {
-	for id := range m.removedusage_logs {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// UsageLogsIDs returns the "usage_logs" edge IDs in the mutation.
-func (m *UserMutation) UsageLogsIDs() (ids []int) {
-	for id := range m.usage_logs {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetUsageLogs resets all changes to the "usage_logs" edge.
-func (m *UserMutation) ResetUsageLogs() {
-	m.usage_logs = nil
-	m.clearedusage_logs = false
-	m.removedusage_logs = nil
 }
 
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by ids.
@@ -11432,21 +11031,15 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 4)
 	if m.projects != nil {
 		edges = append(edges, user.EdgeProjects)
-	}
-	if m.requests != nil {
-		edges = append(edges, user.EdgeRequests)
 	}
 	if m.api_keys != nil {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
 	if m.roles != nil {
 		edges = append(edges, user.EdgeRoles)
-	}
-	if m.usage_logs != nil {
-		edges = append(edges, user.EdgeUsageLogs)
 	}
 	if m.project_users != nil {
 		edges = append(edges, user.EdgeProjectUsers)
@@ -11464,12 +11057,6 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case user.EdgeRequests:
-		ids := make([]ent.Value, 0, len(m.requests))
-		for id := range m.requests {
-			ids = append(ids, id)
-		}
-		return ids
 	case user.EdgeAPIKeys:
 		ids := make([]ent.Value, 0, len(m.api_keys))
 		for id := range m.api_keys {
@@ -11479,12 +11066,6 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 	case user.EdgeRoles:
 		ids := make([]ent.Value, 0, len(m.roles))
 		for id := range m.roles {
-			ids = append(ids, id)
-		}
-		return ids
-	case user.EdgeUsageLogs:
-		ids := make([]ent.Value, 0, len(m.usage_logs))
-		for id := range m.usage_logs {
 			ids = append(ids, id)
 		}
 		return ids
@@ -11500,21 +11081,15 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 4)
 	if m.removedprojects != nil {
 		edges = append(edges, user.EdgeProjects)
-	}
-	if m.removedrequests != nil {
-		edges = append(edges, user.EdgeRequests)
 	}
 	if m.removedapi_keys != nil {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
 	if m.removedroles != nil {
 		edges = append(edges, user.EdgeRoles)
-	}
-	if m.removedusage_logs != nil {
-		edges = append(edges, user.EdgeUsageLogs)
 	}
 	if m.removedproject_users != nil {
 		edges = append(edges, user.EdgeProjectUsers)
@@ -11532,12 +11107,6 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case user.EdgeRequests:
-		ids := make([]ent.Value, 0, len(m.removedrequests))
-		for id := range m.removedrequests {
-			ids = append(ids, id)
-		}
-		return ids
 	case user.EdgeAPIKeys:
 		ids := make([]ent.Value, 0, len(m.removedapi_keys))
 		for id := range m.removedapi_keys {
@@ -11547,12 +11116,6 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 	case user.EdgeRoles:
 		ids := make([]ent.Value, 0, len(m.removedroles))
 		for id := range m.removedroles {
-			ids = append(ids, id)
-		}
-		return ids
-	case user.EdgeUsageLogs:
-		ids := make([]ent.Value, 0, len(m.removedusage_logs))
-		for id := range m.removedusage_logs {
 			ids = append(ids, id)
 		}
 		return ids
@@ -11568,21 +11131,15 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 4)
 	if m.clearedprojects {
 		edges = append(edges, user.EdgeProjects)
-	}
-	if m.clearedrequests {
-		edges = append(edges, user.EdgeRequests)
 	}
 	if m.clearedapi_keys {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
 	if m.clearedroles {
 		edges = append(edges, user.EdgeRoles)
-	}
-	if m.clearedusage_logs {
-		edges = append(edges, user.EdgeUsageLogs)
 	}
 	if m.clearedproject_users {
 		edges = append(edges, user.EdgeProjectUsers)
@@ -11596,14 +11153,10 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 	switch name {
 	case user.EdgeProjects:
 		return m.clearedprojects
-	case user.EdgeRequests:
-		return m.clearedrequests
 	case user.EdgeAPIKeys:
 		return m.clearedapi_keys
 	case user.EdgeRoles:
 		return m.clearedroles
-	case user.EdgeUsageLogs:
-		return m.clearedusage_logs
 	case user.EdgeProjectUsers:
 		return m.clearedproject_users
 	}
@@ -11625,17 +11178,11 @@ func (m *UserMutation) ResetEdge(name string) error {
 	case user.EdgeProjects:
 		m.ResetProjects()
 		return nil
-	case user.EdgeRequests:
-		m.ResetRequests()
-		return nil
 	case user.EdgeAPIKeys:
 		m.ResetAPIKeys()
 		return nil
 	case user.EdgeRoles:
 		m.ResetRoles()
-		return nil
-	case user.EdgeUsageLogs:
-		m.ResetUsageLogs()
 		return nil
 	case user.EdgeProjectUsers:
 		m.ResetProjectUsers()

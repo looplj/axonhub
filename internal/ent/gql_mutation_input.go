@@ -287,7 +287,6 @@ type CreateRequestInput struct {
 	ExternalID     *string
 	Status         request.Status
 	Stream         *bool
-	UserID         int
 	APIKeyID       *int
 	ProjectID      int
 	ChannelID      *int
@@ -324,7 +323,6 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	if v := i.Stream; v != nil {
 		m.SetStream(*v)
 	}
-	m.SetUserID(i.UserID)
 	if v := i.APIKeyID; v != nil {
 		m.SetAPIKeyID(*v)
 	}
@@ -588,7 +586,6 @@ type CreateUsageLogInput struct {
 	CompletionRejectedPredictionTokens *int64
 	Source                             *usagelog.Source
 	Format                             *string
-	UserID                             int
 	RequestID                          int
 	ProjectID                          int
 	ChannelID                          *int
@@ -636,7 +633,6 @@ func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
 	if v := i.Format; v != nil {
 		m.SetFormat(*v)
 	}
-	m.SetUserID(i.UserID)
 	m.SetRequestID(i.RequestID)
 	m.SetProjectID(i.ProjectID)
 	if v := i.ChannelID; v != nil {

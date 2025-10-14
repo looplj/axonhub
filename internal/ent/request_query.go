@@ -20,7 +20,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
-	"github.com/looplj/axonhub/internal/ent/user"
 )
 
 // RequestQuery is the builder for querying Request entities.
@@ -30,7 +29,6 @@ type RequestQuery struct {
 	order               []request.OrderOption
 	inters              []Interceptor
 	predicates          []predicate.Request
-	withUser            *UserQuery
 	withAPIKey          *APIKeyQuery
 	withProject         *ProjectQuery
 	withExecutions      *RequestExecutionQuery
@@ -74,28 +72,6 @@ func (_q *RequestQuery) Unique(unique bool) *RequestQuery {
 func (_q *RequestQuery) Order(o ...request.OrderOption) *RequestQuery {
 	_q.order = append(_q.order, o...)
 	return _q
-}
-
-// QueryUser chains the current query on the "user" edge.
-func (_q *RequestQuery) QueryUser() *UserQuery {
-	query := (&UserClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(request.Table, request.FieldID, selector),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, request.UserTable, request.UserColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
 }
 
 // QueryAPIKey chains the current query on the "api_key" edge.
@@ -400,7 +376,6 @@ func (_q *RequestQuery) Clone() *RequestQuery {
 		order:          append([]request.OrderOption{}, _q.order...),
 		inters:         append([]Interceptor{}, _q.inters...),
 		predicates:     append([]predicate.Request{}, _q.predicates...),
-		withUser:       _q.withUser.Clone(),
 		withAPIKey:     _q.withAPIKey.Clone(),
 		withProject:    _q.withProject.Clone(),
 		withExecutions: _q.withExecutions.Clone(),
@@ -411,17 +386,6 @@ func (_q *RequestQuery) Clone() *RequestQuery {
 		path:      _q.path,
 		modifiers: append([]func(*sql.Selector){}, _q.modifiers...),
 	}
-}
-
-// WithUser tells the query-builder to eager-load the nodes that are connected to
-// the "user" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *RequestQuery) WithUser(opts ...func(*UserQuery)) *RequestQuery {
-	query := (&UserClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withUser = query
-	return _q
 }
 
 // WithAPIKey tells the query-builder to eager-load the nodes that are connected to
@@ -563,8 +527,7 @@ func (_q *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Requ
 	var (
 		nodes       = []*Request{}
 		_spec       = _q.querySpec()
-		loadedTypes = [6]bool{
-			_q.withUser != nil,
+		loadedTypes = [5]bool{
 			_q.withAPIKey != nil,
 			_q.withProject != nil,
 			_q.withExecutions != nil,
@@ -592,12 +555,6 @@ func (_q *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Requ
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
-	}
-	if query := _q.withUser; query != nil {
-		if err := _q.loadUser(ctx, query, nodes, nil,
-			func(n *Request, e *User) { n.Edges.User = e }); err != nil {
-			return nil, err
-		}
 	}
 	if query := _q.withAPIKey; query != nil {
 		if err := _q.loadAPIKey(ctx, query, nodes, nil,
@@ -653,35 +610,6 @@ func (_q *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Requ
 	return nodes, nil
 }
 
-func (_q *RequestQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*Request, init func(*Request), assign func(*Request, *User)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*Request)
-	for i := range nodes {
-		fk := nodes[i].UserID
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
-		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
-	}
-	if len(ids) == 0 {
-		return nil
-	}
-	query.Where(user.IDIn(ids...))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
-		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "user_id" returned %v`, n.ID)
-		}
-		for i := range nodes {
-			assign(nodes[i], n)
-		}
-	}
-	return nil
-}
 func (_q *RequestQuery) loadAPIKey(ctx context.Context, query *APIKeyQuery, nodes []*Request, init func(*Request), assign func(*Request, *APIKey)) error {
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*Request)
@@ -857,9 +785,6 @@ func (_q *RequestQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != request.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
-		}
-		if _q.withUser != nil {
-			_spec.Node.AddColumnOnce(request.FieldUserID)
 		}
 		if _q.withAPIKey != nil {
 			_spec.Node.AddColumnOnce(request.FieldAPIKeyID)

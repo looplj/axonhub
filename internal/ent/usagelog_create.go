@@ -15,7 +15,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
-	"github.com/looplj/axonhub/internal/ent/user"
 )
 
 // UsageLogCreate is the builder for creating a UsageLog entity.
@@ -65,12 +64,6 @@ func (_c *UsageLogCreate) SetNillableDeletedAt(v *int) *UsageLogCreate {
 	if v != nil {
 		_c.SetDeletedAt(*v)
 	}
-	return _c
-}
-
-// SetUserID sets the "user_id" field.
-func (_c *UsageLogCreate) SetUserID(v int) *UsageLogCreate {
-	_c.mutation.SetUserID(v)
 	return _c
 }
 
@@ -268,11 +261,6 @@ func (_c *UsageLogCreate) SetNillableFormat(v *string) *UsageLogCreate {
 	return _c
 }
 
-// SetUser sets the "user" edge to the User entity.
-func (_c *UsageLogCreate) SetUser(v *User) *UsageLogCreate {
-	return _c.SetUserID(v.ID)
-}
-
 // SetRequest sets the "request" edge to the Request entity.
 func (_c *UsageLogCreate) SetRequest(v *Request) *UsageLogCreate {
 	return _c.SetRequestID(v.ID)
@@ -405,9 +393,6 @@ func (_c *UsageLogCreate) check() error {
 	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "UsageLog.deleted_at"`)}
 	}
-	if _, ok := _c.mutation.UserID(); !ok {
-		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "UsageLog.user_id"`)}
-	}
 	if _, ok := _c.mutation.RequestID(); !ok {
 		return &ValidationError{Name: "request_id", err: errors.New(`ent: missing required field "UsageLog.request_id"`)}
 	}
@@ -436,9 +421,6 @@ func (_c *UsageLogCreate) check() error {
 	}
 	if _, ok := _c.mutation.Format(); !ok {
 		return &ValidationError{Name: "format", err: errors.New(`ent: missing required field "UsageLog.format"`)}
-	}
-	if len(_c.mutation.UserIDs()) == 0 {
-		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "UsageLog.user"`)}
 	}
 	if len(_c.mutation.RequestIDs()) == 0 {
 		return &ValidationError{Name: "request", err: errors.New(`ent: missing required edge "UsageLog.request"`)}
@@ -532,23 +514,6 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Format(); ok {
 		_spec.SetField(usagelog.FieldFormat, field.TypeString, value)
 		_node.Format = value
-	}
-	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   usagelog.UserTable,
-			Columns: []string{usagelog.UserColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.UserID = nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.RequestIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -912,9 +877,6 @@ func (u *UsageLogUpsertOne) UpdateNewValues() *UsageLogUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(usagelog.FieldCreatedAt)
-		}
-		if _, exists := u.create.mutation.UserID(); exists {
-			s.SetIgnore(usagelog.FieldUserID)
 		}
 		if _, exists := u.create.mutation.RequestID(); exists {
 			s.SetIgnore(usagelog.FieldRequestID)
@@ -1427,9 +1389,6 @@ func (u *UsageLogUpsertBulk) UpdateNewValues() *UsageLogUpsertBulk {
 		for _, b := range u.create.builders {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(usagelog.FieldCreatedAt)
-			}
-			if _, exists := b.mutation.UserID(); exists {
-				s.SetIgnore(usagelog.FieldUserID)
 			}
 			if _, exists := b.mutation.RequestID(); exists {
 				s.SetIgnore(usagelog.FieldRequestID)

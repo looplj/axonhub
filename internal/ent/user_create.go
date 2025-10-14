@@ -13,9 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/project"
-	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
-	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 )
@@ -187,21 +185,6 @@ func (_c *UserCreate) AddProjects(v ...*Project) *UserCreate {
 	return _c.AddProjectIDs(ids...)
 }
 
-// AddRequestIDs adds the "requests" edge to the Request entity by IDs.
-func (_c *UserCreate) AddRequestIDs(ids ...int) *UserCreate {
-	_c.mutation.AddRequestIDs(ids...)
-	return _c
-}
-
-// AddRequests adds the "requests" edges to the Request entity.
-func (_c *UserCreate) AddRequests(v ...*Request) *UserCreate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddRequestIDs(ids...)
-}
-
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
 func (_c *UserCreate) AddAPIKeyIDs(ids ...int) *UserCreate {
 	_c.mutation.AddAPIKeyIDs(ids...)
@@ -230,21 +213,6 @@ func (_c *UserCreate) AddRoles(v ...*Role) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddRoleIDs(ids...)
-}
-
-// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
-func (_c *UserCreate) AddUsageLogIDs(ids ...int) *UserCreate {
-	_c.mutation.AddUsageLogIDs(ids...)
-	return _c
-}
-
-// AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
-func (_c *UserCreate) AddUsageLogs(v ...*UsageLog) *UserCreate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddUsageLogIDs(ids...)
 }
 
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
@@ -476,22 +444,6 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.RequestsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   user.RequestsTable,
-			Columns: []string{user.RequestsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
-	}
 	if nodes := _c.mutation.APIKeysIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -517,22 +469,6 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.UsageLogsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   user.UsageLogsTable,
-			Columns: []string{user.UsageLogsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

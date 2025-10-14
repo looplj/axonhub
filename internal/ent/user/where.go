@@ -688,29 +688,6 @@ func HasProjectsWith(preds ...predicate.Project) predicate.User {
 	})
 }
 
-// HasRequests applies the HasEdge predicate on the "requests" edge.
-func HasRequests() predicate.User {
-	return predicate.User(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, RequestsTable, RequestsColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasRequestsWith applies the HasEdge predicate on the "requests" edge with a given conditions (other predicates).
-func HasRequestsWith(preds ...predicate.Request) predicate.User {
-	return predicate.User(func(s *sql.Selector) {
-		step := newRequestsStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
 // HasAPIKeys applies the HasEdge predicate on the "api_keys" edge.
 func HasAPIKeys() predicate.User {
 	return predicate.User(func(s *sql.Selector) {
@@ -749,29 +726,6 @@ func HasRoles() predicate.User {
 func HasRolesWith(preds ...predicate.Role) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := newRolesStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasUsageLogs applies the HasEdge predicate on the "usage_logs" edge.
-func HasUsageLogs() predicate.User {
-	return predicate.User(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasUsageLogsWith applies the HasEdge predicate on the "usage_logs" edge with a given conditions (other predicates).
-func HasUsageLogsWith(preds ...predicate.UsageLog) predicate.User {
-	return predicate.User(func(s *sql.Selector) {
-		step := newUsageLogsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

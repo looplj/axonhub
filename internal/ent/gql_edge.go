@@ -234,14 +234,6 @@ func (_m *Project) ProjectUsers(
 	return _m.QueryProjectUsers().Paginate(ctx, after, first, before, last, opts...)
 }
 
-func (_m *Request) User(ctx context.Context) (*User, error) {
-	result, err := _m.Edges.UserOrErr()
-	if IsNotLoaded(err) {
-		result, err = _m.QueryUser().Only(ctx)
-	}
-	return result, err
-}
-
 func (_m *Request) APIKey(ctx context.Context) (*APIKey, error) {
 	result, err := _m.Edges.APIKeyOrErr()
 	if IsNotLoaded(err) {
@@ -266,7 +258,7 @@ func (_m *Request) Executions(
 		WithRequestExecutionFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[3][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[2][alias]
 	if nodes, err := _m.NamedExecutions(alias); err == nil || hasTotalCount {
 		pager, err := newRequestExecutionPager(opts, last != nil)
 		if err != nil {
@@ -295,7 +287,7 @@ func (_m *Request) UsageLogs(
 		WithUsageLogFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[5][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
 	if nodes, err := _m.NamedUsageLogs(alias); err == nil || hasTotalCount {
 		pager, err := newUsageLogPager(opts, last != nil)
 		if err != nil {
@@ -353,14 +345,6 @@ func (_m *Role) Project(ctx context.Context) (*Project, error) {
 	return result, MaskNotFound(err)
 }
 
-func (_m *UsageLog) User(ctx context.Context) (*User, error) {
-	result, err := _m.Edges.UserOrErr()
-	if IsNotLoaded(err) {
-		result, err = _m.QueryUser().Only(ctx)
-	}
-	return result, err
-}
-
 func (_m *UsageLog) Request(ctx context.Context) (*Request, error) {
 	result, err := _m.Edges.RequestOrErr()
 	if IsNotLoaded(err) {
@@ -406,27 +390,6 @@ func (_m *User) Projects(
 	return _m.QueryProjects().Paginate(ctx, after, first, before, last, opts...)
 }
 
-func (_m *User) Requests(
-	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *RequestOrder, where *RequestWhereInput,
-) (*RequestConnection, error) {
-	opts := []RequestPaginateOption{
-		WithRequestOrder(orderBy),
-		WithRequestFilter(where.Filter),
-	}
-	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[1][alias]
-	if nodes, err := _m.NamedRequests(alias); err == nil || hasTotalCount {
-		pager, err := newRequestPager(opts, last != nil)
-		if err != nil {
-			return nil, err
-		}
-		conn := &RequestConnection{Edges: []*RequestEdge{}, TotalCount: totalCount}
-		conn.build(nodes, pager, after, first, before, last)
-		return conn, nil
-	}
-	return _m.QueryRequests().Paginate(ctx, after, first, before, last, opts...)
-}
-
 func (_m *User) APIKeys(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *APIKeyOrder, where *APIKeyWhereInput,
 ) (*APIKeyConnection, error) {
@@ -435,7 +398,7 @@ func (_m *User) APIKeys(
 		WithAPIKeyFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[2][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[1][alias]
 	if nodes, err := _m.NamedAPIKeys(alias); err == nil || hasTotalCount {
 		pager, err := newAPIKeyPager(opts, last != nil)
 		if err != nil {
@@ -456,7 +419,7 @@ func (_m *User) Roles(
 		WithRoleFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[3][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[2][alias]
 	if nodes, err := _m.NamedRoles(alias); err == nil || hasTotalCount {
 		pager, err := newRolePager(opts, last != nil)
 		if err != nil {
@@ -469,27 +432,6 @@ func (_m *User) Roles(
 	return _m.QueryRoles().Paginate(ctx, after, first, before, last, opts...)
 }
 
-func (_m *User) UsageLogs(
-	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UsageLogOrder, where *UsageLogWhereInput,
-) (*UsageLogConnection, error) {
-	opts := []UsageLogPaginateOption{
-		WithUsageLogOrder(orderBy),
-		WithUsageLogFilter(where.Filter),
-	}
-	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
-	if nodes, err := _m.NamedUsageLogs(alias); err == nil || hasTotalCount {
-		pager, err := newUsageLogPager(opts, last != nil)
-		if err != nil {
-			return nil, err
-		}
-		conn := &UsageLogConnection{Edges: []*UsageLogEdge{}, TotalCount: totalCount}
-		conn.build(nodes, pager, after, first, before, last)
-		return conn, nil
-	}
-	return _m.QueryUsageLogs().Paginate(ctx, after, first, before, last, opts...)
-}
-
 func (_m *User) ProjectUsers(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UserProjectOrder, where *UserProjectWhereInput,
 ) (*UserProjectConnection, error) {
@@ -498,7 +440,7 @@ func (_m *User) ProjectUsers(
 		WithUserProjectFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[5][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[3][alias]
 	if nodes, err := _m.NamedProjectUsers(alias); err == nil || hasTotalCount {
 		pager, err := newUserProjectPager(opts, last != nil)
 		if err != nil {

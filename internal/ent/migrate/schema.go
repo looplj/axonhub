@@ -135,7 +135,6 @@ var (
 		{Name: "api_key_id", Type: field.TypeInt, Nullable: true},
 		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
 		{Name: "project_id", Type: field.TypeInt, Default: 1},
-		{Name: "user_id", Type: field.TypeInt},
 	}
 	// RequestsTable holds the schema information for the "requests" table.
 	RequestsTable = &schema.Table{
@@ -161,19 +160,8 @@ var (
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
-			{
-				Symbol:     "requests_users_requests",
-				Columns:    []*schema.Column{RequestsColumns[16]},
-				RefColumns: []*schema.Column{UsersColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
 		},
 		Indexes: []*schema.Index{
-			{
-				Name:    "requests_by_user_id",
-				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[16]},
-			},
 			{
 				Name:    "requests_by_api_key_id",
 				Unique:  false,
@@ -206,7 +194,6 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "user_id", Type: field.TypeInt},
 		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "external_id", Type: field.TypeString, Nullable: true},
 		{Name: "model_id", Type: field.TypeString},
@@ -227,13 +214,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "request_executions_channels_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[13]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[12]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "request_executions_requests_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[14]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[13]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -242,12 +229,12 @@ var (
 			{
 				Name:    "request_executions_by_request_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[14]},
+				Columns: []*schema.Column{RequestExecutionsColumns[13]},
 			},
 			{
 				Name:    "request_executions_by_channel_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[13]},
+				Columns: []*schema.Column{RequestExecutionsColumns[12]},
 			},
 		},
 	}
@@ -330,7 +317,6 @@ var (
 		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
 		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "request_id", Type: field.TypeInt},
-		{Name: "user_id", Type: field.TypeInt},
 	}
 	// UsageLogsTable holds the schema information for the "usage_logs" table.
 	UsageLogsTable = &schema.Table{
@@ -356,19 +342,8 @@ var (
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
-			{
-				Symbol:     "usage_logs_users_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[19]},
-				RefColumns: []*schema.Column{UsersColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
 		},
 		Indexes: []*schema.Index{
-			{
-				Name:    "usage_logs_by_user_id",
-				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[19]},
-			},
 			{
 				Name:    "usage_logs_by_request_id",
 				Unique:  false,
@@ -393,11 +368,6 @@ var (
 				Name:    "usage_logs_by_model_id",
 				Unique:  false,
 				Columns: []*schema.Column{UsageLogsColumns[4]},
-			},
-			{
-				Name:    "usage_logs_by_user_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[19], UsageLogsColumns[1]},
 			},
 			{
 				Name:    "usage_logs_by_project_created_at",
@@ -528,14 +498,12 @@ func init() {
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[2].RefTable = ProjectsTable
-	RequestsTable.ForeignKeys[3].RefTable = UsersTable
 	RequestExecutionsTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestExecutionsTable.ForeignKeys[1].RefTable = RequestsTable
 	RolesTable.ForeignKeys[0].RefTable = ProjectsTable
 	UsageLogsTable.ForeignKeys[0].RefTable = ChannelsTable
 	UsageLogsTable.ForeignKeys[1].RefTable = ProjectsTable
 	UsageLogsTable.ForeignKeys[2].RefTable = RequestsTable
-	UsageLogsTable.ForeignKeys[3].RefTable = UsersTable
 	UserProjectsTable.ForeignKeys[0].RefTable = UsersTable
 	UserProjectsTable.ForeignKeys[1].RefTable = ProjectsTable
 	UserRolesTable.ForeignKeys[0].RefTable = UsersTable

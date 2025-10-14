@@ -145,14 +145,6 @@ func (r *requestResolver) ID(ctx context.Context, obj *ent.Request) (*objects.GU
 	}, nil
 }
 
-// UserID is the resolver for the userID field.
-func (r *requestResolver) UserID(ctx context.Context, obj *ent.Request) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeUser,
-		ID:   obj.UserID,
-	}, nil
-}
-
 // APIKeyID is the resolver for the apiKeyID field.
 func (r *requestResolver) APIKeyID(ctx context.Context, obj *ent.Request) (*objects.GUID, error) {
 	return &objects.GUID{
@@ -240,14 +232,6 @@ func (r *usageLogResolver) ID(ctx context.Context, obj *ent.UsageLog) (*objects.
 	return &objects.GUID{
 		Type: ent.TypeUsageLog,
 		ID:   obj.ID,
-	}, nil
-}
-
-// UserID is the resolver for the userID field.
-func (r *usageLogResolver) UserID(ctx context.Context, obj *ent.UsageLog) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeUser,
-		ID:   obj.UserID,
 	}, nil
 }
 

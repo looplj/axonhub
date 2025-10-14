@@ -986,22 +986,6 @@ func (c *RequestClient) GetX(ctx context.Context, id int) *Request {
 	return obj
 }
 
-// QueryUser queries the user edge of a Request.
-func (c *RequestClient) QueryUser(_m *Request) *UserQuery {
-	query := (&UserClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(request.Table, request.FieldID, id),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, request.UserTable, request.UserColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // QueryAPIKey queries the api_key edge of a Request.
 func (c *RequestClient) QueryAPIKey(_m *Request) *APIKeyQuery {
 	query := (&APIKeyClient{config: c.config}).Query()
@@ -1684,22 +1668,6 @@ func (c *UsageLogClient) GetX(ctx context.Context, id int) *UsageLog {
 	return obj
 }
 
-// QueryUser queries the user edge of a UsageLog.
-func (c *UsageLogClient) QueryUser(_m *UsageLog) *UserQuery {
-	query := (&UserClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(usagelog.Table, usagelog.FieldID, id),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.UserTable, usagelog.UserColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // QueryRequest queries the request edge of a UsageLog.
 func (c *UsageLogClient) QueryRequest(_m *UsageLog) *RequestQuery {
 	query := (&RequestClient{config: c.config}).Query()
@@ -1899,22 +1867,6 @@ func (c *UserClient) QueryProjects(_m *User) *ProjectQuery {
 	return query
 }
 
-// QueryRequests queries the requests edge of a User.
-func (c *UserClient) QueryRequests(_m *User) *RequestQuery {
-	query := (&RequestClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(user.Table, user.FieldID, id),
-			sqlgraph.To(request.Table, request.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, user.RequestsTable, user.RequestsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // QueryAPIKeys queries the api_keys edge of a User.
 func (c *UserClient) QueryAPIKeys(_m *User) *APIKeyQuery {
 	query := (&APIKeyClient{config: c.config}).Query()
@@ -1940,22 +1892,6 @@ func (c *UserClient) QueryRoles(_m *User) *RoleQuery {
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(role.Table, role.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, user.RolesTable, user.RolesPrimaryKey...),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryUsageLogs queries the usage_logs edge of a User.
-func (c *UserClient) QueryUsageLogs(_m *User) *UsageLogQuery {
-	query := (&UsageLogClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(user.Table, user.FieldID, id),
-			sqlgraph.To(usagelog.Table, usagelog.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, user.UsageLogsTable, user.UsageLogsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

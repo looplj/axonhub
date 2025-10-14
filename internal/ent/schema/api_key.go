@@ -41,7 +41,7 @@ func (APIKey) Fields() []ent.Field {
 		field.Int("user_id").Immutable().
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
-			),
+			).Comment("The creator of the API key"),
 		field.Int("project_id").
 			Immutable().
 			Default(1).

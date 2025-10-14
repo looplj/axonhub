@@ -17,7 +17,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
-	"github.com/looplj/axonhub/internal/ent/user"
 )
 
 // UsageLogQuery is the builder for querying UsageLog entities.
@@ -27,7 +26,6 @@ type UsageLogQuery struct {
 	order       []usagelog.OrderOption
 	inters      []Interceptor
 	predicates  []predicate.UsageLog
-	withUser    *UserQuery
 	withRequest *RequestQuery
 	withProject *ProjectQuery
 	withChannel *ChannelQuery
@@ -67,28 +65,6 @@ func (_q *UsageLogQuery) Unique(unique bool) *UsageLogQuery {
 func (_q *UsageLogQuery) Order(o ...usagelog.OrderOption) *UsageLogQuery {
 	_q.order = append(_q.order, o...)
 	return _q
-}
-
-// QueryUser chains the current query on the "user" edge.
-func (_q *UsageLogQuery) QueryUser() *UserQuery {
-	query := (&UserClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(usagelog.Table, usagelog.FieldID, selector),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.UserTable, usagelog.UserColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
 }
 
 // QueryRequest chains the current query on the "request" edge.
@@ -349,7 +325,6 @@ func (_q *UsageLogQuery) Clone() *UsageLogQuery {
 		order:       append([]usagelog.OrderOption{}, _q.order...),
 		inters:      append([]Interceptor{}, _q.inters...),
 		predicates:  append([]predicate.UsageLog{}, _q.predicates...),
-		withUser:    _q.withUser.Clone(),
 		withRequest: _q.withRequest.Clone(),
 		withProject: _q.withProject.Clone(),
 		withChannel: _q.withChannel.Clone(),
@@ -358,17 +333,6 @@ func (_q *UsageLogQuery) Clone() *UsageLogQuery {
 		path:      _q.path,
 		modifiers: append([]func(*sql.Selector){}, _q.modifiers...),
 	}
-}
-
-// WithUser tells the query-builder to eager-load the nodes that are connected to
-// the "user" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *UsageLogQuery) WithUser(opts ...func(*UserQuery)) *UsageLogQuery {
-	query := (&UserClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withUser = query
-	return _q
 }
 
 // WithRequest tells the query-builder to eager-load the nodes that are connected to
@@ -488,8 +452,7 @@ func (_q *UsageLogQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Usa
 	var (
 		nodes       = []*UsageLog{}
 		_spec       = _q.querySpec()
-		loadedTypes = [4]bool{
-			_q.withUser != nil,
+		loadedTypes = [3]bool{
 			_q.withRequest != nil,
 			_q.withProject != nil,
 			_q.withChannel != nil,
@@ -515,12 +478,6 @@ func (_q *UsageLogQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Usa
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
-	}
-	if query := _q.withUser; query != nil {
-		if err := _q.loadUser(ctx, query, nodes, nil,
-			func(n *UsageLog, e *User) { n.Edges.User = e }); err != nil {
-			return nil, err
-		}
 	}
 	if query := _q.withRequest; query != nil {
 		if err := _q.loadRequest(ctx, query, nodes, nil,
@@ -548,35 +505,6 @@ func (_q *UsageLogQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Usa
 	return nodes, nil
 }
 
-func (_q *UsageLogQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*UsageLog, init func(*UsageLog), assign func(*UsageLog, *User)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*UsageLog)
-	for i := range nodes {
-		fk := nodes[i].UserID
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
-		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
-	}
-	if len(ids) == 0 {
-		return nil
-	}
-	query.Where(user.IDIn(ids...))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
-		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "user_id" returned %v`, n.ID)
-		}
-		for i := range nodes {
-			assign(nodes[i], n)
-		}
-	}
-	return nil
-}
 func (_q *UsageLogQuery) loadRequest(ctx context.Context, query *RequestQuery, nodes []*UsageLog, init func(*UsageLog), assign func(*UsageLog, *Request)) error {
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*UsageLog)
@@ -692,9 +620,6 @@ func (_q *UsageLogQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != usagelog.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
-		}
-		if _q.withUser != nil {
-			_spec.Node.AddColumnOnce(usagelog.FieldUserID)
 		}
 		if _q.withRequest != nil {
 			_spec.Node.AddColumnOnce(usagelog.FieldRequestID)
