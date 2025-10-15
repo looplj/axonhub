@@ -35,6 +35,7 @@ func V0_3_0(ctx context.Context, client *ent.Client) error {
 			log.Info(ctx, "no owner user found, skip project creation")
 			return nil
 		}
+
 		return err
 	}
 

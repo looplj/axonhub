@@ -11,6 +11,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/system"
@@ -165,6 +166,25 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	}
 
 	log.Info(ctx, "created owner user", zap.Int("user_id", user.ID))
+
+	// Create default project and assign owner
+	projectService := NewProjectService(ProjectServiceParams{})
+	description := "Default project"
+	projectInput := ent.CreateProjectInput{
+		Slug:        "default",
+		Name:        "Default",
+		Description: &description,
+	}
+
+	// Set user in context for project creation
+	ctx = contexts.WithUser(ctx, user)
+
+	_, err = projectService.CreateProject(ctx, projectInput)
+	if err != nil {
+		return fmt.Errorf("failed to create default project: %w", err)
+	}
+
+	log.Info(ctx, "created default project", zap.String("slug", "default"))
 
 	// Set secret key.
 	err = s.setSystemValue(ctx, SystemKeySecretKey, secretKey)
