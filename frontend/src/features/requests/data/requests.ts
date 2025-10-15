@@ -13,14 +13,7 @@ import {
 } from './schema'
 
 // Dynamic GraphQL query builder
-function buildRequestsQuery(permissions: { canViewUsers: boolean; canViewApiKeys: boolean; canViewChannels: boolean }) {
-  const userFields = permissions.canViewUsers ? `
-          user {
-            id
-            firstName
-            lastName
-          }` : ''
-  
+function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChannels: boolean }) {
   const apiKeyFields = permissions.canViewApiKeys ? `
           apiKey {
             id
@@ -45,36 +38,11 @@ function buildRequestsQuery(permissions: { canViewUsers: boolean; canViewApiKeys
           node {
             id
             createdAt
-            updatedAt${userFields}${apiKeyFields}
+            updatedAt${apiKeyFields}
             source
             modelID
             stream
-            requestBody
-            responseBody
             status
-            executions(first: 10, orderBy: { field: CREATED_AT, direction: DESC }) {
-              edges {
-                node {
-                  id
-                  createdAt
-                  updatedAt${channelFields}
-                  modelID
-                  requestBody
-                  responseBody
-                  responseChunks
-                  errorMessage
-                  status
-                }
-                cursor
-              }
-              pageInfo {
-                hasNextPage
-                hasPreviousPage
-                startCursor
-                endCursor
-              }
-              totalCount
-            }
           }
           cursor
         }
@@ -90,14 +58,7 @@ function buildRequestsQuery(permissions: { canViewUsers: boolean; canViewApiKeys
   `
 }
 
-function buildRequestDetailQuery(permissions: { canViewUsers: boolean; canViewApiKeys: boolean; canViewChannels: boolean }) {
-  const userFields = permissions.canViewUsers ? `
-        user {
-            id
-            firstName
-            lastName
-          }` : ''
-  
+function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canViewChannels: boolean }) {
   const apiKeyFields = permissions.canViewApiKeys ? `
           apiKey {
             id
@@ -122,7 +83,7 @@ function buildRequestDetailQuery(permissions: { canViewUsers: boolean; canViewAp
         ... on Request {
           id
           createdAt
-          updatedAt${userFields}${apiKeyFields}${requestChannelFields}
+          updatedAt${apiKeyFields}${requestChannelFields}
           source
           modelID
           stream
@@ -135,7 +96,6 @@ function buildRequestDetailQuery(permissions: { canViewUsers: boolean; canViewAp
                 id
                 createdAt
                 updatedAt
-                userID
                 requestID${executionChannelFields}
                 modelID
                 requestBody
@@ -183,7 +143,6 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 id
                 createdAt
                 updatedAt
-                userID
                 requestID${channelFields}
                 modelID
                 requestBody
@@ -214,7 +173,6 @@ export function useRequests(variables?: {
   after?: string
   orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
   where?: {
-    userID?: string
     status?: string
     source?: string
     channelID?: string

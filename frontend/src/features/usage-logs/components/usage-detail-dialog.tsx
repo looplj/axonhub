@@ -84,20 +84,6 @@ export function UsageDetailDialog({
 
             <TabsContent value='overview' className='space-y-4'>
               <div className='grid grid-cols-2 gap-4'>
-                {permissions.canViewUsers && usageLog.user && (
-                  <div className='space-y-2'>
-                    <div className='flex items-center gap-2'>
-                      <span className='text-sm font-medium'>{t('usageLogs.dialogs.usageDetail.fields.userId')}</span>
-                    </div>
-                    <p className='text-muted-foreground text-sm'>
-                      {usageLog.user.firstName && usageLog.user.lastName
-                        ? `${usageLog.user.firstName} ${usageLog.user.lastName}`
-                        : usageLog.user.email || t('usageLogs.columns.unknown')
-                      }
-                    </p>
-                  </div>
-                )}
-                
                 <div className='space-y-2'>
                   <div className='flex items-center gap-2'>
                     <span className='text-sm font-medium'>{t('usageLogs.dialogs.usageDetail.fields.requestId')}</span>

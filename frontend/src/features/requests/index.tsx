@@ -11,7 +11,6 @@ import { useRequests } from './data'
 function RequestsContent() {
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
-  const [userFilter, setUserFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
   const [channelFilter, setChannelFilter] = useState<string[]>([])
@@ -19,9 +18,6 @@ function RequestsContent() {
   // Build where clause with filters
   const whereClause = (() => {
     const where: any = {}
-    if (userFilter) {
-      where.userID = userFilter
-    }
     if (statusFilter.length > 0) {
       where.statusIn = statusFilter
     }
@@ -66,11 +62,6 @@ function RequestsContent() {
     setCursor(undefined) // Reset to first page
   }
 
-  const handleUserFilterChange = (filter: string) => {
-    setUserFilter(filter)
-    setCursor(undefined) // Reset to first page when filtering
-  }
-
   const handleStatusFilterChange = (filters: string[]) => {
     setStatusFilter(filters)
     setCursor(undefined) // Reset to first page when filtering
@@ -94,14 +85,12 @@ function RequestsContent() {
         pageInfo={pageInfo}
         pageSize={pageSize}
         totalCount={data?.totalCount}
-        userFilter={userFilter}
         statusFilter={statusFilter}
         sourceFilter={sourceFilter}
         channelFilter={channelFilter}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
-        onUserFilterChange={handleUserFilterChange}
         onStatusFilterChange={handleStatusFilterChange}
         onSourceFilterChange={handleSourceFilterChange}
         onChannelFilterChange={handleChannelFilterChange}

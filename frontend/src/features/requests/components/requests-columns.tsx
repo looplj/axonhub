@@ -60,7 +60,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
           </Badge>
         )
       },
-      filterFn: (row, id, value) => {
+      filterFn: (row, _id, value) => {
         return value.includes(row.original.stream?.toString() || '-')
       },
     },
@@ -119,27 +119,6 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
               if (!channel) return false
 
               return value.includes(channel.id)
-            },
-          },
-        ] as ColumnDef<Request>[])
-      : []),
-    // User column - only show if user has permission to view users
-    ...(permissions.canViewUsers
-      ? ([
-          {
-            id: 'user',
-            accessorFn: (row) => row.user?.id || '',
-            header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.user')} />,
-            enableSorting: false,
-            cell: ({ row }) => {
-              const user = row.original.user
-              const displayName = user ? `${user.firstName} ${user.lastName}` : t('requests.columns.unknown')
-              return <div className='font-mono text-xs'>{displayName}</div>
-            },
-            filterFn: (row, _id, value) => {
-              const user = row.original.user
-              if (!user) return false
-              return value.includes(user.id)
             },
           },
         ] as ColumnDef<Request>[])

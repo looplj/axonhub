@@ -16,17 +16,12 @@ function UsageLogsContent() {
   const { t } = useTranslation()
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
-  const [userFilter, setUserFilter] = useState<string>('')
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
   const [channelFilter, setChannelFilter] = useState<string[]>([])
   
   // Build where clause with filters
   const whereClause = (() => {
     const where: any = {}
-    
-    if (userFilter) {
-        where.userID = parseInt(userFilter)
-    }
     
     if (sourceFilter.length > 0) {
       where.sourceIn = sourceFilter
@@ -70,11 +65,6 @@ function UsageLogsContent() {
     setCursor(undefined) // Reset to first page
   }
 
-  const handleUserFilterChange = (filter: string) => {
-    setUserFilter(filter)
-    setCursor(undefined) // Reset to first page when filtering
-  }
-
   const handleSourceFilterChange = (filters: string[]) => {
     setSourceFilter(filters)
     setCursor(undefined) // Reset to first page when filtering
@@ -103,13 +93,11 @@ function UsageLogsContent() {
         pageInfo={pageInfo}
         pageSize={pageSize}
         totalCount={data?.totalCount}
-        userFilter={userFilter}
         sourceFilter={sourceFilter}
         channelFilter={channelFilter}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
-        onUserFilterChange={handleUserFilterChange}
         onSourceFilterChange={handleSourceFilterChange}
         onChannelFilterChange={handleChannelFilterChange}
       />

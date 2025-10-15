@@ -39,14 +39,12 @@ interface RequestsTableProps {
   pageInfo?: RequestConnection['pageInfo']
   pageSize: number
   totalCount?: number
-  userFilter: string
   statusFilter: string[]
   sourceFilter: string[]
   channelFilter: string[]
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
-  onUserFilterChange: (filter: string) => void
   onStatusFilterChange: (filters: string[]) => void
   onSourceFilterChange: (filters: string[]) => void
   onChannelFilterChange: (filters: string[]) => void
@@ -58,14 +56,12 @@ export function RequestsTable({
   pageInfo,
   totalCount,
   pageSize,
-  userFilter,
   statusFilter,
   sourceFilter,
   channelFilter,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
-  onUserFilterChange,
   onStatusFilterChange,
   onSourceFilterChange,
   onChannelFilterChange,
@@ -83,24 +79,9 @@ export function RequestsTable({
     setColumnFilters(newFilters)
     
     // Find and sync filters with the server
-    const userFilterValue = newFilters.find((filter: any) => filter.id === 'user')?.value
     const statusFilterValue = newFilters.find((filter: any) => filter.id === 'status')?.value
     const sourceFilterValue = newFilters.find((filter: any) => filter.id === 'source')?.value
     const channelFilterValue = newFilters.find((filter: any) => filter.id === 'channel')?.value
-    
-    // Handle user filter
-    let userFilterString = ''
-    if (userFilterValue) {
-      if (Array.isArray(userFilterValue)) {
-        userFilterString = userFilterValue.length > 0 ? userFilterValue[0] : ''
-      } else {
-        userFilterString = userFilterValue as string
-      }
-    }
-    
-    if (userFilterString !== userFilter) {
-      onUserFilterChange(userFilterString)
-    }
     
     // Handle status filter
     const statusFilterArray = Array.isArray(statusFilterValue) ? statusFilterValue : []
@@ -123,9 +104,6 @@ export function RequestsTable({
 
   // Initialize filters in column filters if they exist
   const initialColumnFilters = []
-  if (userFilter) {
-    initialColumnFilters.push({ id: 'user', value: [userFilter] })
-  }
   if (statusFilter.length > 0) {
     initialColumnFilters.push({ id: 'status', value: statusFilter })
   }
@@ -142,9 +120,9 @@ export function RequestsTable({
     
     return data.filter(request => {
       const execution = request.executions?.edges?.[0]?.node
-      const channel = execution?.channel
-      if (!channel) return false
-      return channelFilter.includes(channel.id)
+      const channelId = execution?.channel?.id
+      if (!channelId) return false
+      return channelFilter.includes(channelId)
     })
   }, [data, channelFilter])
 
@@ -155,7 +133,7 @@ export function RequestsTable({
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters: columnFilters.length === 0 && (userFilter || statusFilter.length > 0 || sourceFilter.length > 0 || channelFilter.length > 0) ? initialColumnFilters : columnFilters,
+      columnFilters: columnFilters.length === 0 && (statusFilter.length > 0 || sourceFilter.length > 0 || channelFilter.length > 0) ? initialColumnFilters : columnFilters,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,

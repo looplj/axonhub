@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input'
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions'
 import { useChannels } from '../../channels/data'
-import { useUsers } from '../../users/data/users'
 import { UsageLogSource } from '../data/schema'
 import { DataTableViewOptions } from './data-table-view-options'
 
@@ -18,20 +17,9 @@ interface DataTableToolbarProps<TData> {
 export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const permissions = useUsageLogPermissions()
-  const { canViewUsers, canViewChannels } = permissions
+  const { canViewChannels } = permissions
 
   const isFiltered = table.getState().columnFilters.length > 0
-
-  // Fetch users data if user has permission
-  const { data: usersData } = useUsers(
-    {
-      first: 100,
-      orderBy: { field: 'CREATED_AT', direction: 'DESC' },
-    },
-    {
-      disableAutoFetch: !canViewUsers, // Disable auto-fetch if user doesn't have permission
-    }
-  )
 
   // Fetch channels data if user has permission
   const { data: channelsData } = useChannels(
@@ -42,16 +30,6 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
         }
       : undefined
   )
-
-  // Prepare user options for filter
-  const userOptions = useMemo(() => {
-    if (!canViewUsers || !usersData?.edges) return []
-
-    return usersData.edges.map((edge) => ({
-      value: edge.node.id,
-      label: `${edge.node.firstName} ${edge.node.lastName} (${edge.node.email})`,
-    }))
-  }, [canViewUsers, usersData])
 
   // Prepare channel options for filter
   const channelOptions = useMemo(() => {
@@ -92,13 +70,6 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
             column={table.getColumn('source')}
             title={t('usageLogs.filters.source')}
             options={usageLogSources}
-          />
-        )}
-        {canViewUsers && table.getColumn('user') && userOptions.length > 0 && usersData?.edges && (
-          <DataTableFacetedFilter
-            column={table.getColumn('user')}
-            title={t('usageLogs.filters.user')}
-            options={userOptions}
           />
         )}
         {canViewChannels && table.getColumn('channel') && channelOptions.length > 0 && channelsData?.edges && (
