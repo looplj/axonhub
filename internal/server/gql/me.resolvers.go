@@ -48,7 +48,15 @@ func (r *mutationResolver) UpdateMe(ctx context.Context, input UpdateMeInput) (*
 		mut.SetAvatar(*input.Avatar)
 	}
 
-	return mut.Save(ctx)
+	updatedUser, err := mut.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Invalidate user cache to ensure fresh data on next request
+	r.userService.InvalidateUserCache(ctx, user.ID)
+
+	return updatedUser, nil
 }
 
 // Me is the resolver for the me field.
