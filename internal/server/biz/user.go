@@ -112,7 +112,7 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 	}
 
 	// Invalidate cache
-	s.invalidateUserCache(ctx, id)
+	s.InvalidateUserCache(ctx, id)
 
 	return user, nil
 }
@@ -130,7 +130,7 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, id int, status user.
 	}
 
 	// Invalidate cache
-	s.invalidateUserCache(ctx, id)
+	s.InvalidateUserCache(ctx, id)
 
 	return user, nil
 }
@@ -175,8 +175,8 @@ func buildUserCacheKey(id int) string {
 	return fmt.Sprintf("user:%d", id)
 }
 
-// invalidateUserCache removes a user from cache.
-func (s *UserService) invalidateUserCache(ctx context.Context, id int) {
+// InvalidateUserCache removes a user from cache.
+func (s *UserService) InvalidateUserCache(ctx context.Context, id int) {
 	cacheKey := buildUserCacheKey(id)
 	_ = s.UserCache.Delete(ctx, cacheKey)
 }

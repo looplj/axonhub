@@ -29,6 +29,12 @@ func V0_3_0(ctx context.Context, client *ent.Client) error {
 	// Find the owner user
 	owner, err := client.User.Query().Where(user.IsOwner(true)).First(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			// No owner user exists yet, skip project creation
+			// Project will be created when the system is initialized
+			log.Info(ctx, "no owner user found, skip project creation")
+			return nil
+		}
 		return err
 	}
 
