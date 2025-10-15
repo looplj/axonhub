@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/chat"
@@ -240,6 +241,7 @@ func (r *mutationResolver) CreateRole(ctx context.Context, input ent.CreateRoleI
 		SetCode(input.Code).
 		SetName(input.Name).
 		SetScopes(input.Scopes).
+		SetNillableProjectID(input.ProjectID).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create role: %w", err)
@@ -277,6 +279,115 @@ func (r *mutationResolver) UpdateProject(ctx context.Context, id objects.GUID, i
 // UpdateProjectStatus is the resolver for the updateProjectStatus field.
 func (r *mutationResolver) UpdateProjectStatus(ctx context.Context, id objects.GUID, status project.Status) (*ent.Project, error) {
 	return r.projectService.UpdateProjectStatus(ctx, id.ID, status)
+}
+
+// AddUserToProject is the resolver for the addUserToProject field.
+func (r *mutationResolver) AddUserToProject(ctx context.Context, input AddUserToProjectInput) (*ent.UserProject, error) {
+	// Create the project user relationship
+	mut := r.client.UserProject.Create().
+		SetUserID(input.UserID.ID).
+		SetProjectID(input.ProjectID.ID)
+
+	if input.IsOwner != nil {
+		mut.SetIsOwner(*input.IsOwner)
+	}
+
+	if input.Scopes != nil {
+		mut.SetScopes(input.Scopes)
+	}
+
+	userProject, err := mut.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add user to project: %w", err)
+	}
+
+	// Add roles if provided
+	if len(input.RoleIDs) > 0 {
+		roleIDs := objects.IntGuids(input.RoleIDs)
+
+		user, err := r.client.User.Get(ctx, input.UserID.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user: %w", err)
+		}
+
+		err = user.Update().AddRoleIDs(roleIDs...).Exec(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to add roles to user: %w", err)
+		}
+	}
+
+	return userProject, nil
+}
+
+// RemoveUserFromProject is the resolver for the removeUserFromProject field.
+func (r *mutationResolver) RemoveUserFromProject(ctx context.Context, input RemoveUserFromProjectInput) (bool, error) {
+	// Find the UserProject relationship
+	userProject, err := r.client.UserProject.Query().
+		Where(
+			userproject.UserID(input.UserID.ID),
+			userproject.ProjectID(input.ProjectID.ID),
+		).
+		Only(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to find user project relationship: %w", err)
+	}
+
+	// Delete the relationship (soft delete if enabled)
+	err = r.client.UserProject.DeleteOne(userProject).Exec(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to remove user from project: %w", err)
+	}
+
+	return true, nil
+}
+
+// UpdateProjectUser is the resolver for the updateProjectUser field.
+func (r *mutationResolver) UpdateProjectUser(ctx context.Context, input UpdateProjectUserInput) (*ent.UserProject, error) {
+	// Find the UserProject relationship
+	userProject, err := r.client.UserProject.Query().
+		Where(
+			userproject.UserID(input.UserID.ID),
+			userproject.ProjectID(input.ProjectID.ID),
+		).
+		Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user project relationship: %w", err)
+	}
+
+	// Update the UserProject (note: isOwner is immutable, so we can only update scopes)
+	mut := userProject.Update()
+
+	if input.Scopes != nil {
+		mut.SetScopes(input.Scopes)
+	}
+
+	userProject, err = mut.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update project user: %w", err)
+	}
+
+	// Update roles if provided
+	user, err := r.client.User.Get(ctx, input.UserID.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	userMut := user.Update()
+
+	if len(input.AddRoleIDs) > 0 {
+		userMut.AddRoleIDs(objects.IntGuids(input.AddRoleIDs)...)
+	}
+
+	if len(input.RemoveRoleIDs) > 0 {
+		userMut.RemoveRoleIDs(objects.IntGuids(input.RemoveRoleIDs)...)
+	}
+
+	err = userMut.Exec(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update user roles: %w", err)
+	}
+
+	return userProject, nil
 }
 
 // FetchModels is the resolver for the fetchModels field.

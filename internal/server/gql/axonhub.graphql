@@ -154,6 +154,28 @@ extend type Query {
   fetchModels(input: FetchModelsInput!): FetchModelsPayload!
 }
 
+input AddUserToProjectInput {
+  projectId: ID!
+  userId: ID!
+  isOwner: Boolean
+  scopes: [String!]
+  roleIDs: [ID!]
+}
+
+input UpdateProjectUserInput {
+  projectId: ID!
+  userId: ID!
+  isOwner: Boolean
+  scopes: [String!]
+  addRoleIDs: [ID!]
+  removeRoleIDs: [ID!]
+}
+
+input RemoveUserFromProjectInput {
+  projectId: ID!
+  userId: ID!
+}
+
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
@@ -177,4 +199,8 @@ type Mutation {
   createProject(input: CreateProjectInput!): Project!
   updateProject(id: ID!, input: UpdateProjectInput!): Project!
   updateProjectStatus(id: ID!, status: ProjectStatus!): Project!
+  
+  addUserToProject(input: AddUserToProjectInput!): UserProject!
+  removeUserFromProject(input: RemoveUserFromProjectInput!): Boolean!
+  updateProjectUser(input: UpdateProjectUserInput!): UserProject!
 }

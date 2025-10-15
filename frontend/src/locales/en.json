@@ -68,6 +68,16 @@
   "search": {
     "placeholder": "Search"
   },
+  "projectUsers": {
+    "title": "Project Users",
+    "description": "Manage users and permissions for the current project.",
+    "addToProject": "Add User to Project"
+  },
+  "projectRoles": {
+    "title": "Project Roles",
+    "description": "Manage roles and permissions for the current project.",
+    "createRole": "Add Role to Project"
+  },
   "users": {
     "title": "User Management",
     "description": "Manage system users and permission configurations.",
@@ -88,7 +98,10 @@
       "actions": "actions",
       "selectAll": "Select all",
       "selectRow": "Select row",
-      "noRoles": "No roles"
+      "noRoles": "No roles",
+      "projectOwner": "Project Owner",
+      "projectRoles": "Project Roles",
+      "projectScopes": "Project Scopes"
     },
     "status": {
       "activated": "Activated",
@@ -101,7 +114,10 @@
     "badges": {
       "owner": "Owner",
       "user": "User",
-      "noRoles": "No roles"
+      "noRoles": "No roles",
+      "member": "Member",
+      "projectOwner": "Project Owner",
+      "noScopes": "No scopes"
     },
     "filters": {
       "status": "Status",
@@ -119,6 +135,10 @@
       "add": {
         "title": "Add New User",
         "description": "Create new user here. Click save when you're done."
+      },
+      "addToProject": {
+        "title": "Add User to Project",
+        "description": "Add an existing user to this project with specific roles and permissions."
       },
       "edit": {
         "title": "Edit User",
@@ -160,6 +180,13 @@
       "ownerDescription": "Grant owner privileges to this user",
       "roles": "Roles",
       "scopes": "Scopes",
+      "projectRoles": "Project Roles",
+      "projectScopes": "Project Scopes",
+      "selectUser": "Select User",
+      "selectUserPlaceholder": "Select a user to add to project",
+      "searchUsers": "Search users...",
+      "noUsersFound": "No users found",
+      "noProjectRoles": "No project roles available",
       "loadingRoles": "Loading roles...",
       "loadingScopes": "Loading scopes...",
       "placeholders": {
@@ -195,7 +222,9 @@
       "deactivate": "Deactivate",
       "changePassword": "Change Password",
       "changing": "Changing...",
-      "saveChanges": "Save changes"
+      "saveChanges": "Save changes",
+      "addToProject": "Add to Project",
+      "adding": "Adding..."
     },
     "messages": {
       "createSuccess": "User created successfully",
@@ -211,7 +240,11 @@
       "loadUsersError": "Failed to load users data",
       "loadUserError": "Failed to load user details",
       "userNotFound": "User not found",
-      "loadRolesError": "Failed to load roles and scopes"
+      "loadRolesError": "Failed to load roles and scopes",
+      "addToProjectSuccess": "User added to project successfully",
+      "addToProjectError": "Failed to add user to project",
+      "removeFromProjectSuccess": "User removed from project successfully",
+      "removeFromProjectError": "Failed to remove user from project"
     }
   },
   "apikeys": {
@@ -1322,7 +1355,8 @@
       "validationError": "Validation error",
       "validationFailed": "Validation failed: {{details}}",
       "operationFailed": "{{operation}} failed",
-      "copyFailed": "Failed to copy to clipboard."
+      "copyFailed": "Failed to copy to clipboard.",
+      "loadFailed": "Failed to load data"
     },
     "success": {
       "copiedToClipboard": "Copied to clipboard!",
@@ -1375,13 +1409,13 @@
   },
   "scopes": {
     "read_channels": "View channel information",
-    "write_channels": "Manage channels (create, edit, delete)",
+    "write_channels": "Manage channels",
     "read_users": "View user information",
-    "write_users": "Manage users (create, edit, delete)",
+    "write_users": "Manage users",
     "read_roles": "View role information",
-    "write_roles": "Manage roles (create, edit, delete)",
+    "write_roles": "Manage roles",
     "read_api_keys": "View API keys",
-    "write_api_keys": "Manage API keys (create, edit, delete)",
+    "write_api_keys": "Manage API keys",
     "read_requests": "View request records",
     "write_requests": "Manage request records",
     "read_dashboard": "View dashboard",

@@ -1,0 +1,241 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { graphqlRequest } from '@/gql/graphql'
+import { toast } from 'sonner'
+import { useErrorHandler } from '@/hooks/use-error-handler'
+import { useSelectedProjectId } from '@/stores/projectStore'
+import i18n from '@/lib/i18n'
+import {
+  Role,
+  RoleConnection,
+  ScopeInfo,  
+  CreateRoleInput,
+  UpdateRoleInput,
+  roleConnectionSchema,
+  roleSchema,
+  scopeInfoSchema,
+} from './schema'
+
+// GraphQL queries and mutations
+const PROJECT_ROLES_QUERY = `
+  query GetProjectRoles($projectId: ID!, $first: Int, $after: Cursor, $where: RoleWhereInput) {
+    node(id: $projectId) {
+      ... on Project {
+        roles(first: $first, after: $after, where: $where) {
+          edges {
+            node {
+              id
+              createdAt
+              updatedAt
+              code
+              name
+              scopes
+            }
+            cursor
+          }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
+          }
+          totalCount
+        }
+      }
+    }
+  }
+`
+
+const ALL_SCOPES_QUERY = `
+  query GetAllScopes {
+    allScopes {
+      scope
+      description
+    }
+  }
+`
+
+const CREATE_ROLE_MUTATION = `
+  mutation CreateRole($input: CreateRoleInput!) {
+    createRole(input: $input) {
+      id
+      code
+      name
+      scopes
+      createdAt
+      updatedAt
+    }
+  }
+`
+
+const UPDATE_ROLE_MUTATION = `
+  mutation UpdateRole($id: ID!, $input: UpdateRoleInput!) {
+    updateRole(id: $id, input: $input) {
+      id
+      code
+      name
+      scopes
+      createdAt
+      updatedAt
+    }
+  }
+`
+
+const DELETE_ROLE_MUTATION = `
+  mutation DeleteRole($id: ID!) {
+    deleteRole(id: $id)
+  }
+`
+
+// Query hooks
+export function useRoles(variables: {
+  first?: number
+  after?: string
+  where?: any
+} = {}) {
+  const { handleError } = useErrorHandler()
+  const selectedProjectId = useSelectedProjectId()
+
+  return useQuery({
+    queryKey: ['project-roles', variables, selectedProjectId],
+    queryFn: async () => {
+      try {
+        if (!selectedProjectId) {
+          throw new Error('Project ID is required')
+        }
+        const data = await graphqlRequest<{ node: { roles: RoleConnection } }>(
+          PROJECT_ROLES_QUERY,
+          { projectId: selectedProjectId, ...variables }
+        )
+        return roleConnectionSchema.parse(data?.node?.roles)
+      } catch (error) {
+        handleError(error, '获取项目角色数据')
+        throw error
+      }
+    },
+    enabled: !!selectedProjectId
+  })
+}
+
+export function useRole(id: string) {
+  const { handleError } = useErrorHandler()
+  const selectedProjectId = useSelectedProjectId()
+
+  return useQuery({
+    queryKey: ['project-role', id, selectedProjectId],
+    queryFn: async () => {
+      try {
+        if (!selectedProjectId) {
+          throw new Error('Project ID is required')
+        }
+        const data = await graphqlRequest<{ node: { roles: RoleConnection } }>(
+          PROJECT_ROLES_QUERY,
+          { projectId: selectedProjectId, where: { id } }
+        )
+        const role = data.node?.roles?.edges[0]?.node
+        if (!role) {
+          throw new Error('Role not found')
+        }
+        return roleSchema.parse(role)
+      } catch (error) {
+        handleError(error, '获取项目角色详情')
+        throw error
+      }
+    },
+    enabled: !!id && !!selectedProjectId,
+  })
+}
+
+export function useAllScopes() {
+  const { handleError } = useErrorHandler()
+
+  return useQuery({
+    queryKey: ['allScopes'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ allScopes: ScopeInfo[] }>(
+          ALL_SCOPES_QUERY
+        )
+        return data.allScopes.map(scope => scopeInfoSchema.parse(scope))
+      } catch (error) {
+        handleError(error, '获取权限列表')
+        throw error
+      }
+    }
+  })
+}
+
+// Mutation hooks
+export function useCreateRole() {
+  const queryClient = useQueryClient()
+  const { handleError } = useErrorHandler()
+  const selectedProjectId = useSelectedProjectId()
+
+  return useMutation({
+    mutationFn: async (input: CreateRoleInput) => {
+      try {
+        // Ensure projectID is set from the selected project
+        const inputWithProjectId = {
+          ...input,
+          projectID: input.projectID || selectedProjectId,
+        }
+        const data = await graphqlRequest<{ createRole: Role }>(
+          CREATE_ROLE_MUTATION,
+          { input: inputWithProjectId }
+        )
+        return roleSchema.parse(data.createRole)
+      } catch (error) {
+        handleError(error, '创建项目角色')
+        throw error
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-roles'] })
+      toast.success(i18n.t('common.success.roleCreated'))
+    },
+  })
+}
+
+export function useUpdateRole() {
+  const queryClient = useQueryClient()
+  const { handleError } = useErrorHandler()
+
+  return useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: UpdateRoleInput }) => {
+      try {
+        const data = await graphqlRequest<{ updateRole: Role }>(
+          UPDATE_ROLE_MUTATION,
+          { id, input }
+        )
+        return roleSchema.parse(data.updateRole)
+      } catch (error) {
+        handleError(error, '更新项目角色')
+        throw error
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-roles'] })
+      queryClient.invalidateQueries({ queryKey: ['project-role'] })
+      toast.success(i18n.t('common.success.roleUpdated'))
+    },
+  })
+}
+
+export function useDeleteRole() {
+  const queryClient = useQueryClient()
+  const { handleError } = useErrorHandler()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      try {
+        await graphqlRequest(DELETE_ROLE_MUTATION, { id })
+      } catch (error) {
+        handleError(error, '删除项目角色')
+        throw error
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-roles'] })
+      toast.success(i18n.t('common.success.roleDeleted'))
+    },
+  })
+}

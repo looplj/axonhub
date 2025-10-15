@@ -94,6 +94,16 @@
       "connect": "连接"
     }
   },
+  "projectUsers": {
+    "title": "项目用户",
+    "description": "管理当前项目的用户和权限。",
+    "addToProject": "添加用户到项目"
+  },
+  "projectRoles": {
+    "title": "项目角色",
+    "description": "管理当前项目的角色和权限。",
+    "createRole": "添加角色到项目"
+  },
   "users": {
     "title": "用户管理",
     "description": "管理系统用户和权限配置。",
@@ -114,7 +124,10 @@
       "actions": "操作",
       "selectAll": "全选",
       "selectRow": "选择行",
-      "noRoles": "无角色"
+      "noRoles": "无角色",
+      "projectOwner": "项目所有者",
+      "projectRoles": "项目角色",
+      "projectScopes": "项目权限"
     },
     "status": {
       "activated": "已激活",
@@ -127,7 +140,10 @@
     "badges": {
       "owner": "所有者",
       "user": "用户",
-      "noRoles": "无角色"
+      "noRoles": "无角色",
+      "member": "成员",
+      "projectOwner": "项目所有者",
+      "noScopes": "无权限"
     },
     "filters": {
       "status": "状态",
@@ -145,6 +161,10 @@
       "add": {
         "title": "添加新用户",
         "description": "在此创建新用户。完成后点击保存。"
+      },
+      "addToProject": {
+        "title": "添加用户到项目",
+        "description": "将现有用户添加到此项目并分配特定角色和权限。"
       },
       "edit": {
         "title": "编辑用户",
@@ -186,6 +206,13 @@
       "ownerDescription": "授予此用户所有者权限",
       "roles": "角色",
       "scopes": "权限范围",
+      "projectRoles": "项目角色",
+      "projectScopes": "项目权限范围",
+      "selectUser": "选择用户",
+      "selectUserPlaceholder": "选择要添加到项目的用户",
+      "searchUsers": "搜索用户...",
+      "noUsersFound": "未找到用户",
+      "noProjectRoles": "无可用的项目角色",
       "loadingRoles": "加载角色中...",
       "loadingScopes": "加载权限范围中...",
       "placeholders": {
@@ -221,7 +248,10 @@
       "activate": "激活",
       "deactivate": "停用",
       "changePassword": "修改密码",
-      "changing": "修改中..."
+      "changing": "修改中...",
+      "saveChanges": "保存更改",
+      "addToProject": "添加到项目",
+      "adding": "添加中..."
     },
     "messages": {
       "createSuccess": "用户创建成功",
@@ -237,7 +267,11 @@
       "loadUsersError": "获取用户数据失败",
       "loadUserError": "获取用户详情失败",
       "userNotFound": "用户未找到",
-      "loadRolesError": "加载角色和权限范围失败"
+      "loadRolesError": "加载角色和权限范围失败",
+      "addToProjectSuccess": "用户已成功添加到项目",
+      "addToProjectError": "添加用户到项目失败",
+      "removeFromProjectSuccess": "用户已成功从项目中移除",
+      "removeFromProjectError": "从项目中移除用户失败"
     }
   },
   "apikeys": {
@@ -1352,6 +1386,7 @@
       "validationFailed": "数据校验失败：{{details}}",
       "operationFailed": "{{operation}}失败",
       "copyFailed": "复制到剪贴板失败。",
+      "loadFailed": "加载数据失败",
       "userLoadFailed": "加载角色和权限失败",
       "userSaveFailed": "保存用户失败",
       "userDeleteFailed": "删除用户失败",
@@ -1411,13 +1446,13 @@
   },
   "scopes": {
     "read_channels": "查看渠道信息",
-    "write_channels": "管理渠道（创建、编辑、删除）",
+    "write_channels": "管理渠道",
     "read_users": "查看用户信息",
-    "write_users": "管理用户（创建、编辑、删除）",
+    "write_users": "管理用户",
     "read_roles": "查看角色信息",
-    "write_roles": "管理角色（创建、编辑、删除）",
+    "write_roles": "管理角色",
     "read_api_keys": "查看API密钥",
-    "write_api_keys": "管理API密钥（创建、编辑、删除）",
+    "write_api_keys": "管理API密钥",
     "read_requests": "查看请求记录",
     "write_requests": "管理请求记录",
     "read_dashboard": "查看仪表板",
