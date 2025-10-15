@@ -26,8 +26,11 @@ func TestSystemService_Initialize(t *testing.T) {
 
 	// Test system initialization with auto-generated secret key
 	err := service.Initialize(ctx, &InitializeSystemArgs{
-		OwnerEmail:    "owner@example.com",
-		OwnerPassword: "password123",
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
 	})
 	require.NoError(t, err)
 
@@ -43,12 +46,39 @@ func TestSystemService_Initialize(t *testing.T) {
 	require.NotEmpty(t, secretKey)
 	require.Len(t, secretKey, 64) // Should be 64 hex characters (32 bytes)
 
+	// Verify owner user is created
+	owner, err := client.User.Query().Where().First(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "owner@example.com", owner.Email)
+	require.True(t, owner.IsOwner)
+
+	// Verify default project is created
+	project, err := client.Project.Query().Where().First(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "default", project.Slug)
+	require.Equal(t, "Default", project.Name)
+
+	// Verify owner is assigned to the project
+	userProject, err := client.UserProject.Query().Where().First(ctx)
+	require.NoError(t, err)
+	require.Equal(t, owner.ID, userProject.UserID)
+	require.Equal(t, project.ID, userProject.ProjectID)
+	require.True(t, userProject.IsOwner)
+
+	// Verify default roles are created (admin, developer, viewer)
+	roles, err := client.Role.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, roles, 3)
+
 	// Test idempotency - calling Initialize again should not error
-	// but should not change the existing secret key
+	// but should not change the existing secret key or create duplicate projects
 	originalKey := secretKey
 	err = service.Initialize(ctx, &InitializeSystemArgs{
-		OwnerEmail:    "owner@example.com",
-		OwnerPassword: "password123",
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
 	})
 	require.NoError(t, err)
 
@@ -56,6 +86,11 @@ func TestSystemService_Initialize(t *testing.T) {
 	secretKey2, err := service.SecretKey(ctx)
 	require.NoError(t, err)
 	require.Equal(t, originalKey, secretKey2)
+
+	// Should still have only one project
+	projectCount, err := client.Project.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, projectCount)
 }
 
 func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
