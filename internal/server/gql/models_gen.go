@@ -7,6 +7,14 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
+type AddUserToProjectInput struct {
+	ProjectID objects.GUID    `json:"projectId"`
+	UserID    objects.GUID    `json:"userId"`
+	IsOwner   *bool           `json:"isOwner,omitempty"`
+	Scopes    []string        `json:"scopes,omitempty"`
+	RoleIDs   []*objects.GUID `json:"roleIDs,omitempty"`
+}
+
 type BrandSettings struct {
 	BrandName *string `json:"brandName,omitempty"`
 	BrandLogo *string `json:"brandLogo,omitempty"`
@@ -93,6 +101,11 @@ type InitializeSystemPayload struct {
 	Token   *string   `json:"token,omitempty"`
 }
 
+type RemoveUserFromProjectInput struct {
+	ProjectID objects.GUID `json:"projectId"`
+	UserID    objects.GUID `json:"userId"`
+}
+
 type RequestStats struct {
 	RequestsToday     int `json:"requestsToday"`
 	RequestsThisWeek  int `json:"requestsThisWeek"`
@@ -172,4 +185,13 @@ type UpdateMeInput struct {
 	LastName       *string `json:"lastName,omitempty"`
 	PreferLanguage *string `json:"preferLanguage,omitempty"`
 	Avatar         *string `json:"avatar,omitempty"`
+}
+
+type UpdateProjectUserInput struct {
+	ProjectID     objects.GUID    `json:"projectId"`
+	UserID        objects.GUID    `json:"userId"`
+	IsOwner       *bool           `json:"isOwner,omitempty"`
+	Scopes        []string        `json:"scopes,omitempty"`
+	AddRoleIDs    []*objects.GUID `json:"addRoleIDs,omitempty"`
+	RemoveRoleIDs []*objects.GUID `json:"removeRoleIDs,omitempty"`
 }

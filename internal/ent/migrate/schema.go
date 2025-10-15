@@ -441,7 +441,7 @@ var (
 			},
 			{
 				Name:    "user_projects_by_project_id",
-				Unique:  true,
+				Unique:  false,
 				Columns: []*schema.Column{UserProjectsColumns[7]},
 			},
 			{

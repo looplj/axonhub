@@ -103,22 +103,32 @@ export function useSidebarData(): SidebarData {
       items: [
         {
           title: t('sidebar.items.requests'),
-          url: '/requests',
+          url: '/project/requests',
           icon: IconBrowserCheck,
         } as NavLink,
         {
           title: t('sidebar.items.usageLogs'),
-          url: '/usage-logs',
+          url: '/project/usage-logs',
           icon: IconBrowserCheck,
         } as NavLink,
         {
           title: t('sidebar.items.apiKeys'),
-          url: '/api-keys',
+          url: '/project/api-keys',
           icon: IconKey,
         } as NavLink,
         {
+          title: t('sidebar.items.users'),
+          url: '/project/users',
+          icon: IconUsers,
+        } as NavLink,
+        {
+          title: t('sidebar.items.roles'),
+          url: '/project/roles',
+          icon: IconShield,
+        } as NavLink,
+        {
           title: t('sidebar.items.playground'),
-          url: '/playground',
+          url: '/project/playground',
           icon: IconRobot,
         } as NavLink,
       ],

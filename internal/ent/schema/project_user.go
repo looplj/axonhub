@@ -27,8 +27,7 @@ func (UserProject) Indexes() []ent.Index {
 			StorageKey("user_projects_by_user_id_project_id").
 			Unique(),
 		index.Fields("project_id").
-			StorageKey("user_projects_by_project_id").
-			Unique(),
+			StorageKey("user_projects_by_project_id"),
 	}
 }
 

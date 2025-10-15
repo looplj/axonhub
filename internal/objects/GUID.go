@@ -101,3 +101,7 @@ func ConvertGUIDPtrsToInts(guid []*GUID) ([]int, error) {
 		return item.ID
 	}), nil
 }
+
+func IntGuids(guids []*GUID) []int {
+	return lo.Map(guids, func(item *GUID, index int) int { return item.ID })
+}
