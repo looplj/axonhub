@@ -14,7 +14,7 @@ func TestReadScopeRule(t *testing.T) {
 	tests := []struct {
 		name          string
 		ctx           context.Context
-		requiredScope Scope
+		requiredScope ScopeSlug
 		expectAllow   bool
 	}{
 		{
@@ -135,7 +135,7 @@ func TestWriteScopeRule(t *testing.T) {
 	tests := []struct {
 		name          string
 		ctx           context.Context
-		requiredScope Scope
+		requiredScope ScopeSlug
 		expectAllow   bool
 	}{
 		{
@@ -209,7 +209,7 @@ func TestScopeQueryRule(t *testing.T) {
 	tests := []struct {
 		name          string
 		ctx           context.Context
-		requiredScope Scope
+		requiredScope ScopeSlug
 		expectAllow   bool
 	}{
 		{

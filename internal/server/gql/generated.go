@@ -287,7 +287,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		APIKeys               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) int
-		AllScopes             func(childComplexity int) int
+		AllScopes             func(childComplexity int, level *string) int
 		BrandSettings         func(childComplexity int) int
 		Channels              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
 		DailyRequestStats     func(childComplexity int, days *int) int
@@ -434,6 +434,7 @@ type ComplexityRoot struct {
 
 	ScopeInfo struct {
 		Description func(childComplexity int) int
+		Levels      func(childComplexity int) int
 		Scope       func(childComplexity int) int
 	}
 
@@ -659,7 +660,7 @@ type QueryResolver interface {
 	DailyRequestStats(ctx context.Context, days *int) ([]*DailyRequestStats, error)
 	TopRequestsProjects(ctx context.Context, limit *int) ([]*TopRequestsProjects, error)
 	TokenStats(ctx context.Context) (*TokenStats, error)
-	AllScopes(ctx context.Context) ([]*ScopeInfo, error)
+	AllScopes(ctx context.Context, level *string) ([]*ScopeInfo, error)
 	Me(ctx context.Context) (*objects.UserInfo, error)
 	MyProjects(ctx context.Context) ([]*ent.Project, error)
 	SystemStatus(ctx context.Context) (*SystemStatus, error)
@@ -1838,7 +1839,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Query.AllScopes(childComplexity), true
+		args, err := ec.field_Query_allScopes_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.AllScopes(childComplexity, args["level"].(*string)), true
 
 	case "Query.brandSettings":
 		if e.complexity.Query.BrandSettings == nil {
@@ -2621,6 +2627,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ScopeInfo.Description(childComplexity), true
+
+	case "ScopeInfo.levels":
+		if e.complexity.ScopeInfo.Levels == nil {
+			break
+		}
+
+		return e.complexity.ScopeInfo.Levels(childComplexity), true
 
 	case "ScopeInfo.scope":
 		if e.complexity.ScopeInfo.Scope == nil {
@@ -4238,6 +4251,17 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_allScopes_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "level", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["level"] = arg0
 	return args, nil
 }
 
@@ -13060,7 +13084,7 @@ func (ec *executionContext) _Query_allScopes(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().AllScopes(rctx)
+		return ec.resolvers.Query().AllScopes(rctx, fc.Args["level"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13077,7 +13101,7 @@ func (ec *executionContext) _Query_allScopes(ctx context.Context, field graphql.
 	return ec.marshalNScopeInfo2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐScopeInfoᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_allScopes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_allScopes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -13089,9 +13113,22 @@ func (ec *executionContext) fieldContext_Query_allScopes(_ context.Context, fiel
 				return ec.fieldContext_ScopeInfo_scope(ctx, field)
 			case "description":
 				return ec.fieldContext_ScopeInfo_description(ctx, field)
+			case "levels":
+				return ec.fieldContext_ScopeInfo_levels(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ScopeInfo", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_allScopes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -17380,6 +17417,50 @@ func (ec *executionContext) _ScopeInfo_description(ctx context.Context, field gr
 }
 
 func (ec *executionContext) fieldContext_ScopeInfo_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ScopeInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ScopeInfo_levels(ctx context.Context, field graphql.CollectedField, obj *ScopeInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ScopeInfo_levels(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Levels, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ScopeInfo_levels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ScopeInfo",
 		Field:      field,
@@ -38783,6 +38864,11 @@ func (ec *executionContext) _ScopeInfo(ctx context.Context, sel ast.SelectionSet
 			}
 		case "description":
 			out.Values[i] = ec._ScopeInfo_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "levels":
+			out.Values[i] = ec._ScopeInfo_levels(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

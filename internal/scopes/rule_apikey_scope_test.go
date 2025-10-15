@@ -17,7 +17,7 @@ func TestAPIKeyQueryRule(t *testing.T) {
 	tests := []struct {
 		name          string
 		ctx           context.Context
-		requiredScope Scope
+		requiredScope ScopeSlug
 		expectAllow   bool
 	}{
 		{
@@ -83,7 +83,7 @@ func TestAPIKeyScopeMutationRule(t *testing.T) {
 	tests := []struct {
 		name          string
 		ctx           context.Context
-		requiredScope Scope
+		requiredScope ScopeSlug
 		expectAllow   bool
 	}{
 		{

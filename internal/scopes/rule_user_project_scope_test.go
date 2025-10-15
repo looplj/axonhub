@@ -67,7 +67,7 @@ func TestProjectMemberQueryRule(t *testing.T) {
 	tests := []struct {
 		name          string
 		ctx           context.Context
-		requiredScope Scope
+		requiredScope ScopeSlug
 		expectAllow   bool
 	}{
 		{
@@ -122,7 +122,7 @@ func TestProjectMemberQueryRuleWithProjectID(t *testing.T) {
 	tests := []struct {
 		name          string
 		ctx           context.Context
-		requiredScope Scope
+		requiredScope ScopeSlug
 		expectAllow   bool
 	}{
 		{
@@ -283,7 +283,7 @@ func TestProjectMemberMutationRule(t *testing.T) {
 		name          string
 		ctx           context.Context
 		mutation      *mockProjectMemberMutation
-		requiredScope Scope
+		requiredScope ScopeSlug
 		expectAllow   bool
 	}{
 		{
@@ -525,7 +525,7 @@ func TestUserHasProjectScope(t *testing.T) {
 		name          string
 		user          *ent.User
 		projectID     int
-		requiredScope Scope
+		requiredScope ScopeSlug
 		expected      bool
 	}{
 		{

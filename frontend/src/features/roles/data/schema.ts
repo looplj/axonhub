@@ -31,16 +31,12 @@ export const roleConnectionSchema = z.object({
 })
 export type RoleConnection = z.infer<typeof roleConnectionSchema>
 
-// Scope Info schema
-export const scopeInfoSchema = z.object({
-  scope: z.string(),
-  description: z.string(),
-})
-export type ScopeInfo = z.infer<typeof scopeInfoSchema>
-
 // Create Role Input
 export const createRoleInputSchema = z.object({
-  code: z.string().min(1, '角色代码不能为空').regex(/^[a-zA-Z0-9_]+$/, '角色代码只能包含字母、数字和下划线'),
+  code: z
+    .string()
+    .min(1, '角色代码不能为空')
+    .regex(/^[a-zA-Z0-9_]+$/, '角色代码只能包含字母、数字和下划线'),
   name: z.string().min(1, '角色名称不能为空'),
   scopes: z.array(z.string()).min(1, '至少需要选择一个权限'),
 })

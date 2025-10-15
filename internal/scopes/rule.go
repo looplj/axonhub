@@ -27,7 +27,7 @@ func hasScope(scopes []string, requiredScope string) bool {
 }
 
 // hasRoleScope checks if a user has a required scope through their roles.
-func hasRoleScope(user *ent.User, requiredScope Scope) bool {
+func hasRoleScope(user *ent.User, requiredScope ScopeSlug) bool {
 	for _, role := range user.Edges.Roles {
 		if hasScope(role.Scopes, string(requiredScope)) {
 			return true
@@ -38,7 +38,7 @@ func hasRoleScope(user *ent.User, requiredScope Scope) bool {
 }
 
 // userHasScope checks if a user has the required scope either directly or through roles.
-func userHasScope(user *ent.User, requiredScope Scope) bool {
+func userHasScope(user *ent.User, requiredScope ScopeSlug) bool {
 	// Owner has all permissions
 	if user.IsOwner {
 		return true

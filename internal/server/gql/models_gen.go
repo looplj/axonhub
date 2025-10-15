@@ -124,8 +124,9 @@ type RequestStatsByModel struct {
 }
 
 type ScopeInfo struct {
-	Scope       string `json:"scope"`
-	Description string `json:"description"`
+	Scope       string   `json:"scope"`
+	Description string   `json:"description"`
+	Levels      []string `json:"levels"`
 }
 
 type SignInInput struct {

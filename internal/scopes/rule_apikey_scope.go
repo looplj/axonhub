@@ -8,13 +8,13 @@ import (
 )
 
 // APIKeyQueryRule checks API Key permissions for queries.
-func APIKeyQueryRule(requiredScope Scope) privacy.QueryRule {
+func APIKeyQueryRule(requiredScope ScopeSlug) privacy.QueryRule {
 	return apiKeyQueryRule{requiredScope: requiredScope}
 }
 
 // apiKeyQueryRule custom QueryRule implementation for checking API Key scopes.
 type apiKeyQueryRule struct {
-	requiredScope Scope
+	requiredScope ScopeSlug
 }
 
 func (r apiKeyQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
@@ -31,7 +31,7 @@ func (r apiKeyQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
 }
 
 // APIKeyScopeMutationRule checks API Key write permissions.
-func APIKeyScopeMutationRule(requiredScope Scope) privacy.MutationRule {
+func APIKeyScopeMutationRule(requiredScope ScopeSlug) privacy.MutationRule {
 	return privacy.MutationRuleFunc(func(ctx context.Context, m ent.Mutation) error {
 		apiKey, err := getAPIKeyFromContext(ctx)
 		if err != nil {

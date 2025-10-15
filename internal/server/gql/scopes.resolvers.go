@@ -11,15 +11,26 @@ import (
 )
 
 // AllScopes returns all available scopes with descriptions.
-func (r *queryResolver) AllScopes(ctx context.Context) ([]*ScopeInfo, error) {
-	allScopes := scopes.AllScopes()
-	descriptions := scopes.ScopeDescriptions()
+func (r *queryResolver) AllScopes(ctx context.Context, level *string) ([]*ScopeInfo, error) {
+	var scopeLevel *scopes.ScopeLevel
+	if level != nil {
+		sl := scopes.ScopeLevel(*level)
+		scopeLevel = &sl
+	}
+
+	allScopes := scopes.AllScopes(scopeLevel)
 
 	result := make([]*ScopeInfo, len(allScopes))
 	for i, scope := range allScopes {
+		levels := make([]string, len(scope.Levels))
+		for j, l := range scope.Levels {
+			levels[j] = string(l)
+		}
+
 		result[i] = &ScopeInfo{
-			Scope:       string(scope),
-			Description: descriptions[scope],
+			Scope:       string(scope.Slug),
+			Description: scope.Description,
+			Levels:      levels,
 		}
 	}
 

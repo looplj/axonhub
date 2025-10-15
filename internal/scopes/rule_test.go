@@ -98,7 +98,7 @@ func TestHasRoleScope(t *testing.T) {
 	tests := []struct {
 		name          string
 		user          *ent.User
-		requiredScope Scope
+		requiredScope ScopeSlug
 		expected      bool
 	}{
 		{
@@ -191,7 +191,7 @@ func TestCheckUserPermission(t *testing.T) {
 	tests := []struct {
 		name          string
 		user          *ent.User
-		requiredScope Scope
+		requiredScope ScopeSlug
 		expected      bool
 	}{
 		{

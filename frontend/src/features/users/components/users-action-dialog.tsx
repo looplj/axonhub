@@ -70,6 +70,7 @@ interface Role {
 interface ScopeInfo {
   scope: string
   description?: string
+  levels?: string[]
 }
 
 interface Props {
@@ -144,6 +145,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         allScopes: Array<{
           scope: string
           description?: string
+          levels?: string[]
         }>
       }
 
