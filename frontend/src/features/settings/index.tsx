@@ -1,27 +1,10 @@
 import { Outlet } from '@tanstack/react-router'
-import {
-  IconBrowserCheck,
-  IconNotification,
-  IconPalette,
-  IconTool,
-  IconUser,
-} from '@tabler/icons-react'
-import { useTranslation } from 'react-i18next'
-import { Separator } from '@/components/ui/separator'
-import { Header } from '@/components/layout/header'
+import { IconBrowserCheck, IconNotification, IconPalette, IconTool, IconUser } from '@tabler/icons-react'
 import { Main } from '@/components/layout/main'
-import { Search } from '@/components/search'
 
 export default function Settings() {
-  const { t } = useTranslation()
-  
   return (
     <>
-      {/* ===== Top Heading ===== */}
-      <Header>
-        <Search />
-      </Header>
-
       <Main fixed>
         {/* <div className='space-y-0.5'>
           <h1 className='text-2xl font-bold tracking-tight md:text-3xl'>

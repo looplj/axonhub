@@ -4,6 +4,7 @@ import { UsersDeleteDialog } from './users-delete-dialog'
 import { UsersInviteDialog } from './users-invite-dialog'
 import { UsersChangePasswordDialog } from './users-change-password-dialog'
 import { UsersStatusDialog } from './users-status-dialog'
+import { UsersAddToProjectDialog } from './users-add-to-project-dialog'
 
 export function UsersDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = useUsers()
@@ -64,6 +65,18 @@ export function UsersDialogs() {
             open={open === 'status'}
             onOpenChange={() => {
               setOpen('status')
+              setTimeout(() => {
+                setCurrentRow(null)
+              }, 500)
+            }}
+            currentRow={currentRow}
+          />
+
+          <UsersAddToProjectDialog
+            key={`user-add-to-project-${currentRow.id}`}
+            open={open === 'addToProject'}
+            onOpenChange={() => {
+              setOpen('addToProject')
               setTimeout(() => {
                 setCurrentRow(null)
               }, 500)

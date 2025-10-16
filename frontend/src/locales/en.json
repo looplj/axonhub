@@ -129,7 +129,9 @@
       "edit": "Edit",
       "changePassword": "Change Password",
       "activate": "Activate",
-      "deactivate": "Deactivate"
+      "deactivate": "Deactivate",
+      "addToProject": "Add to Project",
+      "removeFromProject": "Remove from Project"
     },
     "dialogs": {
       "add": {
@@ -138,7 +140,7 @@
       },
       "addToProject": {
         "title": "Add User to Project",
-        "description": "Add an existing user to this project with specific roles and permissions."
+        "description": "Add {{firstName}} {{lastName}} to a project with specific roles and permissions."
       },
       "edit": {
         "title": "Edit User",
@@ -165,6 +167,14 @@
           "description": "Are you sure you want to deactivate user {{firstName}} {{lastName}}?",
           "note": "After deactivation, this user will not be able to log in to the system."
         }
+      },
+      "remove": {
+        "title": "Remove User from Project",
+        "description": "Are you sure you want to remove {{name}} from this project?",
+        "confirmLabel": "Type the user's full name to confirm:",
+        "confirmPlaceholder": "Enter full name",
+        "warningTitle": "Warning",
+        "warningDescription": "This action will remove the user from the project. They will lose access to all project resources."
       }
     },
     "form": {
@@ -184,6 +194,8 @@
       "projectScopes": "Project Scopes",
       "selectUser": "Select User",
       "selectUserPlaceholder": "Select a user to add to project",
+      "selectProject": "Select Project",
+      "selectProjectPlaceholder": "Select a project",
       "searchUsers": "Search users...",
       "noUsersFound": "No users found",
       "noProjectRoles": "No project roles available",
@@ -212,7 +224,8 @@
       "passwordsNotMatch": "Passwords don't match",
       "currentPasswordRequired": "Current password is required",
       "newPasswordRequired": "New password is required",
-      "newPasswordMinLength": "New password must be at least 8 characters"
+      "newPasswordMinLength": "New password must be at least 8 characters",
+      "projectRequired": "Project is required"
     },
     "buttons": {
       "save": "Save changes",
@@ -224,7 +237,9 @@
       "changing": "Changing...",
       "saveChanges": "Save changes",
       "addToProject": "Add to Project",
-      "adding": "Adding..."
+      "adding": "Adding...",
+      "remove": "Remove",
+      "removing": "Removing..."
     },
     "messages": {
       "createSuccess": "User created successfully",

@@ -1,7 +1,7 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { Row } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
-import { IconEdit, IconUserOff, IconUserCheck, IconKey } from '@tabler/icons-react'
+import { IconEdit, IconUserOff, IconUserCheck, IconKey, IconUserPlus } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -64,6 +64,19 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             >
               <IconKey size={16} className="mr-2" />
               {t('users.actions.changePassword')}
+            </DropdownMenuItem>
+          )}
+          
+          {/* Add to Project - requires write permission */}
+          {userPermissions.canWrite && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(row.original)
+                setOpen('addToProject')
+              }}
+            >
+              <IconUserPlus size={16} className="mr-2" />
+              {t('users.actions.addToProject')}
             </DropdownMenuItem>
           )}
           

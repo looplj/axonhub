@@ -156,7 +156,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         const navigate = useNavigate()
 
         const handleViewDetails = () => {
-          navigate({ to: '/requests/$requestId', params: { requestId: row.original.id } })
+          navigate({ to: '/project/requests/$requestId', params: { requestId: row.original.id } })
         }
 
         return (

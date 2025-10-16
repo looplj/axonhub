@@ -20,7 +20,7 @@ import { DashboardIcon } from '@radix-ui/react-icons'
 
 export default function RequestDetailPage() {
   const { t, i18n } = useTranslation()
-  const { requestId } = useParams({ from: '/_authenticated/requests/$requestId' })
+  const { requestId } = useParams({ from: '/_authenticated/project/requests/$requestId' })
   const navigate = useNavigate()
   const locale = i18n.language === 'zh' ? zhCN : enUS
 
@@ -48,7 +48,7 @@ export default function RequestDetailPage() {
   }
 
   const handleBack = () => {
-    navigate({ to: '/requests' })
+    navigate({ to: '/project/requests' })
   }
 
   if (isLoading) {

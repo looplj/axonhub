@@ -69,7 +69,7 @@ export default function Playground() {
 
   const { accessToken } = useAuthStore((state) => state.auth)
   const selectedProjectId = useSelectedProjectId()
-  
+
   // 获取 channels 数据
   const { data: channelsData, isLoading: channelsLoading } = useChannels({
     first: 100,
@@ -270,9 +270,7 @@ export default function Playground() {
           enabled={true}
         />
       )} */}
-      <Header fixed>
-      </Header>
-      <div className='bg-background flex h-screen w-full pt-16'>
+      <div className='bg-background flex h-screen w-full'>
         {/* Settings Sidebar */}
 
         <div className='bg-muted/40 flex w-80 flex-col border-r'>

@@ -1,11 +1,11 @@
 'use client'
 
 import { format } from 'date-fns'
+import { useNavigate } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { zhCN, enUS } from 'date-fns/locale'
 import { Eye, MoreHorizontal } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from '@tanstack/react-router'
 import { extractNumberID } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -50,14 +50,14 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
       cell: ({ row }) => {
         const requestId = row.original.requestID
         const handleClick = () => {
-          navigate({ to: '/requests/$requestId', params: { requestId } })
+          navigate({ to: '/project/requests/$requestId', params: { requestId } })
         }
         return (
           <Button
-            variant="link"
-            size="sm"
+            variant='link'
+            size='sm'
             onClick={handleClick}
-            className="h-auto p-0 font-mono text-xs hover:text-primary"
+            className='hover:text-primary h-auto p-0 font-mono text-xs'
           >
             #{extractNumberID(requestId)}
           </Button>
