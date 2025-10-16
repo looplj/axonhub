@@ -9,13 +9,13 @@ import (
 )
 
 // UserReadScopeRule checks read permissions.
-func UserReadScopeRule(readScope Scope) privacy.QueryRule {
+func UserReadScopeRule(readScope ScopeSlug) privacy.QueryRule {
 	return userScopeQueryRule{requiredScope: readScope}
 }
 
 // userScopeQueryRule custom QueryRule implementation.
 type userScopeQueryRule struct {
-	requiredScope Scope
+	requiredScope ScopeSlug
 }
 
 func (r userScopeQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
@@ -32,7 +32,7 @@ func (r userScopeQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
 }
 
 // UserWriteScopeRule checks write permissions.
-func UserWriteScopeRule(writeScope Scope) privacy.MutationRule {
+func UserWriteScopeRule(writeScope ScopeSlug) privacy.MutationRule {
 	return privacy.MutationRuleFunc(func(ctx context.Context, m ent.Mutation) error {
 		user, err := getUserFromContext(ctx)
 		if err != nil {
@@ -48,7 +48,7 @@ func UserWriteScopeRule(writeScope Scope) privacy.MutationRule {
 }
 
 // UserScopeQueryMutationRule checks both read and write permissions.
-func UserScopeQueryMutationRule(requiredScope Scope) privacy.QueryMutationRule {
+func UserScopeQueryMutationRule(requiredScope ScopeSlug) privacy.QueryMutationRule {
 	return privacy.ContextQueryMutationRule(func(ctx context.Context) error {
 		user, err := getUserFromContext(ctx)
 		if err != nil {
@@ -63,7 +63,7 @@ func UserScopeQueryMutationRule(requiredScope Scope) privacy.QueryMutationRule {
 	})
 }
 
-func WithUserScopeDecision(ctx context.Context, requiredScope Scope) context.Context {
+func WithUserScopeDecision(ctx context.Context, requiredScope ScopeSlug) context.Context {
 	user, ok := contexts.GetUser(ctx)
 	if !ok {
 		return privacy.DecisionContext(ctx, privacy.Deny)

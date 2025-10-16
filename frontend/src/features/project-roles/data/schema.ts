@@ -6,12 +6,10 @@ export {
   roleEdgeSchema,
   pageInfoSchema,
   roleConnectionSchema,
-  scopeInfoSchema,
   updateRoleInputSchema,
   roleListSchema,
   type Role,
   type RoleConnection,
-  type ScopeInfo,
   type UpdateRoleInput,
   type RoleList,
 } from '@/features/roles/data/schema'

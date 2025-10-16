@@ -20,10 +20,11 @@ export const ROLES_QUERY = `
 `;
 
 export const ALL_SCOPES_QUERY = `
-  query AllScopes {
-    allScopes {
+  query AllScopes($level: String) {
+    allScopes(level: $level) {
       scope
       description
+      levels
     }
   }
 `;

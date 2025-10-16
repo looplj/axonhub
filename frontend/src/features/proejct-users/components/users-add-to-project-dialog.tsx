@@ -36,6 +36,7 @@ interface Role {
 interface ScopeInfo {
   scope: string
   description?: string
+  levels?: string[]
 }
 
 const formSchema = z.object({
@@ -88,7 +89,7 @@ export function UsersAddToProjectDialog({ open, onOpenChange }: Props) {
           first: 100,
           where: { projectID: selectedProjectId },
         }),
-        graphqlRequest(ALL_SCOPES_QUERY),
+        graphqlRequest(ALL_SCOPES_QUERY, { level: 'project' }),
       ])
 
       const rolesResponse = rolesData as {
@@ -108,6 +109,7 @@ export function UsersAddToProjectDialog({ open, onOpenChange }: Props) {
         allScopes: Array<{
           scope: string
           description?: string
+          levels?: string[]
         }>
       }
 

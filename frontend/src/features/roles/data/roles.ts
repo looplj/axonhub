@@ -1,18 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
 import { toast } from 'sonner'
-import { useErrorHandler } from '@/hooks/use-error-handler'
 import i18n from '@/lib/i18n'
-import {
-  Role,
-  RoleConnection,
-  ScopeInfo,
-  CreateRoleInput,
-  UpdateRoleInput,
-  roleConnectionSchema,
-  roleSchema,
-  scopeInfoSchema,
-} from './schema'
+import { useErrorHandler } from '@/hooks/use-error-handler'
+import { Role, RoleConnection, CreateRoleInput, UpdateRoleInput, roleConnectionSchema, roleSchema } from './schema'
 
 // GraphQL queries and mutations
 const ROLES_QUERY = `
@@ -36,15 +27,6 @@ const ROLES_QUERY = `
         endCursor
       }
       totalCount
-    }
-  }
-`
-
-const ALL_SCOPES_QUERY = `
-  query GetAllScopes {
-    allScopes {
-      scope
-      description
     }
   }
 `
@@ -82,27 +64,26 @@ const DELETE_ROLE_MUTATION = `
 `
 
 // Query hooks
-export function useRoles(variables: {
-  first?: number
-  after?: string
-  where?: any
-} = {}) {
+export function useRoles(
+  variables: {
+    first?: number
+    after?: string
+    where?: any
+  } = {}
+) {
   const { handleError } = useErrorHandler()
 
   return useQuery({
     queryKey: ['roles', variables],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ roles: RoleConnection }>(
-          ROLES_QUERY,
-          variables
-        )
+        const data = await graphqlRequest<{ roles: RoleConnection }>(ROLES_QUERY, variables)
         return roleConnectionSchema.parse(data?.roles)
       } catch (error) {
         handleError(error, '获取角色数据')
         throw error
       }
-    }
+    },
   })
 }
 
@@ -113,10 +94,7 @@ export function useRole(id: string) {
     queryKey: ['role', id],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ roles: RoleConnection }>(
-          ROLES_QUERY,
-          { where: { id } }
-        )
+        const data = await graphqlRequest<{ roles: RoleConnection }>(ROLES_QUERY, { where: { id } })
         const role = data.roles.edges[0]?.node
         if (!role) {
           throw new Error('Role not found')
@@ -131,25 +109,6 @@ export function useRole(id: string) {
   })
 }
 
-export function useAllScopes() {
-  const { handleError } = useErrorHandler()
-
-  return useQuery({
-    queryKey: ['allScopes'],
-    queryFn: async () => {
-      try {
-        const data = await graphqlRequest<{ allScopes: ScopeInfo[] }>(
-          ALL_SCOPES_QUERY
-        )
-        return data.allScopes.map(scope => scopeInfoSchema.parse(scope))
-      } catch (error) {
-        handleError(error, '获取权限列表')
-        throw error
-      }
-    }
-  })
-}
-
 // Mutation hooks
 export function useCreateRole() {
   const queryClient = useQueryClient()
@@ -158,10 +117,7 @@ export function useCreateRole() {
   return useMutation({
     mutationFn: async (input: CreateRoleInput) => {
       try {
-        const data = await graphqlRequest<{ createRole: Role }>(
-          CREATE_ROLE_MUTATION,
-          { input }
-        )
+        const data = await graphqlRequest<{ createRole: Role }>(CREATE_ROLE_MUTATION, { input })
         return roleSchema.parse(data.createRole)
       } catch (error) {
         handleError(error, '创建角色')
@@ -182,10 +138,7 @@ export function useUpdateRole() {
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateRoleInput }) => {
       try {
-        const data = await graphqlRequest<{ updateRole: Role }>(
-          UPDATE_ROLE_MUTATION,
-          { id, input }
-        )
+        const data = await graphqlRequest<{ updateRole: Role }>(UPDATE_ROLE_MUTATION, { id, input })
         return roleSchema.parse(data.updateRole)
       } catch (error) {
         handleError(error, '更新角色')

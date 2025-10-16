@@ -1,94 +1,164 @@
 package scopes
 
-// Scope represents a permission scope to view or manage the data of the system.
+// ScopeSlug represents a permission scope to view or manage the data of the system.
 // Every user can view and manage their own data, and manage data of other users if they have the appropriate scopes.
-type Scope string
+type ScopeSlug string
 
 // Available scopes in the system.
 const (
-	ScopeReadChannels  Scope = "read_channels"
-	ScopeWriteChannels Scope = "write_channels"
+	ScopeReadChannels  ScopeSlug = "read_channels"
+	ScopeWriteChannels ScopeSlug = "write_channels"
 
-	ScopeReadUsers  Scope = "read_users"
-	ScopeWriteUsers Scope = "write_users"
+	ScopeReadUsers  ScopeSlug = "read_users"
+	ScopeWriteUsers ScopeSlug = "write_users"
 
-	ScopeReadRoles  Scope = "read_roles"
-	ScopeWriteRoles Scope = "write_roles"
+	ScopeReadRoles  ScopeSlug = "read_roles"
+	ScopeWriteRoles ScopeSlug = "write_roles"
 
-	ScopeReadProjects  Scope = "read_projects"
-	ScopeWriteProjects Scope = "write_projects"
+	ScopeReadProjects  ScopeSlug = "read_projects"
+	ScopeWriteProjects ScopeSlug = "write_projects"
 
 	//nolint:gosec // This is a scope, not a secret.
-	ScopeReadAPIKeys  Scope = "read_api_keys"
-	ScopeWriteAPIKeys Scope = "write_api_keys"
+	ScopeReadAPIKeys  ScopeSlug = "read_api_keys"
+	ScopeWriteAPIKeys ScopeSlug = "write_api_keys"
 
-	ScopeReadRequests  Scope = "read_requests"
-	ScopeWriteRequests Scope = "write_requests"
+	ScopeReadRequests  ScopeSlug = "read_requests"
+	ScopeWriteRequests ScopeSlug = "write_requests"
 
-	ScopeReadDashboard Scope = "read_dashboard"
+	ScopeReadDashboard ScopeSlug = "read_dashboard"
 
-	ScopeReadSettings  Scope = "read_settings"
-	ScopeWriteSettings Scope = "write_settings"
+	ScopeReadSettings  ScopeSlug = "read_settings"
+	ScopeWriteSettings ScopeSlug = "write_settings"
 )
 
-// AllScopes returns all available scopes.
-func AllScopes() []Scope {
-	return []Scope{
-		ScopeReadChannels,
-		ScopeWriteChannels,
-		ScopeReadUsers,
-		ScopeWriteUsers,
-		ScopeReadRoles,
-		ScopeWriteRoles,
-		ScopeReadProjects,
-		ScopeWriteProjects,
-		ScopeReadAPIKeys,
-		ScopeWriteAPIKeys,
-		ScopeReadRequests,
-		ScopeWriteRequests,
-		ScopeReadDashboard,
-		ScopeReadSettings,
-		ScopeWriteSettings,
+type ScopeLevel string
+
+const (
+	ScopeLevelSystem  ScopeLevel = "system"
+	ScopeLevelProject ScopeLevel = "project"
+)
+
+type Scope struct {
+	Slug        ScopeSlug
+	Description string
+	Levels      []ScopeLevel
+}
+
+// scopeConfigs defines all available scopes with their configurations.
+var scopeConfigs = []Scope{
+	{
+		Slug:        ScopeReadChannels,
+		Description: "View channel information",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeWriteChannels,
+		Description: "Manage channels (create, edit, delete)",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeReadUsers,
+		Description: "View user information",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeWriteUsers,
+		Description: "Manage users (create, edit, delete)",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeReadRoles,
+		Description: "View role information",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeWriteRoles,
+		Description: "Manage roles (create, edit, delete)",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeReadProjects,
+		Description: "View project information",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeWriteProjects,
+		Description: "Manage projects (create, edit, delete)",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeReadAPIKeys,
+		Description: "View API keys",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeWriteAPIKeys,
+		Description: "Manage API keys (create, edit, delete)",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeReadRequests,
+		Description: "View request records",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeWriteRequests,
+		Description: "Manage request records",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeReadDashboard,
+		Description: "View dashboard",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeReadSettings,
+		Description: "View system settings",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeWriteSettings,
+		Description: "Manage system settings",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+}
+
+// AllScopes returns all available scopes, optionally filtered by level.
+func AllScopes(level *ScopeLevel) []Scope {
+	if level == nil {
+		return scopeConfigs
 	}
+
+	filtered := make([]Scope, 0)
+
+	for _, scope := range scopeConfigs {
+		for _, l := range scope.Levels {
+			if l == *level {
+				filtered = append(filtered, scope)
+				break
+			}
+		}
+	}
+
+	return filtered
 }
 
 // AllScopesAsStrings returns all available scopes as strings.
 func AllScopesAsStrings() []string {
-	scopes := AllScopes()
+	scopes := AllScopes(nil)
 
 	result := make([]string, len(scopes))
 	for i, scope := range scopes {
-		result[i] = string(scope)
+		result[i] = string(scope.Slug)
 	}
 
 	return result
 }
 
-// ScopeDescriptions returns human-readable descriptions for scopes.
-func ScopeDescriptions() map[Scope]string {
-	return map[Scope]string{
-		ScopeReadChannels:  "View channel information",
-		ScopeWriteChannels: "Manage channels (create, edit, delete)",
-		ScopeReadUsers:     "View user information",
-		ScopeWriteUsers:    "Manage users (create, edit, delete)",
-		ScopeReadRoles:     "View role information",
-		ScopeWriteRoles:    "Manage roles (create, edit, delete)",
-		ScopeReadProjects:  "View project information",
-		ScopeWriteProjects: "Manage projects (create, edit, delete)",
-		ScopeReadAPIKeys:   "View API keys",
-		ScopeWriteAPIKeys:  "Manage API keys (create, edit, delete)",
-		ScopeReadRequests:  "View request records",
-		ScopeWriteRequests: "Manage request records",
-		ScopeReadDashboard: "View dashboard",
-		ScopeReadSettings:  "View system settings",
-		ScopeWriteSettings: "Manage system settings",
-	}
-}
-
 // IsValidScope checks if a scope is valid.
 func IsValidScope(scope string) bool {
-	for _, validScope := range AllScopes() {
-		if string(validScope) == scope {
+	for _, validScope := range AllScopes(nil) {
+		if string(validScope.Slug) == scope {
 			return true
 		}
 	}

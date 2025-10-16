@@ -71,6 +71,7 @@ interface Role {
 interface ScopeInfo {
   scope: string
   description?: string
+  levels?: string[]
 }
 
 interface Props {
@@ -128,7 +129,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
           first: 100,
           where: selectedProjectId ? { projectID: selectedProjectId, level: 'project' } : { level: 'global' }
         }),
-        graphqlRequest(ALL_SCOPES_QUERY),
+        graphqlRequest(ALL_SCOPES_QUERY, { level: 'project' }),
       ])
 
       // Type the responses properly
@@ -149,6 +150,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         allScopes: Array<{
           scope: string
           description?: string
+          levels?: string[]
         }>
       }
 

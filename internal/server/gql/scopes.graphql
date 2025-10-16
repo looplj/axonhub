@@ -3,8 +3,9 @@
 type ScopeInfo {
   scope: String!
   description: String!
+  levels: [String!]!
 }
 
 extend type Query {
-  allScopes: [ScopeInfo!]!
+  allScopes(level: String): [ScopeInfo!]!
 }

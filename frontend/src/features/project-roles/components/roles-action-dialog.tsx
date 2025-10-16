@@ -28,16 +28,17 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { useRolesContext } from '../context/roles-context'
-import { useCreateRole, useUpdateRole, useDeleteRole, useAllScopes } from '../data/roles'
+import { useCreateRole, useUpdateRole, useDeleteRole } from '../data/roles'
 import { createRoleInputSchema, updateRoleInputSchema } from '../data/schema'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useSelectedProjectId } from '@/stores/projectStore'
+import { useAllScopes } from '@/gql/scopes'
 
 // Create Role Dialog
 export function CreateRoleDialog() {
   const { t } = useTranslation()
   const { isCreateDialogOpen, setIsCreateDialogOpen } = useRolesContext()
-  const { data: scopes = [] } = useAllScopes()
+  const { data: scopes = [] } = useAllScopes('project')
   const createRole = useCreateRole()
   const selectedProjectId = useSelectedProjectId()
 

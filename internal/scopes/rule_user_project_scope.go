@@ -17,7 +17,7 @@ type ProjectOwnedFilter interface {
 }
 
 // userHasProjectScope checks if a user has the required scope for a specific project.
-func userHasProjectScope(user *ent.User, projectID int, requiredScope Scope) bool {
+func userHasProjectScope(user *ent.User, projectID int, requiredScope ScopeSlug) bool {
 	// Check if user has project membership with required scope
 	for _, projectUser := range user.Edges.ProjectUsers {
 		if projectUser.ProjectID == projectID {
@@ -47,11 +47,11 @@ func userHasProjectScope(user *ent.User, projectID int, requiredScope Scope) boo
 // It checks:
 // 1. If user has global scope permission -> Allow all
 // 2. If user is project member with required scope -> Filter by project membership.
-func UserProjectScopeReadRule(requiredScope Scope) privacy.QueryRule {
+func UserProjectScopeReadRule(requiredScope ScopeSlug) privacy.QueryRule {
 	return privacy.FilterFunc(projectMemberQueryFilter(requiredScope))
 }
 
-func projectMemberQueryFilter(requiredScope Scope) func(ctx context.Context, q privacy.Filter) error {
+func projectMemberQueryFilter(requiredScope ScopeSlug) func(ctx context.Context, q privacy.Filter) error {
 	return func(ctx context.Context, q privacy.Filter) error {
 		// Check if project ID is in context
 		projectID, hasProjectID := contexts.GetProjectID(ctx)
@@ -91,7 +91,7 @@ type ProjectIDFilter interface {
 }
 
 // UserProjectScopeWriteRule ensures users can only modify resources in projects they are members of.
-func UserProjectScopeWriteRule(requiredScope Scope) privacy.MutationRule {
+func UserProjectScopeWriteRule(requiredScope ScopeSlug) privacy.MutationRule {
 	return projectMemberMutationRule{requiredScope: requiredScope}
 }
 
@@ -102,7 +102,7 @@ type ProjectOwnedMutation interface {
 }
 
 type projectMemberMutationRule struct {
-	requiredScope Scope
+	requiredScope ScopeSlug
 }
 
 func (r projectMemberMutationRule) EvalMutation(ctx context.Context, m ent.Mutation) error {
