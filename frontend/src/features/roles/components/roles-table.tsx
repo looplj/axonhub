@@ -12,15 +12,9 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { t } from 'i18next'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ServerSidePagination } from '@/components/server-side-pagination'
+import { useRolesContext } from '../context/roles-context'
 import { Role, RoleConnection } from '../data/schema'
 import { DataTableToolbar } from './data-table-toolbar'
 
@@ -58,10 +52,16 @@ export function RolesTable({
   searchFilter,
   onSearchFilterChange,
 }: DataTableProps) {
+  const { setResetRowSelection } = useRolesContext()
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
+
+  // 注册重置选择的方法到 context
+  React.useEffect(() => {
+    setResetRowSelection(() => () => setRowSelection({}))
+  }, [setRowSelection])
 
   // Sync server state to local column filters (for UI display)
   React.useEffect(() => {
@@ -74,20 +74,16 @@ export function RolesTable({
   }, [searchFilter])
 
   const handleColumnFiltersChange = (
-    updater:
-      | ColumnFiltersState
-      | ((prev: ColumnFiltersState) => ColumnFiltersState)
+    updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)
   ) => {
-    const newFilters =
-      typeof updater === 'function' ? updater(columnFilters) : updater
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
 
     // Extract search filter value
     const searchFilterValue = newFilters.find((f) => f.id === 'search')?.value
 
     // Only update if values actually change to prevent reset issues
-    const newSearchFilter =
-      typeof searchFilterValue === 'string' ? searchFilterValue : ''
+    const newSearchFilter = typeof searchFilterValue === 'string' ? searchFilterValue : ''
     if (newSearchFilter !== searchFilter) {
       onSearchFilterChange(newSearchFilter)
     }
@@ -129,12 +125,7 @@ export function RolesTable({
                       colSpan={header.colSpan}
                       className={header.column.columnDef.meta?.className ?? ''}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   )
                 })}
@@ -144,40 +135,24 @@ export function RolesTable({
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className='h-24 text-center'
-                >
+                <TableCell colSpan={columns.length} className='h-24 text-center'>
                   {t('loading')}
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                  className='group/row'
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row'>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={cell.column.columnDef.meta?.className ?? ''}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                    <TableCell key={cell.id} className={cell.column.columnDef.meta?.className ?? ''}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className='h-24 text-center'
-                >
-                  暂无数据
+                <TableCell colSpan={columns.length} className='h-24 text-center'>
+                  {t('roles.noData')}
                 </TableCell>
               </TableRow>
             )}

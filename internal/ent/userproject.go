@@ -42,10 +42,10 @@ type UserProject struct {
 
 // UserProjectEdges holds the relations/edges for other nodes in the graph.
 type UserProjectEdges struct {
-	// Users holds the value of the users edge.
-	Users *User `json:"users,omitempty"`
-	// Projects holds the value of the projects edge.
-	Projects *Project `json:"projects,omitempty"`
+	// User holds the value of the user edge.
+	User *User `json:"user,omitempty"`
+	// Project holds the value of the project edge.
+	Project *Project `json:"project,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [2]bool
@@ -53,26 +53,26 @@ type UserProjectEdges struct {
 	totalCount [2]map[string]int
 }
 
-// UsersOrErr returns the Users value or an error if the edge
+// UserOrErr returns the User value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e UserProjectEdges) UsersOrErr() (*User, error) {
-	if e.Users != nil {
-		return e.Users, nil
+func (e UserProjectEdges) UserOrErr() (*User, error) {
+	if e.User != nil {
+		return e.User, nil
 	} else if e.loadedTypes[0] {
 		return nil, &NotFoundError{label: user.Label}
 	}
-	return nil, &NotLoadedError{edge: "users"}
+	return nil, &NotLoadedError{edge: "user"}
 }
 
-// ProjectsOrErr returns the Projects value or an error if the edge
+// ProjectOrErr returns the Project value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e UserProjectEdges) ProjectsOrErr() (*Project, error) {
-	if e.Projects != nil {
-		return e.Projects, nil
+func (e UserProjectEdges) ProjectOrErr() (*Project, error) {
+	if e.Project != nil {
+		return e.Project, nil
 	} else if e.loadedTypes[1] {
 		return nil, &NotFoundError{label: project.Label}
 	}
-	return nil, &NotLoadedError{edge: "projects"}
+	return nil, &NotLoadedError{edge: "project"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -166,14 +166,14 @@ func (_m *UserProject) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryUsers queries the "users" edge of the UserProject entity.
-func (_m *UserProject) QueryUsers() *UserQuery {
-	return NewUserProjectClient(_m.config).QueryUsers(_m)
+// QueryUser queries the "user" edge of the UserProject entity.
+func (_m *UserProject) QueryUser() *UserQuery {
+	return NewUserProjectClient(_m.config).QueryUser(_m)
 }
 
-// QueryProjects queries the "projects" edge of the UserProject entity.
-func (_m *UserProject) QueryProjects() *ProjectQuery {
-	return NewUserProjectClient(_m.config).QueryProjects(_m)
+// QueryProject queries the "project" edge of the UserProject entity.
+func (_m *UserProject) QueryProject() *ProjectQuery {
+	return NewUserProjectClient(_m.config).QueryProject(_m)
 }
 
 // Update returns a builder for updating this UserProject.

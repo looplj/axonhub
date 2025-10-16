@@ -1,3 +1,4 @@
+import React from 'react'
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { Row } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
@@ -23,14 +24,30 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const project = row.original
   const { setEditingProject, setArchivingProject, setActivatingProject } = useProjectsContext()
   const { projectPermissions } = usePermissions()
+  const [open, setOpen] = React.useState(false)
   
   // Don't show menu if user has no permissions
   if (!projectPermissions.canWrite) {
     return null
   }
 
+  const handleEdit = () => {
+    setOpen(false)
+    setTimeout(() => setEditingProject(project), 0)
+  }
+
+  const handleArchive = () => {
+    setOpen(false)
+    setTimeout(() => setArchivingProject(project), 0)
+  }
+
+  const handleActivate = () => {
+    setOpen(false)
+    setTimeout(() => setActivatingProject(project), 0)
+  }
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant='ghost'
@@ -43,7 +60,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
       <DropdownMenuContent align='end' className='w-[160px]'>
         {/* Edit - requires write permission */}
         {projectPermissions.canEdit && (
-          <DropdownMenuItem onClick={() => setEditingProject(project)}>
+          <DropdownMenuItem onClick={handleEdit}>
             <IconEdit className='mr-2 h-4 w-4' />
             {t('projects.actions.edit')}
           </DropdownMenuItem>
@@ -56,7 +73,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {/* Archive - requires write permission, only for active projects */}
         {projectPermissions.canWrite && project.status === 'active' && (
           <DropdownMenuItem
-            onClick={() => setArchivingProject(project)}
+            onClick={handleArchive}
             className='text-destructive focus:text-destructive'
           >
             <IconTrash className='mr-2 h-4 w-4' />
@@ -67,7 +84,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {/* Activate - requires write permission, only for archived projects */}
         {projectPermissions.canWrite && project.status === 'archived' && (
           <DropdownMenuItem
-            onClick={() => setActivatingProject(project)}
+            onClick={handleActivate}
           >
             <IconEdit className='mr-2 h-4 w-4' />
             {t('projects.actions.activate')}

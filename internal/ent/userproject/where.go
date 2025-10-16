@@ -265,21 +265,21 @@ func ScopesNotNil() predicate.UserProject {
 	return predicate.UserProject(sql.FieldNotNull(FieldScopes))
 }
 
-// HasUsers applies the HasEdge predicate on the "users" edge.
-func HasUsers() predicate.UserProject {
+// HasUser applies the HasEdge predicate on the "user" edge.
+func HasUser() predicate.UserProject {
 	return predicate.UserProject(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, UsersTable, UsersColumn),
+			sqlgraph.Edge(sqlgraph.M2O, false, UserTable, UserColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasUsersWith applies the HasEdge predicate on the "users" edge with a given conditions (other predicates).
-func HasUsersWith(preds ...predicate.User) predicate.UserProject {
+// HasUserWith applies the HasEdge predicate on the "user" edge with a given conditions (other predicates).
+func HasUserWith(preds ...predicate.User) predicate.UserProject {
 	return predicate.UserProject(func(s *sql.Selector) {
-		step := newUsersStep()
+		step := newUserStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -288,21 +288,21 @@ func HasUsersWith(preds ...predicate.User) predicate.UserProject {
 	})
 }
 
-// HasProjects applies the HasEdge predicate on the "projects" edge.
-func HasProjects() predicate.UserProject {
+// HasProject applies the HasEdge predicate on the "project" edge.
+func HasProject() predicate.UserProject {
 	return predicate.UserProject(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, ProjectsTable, ProjectsColumn),
+			sqlgraph.Edge(sqlgraph.M2O, false, ProjectTable, ProjectColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasProjectsWith applies the HasEdge predicate on the "projects" edge with a given conditions (other predicates).
-func HasProjectsWith(preds ...predicate.Project) predicate.UserProject {
+// HasProjectWith applies the HasEdge predicate on the "project" edge with a given conditions (other predicates).
+func HasProjectWith(preds ...predicate.Project) predicate.UserProject {
 	return predicate.UserProject(func(s *sql.Selector) {
-		step := newProjectsStep()
+		step := newProjectStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

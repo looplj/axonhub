@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -23,7 +24,7 @@ import (
 
 // schemaGraph holds a representation of ent/schema at runtime.
 var schemaGraph = func() *sqlgraph.Schema {
-	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 10)}
+	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 11)}
 	graph.Nodes[0] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   apikey.Table,
@@ -259,6 +260,24 @@ var schemaGraph = func() *sqlgraph.Schema {
 			userproject.FieldProjectID: {Type: field.TypeInt, Column: userproject.FieldProjectID},
 			userproject.FieldIsOwner:   {Type: field.TypeBool, Column: userproject.FieldIsOwner},
 			userproject.FieldScopes:    {Type: field.TypeJSON, Column: userproject.FieldScopes},
+		},
+	}
+	graph.Nodes[10] = &sqlgraph.Node{
+		NodeSpec: sqlgraph.NodeSpec{
+			Table:   userrole.Table,
+			Columns: userrole.Columns,
+			ID: &sqlgraph.FieldSpec{
+				Type:   field.TypeInt,
+				Column: userrole.FieldID,
+			},
+		},
+		Type: "UserRole",
+		Fields: map[string]*sqlgraph.FieldSpec{
+			userrole.FieldDeletedAt: {Type: field.TypeInt, Column: userrole.FieldDeletedAt},
+			userrole.FieldUserID:    {Type: field.TypeInt, Column: userrole.FieldUserID},
+			userrole.FieldRoleID:    {Type: field.TypeInt, Column: userrole.FieldRoleID},
+			userrole.FieldCreatedAt: {Type: field.TypeTime, Column: userrole.FieldCreatedAt},
+			userrole.FieldUpdatedAt: {Type: field.TypeTime, Column: userrole.FieldUpdatedAt},
 		},
 	}
 	graph.MustAddE(
@@ -514,6 +533,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"Project",
 	)
 	graph.MustAddE(
+		"user_roles",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   role.UserRolesTable,
+			Columns: []string{role.UserRolesColumn},
+			Bidi:    false,
+		},
+		"Role",
+		"UserRole",
+	)
+	graph.MustAddE(
 		"request",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -598,28 +629,64 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"UserProject",
 	)
 	graph.MustAddE(
-		"users",
+		"user_roles",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.UserRolesTable,
+			Columns: []string{user.UserRolesColumn},
+			Bidi:    false,
+		},
+		"User",
+		"UserRole",
+	)
+	graph.MustAddE(
+		"user",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
-			Table:   userproject.UsersTable,
-			Columns: []string{userproject.UsersColumn},
+			Table:   userproject.UserTable,
+			Columns: []string{userproject.UserColumn},
 			Bidi:    false,
 		},
 		"UserProject",
 		"User",
 	)
 	graph.MustAddE(
-		"projects",
+		"project",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
-			Table:   userproject.ProjectsTable,
-			Columns: []string{userproject.ProjectsColumn},
+			Table:   userproject.ProjectTable,
+			Columns: []string{userproject.ProjectColumn},
 			Bidi:    false,
 		},
 		"UserProject",
 		"Project",
+	)
+	graph.MustAddE(
+		"user",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   userrole.UserTable,
+			Columns: []string{userrole.UserColumn},
+			Bidi:    false,
+		},
+		"UserRole",
+		"User",
+	)
+	graph.MustAddE(
+		"role",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   userrole.RoleTable,
+			Columns: []string{userrole.RoleColumn},
+			Bidi:    false,
+		},
+		"UserRole",
+		"Role",
 	)
 	return graph
 }()
@@ -1489,6 +1556,20 @@ func (f *RoleFilter) WhereHasProjectWith(preds ...predicate.Project) {
 	})))
 }
 
+// WhereHasUserRoles applies a predicate to check if query has an edge user_roles.
+func (f *RoleFilter) WhereHasUserRoles() {
+	f.Where(entql.HasEdge("user_roles"))
+}
+
+// WhereHasUserRolesWith applies a predicate to check if query has an edge user_roles with a given conditions (other predicates).
+func (f *RoleFilter) WhereHasUserRolesWith(preds ...predicate.UserRole) {
+	f.Where(entql.HasEdgeWith("user_roles", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
 // addPredicate implements the predicateAdder interface.
 func (_q *SystemQuery) addPredicate(pred func(s *sql.Selector)) {
 	_q.predicates = append(_q.predicates, pred)
@@ -1882,6 +1963,20 @@ func (f *UserFilter) WhereHasProjectUsersWith(preds ...predicate.UserProject) {
 	})))
 }
 
+// WhereHasUserRoles applies a predicate to check if query has an edge user_roles.
+func (f *UserFilter) WhereHasUserRoles() {
+	f.Where(entql.HasEdge("user_roles"))
+}
+
+// WhereHasUserRolesWith applies a predicate to check if query has an edge user_roles with a given conditions (other predicates).
+func (f *UserFilter) WhereHasUserRolesWith(preds ...predicate.UserRole) {
+	f.Where(entql.HasEdgeWith("user_roles", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
 // addPredicate implements the predicateAdder interface.
 func (_q *UserProjectQuery) addPredicate(pred func(s *sql.Selector)) {
 	_q.predicates = append(_q.predicates, pred)
@@ -1957,28 +2052,121 @@ func (f *UserProjectFilter) WhereScopes(p entql.BytesP) {
 	f.Where(p.Field(userproject.FieldScopes))
 }
 
-// WhereHasUsers applies a predicate to check if query has an edge users.
-func (f *UserProjectFilter) WhereHasUsers() {
-	f.Where(entql.HasEdge("users"))
+// WhereHasUser applies a predicate to check if query has an edge user.
+func (f *UserProjectFilter) WhereHasUser() {
+	f.Where(entql.HasEdge("user"))
 }
 
-// WhereHasUsersWith applies a predicate to check if query has an edge users with a given conditions (other predicates).
-func (f *UserProjectFilter) WhereHasUsersWith(preds ...predicate.User) {
-	f.Where(entql.HasEdgeWith("users", sqlgraph.WrapFunc(func(s *sql.Selector) {
+// WhereHasUserWith applies a predicate to check if query has an edge user with a given conditions (other predicates).
+func (f *UserProjectFilter) WhereHasUserWith(preds ...predicate.User) {
+	f.Where(entql.HasEdgeWith("user", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
 	})))
 }
 
-// WhereHasProjects applies a predicate to check if query has an edge projects.
-func (f *UserProjectFilter) WhereHasProjects() {
-	f.Where(entql.HasEdge("projects"))
+// WhereHasProject applies a predicate to check if query has an edge project.
+func (f *UserProjectFilter) WhereHasProject() {
+	f.Where(entql.HasEdge("project"))
 }
 
-// WhereHasProjectsWith applies a predicate to check if query has an edge projects with a given conditions (other predicates).
-func (f *UserProjectFilter) WhereHasProjectsWith(preds ...predicate.Project) {
-	f.Where(entql.HasEdgeWith("projects", sqlgraph.WrapFunc(func(s *sql.Selector) {
+// WhereHasProjectWith applies a predicate to check if query has an edge project with a given conditions (other predicates).
+func (f *UserProjectFilter) WhereHasProjectWith(preds ...predicate.Project) {
+	f.Where(entql.HasEdgeWith("project", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// addPredicate implements the predicateAdder interface.
+func (_q *UserRoleQuery) addPredicate(pred func(s *sql.Selector)) {
+	_q.predicates = append(_q.predicates, pred)
+}
+
+// Filter returns a Filter implementation to apply filters on the UserRoleQuery builder.
+func (_q *UserRoleQuery) Filter() *UserRoleFilter {
+	return &UserRoleFilter{config: _q.config, predicateAdder: _q}
+}
+
+// addPredicate implements the predicateAdder interface.
+func (m *UserRoleMutation) addPredicate(pred func(s *sql.Selector)) {
+	m.predicates = append(m.predicates, pred)
+}
+
+// Filter returns an entql.Where implementation to apply filters on the UserRoleMutation builder.
+func (m *UserRoleMutation) Filter() *UserRoleFilter {
+	return &UserRoleFilter{config: m.config, predicateAdder: m}
+}
+
+// UserRoleFilter provides a generic filtering capability at runtime for UserRoleQuery.
+type UserRoleFilter struct {
+	predicateAdder
+	config
+}
+
+// Where applies the entql predicate on the query filter.
+func (f *UserRoleFilter) Where(p entql.P) {
+	f.addPredicate(func(s *sql.Selector) {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[10].Type, p, s); err != nil {
+			s.AddError(err)
+		}
+	})
+}
+
+// WhereID applies the entql int predicate on the id field.
+func (f *UserRoleFilter) WhereID(p entql.IntP) {
+	f.Where(p.Field(userrole.FieldID))
+}
+
+// WhereDeletedAt applies the entql int predicate on the deleted_at field.
+func (f *UserRoleFilter) WhereDeletedAt(p entql.IntP) {
+	f.Where(p.Field(userrole.FieldDeletedAt))
+}
+
+// WhereUserID applies the entql int predicate on the user_id field.
+func (f *UserRoleFilter) WhereUserID(p entql.IntP) {
+	f.Where(p.Field(userrole.FieldUserID))
+}
+
+// WhereRoleID applies the entql int predicate on the role_id field.
+func (f *UserRoleFilter) WhereRoleID(p entql.IntP) {
+	f.Where(p.Field(userrole.FieldRoleID))
+}
+
+// WhereCreatedAt applies the entql time.Time predicate on the created_at field.
+func (f *UserRoleFilter) WhereCreatedAt(p entql.TimeP) {
+	f.Where(p.Field(userrole.FieldCreatedAt))
+}
+
+// WhereUpdatedAt applies the entql time.Time predicate on the updated_at field.
+func (f *UserRoleFilter) WhereUpdatedAt(p entql.TimeP) {
+	f.Where(p.Field(userrole.FieldUpdatedAt))
+}
+
+// WhereHasUser applies a predicate to check if query has an edge user.
+func (f *UserRoleFilter) WhereHasUser() {
+	f.Where(entql.HasEdge("user"))
+}
+
+// WhereHasUserWith applies a predicate to check if query has an edge user with a given conditions (other predicates).
+func (f *UserRoleFilter) WhereHasUserWith(preds ...predicate.User) {
+	f.Where(entql.HasEdgeWith("user", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasRole applies a predicate to check if query has an edge role.
+func (f *UserRoleFilter) WhereHasRole() {
+	f.Where(entql.HasEdge("role"))
+}
+
+// WhereHasRoleWith applies a predicate to check if query has an edge role with a given conditions (other predicates).
+func (f *UserRoleFilter) WhereHasRoleWith(preds ...predicate.Role) {
+	f.Where(entql.HasEdgeWith("role", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}

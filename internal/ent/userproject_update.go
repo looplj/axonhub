@@ -124,11 +124,11 @@ func (_u *UserProjectUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *UserProjectUpdate) check() error {
-	if _u.mutation.UsersCleared() && len(_u.mutation.UsersIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "UserProject.users"`)
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UserProject.user"`)
 	}
-	if _u.mutation.ProjectsCleared() && len(_u.mutation.ProjectsIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "UserProject.projects"`)
+	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UserProject.project"`)
 	}
 	return nil
 }
@@ -300,11 +300,11 @@ func (_u *UserProjectUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *UserProjectUpdateOne) check() error {
-	if _u.mutation.UsersCleared() && len(_u.mutation.UsersIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "UserProject.users"`)
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UserProject.user"`)
 	}
-	if _u.mutation.ProjectsCleared() && len(_u.mutation.ProjectsIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "UserProject.projects"`)
+	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UserProject.project"`)
 	}
 	return nil
 }

@@ -50,12 +50,12 @@ func (UserProject) Fields() []ent.Field {
 
 func (UserProject) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("users", User.Type).
+		edge.To("user", User.Type).
 			Field("user_id").
 			Immutable().
 			Unique().
 			Required(),
-		edge.To("projects", Project.Type).
+		edge.To("project", Project.Type).
 			Field("project_id").
 			Immutable().
 			Unique().

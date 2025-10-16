@@ -35,3 +35,6 @@ type User func(*sql.Selector)
 
 // UserProject is the predicate function for userproject builders.
 type UserProject func(*sql.Selector)
+
+// UserRole is the predicate function for userrole builders.
+type UserRole func(*sql.Selector)

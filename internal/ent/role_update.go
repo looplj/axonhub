@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 )
 
 // RoleUpdate is the builder for updating Role entities.
@@ -145,6 +146,21 @@ func (_u *RoleUpdate) SetProject(v *Project) *RoleUpdate {
 	return _u.SetProjectID(v.ID)
 }
 
+// AddUserRoleIDs adds the "user_roles" edge to the UserRole entity by IDs.
+func (_u *RoleUpdate) AddUserRoleIDs(ids ...int) *RoleUpdate {
+	_u.mutation.AddUserRoleIDs(ids...)
+	return _u
+}
+
+// AddUserRoles adds the "user_roles" edges to the UserRole entity.
+func (_u *RoleUpdate) AddUserRoles(v ...*UserRole) *RoleUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddUserRoleIDs(ids...)
+}
+
 // Mutation returns the RoleMutation object of the builder.
 func (_u *RoleUpdate) Mutation() *RoleMutation {
 	return _u.mutation
@@ -175,6 +191,27 @@ func (_u *RoleUpdate) RemoveUsers(v ...*User) *RoleUpdate {
 func (_u *RoleUpdate) ClearProject() *RoleUpdate {
 	_u.mutation.ClearProject()
 	return _u
+}
+
+// ClearUserRoles clears all "user_roles" edges to the UserRole entity.
+func (_u *RoleUpdate) ClearUserRoles() *RoleUpdate {
+	_u.mutation.ClearUserRoles()
+	return _u
+}
+
+// RemoveUserRoleIDs removes the "user_roles" edge to UserRole entities by IDs.
+func (_u *RoleUpdate) RemoveUserRoleIDs(ids ...int) *RoleUpdate {
+	_u.mutation.RemoveUserRoleIDs(ids...)
+	return _u
+}
+
+// RemoveUserRoles removes "user_roles" edges to UserRole entities.
+func (_u *RoleUpdate) RemoveUserRoles(v ...*UserRole) *RoleUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveUserRoleIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -284,6 +321,10 @@ func (_u *RoleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
 			},
 		}
+		createE := &UserRoleCreate{config: _u.config, mutation: newUserRoleMutation(_u.config, OpCreate)}
+		_ = createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.RemovedUsersIDs(); len(nodes) > 0 && !_u.mutation.UsersCleared() {
@@ -300,6 +341,10 @@ func (_u *RoleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &UserRoleCreate{config: _u.config, mutation: newUserRoleMutation(_u.config, OpCreate)}
+		_ = createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.UsersIDs(); len(nodes) > 0 {
@@ -316,6 +361,10 @@ func (_u *RoleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &UserRoleCreate{config: _u.config, mutation: newUserRoleMutation(_u.config, OpCreate)}
+		_ = createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.ProjectCleared() {
@@ -340,6 +389,51 @@ func (_u *RoleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.UserRolesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   role.UserRolesTable,
+			Columns: []string{role.UserRolesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedUserRolesIDs(); len(nodes) > 0 && !_u.mutation.UserRolesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   role.UserRolesTable,
+			Columns: []string{role.UserRolesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserRolesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   role.UserRolesTable,
+			Columns: []string{role.UserRolesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -482,6 +576,21 @@ func (_u *RoleUpdateOne) SetProject(v *Project) *RoleUpdateOne {
 	return _u.SetProjectID(v.ID)
 }
 
+// AddUserRoleIDs adds the "user_roles" edge to the UserRole entity by IDs.
+func (_u *RoleUpdateOne) AddUserRoleIDs(ids ...int) *RoleUpdateOne {
+	_u.mutation.AddUserRoleIDs(ids...)
+	return _u
+}
+
+// AddUserRoles adds the "user_roles" edges to the UserRole entity.
+func (_u *RoleUpdateOne) AddUserRoles(v ...*UserRole) *RoleUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddUserRoleIDs(ids...)
+}
+
 // Mutation returns the RoleMutation object of the builder.
 func (_u *RoleUpdateOne) Mutation() *RoleMutation {
 	return _u.mutation
@@ -512,6 +621,27 @@ func (_u *RoleUpdateOne) RemoveUsers(v ...*User) *RoleUpdateOne {
 func (_u *RoleUpdateOne) ClearProject() *RoleUpdateOne {
 	_u.mutation.ClearProject()
 	return _u
+}
+
+// ClearUserRoles clears all "user_roles" edges to the UserRole entity.
+func (_u *RoleUpdateOne) ClearUserRoles() *RoleUpdateOne {
+	_u.mutation.ClearUserRoles()
+	return _u
+}
+
+// RemoveUserRoleIDs removes the "user_roles" edge to UserRole entities by IDs.
+func (_u *RoleUpdateOne) RemoveUserRoleIDs(ids ...int) *RoleUpdateOne {
+	_u.mutation.RemoveUserRoleIDs(ids...)
+	return _u
+}
+
+// RemoveUserRoles removes "user_roles" edges to UserRole entities.
+func (_u *RoleUpdateOne) RemoveUserRoles(v ...*UserRole) *RoleUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveUserRoleIDs(ids...)
 }
 
 // Where appends a list predicates to the RoleUpdate builder.
@@ -651,6 +781,10 @@ func (_u *RoleUpdateOne) sqlSave(ctx context.Context) (_node *Role, err error) {
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
 			},
 		}
+		createE := &UserRoleCreate{config: _u.config, mutation: newUserRoleMutation(_u.config, OpCreate)}
+		_ = createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.RemovedUsersIDs(); len(nodes) > 0 && !_u.mutation.UsersCleared() {
@@ -667,6 +801,10 @@ func (_u *RoleUpdateOne) sqlSave(ctx context.Context) (_node *Role, err error) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &UserRoleCreate{config: _u.config, mutation: newUserRoleMutation(_u.config, OpCreate)}
+		_ = createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.UsersIDs(); len(nodes) > 0 {
@@ -683,6 +821,10 @@ func (_u *RoleUpdateOne) sqlSave(ctx context.Context) (_node *Role, err error) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &UserRoleCreate{config: _u.config, mutation: newUserRoleMutation(_u.config, OpCreate)}
+		_ = createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.ProjectCleared() {
@@ -707,6 +849,51 @@ func (_u *RoleUpdateOne) sqlSave(ctx context.Context) (_node *Role, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.UserRolesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   role.UserRolesTable,
+			Columns: []string{role.UserRolesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedUserRolesIDs(); len(nodes) > 0 && !_u.mutation.UserRolesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   role.UserRolesTable,
+			Columns: []string{role.UserRolesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserRolesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   role.UserRolesTable,
+			Columns: []string{role.UserRolesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

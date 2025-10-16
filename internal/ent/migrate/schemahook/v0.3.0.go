@@ -29,6 +29,11 @@ func V0_3_0(next schema.Creator) schema.Creator {
 				table = removeIndex(table, "userproject_project_id_user_id")
 				tables[i] = table
 			}
+
+			if table.Name == "user_roles" {
+				table = removeIndex(table, "userrole_role_id_user_id")
+				tables[i] = table
+			}
 		}
 
 		return next.Create(ctx, tables...)

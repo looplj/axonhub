@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useRef, ReactNode } from 'react'
 import { Role } from '../data/schema'
 
 interface RolesContextType {
@@ -6,8 +6,12 @@ interface RolesContextType {
   setEditingRole: (role: Role | null) => void
   deletingRole: Role | null
   setDeletingRole: (role: Role | null) => void
+  deletingRoles: Role[]
+  setDeletingRoles: (roles: Role[]) => void
   isCreateDialogOpen: boolean
   setIsCreateDialogOpen: (open: boolean) => void
+  resetRowSelection: () => void
+  setResetRowSelection: (fn: () => void) => void
 }
 
 const RolesContext = createContext<RolesContextType | undefined>(undefined)
@@ -27,7 +31,9 @@ interface RolesProviderProps {
 export default function RolesProvider({ children }: RolesProviderProps) {
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [deletingRole, setDeletingRole] = useState<Role | null>(null)
+  const [deletingRoles, setDeletingRoles] = useState<Role[]>([])
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const resetRowSelectionRef = useRef<() => void>(() => {})
 
   return (
     <RolesContext.Provider
@@ -36,8 +42,14 @@ export default function RolesProvider({ children }: RolesProviderProps) {
         setEditingRole,
         deletingRole,
         setDeletingRole,
+        deletingRoles,
+        setDeletingRoles,
         isCreateDialogOpen,
         setIsCreateDialogOpen,
+        resetRowSelection: () => resetRowSelectionRef.current(),
+        setResetRowSelection: (fn: () => void) => {
+          resetRowSelectionRef.current = fn
+        },
       }}
     >
       {children}

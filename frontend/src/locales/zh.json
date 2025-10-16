@@ -460,6 +460,7 @@
     "description": "管理系统角色和权限配置。",
     "loadError": "加载失败:",
     "noResults": "无结果。",
+    "noData": "暂无数据",
     "createRole": "新建角色",
     "searchRoles": "按名称或代码搜索角色...",
     "columns": {
@@ -495,6 +496,10 @@
       "delete": {
         "title": "删除角色",
         "description": "确定要删除这个角色吗？此操作无法撤销。"
+      },
+      "bulkDelete": {
+        "title": "批量删除角色",
+        "description": "确定要删除选中的 {{count}} 个角色吗？此操作无法撤销。"
       },
       "fields": {
         "code": {
@@ -1414,6 +1419,7 @@
       "roleCreated": "角色创建成功",
       "roleUpdated": "角色更新成功",
       "roleDeleted": "角色删除成功",
+      "rolesDeleted": "成功删除 {{count}} 个角色",
       "projectCreated": "项目创建成功",
       "projectUpdated": "项目更新成功",
       "projectArchived": "项目归档成功",

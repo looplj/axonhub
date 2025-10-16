@@ -32,6 +32,8 @@ type Tx struct {
 	User *UserClient
 	// UserProject is the client for interacting with the UserProject builders.
 	UserProject *UserProjectClient
+	// UserRole is the client for interacting with the UserRole builders.
+	UserRole *UserRoleClient
 
 	// lazily loaded.
 	client     *Client
@@ -173,6 +175,7 @@ func (tx *Tx) init() {
 	tx.UsageLog = NewUsageLogClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.UserProject = NewUserProjectClient(tx.config)
+	tx.UserRole = NewUserRoleClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

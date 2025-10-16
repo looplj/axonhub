@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useRolesContext } from '../context/roles-context'
-import { useCreateRole, useUpdateRole, useDeleteRole } from '../data/roles'
+import { useCreateRole, useUpdateRole, useDeleteRole, useBulkDeleteRoles } from '../data/roles'
 import { createRoleInputSchema, updateRoleInputSchema } from '../data/schema'
 
 // Create Role Dialog
@@ -350,6 +350,40 @@ export function DeleteRoleDialog() {
   )
 }
 
+// Bulk Delete Roles Dialog
+export function BulkDeleteRolesDialog() {
+  const { t } = useTranslation()
+  const { deletingRoles, setDeletingRoles, resetRowSelection } = useRolesContext()
+  const bulkDeleteRoles = useBulkDeleteRoles()
+
+  const handleConfirm = async () => {
+    if (deletingRoles.length === 0) return
+
+    try {
+      const ids = deletingRoles.map((role) => role.id)
+      await bulkDeleteRoles.mutateAsync(ids)
+      setDeletingRoles([])
+      resetRowSelection() // 清空选中的行
+    } catch (error) {
+      // Error is handled by the mutation
+    }
+  }
+
+  return (
+    <ConfirmDialog
+      open={deletingRoles.length > 0}
+      onOpenChange={() => setDeletingRoles([])}
+      title={t('roles.dialogs.bulkDelete.title')}
+      desc={t('roles.dialogs.bulkDelete.description', { count: deletingRoles.length })}
+      confirmText={t('roles.dialogs.buttons.delete')}
+      cancelBtnText={t('roles.dialogs.buttons.cancel')}
+      handleConfirm={handleConfirm}
+      isLoading={bulkDeleteRoles.isPending}
+      destructive
+    />
+  )
+}
+
 // Combined Dialogs Component
 export function RolesDialogs() {
   return (
@@ -357,6 +391,7 @@ export function RolesDialogs() {
       <CreateRoleDialog />
       <EditRoleDialog />
       <DeleteRoleDialog />
+      <BulkDeleteRolesDialog />
     </>
   )
 }

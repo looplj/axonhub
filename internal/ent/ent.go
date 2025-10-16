@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -92,6 +93,7 @@ func checkColumn(t, c string) error {
 			usagelog.Table:         usagelog.ValidColumn,
 			user.Table:             user.ValidColumn,
 			userproject.Table:      userproject.ValidColumn,
+			userrole.Table:         userrole.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

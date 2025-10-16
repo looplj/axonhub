@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 )
 
 // RoleCreate is the builder for creating a Role entity.
@@ -130,6 +131,21 @@ func (_c *RoleCreate) AddUsers(v ...*User) *RoleCreate {
 // SetProject sets the "project" edge to the Project entity.
 func (_c *RoleCreate) SetProject(v *Project) *RoleCreate {
 	return _c.SetProjectID(v.ID)
+}
+
+// AddUserRoleIDs adds the "user_roles" edge to the UserRole entity by IDs.
+func (_c *RoleCreate) AddUserRoleIDs(ids ...int) *RoleCreate {
+	_c.mutation.AddUserRoleIDs(ids...)
+	return _c
+}
+
+// AddUserRoles adds the "user_roles" edges to the UserRole entity.
+func (_c *RoleCreate) AddUserRoles(v ...*UserRole) *RoleCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddUserRoleIDs(ids...)
 }
 
 // Mutation returns the RoleMutation object of the builder.
@@ -292,6 +308,10 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &UserRoleCreate{config: _c.config, mutation: newUserRoleMutation(_c.config, OpCreate)}
+		_ = createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.ProjectIDs(); len(nodes) > 0 {
@@ -309,6 +329,22 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.ProjectID = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.UserRolesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   role.UserRolesTable,
+			Columns: []string{role.UserRolesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

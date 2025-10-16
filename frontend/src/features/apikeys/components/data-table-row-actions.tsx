@@ -1,3 +1,4 @@
+import React from 'react'
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { IconUserOff, IconUserCheck, IconEdit, IconSettings, IconArchive } from '@tabler/icons-react'
 import { Row } from '@tanstack/react-table'
@@ -20,9 +21,11 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { t } = useTranslation()
   const { openDialog } = useApiKeysContext()
   const apiKey = row.original
+  const [open, setOpen] = React.useState(false)
 
   const handleEdit = (apiKey: ApiKey) => {
-    openDialog('edit', apiKey)
+    setOpen(false)
+    setTimeout(() => openDialog('edit', apiKey), 0)
   }
 
   const handleStatusChange = (apiKey: ApiKey) => {
@@ -30,19 +33,22 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
       // Archived API keys cannot be enabled/disabled
       return
     }
-    openDialog('status', apiKey)
+    setOpen(false)
+    setTimeout(() => openDialog('status', apiKey), 0)
   }
 
   const handleArchive = (apiKey: ApiKey) => {
-    openDialog('archive', apiKey)
+    setOpen(false)
+    setTimeout(() => openDialog('archive', apiKey), 0)
   }
 
   const handleProfiles = (apiKey: ApiKey) => {
-    openDialog('profiles', apiKey)
+    setOpen(false)
+    setTimeout(() => openDialog('profiles', apiKey), 0)
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant='ghost'
