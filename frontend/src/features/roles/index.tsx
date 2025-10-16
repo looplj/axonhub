@@ -25,10 +25,7 @@ function RolesContent() {
   const debouncedSearchFilter = useDebounce(searchFilter, 300)
 
   // Memoize columns to prevent infinite re-renders
-  const columns = useMemo(
-    () => createColumns(t, rolePermissions.canWrite),
-    [t, rolePermissions.canWrite]
-  )
+  const columns = useMemo(() => createColumns(t, rolePermissions.canWrite), [t, rolePermissions.canWrite])
 
   // Build where clause for API filtering with OR logic
   const whereClause = (() => {
@@ -38,16 +35,18 @@ function RolesContent() {
 
     // Use OR logic to search in both name and code fields
     return {
-      or: [
-        { nameContainsFold: debouncedSearchFilter },
-        { codeContainsFold: debouncedSearchFilter },
-      ],
+      or: [{ nameContainsFold: debouncedSearchFilter }, { codeContainsFold: debouncedSearchFilter }],
     }
   })()
 
-  const { data, isLoading, error: _error } = useRoles({
+  const {
+    data,
+    isLoading,
+    error: _error,
+  } = useRoles({
     first: pageSize,
     after: cursor,
+    orderBy: { field: 'CREATED_AT', direction: 'DESC' },
     where: whereClause,
   })
 
@@ -97,16 +96,12 @@ export default function RolesPage() {
 
   return (
     <RolesProvider>
-      <Header fixed>
-        {/* <Search /> */}
-      </Header>
+      <Header fixed>{/* <Search /> */}</Header>
 
       <Main>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>
-              {t('roles.title')}
-            </h2>
+            <h2 className='text-2xl font-bold tracking-tight'>{t('roles.title')}</h2>
             <p className='text-muted-foreground'>{t('roles.description')}</p>
           </div>
           <RolesPrimaryButtons />

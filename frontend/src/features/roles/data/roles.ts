@@ -7,8 +7,8 @@ import { Role, RoleConnection, CreateRoleInput, UpdateRoleInput, roleConnectionS
 
 // GraphQL queries and mutations
 const ROLES_QUERY = `
-  query GetRoles($first: Int, $after: Cursor, $where: RoleWhereInput) {
-    roles(first: $first, after: $after, where: $where) {
+  query GetRoles($first: Int, $after: Cursor, $orderBy: RoleOrder, $where: RoleWhereInput) {
+    roles(first: $first, after: $after, orderBy: $orderBy, where: $where) {
       edges {
         node {
           id
@@ -68,16 +68,26 @@ export function useRoles(
   variables: {
     first?: number
     after?: string
+    orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
     where?: any
   } = {}
 ) {
   const { handleError } = useErrorHandler()
 
+  // Always filter for system-level roles only (not project-specific)
+  const queryVariables = {
+    ...variables,
+    where: {
+      ...variables.where,
+      projectIDIsNil: true, // Only roles not associated with any project
+    },
+  }
+
   return useQuery({
-    queryKey: ['roles', variables],
+    queryKey: ['roles', queryVariables],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ roles: RoleConnection }>(ROLES_QUERY, variables)
+        const data = await graphqlRequest<{ roles: RoleConnection }>(ROLES_QUERY, queryVariables)
         return roleConnectionSchema.parse(data?.roles)
       } catch (error) {
         handleError(error, '获取角色数据')
