@@ -24,13 +24,14 @@ export default defineConfig({
     },
   },
   server: {
+    port: process.env.VITE_PORT ? parseInt(process.env.VITE_PORT) : 5173,
     proxy: {
       '/admin': {
-        target: 'http://localhost:8090',
+        target: process.env.VITE_API_URL || 'http://localhost:8090',
         changeOrigin: true,
       },
       '/v1': {
-        target: 'http://localhost:8090',
+        target: process.env.VITE_API_URL || 'http://localhost:8090',
         changeOrigin: true,
       },
     },

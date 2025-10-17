@@ -52,28 +52,46 @@ test.describe('Admin API Keys Management', () => {
     const row = table.locator('tbody tr').filter({ hasText: uniqueName })
     await expect(row).toBeVisible()
 
-    const actionsTrigger = row.locator('[data-testid="row-actions"], button:has(svg), .dropdown-trigger, button:has-text("Open menu")').first()
+    // Locate the actions button (three dots menu) in the last cell of the row
+    // Avoid clicking the Eye or Copy buttons in the key column
+    const actionsTrigger = row.locator('td:last-child button, button:has-text("Open menu")').first()
 
     // Disable API key
     await actionsTrigger.click()
-    const disableItem = page.getByRole('menuitem', { name: /禁用|Disable/i })
-    await expect(disableItem).toBeVisible({ timeout: 5000 })
-    await disableItem.click()
-    const statusDialog = page.getByRole('dialog')
+    const menu1 = page.getByRole('menu')
+    await expect(menu1).toBeVisible()
+    await menu1.getByRole('menuitem', { name: /禁用|Disable/i }).focus()
+    await page.keyboard.press('Enter')
+    const statusDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
+    await expect(statusDialog).toBeVisible()
     await expect(statusDialog).toContainText(uniqueName)
-    const confirmButton = statusDialog.getByRole('button', { name: /确认|Confirm|保存|Save/i })
+    // Click the confirm button - it's the second button (first is Cancel)
+    const confirmButton = statusDialog.locator('button').last()
     await confirmButton.click()
     await expect(statusDialog).not.toBeVisible({ timeout: 10000 })
     await expect(row).toContainText(/禁用|Disabled/i)
 
+    // Verify by menu toggle: now it should show Enable
+    await actionsTrigger.click()
+    const menu2 = page.getByRole('menu')
+    await expect(menu2).toBeVisible()
+    await expect(menu2.getByRole('menuitem', { name: /启用|Enable/i })).toBeVisible()
+    
+    // Close the menu before reopening
+    await page.keyboard.press('Escape')
+    await expect(menu2).not.toBeVisible()
+
     // Enable API key again
     await actionsTrigger.click()
-    const enableItem = page.getByRole('menuitem', { name: /启用|Enable/i })
-    await expect(enableItem).toBeVisible({ timeout: 5000 })
-    await enableItem.click()
-    const enableDialog = page.getByRole('dialog')
+    const menu3 = page.getByRole('menu')
+    await expect(menu3).toBeVisible()
+    await menu3.getByRole('menuitem', { name: /启用|Enable/i }).focus()
+    await page.keyboard.press('Enter')
+    const enableDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
+    await expect(enableDialog).toBeVisible()
     await expect(enableDialog).toContainText(uniqueName)
-    const enableConfirmButton = enableDialog.getByRole('button', { name: /确认|Confirm|保存|Save/i })
+    // Click the confirm button - it's the second button (first is Cancel)
+    const enableConfirmButton = enableDialog.locator('button').last()
     await enableConfirmButton.click()
     await expect(enableDialog).not.toBeVisible({ timeout: 10000 })
     await expect(row).toContainText(/启用|Enabled/i)

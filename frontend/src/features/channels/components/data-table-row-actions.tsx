@@ -35,6 +35,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           <Button
             variant='ghost'
             className='data-[state=open]:bg-muted flex h-8 w-8 p-0'
+            data-testid='row-actions'
           >
             <DotsHorizontalIcon className='h-4 w-4' />
             <span className='sr-only'>{t('channels.actions.openMenu')}</span>

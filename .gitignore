@@ -124,3 +124,9 @@ config.yml
 internal/server/static/dist
 *.b64
 coverage.out
+
+# E2E testing artifacts
+scripts/.e2e-backend.pid
+scripts/axonhub-e2e.db
+scripts/e2e-backend.log
+scripts/axonhub-e2e

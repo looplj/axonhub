@@ -8,7 +8,7 @@ test.describe('Admin Roles Management', () => {
 
   test('can create, edit, and delete a role', async ({ page }) => {
     const uniqueSuffix = Date.now().toString().slice(-5)
-    const roleCode = `pw-test-role-${uniqueSuffix}`
+    const roleCode = `pw_test_role_${uniqueSuffix}`
     const roleName = `pw-test-Role ${uniqueSuffix}`
 
     // Try multiple selectors for the create role button
@@ -32,12 +32,16 @@ test.describe('Admin Roles Management', () => {
       waitForGraphQLOperation(page, 'CreateRole'),
       dialog.getByRole('button', { name: /保存|Save|创建|Create/i }).click()
     ])
+    
+    // Wait for dialog to close
+    await expect(dialog).not.toBeVisible({ timeout: 5000 })
 
-    const rolesTable = page.locator('[data-testid="roles-table"], table:has(th), table').first()
+    const rolesTable = page.locator('[data-testid="roles-table"]')
     const row = rolesTable.locator('tbody tr').filter({ hasText: roleName })
-    await expect(row).toBeVisible()
+    await expect(row).toBeVisible({ timeout: 10000 })
 
-    const actionsTrigger = row.locator('[data-testid="row-actions"], button:has(svg), .dropdown-trigger, .action-button, button:has-text("打开菜单")').first()
+    // Click the row actions dropdown (three dots button)
+    const actionsTrigger = row.locator('[data-testid="row-actions"]')
     await actionsTrigger.click()
     const editMenuItem = page.getByRole('menuitem', { name: /编辑|Edit/i })
     await editMenuItem.waitFor({ state: 'visible', timeout: 5000 })
@@ -50,31 +54,29 @@ test.describe('Admin Roles Management', () => {
 
     await Promise.all([
       waitForGraphQLOperation(page, 'UpdateRole'),
-      editDialog.getByRole('button', { name: /保存|Save|更新|Update|roles\.dialogs\.buttons\.save/i }).click()
+      editDialog.getByRole('button', { name: /保存|Save|更新|Update/i }).click()
     ])
-    // Try to wait for the updated row; if not present (e.g., backend unavailable), close dialog and proceed
+    
+    // Wait for dialog to close and check if update was successful
     const updatedRow = rolesTable.locator('tbody tr').filter({ hasText: updatedName })
     let sawUpdated = false
     try {
-      await expect(updatedRow).toBeVisible({ timeout: 3000 })
+      await expect(editDialog).not.toBeVisible({ timeout: 3000 })
+      await expect(updatedRow).toBeVisible({ timeout: 5000 })
       sawUpdated = true
-    } catch {}
-    if (!sawUpdated) {
-      // Fallback: close dialog if still open
+    } catch {
+      // If dialog is still open or update failed, close it
       if (await editDialog.isVisible()) {
-        const cancelBtn = editDialog.getByRole('button', { name: /取消|Cancel|Close/i })
-        if (await cancelBtn.count()) {
-          await cancelBtn.click()
-        } else {
-          await editDialog.locator('button').last().click()
-        }
-        await expect(editDialog).not.toBeVisible({ timeout: 10000 })
+        // Use .first() to avoid strict mode violation (matches Cancel button, not Close X button)
+        const cancelBtn = editDialog.getByRole('button', { name: /取消|Cancel/i }).first()
+        await cancelBtn.click()
+        await expect(editDialog).not.toBeVisible({ timeout: 5000 })
       }
     }
 
+    // Click the row actions dropdown for deletion
     const delActionsTrigger = (sawUpdated ? updatedRow : row)
-      .locator('[data-testid="row-actions"], button:has(svg), .dropdown-trigger, .action-button, button:has-text("打开菜单")')
-      .first()
+      .locator('[data-testid="row-actions"]')
     await delActionsTrigger.click()
     const deleteItem = page.getByRole('menuitem', { name: /删除|Delete/i })
     await deleteItem.waitFor({ state: 'visible', timeout: 5000 })

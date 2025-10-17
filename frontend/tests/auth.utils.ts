@@ -33,11 +33,25 @@ export async function signInAsAdmin(page: Page, credentials: AdminCredentials = 
   const loginButton = page.getByRole('button', { name: /登录|Sign In|Sign in/i })
   await expect(loginButton).toBeVisible()
   
-  // Click login button and wait for successful login (redirect away from sign-in)
-  await Promise.all([
-    page.waitForURL(url => !url.toString().includes('/sign-in'), { timeout: 15000 }),
-    loginButton.click()
-  ])
+  // Wait for the sign-in API response before checking navigation
+  const responsePromise = page.waitForResponse(
+    (response) => response.url().includes('/admin/auth/signin') && response.status() === 200,
+    { timeout: 15000 }
+  )
+
+  await loginButton.click()
+
+  try {
+    await responsePromise
+  } catch (error) {
+    console.log(`Sign-in API error: ${error}`)
+    // Take a screenshot for debugging
+    await page.screenshot({ path: 'sign-in-error.png', fullPage: true })
+    throw error
+  }
+
+  // Wait for navigation away from sign-in page
+  await page.waitForURL(url => !url.toString().includes('/sign-in'), { timeout: 10000 })
 
   // Verify we're no longer on the sign-in page
   await expect(page.url()).not.toContain('/sign-in')
