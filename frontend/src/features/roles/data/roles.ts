@@ -63,6 +63,12 @@ const DELETE_ROLE_MUTATION = `
   }
 `
 
+const BULK_DELETE_ROLES_MUTATION = `
+  mutation BulkDeleteRoles($ids: [ID!]!) {
+    bulkDeleteRoles(ids: $ids)
+  }
+`
+
 // Query hooks
 export function useRoles(
   variables: {
@@ -179,6 +185,26 @@ export function useDeleteRole() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] })
       toast.success(i18n.t('common.success.roleDeleted'))
+    },
+  })
+}
+
+export function useBulkDeleteRoles() {
+  const queryClient = useQueryClient()
+  const { handleError } = useErrorHandler()
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      try {
+        await graphqlRequest(BULK_DELETE_ROLES_MUTATION, { ids })
+      } catch (error) {
+        handleError(error, '批量删除角色')
+        throw error
+      }
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] })
+      toast.success(i18n.t('common.success.rolesDeleted', { count: ids.length }))
     },
   })
 }

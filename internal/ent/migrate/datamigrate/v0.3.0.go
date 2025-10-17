@@ -2,17 +2,36 @@ package datamigrate
 
 import (
 	"context"
+	"time"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 // V0_3_0 creates a default project if it doesn't exist.
 func V0_3_0(ctx context.Context, client *ent.Client) error {
+	err := createDefaultProject(ctx, client)
+	if err != nil {
+		return err
+	}
+
+	// Update user role created_at and updated_at for the old data.
+	ts := time.Now()
+	_, err = client.UserRole.Update().
+		Where(userrole.CreatedAtIsNil()).
+		SetCreatedAt(ts).
+		SetUpdatedAt(ts).
+		Save(ctx)
+
+	return err
+}
+
+func createDefaultProject(ctx context.Context, client *ent.Client) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Check if a project already exists

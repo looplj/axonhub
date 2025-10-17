@@ -13,4 +13,5 @@ var Module = fx.Module("biz",
 	fx.Provide(NewUserService),
 	fx.Provide(NewAPIKeyService),
 	fx.Provide(NewProjectService),
+	fx.Provide(NewRoleService),
 )

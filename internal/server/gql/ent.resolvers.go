@@ -219,6 +219,11 @@ func (r *roleResolver) ProjectID(ctx context.Context, obj *ent.Role) (*objects.G
 	}, nil
 }
 
+// UserRoles is the resolver for the userRoles field.
+func (r *roleResolver) UserRoles(ctx context.Context, obj *ent.Role) ([]*ent.UserRole, error) {
+	return obj.QueryUserRoles().All(ctx)
+}
+
 // ID is the resolver for the id field.
 func (r *systemResolver) ID(ctx context.Context, obj *ent.System) (*objects.GUID, error) {
 	return &objects.GUID{
@@ -272,6 +277,11 @@ func (r *userResolver) ProjectUsers(ctx context.Context, obj *ent.User) ([]*ent.
 	return obj.QueryProjectUsers().All(ctx)
 }
 
+// UserRoles is the resolver for the userRoles field.
+func (r *userResolver) UserRoles(ctx context.Context, obj *ent.User) ([]*ent.UserRole, error) {
+	return obj.QueryUserRoles().All(ctx)
+}
+
 // ID is the resolver for the id field.
 func (r *userProjectResolver) ID(ctx context.Context, obj *ent.UserProject) (*objects.GUID, error) {
 	return &objects.GUID{
@@ -293,6 +303,30 @@ func (r *userProjectResolver) ProjectID(ctx context.Context, obj *ent.UserProjec
 	return &objects.GUID{
 		Type: ent.TypeProject,
 		ID:   obj.ProjectID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *userRoleResolver) ID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeUserRole,
+		ID:   obj.ID,
+	}, nil
+}
+
+// UserID is the resolver for the userID field.
+func (r *userRoleResolver) UserID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeUser,
+		ID:   obj.UserID,
+	}, nil
+}
+
+// RoleID is the resolver for the roleID field.
+func (r *userRoleResolver) RoleID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeRole,
+		ID:   obj.RoleID,
 	}, nil
 }
 
@@ -329,6 +363,9 @@ func (r *Resolver) User() UserResolver { return &userResolver{r} }
 // UserProject returns UserProjectResolver implementation.
 func (r *Resolver) UserProject() UserProjectResolver { return &userProjectResolver{r} }
 
+// UserRole returns UserRoleResolver implementation.
+func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
+
 type aPIKeyResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
@@ -340,3 +377,4 @@ type systemResolver struct{ *Resolver }
 type usageLogResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type userProjectResolver struct{ *Resolver }
+type userRoleResolver struct{ *Resolver }

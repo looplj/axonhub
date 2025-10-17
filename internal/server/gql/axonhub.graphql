@@ -195,6 +195,8 @@ type Mutation {
 
   createRole(input: CreateRoleInput!): Role!
   updateRole(id: ID!, input: UpdateRoleInput!): Role!
+  deleteRole(id: ID!): Boolean!
+  bulkDeleteRoles(ids: [ID!]!): Boolean!
 
   createProject(input: CreateProjectInput!): Project!
   updateProject(id: ID!, input: UpdateProjectInput!): Project!

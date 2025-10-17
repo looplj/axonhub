@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 )
 
 // UserCreate is the builder for creating a User entity.
@@ -228,6 +229,21 @@ func (_c *UserCreate) AddProjectUsers(v ...*UserProject) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddProjectUserIDs(ids...)
+}
+
+// AddUserRoleIDs adds the "user_roles" edge to the UserRole entity by IDs.
+func (_c *UserCreate) AddUserRoleIDs(ids ...int) *UserCreate {
+	_c.mutation.AddUserRoleIDs(ids...)
+	return _c
+}
+
+// AddUserRoles adds the "user_roles" edges to the UserRole entity.
+func (_c *UserCreate) AddUserRoles(v ...*UserRole) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddUserRoleIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -474,6 +490,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &UserRoleCreate{config: _c.config, mutation: newUserRoleMutation(_c.config, OpCreate)}
+		_ = createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.ProjectUsersIDs(); len(nodes) > 0 {
@@ -485,6 +505,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(userproject.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.UserRolesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   user.UserRolesTable,
+			Columns: []string{user.UserRolesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

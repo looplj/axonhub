@@ -433,6 +433,7 @@
     "description": "Manage system roles and permission configurations.",
     "loadError": "Load failed:",
     "noResults": "No results.",
+    "noData": "No data available",
     "createRole": "Create Role",
     "searchRoles": "Search roles by name or code...",
     "columns": {
@@ -468,6 +469,10 @@
       "delete": {
         "title": "Delete Role",
         "description": "Are you sure you want to delete this role? This action cannot be undone."
+      },
+      "bulkDelete": {
+        "title": "Bulk Delete Roles",
+        "description": "Are you sure you want to delete {{count}} selected roles? This action cannot be undone."
       },
       "fields": {
         "code": {
@@ -1378,6 +1383,7 @@
       "roleCreated": "Role created successfully",
       "roleUpdated": "Role updated successfully",
       "roleDeleted": "Role deleted successfully",
+      "rolesDeleted": "Successfully deleted {{count}} roles",
       "projectCreated": "Project created successfully",
       "projectUpdated": "Project updated successfully",
       "projectArchived": "Project archived successfully",

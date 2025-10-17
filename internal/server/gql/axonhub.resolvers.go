@@ -237,33 +237,34 @@ func (r *mutationResolver) UpdateUserStatus(ctx context.Context, id objects.GUID
 
 // CreateRole is the resolver for the createRole field.
 func (r *mutationResolver) CreateRole(ctx context.Context, input ent.CreateRoleInput) (*ent.Role, error) {
-	role, err := r.client.Role.Create().
-		SetCode(input.Code).
-		SetName(input.Name).
-		SetScopes(input.Scopes).
-		SetNillableProjectID(input.ProjectID).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create role: %w", err)
-	}
-
-	return role, nil
+	return r.roleService.CreateRole(ctx, input)
 }
 
 // UpdateRole is the resolver for the updateRole field.
 func (r *mutationResolver) UpdateRole(ctx context.Context, id objects.GUID, input ent.UpdateRoleInput) (*ent.Role, error) {
-	mut := r.client.Role.UpdateOneID(id.ID).
-		SetNillableName(input.Name)
-	if input.Scopes != nil {
-		mut.SetScopes(input.Scopes)
-	}
+	return r.roleService.UpdateRole(ctx, id.ID, input)
+}
 
-	role, err := mut.Save(ctx)
+// DeleteRole is the resolver for the deleteRole field.
+func (r *mutationResolver) DeleteRole(ctx context.Context, id objects.GUID) (bool, error) {
+	err := r.roleService.DeleteRole(ctx, id.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update role: %w", err)
+		return false, err
 	}
 
-	return role, nil
+	return true, nil
+}
+
+// BulkDeleteRoles is the resolver for the bulkDeleteRoles field.
+func (r *mutationResolver) BulkDeleteRoles(ctx context.Context, ids []*objects.GUID) (bool, error) {
+	roleIDs := objects.IntGuids(ids)
+
+	err := r.roleService.BulkDeleteRoles(ctx, roleIDs)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // CreateProject is the resolver for the createProject field.

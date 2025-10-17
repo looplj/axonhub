@@ -12,60 +12,60 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/predicate"
-	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
-	"github.com/looplj/axonhub/internal/ent/userproject"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 )
 
-// UserProjectQuery is the builder for querying UserProject entities.
-type UserProjectQuery struct {
+// UserRoleQuery is the builder for querying UserRole entities.
+type UserRoleQuery struct {
 	config
-	ctx         *QueryContext
-	order       []userproject.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.UserProject
-	withUser    *UserQuery
-	withProject *ProjectQuery
-	loadTotal   []func(context.Context, []*UserProject) error
-	modifiers   []func(*sql.Selector)
+	ctx        *QueryContext
+	order      []userrole.OrderOption
+	inters     []Interceptor
+	predicates []predicate.UserRole
+	withUser   *UserQuery
+	withRole   *RoleQuery
+	loadTotal  []func(context.Context, []*UserRole) error
+	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the UserProjectQuery builder.
-func (_q *UserProjectQuery) Where(ps ...predicate.UserProject) *UserProjectQuery {
+// Where adds a new predicate for the UserRoleQuery builder.
+func (_q *UserRoleQuery) Where(ps ...predicate.UserRole) *UserRoleQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *UserProjectQuery) Limit(limit int) *UserProjectQuery {
+func (_q *UserRoleQuery) Limit(limit int) *UserRoleQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *UserProjectQuery) Offset(offset int) *UserProjectQuery {
+func (_q *UserRoleQuery) Offset(offset int) *UserRoleQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *UserProjectQuery) Unique(unique bool) *UserProjectQuery {
+func (_q *UserRoleQuery) Unique(unique bool) *UserRoleQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *UserProjectQuery) Order(o ...userproject.OrderOption) *UserProjectQuery {
+func (_q *UserRoleQuery) Order(o ...userrole.OrderOption) *UserRoleQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
 // QueryUser chains the current query on the "user" edge.
-func (_q *UserProjectQuery) QueryUser() *UserQuery {
+func (_q *UserRoleQuery) QueryUser() *UserQuery {
 	query := (&UserClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
@@ -76,9 +76,9 @@ func (_q *UserProjectQuery) QueryUser() *UserQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(userproject.Table, userproject.FieldID, selector),
+			sqlgraph.From(userrole.Table, userrole.FieldID, selector),
 			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, userproject.UserTable, userproject.UserColumn),
+			sqlgraph.Edge(sqlgraph.M2O, false, userrole.UserTable, userrole.UserColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -86,9 +86,9 @@ func (_q *UserProjectQuery) QueryUser() *UserQuery {
 	return query
 }
 
-// QueryProject chains the current query on the "project" edge.
-func (_q *UserProjectQuery) QueryProject() *ProjectQuery {
-	query := (&ProjectClient{config: _q.config}).Query()
+// QueryRole chains the current query on the "role" edge.
+func (_q *UserRoleQuery) QueryRole() *RoleQuery {
+	query := (&RoleClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -98,9 +98,9 @@ func (_q *UserProjectQuery) QueryProject() *ProjectQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(userproject.Table, userproject.FieldID, selector),
-			sqlgraph.To(project.Table, project.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, userproject.ProjectTable, userproject.ProjectColumn),
+			sqlgraph.From(userrole.Table, userrole.FieldID, selector),
+			sqlgraph.To(role.Table, role.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, userrole.RoleTable, userrole.RoleColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -108,21 +108,21 @@ func (_q *UserProjectQuery) QueryProject() *ProjectQuery {
 	return query
 }
 
-// First returns the first UserProject entity from the query.
-// Returns a *NotFoundError when no UserProject was found.
-func (_q *UserProjectQuery) First(ctx context.Context) (*UserProject, error) {
+// First returns the first UserRole entity from the query.
+// Returns a *NotFoundError when no UserRole was found.
+func (_q *UserRoleQuery) First(ctx context.Context) (*UserRole, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{userproject.Label}
+		return nil, &NotFoundError{userrole.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *UserProjectQuery) FirstX(ctx context.Context) *UserProject {
+func (_q *UserRoleQuery) FirstX(ctx context.Context) *UserRole {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -130,22 +130,22 @@ func (_q *UserProjectQuery) FirstX(ctx context.Context) *UserProject {
 	return node
 }
 
-// FirstID returns the first UserProject ID from the query.
-// Returns a *NotFoundError when no UserProject ID was found.
-func (_q *UserProjectQuery) FirstID(ctx context.Context) (id int, err error) {
+// FirstID returns the first UserRole ID from the query.
+// Returns a *NotFoundError when no UserRole ID was found.
+func (_q *UserRoleQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{userproject.Label}
+		err = &NotFoundError{userrole.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *UserProjectQuery) FirstIDX(ctx context.Context) int {
+func (_q *UserRoleQuery) FirstIDX(ctx context.Context) int {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -153,10 +153,10 @@ func (_q *UserProjectQuery) FirstIDX(ctx context.Context) int {
 	return id
 }
 
-// Only returns a single UserProject entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one UserProject entity is found.
-// Returns a *NotFoundError when no UserProject entities are found.
-func (_q *UserProjectQuery) Only(ctx context.Context) (*UserProject, error) {
+// Only returns a single UserRole entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one UserRole entity is found.
+// Returns a *NotFoundError when no UserRole entities are found.
+func (_q *UserRoleQuery) Only(ctx context.Context) (*UserRole, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -165,14 +165,14 @@ func (_q *UserProjectQuery) Only(ctx context.Context) (*UserProject, error) {
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{userproject.Label}
+		return nil, &NotFoundError{userrole.Label}
 	default:
-		return nil, &NotSingularError{userproject.Label}
+		return nil, &NotSingularError{userrole.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *UserProjectQuery) OnlyX(ctx context.Context) *UserProject {
+func (_q *UserRoleQuery) OnlyX(ctx context.Context) *UserRole {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -180,10 +180,10 @@ func (_q *UserProjectQuery) OnlyX(ctx context.Context) *UserProject {
 	return node
 }
 
-// OnlyID is like Only, but returns the only UserProject ID in the query.
-// Returns a *NotSingularError when more than one UserProject ID is found.
+// OnlyID is like Only, but returns the only UserRole ID in the query.
+// Returns a *NotSingularError when more than one UserRole ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *UserProjectQuery) OnlyID(ctx context.Context) (id int, err error) {
+func (_q *UserRoleQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
@@ -192,15 +192,15 @@ func (_q *UserProjectQuery) OnlyID(ctx context.Context) (id int, err error) {
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{userproject.Label}
+		err = &NotFoundError{userrole.Label}
 	default:
-		err = &NotSingularError{userproject.Label}
+		err = &NotSingularError{userrole.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *UserProjectQuery) OnlyIDX(ctx context.Context) int {
+func (_q *UserRoleQuery) OnlyIDX(ctx context.Context) int {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -208,18 +208,18 @@ func (_q *UserProjectQuery) OnlyIDX(ctx context.Context) int {
 	return id
 }
 
-// All executes the query and returns a list of UserProjects.
-func (_q *UserProjectQuery) All(ctx context.Context) ([]*UserProject, error) {
+// All executes the query and returns a list of UserRoles.
+func (_q *UserRoleQuery) All(ctx context.Context) ([]*UserRole, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*UserProject, *UserProjectQuery]()
-	return withInterceptors[[]*UserProject](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*UserRole, *UserRoleQuery]()
+	return withInterceptors[[]*UserRole](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *UserProjectQuery) AllX(ctx context.Context) []*UserProject {
+func (_q *UserRoleQuery) AllX(ctx context.Context) []*UserRole {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -227,20 +227,20 @@ func (_q *UserProjectQuery) AllX(ctx context.Context) []*UserProject {
 	return nodes
 }
 
-// IDs executes the query and returns a list of UserProject IDs.
-func (_q *UserProjectQuery) IDs(ctx context.Context) (ids []int, err error) {
+// IDs executes the query and returns a list of UserRole IDs.
+func (_q *UserRoleQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(userproject.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(userrole.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *UserProjectQuery) IDsX(ctx context.Context) []int {
+func (_q *UserRoleQuery) IDsX(ctx context.Context) []int {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -249,16 +249,16 @@ func (_q *UserProjectQuery) IDsX(ctx context.Context) []int {
 }
 
 // Count returns the count of the given query.
-func (_q *UserProjectQuery) Count(ctx context.Context) (int, error) {
+func (_q *UserRoleQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*UserProjectQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*UserRoleQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *UserProjectQuery) CountX(ctx context.Context) int {
+func (_q *UserRoleQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -267,7 +267,7 @@ func (_q *UserProjectQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *UserProjectQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *UserRoleQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -280,7 +280,7 @@ func (_q *UserProjectQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *UserProjectQuery) ExistX(ctx context.Context) bool {
+func (_q *UserRoleQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -288,20 +288,20 @@ func (_q *UserProjectQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the UserProjectQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the UserRoleQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *UserProjectQuery) Clone() *UserProjectQuery {
+func (_q *UserRoleQuery) Clone() *UserRoleQuery {
 	if _q == nil {
 		return nil
 	}
-	return &UserProjectQuery{
-		config:      _q.config,
-		ctx:         _q.ctx.Clone(),
-		order:       append([]userproject.OrderOption{}, _q.order...),
-		inters:      append([]Interceptor{}, _q.inters...),
-		predicates:  append([]predicate.UserProject{}, _q.predicates...),
-		withUser:    _q.withUser.Clone(),
-		withProject: _q.withProject.Clone(),
+	return &UserRoleQuery{
+		config:     _q.config,
+		ctx:        _q.ctx.Clone(),
+		order:      append([]userrole.OrderOption{}, _q.order...),
+		inters:     append([]Interceptor{}, _q.inters...),
+		predicates: append([]predicate.UserRole{}, _q.predicates...),
+		withUser:   _q.withUser.Clone(),
+		withRole:   _q.withRole.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -311,7 +311,7 @@ func (_q *UserProjectQuery) Clone() *UserProjectQuery {
 
 // WithUser tells the query-builder to eager-load the nodes that are connected to
 // the "user" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *UserProjectQuery) WithUser(opts ...func(*UserQuery)) *UserProjectQuery {
+func (_q *UserRoleQuery) WithUser(opts ...func(*UserQuery)) *UserRoleQuery {
 	query := (&UserClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
@@ -320,14 +320,14 @@ func (_q *UserProjectQuery) WithUser(opts ...func(*UserQuery)) *UserProjectQuery
 	return _q
 }
 
-// WithProject tells the query-builder to eager-load the nodes that are connected to
-// the "project" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *UserProjectQuery) WithProject(opts ...func(*ProjectQuery)) *UserProjectQuery {
-	query := (&ProjectClient{config: _q.config}).Query()
+// WithRole tells the query-builder to eager-load the nodes that are connected to
+// the "role" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserRoleQuery) WithRole(opts ...func(*RoleQuery)) *UserRoleQuery {
+	query := (&RoleClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withProject = query
+	_q.withRole = query
 	return _q
 }
 
@@ -337,19 +337,19 @@ func (_q *UserProjectQuery) WithProject(opts ...func(*ProjectQuery)) *UserProjec
 // Example:
 //
 //	var v []struct {
-//		CreatedAt time.Time `json:"created_at,omitempty"`
+//		DeletedAt int `json:"deleted_at,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.UserProject.Query().
-//		GroupBy(userproject.FieldCreatedAt).
+//	client.UserRole.Query().
+//		GroupBy(userrole.FieldDeletedAt).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *UserProjectQuery) GroupBy(field string, fields ...string) *UserProjectGroupBy {
+func (_q *UserRoleQuery) GroupBy(field string, fields ...string) *UserRoleGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &UserProjectGroupBy{build: _q}
+	grbuild := &UserRoleGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = userproject.Label
+	grbuild.label = userrole.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -360,26 +360,26 @@ func (_q *UserProjectQuery) GroupBy(field string, fields ...string) *UserProject
 // Example:
 //
 //	var v []struct {
-//		CreatedAt time.Time `json:"created_at,omitempty"`
+//		DeletedAt int `json:"deleted_at,omitempty"`
 //	}
 //
-//	client.UserProject.Query().
-//		Select(userproject.FieldCreatedAt).
+//	client.UserRole.Query().
+//		Select(userrole.FieldDeletedAt).
 //		Scan(ctx, &v)
-func (_q *UserProjectQuery) Select(fields ...string) *UserProjectSelect {
+func (_q *UserRoleQuery) Select(fields ...string) *UserRoleSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &UserProjectSelect{UserProjectQuery: _q}
-	sbuild.label = userproject.Label
+	sbuild := &UserRoleSelect{UserRoleQuery: _q}
+	sbuild.label = userrole.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a UserProjectSelect configured with the given aggregations.
-func (_q *UserProjectQuery) Aggregate(fns ...AggregateFunc) *UserProjectSelect {
+// Aggregate returns a UserRoleSelect configured with the given aggregations.
+func (_q *UserRoleQuery) Aggregate(fns ...AggregateFunc) *UserRoleSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *UserProjectQuery) prepareQuery(ctx context.Context) error {
+func (_q *UserRoleQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -391,7 +391,7 @@ func (_q *UserProjectQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !userproject.ValidColumn(f) {
+		if !userrole.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -405,20 +405,20 @@ func (_q *UserProjectQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *UserProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*UserProject, error) {
+func (_q *UserRoleQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*UserRole, error) {
 	var (
-		nodes       = []*UserProject{}
+		nodes       = []*UserRole{}
 		_spec       = _q.querySpec()
 		loadedTypes = [2]bool{
 			_q.withUser != nil,
-			_q.withProject != nil,
+			_q.withRole != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*UserProject).scanValues(nil, columns)
+		return (*UserRole).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &UserProject{config: _q.config}
+		node := &UserRole{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -437,13 +437,13 @@ func (_q *UserProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 	}
 	if query := _q.withUser; query != nil {
 		if err := _q.loadUser(ctx, query, nodes, nil,
-			func(n *UserProject, e *User) { n.Edges.User = e }); err != nil {
+			func(n *UserRole, e *User) { n.Edges.User = e }); err != nil {
 			return nil, err
 		}
 	}
-	if query := _q.withProject; query != nil {
-		if err := _q.loadProject(ctx, query, nodes, nil,
-			func(n *UserProject, e *Project) { n.Edges.Project = e }); err != nil {
+	if query := _q.withRole; query != nil {
+		if err := _q.loadRole(ctx, query, nodes, nil,
+			func(n *UserRole, e *Role) { n.Edges.Role = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -455,9 +455,9 @@ func (_q *UserProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 	return nodes, nil
 }
 
-func (_q *UserProjectQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*UserProject, init func(*UserProject), assign func(*UserProject, *User)) error {
+func (_q *UserRoleQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*UserRole, init func(*UserRole), assign func(*UserRole, *User)) error {
 	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*UserProject)
+	nodeids := make(map[int][]*UserRole)
 	for i := range nodes {
 		fk := nodes[i].UserID
 		if _, ok := nodeids[fk]; !ok {
@@ -484,11 +484,11 @@ func (_q *UserProjectQuery) loadUser(ctx context.Context, query *UserQuery, node
 	}
 	return nil
 }
-func (_q *UserProjectQuery) loadProject(ctx context.Context, query *ProjectQuery, nodes []*UserProject, init func(*UserProject), assign func(*UserProject, *Project)) error {
+func (_q *UserRoleQuery) loadRole(ctx context.Context, query *RoleQuery, nodes []*UserRole, init func(*UserRole), assign func(*UserRole, *Role)) error {
 	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*UserProject)
+	nodeids := make(map[int][]*UserRole)
 	for i := range nodes {
-		fk := nodes[i].ProjectID
+		fk := nodes[i].RoleID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -497,7 +497,7 @@ func (_q *UserProjectQuery) loadProject(ctx context.Context, query *ProjectQuery
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(project.IDIn(ids...))
+	query.Where(role.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
@@ -505,7 +505,7 @@ func (_q *UserProjectQuery) loadProject(ctx context.Context, query *ProjectQuery
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "project_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "role_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -514,7 +514,7 @@ func (_q *UserProjectQuery) loadProject(ctx context.Context, query *ProjectQuery
 	return nil
 }
 
-func (_q *UserProjectQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *UserRoleQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	if len(_q.modifiers) > 0 {
 		_spec.Modifiers = _q.modifiers
@@ -526,8 +526,8 @@ func (_q *UserProjectQuery) sqlCount(ctx context.Context) (int, error) {
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *UserProjectQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(userproject.Table, userproject.Columns, sqlgraph.NewFieldSpec(userproject.FieldID, field.TypeInt))
+func (_q *UserRoleQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(userrole.Table, userrole.Columns, sqlgraph.NewFieldSpec(userrole.FieldID, field.TypeInt))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -536,17 +536,17 @@ func (_q *UserProjectQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, userproject.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, userrole.FieldID)
 		for i := range fields {
-			if fields[i] != userproject.FieldID {
+			if fields[i] != userrole.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
 		if _q.withUser != nil {
-			_spec.Node.AddColumnOnce(userproject.FieldUserID)
+			_spec.Node.AddColumnOnce(userrole.FieldUserID)
 		}
-		if _q.withProject != nil {
-			_spec.Node.AddColumnOnce(userproject.FieldProjectID)
+		if _q.withRole != nil {
+			_spec.Node.AddColumnOnce(userrole.FieldRoleID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {
@@ -572,12 +572,12 @@ func (_q *UserProjectQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *UserProjectQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *UserRoleQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(userproject.Table)
+	t1 := builder.Table(userrole.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = userproject.Columns
+		columns = userrole.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -608,33 +608,33 @@ func (_q *UserProjectQuery) sqlQuery(ctx context.Context) *sql.Selector {
 }
 
 // Modify adds a query modifier for attaching custom logic to queries.
-func (_q *UserProjectQuery) Modify(modifiers ...func(s *sql.Selector)) *UserProjectSelect {
+func (_q *UserRoleQuery) Modify(modifiers ...func(s *sql.Selector)) *UserRoleSelect {
 	_q.modifiers = append(_q.modifiers, modifiers...)
 	return _q.Select()
 }
 
-// UserProjectGroupBy is the group-by builder for UserProject entities.
-type UserProjectGroupBy struct {
+// UserRoleGroupBy is the group-by builder for UserRole entities.
+type UserRoleGroupBy struct {
 	selector
-	build *UserProjectQuery
+	build *UserRoleQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *UserProjectGroupBy) Aggregate(fns ...AggregateFunc) *UserProjectGroupBy {
+func (_g *UserRoleGroupBy) Aggregate(fns ...AggregateFunc) *UserRoleGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *UserProjectGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *UserRoleGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*UserProjectQuery, *UserProjectGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*UserRoleQuery, *UserRoleGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *UserProjectGroupBy) sqlScan(ctx context.Context, root *UserProjectQuery, v any) error {
+func (_g *UserRoleGroupBy) sqlScan(ctx context.Context, root *UserRoleQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -661,28 +661,28 @@ func (_g *UserProjectGroupBy) sqlScan(ctx context.Context, root *UserProjectQuer
 	return sql.ScanSlice(rows, v)
 }
 
-// UserProjectSelect is the builder for selecting fields of UserProject entities.
-type UserProjectSelect struct {
-	*UserProjectQuery
+// UserRoleSelect is the builder for selecting fields of UserRole entities.
+type UserRoleSelect struct {
+	*UserRoleQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *UserProjectSelect) Aggregate(fns ...AggregateFunc) *UserProjectSelect {
+func (_s *UserRoleSelect) Aggregate(fns ...AggregateFunc) *UserRoleSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *UserProjectSelect) Scan(ctx context.Context, v any) error {
+func (_s *UserRoleSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*UserProjectQuery, *UserProjectSelect](ctx, _s.UserProjectQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*UserRoleQuery, *UserRoleSelect](ctx, _s.UserRoleQuery, _s, _s.inters, v)
 }
 
-func (_s *UserProjectSelect) sqlScan(ctx context.Context, root *UserProjectQuery, v any) error {
+func (_s *UserRoleSelect) sqlScan(ctx context.Context, root *UserRoleQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {
@@ -704,7 +704,7 @@ func (_s *UserProjectSelect) sqlScan(ctx context.Context, root *UserProjectQuery
 }
 
 // Modify adds a query modifier for attaching custom logic to queries.
-func (_s *UserProjectSelect) Modify(modifiers ...func(s *sql.Selector)) *UserProjectSelect {
+func (_s *UserRoleSelect) Modify(modifiers ...func(s *sql.Selector)) *UserRoleSelect {
 	_s.modifiers = append(_s.modifiers, modifiers...)
 	return _s
 }

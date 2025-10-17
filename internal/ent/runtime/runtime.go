@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 	"github.com/looplj/axonhub/internal/objects"
 
 	"entgo.io/ent"
@@ -471,6 +472,29 @@ func init() {
 	userprojectDescScopes := userprojectFields[3].Descriptor()
 	// userproject.DefaultScopes holds the default value on creation for the scopes field.
 	userproject.DefaultScopes = userprojectDescScopes.Default.([]string)
+	userroleMixin := schema.UserRole{}.Mixin()
+	userroleMixinHooks0 := userroleMixin[0].Hooks()
+	userrole.Hooks[0] = userroleMixinHooks0[0]
+	userroleMixinInters0 := userroleMixin[0].Interceptors()
+	userrole.Interceptors[0] = userroleMixinInters0[0]
+	userroleMixinFields0 := userroleMixin[0].Fields()
+	_ = userroleMixinFields0
+	userroleFields := schema.UserRole{}.Fields()
+	_ = userroleFields
+	// userroleDescDeletedAt is the schema descriptor for deleted_at field.
+	userroleDescDeletedAt := userroleMixinFields0[0].Descriptor()
+	// userrole.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	userrole.DefaultDeletedAt = userroleDescDeletedAt.Default.(int)
+	// userroleDescCreatedAt is the schema descriptor for created_at field.
+	userroleDescCreatedAt := userroleFields[2].Descriptor()
+	// userrole.DefaultCreatedAt holds the default value on creation for the created_at field.
+	userrole.DefaultCreatedAt = userroleDescCreatedAt.Default.(func() time.Time)
+	// userroleDescUpdatedAt is the schema descriptor for updated_at field.
+	userroleDescUpdatedAt := userroleFields[3].Descriptor()
+	// userrole.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	userrole.DefaultUpdatedAt = userroleDescUpdatedAt.Default.(func() time.Time)
+	// userrole.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	userrole.UpdateDefaultUpdatedAt = userroleDescUpdatedAt.UpdateDefault.(func() time.Time)
 }
 
 const (

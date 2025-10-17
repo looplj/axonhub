@@ -58,16 +58,19 @@ type UserEdges struct {
 	Roles []*Role `json:"roles,omitempty"`
 	// ProjectUsers holds the value of the project_users edge.
 	ProjectUsers []*UserProject `json:"project_users,omitempty"`
+	// UserRoles holds the value of the user_roles edge.
+	UserRoles []*UserRole `json:"user_roles,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [5]bool
 	// totalCount holds the count of the edges above.
-	totalCount [4]map[string]int
+	totalCount [5]map[string]int
 
 	namedProjects     map[string][]*Project
 	namedAPIKeys      map[string][]*APIKey
 	namedRoles        map[string][]*Role
 	namedProjectUsers map[string][]*UserProject
+	namedUserRoles    map[string][]*UserRole
 }
 
 // ProjectsOrErr returns the Projects value or an error if the edge
@@ -104,6 +107,15 @@ func (e UserEdges) ProjectUsersOrErr() ([]*UserProject, error) {
 		return e.ProjectUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "project_users"}
+}
+
+// UserRolesOrErr returns the UserRoles value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) UserRolesOrErr() ([]*UserRole, error) {
+	if e.loadedTypes[4] {
+		return e.UserRoles, nil
+	}
+	return nil, &NotLoadedError{edge: "user_roles"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -247,6 +259,11 @@ func (_m *User) QueryRoles() *RoleQuery {
 // QueryProjectUsers queries the "project_users" edge of the User entity.
 func (_m *User) QueryProjectUsers() *UserProjectQuery {
 	return NewUserClient(_m.config).QueryProjectUsers(_m)
+}
+
+// QueryUserRoles queries the "user_roles" edge of the User entity.
+func (_m *User) QueryUserRoles() *UserRoleQuery {
+	return NewUserClient(_m.config).QueryUserRoles(_m)
 }
 
 // Update returns a builder for updating this User.
@@ -403,6 +420,30 @@ func (_m *User) appendNamedProjectUsers(name string, edges ...*UserProject) {
 		_m.Edges.namedProjectUsers[name] = []*UserProject{}
 	} else {
 		_m.Edges.namedProjectUsers[name] = append(_m.Edges.namedProjectUsers[name], edges...)
+	}
+}
+
+// NamedUserRoles returns the UserRoles named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *User) NamedUserRoles(name string) ([]*UserRole, error) {
+	if _m.Edges.namedUserRoles == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedUserRoles[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *User) appendNamedUserRoles(name string, edges ...*UserRole) {
+	if _m.Edges.namedUserRoles == nil {
+		_m.Edges.namedUserRoles = make(map[string][]*UserRole)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedUserRoles[name] = []*UserRole{}
+	} else {
+		_m.Edges.namedUserRoles[name] = append(_m.Edges.namedUserRoles[name], edges...)
 	}
 }
 

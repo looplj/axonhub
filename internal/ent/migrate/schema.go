@@ -421,13 +421,13 @@ var (
 		PrimaryKey: []*schema.Column{UserProjectsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "user_projects_users_users",
+				Symbol:     "user_projects_users_user",
 				Columns:    []*schema.Column{UserProjectsColumns[6]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "user_projects_projects_projects",
+				Symbol:     "user_projects_projects_project",
 				Columns:    []*schema.Column{UserProjectsColumns[7]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
@@ -453,6 +453,10 @@ var (
 	}
 	// UserRolesColumns holds the columns for the "user_roles" table.
 	UserRolesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "user_id", Type: field.TypeInt},
 		{Name: "role_id", Type: field.TypeInt},
 	}
@@ -460,19 +464,36 @@ var (
 	UserRolesTable = &schema.Table{
 		Name:       "user_roles",
 		Columns:    UserRolesColumns,
-		PrimaryKey: []*schema.Column{UserRolesColumns[0], UserRolesColumns[1]},
+		PrimaryKey: []*schema.Column{UserRolesColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "user_roles_user_id",
-				Columns:    []*schema.Column{UserRolesColumns[0]},
+				Symbol:     "user_roles_users_user",
+				Columns:    []*schema.Column{UserRolesColumns[4]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
-				OnDelete:   schema.Cascade,
+				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "user_roles_role_id",
-				Columns:    []*schema.Column{UserRolesColumns[1]},
+				Symbol:     "user_roles_roles_role",
+				Columns:    []*schema.Column{UserRolesColumns[5]},
 				RefColumns: []*schema.Column{RolesColumns[0]},
-				OnDelete:   schema.Cascade,
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "user_roles_by_user_id_role_id",
+				Unique:  true,
+				Columns: []*schema.Column{UserRolesColumns[4], UserRolesColumns[5], UserRolesColumns[1]},
+			},
+			{
+				Name:    "user_roles_by_role_id",
+				Unique:  false,
+				Columns: []*schema.Column{UserRolesColumns[5]},
+			},
+			{
+				Name:    "userrole_user_id_role_id",
+				Unique:  true,
+				Columns: []*schema.Column{UserRolesColumns[4], UserRolesColumns[5]},
 			},
 		},
 	}

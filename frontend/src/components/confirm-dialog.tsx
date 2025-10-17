@@ -1,3 +1,4 @@
+import React from 'react'
 import { cn } from '@/lib/utils'
 import {
   AlertDialog,
@@ -39,6 +40,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
     handleConfirm,
     ...actions
   } = props
+
   return (
     <AlertDialog {...actions}>
       <AlertDialogContent className={cn(className && className)}>
@@ -50,9 +52,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
         </AlertDialogHeader>
         {children}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>
-            {cancelBtnText ?? 'Cancel'}
-          </AlertDialogCancel>
+          <AlertDialogCancel disabled={isLoading}>{cancelBtnText ?? 'Cancel'}</AlertDialogCancel>
           <Button
             variant={destructive ? 'destructive' : 'default'}
             onClick={handleConfirm}

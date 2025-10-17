@@ -345,6 +345,27 @@ func (_m *Role) Project(ctx context.Context) (*Project, error) {
 	return result, MaskNotFound(err)
 }
 
+func (_m *Role) UserRoles(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UserRoleOrder, where *UserRoleWhereInput,
+) (*UserRoleConnection, error) {
+	opts := []UserRolePaginateOption{
+		WithUserRoleOrder(orderBy),
+		WithUserRoleFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[2][alias]
+	if nodes, err := _m.NamedUserRoles(alias); err == nil || hasTotalCount {
+		pager, err := newUserRolePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &UserRoleConnection{Edges: []*UserRoleEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryUserRoles().Paginate(ctx, after, first, before, last, opts...)
+}
+
 func (_m *UsageLog) Request(ctx context.Context) (*Request, error) {
 	result, err := _m.Edges.RequestOrErr()
 	if IsNotLoaded(err) {
@@ -453,18 +474,55 @@ func (_m *User) ProjectUsers(
 	return _m.QueryProjectUsers().Paginate(ctx, after, first, before, last, opts...)
 }
 
-func (_m *UserProject) Users(ctx context.Context) (*User, error) {
-	result, err := _m.Edges.UsersOrErr()
+func (_m *User) UserRoles(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UserRoleOrder, where *UserRoleWhereInput,
+) (*UserRoleConnection, error) {
+	opts := []UserRolePaginateOption{
+		WithUserRoleOrder(orderBy),
+		WithUserRoleFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
+	if nodes, err := _m.NamedUserRoles(alias); err == nil || hasTotalCount {
+		pager, err := newUserRolePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &UserRoleConnection{Edges: []*UserRoleEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryUserRoles().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *UserProject) User(ctx context.Context) (*User, error) {
+	result, err := _m.Edges.UserOrErr()
 	if IsNotLoaded(err) {
-		result, err = _m.QueryUsers().Only(ctx)
+		result, err = _m.QueryUser().Only(ctx)
 	}
 	return result, err
 }
 
-func (_m *UserProject) Projects(ctx context.Context) (*Project, error) {
-	result, err := _m.Edges.ProjectsOrErr()
+func (_m *UserProject) Project(ctx context.Context) (*Project, error) {
+	result, err := _m.Edges.ProjectOrErr()
 	if IsNotLoaded(err) {
-		result, err = _m.QueryProjects().Only(ctx)
+		result, err = _m.QueryProject().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *UserRole) User(ctx context.Context) (*User, error) {
+	result, err := _m.Edges.UserOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryUser().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *UserRole) Role(ctx context.Context) (*Role, error) {
+	result, err := _m.Edges.RoleOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryRole().Only(ctx)
 	}
 	return result, err
 }

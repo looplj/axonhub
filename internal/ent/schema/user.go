@@ -63,6 +63,7 @@ func (User) Edges() []ent.Edge {
 				entgql.RelayConnection(),
 			),
 		edge.To("roles", Role.Type).
+			Through("user_roles", UserRole.Type).
 			Annotations(
 				entgql.RelayConnection(),
 			),

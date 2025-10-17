@@ -22,6 +22,7 @@ type Resolver struct {
 	channelService *biz.ChannelService
 	requestService *biz.RequestService
 	projectService *biz.ProjectService
+	roleService    *biz.RoleService
 	httpClient     *httpclient.HttpClient
 	modelFetcher   *biz.ModelFetcher
 }
@@ -36,6 +37,7 @@ func NewSchema(
 	channelService *biz.ChannelService,
 	requestService *biz.RequestService,
 	projectService *biz.ProjectService,
+	roleService *biz.RoleService,
 ) graphql.ExecutableSchema {
 	httpClient := httpclient.NewHttpClient()
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
@@ -50,6 +52,7 @@ func NewSchema(
 			channelService: channelService,
 			requestService: requestService,
 			projectService: projectService,
+			roleService:    roleService,
 			httpClient:     httpClient,
 			modelFetcher:   modelFetcher,
 		},

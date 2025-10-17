@@ -98,26 +98,14 @@ func (_c *UserProjectCreate) SetScopes(v []string) *UserProjectCreate {
 	return _c
 }
 
-// SetUsersID sets the "users" edge to the User entity by ID.
-func (_c *UserProjectCreate) SetUsersID(id int) *UserProjectCreate {
-	_c.mutation.SetUsersID(id)
-	return _c
+// SetUser sets the "user" edge to the User entity.
+func (_c *UserProjectCreate) SetUser(v *User) *UserProjectCreate {
+	return _c.SetUserID(v.ID)
 }
 
-// SetUsers sets the "users" edge to the User entity.
-func (_c *UserProjectCreate) SetUsers(v *User) *UserProjectCreate {
-	return _c.SetUsersID(v.ID)
-}
-
-// SetProjectsID sets the "projects" edge to the Project entity by ID.
-func (_c *UserProjectCreate) SetProjectsID(id int) *UserProjectCreate {
-	_c.mutation.SetProjectsID(id)
-	return _c
-}
-
-// SetProjects sets the "projects" edge to the Project entity.
-func (_c *UserProjectCreate) SetProjects(v *Project) *UserProjectCreate {
-	return _c.SetProjectsID(v.ID)
+// SetProject sets the "project" edge to the Project entity.
+func (_c *UserProjectCreate) SetProject(v *Project) *UserProjectCreate {
+	return _c.SetProjectID(v.ID)
 }
 
 // Mutation returns the UserProjectMutation object of the builder.
@@ -206,11 +194,11 @@ func (_c *UserProjectCreate) check() error {
 	if _, ok := _c.mutation.IsOwner(); !ok {
 		return &ValidationError{Name: "is_owner", err: errors.New(`ent: missing required field "UserProject.is_owner"`)}
 	}
-	if len(_c.mutation.UsersIDs()) == 0 {
-		return &ValidationError{Name: "users", err: errors.New(`ent: missing required edge "UserProject.users"`)}
+	if len(_c.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "UserProject.user"`)}
 	}
-	if len(_c.mutation.ProjectsIDs()) == 0 {
-		return &ValidationError{Name: "projects", err: errors.New(`ent: missing required edge "UserProject.projects"`)}
+	if len(_c.mutation.ProjectIDs()) == 0 {
+		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "UserProject.project"`)}
 	}
 	return nil
 }
@@ -259,12 +247,12 @@ func (_c *UserProjectCreate) createSpec() (*UserProject, *sqlgraph.CreateSpec) {
 		_spec.SetField(userproject.FieldScopes, field.TypeJSON, value)
 		_node.Scopes = value
 	}
-	if nodes := _c.mutation.UsersIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
-			Table:   userproject.UsersTable,
-			Columns: []string{userproject.UsersColumn},
+			Table:   userproject.UserTable,
+			Columns: []string{userproject.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
@@ -276,12 +264,12 @@ func (_c *UserProjectCreate) createSpec() (*UserProject, *sqlgraph.CreateSpec) {
 		_node.UserID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.ProjectsIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ProjectIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: false,
-			Table:   userproject.ProjectsTable,
-			Columns: []string{userproject.ProjectsColumn},
+			Table:   userproject.ProjectTable,
+			Columns: []string{userproject.ProjectColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
