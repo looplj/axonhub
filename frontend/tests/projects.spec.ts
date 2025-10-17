@@ -98,6 +98,7 @@ test.describe('Admin Projects Management', () => {
     await expect(verifyMenu).toBeVisible()
     await expect(verifyMenu.getByRole('menuitem', { name: /激活|Activate/i })).toBeVisible()
     await page.keyboard.press('Escape')
+    await expect(verifyMenu).not.toBeVisible()
 
     // Step 4: Activate the project
     await actionsTrigger.click()

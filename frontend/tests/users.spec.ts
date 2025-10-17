@@ -48,15 +48,29 @@ test.describe('Admin Users Management', () => {
     const statusDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
     await expect(statusDialog).toBeVisible()
     await expect(statusDialog).toContainText(/停用|禁用|Deactivate|Disable/i)
+    
+    // Wait for the button to be stable before clicking
+    const deactivateButton = statusDialog.getByRole('button', { name: /停用|激活|Deactivate|Activate|确认|Confirm|保存|Save/i })
+    await expect(deactivateButton).toBeVisible()
+    await expect(deactivateButton).toBeEnabled()
+    
     await Promise.all([
       waitForGraphQLOperation(page, 'UpdateUserStatus'),
-      statusDialog.getByRole('button', { name: /停用|确认|Confirm|保存|Save/i }).click()
+      deactivateButton.click()
     ])
+    
+    // Wait for dialog to close before proceeding
+    await expect(statusDialog).not.toBeVisible()
+    
     // Verify by menu toggle: now it should show Activate
     await actionsTrigger.click()
     const menu2 = page.getByRole('menu')
     await expect(menu2).toBeVisible()
     await expect(menu2.getByRole('menuitem', { name: /激活|Activate|启用/i })).toBeVisible()
+    
+    // Close the menu before reopening
+    await page.keyboard.press('Escape')
+    await expect(menu2).not.toBeVisible()
 
     // Activate user
     await actionsTrigger.click()
@@ -67,13 +81,27 @@ test.describe('Admin Users Management', () => {
     const activateDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
     await expect(activateDialog).toBeVisible()
     await expect(activateDialog).toContainText(/激活|Activate|启用/i)
+    
+    // Wait for the button to be stable before clicking
+    const activateButton = activateDialog.getByRole('button', { name: /激活|Activate|确认|Confirm|保存|Save/i })
+    await expect(activateButton).toBeVisible()
+    await expect(activateButton).toBeEnabled()
+    
     await Promise.all([
       waitForGraphQLOperation(page, 'UpdateUserStatus'),
-      activateDialog.getByRole('button', { name: /激活|Activate|确认|Confirm|保存|Save/i }).click()
+      activateButton.click()
     ])
+    
+    // Wait for dialog to close before proceeding
+    await expect(activateDialog).not.toBeVisible()
+    
     // Verify by menu toggle: now it should show Deactivate/Disable
     await actionsTrigger.click()
     await expect(page.getByRole('menuitem', { name: /停用|禁用|Deactivate|Disable/i })).toBeVisible()
+    
+    // Close the menu before reopening
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('menu')).not.toBeVisible()
 
     // Edit user
     await actionsTrigger.click()
@@ -81,16 +109,25 @@ test.describe('Admin Users Management', () => {
     await expect(menu4).toBeVisible()
     await menu4.getByRole('menuitem', { name: /编辑|Edit/i }).focus()
     await page.keyboard.press('Enter')
-    const editDialog = page.getByRole('dialog')
+    const editDialog = page.getByRole('dialog').or(page.getByRole('alertdialog'))
+    await expect(editDialog).toBeVisible()
     await expect(editDialog).toContainText(/编辑用户|Edit/i)
     const firstNameInput = editDialog.getByLabel(/名|First Name/i)
     await firstNameInput.fill('pw-test-Updated')
 
+    // Wait for the save button to be stable before clicking
+    const saveButton = editDialog.getByRole('button', { name: /保存|Save|更新|Update/i })
+    await expect(saveButton).toBeVisible()
+    await expect(saveButton).toBeEnabled()
+
     await Promise.all([
       waitForGraphQLOperation(page, 'UpdateUser'),
-      editDialog.getByRole('button', { name: /保存|Save|更新|Update/i }).click()
+      saveButton.click()
     ])
 
+    // Wait for edit dialog to close before proceeding
+    await expect(editDialog).not.toBeVisible()
+    
     await expect(row).toContainText('pw-test-Updated')
   })
 })
