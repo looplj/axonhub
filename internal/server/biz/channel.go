@@ -470,3 +470,158 @@ func (svc *ChannelService) ListAllModels(ctx context.Context) []objects.Model {
 
 	return lo.Values(modelSet)
 }
+
+// CreateChannel creates a new channel with the provided input.
+func (svc *ChannelService) CreateChannel(ctx context.Context, input *ent.CreateChannelInput) (*ent.Channel, error) {
+	channel, err := svc.Ent.Channel.Create().
+		SetType(input.Type).
+		SetNillableBaseURL(input.BaseURL).
+		SetName(input.Name).
+		SetCredentials(input.Credentials).
+		SetSupportedModels(input.SupportedModels).
+		SetDefaultTestModel(input.DefaultTestModel).
+		SetSettings(input.Settings).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create channel: %w", err)
+	}
+
+	return channel, nil
+}
+
+// UpdateChannel updates an existing channel with the provided input.
+func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
+	mut := svc.Ent.Channel.UpdateOneID(id).
+		SetNillableBaseURL(input.BaseURL).
+		SetNillableName(input.Name).
+		SetNillableDefaultTestModel(input.DefaultTestModel)
+
+	if input.SupportedModels != nil {
+		mut.SetSupportedModels(input.SupportedModels)
+	}
+
+	if input.Settings != nil {
+		mut.SetSettings(input.Settings)
+	}
+
+	if input.Credentials != nil {
+		mut.SetCredentials(input.Credentials)
+	}
+
+	channel, err := mut.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update channel: %w", err)
+	}
+
+	return channel, nil
+}
+
+// UpdateChannelStatus updates the status of a channel.
+func (svc *ChannelService) UpdateChannelStatus(ctx context.Context, id int, status channel.Status) (*ent.Channel, error) {
+	channel, err := svc.Ent.Channel.UpdateOneID(id).
+		SetStatus(status).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update channel status: %w", err)
+	}
+
+	return channel, nil
+}
+
+// BulkImportChannelItem represents a single channel to be imported.
+type BulkImportChannelItem struct {
+	Type             string
+	Name             string
+	BaseURL          *string
+	APIKey           *string
+	SupportedModels  []string
+	DefaultTestModel string
+}
+
+// BulkImportChannelsResult represents the result of bulk importing channels.
+type BulkImportChannelsResult struct {
+	Success  bool
+	Created  int
+	Failed   int
+	Errors   []string
+	Channels []*ent.Channel
+}
+
+// BulkImportChannels imports multiple channels at once.
+func (svc *ChannelService) BulkImportChannels(ctx context.Context, items []BulkImportChannelItem) (*BulkImportChannelsResult, error) {
+	var (
+		createdChannels []*ent.Channel
+		errors          []string
+	)
+
+	created := 0
+	failed := 0
+
+	for i, item := range items {
+		// Validate channel type
+		channelType := channel.Type(item.Type)
+		if err := channel.TypeValidator(channelType); err != nil {
+			errors = append(errors, fmt.Sprintf("Row %d: Invalid channel type '%s'", i+1, item.Type))
+			failed++
+
+			continue
+		}
+
+		// Validate required fields
+		if item.BaseURL == nil || *item.BaseURL == "" {
+			errors = append(errors, fmt.Sprintf("Row %d (%s): Base URL is required", i+1, item.Name))
+			failed++
+
+			continue
+		}
+
+		if item.APIKey == nil || *item.APIKey == "" {
+			errors = append(errors, fmt.Sprintf("Row %d (%s): API Key is required", i+1, item.Name))
+			failed++
+
+			continue
+		}
+
+		// Prepare credentials (API key is now required)
+		credentials := &objects.ChannelCredentials{
+			APIKey: *item.APIKey,
+		}
+
+		// Create the channel (baseURL is now required)
+		channelBuilder := svc.Ent.Channel.Create().
+			SetType(channelType).
+			SetName(item.Name).
+			SetBaseURL(*item.BaseURL).
+			SetCredentials(credentials).
+			SetSupportedModels(item.SupportedModels).
+			SetDefaultTestModel(item.DefaultTestModel)
+
+		ch, err := channelBuilder.Save(ctx)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Row %d (%s): %s", i+1, item.Name, err.Error()))
+			failed++
+
+			continue
+		}
+
+		createdChannels = append(createdChannels, ch)
+		created++
+	}
+
+	success := failed == 0
+
+	return &BulkImportChannelsResult{
+		Success:  success,
+		Created:  created,
+		Failed:   failed,
+		Errors:   errors,
+		Channels: createdChannels,
+	}, nil
+}
+
+// TestChannelResult represents the result of a channel test.
+type TestChannelResult struct {
+	Latency float64
+	Success bool
+	Error   *string
+}

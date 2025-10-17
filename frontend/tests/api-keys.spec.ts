@@ -3,11 +3,11 @@ import { gotoAndEnsureAuth, waitForGraphQLOperation } from './auth.utils'
 
 test.describe('Admin API Keys Management', () => {
   test.beforeEach(async ({ page }) => {
-    await gotoAndEnsureAuth(page, '/api-keys')
+    await gotoAndEnsureAuth(page, '/project/api-keys')
   })
 
   test('can create, disable, enable an API key', async ({ page }) => {
-    const uniqueName = `playwright-apikey-${Date.now().toString().slice(-6)}`
+    const uniqueName = `pw-test-apikey-${Date.now().toString().slice(-6)}`
 
     const addApiKeyButton = page.getByRole('button', { name: /创建 API Key|Create API Key|新建/i })
     await expect(addApiKeyButton).toBeVisible()
@@ -77,7 +77,5 @@ test.describe('Admin API Keys Management', () => {
     await enableConfirmButton.click()
     await expect(enableDialog).not.toBeVisible({ timeout: 10000 })
     await expect(row).toContainText(/启用|Enabled/i)
-
-    await expect(row).toHaveCount(0)
   })
 })

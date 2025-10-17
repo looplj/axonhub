@@ -13,8 +13,8 @@ test.describe('Dialog Interaction Fix', () => {
     await gotoAndEnsureAuth(page, '/roles')
     
     const uniqueSuffix = Date.now().toString().slice(-5)
-    const roleCode = `test_role_${uniqueSuffix}`
-    const roleName = `Test Role ${uniqueSuffix}`
+    const roleCode = `pw-test-role-${uniqueSuffix}`
+    const roleName = `pw-test-Role ${uniqueSuffix}`
 
     // Create a role
     const createButton = page.getByRole('button', { name: /新建角色|创建角色|Create Role/i })
@@ -40,9 +40,12 @@ test.describe('Dialog Interaction Fix', () => {
     await deleteMenuItem.click()
 
     const deleteDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
+    await expect(deleteDialog).toBeVisible()
+    const deleteButton = deleteDialog.getByRole('button', { name: /删除|Delete|确认|Confirm/i })
+    await expect(deleteButton).toBeVisible()
     await Promise.all([
       waitForGraphQLOperation(page, 'DeleteRole'),
-      deleteDialog.getByRole('button', { name: /删除|Delete|确认|Confirm/i }).click()
+      deleteButton.click()
     ])
 
     await expect(deleteDialog).not.toBeVisible({ timeout: 5000 })

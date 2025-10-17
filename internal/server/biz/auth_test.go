@@ -9,7 +9,6 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -25,13 +24,13 @@ func TestHashPassword(t *testing.T) {
 
 	hashedPassword, err := HashPassword(password)
 	require.NoError(t, err)
-	assert.NotEmpty(t, hashedPassword)
-	assert.NotEqual(t, password, hashedPassword)
+	require.NotEmpty(t, hashedPassword)
+	require.NotEqual(t, password, hashedPassword)
 
 	// Test that same password produces different hashes (due to salt)
 	hashedPassword2, err := HashPassword(password)
 	require.NoError(t, err)
-	assert.NotEqual(t, hashedPassword, hashedPassword2)
+	require.NotEqual(t, hashedPassword, hashedPassword2)
 }
 
 func TestVerifyPassword(t *testing.T) {
@@ -43,32 +42,32 @@ func TestVerifyPassword(t *testing.T) {
 
 	// Test correct password
 	err = VerifyPassword(hashedPassword, password)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test wrong password
 	err = VerifyPassword(hashedPassword, wrongPassword)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Test invalid hash
 	err = VerifyPassword("invalid-hash", password)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestGenerateSecretKey(t *testing.T) {
 	secretKey, err := GenerateSecretKey()
 	require.NoError(t, err)
-	assert.NotEmpty(t, secretKey)
-	assert.Len(t, secretKey, 64) // 32 bytes * 2 (hex encoding)
+	require.NotEmpty(t, secretKey)
+	require.Len(t, secretKey, 64) // 32 bytes * 2 (hex encoding)
 
 	// Test that multiple calls produce different keys
 	secretKey2, err := GenerateSecretKey()
 	require.NoError(t, err)
-	assert.NotEqual(t, secretKey, secretKey2)
+	require.NotEqual(t, secretKey, secretKey2)
 }
 
 func setupTestDB(t *testing.T) *ent.Client {
 	t.Helper()
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	return client
 }
@@ -143,7 +142,7 @@ func TestAuthService_GenerateJWTToken(t *testing.T) {
 	// Generate JWT token
 	token, err := authService.GenerateJWTToken(ctx, testUser)
 	require.NoError(t, err)
-	assert.NotEmpty(t, token)
+	require.NotEmpty(t, token)
 
 	// Get the actual secret key for validation
 	secretKey, err := authService.SystemService.SecretKey(ctx)
@@ -160,11 +159,11 @@ func TestAuthService_GenerateJWTToken(t *testing.T) {
 
 	userID, ok := claims["user_id"].(float64)
 	require.True(t, ok)
-	assert.Equal(t, float64(testUser.ID), userID)
+	require.Equal(t, float64(testUser.ID), userID)
 
 	exp, ok := claims["exp"].(float64)
 	require.True(t, ok)
-	assert.True(t, exp > float64(time.Now().Unix()))
+	require.True(t, exp > float64(time.Now().Unix()))
 }
 
 func TestAuthService_AuthenticateUser(t *testing.T) {
@@ -203,26 +202,26 @@ func TestAuthService_AuthenticateUser(t *testing.T) {
 	// Test successful authentication
 	authenticatedUser, err := authService.AuthenticateUser(ctx, "test@example.com", password)
 	require.NoError(t, err)
-	assert.Equal(t, testUser.ID, authenticatedUser.ID)
-	assert.Equal(t, testUser.Email, authenticatedUser.Email)
+	require.Equal(t, testUser.ID, authenticatedUser.ID)
+	require.Equal(t, testUser.Email, authenticatedUser.Email)
 
 	// Test wrong password
 	_, err = authService.AuthenticateUser(ctx, "test@example.com", "wrong-password")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid email or password")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid email or password")
 
 	// Test non-existent user
 	_, err = authService.AuthenticateUser(ctx, "nonexistent@example.com", password)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid email or password")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid email or password")
 
 	// Test deactivated user
 	_, err = authService.UserService.UpdateUserStatus(ctx, testUser.ID, user.StatusDeactivated)
 	require.NoError(t, err)
 
 	_, err = authService.AuthenticateUser(ctx, "test@example.com", password)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid email or password")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid email or password")
 }
 
 func TestAuthService_AuthenticateJWTToken(t *testing.T) {
@@ -264,18 +263,18 @@ func TestAuthService_AuthenticateJWTToken(t *testing.T) {
 	// Test successful JWT authentication
 	authenticatedUser, err := authService.AuthenticateJWTToken(ctx, tokenString)
 	require.NoError(t, err)
-	assert.Equal(t, testUser.ID, authenticatedUser.ID)
-	assert.Equal(t, testUser.Email, authenticatedUser.Email)
+	require.Equal(t, testUser.ID, authenticatedUser.ID)
+	require.Equal(t, testUser.Email, authenticatedUser.Email)
 
 	// Test cache hit - second call should use cache
 	authenticatedUser2, err := authService.AuthenticateJWTToken(ctx, tokenString)
 	require.NoError(t, err)
-	assert.Equal(t, testUser.ID, authenticatedUser2.ID)
+	require.Equal(t, testUser.ID, authenticatedUser2.ID)
 
 	// Test invalid token
 	_, err = authService.AuthenticateJWTToken(ctx, "invalid-token")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to parse jwt token")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to parse jwt token")
 
 	// Test expired token (create manually)
 	expiredClaims := jwt.MapClaims{
@@ -292,7 +291,7 @@ func TestAuthService_AuthenticateJWTToken(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = authService.AuthenticateJWTToken(ctx, expiredTokenString)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Test deactivated user
 	_, err = authService.UserService.UpdateUserStatus(ctx, testUser.ID, user.StatusDeactivated)
@@ -303,8 +302,8 @@ func TestAuthService_AuthenticateJWTToken(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = authService.AuthenticateJWTToken(ctx, newTokenString)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "user not activated")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "user not activated")
 }
 
 func TestAuthService_AnthenticateAPIKey(t *testing.T) {
@@ -365,26 +364,26 @@ func TestAuthService_AnthenticateAPIKey(t *testing.T) {
 	// Test successful API key authentication
 	authenticatedAPIKey, err := authService.AnthenticateAPIKey(ctx, apiKeyString)
 	require.NoError(t, err)
-	assert.Equal(t, apiKey.ID, authenticatedAPIKey.ID)
-	assert.Equal(t, apiKey.Key, authenticatedAPIKey.Key)
+	require.Equal(t, apiKey.ID, authenticatedAPIKey.ID)
+	require.Equal(t, apiKey.Key, authenticatedAPIKey.Key)
 
 	// Test cache behavior - second call should still work (even with noop cache)
 	authenticatedAPIKey2, err := authService.AnthenticateAPIKey(ctx, apiKeyString)
 	require.NoError(t, err)
-	assert.Equal(t, apiKey.ID, authenticatedAPIKey2.ID)
+	require.Equal(t, apiKey.ID, authenticatedAPIKey2.ID)
 
 	// Test invalid API key
 	_, err = authService.AnthenticateAPIKey(ctx, "invalid-api-key")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get api key")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to get api key")
 
 	// Test disabled API key
 	_, err = authService.APIKeyService.UpdateAPIKeyStatus(ctx, apiKey.ID, "disabled")
 	require.NoError(t, err)
 
 	_, err = authService.AnthenticateAPIKey(ctx, apiKeyString)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "api key not enabled")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "api key not enabled")
 
 	// Test API key with deactivated user
 	// First, re-enable the API key
@@ -396,8 +395,8 @@ func TestAuthService_AnthenticateAPIKey(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = authService.AnthenticateAPIKey(ctx, apiKeyString)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "api key owner not valid")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "api key owner not valid")
 }
 
 func TestAuthService_WithDifferentCacheConfigs(t *testing.T) {
@@ -461,12 +460,12 @@ func TestAuthService_WithDifferentCacheConfigs(t *testing.T) {
 
 			authenticatedUser, err := authService.AuthenticateJWTToken(ctx, tokenString)
 			require.NoError(t, err)
-			assert.Equal(t, testUser.ID, authenticatedUser.ID)
+			require.Equal(t, testUser.ID, authenticatedUser.ID)
 
 			// Test user authentication
 			authenticatedUser2, err := authService.AuthenticateUser(ctx, "test@example.com", "test-password")
 			require.NoError(t, err)
-			assert.Equal(t, testUser.ID, authenticatedUser2.ID)
+			require.Equal(t, testUser.ID, authenticatedUser2.ID)
 		})
 	}
 }
@@ -536,7 +535,7 @@ func TestAuthService_CacheExpiration(t *testing.T) {
 	// First call - should cache the result
 	authenticatedAPIKey, err := authService.AnthenticateAPIKey(ctx, apiKeyString)
 	require.NoError(t, err)
-	assert.Equal(t, apiKey.ID, authenticatedAPIKey.ID)
+	require.Equal(t, apiKey.ID, authenticatedAPIKey.ID)
 
 	// Wait for cache expiration
 	time.Sleep(150 * time.Millisecond)
@@ -544,5 +543,5 @@ func TestAuthService_CacheExpiration(t *testing.T) {
 	// Second call - cache should be expired, should hit database again
 	authenticatedAPIKey2, err := authService.AnthenticateAPIKey(ctx, apiKeyString)
 	require.NoError(t, err)
-	assert.Equal(t, apiKey.ID, authenticatedAPIKey2.ID)
+	require.Equal(t, apiKey.ID, authenticatedAPIKey2.ID)
 }

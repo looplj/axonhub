@@ -4,7 +4,7 @@ import { gotoAndEnsureAuth } from './auth.utils';
 test.describe('Usage Logs Management', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the usage logs page with authentication
-    await gotoAndEnsureAuth(page, '/usage-logs');
+    await gotoAndEnsureAuth(page, '/project/usage-logs');
   });
 
   test('should display usage logs page with correct title', async ({ page }) => {
@@ -35,11 +35,11 @@ test.describe('Usage Logs Management', () => {
 
   test('should have refresh button', async ({ page }) => {
     // Wait for the page to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     
-    // Check if the refresh button is present
-    const refreshButton = page.locator('button').filter({ hasText: /Refresh|刷新|重新加载/i });
-    await expect(refreshButton).toBeVisible();
+    // Check if the refresh button is present - it should contain both icon and text
+    const refreshButton = page.getByRole('button', { name: /Refresh|刷新/i });
+    await expect(refreshButton).toBeVisible({ timeout: 10000 });
   });
 
   test('should have filtering capabilities', async ({ page }) => {

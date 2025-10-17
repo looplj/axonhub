@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -17,7 +16,7 @@ import (
 )
 
 func TestSystemService_Initialize(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
 	service := NewSystemService(SystemServiceParams{})
@@ -94,7 +93,7 @@ func TestSystemService_Initialize(t *testing.T) {
 }
 
 func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
 	service := NewSystemService(SystemServiceParams{})
@@ -111,7 +110,7 @@ func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 
 func setupTestSystemService(t *testing.T, cacheConfig xcache.Config) (*SystemService, *ent.Client) {
 	t.Helper()
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	systemService := &SystemService{
 		Cache: xcache.NewFromConfig[ent.System](cacheConfig),
@@ -140,12 +139,12 @@ func TestSystemService_WithMemoryCache(t *testing.T) {
 	// First call should hit database and cache the result
 	retrievedValue, err := service.getSystemValue(ctx, testKey)
 	require.NoError(t, err)
-	assert.Equal(t, testValue, retrievedValue)
+	require.Equal(t, testValue, retrievedValue)
 
 	// Second call should hit cache
 	retrievedValue2, err := service.getSystemValue(ctx, testKey)
 	require.NoError(t, err)
-	assert.Equal(t, testValue, retrievedValue2)
+	require.Equal(t, testValue, retrievedValue2)
 
 	// Update value should invalidate cache
 	newValue := "new_test_value"
@@ -155,7 +154,7 @@ func TestSystemService_WithMemoryCache(t *testing.T) {
 	// Should get updated value
 	retrievedValue3, err := service.getSystemValue(ctx, testKey)
 	require.NoError(t, err)
-	assert.Equal(t, newValue, retrievedValue3)
+	require.Equal(t, newValue, retrievedValue3)
 }
 
 func TestSystemService_WithRedisCache(t *testing.T) {
@@ -183,7 +182,7 @@ func TestSystemService_WithRedisCache(t *testing.T) {
 
 	retrievedBrandName, err := service.BrandName(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, brandName, retrievedBrandName)
+	require.Equal(t, brandName, retrievedBrandName)
 
 	// Test brand logo functionality
 	brandLogo := "base64encodedlogo"
@@ -192,7 +191,7 @@ func TestSystemService_WithRedisCache(t *testing.T) {
 
 	retrievedBrandLogo, err := service.BrandLogo(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, brandLogo, retrievedBrandLogo)
+	require.Equal(t, brandLogo, retrievedBrandLogo)
 }
 
 func TestSystemService_WithTwoLevelCache(t *testing.T) {
@@ -220,7 +219,7 @@ func TestSystemService_WithTwoLevelCache(t *testing.T) {
 
 	retrievedSecretKey, err := service.SecretKey(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, secretKey, retrievedSecretKey)
+	require.Equal(t, secretKey, retrievedSecretKey)
 }
 
 func TestSystemService_WithNoopCache(t *testing.T) {
@@ -242,10 +241,10 @@ func TestSystemService_WithNoopCache(t *testing.T) {
 
 	retrievedValue, err := service.getSystemValue(ctx, testKey)
 	require.NoError(t, err)
-	assert.Equal(t, testValue, retrievedValue)
+	require.Equal(t, testValue, retrievedValue)
 
 	// Cache should be noop, so every call hits database
-	assert.Equal(t, "noop", service.Cache.GetType())
+	require.Equal(t, "noop", service.Cache.GetType())
 }
 
 func TestSystemService_StoragePolicy(t *testing.T) {
@@ -283,10 +282,10 @@ func TestSystemService_StoragePolicy(t *testing.T) {
 	// Test getting the storage policy
 	policy, err := service.StoragePolicy(ctx)
 	require.NoError(t, err)
-	assert.False(t, policy.StoreChunks)
-	assert.True(t, policy.StoreRequestBody)
-	assert.True(t, policy.StoreResponseBody)
-	assert.Len(t, policy.CleanupOptions, 2)
+	require.False(t, policy.StoreChunks)
+	require.True(t, policy.StoreRequestBody)
+	require.True(t, policy.StoreResponseBody)
+	require.Len(t, policy.CleanupOptions, 2)
 
 	// Test setting custom storage policy
 	customPolicy := &StoragePolicy{
@@ -307,16 +306,16 @@ func TestSystemService_StoragePolicy(t *testing.T) {
 
 	retrievedPolicy, err := service.StoragePolicy(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, customPolicy.StoreChunks, retrievedPolicy.StoreChunks)
-	assert.Equal(t, customPolicy.StoreRequestBody, retrievedPolicy.StoreRequestBody)
-	assert.Equal(t, customPolicy.StoreResponseBody, retrievedPolicy.StoreResponseBody)
-	assert.Len(t, retrievedPolicy.CleanupOptions, 1)
-	assert.Equal(t, "custom_resource", retrievedPolicy.CleanupOptions[0].ResourceType)
+	require.Equal(t, customPolicy.StoreChunks, retrievedPolicy.StoreChunks)
+	require.Equal(t, customPolicy.StoreRequestBody, retrievedPolicy.StoreRequestBody)
+	require.Equal(t, customPolicy.StoreResponseBody, retrievedPolicy.StoreResponseBody)
+	require.Len(t, retrievedPolicy.CleanupOptions, 1)
+	require.Equal(t, "custom_resource", retrievedPolicy.CleanupOptions[0].ResourceType)
 
 	// Test StoreChunks convenience method
 	storeChunks, err := service.StoreChunks(ctx)
 	require.NoError(t, err)
-	assert.True(t, storeChunks)
+	require.True(t, storeChunks)
 }
 
 func TestSystemService_Initialize_WithCache(t *testing.T) {
@@ -351,19 +350,19 @@ func TestSystemService_Initialize_WithCache(t *testing.T) {
 	// Verify system is initialized
 	isInitialized, err := service.IsInitialized(ctx)
 	require.NoError(t, err)
-	assert.True(t, isInitialized)
+	require.True(t, isInitialized)
 
 	// Verify secret key is cached
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	secretKey, err := service.SecretKey(ctx)
 	require.NoError(t, err)
-	assert.NotEmpty(t, secretKey)
-	assert.Len(t, secretKey, 64)
+	require.NotEmpty(t, secretKey)
+	require.Len(t, secretKey, 64)
 
 	// Verify brand name is set and cached
 	brandName, err := service.BrandName(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, args.BrandName, brandName)
+	require.Equal(t, args.BrandName, brandName)
 
 	// Test idempotency with cache
 	err = service.Initialize(ctx, args)
@@ -372,7 +371,7 @@ func TestSystemService_Initialize_WithCache(t *testing.T) {
 	// Values should remain the same
 	secretKey2, err := service.SecretKey(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, secretKey, secretKey2)
+	require.Equal(t, secretKey, secretKey2)
 }
 
 func TestSystemService_CacheExpiration(t *testing.T) {
@@ -404,7 +403,7 @@ func TestSystemService_CacheExpiration(t *testing.T) {
 	// First call should cache the result
 	retrievedValue, err := service.getSystemValue(ctx, testKey)
 	require.NoError(t, err)
-	assert.Equal(t, testValue, retrievedValue)
+	require.Equal(t, testValue, retrievedValue)
 
 	// Wait for cache expiration
 	time.Sleep(150 * time.Millisecond)
@@ -412,7 +411,7 @@ func TestSystemService_CacheExpiration(t *testing.T) {
 	// Should still work (will hit database again)
 	retrievedValue2, err := service.getSystemValue(ctx, testKey)
 	require.NoError(t, err)
-	assert.Equal(t, testValue, retrievedValue2)
+	require.Equal(t, testValue, retrievedValue2)
 }
 
 func TestSystemService_InvalidStoragePolicyJSON(t *testing.T) {
@@ -434,8 +433,8 @@ func TestSystemService_InvalidStoragePolicyJSON(t *testing.T) {
 
 	// Should return error when trying to parse invalid JSON
 	_, err = service.StoragePolicy(ctx)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to unmarshal storage policy")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to unmarshal storage policy")
 }
 
 func TestSystemService_BackwardCompatibility(t *testing.T) {
@@ -472,10 +471,10 @@ func TestSystemService_BackwardCompatibility(t *testing.T) {
 	// Should handle backward compatibility
 	policy, err := service.StoragePolicy(ctx)
 	require.NoError(t, err)
-	assert.True(t, policy.StoreChunks)
-	assert.True(t, policy.StoreRequestBody)  // Should default to true
-	assert.True(t, policy.StoreResponseBody) // Should default to true
-	assert.Len(t, policy.CleanupOptions, 1)
+	require.True(t, policy.StoreChunks)
+	require.True(t, policy.StoreRequestBody)  // Should default to true
+	require.True(t, policy.StoreResponseBody) // Should default to true
+	require.Len(t, policy.CleanupOptions, 1)
 }
 
 func TestSystemService_GetSystemValue_NotFound(t *testing.T) {
@@ -492,7 +491,7 @@ func TestSystemService_GetSystemValue_NotFound(t *testing.T) {
 	value, err := service.getSystemValue(ctx, "non-existent-key")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to get system value")
-	assert.Empty(t, value) // Should return empty string when error occurs
+	require.Empty(t, value) // Should return empty string when error occurs
 }
 
 func TestSystemService_BrandName_NotSet(t *testing.T) {
@@ -508,7 +507,7 @@ func TestSystemService_BrandName_NotSet(t *testing.T) {
 	// Brand name not set should return empty string
 	brandName, err := service.BrandName(ctx)
 	require.NoError(t, err)
-	assert.Empty(t, brandName)
+	require.Empty(t, brandName)
 }
 
 func TestSystemService_BrandLogo_NotSet(t *testing.T) {
@@ -523,5 +522,5 @@ func TestSystemService_BrandLogo_NotSet(t *testing.T) {
 	// Brand logo not set should return empty string
 	brandLogo, err := service.BrandLogo(ctx)
 	require.NoError(t, err)
-	assert.Empty(t, brandLogo)
+	require.Empty(t, brandLogo)
 }
