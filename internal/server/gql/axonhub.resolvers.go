@@ -15,7 +15,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
-	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/chat"
@@ -23,59 +22,17 @@ import (
 
 // CreateChannel is the resolver for the createChannel field.
 func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
-	channel, err := r.client.Channel.Create().
-		SetType(input.Type).
-		SetNillableBaseURL(input.BaseURL).
-		SetName(input.Name).
-		SetCredentials(input.Credentials).
-		SetSupportedModels(input.SupportedModels).
-		SetDefaultTestModel(input.DefaultTestModel).
-		SetSettings(input.Settings).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create channel: %w", err)
-	}
-
-	return channel, nil
+	return r.channelService.CreateChannel(ctx, &input)
 }
 
 // UpdateChannel is the resolver for the updateChannel field.
 func (r *mutationResolver) UpdateChannel(ctx context.Context, id objects.GUID, input ent.UpdateChannelInput) (*ent.Channel, error) {
-	mut := r.client.Channel.UpdateOneID(id.ID).
-		SetNillableBaseURL(input.BaseURL).
-		SetNillableName(input.Name).
-		SetNillableDefaultTestModel(input.DefaultTestModel)
-
-	if input.SupportedModels != nil {
-		mut.SetSupportedModels(input.SupportedModels)
-	}
-
-	if input.Settings != nil {
-		mut.SetSettings(input.Settings)
-	}
-
-	if input.Credentials != nil {
-		mut.SetCredentials(input.Credentials)
-	}
-
-	channel, err := mut.Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update channel: %w", err)
-	}
-
-	return channel, nil
+	return r.channelService.UpdateChannel(ctx, id.ID, &input)
 }
 
 // UpdateChannelStatus is the resolver for the updateChannelStatus field.
 func (r *mutationResolver) UpdateChannelStatus(ctx context.Context, id objects.GUID, status channel.Status) (*ent.Channel, error) {
-	channel, err := r.client.Channel.UpdateOneID(id.ID).
-		SetStatus(status).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update channel status: %w", err)
-	}
-
-	return channel, nil
+	return r.channelService.UpdateChannelStatus(ctx, id.ID, status)
 }
 
 // TestChannel is the resolver for the testChannel field.
@@ -99,73 +56,30 @@ func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInp
 
 // BulkImportChannels is the resolver for the bulkImportChannels field.
 func (r *mutationResolver) BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*BulkImportChannelsResult, error) {
-	var (
-		createdChannels []*ent.Channel
-		errors          []string
-	)
-
-	created := 0
-	failed := 0
-
+	// Convert GraphQL input to biz layer input
+	items := make([]biz.BulkImportChannelItem, len(input.Channels))
 	for i, item := range input.Channels {
-		// Validate channel type
-		channelType := channel.Type(item.Type)
-		if err := channel.TypeValidator(channelType); err != nil {
-			errors = append(errors, fmt.Sprintf("Row %d: Invalid channel type '%s'", i+1, item.Type))
-			failed++
-
-			continue
+		items[i] = biz.BulkImportChannelItem{
+			Type:             item.Type,
+			Name:             item.Name,
+			BaseURL:          item.BaseURL,
+			APIKey:           item.APIKey,
+			SupportedModels:  item.SupportedModels,
+			DefaultTestModel: item.DefaultTestModel,
 		}
-
-		// Validate required fields
-		if item.BaseURL == nil || *item.BaseURL == "" {
-			errors = append(errors, fmt.Sprintf("Row %d (%s): Base URL is required", i+1, item.Name))
-			failed++
-
-			continue
-		}
-
-		if item.APIKey == nil || *item.APIKey == "" {
-			errors = append(errors, fmt.Sprintf("Row %d (%s): API Key is required", i+1, item.Name))
-			failed++
-
-			continue
-		}
-
-		// Prepare credentials (API key is now required)
-		credentials := &objects.ChannelCredentials{
-			APIKey: *item.APIKey,
-		}
-
-		// Create the channel (baseURL is now required)
-		channelBuilder := r.client.Channel.Create().
-			SetType(channelType).
-			SetName(item.Name).
-			SetBaseURL(*item.BaseURL).
-			SetCredentials(credentials).
-			SetSupportedModels(item.SupportedModels).
-			SetDefaultTestModel(item.DefaultTestModel)
-
-		channel, err := channelBuilder.Save(ctx)
-		if err != nil {
-			errors = append(errors, fmt.Sprintf("Row %d (%s): %s", i+1, item.Name, err.Error()))
-			failed++
-
-			continue
-		}
-
-		createdChannels = append(createdChannels, channel)
-		created++
 	}
 
-	success := failed == 0
+	result, err := r.channelService.BulkImportChannels(ctx, items)
+	if err != nil {
+		return nil, err
+	}
 
 	return &BulkImportChannelsResult{
-		Success:  success,
-		Created:  created,
-		Failed:   failed,
-		Errors:   errors,
-		Channels: createdChannels,
+		Success:  result.Success,
+		Created:  result.Created,
+		Failed:   result.Failed,
+		Errors:   result.Errors,
+		Channels: result.Channels,
 	}, nil
 }
 
@@ -284,59 +198,15 @@ func (r *mutationResolver) UpdateProjectStatus(ctx context.Context, id objects.G
 
 // AddUserToProject is the resolver for the addUserToProject field.
 func (r *mutationResolver) AddUserToProject(ctx context.Context, input AddUserToProjectInput) (*ent.UserProject, error) {
-	// Create the project user relationship
-	mut := r.client.UserProject.Create().
-		SetUserID(input.UserID.ID).
-		SetProjectID(input.ProjectID.ID)
-
-	if input.IsOwner != nil {
-		mut.SetIsOwner(*input.IsOwner)
-	}
-
-	if input.Scopes != nil {
-		mut.SetScopes(input.Scopes)
-	}
-
-	userProject, err := mut.Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add user to project: %w", err)
-	}
-
-	// Add roles if provided
-	if len(input.RoleIDs) > 0 {
-		roleIDs := objects.IntGuids(input.RoleIDs)
-
-		user, err := r.client.User.Get(ctx, input.UserID.ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get user: %w", err)
-		}
-
-		err = user.Update().AddRoleIDs(roleIDs...).Exec(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to add roles to user: %w", err)
-		}
-	}
-
-	return userProject, nil
+	roleIDs := objects.IntGuids(input.RoleIDs)
+	return r.userService.AddUserToProject(ctx, input.UserID.ID, input.ProjectID.ID, input.IsOwner, input.Scopes, roleIDs)
 }
 
 // RemoveUserFromProject is the resolver for the removeUserFromProject field.
 func (r *mutationResolver) RemoveUserFromProject(ctx context.Context, input RemoveUserFromProjectInput) (bool, error) {
-	// Find the UserProject relationship
-	userProject, err := r.client.UserProject.Query().
-		Where(
-			userproject.UserID(input.UserID.ID),
-			userproject.ProjectID(input.ProjectID.ID),
-		).
-		Only(ctx)
+	err := r.userService.RemoveUserFromProject(ctx, input.UserID.ID, input.ProjectID.ID)
 	if err != nil {
-		return false, fmt.Errorf("failed to find user project relationship: %w", err)
-	}
-
-	// Delete the relationship (soft delete if enabled)
-	err = r.client.UserProject.DeleteOne(userProject).Exec(ctx)
-	if err != nil {
-		return false, fmt.Errorf("failed to remove user from project: %w", err)
+		return false, err
 	}
 
 	return true, nil
@@ -344,51 +214,10 @@ func (r *mutationResolver) RemoveUserFromProject(ctx context.Context, input Remo
 
 // UpdateProjectUser is the resolver for the updateProjectUser field.
 func (r *mutationResolver) UpdateProjectUser(ctx context.Context, input UpdateProjectUserInput) (*ent.UserProject, error) {
-	// Find the UserProject relationship
-	userProject, err := r.client.UserProject.Query().
-		Where(
-			userproject.UserID(input.UserID.ID),
-			userproject.ProjectID(input.ProjectID.ID),
-		).
-		Only(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find user project relationship: %w", err)
-	}
+	addRoleIDs := objects.IntGuids(input.AddRoleIDs)
+	removeRoleIDs := objects.IntGuids(input.RemoveRoleIDs)
 
-	// Update the UserProject (note: isOwner is immutable, so we can only update scopes)
-	mut := userProject.Update()
-
-	if input.Scopes != nil {
-		mut.SetScopes(input.Scopes)
-	}
-
-	userProject, err = mut.Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update project user: %w", err)
-	}
-
-	// Update roles if provided
-	user, err := r.client.User.Get(ctx, input.UserID.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %w", err)
-	}
-
-	userMut := user.Update()
-
-	if len(input.AddRoleIDs) > 0 {
-		userMut.AddRoleIDs(objects.IntGuids(input.AddRoleIDs)...)
-	}
-
-	if len(input.RemoveRoleIDs) > 0 {
-		userMut.RemoveRoleIDs(objects.IntGuids(input.RemoveRoleIDs)...)
-	}
-
-	err = userMut.Exec(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update user roles: %w", err)
-	}
-
-	return userProject, nil
+	return r.userService.UpdateProjectUser(ctx, input.UserID.ID, input.ProjectID.ID, input.Scopes, addRoleIDs, removeRoleIDs)
 }
 
 // FetchModels is the resolver for the fetchModels field.

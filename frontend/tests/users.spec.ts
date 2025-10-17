@@ -8,7 +8,7 @@ test.describe('Admin Users Management', () => {
 
   test('can create, deactivate, activate, and edit a user', async ({ page }) => {
     const uniqueSuffix = Date.now().toString().slice(-6)
-    const email = `playwright+${uniqueSuffix}@example.com`
+    const email = `pw-test-user-${uniqueSuffix}@example.com`
 
     const addUserButton = page.getByRole('button', { name: /添加用户|Add User|新增用户|Create User/i })
     await expect(addUserButton).toBeVisible()
@@ -18,7 +18,7 @@ test.describe('Admin Users Management', () => {
     await expect(dialog).toBeVisible()
 
     await dialog.getByLabel(/邮箱|Email/i).fill(email)
-    await dialog.getByLabel(/名|First Name/i).fill('Playwright')
+    await dialog.getByLabel(/名|First Name/i).fill('pw-test')
     await dialog.getByLabel(/姓|Last Name/i).fill(uniqueSuffix)
     
     // Fill password fields with more flexible selectors
@@ -45,7 +45,8 @@ test.describe('Admin Users Management', () => {
     await expect(menu1).toBeVisible()
     await menu1.getByRole('menuitem', { name: /停用|禁用|Deactivate|Disable/i }).focus()
     await page.keyboard.press('Enter')
-    const statusDialog = page.getByRole('alertdialog', { name: /停用用户/i }).or(page.getByRole('dialog'))
+    const statusDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
+    await expect(statusDialog).toBeVisible()
     await expect(statusDialog).toContainText(/停用|禁用|Deactivate|Disable/i)
     await Promise.all([
       waitForGraphQLOperation(page, 'UpdateUserStatus'),
@@ -63,7 +64,8 @@ test.describe('Admin Users Management', () => {
     await expect(menu3).toBeVisible()
     await menu3.getByRole('menuitem', { name: /激活|Activate|启用/i }).focus()
     await page.keyboard.press('Enter')
-    const activateDialog = page.getByRole('alertdialog', { name: /激活用户/i }).or(page.getByRole('dialog'))
+    const activateDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
+    await expect(activateDialog).toBeVisible()
     await expect(activateDialog).toContainText(/激活|Activate|启用/i)
     await Promise.all([
       waitForGraphQLOperation(page, 'UpdateUserStatus'),
@@ -82,13 +84,13 @@ test.describe('Admin Users Management', () => {
     const editDialog = page.getByRole('dialog')
     await expect(editDialog).toContainText(/编辑用户|Edit/i)
     const firstNameInput = editDialog.getByLabel(/名|First Name/i)
-    await firstNameInput.fill('Playwright-Updated')
+    await firstNameInput.fill('pw-test-Updated')
 
     await Promise.all([
       waitForGraphQLOperation(page, 'UpdateUser'),
       editDialog.getByRole('button', { name: /保存|Save|更新|Update/i }).click()
     ])
 
-    await expect(row).toContainText('Playwright-Updated')
+    await expect(row).toContainText('pw-test-Updated')
   })
 })

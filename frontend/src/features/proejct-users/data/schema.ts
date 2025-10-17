@@ -11,7 +11,7 @@ export const projectUserSchema = z.object({
   projectID: z.string(),
   isOwner: z.boolean(),
   scopes: z.array(z.string()).optional().nullable(),
-  users: z.object({
+  user: z.object({
     id: z.string(),
     createdAt: z.string(),
     updatedAt: z.string(),

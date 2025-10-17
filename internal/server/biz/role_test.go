@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -17,7 +16,7 @@ import (
 
 func setupTestRoleService(t *testing.T) (*RoleService, *ent.Client) {
 	t.Helper()
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	roleService := &RoleService{}
 
@@ -41,11 +40,11 @@ func TestCreateRole(t *testing.T) {
 
 		createdRole, err := roleService.CreateRole(ctx, input)
 		require.NoError(t, err)
-		assert.NotNil(t, createdRole)
-		assert.Equal(t, "admin", createdRole.Code)
-		assert.Equal(t, "Administrator", createdRole.Name)
-		assert.ElementsMatch(t, []string{"manage_users", "manage_projects"}, createdRole.Scopes)
-		assert.Nil(t, createdRole.ProjectID)
+		require.NotNil(t, createdRole)
+		require.Equal(t, "admin", createdRole.Code)
+		require.Equal(t, "Administrator", createdRole.Name)
+		require.ElementsMatch(t, []string{"manage_users", "manage_projects"}, createdRole.Scopes)
+		require.Nil(t, createdRole.ProjectID)
 	})
 
 	t.Run("create project-specific role successfully", func(t *testing.T) {
@@ -65,11 +64,11 @@ func TestCreateRole(t *testing.T) {
 
 		createdRole, err := roleService.CreateRole(ctx, input)
 		require.NoError(t, err)
-		assert.NotNil(t, createdRole)
-		assert.Equal(t, "project_admin", createdRole.Code)
-		assert.Equal(t, "Project Administrator", createdRole.Name)
-		assert.NotNil(t, createdRole.ProjectID)
-		assert.Equal(t, project.ID, *createdRole.ProjectID)
+		require.NotNil(t, createdRole)
+		require.Equal(t, "project_admin", createdRole.Code)
+		require.Equal(t, "Project Administrator", createdRole.Name)
+		require.NotNil(t, createdRole.ProjectID)
+		require.Equal(t, project.ID, *createdRole.ProjectID)
 	})
 
 	t.Run("fail to create role with duplicate code", func(t *testing.T) {
@@ -112,9 +111,9 @@ func TestUpdateRole(t *testing.T) {
 
 		updatedRole, err := roleService.UpdateRole(ctx, createdRole.ID, input)
 		require.NoError(t, err)
-		assert.NotNil(t, updatedRole)
-		assert.Equal(t, "Senior Editor", updatedRole.Name)
-		assert.Equal(t, "editor", updatedRole.Code) // Code should remain unchanged
+		require.NotNil(t, updatedRole)
+		require.Equal(t, "Senior Editor", updatedRole.Name)
+		require.Equal(t, "editor", updatedRole.Code) // Code should remain unchanged
 	})
 
 	t.Run("update role scopes successfully", func(t *testing.T) {
@@ -125,8 +124,8 @@ func TestUpdateRole(t *testing.T) {
 
 		updatedRole, err := roleService.UpdateRole(ctx, createdRole.ID, input)
 		require.NoError(t, err)
-		assert.NotNil(t, updatedRole)
-		assert.ElementsMatch(t, newScopes, updatedRole.Scopes)
+		require.NotNil(t, updatedRole)
+		require.ElementsMatch(t, newScopes, updatedRole.Scopes)
 	})
 
 	t.Run("fail to update non-existent role", func(t *testing.T) {
@@ -166,7 +165,7 @@ func TestDeleteRole(t *testing.T) {
 			Where(role.IDEQ(testRole.ID)).
 			Exist(ctx)
 		require.NoError(t, err)
-		assert.False(t, exists)
+		require.False(t, exists)
 	})
 
 	t.Run("delete role with users successfully", func(t *testing.T) {
@@ -211,7 +210,7 @@ func TestDeleteRole(t *testing.T) {
 			Where(userrole.RoleID(testRole.ID)).
 			Count(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 2, count)
+		require.Equal(t, 2, count)
 
 		// Delete the role
 		err = roleService.DeleteRole(ctx, testRole.ID)
@@ -222,33 +221,33 @@ func TestDeleteRole(t *testing.T) {
 			Where(role.IDEQ(testRole.ID)).
 			Exist(ctx)
 		require.NoError(t, err)
-		assert.False(t, exists)
+		require.False(t, exists)
 
 		// Verify UserRole relationships are deleted
 		count, err = client.UserRole.Query().
 			Where(userrole.RoleID(testRole.ID)).
 			Count(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 0, count)
+		require.Equal(t, 0, count)
 
 		// Verify users still exist
 		exists, err = client.User.Query().
 			Where(user.IDEQ(user1.ID)).
 			Exist(ctx)
 		require.NoError(t, err)
-		assert.True(t, exists)
+		require.True(t, exists)
 
 		exists, err = client.User.Query().
 			Where(user.IDEQ(user2.ID)).
 			Exist(ctx)
 		require.NoError(t, err)
-		assert.True(t, exists)
+		require.True(t, exists)
 	})
 
 	t.Run("fail to delete non-existent role", func(t *testing.T) {
 		err := roleService.DeleteRole(ctx, 99999)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "role not found")
+		require.Contains(t, err.Error(), "role not found")
 	})
 }
 
@@ -293,7 +292,7 @@ func TestBulkDeleteRoles(t *testing.T) {
 			Where(role.IDIn(roleIDs...)).
 			Count(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 0, count)
+		require.Equal(t, 0, count)
 	})
 
 	t.Run("bulk delete roles with users successfully", func(t *testing.T) {
@@ -351,7 +350,7 @@ func TestBulkDeleteRoles(t *testing.T) {
 			Where(userrole.RoleIDIn(role1.ID, role2.ID)).
 			Count(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 3, count)
+		require.Equal(t, 3, count)
 
 		// Bulk delete roles
 		roleIDs := []int{role1.ID, role2.ID}
@@ -363,21 +362,21 @@ func TestBulkDeleteRoles(t *testing.T) {
 			Where(role.IDIn(roleIDs...)).
 			Count(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 0, count)
+		require.Equal(t, 0, count)
 
 		// Verify all UserRole relationships are deleted
 		count, err = client.UserRole.Query().
 			Where(userrole.RoleIDIn(roleIDs...)).
 			Count(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 0, count)
+		require.Equal(t, 0, count)
 
 		// Verify users still exist
 		count, err = client.User.Query().
 			Where(user.IDIn(user1.ID, user2.ID)).
 			Count(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 2, count)
+		require.Equal(t, 2, count)
 	})
 
 	t.Run("fail to bulk delete with non-existent role", func(t *testing.T) {
@@ -393,14 +392,14 @@ func TestBulkDeleteRoles(t *testing.T) {
 		roleIDs := []int{validRole.ID, 99999}
 		err = roleService.BulkDeleteRoles(ctx, roleIDs)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "expected to find")
+		require.Contains(t, err.Error(), "expected to find")
 
 		// Verify the valid role still exists (transaction should rollback)
 		exists, err := client.Role.Query().
 			Where(role.IDEQ(validRole.ID)).
 			Exist(ctx)
 		require.NoError(t, err)
-		assert.True(t, exists)
+		require.True(t, exists)
 	})
 
 	t.Run("bulk delete with empty list", func(t *testing.T) {

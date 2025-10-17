@@ -16,9 +16,9 @@ test.describe('Admin System Management', () => {
     await expect(brandInput).toBeVisible()
 
     const originalValue = await brandInput.inputValue()
-    const newValue = originalValue.includes('Playwright')
+    const newValue = originalValue.includes('pw-test')
       ? `${originalValue}-${Date.now().toString().slice(-4)}`
-      : `Playwright ${Date.now().toString().slice(-4)}`
+      : `pw-test-${Date.now().toString().slice(-4)}`
 
     await brandInput.fill(newValue)
     const saveButton = page.getByRole('button', { name: /Save Settings|保存设置/i })

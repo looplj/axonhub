@@ -29,7 +29,7 @@ export const PROJECT_USERS_QUERY = `
           projectID
           isOwner
           scopes
-          users {
+          user {
             id
             createdAt
             updatedAt
@@ -149,17 +149,17 @@ export function useUsers(
         const transformedUsers = projectUsers.map((pu) => {
           const parsedPU = projectUserSchema.parse(pu)
           return {
-            id: parsedPU.users.id,
-            createdAt: parsedPU.users.createdAt,
-            updatedAt: parsedPU.users.updatedAt,
-            email: parsedPU.users.email,
-            status: parsedPU.users.status,
-            firstName: parsedPU.users.firstName,
-            lastName: parsedPU.users.lastName,
-            preferLanguage: parsedPU.users.preferLanguage,
+            id: parsedPU.user.id,
+            createdAt: parsedPU.user.createdAt,
+            updatedAt: parsedPU.user.updatedAt,
+            email: parsedPU.user.email,
+            status: parsedPU.user.status,
+            firstName: parsedPU.user.firstName,
+            lastName: parsedPU.user.lastName,
+            preferLanguage: parsedPU.user.preferLanguage,
             isOwner: parsedPU.isOwner,
             scopes: parsedPU.scopes,
-            roles: parsedPU.users.roles,
+            roles: parsedPU.user.roles,
             projectUserId: parsedPU.id, // Store the project_user ID for removal
           }
         })

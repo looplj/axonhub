@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
@@ -256,4 +257,129 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 		Roles:          userRoles,
 		Projects:       userProjects,
 	}
+}
+
+// AddUserToProject adds a user to a project with optional owner status, scopes, and roles.
+func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID int, isOwner *bool, scopes []string, roleIDs []int) (*ent.UserProject, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	client := ent.FromContext(ctx)
+
+	// Create the project user relationship
+	mut := client.UserProject.Create().
+		SetUserID(userID).
+		SetProjectID(projectID)
+
+	if isOwner != nil {
+		mut.SetIsOwner(*isOwner)
+	}
+
+	if scopes != nil {
+		mut.SetScopes(scopes)
+	}
+
+	userProject, err := mut.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add user to project: %w", err)
+	}
+
+	// Add roles if provided
+	if len(roleIDs) > 0 {
+		user, err := client.User.Get(ctx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user: %w", err)
+		}
+
+		err = user.Update().AddRoleIDs(roleIDs...).Exec(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to add roles to user: %w", err)
+		}
+	}
+
+	// Invalidate user cache
+	s.InvalidateUserCache(ctx, userID)
+
+	return userProject, nil
+}
+
+// RemoveUserFromProject removes a user from a project.
+func (s *UserService) RemoveUserFromProject(ctx context.Context, userID, projectID int) error {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	client := ent.FromContext(ctx)
+
+	// Find the UserProject relationship
+	userProject, err := client.UserProject.Query().
+		Where(
+			userproject.UserID(userID),
+			userproject.ProjectID(projectID),
+		).
+		Only(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to find user project relationship: %w", err)
+	}
+
+	// Delete the relationship (soft delete if enabled)
+	err = client.UserProject.DeleteOne(userProject).Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to remove user from project: %w", err)
+	}
+
+	// Invalidate user cache
+	s.InvalidateUserCache(ctx, userID)
+
+	return nil
+}
+
+// UpdateProjectUser updates a user's project relationship including scopes and roles.
+func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID int, scopes []string, addRoleIDs, removeRoleIDs []int) (*ent.UserProject, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	client := ent.FromContext(ctx)
+
+	// Find the UserProject relationship
+	userProject, err := client.UserProject.Query().
+		Where(
+			userproject.UserID(userID),
+			userproject.ProjectID(projectID),
+		).
+		Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user project relationship: %w", err)
+	}
+
+	// Update the UserProject (note: isOwner is immutable, so we can only update scopes)
+	mut := userProject.Update()
+
+	if scopes != nil {
+		mut.SetScopes(scopes)
+	}
+
+	userProject, err = mut.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update project user: %w", err)
+	}
+
+	// Update roles if provided
+	user, err := client.User.Get(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	userMut := user.Update()
+
+	if len(addRoleIDs) > 0 {
+		userMut.AddRoleIDs(addRoleIDs...)
+	}
+
+	if len(removeRoleIDs) > 0 {
+		userMut.RemoveRoleIDs(removeRoleIDs...)
+	}
+
+	err = userMut.Exec(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update user roles: %w", err)
+	}
+
+	// Invalidate user cache
+	s.InvalidateUserCache(ctx, userID)
+
+	return userProject, nil
 }

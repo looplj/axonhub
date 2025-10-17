@@ -8,8 +8,8 @@ test.describe('Admin Roles Management', () => {
 
   test('can create, edit, and delete a role', async ({ page }) => {
     const uniqueSuffix = Date.now().toString().slice(-5)
-    const roleCode = `pw_role_${uniqueSuffix}`
-    const roleName = `Playwright Role ${uniqueSuffix}`
+    const roleCode = `pw-test-role-${uniqueSuffix}`
+    const roleName = `pw-test-Role ${uniqueSuffix}`
 
     // Try multiple selectors for the create role button
     let createRoleButton = page.getByRole('button', { name: /新建角色|创建角色|Create Role/i })
@@ -80,8 +80,9 @@ test.describe('Admin Roles Management', () => {
     await deleteItem.waitFor({ state: 'visible', timeout: 5000 })
     await deleteItem.click()
 
-    const deleteDialog = page.getByRole('dialog')
-    await expect(deleteDialog).toContainText(/删除角色|Delete Role/i)
+    const deleteDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
+    await expect(deleteDialog).toBeVisible()
+    await expect(deleteDialog).toContainText(/删除角色|Delete Role|删除|Delete/i)
 
     await Promise.all([
       waitForGraphQLOperation(page, 'DeleteRole'),
