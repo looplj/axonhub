@@ -10,7 +10,8 @@ import { DataTableRowActions } from "./data-table-row-actions";
 
 export const createColumns = (
   t: ReturnType<typeof useTranslation>['t'],
-  canWrite: boolean = false
+  canWrite: boolean = false,
+  canReadRoles: boolean = false
 ): ColumnDef<User>[] => {
   const columns: ColumnDef<User>[] = []
 
@@ -68,8 +69,12 @@ export const createColumns = (
           <Badge variant="secondary">{t("users.badges.member")}</Badge>
         );
       },
-    },
-    {
+    }
+  )
+
+  // Only add roles column if user has permission to view roles
+  if (canReadRoles) {
+    columns.push({
       accessorKey: "roles",
       header: t("users.columns.projectRoles"),
       cell: ({ row }) => {
@@ -91,7 +96,10 @@ export const createColumns = (
           </div>
         );
       },
-    },
+    })
+  }
+
+  columns.push(
     {
       accessorKey: "scopes",
       header: t("users.columns.projectScopes"),

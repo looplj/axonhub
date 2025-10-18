@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useSelectedProjectId } from '@/stores/projectStore'
 import { extractNumberID } from '@/lib/utils'
 import { useErrorHandler } from '@/hooks/use-error-handler'
-import { useRequestPermissions } from '../../../gql/useRequestPermissions'
+import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
 import type {
   ApiKey,
   ApiKeyConnection,

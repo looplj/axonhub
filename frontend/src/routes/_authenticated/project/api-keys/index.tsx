@@ -10,6 +10,6 @@ function ProtectedProjectApiKeys() {
   )
 }
 
-export const Route = createFileRoute('/_authenticated/project/api-keys')({
+export const Route = createFileRoute('/_authenticated/project/api-keys/')({
   component: ProtectedProjectApiKeys,
 })

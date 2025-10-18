@@ -42,7 +42,7 @@ func (User) Fields() []ent.Field {
 		),
 		field.Bool("is_owner").Default(false),
 		field.Strings("scopes").
-			Comment("User-specific scopes: write_channels, read_channels, add_users, read_users, etc.").
+			Comment("User scopes in system level: write_channels, read_channels, add_users, read_users, etc.").
 			Default([]string{}).
 			Optional(),
 	}
@@ -78,7 +78,6 @@ func (User) Annotations() []schema.Annotation {
 	}
 }
 
-// Policy 定义 User 的权限策略.
 func (User) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{

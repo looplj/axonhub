@@ -13,7 +13,7 @@ import { useUsers } from './data/users'
 
 function UsersContent() {
   const { t } = useTranslation()
-  const { userPermissions } = usePermissions()
+  const { userPermissions, rolePermissions } = usePermissions()
 
   // Filter states
   const [nameFilter, setNameFilter] = useState<string>('')
@@ -24,8 +24,8 @@ function UsersContent() {
 
   // Memoize columns to prevent infinite re-renders
   const columns = useMemo(
-    () => createColumns(t, userPermissions.canWrite),
-    [t, userPermissions.canWrite]
+    () => createColumns(t, userPermissions.canWrite, rolePermissions.canRead),
+    [t, userPermissions.canWrite, rolePermissions.canRead]
   )
 
   // Fetch all project users (no server-side filtering for project users)
@@ -34,33 +34,31 @@ function UsersContent() {
   // Apply client-side filtering
   const filteredData = React.useMemo(() => {
     if (!data?.edges) return []
-    
-    let filtered = data.edges.map(edge => edge.node)
-    
+
+    let filtered = data.edges.map((edge) => edge.node)
+
     // Filter by name (firstName or lastName)
     if (debouncedNameFilter) {
       const searchLower = debouncedNameFilter.toLowerCase()
-      filtered = filtered.filter(user => {
+      filtered = filtered.filter((user) => {
         const firstName = user.firstName?.toLowerCase() || ''
         const lastName = user.lastName?.toLowerCase() || ''
         const email = user.email?.toLowerCase() || ''
-        return firstName.includes(searchLower) || 
-               lastName.includes(searchLower) || 
-               email.includes(searchLower)
+        return firstName.includes(searchLower) || lastName.includes(searchLower) || email.includes(searchLower)
       })
     }
-    
+
     // Filter by status
     if (statusFilter.length > 0) {
-      filtered = filtered.filter(user => statusFilter.includes(user.status))
+      filtered = filtered.filter((user) => statusFilter.includes(user.status))
     }
-    
+
     // Filter by role (if needed in the future)
     if (roleFilter.length > 0) {
       // Note: This would need to be implemented based on the actual user role relationship
       // For now, we'll leave it as a placeholder
     }
-    
+
     return filtered
   }, [data, debouncedNameFilter, statusFilter, roleFilter])
 
@@ -77,7 +75,7 @@ function UsersContent() {
         onStatusFilterChange={setStatusFilter}
         onRoleFilterChange={setRoleFilter}
       />
-      </div>
+    </div>
   )
 }
 
@@ -86,16 +84,12 @@ export default function UsersManagement() {
 
   return (
     <UsersProvider>
-      <Header fixed>
-        {/* <Search /> */}
-      </Header>
+      <Header fixed>{/* <Search /> */}</Header>
 
       <Main>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>
-              {t('projectUsers.title')}
-            </h2>
+            <h2 className='text-2xl font-bold tracking-tight'>{t('projectUsers.title')}</h2>
             <p className='text-muted-foreground'>{t('projectUsers.description')}</p>
           </div>
           <UsersPrimaryButtons />

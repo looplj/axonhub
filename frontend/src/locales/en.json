@@ -980,6 +980,8 @@
       "channel": "Channel",
       "user": "User",
       "apiKey": "API Key",
+      "roles": "Roles",
+      "noRoles": "No roles",
       "details": "Details",
       "createdAt": "Created At",
       "actions": "Actions",

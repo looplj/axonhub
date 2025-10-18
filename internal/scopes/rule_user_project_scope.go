@@ -8,8 +8,8 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/user"
 )
 
 type ProjectOwnedFilter interface {
@@ -74,20 +74,13 @@ func projectMemberQueryFilter(requiredScope ScopeSlug) func(ctx context.Context,
 			q.WhereProjectID(entql.IntEQ(projectID))
 
 			return privacy.Allowf("User %d can query project %d with scope %s", currentUser.ID, projectID, requiredScope)
+		case *ent.ProjectFilter:
+			q.WhereHasUsersWith(user.IDEQ(currentUser.ID))
+			return privacy.Allowf("User %d can query project %d as member", currentUser.ID, projectID)
 		default:
 			return privacy.Skipf("User %d can only query project %d with scope %s", currentUser.ID, projectID, requiredScope)
 		}
 	}
-}
-
-// ProjectMemberFilter interface for filtering queries by project membership.
-type ProjectMemberFilter interface {
-	WhereHasUsersWith(preds ...predicate.User)
-}
-
-// ProjectIDFilter interface for filtering queries by project_id field.
-type ProjectIDFilter interface {
-	WhereP(ps ...func(*sql.Selector))
 }
 
 // UserProjectScopeWriteRule ensures users can only modify resources in projects they are members of.

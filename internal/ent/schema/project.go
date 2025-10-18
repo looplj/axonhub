@@ -92,12 +92,13 @@ func (Project) Annotations() []schema.Annotation {
 func (Project) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
-			scopes.OwnerRule(), // owner 用户可以访问所有项目
-			scopes.UserReadScopeRule(scopes.ScopeReadProjects), // 需要 projects 读取权限
+			scopes.UserProjectScopeReadRule(scopes.ScopeReadProjects),
+			scopes.OwnerRule(),
+			scopes.UserReadScopeRule(scopes.ScopeReadProjects),
 		},
 		Mutation: scopes.MutationPolicy{
-			scopes.OwnerRule(), // owner 用户可以修改所有项目
-			scopes.UserWriteScopeRule(scopes.ScopeWriteProjects), // 需要 projects 写入权限
+			scopes.OwnerRule(),
+			scopes.UserWriteScopeRule(scopes.ScopeWriteProjects),
 		},
 	}
 }

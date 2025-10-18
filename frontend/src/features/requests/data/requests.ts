@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
 import { useErrorHandler } from '@/hooks/use-error-handler'
-import { useRequestPermissions } from '../../../gql/useRequestPermissions'
+import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
 import { useSelectedProjectId } from '@/stores/projectStore'
 import {
   Request,

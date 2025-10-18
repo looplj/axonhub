@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import ProjectUsers from '@/features/proejct-users'
 import { RouteGuard } from '@/components/route-guard'
+import ProjectUsers from '@/features/proejct-users'
 
 function ProtectedProjectUsers() {
   return (
@@ -10,6 +10,6 @@ function ProtectedProjectUsers() {
   )
 }
 
-export const Route = createFileRoute('/_authenticated/project/users')({
+export const Route = createFileRoute('/_authenticated/project/users/')({
   component: ProtectedProjectUsers,
 })

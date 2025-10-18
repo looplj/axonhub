@@ -58,5 +58,6 @@ func (r *queryResolver) MyProjects(ctx context.Context) ([]*ent.Project, error) 
 
 	return r.client.Project.Query().
 		Where(project.HasUsersWith(user.IDEQ(u.ID))).
+		Where(project.StatusEQ(project.StatusActive)).
 		All(ctx)
 }
