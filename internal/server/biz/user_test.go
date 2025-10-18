@@ -1003,3 +1003,214 @@ func TestUpdateProjectUser_UpdateScopesAndRoles(t *testing.T) {
 	require.Len(t, updatedUser.Edges.Roles, 1)
 	require.Equal(t, projectRole.ID, updatedUser.Edges.Roles[0].ID)
 }
+
+func TestUpdateUser_CacheInvalidation(t *testing.T) {
+	userService, client := setupTestUserService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create a user
+	testUser, err := client.User.Create().
+		SetEmail("user@example.com").
+		SetPassword("password").
+		SetFirstName("Test").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Load user into cache
+	cachedUser, err := userService.GetUserByID(ctx, testUser.ID)
+	require.NoError(t, err)
+	require.NotNil(t, cachedUser)
+
+	// Verify user is in cache
+	cacheKey := buildUserCacheKey(testUser.ID)
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.NoError(t, err, "User should be in cache")
+
+	// Update user
+	newEmail := "newemail@example.com"
+	input := ent.UpdateUserInput{
+		Email: &newEmail,
+	}
+	_, err = userService.UpdateUser(ctx, testUser.ID, input)
+	require.NoError(t, err)
+
+	// Verify cache was invalidated
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.Error(t, err, "User cache should be invalidated after update")
+}
+
+func TestUpdateUserStatus_CacheInvalidation(t *testing.T) {
+	userService, client := setupTestUserService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create a user
+	testUser, err := client.User.Create().
+		SetEmail("user@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Load user into cache
+	_, err = userService.GetUserByID(ctx, testUser.ID)
+	require.NoError(t, err)
+
+	// Verify user is in cache
+	cacheKey := buildUserCacheKey(testUser.ID)
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.NoError(t, err, "User should be in cache")
+
+	// Update user status
+	_, err = userService.UpdateUserStatus(ctx, testUser.ID, user.StatusDeactivated)
+	require.NoError(t, err)
+
+	// Verify cache was invalidated
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.Error(t, err, "User cache should be invalidated after status update")
+}
+
+func TestAddUserToProject_CacheInvalidation(t *testing.T) {
+	userService, client := setupTestUserService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create a user
+	testUser, err := client.User.Create().
+		SetEmail("user@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create a project
+	testProject, err := client.Project.Create().
+		SetName("Test Project").
+		SetSlug("test-project").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Load user into cache
+	_, err = userService.GetUserByID(ctx, testUser.ID)
+	require.NoError(t, err)
+
+	// Verify user is in cache
+	cacheKey := buildUserCacheKey(testUser.ID)
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.NoError(t, err, "User should be in cache")
+
+	// Add user to project
+	isOwner := false
+	_, err = userService.AddUserToProject(ctx, testUser.ID, testProject.ID, &isOwner, nil, nil)
+	require.NoError(t, err)
+
+	// Verify cache was invalidated
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.Error(t, err, "User cache should be invalidated after adding to project")
+}
+
+func TestRemoveUserFromProject_CacheInvalidation(t *testing.T) {
+	userService, client := setupTestUserService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create a user
+	testUser, err := client.User.Create().
+		SetEmail("user@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create a project
+	testProject, err := client.Project.Create().
+		SetName("Test Project").
+		SetSlug("test-project").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Add user to project
+	isOwner := false
+	_, err = userService.AddUserToProject(ctx, testUser.ID, testProject.ID, &isOwner, nil, nil)
+	require.NoError(t, err)
+
+	// Load user into cache
+	_, err = userService.GetUserByID(ctx, testUser.ID)
+	require.NoError(t, err)
+
+	// Verify user is in cache
+	cacheKey := buildUserCacheKey(testUser.ID)
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.NoError(t, err, "User should be in cache")
+
+	// Remove user from project
+	err = userService.RemoveUserFromProject(ctx, testUser.ID, testProject.ID)
+	require.NoError(t, err)
+
+	// Verify cache was invalidated
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.Error(t, err, "User cache should be invalidated after removing from project")
+}
+
+func TestUpdateProjectUser_CacheInvalidation(t *testing.T) {
+	userService, client := setupTestUserService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create a user
+	testUser, err := client.User.Create().
+		SetEmail("user@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create a project
+	testProject, err := client.Project.Create().
+		SetName("Test Project").
+		SetSlug("test-project").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Add user to project
+	isOwner := false
+	initialScopes := []string{"read"}
+	_, err = userService.AddUserToProject(ctx, testUser.ID, testProject.ID, &isOwner, initialScopes, nil)
+	require.NoError(t, err)
+
+	// Load user into cache
+	_, err = userService.GetUserByID(ctx, testUser.ID)
+	require.NoError(t, err)
+
+	// Verify user is in cache
+	cacheKey := buildUserCacheKey(testUser.ID)
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.NoError(t, err, "User should be in cache")
+
+	// Update project user scopes
+	newScopes := []string{"read", "write"}
+	_, err = userService.UpdateProjectUser(ctx, testUser.ID, testProject.ID, newScopes, nil, nil)
+	require.NoError(t, err)
+
+	// Verify cache was invalidated
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.Error(t, err, "User cache should be invalidated after updating project user")
+}

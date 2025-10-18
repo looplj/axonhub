@@ -12,19 +12,27 @@ import (
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userrole"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
-func setupTestRoleService(t *testing.T) (*RoleService, *ent.Client) {
+func setupTestRoleService(t *testing.T) (*RoleService, *UserService, *ent.Client) {
 	t.Helper()
 	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
-	roleService := &RoleService{}
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+	userService := &UserService{
+		UserCache: xcache.NewFromConfig[ent.User](cacheConfig),
+	}
 
-	return roleService, client
+	roleService := &RoleService{
+		userService: userService,
+	}
+
+	return roleService, userService, client
 }
 
 func TestCreateRole(t *testing.T) {
-	roleService, client := setupTestRoleService(t)
+	roleService, _, client := setupTestRoleService(t)
 	defer client.Close()
 
 	ctx := context.Background()
@@ -88,7 +96,7 @@ func TestCreateRole(t *testing.T) {
 }
 
 func TestUpdateRole(t *testing.T) {
-	roleService, client := setupTestRoleService(t)
+	roleService, _, client := setupTestRoleService(t)
 	defer client.Close()
 
 	ctx := context.Background()
@@ -140,7 +148,7 @@ func TestUpdateRole(t *testing.T) {
 }
 
 func TestDeleteRole(t *testing.T) {
-	roleService, client := setupTestRoleService(t)
+	roleService, _, client := setupTestRoleService(t)
 	defer client.Close()
 
 	ctx := context.Background()
@@ -252,7 +260,7 @@ func TestDeleteRole(t *testing.T) {
 }
 
 func TestBulkDeleteRoles(t *testing.T) {
-	roleService, client := setupTestRoleService(t)
+	roleService, _, client := setupTestRoleService(t)
 	defer client.Close()
 
 	ctx := context.Background()
@@ -406,4 +414,191 @@ func TestBulkDeleteRoles(t *testing.T) {
 		err := roleService.BulkDeleteRoles(ctx, []int{})
 		require.NoError(t, err)
 	})
+}
+
+func TestUpdateRole_CacheInvalidation(t *testing.T) {
+	roleService, userService, client := setupTestRoleService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create a role
+	testRole, err := client.Role.Create().
+		SetCode("test_role").
+		SetName("Test Role").
+		SetScopes([]string{"read", "write"}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create a user with this role
+	testUser, err := client.User.Create().
+		SetEmail("user@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		AddRoles(testRole).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Load user into cache
+	cachedUser, err := userService.GetUserByID(ctx, testUser.ID)
+	require.NoError(t, err)
+	require.NotNil(t, cachedUser)
+
+	// Verify user is in cache
+	cacheKey := buildUserCacheKey(testUser.ID)
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.NoError(t, err, "User should be in cache")
+
+	// Update role scopes
+	newScopes := []string{"read", "write", "delete"}
+	input := ent.UpdateRoleInput{
+		Scopes: newScopes,
+	}
+	_, err = roleService.UpdateRole(ctx, testRole.ID, input)
+	require.NoError(t, err)
+
+	// Verify cache was invalidated
+	_, err = userService.UserCache.Get(ctx, cacheKey)
+	require.Error(t, err, "User cache should be invalidated after role update")
+}
+
+func TestDeleteRole_CacheInvalidation(t *testing.T) {
+	roleService, userService, client := setupTestRoleService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create a role
+	testRole, err := client.Role.Create().
+		SetCode("test_role").
+		SetName("Test Role").
+		SetScopes([]string{"read"}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create multiple users with this role
+	user1, err := client.User.Create().
+		SetEmail("user1@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		AddRoles(testRole).
+		Save(ctx)
+	require.NoError(t, err)
+
+	user2, err := client.User.Create().
+		SetEmail("user2@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		AddRoles(testRole).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Load users into cache
+	_, err = userService.GetUserByID(ctx, user1.ID)
+	require.NoError(t, err)
+	_, err = userService.GetUserByID(ctx, user2.ID)
+	require.NoError(t, err)
+
+	// Verify both users are in cache
+	cacheKey1 := buildUserCacheKey(user1.ID)
+	cacheKey2 := buildUserCacheKey(user2.ID)
+	_, err = userService.UserCache.Get(ctx, cacheKey1)
+	require.NoError(t, err, "User1 should be in cache")
+	_, err = userService.UserCache.Get(ctx, cacheKey2)
+	require.NoError(t, err, "User2 should be in cache")
+
+	// Delete the role
+	err = roleService.DeleteRole(ctx, testRole.ID)
+	require.NoError(t, err)
+
+	// Verify both users' caches were invalidated
+	_, err = userService.UserCache.Get(ctx, cacheKey1)
+	require.Error(t, err, "User1 cache should be invalidated after role deletion")
+	_, err = userService.UserCache.Get(ctx, cacheKey2)
+	require.Error(t, err, "User2 cache should be invalidated after role deletion")
+}
+
+func TestBulkDeleteRoles_CacheInvalidation(t *testing.T) {
+	roleService, userService, client := setupTestRoleService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create multiple roles
+	role1, err := client.Role.Create().
+		SetCode("role1").
+		SetName("Role 1").
+		SetScopes([]string{"read"}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	role2, err := client.Role.Create().
+		SetCode("role2").
+		SetName("Role 2").
+		SetScopes([]string{"write"}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create users with different roles
+	user1, err := client.User.Create().
+		SetEmail("user1@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		AddRoles(role1).
+		Save(ctx)
+	require.NoError(t, err)
+
+	user2, err := client.User.Create().
+		SetEmail("user2@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		AddRoles(role2).
+		Save(ctx)
+	require.NoError(t, err)
+
+	user3, err := client.User.Create().
+		SetEmail("user3@example.com").
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		AddRoles(role1, role2).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Load all users into cache
+	_, err = userService.GetUserByID(ctx, user1.ID)
+	require.NoError(t, err)
+	_, err = userService.GetUserByID(ctx, user2.ID)
+	require.NoError(t, err)
+	_, err = userService.GetUserByID(ctx, user3.ID)
+	require.NoError(t, err)
+
+	// Verify all users are in cache
+	cacheKey1 := buildUserCacheKey(user1.ID)
+	cacheKey2 := buildUserCacheKey(user2.ID)
+	cacheKey3 := buildUserCacheKey(user3.ID)
+	_, err = userService.UserCache.Get(ctx, cacheKey1)
+	require.NoError(t, err, "User1 should be in cache")
+	_, err = userService.UserCache.Get(ctx, cacheKey2)
+	require.NoError(t, err, "User2 should be in cache")
+	_, err = userService.UserCache.Get(ctx, cacheKey3)
+	require.NoError(t, err, "User3 should be in cache")
+
+	// Bulk delete roles
+	roleIDs := []int{role1.ID, role2.ID}
+	err = roleService.BulkDeleteRoles(ctx, roleIDs)
+	require.NoError(t, err)
+
+	// Verify all users' caches were invalidated
+	_, err = userService.UserCache.Get(ctx, cacheKey1)
+	require.Error(t, err, "User1 cache should be invalidated")
+	_, err = userService.UserCache.Get(ctx, cacheKey2)
+	require.Error(t, err, "User2 cache should be invalidated")
+	_, err = userService.UserCache.Get(ctx, cacheKey3)
+	require.Error(t, err, "User3 cache should be invalidated")
 }
