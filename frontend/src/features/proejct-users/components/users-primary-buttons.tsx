@@ -9,21 +9,8 @@ export function UsersPrimaryButtons() {
   const { setOpen } = useUsers()
   return (
     <div className='flex gap-2'>
-      {/* Invite User - commented out for now
-      // Note: Add IconMailPlus import when enabling this feature
-      <PermissionGuard requiredScope='write_users'>
-        <Button
-          variant='outline'
-          className='space-x-1'
-          onClick={() => setOpen('invite')}
-        >
-          <span>{t('users.inviteUser')}</span> <IconMailPlus size={18} />
-        </Button>
-      </PermissionGuard>
-      */}
-      
-      {/* Add User - requires write_users permission */}
-      <PermissionGuard requiredScope='write_users'>
+      {/* Add User - requires system-level read_users and any-level write_users */}
+      <PermissionGuard requiredSystemScope='read_users' requiredScope='write_users'>
         <Button className='space-x-1' onClick={() => setOpen('add')}>
           <span>{t('users.addUser')}</span> <IconUserPlus size={18} />
         </Button>

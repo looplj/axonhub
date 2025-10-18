@@ -66,7 +66,8 @@ case "${1:-}" in
     echo "Starting backend on port $E2E_PORT with database $E2E_DB..."
     AXONHUB_SERVER_PORT=$E2E_PORT \
     AXONHUB_DB_DSN="file:${E2E_DB}?cache=shared&_fk=1" \
-    AXONHUB_LOG_LEVEL="info" \
+    AXONHUB_LOG_OUTPUT="stdio" \
+    AXONHUB_LOG_LEVEL="debug" \
     AXONHUB_LOG_ENCODING="console" \
     nohup "$BINARY_PATH" > "$LOG_FILE" 2>&1 &
     

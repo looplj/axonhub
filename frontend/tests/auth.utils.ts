@@ -16,21 +16,62 @@ const defaultCredentials: AdminCredentials = {
 }
 
 export async function signInAsAdmin(page: Page, credentials: AdminCredentials = defaultCredentials) {
-  // await page.goto('/sign-in')
-  // await page.waitForLoadState('domcontentloaded')
+  // Listen for console errors
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      console.log('Browser console error:', msg.text())
+    }
+  })
 
-  // Wait for the login form to be visible
-  await page.waitForSelector('input[type="email"], input[name="email"]', { timeout: 10000 })
+  // Listen for page errors
+  page.on('pageerror', (error) => {
+    console.log('Page error:', error.message)
+  })
 
-  // Fill in credentials with more specific selectors
-  const emailField = page.locator('input[type="email"], input[name="email"]').first()
-  const passwordField = page.locator('input[type="password"], input[name="password"]').first()
+  // Wait for the page to fully load
+  await page.waitForLoadState('domcontentloaded', { timeout: 15000 })
+
+  // Wait for React to mount - check for root element content
+  try {
+    await page.waitForFunction(
+      () => {
+        const root = document.getElementById('root')
+        return root && root.innerHTML.length > 100
+      },
+      { timeout: 15000 }
+    )
+  } catch (error) {
+    console.log('Warning: Root element may not be fully loaded')
+    console.log('Page URL:', page.url())
+
+    // Check if root exists at all
+    const rootExists = await page.evaluate(() => {
+      const root = document.getElementById('root')
+      return { exists: !!root, innerHTML: root?.innerHTML.substring(0, 200) }
+    })
+    console.log('Root element state:', rootExists)
+  }
+
+  // Wait for the login form to be visible using reliable test IDs
+  // Fallback to multiple selectors for backward compatibility
+  const emailField = page
+    .getByTestId('sign-in-email')
+    .or(page.locator('input[type="email"], input[name="email"]'))
+    .first()
+
+  await emailField.waitFor({ state: 'visible', timeout: 20000 })
+
+  // Fill in credentials with test IDs and fallback selectors
+  const passwordField = page
+    .getByTestId('sign-in-password')
+    .or(page.locator('input[type="password"], input[name="password"]'))
+    .first()
 
   await emailField.fill(credentials.email)
   await passwordField.fill(credentials.password)
 
-  // Click login button and wait for navigation
-  const loginButton = page.getByRole('button', { name: /登录|Sign In|Sign in/i })
+  // Click login button - use test ID with fallback
+  const loginButton = page.getByTestId('sign-in-submit').or(page.getByRole('button', { name: /登录|Sign In|Sign in/i }))
   await expect(loginButton).toBeVisible()
 
   // Wait for the sign-in API response before checking navigation
@@ -46,7 +87,9 @@ export async function signInAsAdmin(page: Page, credentials: AdminCredentials = 
   } catch (error) {
     console.log(`Sign-in API error: ${error}`)
     // Take a screenshot for debugging
-    await page.screenshot({ path: 'sign-in-error.png', fullPage: true })
+    const timestamp = Date.now()
+    await page.screenshot({ path: `test-results/sign-in-error-${timestamp}.png`, fullPage: true })
+    console.log('Page URL:', page.url())
     throw error
   }
 
@@ -62,48 +105,58 @@ export async function ensureSignedIn(page: Page) {
     await signInAsAdmin(page)
   }
 
-  // Ensure we have a valid authentication state
-  await page.addInitScript(() => {
-    const TOKEN_KEY = 'axonhub_access_token'
-    const token = window.localStorage.getItem(TOKEN_KEY)
-    if (!token) {
-      window.localStorage.setItem(TOKEN_KEY, 'test-token')
-    }
+  // Verify we have a valid token
+  const hasToken = await page.evaluate(() => {
+    const token = localStorage.getItem('axonhub_access_token')
+    return !!token && token.length > 0
   })
+
+  if (!hasToken) {
+    console.warn('Warning: No valid auth token found, attempting to sign in')
+    await signInAsAdmin(page)
+  }
 }
 
 export async function gotoAndEnsureAuth(page: Page, path: string) {
-  // Seed auth token BEFORE any navigation so app requests are authenticated
-  await page.addInitScript(() => {
-    const TOKEN_KEY = 'axonhub_access_token'
-    const token = window.localStorage.getItem(TOKEN_KEY)
-    if (!token) {
-      window.localStorage.setItem(TOKEN_KEY, 'test-token')
-    }
-  })
-  // Also set immediately for the current document in case it's already loaded
-  try {
-    await page.evaluate(() => {
-      const TOKEN_KEY = 'axonhub_access_token'
-      const token = window.localStorage.getItem(TOKEN_KEY)
-      if (!token) {
-        window.localStorage.setItem(TOKEN_KEY, 'test-token')
-      }
-    })
-  } catch {}
+  // Navigate to the target path - let the app handle auth redirects naturally
+  await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 30000 })
 
-  // Now navigate to the target path
-  // First, try to navigate to the target path
-  await page.goto(path, { waitUntil: 'domcontentloaded' })
+  // Wait for potential redirects and React to mount
+  await page.waitForTimeout(2000)
 
-  // Wait for potential redirects
-  await page.waitForTimeout(1000)
+  // Wait for React app to mount
+  // try {
+  //   await page.waitForFunction(
+  //     () => {
+  //       const root = document.getElementById('root')
+  //       return root && root.innerHTML.length > 50
+  //     },
+  //     { timeout: 10000 }
+  //   )
+  // } catch (error) {
+  //   console.log('Warning: React app may not have mounted properly')
+  //   const rootState = await page.evaluate(() => {
+  //     const root = document.getElementById('root')
+  //     return { exists: !!root, innerHTML: root?.innerHTML.substring(0, 200) }
+  //   })
+  //   console.log('Root state:', rootState)
+  // }
 
   // If we got redirected to sign-in OR the login form is rendered within the current route, perform login and navigate back
   let needsLogin = page.url().includes('/sign-in')
   try {
-    const emailVisible = await page.locator('input[type="email"], input[name="email"]').first().isVisible()
-    const passwordVisible = await page.locator('input[type="password"], input[name="password"]').first().isVisible()
+    // Use test IDs with fallback for more reliable detection
+    const emailField = page
+      .getByTestId('sign-in-email')
+      .or(page.locator('input[type="email"], input[name="email"]'))
+      .first()
+    const passwordField = page
+      .getByTestId('sign-in-password')
+      .or(page.locator('input[type="password"], input[name="password"]'))
+      .first()
+
+    const emailVisible = await emailField.isVisible({ timeout: 2000 })
+    const passwordVisible = await passwordField.isVisible({ timeout: 2000 })
     if (emailVisible && passwordVisible) needsLogin = true
   } catch {}
 
@@ -111,21 +164,26 @@ export async function gotoAndEnsureAuth(page: Page, path: string) {
     await signInAsAdmin(page)
     // After successful login, navigate to the target path
     await page.goto(path, { waitUntil: 'domcontentloaded' })
+    // Wait for page to load after navigation
+    await page.waitForTimeout(1000)
   }
 
-  // Ensure we have a valid authentication state
-  await page.addInitScript(() => {
-    const TOKEN_KEY = 'axonhub_access_token'
-    const token = window.localStorage.getItem(TOKEN_KEY)
-    if (!token) {
-      window.localStorage.setItem(TOKEN_KEY, 'test-token')
-    }
+  // Verify we have a valid token after login
+  const hasToken = await page.evaluate(() => {
+    const token = localStorage.getItem('axonhub_access_token')
+    return !!token && token.length > 0
   })
 
+  if (!hasToken) {
+    console.warn('Warning: No valid auth token found after login')
+  }
+
+  // Final wait for page to stabilize
   try {
-    await page.waitForLoadState('networkidle', { timeout: 10000 })
+    await page.waitForLoadState('networkidle', { timeout: 5000 })
   } catch (error) {
     // Ignore load state timeouts to avoid masking downstream assertions.
+    console.log('Network idle timeout (expected in some cases)')
   }
 }
 

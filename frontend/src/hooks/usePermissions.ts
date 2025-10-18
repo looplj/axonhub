@@ -26,8 +26,8 @@ export function usePermissions() {
     return project?.scopes || []
   }, [selectedProjectId, user?.projects])
 
-  // Check if user has a specific scope (system-level or project-level)
-  const hasScope = useCallback(
+  // Check if user has a specific scope at system level only
+  const hasSystemScope = useCallback(
     (requiredScope: string): boolean => {
       // Owner has all permissions
       if (isOwner) {
@@ -39,12 +39,30 @@ export function usePermissions() {
         return true
       }
 
-      // Check for specific scope at system level
+      // Check for specific scope at system level only
       if (user?.scopes?.includes(requiredScope)) {
         return true
       }
 
-      // Check for specific scope at project level
+      return false
+    },
+    [user, isOwner]
+  )
+
+  // Check if user has a specific scope at project level only
+  const hasProjectScope = useCallback(
+    (requiredScope: string): boolean => {
+      // Owner has all permissions
+      if (isOwner) {
+        return true
+      }
+
+      // Check for wildcard permission at system level (applies to all projects)
+      if (user?.scopes?.includes('*')) {
+        return true
+      }
+
+      // Check for specific scope at project level only
       if (projectScopes.includes(requiredScope)) {
         return true
       }
@@ -52,6 +70,14 @@ export function usePermissions() {
       return false
     },
     [user, isOwner, projectScopes]
+  )
+
+  // Check if user has a specific scope (system-level or project-level)
+  const hasScope = useCallback(
+    (requiredScope: string): boolean => {
+      return hasSystemScope(requiredScope) || hasProjectScope(requiredScope)
+    },
+    [hasSystemScope, hasProjectScope]
   )
 
   // Check if user has any of the required scopes
@@ -145,6 +171,8 @@ export function usePermissions() {
     user,
     isOwner,
     hasScope,
+    hasSystemScope,
+    hasProjectScope,
     hasAnyScope,
     hasAllScopes,
     channelPermissions,

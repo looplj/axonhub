@@ -65,8 +65,10 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
               </FormLabel>
               <FormControl>
                 <Input
+                  type='email'
                   placeholder={t('auth.signIn.form.email.placeholder')}
                   className='border-slate-300 bg-white/70 text-slate-800 backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:bg-white focus:ring-2 focus:ring-slate-200'
+                  data-testid='sign-in-email'
                   {...field}
                 />
               </FormControl>
@@ -95,6 +97,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 <PasswordInput
                   placeholder={t('auth.signIn.form.password.placeholder')}
                   className='border-slate-300 bg-white/70 text-slate-800 backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:bg-white focus:ring-2 focus:ring-slate-200'
+                  data-testid='sign-in-password'
                   {...field}
                 />
               </FormControl>
@@ -129,8 +132,10 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
 
         {/* Submit Button */}
         <Button
+          type='submit'
           className='mt-6 w-full rounded-lg bg-slate-800 px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:bg-slate-700 hover:shadow-xl focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50'
           disabled={signInMutation.isPending}
+          data-testid='sign-in-submit'
         >
           {signInMutation.isPending ? (
             <div className='flex items-center justify-center gap-2'>

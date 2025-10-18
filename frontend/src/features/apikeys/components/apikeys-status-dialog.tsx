@@ -3,9 +3,8 @@
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { ApiKey } from '../data/schema'
-import { useUpdateApiKeyStatus } from '../data/apikeys'
 import { useApiKeysContext } from '../context/apikeys-context'
+import { useUpdateApiKeyStatus } from '../data/apikeys'
 
 export function ApiKeysStatusDialog() {
   const { t } = useTranslation()
@@ -16,7 +15,7 @@ export function ApiKeysStatusDialog() {
 
   const handleStatusChange = async () => {
     const newStatus = selectedApiKey.status === 'enabled' ? 'disabled' : 'enabled'
-    
+
     try {
       await updateApiKeyStatus.mutateAsync({
         id: selectedApiKey.id,

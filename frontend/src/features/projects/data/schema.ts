@@ -31,16 +31,27 @@ export const projectConnectionSchema = z.object({
 })
 export type ProjectConnection = z.infer<typeof projectConnectionSchema>
 
-// Create Project Input
+// Create Project Input - factory function for i18n support
+export const createProjectInputSchemaFactory = (t: (key: string) => string) => z.object({
+  name: z.string().min(1, t('projects.validation.nameRequired')),
+  description: z.string().optional(),
+})
+
+// Default schema for backward compatibility
 export const createProjectInputSchema = z.object({
-  name: z.string().min(1, '项目名称不能为空'),
+  name: z.string().min(1, 'Project name is required'),
   description: z.string().optional(),
 })
 export type CreateProjectInput = z.infer<typeof createProjectInputSchema>
 
-// Update Project Input
+// Update Project Input - factory function for i18n support
+export const updateProjectInputSchemaFactory = (t: (key: string) => string) => z.object({
+  name: z.string().min(1, t('projects.validation.nameRequired')),
+})
+
+// Default schema for backward compatibility
 export const updateProjectInputSchema = z.object({
-  name: z.string().min(1, '项目名称不能为空'),
+  name: z.string().min(1, 'Project name is required'),
 })
 export type UpdateProjectInput = z.infer<typeof updateProjectInputSchema>
 

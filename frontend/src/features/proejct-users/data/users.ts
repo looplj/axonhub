@@ -422,7 +422,10 @@ export function useUpdateProjectUser() {
 }
 
 // Get all users (for adding to project)
-export function useAllUsers(variables?: { first?: number; after?: string; where?: Record<string, any> }) {
+export function useAllUsers(
+  variables?: { first?: number; after?: string; where?: Record<string, any> },
+  options?: { enabled?: boolean }
+) {
   const { t } = useTranslation()
   const { handleError } = useErrorHandler()
 
@@ -437,6 +440,7 @@ export function useAllUsers(variables?: { first?: number; after?: string; where?
         throw error
       }
     },
+    enabled: options?.enabled ?? true,
   })
 }
 

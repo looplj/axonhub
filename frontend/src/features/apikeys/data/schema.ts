@@ -64,7 +64,7 @@ export const createApiKeyInputSchemaFactory = (t: (key: string) => string) => z.
 
 // Default schema for backward compatibility
 export const createApiKeyInputSchema = z.object({
-  name: z.string().min(1, '名称不能为空'),
+  name: z.string().min(1, 'Name is required'),
   projectID: z.number().optional(),
 })
 export type CreateApiKeyInput = z.infer<typeof createApiKeyInputSchema>
@@ -76,7 +76,7 @@ export const updateApiKeyInputSchemaFactory = (t: (key: string) => string) => z.
 
 // Default schema for backward compatibility
 export const updateApiKeyInputSchema = z.object({
-  name: z.string().min(1, '名称不能为空').optional(),
+  name: z.string().min(1, 'Name is required').optional(),
 })
 export type UpdateApiKeyInput = z.infer<typeof updateApiKeyInputSchema>
 
@@ -101,20 +101,7 @@ export const apiKeyProfilesSchema = z.object({
 })
 export type ApiKeyProfiles = z.infer<typeof apiKeyProfilesSchema>
 
-// Update API Key Profiles Input schema
-export const updateApiKeyProfilesInputSchema = z.object({
-  activeProfile: z.string(),
-  profiles: z.array(z.object({
-    name: z.string().min(1, 'Profile name is required'),
-    modelMappings: z.array(z.object({
-      from: z.string().min(1, 'Source model is required'),
-      to: z.string().min(1, 'Target model is required'),
-    })),
-  })),
-})
-export type UpdateApiKeyProfilesInput = z.infer<typeof updateApiKeyProfilesInputSchema>
-
-// Factory schema for i18n support
+// Update API Key Profiles Input schema - factory function for i18n support
 export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => string) => z.object({
   activeProfile: z.string().min(1, t('apikeys.validation.activeProfileRequired')),
   profiles: z.array(z.object({
@@ -131,3 +118,16 @@ export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => strin
     path: ['activeProfile']
   }
 )
+
+// Default schema for backward compatibility
+export const updateApiKeyProfilesInputSchema = z.object({
+  activeProfile: z.string(),
+  profiles: z.array(z.object({
+    name: z.string().min(1, 'Profile name is required'),
+    modelMappings: z.array(z.object({
+      from: z.string().min(1, 'Source model is required'),
+      to: z.string().min(1, 'Target model is required'),
+    })),
+  })),
+})
+export type UpdateApiKeyProfilesInput = z.infer<typeof updateApiKeyProfilesInputSchema>
