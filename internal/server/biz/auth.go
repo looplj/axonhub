@@ -125,6 +125,8 @@ func (s *AuthService) AuthenticateUser(
 		return nil, fmt.Errorf("invalid email or password %w", ErrInvalidPassword)
 	}
 
+	log.Debug(ctx, "user authenticated", log.Int("user_id", user.ID))
+
 	return user, nil
 }
 

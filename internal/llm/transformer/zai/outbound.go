@@ -109,7 +109,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	if zaiReq.RequestID == "" {
 		traceID, _ := tracing.GetTraceID(ctx)
-		zaiReq.RequestID = string(traceID)
+		zaiReq.RequestID = traceID
 	}
 
 	// zai only support auto tool choice.

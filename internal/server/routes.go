@@ -37,6 +37,8 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 	{
 		// Favicon API - DO NOT AUTH
 		publicGroup.GET("/favicon", handlers.System.GetFavicon)
+		// Health check endpoint - no authentication required
+		publicGroup.GET("/health", handlers.System.Health)
 	}
 
 	unSecureAdminGroup := server.Group("/admin",
@@ -49,9 +51,6 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 		// User Login - DO NOT AUTH
 		unSecureAdminGroup.POST("/auth/signin", handlers.Auth.SignIn)
 	}
-
-	// Health check endpoint - no authentication required
-	server.GET("/health", handlers.System.Health)
 
 	adminGroup := server.Group("/admin", middleware.WithJWTAuth(auth), middleware.WithProjectID())
 	// 管理员路由 - 使用 JWT 认证

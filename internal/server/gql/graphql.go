@@ -72,6 +72,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](1024),
 	})
+	gqlSrv.Use(&loggingTracer{})
 	gqlSrv.Use(entgql.Transactioner{TxOpener: deps.Ent})
 
 	return &GraphqlHandler{

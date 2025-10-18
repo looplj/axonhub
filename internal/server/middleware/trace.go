@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/looplj/axonhub/internal/tracing"
@@ -16,25 +19,21 @@ func WithTracing(config tracing.Config) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		var traceID tracing.TraceID
-
-		// 检查请求头中是否包含 trace ID
-		traceIDStr := c.GetHeader(traceHeader)
-		if traceIDStr != "" {
-			traceID = tracing.TraceID(traceIDStr)
-		} else {
-			// 生成新的 trace ID
+		// Use the trace header from the request first.
+		traceID := c.GetHeader(traceHeader)
+		if traceID == "" {
 			traceID = tracing.GenerateTraceID()
 		}
 
-		// 将 trace ID 添加到响应头中
-		c.Header(traceHeader, traceID.String())
-
-		// 将 trace ID 存储到 context 中
+		c.Header(traceHeader, traceID)
 		ctx := tracing.WithTraceID(c.Request.Context(), traceID)
-		c.Request = c.Request.WithContext(ctx)
 
-		// 继续处理请求
+		if !strings.HasSuffix(c.FullPath(), "/graphql") {
+			operationName := fmt.Sprintf("%s %s", c.Request.Method, c.FullPath())
+			ctx = tracing.WithOperationName(ctx, operationName)
+		}
+
+		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
 }

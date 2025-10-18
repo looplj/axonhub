@@ -39,7 +39,7 @@ func TestWithTracing(t *testing.T) {
 	// Check that the trace ID in the context matches the header
 	traceID, ok := tracing.GetTraceID(c.Request.Context())
 	assert.True(t, ok)
-	assert.Equal(t, tracing.TraceID(traceIDHeader), traceID)
+	assert.Equal(t, traceIDHeader, traceID)
 }
 
 func TestWithTracingExistingHeader(t *testing.T) {
@@ -70,7 +70,7 @@ func TestWithTracingExistingHeader(t *testing.T) {
 	// Check that the trace ID in the context matches the header
 	traceID, ok := tracing.GetTraceID(c.Request.Context())
 	assert.True(t, ok)
-	assert.Equal(t, tracing.TraceID(traceIDHeader), traceID)
+	assert.Equal(t, traceIDHeader, traceID)
 }
 
 func TestWithTracingCustomHeader(t *testing.T) {
@@ -101,7 +101,7 @@ func TestWithTracingCustomHeader(t *testing.T) {
 	// Check that the trace ID in the context matches the header
 	traceID, ok := tracing.GetTraceID(c.Request.Context())
 	assert.True(t, ok)
-	assert.Equal(t, tracing.TraceID(traceIDHeader), traceID)
+	assert.Equal(t, traceIDHeader, traceID)
 }
 
 func TestWithTracingEmptyConfig(t *testing.T) {
@@ -130,5 +130,5 @@ func TestWithTracingEmptyConfig(t *testing.T) {
 	// Check that the trace ID in the context matches the header
 	traceID, ok := tracing.GetTraceID(c.Request.Context())
 	assert.True(t, ok)
-	assert.Equal(t, tracing.TraceID(traceIDHeader), traceID)
+	assert.Equal(t, traceIDHeader, traceID)
 }

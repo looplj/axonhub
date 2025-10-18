@@ -51,7 +51,11 @@ func traceFields(ctx context.Context, msg string, fields ...zap.Field) []zap.Fie
 	// Try to get trace ID from context
 	if traceID, ok := tracing.GetTraceID(ctx); ok {
 		// Add trace ID to fields
-		fields = append(fields, zap.String("trace_id", traceID.String()))
+		fields = append(fields, zap.String("trace_id", traceID))
+	}
+
+	if operationName, ok := tracing.GetOperationName(ctx); ok {
+		fields = append(fields, zap.String("operation_name", operationName))
 	}
 
 	return fields
