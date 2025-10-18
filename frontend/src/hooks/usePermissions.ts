@@ -1,20 +1,32 @@
 import { useCallback, useMemo } from 'react'
 import { useAuthStore } from '@/stores/authStore'
 import { useMe } from '@/features/auth/data/auth'
+import { useSelectedProjectId } from '@/stores/projectStore'
 
 /**
  * Hook for checking user permissions based on scopes
  * Provides utilities to check if user has specific permissions for actions
+ * Supports both system-level and project-level scopes
  */
 export function usePermissions() {
   const { user: authUser } = useAuthStore((state) => state.auth)
   const { data: meData } = useMe()
+  const selectedProjectId = useSelectedProjectId()
 
   // Use data from me query if available, otherwise fall back to auth store
   const user = meData || authUser
   const isOwner = user?.isOwner || false
 
-  // Check if user has a specific scope
+  // Get project-level scopes for the selected project
+  const projectScopes = useMemo(() => {
+    if (!selectedProjectId || !user?.projects) {
+      return []
+    }
+    const project = user.projects.find(p => p.projectID === selectedProjectId)
+    return project?.scopes || []
+  }, [selectedProjectId, user?.projects])
+
+  // Check if user has a specific scope (system-level or project-level)
   const hasScope = useCallback(
     (requiredScope: string): boolean => {
       // Owner has all permissions
@@ -22,15 +34,24 @@ export function usePermissions() {
         return true
       }
 
-      // Check for wildcard permission
+      // Check for wildcard permission at system level
       if (user?.scopes?.includes('*')) {
         return true
       }
 
-      // Check for specific scope
-      return user?.scopes?.includes(requiredScope) || false
+      // Check for specific scope at system level
+      if (user?.scopes?.includes(requiredScope)) {
+        return true
+      }
+
+      // Check for specific scope at project level
+      if (projectScopes.includes(requiredScope)) {
+        return true
+      }
+
+      return false
     },
-    [user, isOwner]
+    [user, isOwner, projectScopes]
   )
 
   // Check if user has any of the required scopes

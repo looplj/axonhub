@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/schema/index"
 
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 // UserProject holds the schema definition for the UserProject entity.
@@ -60,5 +61,19 @@ func (UserProject) Edges() []ent.Edge {
 			Immutable().
 			Unique().
 			Required(),
+	}
+}
+
+func (UserProject) Policy() ent.Policy {
+	return scopes.Policy{
+		Query: scopes.QueryPolicy{
+			scopes.OwnerRule(),
+			scopes.UserProjectScopeReadRule(scopes.ScopeReadUsers),
+			scopes.UserOwnedQueryRule(),
+		},
+		Mutation: scopes.MutationPolicy{
+			scopes.OwnerRule(),
+			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteUsers),
+		},
 	}
 }

@@ -10,6 +10,6 @@ function ProtectedProjectRoles() {
   )
 }
 
-export const Route = createFileRoute('/_authenticated/project/roles')({
+export const Route = createFileRoute('/_authenticated/project/roles/')({
   component: ProtectedProjectRoles,
 })

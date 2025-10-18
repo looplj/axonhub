@@ -1010,6 +1010,8 @@
       "channel": "渠道",
       "user": "用户",
       "apiKey": "API密钥",
+      "roles": "角色",
+      "noRoles": "无角色",
       "details": "详情",
       "createdAt": "创建时间",
       "actions": "操作",

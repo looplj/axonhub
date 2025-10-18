@@ -6,35 +6,55 @@ type ScopeSlug string
 
 // Available scopes in the system.
 const (
-	ScopeReadChannels  ScopeSlug = "read_channels"
-	ScopeWriteChannels ScopeSlug = "write_channels"
-
-	ScopeReadUsers  ScopeSlug = "read_users"
-	ScopeWriteUsers ScopeSlug = "write_users"
-
-	ScopeReadRoles  ScopeSlug = "read_roles"
-	ScopeWriteRoles ScopeSlug = "write_roles"
-
-	ScopeReadProjects  ScopeSlug = "read_projects"
-	ScopeWriteProjects ScopeSlug = "write_projects"
-
-	//nolint:gosec // This is a scope, not a secret.
-	ScopeReadAPIKeys  ScopeSlug = "read_api_keys"
-	ScopeWriteAPIKeys ScopeSlug = "write_api_keys"
-
-	ScopeReadRequests  ScopeSlug = "read_requests"
-	ScopeWriteRequests ScopeSlug = "write_requests"
-
+	// ScopeReadDashboard read the dashboard of the system.
 	ScopeReadDashboard ScopeSlug = "read_dashboard"
 
-	ScopeReadSettings  ScopeSlug = "read_settings"
+	// ScopeReadChannels read the channels of the system.
+	ScopeReadChannels ScopeSlug = "read_channels"
+	// ScopeWriteChannels manage the channels of the system.
+	ScopeWriteChannels ScopeSlug = "write_channels"
+
+	// ScopeReadUsers read the users of the system or project.
+	ScopeReadUsers ScopeSlug = "read_users"
+	// ScopeWriteUsers manage the users of the system or project.
+	ScopeWriteUsers ScopeSlug = "write_users"
+
+	// ScopeReadSettings read the settings of the project.
+	ScopeReadSettings ScopeSlug = "read_settings"
+	// ScopeWriteSettings manage the settings of the project.
 	ScopeWriteSettings ScopeSlug = "write_settings"
+
+	// ScopeReadRoles read the roles of the system or project.
+	ScopeReadRoles ScopeSlug = "read_roles"
+	// ScopeWriteRoles manage the roles of the system or project.
+	ScopeWriteRoles ScopeSlug = "write_roles"
+
+	// ScopeReadProjects read the projects of the system.
+	ScopeReadProjects ScopeSlug = "read_projects"
+	// ScopeWriteProjects manage the projects of the system.
+	ScopeWriteProjects ScopeSlug = "write_projects"
+
+	// ScopeReadAPIKeys read the api keys of the project.
+	//nolint:gosec // False positive.
+	ScopeReadAPIKeys ScopeSlug = "read_api_keys"
+	// ScopeWriteAPIKeys manage the api keys of the project.
+	ScopeWriteAPIKeys ScopeSlug = "write_api_keys"
+
+	// ScopeReadRequests read the requests of the project.
+	ScopeReadRequests ScopeSlug = "read_requests"
+	// ScopeWriteRequests manage the requests of the project.
+	ScopeWriteRequests ScopeSlug = "write_requests"
 )
 
 type ScopeLevel string
 
 const (
-	ScopeLevelSystem  ScopeLevel = "system"
+	// ScopeLevelSystem is the scope level for system-wide operations.
+	// If a user has a scope with ScopeLevelSystem, they can perform operations on the entire system.
+	ScopeLevelSystem ScopeLevel = "system"
+
+	// ScopeLevelProject is the scope level for project-specific operations.
+	// If a user has a scope with ScopeLevelProject, they can perform operations on the project they are associated with.
 	ScopeLevelProject ScopeLevel = "project"
 )
 
@@ -46,6 +66,21 @@ type Scope struct {
 
 // scopeConfigs defines all available scopes with their configurations.
 var scopeConfigs = []Scope{
+	{
+		Slug:        ScopeReadDashboard,
+		Description: "View dashboard",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeReadSettings,
+		Description: "View system settings",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeWriteSettings,
+		Description: "Manage system settings",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
 	{
 		Slug:        ScopeReadChannels,
 		Description: "View channel information",
@@ -64,7 +99,7 @@ var scopeConfigs = []Scope{
 	{
 		Slug:        ScopeWriteUsers,
 		Description: "Manage users (create, edit, delete)",
-		Levels:      []ScopeLevel{ScopeLevelSystem},
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
 	},
 	{
 		Slug:        ScopeReadRoles,
@@ -105,21 +140,6 @@ var scopeConfigs = []Scope{
 		Slug:        ScopeWriteRequests,
 		Description: "Manage request records",
 		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
-	},
-	{
-		Slug:        ScopeReadDashboard,
-		Description: "View dashboard",
-		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
-	},
-	{
-		Slug:        ScopeReadSettings,
-		Description: "View system settings",
-		Levels:      []ScopeLevel{ScopeLevelSystem},
-	},
-	{
-		Slug:        ScopeWriteSettings,
-		Description: "Manage system settings",
-		Levels:      []ScopeLevel{ScopeLevelSystem},
 	},
 }
 

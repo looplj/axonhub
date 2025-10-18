@@ -751,7 +751,7 @@ input CreateUserInput {
   avatar: String
   isOwner: Boolean
   """
-  User-specific scopes: write_channels, read_channels, add_users, read_users, etc.
+  User scopes in system level: write_channels, read_channels, add_users, read_users, etc.
   """
   scopes: [String!]
   projectIDs: [ID!]
@@ -2508,7 +2508,7 @@ input UpdateUserInput {
   clearAvatar: Boolean
   isOwner: Boolean
   """
-  User-specific scopes: write_channels, read_channels, add_users, read_users, etc.
+  User scopes in system level: write_channels, read_channels, add_users, read_users, etc.
   """
   scopes: [String!]
   appendScopes: [String!]
@@ -2906,7 +2906,7 @@ type User implements Node {
   avatar: String
   isOwner: Boolean!
   """
-  User-specific scopes: write_channels, read_channels, add_users, read_users, etc.
+  User scopes in system level: write_channels, read_channels, add_users, read_users, etc.
   """
   scopes: [String!]
   projects(

@@ -1,13 +1,17 @@
 // 路由权限配置
+export type ScopeLevel = 'system' | 'project' | 'any'
+
 export interface RouteConfig {
   path: string
   requiredScopes?: string[]
+  scopeLevel?: ScopeLevel // 权限级别：system 只检查系统级权限，project 只检查项目级权限，any 检查两者
   mode?: 'hidden' | 'disabled' // 当没有权限时的处理方式
   children?: RouteConfig[]
 }
 
 export interface RouteGroup {
   title: string
+  scopeLevel?: ScopeLevel // 路由组的默认权限级别
   routes: RouteConfig[]
 }
 
@@ -15,6 +19,7 @@ export interface RouteGroup {
 export const routeConfigs: RouteGroup[] = [
   {
     title: 'Admin',
+    scopeLevel: 'system', // Admin 路由组只能通过 system-level 权限访问
     routes: [
       {
         path: '/',
@@ -53,20 +58,38 @@ export const routeConfigs: RouteGroup[] = [
     ],
   },
   {
-    title: 'API',
+    title: 'Project',
+    scopeLevel: 'any', // Project 路由组可以通过 system-level 或 project-level 权限访问
     routes: [
       {
-        path: '/requests',
-        // 移除权限要求，所有用户都可以访问自己的请求数据
+        path: '/project/requests',
+        requiredScopes: ['read_requests'],
+        mode: 'hidden',
       },
       {
-        path: '/api-keys',
-        // 移除权限要求，所有用户都可以管理自己的 API 密钥
+        path: '/project/usage-logs',
+        requiredScopes: ['read_requests'],
+        mode: 'hidden',
       },
       {
-        path: '/playground',
-        // 移除权限要求，所有用户都可以使用测试场
-      }
+        path: '/project/api-keys',
+        requiredScopes: ['read_api_keys'],
+        mode: 'hidden',
+      },
+      {
+        path: '/project/users',
+        requiredScopes: ['read_users'],
+        mode: 'hidden',
+      },
+      {
+        path: '/project/roles',
+        requiredScopes: ['read_roles'],
+        mode: 'hidden',
+      },
+      {
+        path: '/project/playground',
+        // Playground is accessible to all users
+      },
     ]
   },
   {

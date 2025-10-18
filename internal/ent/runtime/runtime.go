@@ -440,8 +440,18 @@ func init() {
 	// user.DefaultScopes holds the default value on creation for the scopes field.
 	user.DefaultScopes = userDescScopes.Default.([]string)
 	userprojectMixin := schema.UserProject{}.Mixin()
+	userproject.Policy = privacy.NewPolicies(schema.UserProject{})
+	userproject.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := userproject.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	userprojectMixinHooks1 := userprojectMixin[1].Hooks()
-	userproject.Hooks[0] = userprojectMixinHooks1[0]
+
+	userproject.Hooks[1] = userprojectMixinHooks1[0]
 	userprojectMixinInters1 := userprojectMixin[1].Interceptors()
 	userproject.Interceptors[0] = userprojectMixinInters1[0]
 	userprojectMixinFields0 := userprojectMixin[0].Fields()

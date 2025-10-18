@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useSelectedProjectId } from '@/stores/projectStore'
 import { useErrorHandler } from '@/hooks/use-error-handler'
+import { useRequestPermissions } from '@/hooks/useRequestPermissions'
 import {
   User,
   UserConnection,
@@ -15,29 +16,12 @@ import {
   projectUserSchema,
 } from './schema'
 
-// GraphQL query for project-level users
+// Dynamic GraphQL query builder for project-level users
 // This query fetches users with their project-specific information (owner status and scopes)
-export const PROJECT_USERS_QUERY = `
-  query ProjectUsers($projectId: ID!) {
-    node(id: $projectId) {
-      ... on Project {
-        id
-        name
-        projectUsers {
-          id
-          userID
-          projectID
-          isOwner
-          scopes
-          user {
-            id
-            createdAt
-            updatedAt
-            email
-            status
-            firstName
-            lastName
-            preferLanguage
+// Conditionally includes roles based on user permissions
+function buildProjectUsersQuery(permissions: { canViewRoles: boolean }) {
+  const rolesFields = permissions.canViewRoles
+    ? `
             roles(where: { projectID: $projectId }) {
               edges {
                 node {
@@ -46,13 +30,37 @@ export const PROJECT_USERS_QUERY = `
                   level
                 }
               }
+            }`
+    : ''
+
+  return `
+    query ProjectUsers($projectId: ID!) {
+      node(id: $projectId) {
+        ... on Project {
+          id
+          name
+          projectUsers {
+            id
+            userID
+            projectID
+            isOwner
+            scopes
+            user {
+              id
+              createdAt
+              updatedAt
+              email
+              status
+              firstName
+              lastName
+              preferLanguage${rolesFields}
             }
           }
         }
       }
     }
-  }
-`
+  `
+}
 
 // Mutation to add a user to a project
 export const ADD_USER_TO_PROJECT_MUTATION = `
@@ -124,16 +132,18 @@ export function useUsers(
 ) {
   const { t } = useTranslation()
   const { handleError } = useErrorHandler()
+  const permissions = useRequestPermissions()
   const selectedProjectId = useSelectedProjectId()
 
   return useQuery({
-    queryKey: ['project-users', selectedProjectId, variables],
+    queryKey: ['project-users', selectedProjectId, variables, permissions],
     queryFn: async () => {
       try {
         if (!selectedProjectId) {
           throw new Error('No project selected')
         }
 
+        const query = buildProjectUsersQuery(permissions)
         const headers = { 'X-Project-ID': selectedProjectId }
         const data = await graphqlRequest<{
           node: {
@@ -141,7 +151,7 @@ export function useUsers(
             name: string
             projectUsers: ProjectUser[]
           }
-        }>(PROJECT_USERS_QUERY, { projectId: selectedProjectId }, headers)
+        }>(query, { projectId: selectedProjectId }, headers)
 
         // Transform projectUsers to User format for display
         const projectUsers = data.node.projectUsers || []
