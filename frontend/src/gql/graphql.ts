@@ -2,6 +2,18 @@ import { toast } from 'sonner'
 import { getTokenFromStorage, removeTokenFromStorage } from '@/stores/authStore'
 import i18n from '@/lib/i18n'
 
+// Utility function to extract the operation name from a GraphQL query string
+export function extractOperationName(query: string): string | undefined {
+  // Remove leading whitespace and match the operation name from GraphQL query/mutation/subscription
+  // Pattern: (query|mutation|subscription)\s+Name
+  const trimmedQuery = query.trim()
+  const operationMatch = trimmedQuery.match(/^(query|mutation|subscription)\s+(\w+)/i)
+  if (operationMatch) {
+    return operationMatch[2] // Return the operation name
+  }
+  return undefined
+}
+
 export const GRAPHQL_ENDPOINT = '/admin/graphql'
 
 // GraphQL client function with token support
@@ -27,12 +39,16 @@ export async function graphqlRequest<T>(
     Object.assign(headers, customHeaders)
   }
 
+  // Extract operation name from the query for tracing
+  const operationName = extractOperationName(query)
+
   const response = await fetch(GRAPHQL_ENDPOINT, {
     method: 'POST',
     headers,
     body: JSON.stringify({
       query,
       variables,
+      operationName, // Add operation name for tracing
     }),
   })
 

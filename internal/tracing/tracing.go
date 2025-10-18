@@ -17,29 +17,32 @@ type ContextKey string
 const (
 	// TraceIDContextKey 用于在 context 中存储 trace id.
 	TraceIDContextKey ContextKey = "trace_id"
+	// OperationNameContextKey 用于在 context 中存储 operation name.
+	OperationNameContextKey ContextKey = "operation_name"
 )
 
-// TraceID represents a trace identifier.
-type TraceID string
-
-// String returns the string representation of the trace ID.
-func (t TraceID) String() string {
-	return string(t)
-}
-
 // WithTraceID 将 trace id 存储到 context 中.
-func WithTraceID(ctx context.Context, traceID TraceID) context.Context {
+func WithTraceID(ctx context.Context, traceID string) context.Context {
 	return context.WithValue(ctx, TraceIDContextKey, traceID)
 }
 
 // GetTraceID 从 context 中获取 trace id.
-func GetTraceID(ctx context.Context) (TraceID, bool) {
-	traceID, ok := ctx.Value(TraceIDContextKey).(TraceID)
+func GetTraceID(ctx context.Context) (string, bool) {
+	traceID, ok := ctx.Value(TraceIDContextKey).(string)
 	return traceID, ok
 }
 
 // GenerateTraceID 生成一个新的 trace id，格式为 at-{{uuid}}.
-func GenerateTraceID() TraceID {
+func GenerateTraceID() string {
 	id := uuid.New()
-	return TraceID(fmt.Sprintf("at-%s", id.String()))
+	return fmt.Sprintf("at-%s", id.String())
+}
+
+func WithOperationName(ctx context.Context, name string) context.Context {
+	return context.WithValue(ctx, OperationNameContextKey, name)
+}
+
+func GetOperationName(ctx context.Context) (string, bool) {
+	operationName, ok := ctx.Value(OperationNameContextKey).(string)
+	return operationName, ok
 }
