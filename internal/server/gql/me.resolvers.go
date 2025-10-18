@@ -25,38 +25,13 @@ func (r *mutationResolver) UpdateMe(ctx context.Context, input UpdateMeInput) (*
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	// Update user fields
-	mut := r.client.User.UpdateOneID(user.ID)
-
-	if input.Email != nil {
-		mut.SetEmail(*input.Email)
-	}
-
-	if input.FirstName != nil {
-		mut.SetFirstName(*input.FirstName)
-	}
-
-	if input.LastName != nil {
-		mut.SetLastName(*input.LastName)
-	}
-
-	if input.PreferLanguage != nil {
-		mut.SetPreferLanguage(*input.PreferLanguage)
-	}
-
-	if input.Avatar != nil {
-		mut.SetAvatar(*input.Avatar)
-	}
-
-	updatedUser, err := mut.Save(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Invalidate user cache to ensure fresh data on next request
-	r.userService.InvalidateUserCache(ctx, user.ID)
-
-	return updatedUser, nil
+	return r.userService.UpdateUser(ctx, user.ID, ent.UpdateUserInput{
+		Email:          input.Email,
+		FirstName:      input.FirstName,
+		LastName:       input.LastName,
+		PreferLanguage: input.PreferLanguage,
+		Avatar:         input.Avatar,
+	})
 }
 
 // Me is the resolver for the me field.

@@ -14,12 +14,18 @@ import (
 
 type RoleServiceParams struct {
 	fx.In
+
+	UserService *UserService
 }
 
-type RoleService struct{}
+type RoleService struct {
+	userService *UserService
+}
 
 func NewRoleService(params RoleServiceParams) *RoleService {
-	return &RoleService{}
+	return &RoleService{
+		userService: params.UserService,
+	}
 }
 
 // CreateRole creates a new role.
@@ -57,6 +63,8 @@ func (s *RoleService) UpdateRole(ctx context.Context, id int, input ent.UpdateRo
 		return nil, fmt.Errorf("failed to update role: %w", err)
 	}
 
+	s.invalidateUserCache(ctx)
+
 	return role, nil
 }
 
@@ -91,6 +99,8 @@ func (s *RoleService) DeleteRole(ctx context.Context, id int) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete role: %w", err)
 	}
+	// Invalidate cache for all users with this role BEFORE deleting relationships
+	s.invalidateUserCache(ctx)
 
 	return nil
 }
@@ -125,16 +135,20 @@ func (s *RoleService) BulkDeleteRoles(ctx context.Context, ids []int) error {
 	}
 
 	// Now delete all roles
-	deleted, err := client.Role.Delete().
+	_, err = client.Role.Delete().
 		Where(role.IDIn(ids...)).
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to delete roles: %w", err)
 	}
 
-	if deleted != len(ids) {
-		return fmt.Errorf("expected to delete %d roles, but deleted %d", len(ids), deleted)
-	}
+	s.invalidateUserCache(ctx)
 
 	return nil
+}
+
+// invalidateUserCache clears all user cache when a role is modified.
+// Since role changes affect user scopes, we clear the entire cache for simplicity.
+func (s *RoleService) invalidateUserCache(ctx context.Context) {
+	s.userService.clearUserCache(ctx)
 }

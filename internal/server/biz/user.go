@@ -72,7 +72,8 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 		SetNillableEmail(input.Email).
 		SetNillableFirstName(input.FirstName).
 		SetNillableLastName(input.LastName).
-		SetNillableIsOwner(input.IsOwner)
+		SetNillableIsOwner(input.IsOwner).
+		SetNillablePreferLanguage(input.PreferLanguage)
 
 	if input.Password != nil {
 		hashedPassword, err := HashPassword(*input.Password)
@@ -113,7 +114,7 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 	}
 
 	// Invalidate cache
-	s.InvalidateUserCache(ctx, id)
+	s.invalidateUserCache(ctx, id)
 
 	return user, nil
 }
@@ -131,7 +132,7 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, id int, status user.
 	}
 
 	// Invalidate cache
-	s.InvalidateUserCache(ctx, id)
+	s.invalidateUserCache(ctx, id)
 
 	return user, nil
 }
@@ -176,10 +177,15 @@ func buildUserCacheKey(id int) string {
 	return fmt.Sprintf("user:%d", id)
 }
 
-// InvalidateUserCache removes a user from cache.
-func (s *UserService) InvalidateUserCache(ctx context.Context, id int) {
+// invalidateUserCache removes a user from cache.
+func (s *UserService) invalidateUserCache(ctx context.Context, id int) {
 	cacheKey := buildUserCacheKey(id)
 	_ = s.UserCache.Delete(ctx, cacheKey)
+}
+
+// clearUserCache clears all user cache.
+func (s *UserService) clearUserCache(ctx context.Context) {
+	_ = s.UserCache.Clear(ctx)
 }
 
 // ConvertUserToUserInfo converts ent.User to objects.UserInfo.
@@ -296,7 +302,7 @@ func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID in
 	}
 
 	// Invalidate user cache
-	s.InvalidateUserCache(ctx, userID)
+	s.invalidateUserCache(ctx, userID)
 
 	return userProject, nil
 }
@@ -324,7 +330,7 @@ func (s *UserService) RemoveUserFromProject(ctx context.Context, userID, project
 	}
 
 	// Invalidate user cache
-	s.InvalidateUserCache(ctx, userID)
+	s.invalidateUserCache(ctx, userID)
 
 	return nil
 }
@@ -379,7 +385,7 @@ func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID i
 	}
 
 	// Invalidate user cache
-	s.InvalidateUserCache(ctx, userID)
+	s.invalidateUserCache(ctx, userID)
 
 	return userProject, nil
 }
