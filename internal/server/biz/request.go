@@ -34,7 +34,6 @@ func NewRequestService(systemService *SystemService, usageLogService *UsageLogSe
 // CreateRequest creates a new request record.
 func (s *RequestService) CreateRequest(
 	ctx context.Context,
-	user *ent.User,
 	apiKey *ent.APIKey,
 	llmRequest *llm.Request,
 	httpRequest *httpclient.Request,
@@ -69,15 +68,15 @@ func (s *RequestService) CreateRequest(
 		isStream = *llmRequest.Stream
 	}
 
-	// Determine project_id: priority is context > API key > default
-	projectID := 1 // Default project ID for backward compatibility
-
+	var projectID int
 	// First, try to get from context (e.g., from playground)
 	if ctxProjectID, ok := contexts.GetProjectID(ctx); ok {
 		projectID = ctxProjectID
 	} else if apiKey != nil {
 		// Fallback to API key's project
 		projectID = apiKey.ProjectID
+	} else {
+		return nil, errors.New("invalid project")
 	}
 
 	client := ent.FromContext(ctx)
@@ -372,13 +371,13 @@ func (s *RequestService) AppendRequestChunk(
 	return nil
 }
 
-// UpdateRequestCanceled updates request status to canceled.
-func (s *RequestService) UpdateRequestCanceled(ctx context.Context, requestID int) error {
+// MarkRequestCanceled updates request status to canceled.
+func (s *RequestService) MarkRequestCanceled(ctx context.Context, requestID int) error {
 	return s.UpdateRequestStatus(ctx, requestID, request.StatusCanceled)
 }
 
-// UpdateRequestFailed updates request status to failed.
-func (s *RequestService) UpdateRequestFailed(ctx context.Context, requestID int) error {
+// MarkRequestFailed updates request status to failed.
+func (s *RequestService) MarkRequestFailed(ctx context.Context, requestID int) error {
 	return s.UpdateRequestStatus(ctx, requestID, request.StatusFailed)
 }
 

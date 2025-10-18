@@ -273,7 +273,7 @@
       "id": "ID",
       "name": "Name",
       "key": "API Key",
-      "user": "User",
+      "creator": "Creator",
       "status": "Status",
       "createdAt": "Created At",
       "updatedAt": "Updated At",

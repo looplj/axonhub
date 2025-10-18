@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/log"
 )
@@ -179,13 +180,13 @@ func (s *AuthService) AnthenticateAPIKey(ctx context.Context, key string) (*ent.
 		return nil, fmt.Errorf("api key not enabled: %w", ErrInvalidAPIKey)
 	}
 
-	owner, err := apiKey.User(ctx)
+	proj, err := apiKey.Project(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get api key owner: %w", err)
+		return nil, fmt.Errorf("failed to get api key project: %w", err)
 	}
 
-	if owner == nil || owner.Status != user.StatusActivated {
-		return nil, fmt.Errorf("api key owner not valid: %w", ErrInvalidAPIKey)
+	if proj == nil || proj.Status != project.StatusActive {
+		return nil, fmt.Errorf("api key project not valid: %w", ErrInvalidAPIKey)
 	}
 
 	return apiKey, nil
