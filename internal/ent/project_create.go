@@ -70,12 +70,6 @@ func (_c *ProjectCreate) SetNillableDeletedAt(v *int) *ProjectCreate {
 	return _c
 }
 
-// SetSlug sets the "slug" field.
-func (_c *ProjectCreate) SetSlug(v string) *ProjectCreate {
-	_c.mutation.SetSlug(v)
-	return _c
-}
-
 // SetName sets the "name" field.
 func (_c *ProjectCreate) SetName(v string) *ProjectCreate {
 	_c.mutation.SetName(v)
@@ -277,9 +271,6 @@ func (_c *ProjectCreate) check() error {
 	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Project.deleted_at"`)}
 	}
-	if _, ok := _c.mutation.Slug(); !ok {
-		return &ValidationError{Name: "slug", err: errors.New(`ent: missing required field "Project.slug"`)}
-	}
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Project.name"`)}
 	}
@@ -332,10 +323,6 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(project.FieldDeletedAt, field.TypeInt, value)
 		_node.DeletedAt = value
-	}
-	if value, ok := _c.mutation.Slug(); ok {
-		_spec.SetField(project.FieldSlug, field.TypeString, value)
-		_node.Slug = value
 	}
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(project.FieldName, field.TypeString, value)
@@ -580,9 +567,6 @@ func (u *ProjectUpsertOne) UpdateNewValues() *ProjectUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(project.FieldCreatedAt)
-		}
-		if _, exists := u.create.mutation.Slug(); exists {
-			s.SetIgnore(project.FieldSlug)
 		}
 	}))
 	return u
@@ -870,9 +854,6 @@ func (u *ProjectUpsertBulk) UpdateNewValues() *ProjectUpsertBulk {
 		for _, b := range u.create.builders {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(project.FieldCreatedAt)
-			}
-			if _, exists := b.mutation.Slug(); exists {
-				s.SetIgnore(project.FieldSlug)
 			}
 		}
 	}))

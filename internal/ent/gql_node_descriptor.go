@@ -305,7 +305,7 @@ func (_m *Project) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Project",
-		Fields: make([]*Field, 7),
+		Fields: make([]*Field, 6),
 		Edges:  make([]*Edge, 6),
 	}
 	var buf []byte
@@ -333,18 +333,10 @@ func (_m *Project) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "deleted_at",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.Slug); err != nil {
-		return nil, err
-	}
-	node.Fields[3] = &Field{
-		Type:  "string",
-		Name:  "slug",
-		Value: string(buf),
-	}
 	if buf, err = json.Marshal(_m.Name); err != nil {
 		return nil, err
 	}
-	node.Fields[4] = &Field{
+	node.Fields[3] = &Field{
 		Type:  "string",
 		Name:  "name",
 		Value: string(buf),
@@ -352,7 +344,7 @@ func (_m *Project) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Description); err != nil {
 		return nil, err
 	}
-	node.Fields[5] = &Field{
+	node.Fields[4] = &Field{
 		Type:  "string",
 		Name:  "description",
 		Value: string(buf),
@@ -360,7 +352,7 @@ func (_m *Project) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Status); err != nil {
 		return nil, err
 	}
-	node.Fields[6] = &Field{
+	node.Fields[5] = &Field{
 		Type:  "project.Status",
 		Name:  "status",
 		Value: string(buf),
@@ -751,7 +743,7 @@ func (_m *Role) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Role",
-		Fields: make([]*Field, 8),
+		Fields: make([]*Field, 7),
 		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
@@ -779,18 +771,10 @@ func (_m *Role) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "deleted_at",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.Code); err != nil {
-		return nil, err
-	}
-	node.Fields[3] = &Field{
-		Type:  "string",
-		Name:  "code",
-		Value: string(buf),
-	}
 	if buf, err = json.Marshal(_m.Name); err != nil {
 		return nil, err
 	}
-	node.Fields[4] = &Field{
+	node.Fields[3] = &Field{
 		Type:  "string",
 		Name:  "name",
 		Value: string(buf),
@@ -798,7 +782,7 @@ func (_m *Role) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Level); err != nil {
 		return nil, err
 	}
-	node.Fields[5] = &Field{
+	node.Fields[4] = &Field{
 		Type:  "role.Level",
 		Name:  "level",
 		Value: string(buf),
@@ -806,7 +790,7 @@ func (_m *Role) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.ProjectID); err != nil {
 		return nil, err
 	}
-	node.Fields[6] = &Field{
+	node.Fields[5] = &Field{
 		Type:  "int",
 		Name:  "project_id",
 		Value: string(buf),
@@ -814,7 +798,7 @@ func (_m *Role) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Scopes); err != nil {
 		return nil, err
 	}
-	node.Fields[7] = &Field{
+	node.Fields[6] = &Field{
 		Type:  "[]string",
 		Name:  "scopes",
 		Value: string(buf),

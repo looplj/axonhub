@@ -10,7 +10,6 @@ test.describe('Admin Projects Management', () => {
 
   test('can create, edit, archive, and activate a project', async ({ page }) => {
     const uniqueSuffix = Date.now().toString().slice(-6)
-    const slug = `pw-test-project-${uniqueSuffix}`
     const name = `pw-test-Project ${uniqueSuffix}`
     const description = `This is a test project created by Playwright at ${new Date().toISOString()}`
 
@@ -25,7 +24,6 @@ test.describe('Admin Projects Management', () => {
 
     // Fill in project details
     await createDialog.getByLabel(/名称|Name/i).fill(name)
-    await createDialog.getByLabel(/标识|Slug/i).fill(slug)
     await createDialog.getByLabel(/描述|Description/i).fill(description)
 
     // Submit the form
@@ -38,7 +36,7 @@ test.describe('Admin Projects Management', () => {
     const projectsTable = page.locator('[data-testid="projects-table"]')
     await expect(projectsTable).toBeVisible()
     
-    const projectRow = projectsTable.locator('tbody tr').filter({ hasText: slug })
+    const projectRow = projectsTable.locator('tbody tr').filter({ hasText: name })
     await expect(projectRow).toBeVisible()
     await expect(projectRow).toContainText(name)
     await expect(projectRow).toContainText(/active|激活|活跃/i)
@@ -55,10 +53,6 @@ test.describe('Admin Projects Management', () => {
     const editDialog = page.getByRole('dialog')
     await expect(editDialog).toBeVisible()
     await expect(editDialog).toContainText(/编辑项目|Edit Project/i)
-
-    // Verify slug is disabled
-    const slugInput = editDialog.locator('input[value="' + slug + '"]')
-    await expect(slugInput).toBeDisabled()
 
     // Update the name
     const updatedName = `${name} - Updated`
@@ -129,7 +123,6 @@ test.describe('Admin Projects Management', () => {
 
     const createDialog = page.getByRole('dialog')
     await createDialog.getByLabel(/名称|Name/i).fill(searchTerm)
-    await createDialog.getByLabel(/标识|Slug/i).fill(`pw-test-search-${uniqueSuffix}`)
     
     await Promise.all([
       waitForGraphQLOperation(page, 'CreateProject'),
@@ -152,17 +145,16 @@ test.describe('Admin Projects Management', () => {
     await expect(searchedRow).toBeVisible()
   })
 
-  test('can search projects by slug', async ({ page }) => {
+  test('can search projects by name (additional test)', async ({ page }) => {
     const uniqueSuffix = Date.now().toString().slice(-6)
-    const slug = `pw-test-slug-search-${uniqueSuffix}`
+    const projectName = `pw-test-Project for Name Search ${uniqueSuffix}`
     
-    // Create a project with a unique slug for searching
+    // Create a project with a unique name for searching
     const createButton = page.getByRole('button', { name: /Create Project/i })
     await createButton.click()
 
     const createDialog = page.getByRole('dialog')
-    await createDialog.getByLabel(/名称|Name/i).fill(`pw-test-Project for Slug Search ${uniqueSuffix}`)
-    await createDialog.getByLabel(/标识|Slug/i).fill(slug)
+    await createDialog.getByLabel(/名称|Name/i).fill(projectName)
     
     await Promise.all([
       waitForGraphQLOperation(page, 'CreateProject'),
@@ -172,16 +164,16 @@ test.describe('Admin Projects Management', () => {
     // Wait for the table to update
     await page.waitForTimeout(500)
 
-    // Use the search filter with slug
+    // Use the search filter with project name
     const searchInput = page.locator('input[placeholder*="搜索"], input[placeholder*="Search"], input[type="search"]').first()
-    await searchInput.fill(slug)
+    await searchInput.fill(projectName)
 
     // Wait for debounce and API call
     await page.waitForTimeout(500)
 
     // Verify the searched project appears
     const projectsTable = page.locator('[data-testid="projects-table"]')
-    const searchedRow = projectsTable.locator('tbody tr').filter({ hasText: slug })
+    const searchedRow = projectsTable.locator('tbody tr').filter({ hasText: projectName })
     await expect(searchedRow).toBeVisible()
   })
 

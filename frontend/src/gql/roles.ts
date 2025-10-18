@@ -5,7 +5,6 @@ export const ROLES_QUERY = `
         node {
           id
           name
-          code
           scopes
         }
       }

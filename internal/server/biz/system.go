@@ -167,17 +167,14 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 
 	log.Info(ctx, "created owner user", zap.Int("user_id", user.ID))
 
-	// Create default project and assign owner
-	projectService := NewProjectService(ProjectServiceParams{})
-	description := "Default project"
-	projectInput := ent.CreateProjectInput{
-		Slug:        "default",
-		Name:        "Default",
-		Description: &description,
-	}
-
 	// Set user in context for project creation
 	ctx = contexts.WithUser(ctx, user)
+	// Create default project and assign owner
+	projectService := NewProjectService(ProjectServiceParams{})
+	projectInput := ent.CreateProjectInput{
+		Name:        "Default",
+		Description: lo.ToPtr("Default project"),
+	}
 
 	_, err = projectService.CreateProject(ctx, projectInput)
 	if err != nil {

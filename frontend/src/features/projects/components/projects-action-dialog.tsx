@@ -40,7 +40,6 @@ export function CreateProjectDialog() {
     resolver: zodResolver(createProjectInputSchema),
     defaultValues: {
       name: '',
-      slug: '',
       description: '',
     },
   })
@@ -86,29 +85,6 @@ export function CreateProjectDialog() {
                   </FormControl>
                   <FormDescription>
                     {t('projects.dialogs.fields.name.description')}
-                  </FormDescription>
-                  <div className='min-h-[1.25rem]'>
-                    <FormMessage />
-                  </div>
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name='slug'
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>{t('projects.dialogs.fields.slug.label')}</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder={t('projects.dialogs.fields.slug.placeholder')} 
-                      aria-invalid={!!fieldState.error}
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    {t('projects.dialogs.fields.slug.description')}
                   </FormDescription>
                   <div className='min-h-[1.25rem]'>
                     <FormMessage />
@@ -205,19 +181,6 @@ export function EditProjectDialog() {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-            <div>
-              <FormLabel>{t('projects.dialogs.fields.slug.label')}</FormLabel>
-              <Input 
-                value={editingProject.slug} 
-                disabled 
-                className='bg-muted'
-              />
-              <FormDescription>
-                {t('projects.dialogs.edit.slugNotEditable')}
-              </FormDescription>
-              <div className='min-h-[1.25rem]'></div>
-            </div>
-            
             <FormField
               control={form.control}
               name='name'

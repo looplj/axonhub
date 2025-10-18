@@ -5,7 +5,6 @@ export const roleSchema = z.object({
   id: z.string(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
-  code: z.string(),
   name: z.string(),
   scopes: z.array(z.string()),
 })
@@ -33,10 +32,6 @@ export type RoleConnection = z.infer<typeof roleConnectionSchema>
 
 // Create Role Input
 export const createRoleInputSchema = z.object({
-  code: z
-    .string()
-    .min(1, '角色代码不能为空')
-    .regex(/^[a-zA-Z0-9_]+$/, '角色代码只能包含字母、数字和下划线'),
   name: z.string().min(1, '角色名称不能为空'),
   scopes: z.array(z.string()).min(1, '至少需要选择一个权限'),
 })

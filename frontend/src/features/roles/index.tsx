@@ -35,7 +35,7 @@ function RolesContent() {
 
     // Use OR logic to search in both name and code fields
     return {
-      or: [{ nameContainsFold: debouncedSearchFilter }, { codeContainsFold: debouncedSearchFilter }],
+      or: [{ nameContainsFold: debouncedSearchFilter }],
     }
   })()
 

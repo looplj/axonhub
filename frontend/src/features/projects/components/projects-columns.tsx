@@ -56,18 +56,6 @@ export const createColumns = (
   // Add other columns
   columns.push(
     {
-      accessorKey: 'slug',
-      header: t('projects.columns.slug'),
-      cell: ({ row }) => {
-        const slug = row.getValue('slug') as string
-        return (
-          <div className='font-mono text-sm'>
-            {slug}
-          </div>
-        )
-      },
-    },
-    {
       accessorKey: 'name',
       header: t('projects.columns.name'),
       cell: ({ row }) => {

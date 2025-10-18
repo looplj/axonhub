@@ -26,9 +26,6 @@ func (Project) Mixin() []ent.Mixin {
 
 func (Project) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("slug").
-			StorageKey("projects_by_slug").
-			Unique(),
 		index.Fields("name").
 			StorageKey("projects_by_name").
 			Unique(),
@@ -38,11 +35,9 @@ func (Project) Indexes() []ent.Index {
 // Fields of the Project.
 func (Project) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("slug").
-			Immutable().
-			Comment("slug, a human-readable identifier for the project"),
 		field.String("name").
-			Comment("project name"),
+			Comment("project name").
+			Unique(),
 		field.String("description").
 			Default("").
 			Comment("project description"),

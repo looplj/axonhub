@@ -1054,21 +1054,6 @@ type ProjectWhereInput struct {
 	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
 	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
 
-	// "slug" field predicates.
-	Slug             *string  `json:"slug,omitempty"`
-	SlugNEQ          *string  `json:"slugNEQ,omitempty"`
-	SlugIn           []string `json:"slugIn,omitempty"`
-	SlugNotIn        []string `json:"slugNotIn,omitempty"`
-	SlugGT           *string  `json:"slugGT,omitempty"`
-	SlugGTE          *string  `json:"slugGTE,omitempty"`
-	SlugLT           *string  `json:"slugLT,omitempty"`
-	SlugLTE          *string  `json:"slugLTE,omitempty"`
-	SlugContains     *string  `json:"slugContains,omitempty"`
-	SlugHasPrefix    *string  `json:"slugHasPrefix,omitempty"`
-	SlugHasSuffix    *string  `json:"slugHasSuffix,omitempty"`
-	SlugEqualFold    *string  `json:"slugEqualFold,omitempty"`
-	SlugContainsFold *string  `json:"slugContainsFold,omitempty"`
-
 	// "name" field predicates.
 	Name             *string  `json:"name,omitempty"`
 	NameNEQ          *string  `json:"nameNEQ,omitempty"`
@@ -1296,45 +1281,6 @@ func (i *ProjectWhereInput) P() (predicate.Project, error) {
 	}
 	if i.DeletedAtLTE != nil {
 		predicates = append(predicates, project.DeletedAtLTE(*i.DeletedAtLTE))
-	}
-	if i.Slug != nil {
-		predicates = append(predicates, project.SlugEQ(*i.Slug))
-	}
-	if i.SlugNEQ != nil {
-		predicates = append(predicates, project.SlugNEQ(*i.SlugNEQ))
-	}
-	if len(i.SlugIn) > 0 {
-		predicates = append(predicates, project.SlugIn(i.SlugIn...))
-	}
-	if len(i.SlugNotIn) > 0 {
-		predicates = append(predicates, project.SlugNotIn(i.SlugNotIn...))
-	}
-	if i.SlugGT != nil {
-		predicates = append(predicates, project.SlugGT(*i.SlugGT))
-	}
-	if i.SlugGTE != nil {
-		predicates = append(predicates, project.SlugGTE(*i.SlugGTE))
-	}
-	if i.SlugLT != nil {
-		predicates = append(predicates, project.SlugLT(*i.SlugLT))
-	}
-	if i.SlugLTE != nil {
-		predicates = append(predicates, project.SlugLTE(*i.SlugLTE))
-	}
-	if i.SlugContains != nil {
-		predicates = append(predicates, project.SlugContains(*i.SlugContains))
-	}
-	if i.SlugHasPrefix != nil {
-		predicates = append(predicates, project.SlugHasPrefix(*i.SlugHasPrefix))
-	}
-	if i.SlugHasSuffix != nil {
-		predicates = append(predicates, project.SlugHasSuffix(*i.SlugHasSuffix))
-	}
-	if i.SlugEqualFold != nil {
-		predicates = append(predicates, project.SlugEqualFold(*i.SlugEqualFold))
-	}
-	if i.SlugContainsFold != nil {
-		predicates = append(predicates, project.SlugContainsFold(*i.SlugContainsFold))
 	}
 	if i.Name != nil {
 		predicates = append(predicates, project.NameEQ(*i.Name))
@@ -2770,21 +2716,6 @@ type RoleWhereInput struct {
 	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
 	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
 
-	// "code" field predicates.
-	Code             *string  `json:"code,omitempty"`
-	CodeNEQ          *string  `json:"codeNEQ,omitempty"`
-	CodeIn           []string `json:"codeIn,omitempty"`
-	CodeNotIn        []string `json:"codeNotIn,omitempty"`
-	CodeGT           *string  `json:"codeGT,omitempty"`
-	CodeGTE          *string  `json:"codeGTE,omitempty"`
-	CodeLT           *string  `json:"codeLT,omitempty"`
-	CodeLTE          *string  `json:"codeLTE,omitempty"`
-	CodeContains     *string  `json:"codeContains,omitempty"`
-	CodeHasPrefix    *string  `json:"codeHasPrefix,omitempty"`
-	CodeHasSuffix    *string  `json:"codeHasSuffix,omitempty"`
-	CodeEqualFold    *string  `json:"codeEqualFold,omitempty"`
-	CodeContainsFold *string  `json:"codeContainsFold,omitempty"`
-
 	// "name" field predicates.
 	Name             *string  `json:"name,omitempty"`
 	NameNEQ          *string  `json:"nameNEQ,omitempty"`
@@ -2993,45 +2924,6 @@ func (i *RoleWhereInput) P() (predicate.Role, error) {
 	}
 	if i.DeletedAtLTE != nil {
 		predicates = append(predicates, role.DeletedAtLTE(*i.DeletedAtLTE))
-	}
-	if i.Code != nil {
-		predicates = append(predicates, role.CodeEQ(*i.Code))
-	}
-	if i.CodeNEQ != nil {
-		predicates = append(predicates, role.CodeNEQ(*i.CodeNEQ))
-	}
-	if len(i.CodeIn) > 0 {
-		predicates = append(predicates, role.CodeIn(i.CodeIn...))
-	}
-	if len(i.CodeNotIn) > 0 {
-		predicates = append(predicates, role.CodeNotIn(i.CodeNotIn...))
-	}
-	if i.CodeGT != nil {
-		predicates = append(predicates, role.CodeGT(*i.CodeGT))
-	}
-	if i.CodeGTE != nil {
-		predicates = append(predicates, role.CodeGTE(*i.CodeGTE))
-	}
-	if i.CodeLT != nil {
-		predicates = append(predicates, role.CodeLT(*i.CodeLT))
-	}
-	if i.CodeLTE != nil {
-		predicates = append(predicates, role.CodeLTE(*i.CodeLTE))
-	}
-	if i.CodeContains != nil {
-		predicates = append(predicates, role.CodeContains(*i.CodeContains))
-	}
-	if i.CodeHasPrefix != nil {
-		predicates = append(predicates, role.CodeHasPrefix(*i.CodeHasPrefix))
-	}
-	if i.CodeHasSuffix != nil {
-		predicates = append(predicates, role.CodeHasSuffix(*i.CodeHasSuffix))
-	}
-	if i.CodeEqualFold != nil {
-		predicates = append(predicates, role.CodeEqualFold(*i.CodeEqualFold))
-	}
-	if i.CodeContainsFold != nil {
-		predicates = append(predicates, role.CodeContainsFold(*i.CodeContainsFold))
 	}
 	if i.Name != nil {
 		predicates = append(predicates, role.NameEQ(*i.Name))

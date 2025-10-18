@@ -52,7 +52,6 @@ type TokenStats {
 type TopRequestsProjects {
   projectId: ID!
   projectName: String!
-  projectSlug: String!
   projectDescription: String!
   requestCount: Int!
 }

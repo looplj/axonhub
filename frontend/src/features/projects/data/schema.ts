@@ -5,7 +5,6 @@ export const projectSchema = z.object({
   id: z.string(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
-  slug: z.string(),
   name: z.string(),
   description: z.string(),
   status: z.enum(['active', 'archived']),
@@ -35,7 +34,6 @@ export type ProjectConnection = z.infer<typeof projectConnectionSchema>
 // Create Project Input
 export const createProjectInputSchema = z.object({
   name: z.string().min(1, '项目名称不能为空'),
-  slug: z.string().optional(),
   description: z.string().optional(),
 })
 export type CreateProjectInput = z.infer<typeof createProjectInputSchema>

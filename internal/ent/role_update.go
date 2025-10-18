@@ -74,20 +74,6 @@ func (_u *RoleUpdate) SetNillableName(v *string) *RoleUpdate {
 	return _u
 }
 
-// SetLevel sets the "level" field.
-func (_u *RoleUpdate) SetLevel(v role.Level) *RoleUpdate {
-	_u.mutation.SetLevel(v)
-	return _u
-}
-
-// SetNillableLevel sets the "level" field if the given value is not nil.
-func (_u *RoleUpdate) SetNillableLevel(v *role.Level) *RoleUpdate {
-	if v != nil {
-		_u.SetLevel(*v)
-	}
-	return _u
-}
-
 // SetProjectID sets the "project_id" field.
 func (_u *RoleUpdate) SetProjectID(v int) *RoleUpdate {
 	_u.mutation.SetProjectID(v)
@@ -256,16 +242,6 @@ func (_u *RoleUpdate) defaults() error {
 	return nil
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (_u *RoleUpdate) check() error {
-	if v, ok := _u.mutation.Level(); ok {
-		if err := role.LevelValidator(v); err != nil {
-			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "Role.level": %w`, err)}
-		}
-	}
-	return nil
-}
-
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
 func (_u *RoleUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RoleUpdate {
 	_u.modifiers = append(_u.modifiers, modifiers...)
@@ -273,9 +249,6 @@ func (_u *RoleUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RoleUpdat
 }
 
 func (_u *RoleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
-	if err := _u.check(); err != nil {
-		return _node, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(role.Table, role.Columns, sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -295,9 +268,6 @@ func (_u *RoleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(role.FieldName, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Level(); ok {
-		_spec.SetField(role.FieldLevel, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Scopes(); ok {
 		_spec.SetField(role.FieldScopes, field.TypeJSON, value)
@@ -504,20 +474,6 @@ func (_u *RoleUpdateOne) SetNillableName(v *string) *RoleUpdateOne {
 	return _u
 }
 
-// SetLevel sets the "level" field.
-func (_u *RoleUpdateOne) SetLevel(v role.Level) *RoleUpdateOne {
-	_u.mutation.SetLevel(v)
-	return _u
-}
-
-// SetNillableLevel sets the "level" field if the given value is not nil.
-func (_u *RoleUpdateOne) SetNillableLevel(v *role.Level) *RoleUpdateOne {
-	if v != nil {
-		_u.SetLevel(*v)
-	}
-	return _u
-}
-
 // SetProjectID sets the "project_id" field.
 func (_u *RoleUpdateOne) SetProjectID(v int) *RoleUpdateOne {
 	_u.mutation.SetProjectID(v)
@@ -699,16 +655,6 @@ func (_u *RoleUpdateOne) defaults() error {
 	return nil
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (_u *RoleUpdateOne) check() error {
-	if v, ok := _u.mutation.Level(); ok {
-		if err := role.LevelValidator(v); err != nil {
-			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "Role.level": %w`, err)}
-		}
-	}
-	return nil
-}
-
 // Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
 func (_u *RoleUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RoleUpdateOne {
 	_u.modifiers = append(_u.modifiers, modifiers...)
@@ -716,9 +662,6 @@ func (_u *RoleUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *RoleUp
 }
 
 func (_u *RoleUpdateOne) sqlSave(ctx context.Context) (_node *Role, err error) {
-	if err := _u.check(); err != nil {
-		return _node, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(role.Table, role.Columns, sqlgraph.NewFieldSpec(role.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -755,9 +698,6 @@ func (_u *RoleUpdateOne) sqlSave(ctx context.Context) (_node *Role, err error) {
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(role.FieldName, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Level(); ok {
-		_spec.SetField(role.FieldLevel, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Scopes(); ok {
 		_spec.SetField(role.FieldScopes, field.TypeJSON, value)

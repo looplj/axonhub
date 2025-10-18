@@ -14,7 +14,6 @@ const ROLES_QUERY = `
           id
           createdAt
           updatedAt
-          code
           name
           scopes
         }
@@ -35,7 +34,6 @@ const CREATE_ROLE_MUTATION = `
   mutation CreateRole($input: CreateRoleInput!) {
     createRole(input: $input) {
       id
-      code
       name
       scopes
       createdAt
@@ -48,7 +46,6 @@ const UPDATE_ROLE_MUTATION = `
   mutation UpdateRole($id: ID!, $input: UpdateRoleInput!) {
     updateRole(id: $id, input: $input) {
       id
-      code
       name
       scopes
       createdAt
@@ -85,7 +82,7 @@ export function useRoles(
     ...variables,
     where: {
       ...variables.where,
-      projectIDIsNil: true, // Only roles not associated with any project
+      projectID: "gid://axonhub/Project/0", // Only system roles (projectID = 0)
     },
   }
 

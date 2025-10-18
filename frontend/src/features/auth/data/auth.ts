@@ -4,14 +4,10 @@ import { useRouter } from '@tanstack/react-router'
 import { graphqlRequest } from '@/gql/graphql'
 import { ME_QUERY } from '@/gql/users'
 import { toast } from 'sonner'
-import {
-  useAuthStore,
-  setTokenToStorage,
-  removeTokenFromStorage,
-} from '@/stores/authStore'
+import { useAuthStore, setTokenToStorage, removeTokenFromStorage } from '@/stores/authStore'
+import { AuthUser } from '@/stores/authStore'
 import { authApi } from '@/lib/api-client'
 import i18n from '@/lib/i18n'
-import { AuthUser } from '@/stores/authStore'
 
 export interface SignInInput {
   email: string
@@ -79,7 +75,7 @@ export function useSignIn() {
 
       // Redirect based on user role
       // Owner users go to dashboard, non-owner users go to requests page
-      const redirectPath = data.user.isOwner ? '/' : '/requests'
+      const redirectPath = data.user.isOwner ? '/' : '/project/requests'
       router.navigate({ to: redirectPath })
     },
     onError: (error: any) => {

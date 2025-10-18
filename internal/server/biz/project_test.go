@@ -19,7 +19,7 @@ import (
 func setupTestProjectService(t *testing.T, cacheConfig xcache.Config) (*ProjectService, *ent.Client) {
 	t.Helper()
 
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
 
 	projectService := &ProjectService{
 		ProjectCache: xcache.NewFromConfig[ent.Project](cacheConfig),
@@ -43,7 +43,6 @@ func TestProjectService_GetProjectByID(t *testing.T) {
 	projectName := uuid.NewString()
 	testProject, err := client.Project.Create().
 		SetName(projectName).
-		SetSlug(GenerateSlug(projectName)).
 		SetDescription(projectName).
 		SetStatus(project.StatusActive).
 		SetCreatedAt(time.Now()).
@@ -57,7 +56,6 @@ func TestProjectService_GetProjectByID(t *testing.T) {
 	require.NotNil(t, retrievedProject)
 	require.Equal(t, testProject.ID, retrievedProject.ID)
 	require.Equal(t, testProject.Name, retrievedProject.Name)
-	require.Equal(t, testProject.Slug, retrievedProject.Slug)
 	require.Equal(t, testProject.Status, retrievedProject.Status)
 
 	// Test cache behavior - second call should still work (even with noop cache)
@@ -117,7 +115,6 @@ func TestProjectService_GetProjectByID_WithDifferentCaches(t *testing.T) {
 			projectName := uuid.NewString()
 			testProject, err := client.Project.Create().
 				SetName(projectName).
-				SetSlug(GenerateSlug(projectName)).
 				SetDescription(projectName).
 				SetStatus(project.StatusActive).
 				SetCreatedAt(time.Now()).
@@ -168,7 +165,6 @@ func TestProjectService_UpdateProjectStatus_CacheInvalidation(t *testing.T) {
 	projectName := uuid.NewString()
 	testProject, err := client.Project.Create().
 		SetName(projectName).
-		SetSlug(GenerateSlug(projectName)).
 		SetDescription(projectName).
 		SetStatus(project.StatusActive).
 		SetCreatedAt(time.Now()).
@@ -189,62 +185,6 @@ func TestProjectService_UpdateProjectStatus_CacheInvalidation(t *testing.T) {
 	retrievedProject2, err := projectService.GetProjectByID(ctx, testProject.ID)
 	require.NoError(t, err)
 	require.Equal(t, project.StatusArchived, retrievedProject2.Status)
-}
-
-func TestGenerateSlug(t *testing.T) {
-	testCases := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "Simple name",
-			input:    "My Project",
-			expected: "my-project",
-		},
-		{
-			name:     "Name with special characters",
-			input:    "My Project! @#$%",
-			expected: "my-project",
-		},
-		{
-			name:     "Name with multiple spaces",
-			input:    "My   Project   Name",
-			expected: "my-project-name",
-		},
-		{
-			name:     "Name with hyphens",
-			input:    "My-Project-Name",
-			expected: "my-project-name",
-		},
-		{
-			name:     "Name with underscores",
-			input:    "My_Project_Name",
-			expected: "my_project_name",
-		},
-		{
-			name:     "Name with leading/trailing spaces",
-			input:    "  My Project  ",
-			expected: "my-project",
-		},
-		{
-			name:     "Name with numbers",
-			input:    "Project 123",
-			expected: "project-123",
-		},
-		{
-			name:     "Chinese characters",
-			input:    "我的项目",
-			expected: "",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			result := GenerateSlug(tc.input)
-			require.Equal(t, tc.expected, result)
-		})
-	}
 }
 
 func TestBuildProjectCacheKey(t *testing.T) {

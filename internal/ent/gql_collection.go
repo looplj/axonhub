@@ -1256,11 +1256,6 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, project.FieldDeletedAt)
 				fieldSeen[project.FieldDeletedAt] = struct{}{}
 			}
-		case "slug":
-			if _, ok := fieldSeen[project.FieldSlug]; !ok {
-				selectedFields = append(selectedFields, project.FieldSlug)
-				fieldSeen[project.FieldSlug] = struct{}{}
-			}
 		case "name":
 			if _, ok := fieldSeen[project.FieldName]; !ok {
 				selectedFields = append(selectedFields, project.FieldName)
@@ -2132,11 +2127,6 @@ func (_q *RoleQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 			if _, ok := fieldSeen[role.FieldDeletedAt]; !ok {
 				selectedFields = append(selectedFields, role.FieldDeletedAt)
 				fieldSeen[role.FieldDeletedAt] = struct{}{}
-			}
-		case "code":
-			if _, ok := fieldSeen[role.FieldCode]; !ok {
-				selectedFields = append(selectedFields, role.FieldCode)
-				fieldSeen[role.FieldCode] = struct{}{}
 			}
 		case "name":
 			if _, ok := fieldSeen[role.FieldName]; !ok {

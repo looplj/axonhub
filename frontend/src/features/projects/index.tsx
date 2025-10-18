@@ -25,10 +25,7 @@ function ProjectsContent() {
   const debouncedSearchFilter = useDebounce(searchFilter, 300)
 
   // Memoize columns to prevent infinite re-renders
-  const columns = useMemo(
-    () => createColumns(t, projectPermissions.canWrite),
-    [t, projectPermissions.canWrite]
-  )
+  const columns = useMemo(() => createColumns(t, projectPermissions.canWrite), [t, projectPermissions.canWrite])
 
   // Build where clause for API filtering with OR logic
   const whereClause = (() => {
@@ -38,14 +35,15 @@ function ProjectsContent() {
 
     // Use OR logic to search in both name and slug fields
     return {
-      or: [
-        { nameContainsFold: debouncedSearchFilter },
-        { slugContainsFold: debouncedSearchFilter },
-      ],
+      or: [{ nameContainsFold: debouncedSearchFilter }],
     }
   })()
 
-  const { data, isLoading, error: _error } = useProjects({
+  const {
+    data,
+    isLoading,
+    error: _error,
+  } = useProjects({
     first: pageSize,
     after: cursor,
     where: whereClause,
@@ -97,16 +95,12 @@ export default function ProjectsPage() {
 
   return (
     <ProjectsProvider>
-      <Header fixed>
-        {/* <Search /> */}
-      </Header>
+      <Header fixed>{/* <Search /> */}</Header>
 
       <Main>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
-            <h2 className='text-2xl font-bold tracking-tight'>
-              {t('projects.title')}
-            </h2>
+            <h2 className='text-2xl font-bold tracking-tight'>{t('projects.title')}</h2>
             <p className='text-muted-foreground'>{t('projects.description')}</p>
           </div>
           <ProjectsPrimaryButtons />

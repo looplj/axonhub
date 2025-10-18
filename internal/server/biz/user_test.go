@@ -88,17 +88,15 @@ func TestConvertUserToUserInfo_WithGlobalRoles(t *testing.T) {
 
 	// Create global roles
 	adminRole, err := client.Role.Create().
-		SetCode("admin").
 		SetName("Administrator").
-		SetLevel(role.LevelGlobal).
+		SetLevel(role.LevelSystem).
 		SetScopes([]string{"manage_users", "manage_projects", "manage_channels"}).
 		Save(ctx)
 	require.NoError(t, err)
 
 	viewerRole, err := client.Role.Create().
-		SetCode("viewer").
 		SetName("Viewer").
-		SetLevel(role.LevelGlobal).
+		SetLevel(role.LevelSystem).
 		SetScopes([]string{"read_channels"}).
 		Save(ctx)
 	require.NoError(t, err)
@@ -131,8 +129,8 @@ func TestConvertUserToUserInfo_WithGlobalRoles(t *testing.T) {
 
 	// Verify roles
 	require.Len(t, userInfo.Roles, 2)
-	roleCodes := []string{userInfo.Roles[0].Code, userInfo.Roles[1].Code}
-	require.ElementsMatch(t, []string{"admin", "viewer"}, roleCodes)
+	roleNames := []string{userInfo.Roles[0].Name, userInfo.Roles[1].Name}
+	require.ElementsMatch(t, []string{"Administrator", "Viewer"}, roleNames)
 
 	// Verify scopes include user scopes + role scopes
 	expectedScopes := []string{"custom_scope", "manage_users", "manage_projects", "manage_channels", "read_channels"}
@@ -150,14 +148,12 @@ func TestConvertUserToUserInfo_WithProjectRoles(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
 
 	// Create project-specific roles
 	projectAdminRole, err := client.Role.Create().
-		SetCode("project_admin").
 		SetName("Project Admin").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -166,7 +162,6 @@ func TestConvertUserToUserInfo_WithProjectRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	projectMemberRole, err := client.Role.Create().
-		SetCode("project_member").
 		SetName("Project Member").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -226,8 +221,8 @@ func TestConvertUserToUserInfo_WithProjectRoles(t *testing.T) {
 
 	// Verify project roles
 	require.Len(t, projectInfo.Roles, 2)
-	projectRoleCodes := []string{projectInfo.Roles[0].Code, projectInfo.Roles[1].Code}
-	require.ElementsMatch(t, []string{"project_admin", "project_member"}, projectRoleCodes)
+	projectRoleNames := []string{projectInfo.Roles[0].Name, projectInfo.Roles[1].Name}
+	require.ElementsMatch(t, []string{"Project Admin", "Project Member"}, projectRoleNames)
 }
 
 func TestConvertUserToUserInfo_MixedRoles(t *testing.T) {
@@ -240,9 +235,8 @@ func TestConvertUserToUserInfo_MixedRoles(t *testing.T) {
 
 	// Create global role
 	globalRole, err := client.Role.Create().
-		SetCode("global_admin").
 		SetName("Global Admin").
-		SetLevel(role.LevelGlobal).
+		SetLevel(role.LevelSystem).
 		SetScopes([]string{"global_scope_1", "global_scope_2"}).
 		Save(ctx)
 	require.NoError(t, err)
@@ -250,14 +244,12 @@ func TestConvertUserToUserInfo_MixedRoles(t *testing.T) {
 	// Create project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
 
 	// Create project role
 	projectRole, err := client.Role.Create().
-		SetCode("project_admin").
 		SetName("Project Admin").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -302,7 +294,7 @@ func TestConvertUserToUserInfo_MixedRoles(t *testing.T) {
 
 	// Verify global roles (only global_admin)
 	require.Len(t, userInfo.Roles, 1)
-	require.Equal(t, "global_admin", userInfo.Roles[0].Code)
+	require.Equal(t, "Global Admin", userInfo.Roles[0].Name)
 
 	// Verify global scopes (user scopes + global role scopes)
 	expectedGlobalScopes := []string{"user_scope_1", "global_scope_1", "global_scope_2"}
@@ -316,7 +308,7 @@ func TestConvertUserToUserInfo_MixedRoles(t *testing.T) {
 
 	// Verify project roles
 	require.Len(t, projectInfo.Roles, 1)
-	require.Equal(t, "project_admin", projectInfo.Roles[0].Code)
+	require.Equal(t, "Project Admin", projectInfo.Roles[0].Name)
 }
 
 func TestConvertUserToUserInfo_NilUser(t *testing.T) {
@@ -337,14 +329,12 @@ func TestConvertUserToUserInfo_MultipleProjects(t *testing.T) {
 	// Create multiple projects
 	project1, err := client.Project.Create().
 		SetName("Project 1").
-		SetSlug("project-1").
 		SetDescription("First project").
 		Save(ctx)
 	require.NoError(t, err)
 
 	project2, err := client.Project.Create().
 		SetName("Project 2").
-		SetSlug("project-2").
 		SetDescription("Second project").
 		Save(ctx)
 	require.NoError(t, err)
@@ -419,7 +409,6 @@ func TestAddUserToProject_Success(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
@@ -458,14 +447,12 @@ func TestAddUserToProject_WithRoles(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
 
 	// Create project roles
 	projectRole1, err := client.Role.Create().
-		SetCode("project_admin").
 		SetName("Project Admin").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -474,7 +461,6 @@ func TestAddUserToProject_WithRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	projectRole2, err := client.Role.Create().
-		SetCode("project_member").
 		SetName("Project Member").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -528,7 +514,6 @@ func TestAddUserToProject_WithNilOwner(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
@@ -565,7 +550,6 @@ func TestAddUserToProject_DuplicateRelationship(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
@@ -601,7 +585,6 @@ func TestRemoveUserFromProject_Success(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
@@ -647,7 +630,6 @@ func TestRemoveUserFromProject_NotFound(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
@@ -679,7 +661,6 @@ func TestUpdateProjectUser_UpdateScopes(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
@@ -720,14 +701,12 @@ func TestUpdateProjectUser_AddRoles(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
 
 	// Create project roles
 	projectRole1, err := client.Role.Create().
-		SetCode("project_admin").
 		SetName("Project Admin").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -736,7 +715,6 @@ func TestUpdateProjectUser_AddRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	projectRole2, err := client.Role.Create().
-		SetCode("project_member").
 		SetName("Project Member").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -787,14 +765,12 @@ func TestUpdateProjectUser_RemoveRoles(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
 
 	// Create project roles
 	projectRole1, err := client.Role.Create().
-		SetCode("project_admin").
 		SetName("Project Admin").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -803,7 +779,6 @@ func TestUpdateProjectUser_RemoveRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	projectRole2, err := client.Role.Create().
-		SetCode("project_member").
 		SetName("Project Member").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -853,14 +828,12 @@ func TestUpdateProjectUser_AddAndRemoveRoles(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
 
 	// Create project roles
 	projectRole1, err := client.Role.Create().
-		SetCode("project_admin").
 		SetName("Project Admin").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -869,7 +842,6 @@ func TestUpdateProjectUser_AddAndRemoveRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	projectRole2, err := client.Role.Create().
-		SetCode("project_member").
 		SetName("Project Member").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -878,7 +850,6 @@ func TestUpdateProjectUser_AddAndRemoveRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	projectRole3, err := client.Role.Create().
-		SetCode("project_viewer").
 		SetName("Project Viewer").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -931,7 +902,6 @@ func TestUpdateProjectUser_NotFound(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
@@ -964,14 +934,12 @@ func TestUpdateProjectUser_UpdateScopesAndRoles(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		SetDescription("A test project").
 		Save(ctx)
 	require.NoError(t, err)
 
 	// Create project role
 	projectRole, err := client.Role.Create().
-		SetCode("project_admin").
 		SetName("Project Admin").
 		SetLevel(role.LevelProject).
 		SetProjectID(testProject.ID).
@@ -1098,7 +1066,6 @@ func TestAddUserToProject_CacheInvalidation(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -1140,7 +1107,6 @@ func TestRemoveUserFromProject_CacheInvalidation(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -1186,7 +1152,6 @@ func TestUpdateProjectUser_CacheInvalidation(t *testing.T) {
 	// Create a project
 	testProject, err := client.Project.Create().
 		SetName("Test Project").
-		SetSlug("test-project").
 		Save(ctx)
 	require.NoError(t, err)
 

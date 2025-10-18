@@ -9,7 +9,6 @@ export const ME_QUERY = `
       preferLanguage
       avatar
       roles {
-        code
         name
       }
       projects {
@@ -17,7 +16,6 @@ export const ME_QUERY = `
         isOwner
         scopes
         roles {
-          code
           name
         }
       }

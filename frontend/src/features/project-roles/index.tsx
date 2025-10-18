@@ -19,7 +19,7 @@ function RolesContent() {
   const [pageSize, setPageSize] = useState(20)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
 
-  // Filter states - combined search for name or code
+  // Filter states - search by name
   const [searchFilter, setSearchFilter] = useState<string>('')
 
   const debouncedSearchFilter = useDebounce(searchFilter, 300)
@@ -36,12 +36,9 @@ function RolesContent() {
       return undefined
     }
 
-    // Use OR logic to search in both name and code fields
+    // Search by name
     return {
-      or: [
-        { nameContainsFold: debouncedSearchFilter },
-        { codeContainsFold: debouncedSearchFilter },
-      ],
+      nameContainsFold: debouncedSearchFilter,
     }
   })()
 

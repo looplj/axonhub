@@ -3,8 +3,6 @@ package biz
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strings"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -18,29 +16,6 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/scopes"
 )
-
-// GenerateSlug generates a URL-friendly slug from a given string
-// It converts to lowercase, replaces spaces and special characters with hyphens.
-func GenerateSlug(s string) string {
-	// Convert to lowercase
-	slug := strings.ToLower(s)
-
-	// Replace spaces with hyphens
-	slug = strings.ReplaceAll(slug, " ", "-")
-
-	// Remove all characters except alphanumeric, hyphens, and underscores
-	reg := regexp.MustCompile(`[^a-z0-9\-_]+`)
-	slug = reg.ReplaceAllString(slug, "")
-
-	// Replace multiple consecutive hyphens with a single hyphen
-	reg = regexp.MustCompile(`-+`)
-	slug = reg.ReplaceAllString(slug, "-")
-
-	// Trim hyphens from start and end
-	slug = strings.Trim(slug, "-")
-
-	return slug
-}
 
 type ProjectServiceParams struct {
 	fx.In
@@ -68,15 +43,20 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 
 	client := ent.FromContext(ctx)
 
-	// Generate slug from name if not provided
-	slug := input.Slug
-	if slug == "" {
-		slug = GenerateSlug(input.Name)
+	// Check for duplicate project name
+	exists, err := client.Project.Query().
+		Where(project.NameEQ(input.Name)).
+		Exist(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check project name uniqueness: %w", err)
+	}
+
+	if exists {
+		return nil, fmt.Errorf("project name '%s' already exists", input.Name)
 	}
 
 	// Create the project
 	createProject := client.Project.Create().
-		SetSlug(slug).
 		SetName(input.Name)
 
 	if input.Description != nil {
@@ -102,7 +82,6 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 	}
 
 	_, err = client.Role.Create().
-		SetCode(fmt.Sprintf("%s-admin", slug)).
 		SetName("Admin").
 		SetLevel(role.LevelProject).
 		SetProjectID(proj.ID).
@@ -121,7 +100,6 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 	}
 
 	_, err = client.Role.Create().
-		SetCode(fmt.Sprintf("%s-developer", slug)).
 		SetName("Developer").
 		SetLevel(role.LevelProject).
 		SetProjectID(proj.ID).
@@ -138,7 +116,6 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 	}
 
 	_, err = client.Role.Create().
-		SetCode(fmt.Sprintf("%s-viewer", slug)).
 		SetName("Viewer").
 		SetLevel(role.LevelProject).
 		SetProjectID(proj.ID).

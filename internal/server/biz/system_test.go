@@ -54,7 +54,6 @@ func TestSystemService_Initialize(t *testing.T) {
 	// Verify default project is created
 	project, err := client.Project.Query().Where().First(ctx)
 	require.NoError(t, err)
-	require.Equal(t, "default", project.Slug)
 	require.Equal(t, "Default", project.Name)
 
 	// Verify owner is assigned to the project

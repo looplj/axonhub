@@ -8,7 +8,6 @@ test.describe('Admin Roles Management', () => {
 
   test('can create, edit, and delete a role', async ({ page }) => {
     const uniqueSuffix = Date.now().toString().slice(-5)
-    const roleCode = `pw_test_role_${uniqueSuffix}`
     const roleName = `pw-test-Role ${uniqueSuffix}`
 
     // Try multiple selectors for the create role button
@@ -22,7 +21,6 @@ test.describe('Admin Roles Management', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
 
-    await dialog.getByLabel(/角色代码|Role Code|代码/i).fill(roleCode)
     await dialog.getByLabel(/角色名称|Role Name|名称/i).fill(roleName)
 
     const firstScopeCheckbox = dialog.getByRole('checkbox').first()
