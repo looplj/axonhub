@@ -100,10 +100,14 @@ func setupTestAuthService(t *testing.T, cacheConfig xcache.Config) (*AuthService
 		UserCache: xcache.NewFromConfig[ent.User](cacheConfig),
 	}
 
-	// Create APIKeyService and UserService
+	projectService := &ProjectService{
+		ProjectCache: xcache.NewFromConfig[ent.Project](cacheConfig),
+	}
+
+	// Create APIKeyService with ProjectService
 	apiKeyService := &APIKeyService{
-		UserService: userService,
-		APIKeyCache: xcache.NewFromConfig[ent.APIKey](cacheConfig),
+		ProjectService: projectService,
+		APIKeyCache:    xcache.NewFromConfig[ent.APIKey](cacheConfig),
 	}
 
 	authService := &AuthService{
@@ -385,18 +389,20 @@ func TestAuthService_AnthenticateAPIKey(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "api key not enabled")
 
-	// Test API key with deactivated user
+	// Test API key with inactive project
 	// First, re-enable the API key
 	_, err = authService.APIKeyService.UpdateAPIKeyStatus(ctx, apiKey.ID, "enabled")
 	require.NoError(t, err)
 
-	// Then deactivate the user
-	_, err = authService.UserService.UpdateUserStatus(ctx, testUser.ID, user.StatusDeactivated)
+	// Then archive the project (making it inactive)
+	_, err = client.Project.UpdateOneID(testProject.ID).
+		SetStatus(project.StatusArchived).
+		Save(ctx)
 	require.NoError(t, err)
 
 	_, err = authService.AnthenticateAPIKey(ctx, apiKeyString)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "api key owner not valid")
+	require.Contains(t, err.Error(), "api key project not valid")
 }
 
 func TestAuthService_WithDifferentCacheConfigs(t *testing.T) {

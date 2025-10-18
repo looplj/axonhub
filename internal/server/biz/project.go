@@ -7,11 +7,15 @@ import (
 	"strings"
 
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -40,12 +44,18 @@ func GenerateSlug(s string) string {
 
 type ProjectServiceParams struct {
 	fx.In
+
+	CacheConfig xcache.Config
 }
 
-type ProjectService struct{}
+type ProjectService struct {
+	ProjectCache xcache.Cache[ent.Project]
+}
 
 func NewProjectService(params ProjectServiceParams) *ProjectService {
-	return &ProjectService{}
+	return &ProjectService{
+		ProjectCache: xcache.NewFromConfig[ent.Project](params.CacheConfig),
+	}
 }
 
 // CreateProject creates a new project with owner role and assigns the creator as owner.
@@ -177,7 +187,40 @@ func (s *ProjectService) UpdateProject(ctx context.Context, id int, input ent.Up
 		return nil, fmt.Errorf("failed to update project: %w", err)
 	}
 
+	// Invalidate cache
+	s.invalidateProjectCache(ctx, id)
+
 	return project, nil
+}
+
+// GetProjectByID retrieves a project by its ID with caching.
+func (s *ProjectService) GetProjectByID(ctx context.Context, id int) (*ent.Project, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Try cache first
+	cacheKey := buildProjectCacheKey(id)
+	if proj, err := s.ProjectCache.Get(ctx, cacheKey); err == nil {
+		return &proj, nil
+	}
+
+	// Query database
+	client := ent.FromContext(ctx)
+	if client == nil {
+		return nil, fmt.Errorf("ent client not found in context")
+	}
+
+	proj, err := client.Project.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project: %w", err)
+	}
+
+	// Cache the project
+	err = s.ProjectCache.Set(ctx, cacheKey, *proj)
+	if err != nil {
+		log.Warn(ctx, "failed to cache project", zap.Error(err))
+	}
+
+	return proj, nil
 }
 
 // UpdateProjectStatus updates the status of a project.
@@ -191,5 +234,18 @@ func (s *ProjectService) UpdateProjectStatus(ctx context.Context, id int, status
 		return nil, fmt.Errorf("failed to update project status: %w", err)
 	}
 
+	// Invalidate cache
+	s.invalidateProjectCache(ctx, id)
+
 	return proj, nil
+}
+
+func buildProjectCacheKey(id int) string {
+	return fmt.Sprintf("project:%d", id)
+}
+
+// invalidateProjectCache removes a project from cache.
+func (s *ProjectService) invalidateProjectCache(ctx context.Context, id int) {
+	cacheKey := buildProjectCacheKey(id)
+	_ = s.ProjectCache.Delete(ctx, cacheKey)
 }

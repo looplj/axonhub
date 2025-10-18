@@ -132,13 +132,13 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     },
   },
   {
-    accessorKey: 'user',
+    accessorKey: 'creator',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={t('apikeys.columns.user')} />
+      <DataTableColumnHeader column={column} title={t('apikeys.columns.creator')} />
     ),
     cell: ({ row }) => {
-      const user = row.original.user
-      const displayName = user ? `${user.firstName} ${user.lastName}` : '-'
+      const creator = row.original.user
+      const displayName = creator ? `${creator.firstName} ${creator.lastName}` : '-'
       return (
         <LongText className='text-muted-foreground max-w-24'>
           {displayName}
@@ -146,9 +146,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       )
     },
     filterFn: (row, _id, value) => {
-      const user = row.original.user
-      if (!user) return false
-      return value.includes(user.id)
+      const creator = row.original.user
+      if (!creator) return false
+      return value.includes(creator.id)
     },
     enableSorting: false,
   },

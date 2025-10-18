@@ -22,19 +22,19 @@ import (
 type APIKeyServiceParams struct {
 	fx.In
 
-	CacheConfig xcache.Config
-	UserService *UserService
+	CacheConfig    xcache.Config
+	ProjectService *ProjectService
 }
 
 type APIKeyService struct {
-	UserService *UserService
-	APIKeyCache xcache.Cache[ent.APIKey]
+	ProjectService *ProjectService
+	APIKeyCache    xcache.Cache[ent.APIKey]
 }
 
 func NewAPIKeyService(params APIKeyServiceParams) *APIKeyService {
 	return &APIKeyService{
-		UserService: params.UserService,
-		APIKeyCache: xcache.NewFromConfig[ent.APIKey](params.CacheConfig),
+		ProjectService: params.ProjectService,
+		APIKeyCache:    xcache.NewFromConfig[ent.APIKey](params.CacheConfig),
 	}
 }
 
@@ -167,13 +167,13 @@ func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey,
 		apiKey = *dbApiKey
 	}
 
-	// DO NOT CACHE USER
-	user, err := s.UserService.GetUserByID(ctx, apiKey.UserID)
+	// DO NOT CACHE PROJECT
+	project, err := s.ProjectService.GetProjectByID(ctx, apiKey.ProjectID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get api key owner: %w", err)
+		return nil, fmt.Errorf("failed to get api key project: %w", err)
 	}
 
-	apiKey.Edges.User = user
+	apiKey.Edges.Project = project
 
 	return &apiKey, nil
 }

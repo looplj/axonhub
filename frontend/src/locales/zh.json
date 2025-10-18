@@ -300,7 +300,7 @@
       "id": "ID",
       "name": "名称",
       "key": "API Key",
-      "user": "用户",
+      "creator": "创建者",
       "status": "状态",
       "createdAt": "创建时间",
       "updatedAt": "更新时间",

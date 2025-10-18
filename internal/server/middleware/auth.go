@@ -50,7 +50,12 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 
 		// 将 API key entity 保存到 context 中
 		ctx := contexts.WithAPIKey(c.Request.Context(), apiKey)
-		ctx = contexts.WithUser(ctx, apiKey.Edges.User)
+
+		// Set project context from API key
+		if apiKey.Edges.Project != nil {
+			ctx = contexts.WithProjectID(ctx, apiKey.Edges.Project.ID)
+		}
+
 		c.Request = c.Request.WithContext(ctx)
 
 		// 继续处理请求
