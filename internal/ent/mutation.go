@@ -2454,7 +2454,6 @@ type ProjectMutation struct {
 	updated_at           *time.Time
 	deleted_at           *int
 	adddeleted_at        *int
-	slug                 *string
 	name                 *string
 	description          *string
 	status               *project.Status
@@ -2706,42 +2705,6 @@ func (m *ProjectMutation) AddedDeletedAt() (r int, exists bool) {
 func (m *ProjectMutation) ResetDeletedAt() {
 	m.deleted_at = nil
 	m.adddeleted_at = nil
-}
-
-// SetSlug sets the "slug" field.
-func (m *ProjectMutation) SetSlug(s string) {
-	m.slug = &s
-}
-
-// Slug returns the value of the "slug" field in the mutation.
-func (m *ProjectMutation) Slug() (r string, exists bool) {
-	v := m.slug
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSlug returns the old "slug" field's value of the Project entity.
-// If the Project object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ProjectMutation) OldSlug(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSlug is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSlug requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSlug: %w", err)
-	}
-	return oldValue.Slug, nil
-}
-
-// ResetSlug resets all changes to the "slug" field.
-func (m *ProjectMutation) ResetSlug() {
-	m.slug = nil
 }
 
 // SetName sets the "name" field.
@@ -3210,7 +3173,7 @@ func (m *ProjectMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProjectMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 6)
 	if m.created_at != nil {
 		fields = append(fields, project.FieldCreatedAt)
 	}
@@ -3219,9 +3182,6 @@ func (m *ProjectMutation) Fields() []string {
 	}
 	if m.deleted_at != nil {
 		fields = append(fields, project.FieldDeletedAt)
-	}
-	if m.slug != nil {
-		fields = append(fields, project.FieldSlug)
 	}
 	if m.name != nil {
 		fields = append(fields, project.FieldName)
@@ -3246,8 +3206,6 @@ func (m *ProjectMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case project.FieldDeletedAt:
 		return m.DeletedAt()
-	case project.FieldSlug:
-		return m.Slug()
 	case project.FieldName:
 		return m.Name()
 	case project.FieldDescription:
@@ -3269,8 +3227,6 @@ func (m *ProjectMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldUpdatedAt(ctx)
 	case project.FieldDeletedAt:
 		return m.OldDeletedAt(ctx)
-	case project.FieldSlug:
-		return m.OldSlug(ctx)
 	case project.FieldName:
 		return m.OldName(ctx)
 	case project.FieldDescription:
@@ -3306,13 +3262,6 @@ func (m *ProjectMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDeletedAt(v)
-		return nil
-	case project.FieldSlug:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSlug(v)
 		return nil
 	case project.FieldName:
 		v, ok := value.(string)
@@ -3407,9 +3356,6 @@ func (m *ProjectMutation) ResetField(name string) error {
 		return nil
 	case project.FieldDeletedAt:
 		m.ResetDeletedAt()
-		return nil
-	case project.FieldSlug:
-		m.ResetSlug()
 		return nil
 	case project.FieldName:
 		m.ResetName()
@@ -6467,7 +6413,6 @@ type RoleMutation struct {
 	updated_at        *time.Time
 	deleted_at        *int
 	adddeleted_at     *int
-	code              *string
 	name              *string
 	level             *role.Level
 	scopes            *[]string
@@ -6710,42 +6655,6 @@ func (m *RoleMutation) AddedDeletedAt() (r int, exists bool) {
 func (m *RoleMutation) ResetDeletedAt() {
 	m.deleted_at = nil
 	m.adddeleted_at = nil
-}
-
-// SetCode sets the "code" field.
-func (m *RoleMutation) SetCode(s string) {
-	m.code = &s
-}
-
-// Code returns the value of the "code" field in the mutation.
-func (m *RoleMutation) Code() (r string, exists bool) {
-	v := m.code
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldCode returns the old "code" field's value of the Role entity.
-// If the Role object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RoleMutation) OldCode(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCode is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCode requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCode: %w", err)
-	}
-	return oldValue.Code, nil
-}
-
-// ResetCode resets all changes to the "code" field.
-func (m *RoleMutation) ResetCode() {
-	m.code = nil
 }
 
 // SetName sets the "name" field.
@@ -7103,7 +7012,7 @@ func (m *RoleMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RoleMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 7)
 	if m.created_at != nil {
 		fields = append(fields, role.FieldCreatedAt)
 	}
@@ -7112,9 +7021,6 @@ func (m *RoleMutation) Fields() []string {
 	}
 	if m.deleted_at != nil {
 		fields = append(fields, role.FieldDeletedAt)
-	}
-	if m.code != nil {
-		fields = append(fields, role.FieldCode)
 	}
 	if m.name != nil {
 		fields = append(fields, role.FieldName)
@@ -7142,8 +7048,6 @@ func (m *RoleMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case role.FieldDeletedAt:
 		return m.DeletedAt()
-	case role.FieldCode:
-		return m.Code()
 	case role.FieldName:
 		return m.Name()
 	case role.FieldLevel:
@@ -7167,8 +7071,6 @@ func (m *RoleMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldUpdatedAt(ctx)
 	case role.FieldDeletedAt:
 		return m.OldDeletedAt(ctx)
-	case role.FieldCode:
-		return m.OldCode(ctx)
 	case role.FieldName:
 		return m.OldName(ctx)
 	case role.FieldLevel:
@@ -7206,13 +7108,6 @@ func (m *RoleMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDeletedAt(v)
-		return nil
-	case role.FieldCode:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetCode(v)
 		return nil
 	case role.FieldName:
 		v, ok := value.(string)
@@ -7329,9 +7224,6 @@ func (m *RoleMutation) ResetField(name string) error {
 		return nil
 	case role.FieldDeletedAt:
 		m.ResetDeletedAt()
-		return nil
-	case role.FieldCode:
-		m.ResetCode()
 		return nil
 	case role.FieldName:
 		m.ResetName()

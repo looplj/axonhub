@@ -2,8 +2,10 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -33,11 +35,53 @@ func (s *RoleService) CreateRole(ctx context.Context, input ent.CreateRoleInput)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := ent.FromContext(ctx)
 
+	var (
+		level     role.Level
+		projectID int
+	)
+
+	if input.Level == nil {
+		if input.ProjectID != nil {
+			return nil, fmt.Errorf("project ID is not allowed for system roles")
+		}
+
+		level = role.LevelSystem
+		projectID = 0
+	} else {
+		switch *input.Level {
+		case role.LevelSystem:
+			if input.ProjectID != nil {
+				return nil, fmt.Errorf("project ID is not allowed for system roles")
+			}
+
+			level = role.LevelSystem
+			projectID = 0
+		case role.LevelProject:
+			if input.ProjectID == nil {
+				return nil, fmt.Errorf("project ID is required for project roles")
+			}
+
+			level = role.LevelProject
+			projectID = *input.ProjectID
+		default:
+			return nil, fmt.Errorf("invalid role level")
+		}
+	}
+
+	exists, err := s.RoleNameExists(ctx, level, input.Name, lo.ToPtr(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to check role name uniqueness: %w", err)
+	}
+
+	if exists {
+		return nil, fmt.Errorf("role name '%s' already exists", input.Name)
+	}
+
 	role, err := client.Role.Create().
-		SetCode(input.Code).
 		SetName(input.Name).
 		SetScopes(input.Scopes).
-		SetNillableProjectID(input.ProjectID).
+		SetLevel(level).
+		SetProjectID(projectID).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create role: %w", err)
@@ -50,6 +94,26 @@ func (s *RoleService) CreateRole(ctx context.Context, input ent.CreateRoleInput)
 func (s *RoleService) UpdateRole(ctx context.Context, id int, input ent.UpdateRoleInput) (*ent.Role, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := ent.FromContext(ctx)
+
+	// If name is being updated, check for duplicates
+	if input.Name != nil {
+		// Get the current role to find its project_id
+		currentRole, err := client.Role.Get(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get current role: %w", err)
+		}
+
+		if *input.Name != currentRole.Name {
+			exists, err := s.RoleNameExists(ctx, currentRole.Level, *input.Name, currentRole.ProjectID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to check role name uniqueness: %w", err)
+			}
+
+			if exists {
+				return nil, fmt.Errorf("role name '%s' already exists", *input.Name)
+			}
+		}
+	}
 
 	mut := client.Role.UpdateOneID(id).
 		SetNillableName(input.Name)
@@ -145,6 +209,32 @@ func (s *RoleService) BulkDeleteRoles(ctx context.Context, ids []int) error {
 	s.invalidateUserCache(ctx)
 
 	return nil
+}
+
+// RoleNameExists checks if a role name already exists within a specific project.
+func (s *RoleService) RoleNameExists(ctx context.Context, level role.Level, name string, projectID *int) (bool, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	client := ent.FromContext(ctx)
+
+	if level == role.LevelSystem {
+		return client.Role.Query().
+			Where(
+				role.ProjectIDEQ(0),
+				role.NameEQ(name),
+			).
+			Exist(ctx)
+	}
+
+	if projectID == nil {
+		return false, errors.New("project ID is required for project roles")
+	}
+
+	return client.Role.Query().
+		Where(
+			role.ProjectIDEQ(*projectID),
+			role.NameEQ(name),
+		).
+		Exist(ctx)
 }
 
 // invalidateUserCache clears all user cache when a role is modified.

@@ -170,7 +170,6 @@ type TokenStats struct {
 type TopRequestsProjects struct {
 	ProjectID          objects.GUID `json:"projectId"`
 	ProjectName        string       `json:"projectName"`
-	ProjectSlug        string       `json:"projectSlug"`
 	ProjectDescription string       `json:"projectDescription"`
 	RequestCount       int          `json:"requestCount"`
 }

@@ -25,13 +25,11 @@ type Role struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// DeletedAt holds the value of the "deleted_at" field.
 	DeletedAt int `json:"deleted_at,omitempty"`
-	// Code holds the value of the "code" field.
-	Code string `json:"code,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
-	// Role level: global or project
+	// Role level: system or project
 	Level role.Level `json:"level,omitempty"`
-	// Project ID for project-level roles, null for global roles
+	// Project ID for project-level roles, 0 for system roles, it is used to make the role unique in system level.
 	ProjectID *int `json:"project_id,omitempty"`
 	// Available scopes for this role: write_channels, read_channels, add_users, read_users, etc.
 	Scopes []string `json:"scopes,omitempty"`
@@ -97,7 +95,7 @@ func (*Role) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case role.FieldID, role.FieldDeletedAt, role.FieldProjectID:
 			values[i] = new(sql.NullInt64)
-		case role.FieldCode, role.FieldName, role.FieldLevel:
+		case role.FieldName, role.FieldLevel:
 			values[i] = new(sql.NullString)
 		case role.FieldCreatedAt, role.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -139,12 +137,6 @@ func (_m *Role) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
 			} else if value.Valid {
 				_m.DeletedAt = int(value.Int64)
-			}
-		case role.FieldCode:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field code", values[i])
-			} else if value.Valid {
-				_m.Code = value.String
 			}
 		case role.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -232,9 +224,6 @@ func (_m *Role) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("deleted_at=")
 	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
-	builder.WriteString(", ")
-	builder.WriteString("code=")
-	builder.WriteString(_m.Code)
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)

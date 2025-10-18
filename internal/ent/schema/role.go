@@ -26,11 +26,9 @@ func (Role) Mixin() []ent.Mixin {
 
 func (Role) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("code").
-			StorageKey("roles_by_code").
+		index.Fields("project_id", "name").
+			StorageKey("roles_by_project_id_name").
 			Unique(),
-		index.Fields("project_id").
-			StorageKey("roles_by_project_id"),
 		index.Fields("level").
 			StorageKey("roles_by_level"),
 	}
@@ -39,16 +37,18 @@ func (Role) Indexes() []ent.Index {
 // Fields of the Role.
 func (Role) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("code").Unique().Immutable(),
 		field.String("name"),
 		field.Enum("level").
-			Values("global", "project").
-			Default("global").
-			Comment("Role level: global or project"),
+			Immutable().
+			Values("system", "project").
+			Default("system").
+			Comment("Role level: system or project"),
 		field.Int("project_id").
+			// It shoule be immutable, but we nedd it to be mutable for now to migrate old data.
+			// Immutable().
 			Optional().
 			Nillable().
-			Comment("Project ID for project-level roles, null for global roles"),
+			Comment("Project ID for project-level roles, 0 for system roles, it is used to make the role unique in system level."),
 		field.Strings("scopes").
 			Comment("Available scopes for this role: write_channels, read_channels, add_users, read_users, etc.").
 			Default([]string{}).

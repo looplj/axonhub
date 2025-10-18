@@ -192,7 +192,6 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 type CreateProjectInput struct {
 	CreatedAt   *time.Time
 	UpdatedAt   *time.Time
-	Slug        string
 	Name        string
 	Description *string
 	Status      *project.Status
@@ -207,7 +206,6 @@ func (i *CreateProjectInput) Mutate(m *ProjectMutation) {
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
 	}
-	m.SetSlug(i.Slug)
 	m.SetName(i.Name)
 	if v := i.Description; v != nil {
 		m.SetDescription(*v)
@@ -410,7 +408,6 @@ func (c *RequestUpdateOne) SetInput(i UpdateRequestInput) *RequestUpdateOne {
 type CreateRoleInput struct {
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
-	Code      string
 	Name      string
 	Level     *role.Level
 	Scopes    []string
@@ -426,7 +423,6 @@ func (i *CreateRoleInput) Mutate(m *RoleMutation) {
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
 	}
-	m.SetCode(i.Code)
 	m.SetName(i.Name)
 	if v := i.Level; v != nil {
 		m.SetLevel(*v)
@@ -452,7 +448,6 @@ func (c *RoleCreate) SetInput(i CreateRoleInput) *RoleCreate {
 type UpdateRoleInput struct {
 	UpdatedAt     *time.Time
 	Name          *string
-	Level         *role.Level
 	ClearScopes   bool
 	Scopes        []string
 	AppendScopes  []string
@@ -470,9 +465,6 @@ func (i *UpdateRoleInput) Mutate(m *RoleMutation) {
 	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
-	}
-	if v := i.Level; v != nil {
-		m.SetLevel(*v)
 	}
 	if i.ClearScopes {
 		m.ClearScopes()

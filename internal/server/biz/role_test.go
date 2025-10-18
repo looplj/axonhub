@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -17,7 +18,7 @@ import (
 
 func setupTestRoleService(t *testing.T) (*RoleService, *UserService, *ent.Client) {
 	t.Helper()
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 	userService := &UserService{
@@ -41,7 +42,6 @@ func TestCreateRole(t *testing.T) {
 
 	t.Run("create global role successfully", func(t *testing.T) {
 		input := ent.CreateRoleInput{
-			Code:   "admin",
 			Name:   "Administrator",
 			Scopes: []string{"manage_users", "manage_projects"},
 		}
@@ -49,23 +49,22 @@ func TestCreateRole(t *testing.T) {
 		createdRole, err := roleService.CreateRole(ctx, input)
 		require.NoError(t, err)
 		require.NotNil(t, createdRole)
-		require.Equal(t, "admin", createdRole.Code)
 		require.Equal(t, "Administrator", createdRole.Name)
 		require.ElementsMatch(t, []string{"manage_users", "manage_projects"}, createdRole.Scopes)
-		require.Nil(t, createdRole.ProjectID)
+		require.NotNil(t, createdRole.ProjectID)
+		require.Zero(t, *createdRole.ProjectID)
 	})
 
 	t.Run("create project-specific role successfully", func(t *testing.T) {
 		// Create a project first
 		project, err := client.Project.Create().
 			SetName("Test Project").
-			SetSlug("test-project").
 			Save(ctx)
 		require.NoError(t, err)
 
 		input := ent.CreateRoleInput{
-			Code:      "project_admin",
 			Name:      "Project Administrator",
+			Level:     lo.ToPtr(role.LevelProject),
 			Scopes:    []string{"manage_project"},
 			ProjectID: &project.ID,
 		}
@@ -73,7 +72,6 @@ func TestCreateRole(t *testing.T) {
 		createdRole, err := roleService.CreateRole(ctx, input)
 		require.NoError(t, err)
 		require.NotNil(t, createdRole)
-		require.Equal(t, "project_admin", createdRole.Code)
 		require.Equal(t, "Project Administrator", createdRole.Name)
 		require.NotNil(t, createdRole.ProjectID)
 		require.Equal(t, project.ID, *createdRole.ProjectID)
@@ -81,7 +79,6 @@ func TestCreateRole(t *testing.T) {
 
 	t.Run("fail to create role with duplicate code", func(t *testing.T) {
 		input := ent.CreateRoleInput{
-			Code:   "duplicate",
 			Name:   "Duplicate Role",
 			Scopes: []string{"read"},
 		}
@@ -105,7 +102,6 @@ func TestUpdateRole(t *testing.T) {
 
 	// Create a role first
 	createdRole, err := client.Role.Create().
-		SetCode("editor").
 		SetName("Editor").
 		SetScopes([]string{"read", "write"}).
 		Save(ctx)
@@ -121,7 +117,6 @@ func TestUpdateRole(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, updatedRole)
 		require.Equal(t, "Senior Editor", updatedRole.Name)
-		require.Equal(t, "editor", updatedRole.Code) // Code should remain unchanged
 	})
 
 	t.Run("update role scopes successfully", func(t *testing.T) {
@@ -158,7 +153,6 @@ func TestDeleteRole(t *testing.T) {
 	t.Run("delete role without users successfully", func(t *testing.T) {
 		// Create a role
 		testRole, err := client.Role.Create().
-			SetCode("temp_role").
 			SetName("Temporary Role").
 			SetScopes([]string{"temp"}).
 			Save(ctx)
@@ -179,7 +173,6 @@ func TestDeleteRole(t *testing.T) {
 	t.Run("delete role with users successfully", func(t *testing.T) {
 		// Create a role
 		testRole, err := client.Role.Create().
-			SetCode("role_with_users").
 			SetName("Role With Users").
 			SetScopes([]string{"read"}).
 			Save(ctx)
@@ -270,21 +263,18 @@ func TestBulkDeleteRoles(t *testing.T) {
 	t.Run("bulk delete roles without users successfully", func(t *testing.T) {
 		// Create multiple roles
 		role1, err := client.Role.Create().
-			SetCode("bulk_role1").
 			SetName("Bulk Role 1").
 			SetScopes([]string{"read"}).
 			Save(ctx)
 		require.NoError(t, err)
 
 		role2, err := client.Role.Create().
-			SetCode("bulk_role2").
 			SetName("Bulk Role 2").
 			SetScopes([]string{"write"}).
 			Save(ctx)
 		require.NoError(t, err)
 
 		role3, err := client.Role.Create().
-			SetCode("bulk_role3").
 			SetName("Bulk Role 3").
 			SetScopes([]string{"delete"}).
 			Save(ctx)
@@ -306,14 +296,12 @@ func TestBulkDeleteRoles(t *testing.T) {
 	t.Run("bulk delete roles with users successfully", func(t *testing.T) {
 		// Create roles
 		role1, err := client.Role.Create().
-			SetCode("bulk_role_users1").
 			SetName("Bulk Role Users 1").
 			SetScopes([]string{"read"}).
 			Save(ctx)
 		require.NoError(t, err)
 
 		role2, err := client.Role.Create().
-			SetCode("bulk_role_users2").
 			SetName("Bulk Role Users 2").
 			SetScopes([]string{"write"}).
 			Save(ctx)
@@ -390,7 +378,6 @@ func TestBulkDeleteRoles(t *testing.T) {
 	t.Run("fail to bulk delete with non-existent role", func(t *testing.T) {
 		// Create one valid role
 		validRole, err := client.Role.Create().
-			SetCode("valid_role").
 			SetName("Valid Role").
 			SetScopes([]string{"read"}).
 			Save(ctx)
@@ -426,7 +413,6 @@ func TestUpdateRole_CacheInvalidation(t *testing.T) {
 
 	// Create a role
 	testRole, err := client.Role.Create().
-		SetCode("test_role").
 		SetName("Test Role").
 		SetScopes([]string{"read", "write"}).
 		Save(ctx)
@@ -474,7 +460,6 @@ func TestDeleteRole_CacheInvalidation(t *testing.T) {
 
 	// Create a role
 	testRole, err := client.Role.Create().
-		SetCode("test_role").
 		SetName("Test Role").
 		SetScopes([]string{"read"}).
 		Save(ctx)
@@ -532,14 +517,12 @@ func TestBulkDeleteRoles_CacheInvalidation(t *testing.T) {
 
 	// Create multiple roles
 	role1, err := client.Role.Create().
-		SetCode("role1").
 		SetName("Role 1").
 		SetScopes([]string{"read"}).
 		Save(ctx)
 	require.NoError(t, err)
 
 	role2, err := client.Role.Create().
-		SetCode("role2").
 		SetName("Role 2").
 		SetScopes([]string{"write"}).
 		Save(ctx)

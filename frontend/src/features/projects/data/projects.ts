@@ -21,7 +21,6 @@ const PROJECTS_QUERY = `
           id
           createdAt
           updatedAt
-          slug
           name
           description
           status
@@ -43,7 +42,6 @@ const CREATE_PROJECT_MUTATION = `
   mutation CreateProject($input: CreateProjectInput!) {
     createProject(input: $input) {
       id
-      slug
       name
       description
       status
@@ -57,7 +55,6 @@ const UPDATE_PROJECT_MUTATION = `
   mutation UpdateProject($id: ID!, $input: UpdateProjectInput!) {
     updateProject(id: $id, input: $input) {
       id
-      slug
       name
       description
       status
@@ -71,7 +68,6 @@ const UPDATE_PROJECT_STATUS_MUTATION = `
   mutation UpdateProjectStatus($id: ID!, $status: ProjectStatus!) {
     updateProjectStatus(id: $id, status: $status) {
       id
-      slug
       name
       description
       status
@@ -85,7 +81,6 @@ const MY_PROJECTS_QUERY = `
   query MyProjects {
     myProjects {
         id
-        slug
         name
         description
         status

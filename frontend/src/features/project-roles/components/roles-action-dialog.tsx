@@ -46,7 +46,6 @@ export function CreateRoleDialog() {
     resolver: zodResolver(createRoleInputSchema),
     defaultValues: {
       projectID: selectedProjectId || '',
-      code: '',
       name: '',
       scopes: [],
     },
@@ -85,52 +84,28 @@ export function CreateRoleDialog() {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-            <div className='grid grid-cols-2 gap-4'>
-              <FormField
-                control={form.control}
-                name='code'
-                render={({ field, fieldState }) => (
-                  <FormItem>
-                    <FormLabel>{t('roles.dialogs.fields.code.label')}</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder={t('roles.dialogs.fields.code.placeholder')} 
-                        aria-invalid={!!fieldState.error}
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {t('roles.dialogs.fields.code.description')}
-                    </FormDescription>
-                    <div className='min-h-[1.25rem]'>
-                      <FormMessage />
-                    </div>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name='name'
-                render={({ field, fieldState }) => (
-                  <FormItem>
-                    <FormLabel>{t('roles.dialogs.fields.name.label')}</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder={t('roles.dialogs.fields.name.placeholder')} 
-                        aria-invalid={!!fieldState.error}
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {t('roles.dialogs.fields.name.description')}
-                    </FormDescription>
-                    <div className='min-h-[1.25rem]'>
-                      <FormMessage />
-                    </div>
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name='name'
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>{t('roles.dialogs.fields.name.label')}</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder={t('roles.dialogs.fields.name.placeholder')} 
+                      aria-invalid={!!fieldState.error}
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('roles.dialogs.fields.name.description')}
+                  </FormDescription>
+                  <div className='min-h-[1.25rem]'>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
+            />
             
             <FormField
               control={form.control}
@@ -259,42 +234,28 @@ export function EditRoleDialog() {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-            <div className='grid grid-cols-2 gap-4'>
-              <div>
-                <FormLabel>{t('roles.dialogs.fields.code.label')}</FormLabel>
-                <Input 
-                  value={editingRole.code} 
-                  disabled 
-                  className='bg-muted'
-                />
-                <FormDescription>
-                  {t('roles.dialogs.edit.codeNotEditable')}
-                </FormDescription>
-                <div className='min-h-[1.25rem]'></div>
-              </div>
-              <FormField
-                control={form.control}
-                name='name'
-                render={({ field, fieldState }) => (
-                  <FormItem>
-                    <FormLabel>{t('roles.dialogs.fields.name.label')}</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder={t('roles.dialogs.fields.name.placeholder')} 
-                        aria-invalid={!!fieldState.error}
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {t('roles.dialogs.fields.name.description')}
-                    </FormDescription>
-                    <div className='min-h-[1.25rem]'>
-                      <FormMessage />
-                    </div>
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name='name'
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>{t('roles.dialogs.fields.name.label')}</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder={t('roles.dialogs.fields.name.placeholder')} 
+                      aria-invalid={!!fieldState.error}
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('roles.dialogs.fields.name.description')}
+                  </FormDescription>
+                  <div className='min-h-[1.25rem]'>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
+            />
             
             <FormField
               control={form.control}

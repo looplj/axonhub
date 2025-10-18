@@ -2,8 +2,8 @@ import { expect, Page } from '@playwright/test'
 
 // Type declaration for process
 declare const process: {
-  env: Record<string, string | undefined>;
-};
+  env: Record<string, string | undefined>
+}
 
 export interface AdminCredentials {
   email: string
@@ -12,7 +12,7 @@ export interface AdminCredentials {
 
 const defaultCredentials: AdminCredentials = {
   email: process.env.AXONHUB_ADMIN_EMAIL || 'my@example.com',
-  password: process.env.AXONHUB_ADMIN_PASSWORD || 'pwd123456'
+  password: process.env.AXONHUB_ADMIN_PASSWORD || 'pwd123456',
 }
 
 export async function signInAsAdmin(page: Page, credentials: AdminCredentials = defaultCredentials) {
@@ -21,18 +21,18 @@ export async function signInAsAdmin(page: Page, credentials: AdminCredentials = 
 
   // Wait for the login form to be visible
   await page.waitForSelector('input[type="email"], input[name="email"]', { timeout: 10000 })
-  
+
   // Fill in credentials with more specific selectors
   const emailField = page.locator('input[type="email"], input[name="email"]').first()
   const passwordField = page.locator('input[type="password"], input[name="password"]').first()
-  
+
   await emailField.fill(credentials.email)
   await passwordField.fill(credentials.password)
 
   // Click login button and wait for navigation
   const loginButton = page.getByRole('button', { name: /登录|Sign In|Sign in/i })
   await expect(loginButton).toBeVisible()
-  
+
   // Wait for the sign-in API response before checking navigation
   const responsePromise = page.waitForResponse(
     (response) => response.url().includes('/admin/auth/signin') && response.status() === 200,
@@ -51,7 +51,7 @@ export async function signInAsAdmin(page: Page, credentials: AdminCredentials = 
   }
 
   // Wait for navigation away from sign-in page
-  await page.waitForURL(url => !url.toString().includes('/sign-in'), { timeout: 10000 })
+  await page.waitForURL((url) => !url.toString().includes('/sign-in'), { timeout: 10000 })
 
   // Verify we're no longer on the sign-in page
   await expect(page.url()).not.toContain('/sign-in')
@@ -65,12 +65,9 @@ export async function ensureSignedIn(page: Page) {
   // Ensure we have a valid authentication state
   await page.addInitScript(() => {
     const TOKEN_KEY = 'axonhub_access_token'
-    const LEGACY_TOKEN_KEY = 'axonhub.auth.accessToken'
-    const token = window.localStorage.getItem(TOKEN_KEY) || window.localStorage.getItem(LEGACY_TOKEN_KEY)
+    const token = window.localStorage.getItem(TOKEN_KEY)
     if (!token) {
       window.localStorage.setItem(TOKEN_KEY, 'test-token')
-      // Keep legacy key for backward compatibility if any code still reads it
-      window.localStorage.setItem(LEGACY_TOKEN_KEY, 'test-token')
     }
   })
 }
@@ -79,22 +76,18 @@ export async function gotoAndEnsureAuth(page: Page, path: string) {
   // Seed auth token BEFORE any navigation so app requests are authenticated
   await page.addInitScript(() => {
     const TOKEN_KEY = 'axonhub_access_token'
-    const LEGACY_TOKEN_KEY = 'axonhub.auth.accessToken'
-    const token = window.localStorage.getItem(TOKEN_KEY) || window.localStorage.getItem(LEGACY_TOKEN_KEY)
+    const token = window.localStorage.getItem(TOKEN_KEY)
     if (!token) {
       window.localStorage.setItem(TOKEN_KEY, 'test-token')
-      window.localStorage.setItem(LEGACY_TOKEN_KEY, 'test-token')
     }
   })
   // Also set immediately for the current document in case it's already loaded
   try {
     await page.evaluate(() => {
       const TOKEN_KEY = 'axonhub_access_token'
-      const LEGACY_TOKEN_KEY = 'axonhub.auth.accessToken'
-      const token = window.localStorage.getItem(TOKEN_KEY) || window.localStorage.getItem(LEGACY_TOKEN_KEY)
+      const token = window.localStorage.getItem(TOKEN_KEY)
       if (!token) {
         window.localStorage.setItem(TOKEN_KEY, 'test-token')
-        window.localStorage.setItem(LEGACY_TOKEN_KEY, 'test-token')
       }
     })
   } catch {}
@@ -105,7 +98,7 @@ export async function gotoAndEnsureAuth(page: Page, path: string) {
 
   // Wait for potential redirects
   await page.waitForTimeout(1000)
-  
+
   // If we got redirected to sign-in OR the login form is rendered within the current route, perform login and navigate back
   let needsLogin = page.url().includes('/sign-in')
   try {
@@ -123,12 +116,9 @@ export async function gotoAndEnsureAuth(page: Page, path: string) {
   // Ensure we have a valid authentication state
   await page.addInitScript(() => {
     const TOKEN_KEY = 'axonhub_access_token'
-    const LEGACY_TOKEN_KEY = 'axonhub.auth.accessToken'
-    const token = window.localStorage.getItem(TOKEN_KEY) || window.localStorage.getItem(LEGACY_TOKEN_KEY)
+    const token = window.localStorage.getItem(TOKEN_KEY)
     if (!token) {
       window.localStorage.setItem(TOKEN_KEY, 'test-token')
-      // Keep legacy key for backward compatibility if any code still reads it
-      window.localStorage.setItem(LEGACY_TOKEN_KEY, 'test-token')
     }
   })
 

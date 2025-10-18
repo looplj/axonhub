@@ -24,8 +24,6 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
 	FieldDeletedAt = "deleted_at"
-	// FieldCode holds the string denoting the code field in the database.
-	FieldCode = "code"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldLevel holds the string denoting the level field in the database.
@@ -69,7 +67,6 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldDeletedAt,
-	FieldCode,
 	FieldName,
 	FieldLevel,
 	FieldProjectID,
@@ -116,12 +113,12 @@ var (
 // Level defines the type for the "level" enum field.
 type Level string
 
-// LevelGlobal is the default value of the Level enum.
-const DefaultLevel = LevelGlobal
+// LevelSystem is the default value of the Level enum.
+const DefaultLevel = LevelSystem
 
 // Level values.
 const (
-	LevelGlobal  Level = "global"
+	LevelSystem  Level = "system"
 	LevelProject Level = "project"
 )
 
@@ -132,7 +129,7 @@ func (l Level) String() string {
 // LevelValidator is a validator for the "level" field enum values. It is called by the builders before save.
 func LevelValidator(l Level) error {
 	switch l {
-	case LevelGlobal, LevelProject:
+	case LevelSystem, LevelProject:
 		return nil
 	default:
 		return fmt.Errorf("role: invalid enum value for level field: %q", l)
@@ -160,11 +157,6 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByDeletedAt orders the results by the deleted_at field.
 func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
-}
-
-// ByCode orders the results by the code field.
-func ByCode(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCode, opts...).ToFunc()
 }
 
 // ByName orders the results by the name field.

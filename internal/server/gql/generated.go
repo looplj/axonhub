@@ -270,7 +270,6 @@ type ComplexityRoot struct {
 		ProjectUsers func(childComplexity int) int
 		Requests     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
 		Roles        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) int
-		Slug         func(childComplexity int) int
 		Status       func(childComplexity int) int
 		UpdatedAt    func(childComplexity int) int
 		UsageLogs    func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
@@ -406,7 +405,6 @@ type ComplexityRoot struct {
 	}
 
 	Role struct {
-		Code      func(childComplexity int) int
 		CreatedAt func(childComplexity int) int
 		DeletedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
@@ -432,7 +430,6 @@ type ComplexityRoot struct {
 	}
 
 	RoleInfo struct {
-		Code func(childComplexity int) int
 		Name func(childComplexity int) int
 	}
 
@@ -501,7 +498,6 @@ type ComplexityRoot struct {
 		ProjectDescription func(childComplexity int) int
 		ProjectID          func(childComplexity int) int
 		ProjectName        func(childComplexity int) int
-		ProjectSlug        func(childComplexity int) int
 		RequestCount       func(childComplexity int) int
 	}
 
@@ -1793,13 +1789,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Project.Roles(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.RoleOrder), args["where"].(*ent.RoleWhereInput)), true
 
-	case "Project.slug":
-		if e.complexity.Project.Slug == nil {
-			break
-		}
-
-		return e.complexity.Project.Slug(childComplexity), true
-
 	case "Project.status":
 		if e.complexity.Project.Status == nil {
 			break
@@ -2541,13 +2530,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RetryPolicy.RetryDelayMs(childComplexity), true
 
-	case "Role.code":
-		if e.complexity.Role.Code == nil {
-			break
-		}
-
-		return e.complexity.Role.Code(childComplexity), true
-
 	case "Role.createdAt":
 		if e.complexity.Role.CreatedAt == nil {
 			break
@@ -2664,13 +2646,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RoleEdge.Node(childComplexity), true
-
-	case "RoleInfo.code":
-		if e.complexity.RoleInfo.Code == nil {
-			break
-		}
-
-		return e.complexity.RoleInfo.Code(childComplexity), true
 
 	case "RoleInfo.name":
 		if e.complexity.RoleInfo.Name == nil {
@@ -2937,13 +2912,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TopRequestsProjects.ProjectName(childComplexity), true
-
-	case "TopRequestsProjects.projectSlug":
-		if e.complexity.TopRequestsProjects.ProjectSlug == nil {
-			break
-		}
-
-		return e.complexity.TopRequestsProjects.ProjectSlug(childComplexity), true
 
 	case "TopRequestsProjects.requestCount":
 		if e.complexity.TopRequestsProjects.RequestCount == nil {
@@ -5632,8 +5600,6 @@ func (ec *executionContext) fieldContext_APIKey_project(_ context.Context, field
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Project_deletedAt(ctx, field)
-			case "slug":
-				return ec.fieldContext_Project_slug(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -10162,8 +10128,6 @@ func (ec *executionContext) fieldContext_Mutation_createRole(ctx context.Context
 				return ec.fieldContext_Role_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Role_deletedAt(ctx, field)
-			case "code":
-				return ec.fieldContext_Role_code(ctx, field)
 			case "name":
 				return ec.fieldContext_Role_name(ctx, field)
 			case "level":
@@ -10243,8 +10207,6 @@ func (ec *executionContext) fieldContext_Mutation_updateRole(ctx context.Context
 				return ec.fieldContext_Role_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Role_deletedAt(ctx, field)
-			case "code":
-				return ec.fieldContext_Role_code(ctx, field)
 			case "name":
 				return ec.fieldContext_Role_name(ctx, field)
 			case "level":
@@ -10434,8 +10396,6 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Project_deletedAt(ctx, field)
-			case "slug":
-				return ec.fieldContext_Project_slug(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -10519,8 +10479,6 @@ func (ec *executionContext) fieldContext_Mutation_updateProject(ctx context.Cont
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Project_deletedAt(ctx, field)
-			case "slug":
-				return ec.fieldContext_Project_slug(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -10604,8 +10562,6 @@ func (ec *executionContext) fieldContext_Mutation_updateProjectStatus(ctx contex
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Project_deletedAt(ctx, field)
-			case "slug":
-				return ec.fieldContext_Project_slug(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -11453,50 +11409,6 @@ func (ec *executionContext) fieldContext_Project_deletedAt(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Project_slug(ctx context.Context, field graphql.CollectedField, obj *ent.Project) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Project_slug(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Slug, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Project_slug(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Project_name(ctx context.Context, field graphql.CollectedField, obj *ent.Project) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_name(ctx, field)
 	if err != nil {
@@ -12196,8 +12108,6 @@ func (ec *executionContext) fieldContext_ProjectEdge_node(_ context.Context, fie
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Project_deletedAt(ctx, field)
-			case "slug":
-				return ec.fieldContext_Project_slug(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -13253,8 +13163,6 @@ func (ec *executionContext) fieldContext_Query_topRequestsProjects(ctx context.C
 				return ec.fieldContext_TopRequestsProjects_projectId(ctx, field)
 			case "projectName":
 				return ec.fieldContext_TopRequestsProjects_projectName(ctx, field)
-			case "projectSlug":
-				return ec.fieldContext_TopRequestsProjects_projectSlug(ctx, field)
 			case "projectDescription":
 				return ec.fieldContext_TopRequestsProjects_projectDescription(ctx, field)
 			case "requestCount":
@@ -13515,8 +13423,6 @@ func (ec *executionContext) fieldContext_Query_myProjects(_ context.Context, fie
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Project_deletedAt(ctx, field)
-			case "slug":
-				return ec.fieldContext_Project_slug(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -14686,8 +14592,6 @@ func (ec *executionContext) fieldContext_Request_project(_ context.Context, fiel
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Project_deletedAt(ctx, field)
-			case "slug":
-				return ec.fieldContext_Project_slug(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -16922,50 +16826,6 @@ func (ec *executionContext) fieldContext_Role_deletedAt(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_code(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Role_code(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Code, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Role_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Role",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Role_name(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_name(ctx, field)
 	if err != nil {
@@ -17243,8 +17103,6 @@ func (ec *executionContext) fieldContext_Role_project(_ context.Context, field g
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Project_deletedAt(ctx, field)
-			case "slug":
-				return ec.fieldContext_Project_slug(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -17518,8 +17376,6 @@ func (ec *executionContext) fieldContext_RoleEdge_node(_ context.Context, field 
 				return ec.fieldContext_Role_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Role_deletedAt(ctx, field)
-			case "code":
-				return ec.fieldContext_Role_code(ctx, field)
 			case "name":
 				return ec.fieldContext_Role_name(ctx, field)
 			case "level":
@@ -17580,50 +17436,6 @@ func (ec *executionContext) fieldContext_RoleEdge_cursor(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RoleInfo_code(ctx context.Context, field graphql.CollectedField, obj *objects.RoleInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RoleInfo_code(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Code, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RoleInfo_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RoleInfo",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -19319,50 +19131,6 @@ func (ec *executionContext) fieldContext_TopRequestsProjects_projectName(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _TopRequestsProjects_projectSlug(ctx context.Context, field graphql.CollectedField, obj *TopRequestsProjects) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TopRequestsProjects_projectSlug(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ProjectSlug, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TopRequestsProjects_projectSlug(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TopRequestsProjects",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _TopRequestsProjects_projectDescription(ctx context.Context, field graphql.CollectedField, obj *TopRequestsProjects) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TopRequestsProjects_projectDescription(ctx, field)
 	if err != nil {
@@ -20401,8 +20169,6 @@ func (ec *executionContext) fieldContext_UsageLog_project(_ context.Context, fie
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Project_deletedAt(ctx, field)
-			case "slug":
-				return ec.fieldContext_Project_slug(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -22220,8 +21986,6 @@ func (ec *executionContext) fieldContext_UserInfo_roles(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "code":
-				return ec.fieldContext_RoleInfo_code(ctx, field)
 			case "name":
 				return ec.fieldContext_RoleInfo_name(ctx, field)
 			}
@@ -22761,8 +22525,6 @@ func (ec *executionContext) fieldContext_UserProject_project(_ context.Context, 
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Project_deletedAt(ctx, field)
-			case "slug":
-				return ec.fieldContext_Project_slug(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -22959,8 +22721,6 @@ func (ec *executionContext) fieldContext_UserProjectInfo_roles(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "code":
-				return ec.fieldContext_RoleInfo_code(ctx, field)
 			case "name":
 				return ec.fieldContext_RoleInfo_name(ctx, field)
 			}
@@ -23355,8 +23115,6 @@ func (ec *executionContext) fieldContext_UserRole_role(_ context.Context, field 
 				return ec.fieldContext_Role_updatedAt(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Role_deletedAt(ctx, field)
-			case "code":
-				return ec.fieldContext_Role_code(ctx, field)
 			case "name":
 				return ec.fieldContext_Role_name(ctx, field)
 			case "level":
@@ -27325,7 +27083,7 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"createdAt", "updatedAt", "slug", "name", "description", "status", "userIDs"}
+	fieldsInOrder := [...]string{"createdAt", "updatedAt", "name", "description", "status", "userIDs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -27346,13 +27104,6 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 				return it, err
 			}
 			it.UpdatedAt = data
-		case "slug":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Slug = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -27528,7 +27279,7 @@ func (ec *executionContext) unmarshalInputCreateRoleInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"createdAt", "updatedAt", "code", "name", "level", "scopes", "userIDs", "projectID"}
+	fieldsInOrder := [...]string{"createdAt", "updatedAt", "name", "level", "scopes", "userIDs", "projectID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -27549,13 +27300,6 @@ func (ec *executionContext) unmarshalInputCreateRoleInput(ctx context.Context, o
 				return it, err
 			}
 			it.UpdatedAt = data
-		case "code":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("code"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Code = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -28146,7 +27890,7 @@ func (ec *executionContext) unmarshalInputProjectWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionEqualFold", "descriptionContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUsers", "hasUsersWith", "hasRoles", "hasRolesWith", "hasAPIKeys", "hasAPIKeysWith", "hasRequests", "hasRequestsWith", "hasUsageLogs", "hasUsageLogsWith", "hasProjectUsers", "hasProjectUsersWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionEqualFold", "descriptionContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUsers", "hasUsersWith", "hasRoles", "hasRolesWith", "hasAPIKeys", "hasAPIKeysWith", "hasRequests", "hasRequestsWith", "hasUsageLogs", "hasUsageLogsWith", "hasProjectUsers", "hasProjectUsersWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -28430,97 +28174,6 @@ func (ec *executionContext) unmarshalInputProjectWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.DeletedAtLTE = data
-		case "slug":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Slug = data
-		case "slugNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugNEQ = data
-		case "slugIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugIn = data
-		case "slugNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugNotIn = data
-		case "slugGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugGT = data
-		case "slugGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugGTE = data
-		case "slugLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugLT = data
-		case "slugLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugLTE = data
-		case "slugContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugContains = data
-		case "slugHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugHasPrefix = data
-		case "slugHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugHasSuffix = data
-		case "slugEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugEqualFold = data
-		case "slugContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlugContainsFold = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -30693,7 +30346,7 @@ func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "code", "codeNEQ", "codeIn", "codeNotIn", "codeGT", "codeGTE", "codeLT", "codeLTE", "codeContains", "codeHasPrefix", "codeHasSuffix", "codeEqualFold", "codeContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "level", "levelNEQ", "levelIn", "levelNotIn", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDIsNil", "projectIDNotNil", "hasUsers", "hasUsersWith", "hasProject", "hasProjectWith", "hasUserRoles", "hasUserRolesWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "level", "levelNEQ", "levelIn", "levelNotIn", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDIsNil", "projectIDNotNil", "hasUsers", "hasUsersWith", "hasProject", "hasProjectWith", "hasUserRoles", "hasUserRolesWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -30977,97 +30630,6 @@ func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, ob
 				return it, err
 			}
 			it.DeletedAtLTE = data
-		case "code":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("code"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Code = data
-		case "codeNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeNEQ = data
-		case "codeIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeIn = data
-		case "codeNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeNotIn = data
-		case "codeGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeGT = data
-		case "codeGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeGTE = data
-		case "codeLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeLT = data
-		case "codeLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeLTE = data
-		case "codeContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeContains = data
-		case "codeHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeHasPrefix = data
-		case "codeHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeHasSuffix = data
-		case "codeEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeEqualFold = data
-		case "codeContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codeContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CodeContainsFold = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -32441,7 +32003,7 @@ func (ec *executionContext) unmarshalInputUpdateRoleInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"updatedAt", "name", "level", "scopes", "appendScopes", "clearScopes", "addUserIDs", "removeUserIDs", "clearUsers", "projectID", "clearProject"}
+	fieldsInOrder := [...]string{"updatedAt", "name", "scopes", "appendScopes", "clearScopes", "addUserIDs", "removeUserIDs", "clearUsers", "projectID", "clearProject"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -32462,13 +32024,6 @@ func (ec *executionContext) unmarshalInputUpdateRoleInput(ctx context.Context, o
 				return it, err
 			}
 			it.Name = data
-		case "level":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("level"))
-			data, err := ec.unmarshalORoleLevel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋroleᚐLevel(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Level = data
 		case "scopes":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scopes"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -37762,11 +37317,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "slug":
-			out.Values[i] = ec._Project_slug(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "name":
 			out.Values[i] = ec._Project_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -39788,11 +39338,6 @@ func (ec *executionContext) _Role(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "code":
-			out.Values[i] = ec._Role_code(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "name":
 			out.Values[i] = ec._Role_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -40061,11 +39606,6 @@ func (ec *executionContext) _RoleInfo(ctx context.Context, sel ast.SelectionSet,
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RoleInfo")
-		case "code":
-			out.Values[i] = ec._RoleInfo_code(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "name":
 			out.Values[i] = ec._RoleInfo_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -40607,11 +40147,6 @@ func (ec *executionContext) _TopRequestsProjects(ctx context.Context, sel ast.Se
 			}
 		case "projectName":
 			out.Values[i] = ec._TopRequestsProjects_projectName(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "projectSlug":
-			out.Values[i] = ec._TopRequestsProjects_projectSlug(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

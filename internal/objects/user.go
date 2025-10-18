@@ -20,6 +20,5 @@ type UserProjectInfo struct {
 }
 
 type RoleInfo struct {
-	Code string `json:"code"`
 	Name string `json:"name"`
 }

@@ -141,7 +141,7 @@ func TestChannelService_ListAllModels(t *testing.T) {
 
 func setupTestChannelService(t *testing.T) (*ChannelService, *ent.Client) {
 	t.Helper()
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	svc := &ChannelService{
 		Ent: client,

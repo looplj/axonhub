@@ -87,7 +87,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 			project.FieldCreatedAt:   {Type: field.TypeTime, Column: project.FieldCreatedAt},
 			project.FieldUpdatedAt:   {Type: field.TypeTime, Column: project.FieldUpdatedAt},
 			project.FieldDeletedAt:   {Type: field.TypeInt, Column: project.FieldDeletedAt},
-			project.FieldSlug:        {Type: field.TypeString, Column: project.FieldSlug},
 			project.FieldName:        {Type: field.TypeString, Column: project.FieldName},
 			project.FieldDescription: {Type: field.TypeString, Column: project.FieldDescription},
 			project.FieldStatus:      {Type: field.TypeEnum, Column: project.FieldStatus},
@@ -161,7 +160,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 			role.FieldCreatedAt: {Type: field.TypeTime, Column: role.FieldCreatedAt},
 			role.FieldUpdatedAt: {Type: field.TypeTime, Column: role.FieldUpdatedAt},
 			role.FieldDeletedAt: {Type: field.TypeInt, Column: role.FieldDeletedAt},
-			role.FieldCode:      {Type: field.TypeString, Column: role.FieldCode},
 			role.FieldName:      {Type: field.TypeString, Column: role.FieldName},
 			role.FieldLevel:     {Type: field.TypeEnum, Column: role.FieldLevel},
 			role.FieldProjectID: {Type: field.TypeInt, Column: role.FieldProjectID},
@@ -1026,11 +1024,6 @@ func (f *ProjectFilter) WhereDeletedAt(p entql.IntP) {
 	f.Where(p.Field(project.FieldDeletedAt))
 }
 
-// WhereSlug applies the entql string predicate on the slug field.
-func (f *ProjectFilter) WhereSlug(p entql.StringP) {
-	f.Where(p.Field(project.FieldSlug))
-}
-
 // WhereName applies the entql string predicate on the name field.
 func (f *ProjectFilter) WhereName(p entql.StringP) {
 	f.Where(p.Field(project.FieldName))
@@ -1501,11 +1494,6 @@ func (f *RoleFilter) WhereUpdatedAt(p entql.TimeP) {
 // WhereDeletedAt applies the entql int predicate on the deleted_at field.
 func (f *RoleFilter) WhereDeletedAt(p entql.IntP) {
 	f.Where(p.Field(role.FieldDeletedAt))
-}
-
-// WhereCode applies the entql string predicate on the code field.
-func (f *RoleFilter) WhereCode(p entql.StringP) {
-	f.Where(p.Field(role.FieldCode))
 }
 
 // WhereName applies the entql string predicate on the name field.

@@ -56,18 +56,6 @@ export const createColumns = (
   // Add other columns
   columns.push(
     {
-      accessorKey: 'code',
-      header: t('roles.columns.code'),
-      cell: ({ row }) => {
-        const code = row.getValue('code') as string
-        return (
-          <div className='font-mono text-sm'>
-            {code}
-          </div>
-        )
-      },
-    },
-    {
       accessorKey: 'name',
       header: t('roles.columns.name'),
       cell: ({ row }) => {

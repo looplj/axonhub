@@ -123,7 +123,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
     setLoading(true)
     try {
       const [rolesData, scopesData] = await Promise.all([
-        graphqlRequest(ROLES_QUERY, { first: 100, variables: { where: { projectIDIsNil: true } } }),
+        graphqlRequest(ROLES_QUERY, { first: 100, variables: { where: { projectID: 0 } } }),
         graphqlRequest(ALL_SCOPES_QUERY),
       ])
 

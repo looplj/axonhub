@@ -67,12 +67,6 @@ func (_c *RoleCreate) SetNillableDeletedAt(v *int) *RoleCreate {
 	return _c
 }
 
-// SetCode sets the "code" field.
-func (_c *RoleCreate) SetCode(v string) *RoleCreate {
-	_c.mutation.SetCode(v)
-	return _c
-}
-
 // SetName sets the "name" field.
 func (_c *RoleCreate) SetName(v string) *RoleCreate {
 	_c.mutation.SetName(v)
@@ -225,9 +219,6 @@ func (_c *RoleCreate) check() error {
 	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Role.deleted_at"`)}
 	}
-	if _, ok := _c.mutation.Code(); !ok {
-		return &ValidationError{Name: "code", err: errors.New(`ent: missing required field "Role.code"`)}
-	}
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Role.name"`)}
 	}
@@ -277,10 +268,6 @@ func (_c *RoleCreate) createSpec() (*Role, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(role.FieldDeletedAt, field.TypeInt, value)
 		_node.DeletedAt = value
-	}
-	if value, ok := _c.mutation.Code(); ok {
-		_spec.SetField(role.FieldCode, field.TypeString, value)
-		_node.Code = value
 	}
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(role.FieldName, field.TypeString, value)
@@ -441,18 +428,6 @@ func (u *RoleUpsert) UpdateName() *RoleUpsert {
 	return u
 }
 
-// SetLevel sets the "level" field.
-func (u *RoleUpsert) SetLevel(v role.Level) *RoleUpsert {
-	u.Set(role.FieldLevel, v)
-	return u
-}
-
-// UpdateLevel sets the "level" field to the value that was provided on create.
-func (u *RoleUpsert) UpdateLevel() *RoleUpsert {
-	u.SetExcluded(role.FieldLevel)
-	return u
-}
-
 // SetProjectID sets the "project_id" field.
 func (u *RoleUpsert) SetProjectID(v int) *RoleUpsert {
 	u.Set(role.FieldProjectID, v)
@@ -503,8 +478,8 @@ func (u *RoleUpsertOne) UpdateNewValues() *RoleUpsertOne {
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(role.FieldCreatedAt)
 		}
-		if _, exists := u.create.mutation.Code(); exists {
-			s.SetIgnore(role.FieldCode)
+		if _, exists := u.create.mutation.Level(); exists {
+			s.SetIgnore(role.FieldLevel)
 		}
 	}))
 	return u
@@ -583,20 +558,6 @@ func (u *RoleUpsertOne) SetName(v string) *RoleUpsertOne {
 func (u *RoleUpsertOne) UpdateName() *RoleUpsertOne {
 	return u.Update(func(s *RoleUpsert) {
 		s.UpdateName()
-	})
-}
-
-// SetLevel sets the "level" field.
-func (u *RoleUpsertOne) SetLevel(v role.Level) *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.SetLevel(v)
-	})
-}
-
-// UpdateLevel sets the "level" field to the value that was provided on create.
-func (u *RoleUpsertOne) UpdateLevel() *RoleUpsertOne {
-	return u.Update(func(s *RoleUpsert) {
-		s.UpdateLevel()
 	})
 }
 
@@ -821,8 +782,8 @@ func (u *RoleUpsertBulk) UpdateNewValues() *RoleUpsertBulk {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(role.FieldCreatedAt)
 			}
-			if _, exists := b.mutation.Code(); exists {
-				s.SetIgnore(role.FieldCode)
+			if _, exists := b.mutation.Level(); exists {
+				s.SetIgnore(role.FieldLevel)
 			}
 		}
 	}))
@@ -902,20 +863,6 @@ func (u *RoleUpsertBulk) SetName(v string) *RoleUpsertBulk {
 func (u *RoleUpsertBulk) UpdateName() *RoleUpsertBulk {
 	return u.Update(func(s *RoleUpsert) {
 		s.UpdateName()
-	})
-}
-
-// SetLevel sets the "level" field.
-func (u *RoleUpsertBulk) SetLevel(v role.Level) *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.SetLevel(v)
-	})
-}
-
-// UpdateLevel sets the "level" field to the value that was provided on create.
-func (u *RoleUpsertBulk) UpdateLevel() *RoleUpsertBulk {
-	return u.Update(func(s *RoleUpsert) {
-		s.UpdateLevel()
 	})
 }
 

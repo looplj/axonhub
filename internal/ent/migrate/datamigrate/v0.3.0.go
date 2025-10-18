@@ -4,9 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userrole"
 	"github.com/looplj/axonhub/internal/log"
@@ -15,6 +18,8 @@ import (
 
 // V0_3_0 creates a default project if it doesn't exist.
 func V0_3_0(ctx context.Context, client *ent.Client) error {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
 	err := createDefaultProject(ctx, client)
 	if err != nil {
 		return err
@@ -22,18 +27,33 @@ func V0_3_0(ctx context.Context, client *ent.Client) error {
 
 	// Update user role created_at and updated_at for the old data.
 	ts := time.Now()
-	_, err = client.UserRole.Update().
+
+	row, err := client.UserRole.Update().
 		Where(userrole.CreatedAtIsNil()).
 		SetCreatedAt(ts).
 		SetUpdatedAt(ts).
 		Save(ctx)
+	if err != nil {
+		return err
+	}
 
-	return err
+	log.Info(ctx, "updated user role created_at and updated_at for the old data", log.Int("row", row))
+
+	// Update role project_id for the old data.
+	row, err = client.Role.Update().
+		Where(role.ProjectIDIsNil()).
+		SetProjectID(0).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+
+	log.Info(ctx, "updated role project_id for the old data", log.Int("row", row))
+
+	return nil
 }
 
 func createDefaultProject(ctx context.Context, client *ent.Client) error {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	// Check if a project already exists
 	exists, err := client.Project.Query().Limit(1).Exist(ctx)
 	if err != nil {
@@ -61,11 +81,9 @@ func createDefaultProject(ctx context.Context, client *ent.Client) error {
 	// Use the ProjectService to create the default project
 	// This will automatically create the three default roles (admin, developer, viewer)
 	projectService := biz.NewProjectService(biz.ProjectServiceParams{})
-	description := "Default project"
 	input := ent.CreateProjectInput{
-		Slug:        "default",
 		Name:        "Default",
-		Description: &description,
+		Description: lo.ToPtr("Default project"),
 	}
 
 	ctx = contexts.WithUser(ctx, owner)

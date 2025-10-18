@@ -356,7 +356,6 @@ func (r *queryResolver) TopRequestsProjects(ctx context.Context, limit *int) ([]
 			response = append(response, &TopRequestsProjects{
 				ProjectID:          objects.GUID{Type: "Project", ID: p.ID},
 				ProjectName:        p.Name,
-				ProjectSlug:        p.Slug,
 				ProjectDescription: p.Description,
 				RequestCount:       result.RequestCount,
 			})

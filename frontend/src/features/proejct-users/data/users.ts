@@ -43,7 +43,6 @@ export const PROJECT_USERS_QUERY = `
                 node {
                   id
                   name
-                  code
                   level
                 }
               }

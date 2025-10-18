@@ -94,8 +94,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "slug", Type: field.TypeString},
-		{Name: "name", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString, Unique: true},
 		{Name: "description", Type: field.TypeString, Default: ""},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived"}, Default: "active"},
 	}
@@ -106,14 +105,9 @@ var (
 		PrimaryKey: []*schema.Column{ProjectsColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "projects_by_slug",
-				Unique:  true,
-				Columns: []*schema.Column{ProjectsColumns[4]},
-			},
-			{
 				Name:    "projects_by_name",
 				Unique:  true,
-				Columns: []*schema.Column{ProjectsColumns[5]},
+				Columns: []*schema.Column{ProjectsColumns[4]},
 			},
 		},
 	}
@@ -244,9 +238,8 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "code", Type: field.TypeString, Unique: true},
 		{Name: "name", Type: field.TypeString},
-		{Name: "level", Type: field.TypeEnum, Enums: []string{"global", "project"}, Default: "global"},
+		{Name: "level", Type: field.TypeEnum, Enums: []string{"system", "project"}, Default: "system"},
 		{Name: "scopes", Type: field.TypeJSON, Nullable: true},
 		{Name: "project_id", Type: field.TypeInt, Nullable: true},
 	}
@@ -258,26 +251,21 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "roles_projects_roles",
-				Columns:    []*schema.Column{RolesColumns[8]},
+				Columns:    []*schema.Column{RolesColumns[7]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "roles_by_code",
+				Name:    "roles_by_project_id_name",
 				Unique:  true,
-				Columns: []*schema.Column{RolesColumns[4]},
-			},
-			{
-				Name:    "roles_by_project_id",
-				Unique:  false,
-				Columns: []*schema.Column{RolesColumns[8]},
+				Columns: []*schema.Column{RolesColumns[7], RolesColumns[4]},
 			},
 			{
 				Name:    "roles_by_level",
 				Unique:  false,
-				Columns: []*schema.Column{RolesColumns[6]},
+				Columns: []*schema.Column{RolesColumns[5]},
 			},
 		},
 	}

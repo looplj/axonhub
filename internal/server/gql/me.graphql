@@ -12,7 +12,6 @@ type UserInfo {
 }
 
 type RoleInfo {
-  code: String!
   name: String!
 }
 

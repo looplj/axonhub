@@ -41,7 +41,6 @@ export const hourlyRequestStatsSchema = z.object({
 export const topProjectsSchema = z.object({
   projectId: z.string(),
   projectName: z.string(),
-  projectSlug: z.string(),
   projectDescription: z.string(),
   requestCount: z.number(),
 })
@@ -127,7 +126,6 @@ const TOP_PROJECTS_QUERY = `
     topRequestsProjects(limit: $limit) {
       projectId
       projectName
-      projectSlug
       projectDescription
       requestCount
     }

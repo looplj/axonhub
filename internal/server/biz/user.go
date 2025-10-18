@@ -202,7 +202,6 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 		}
 
 		userRoles = append(userRoles, objects.RoleInfo{
-			Code: r.Code,
 			Name: r.Name,
 		})
 	}
@@ -239,7 +238,6 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 		projectRoleInfos := make([]objects.RoleInfo, 0, len(roles))
 		for _, r := range roles {
 			projectRoleInfos = append(projectRoleInfos, objects.RoleInfo{
-				Code: r.Code,
 				Name: r.Name,
 			})
 		}

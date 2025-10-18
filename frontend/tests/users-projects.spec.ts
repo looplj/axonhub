@@ -17,14 +17,12 @@ test.describe('Users - Add to Project', () => {
     // Create a test project
     const uniqueSuffix = Date.now().toString().slice(-6)
     testProjectName = `pw-test-Project for Users ${uniqueSuffix}`
-    const projectSlug = `pw-test-users-project-${uniqueSuffix}`
     
     const createProjectButton = page.getByRole('button', { name: /创建项目|Create Project|新建项目|Add Project/i })
     await createProjectButton.click()
     
     const projectDialog = page.getByRole('dialog')
     await projectDialog.getByLabel(/名称|Name/i).fill(testProjectName)
-    await projectDialog.getByLabel(/标识|Slug/i).fill(projectSlug)
     await projectDialog.getByLabel(/描述|Description/i).fill('pw-test project for user assignment tests')
     
     await Promise.all([

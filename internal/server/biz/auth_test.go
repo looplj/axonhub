@@ -67,7 +67,7 @@ func TestGenerateSecretKey(t *testing.T) {
 
 func setupTestDB(t *testing.T) *ent.Client {
 	t.Helper()
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	return client
 }
@@ -337,8 +337,6 @@ func TestAuthService_AnthenticateAPIKey(t *testing.T) {
 	projectName := uuid.NewString()
 	testProject, err := client.Project.Create().SetName(
 		projectName,
-	).SetSlug(
-		GenerateSlug(projectName),
 	).SetDescription(
 		projectName,
 	).SetStatus(
@@ -511,8 +509,6 @@ func TestAuthService_CacheExpiration(t *testing.T) {
 	projectName := uuid.NewString()
 	testProject, err := client.Project.Create().SetName(
 		projectName,
-	).SetSlug(
-		GenerateSlug(projectName),
 	).SetDescription(
 		projectName,
 	).SetStatus(

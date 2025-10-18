@@ -158,7 +158,7 @@ func init() {
 	// project.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	project.DefaultDeletedAt = projectDescDeletedAt.Default.(int)
 	// projectDescDescription is the schema descriptor for description field.
-	projectDescDescription := projectFields[2].Descriptor()
+	projectDescDescription := projectFields[1].Descriptor()
 	// project.DefaultDescription holds the default value on creation for the description field.
 	project.DefaultDescription = projectDescDescription.Default.(string)
 	requestMixin := schema.Request{}.Mixin()
@@ -267,7 +267,7 @@ func init() {
 	// role.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	role.DefaultDeletedAt = roleDescDeletedAt.Default.(int)
 	// roleDescScopes is the schema descriptor for scopes field.
-	roleDescScopes := roleFields[4].Descriptor()
+	roleDescScopes := roleFields[3].Descriptor()
 	// role.DefaultScopes holds the default value on creation for the scopes field.
 	role.DefaultScopes = roleDescScopes.Default.([]string)
 	systemMixin := schema.System{}.Mixin()

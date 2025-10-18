@@ -76,7 +76,6 @@ func TestAPIKeyService_GetAPIKey(t *testing.T) {
 	projectName := uuid.NewString()
 	testProject, err := client.Project.Create().
 		SetName(projectName).
-		SetSlug(GenerateSlug(projectName)).
 		SetDescription(projectName).
 		SetStatus(project.StatusActive).
 		SetCreatedAt(time.Now()).
@@ -183,7 +182,6 @@ func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 			projectName := uuid.NewString()
 			testProject, err := client.Project.Create().
 				SetName(projectName).
-				SetSlug(GenerateSlug(projectName)).
 				SetDescription(projectName).
 				SetStatus(project.StatusActive).
 				SetCreatedAt(time.Now()).
