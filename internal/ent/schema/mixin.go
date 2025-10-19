@@ -24,9 +24,14 @@ func (TimeMixin) Fields() []ent.Field {
 			Default(time.Now).
 			Annotations(
 				entgql.OrderField("CREATED_AT"),
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
 		field.Time("updated_at").
 			Default(time.Now).
-			UpdateDefault(time.Now),
+			UpdateDefault(time.Now).
+			Annotations(
+				entgql.OrderField("UPDATED_AT"),
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 	}
 }
