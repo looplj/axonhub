@@ -26,8 +26,6 @@ import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/component
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning'
 import { Response as UIResponse } from '@/components/ai-elements/response'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
-import { Header } from '@/components/layout/header'
-import { ThemeSwitch } from '@/components/theme-switch'
 import { useChannels } from '@/features/channels/data/channels'
 
 export default function Playground() {

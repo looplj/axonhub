@@ -75,7 +75,7 @@ export function useSignIn() {
 
       // Redirect based on user role
       // Owner users go to dashboard, non-owner users go to requests page
-      const redirectPath = data.user.isOwner ? '/' : '/project/requests'
+      const redirectPath = data.user.isOwner ? '/' : '/project/playground'
       router.navigate({ to: redirectPath })
     },
     onError: (error: any) => {

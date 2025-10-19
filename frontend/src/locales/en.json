@@ -1392,6 +1392,18 @@
     "dragging": "Dragging",
     "unsavedChanges": "You have unsaved changes",
     "errorMessage": "Error Message",
+    "routeGuard": {
+      "accessDenied": "Access Denied",
+      "noPermission": "You do not have permission to access this page. Please contact the administrator to obtain the necessary access permissions.",
+      "goBack": "Go Back"
+    },
+    "projectGuard": {
+      "noProjectSelected": "No Project Selected",
+      "pleaseSelectProject": "Please select a project from the project switcher to continue.",
+      "pleaseJoinOrCreateProject": "You haven't joined any projects yet. Please create a new project or ask an administrator to add you to an existing project.",
+      "goToProjects": "Go to Projects",
+      "createOrJoinProject": "Create or Join Project"
+    },
     "errors": {
       "sessionExpired": "Session expired!",
       "sessionExpiredSignIn": "Session expired. Please sign in again.",

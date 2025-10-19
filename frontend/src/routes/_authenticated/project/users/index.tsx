@@ -1,12 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { RouteGuard } from '@/components/route-guard'
+import { ProjectGuard } from '@/components/project-guard'
 import ProjectUsers from '@/features/proejct-users'
 
 function ProtectedProjectUsers() {
   return (
-    <RouteGuard requiredScopes={['read_users']}>
-      <ProjectUsers />
-    </RouteGuard>
+    <ProjectGuard>
+      <RouteGuard requiredScopes={['read_users']}>
+        <ProjectUsers />
+      </RouteGuard>
+    </ProjectGuard>
   )
 }
 

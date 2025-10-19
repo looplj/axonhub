@@ -1,12 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { ProjectGuard } from '@/components/project-guard'
 import { RouteGuard } from '@/components/route-guard'
 import Playground from '@/features/playground'
 
 function ProtectedPlayground() {
   return (
-    <RouteGuard requiredScopes={['write_requests']}>
-      <Playground />
-    </RouteGuard>
+    <ProjectGuard>
+      <RouteGuard requiredScopes={['write_requests']}>
+        <Playground />
+      </RouteGuard>
+    </ProjectGuard>
   )
 }
 
