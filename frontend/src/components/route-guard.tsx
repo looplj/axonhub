@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useRouter } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
 import { useRoutePermissions } from '@/hooks/useRoutePermissions'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,8 @@ export function RouteGuard({
 }
 
 function ForbiddenPage({ onGoBack }: { onGoBack: () => void }) {
+  const { t } = useTranslation()
+  
   return (
     <div className="flex h-screen items-center justify-center">
       <div className="max-w-md text-center">
@@ -52,15 +55,15 @@ function ForbiddenPage({ onGoBack }: { onGoBack: () => void }) {
         
         <Alert className="mb-6">
           <IconShieldX className="h-4 w-4" />
-          <AlertTitle>访问被拒绝</AlertTitle>
+          <AlertTitle>{t('common.routeGuard.accessDenied')}</AlertTitle>
           <AlertDescription>
-            您没有访问此页面的权限。请联系管理员获取相应的访问权限。
+            {t('common.routeGuard.noPermission')}
           </AlertDescription>
         </Alert>
 
         <Button onClick={onGoBack} variant="outline" className="gap-2">
           <IconArrowLeft className="h-4 w-4" />
-          返回
+          {t('common.routeGuard.goBack')}
         </Button>
       </div>
     </div>

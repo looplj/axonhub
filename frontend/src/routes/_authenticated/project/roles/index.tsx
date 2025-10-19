@@ -1,12 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { RouteGuard } from '@/components/route-guard'
+import { ProjectGuard } from '@/components/project-guard'
 import Roles from '@/features/project-roles'
 
 function ProtectedProjectRoles() {
   return (
-    <RouteGuard requiredScopes={['read_roles']}>
-      <Roles />
-    </RouteGuard>
+    <ProjectGuard>
+      <RouteGuard requiredScopes={['read_roles']}>
+        <Roles />
+      </RouteGuard>
+    </ProjectGuard>
   )
 }
 

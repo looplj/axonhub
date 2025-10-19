@@ -1422,6 +1422,18 @@
     "moveDown": "下移",
     "dragging": "拖拽中",
     "unsavedChanges": "您有未保存的更改",
+    "routeGuard": {
+      "accessDenied": "访问被拒绝",
+      "noPermission": "您没有访问此页面的权限。请联系管理员获取相应的访问权限。",
+      "goBack": "返回"
+    },
+    "projectGuard": {
+      "noProjectSelected": "未选择项目",
+      "pleaseSelectProject": "请从项目切换器中选择一个项目以继续。",
+      "pleaseJoinOrCreateProject": "您还没有加入任何项目。请创建新项目或联系管理员将您添加到现有项目中。",
+      "goToProjects": "前往项目",
+      "createOrJoinProject": "创建或加入项目"
+    },
     "errors": {
       "sessionExpired": "会话已过期！",
       "sessionExpiredSignIn": "会话已过期，请重新登录。",
