@@ -9,6 +9,9 @@ import {
   IconShield,
   IconSettings,
   IconKey,
+  IconSausage,
+  IconActivity,
+  IconActivityHeartbeat,
 } from '@tabler/icons-react'
 import { Command } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -104,12 +107,12 @@ export function useSidebarData(): SidebarData {
         {
           title: t('sidebar.items.requests'),
           url: '/project/requests',
-          icon: IconBrowserCheck,
+          icon: IconActivity,
         } as NavLink,
         {
           title: t('sidebar.items.usageLogs'),
           url: '/project/usage-logs',
-          icon: IconBrowserCheck,
+          icon: IconActivityHeartbeat,
         } as NavLink,
         {
           title: t('sidebar.items.apiKeys'),
