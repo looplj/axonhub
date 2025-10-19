@@ -3,8 +3,6 @@
 package ent
 
 import (
-	"time"
-
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -16,20 +14,12 @@ import (
 
 // CreateAPIKeyInput represents a mutation input for creating apikeys.
 type CreateAPIKeyInput struct {
-	CreatedAt *time.Time
-	UpdatedAt *time.Time
 	Name      string
 	ProjectID int
 }
 
 // Mutate applies the CreateAPIKeyInput on the APIKeyMutation builder.
 func (i *CreateAPIKeyInput) Mutate(m *APIKeyMutation) {
-	if v := i.CreatedAt; v != nil {
-		m.SetCreatedAt(*v)
-	}
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	m.SetName(i.Name)
 	m.SetProjectID(i.ProjectID)
 }
@@ -42,15 +32,11 @@ func (c *APIKeyCreate) SetInput(i CreateAPIKeyInput) *APIKeyCreate {
 
 // UpdateAPIKeyInput represents a mutation input for updating apikeys.
 type UpdateAPIKeyInput struct {
-	UpdatedAt *time.Time
-	Name      *string
+	Name *string
 }
 
 // Mutate applies the UpdateAPIKeyInput on the APIKeyMutation builder.
 func (i *UpdateAPIKeyInput) Mutate(m *APIKeyMutation) {
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
 	}
@@ -70,8 +56,6 @@ func (c *APIKeyUpdateOne) SetInput(i UpdateAPIKeyInput) *APIKeyUpdateOne {
 
 // CreateChannelInput represents a mutation input for creating channels.
 type CreateChannelInput struct {
-	CreatedAt        *time.Time
-	UpdatedAt        *time.Time
 	Type             channel.Type
 	BaseURL          *string
 	Name             string
@@ -85,12 +69,6 @@ type CreateChannelInput struct {
 
 // Mutate applies the CreateChannelInput on the ChannelMutation builder.
 func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
-	if v := i.CreatedAt; v != nil {
-		m.SetCreatedAt(*v)
-	}
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	m.SetType(i.Type)
 	if v := i.BaseURL; v != nil {
 		m.SetBaseURL(*v)
@@ -122,7 +100,6 @@ func (c *ChannelCreate) SetInput(i CreateChannelInput) *ChannelCreate {
 
 // UpdateChannelInput represents a mutation input for updating channels.
 type UpdateChannelInput struct {
-	UpdatedAt             *time.Time
 	ClearBaseURL          bool
 	BaseURL               *string
 	Name                  *string
@@ -138,9 +115,6 @@ type UpdateChannelInput struct {
 
 // Mutate applies the UpdateChannelInput on the ChannelMutation builder.
 func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	if i.ClearBaseURL {
 		m.ClearBaseURL()
 	}
@@ -190,8 +164,6 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 
 // CreateProjectInput represents a mutation input for creating projects.
 type CreateProjectInput struct {
-	CreatedAt   *time.Time
-	UpdatedAt   *time.Time
 	Name        string
 	Description *string
 	Status      *project.Status
@@ -200,12 +172,6 @@ type CreateProjectInput struct {
 
 // Mutate applies the CreateProjectInput on the ProjectMutation builder.
 func (i *CreateProjectInput) Mutate(m *ProjectMutation) {
-	if v := i.CreatedAt; v != nil {
-		m.SetCreatedAt(*v)
-	}
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	m.SetName(i.Name)
 	if v := i.Description; v != nil {
 		m.SetDescription(*v)
@@ -226,7 +192,6 @@ func (c *ProjectCreate) SetInput(i CreateProjectInput) *ProjectCreate {
 
 // UpdateProjectInput represents a mutation input for updating projects.
 type UpdateProjectInput struct {
-	UpdatedAt     *time.Time
 	Name          *string
 	Description   *string
 	Status        *project.Status
@@ -237,9 +202,6 @@ type UpdateProjectInput struct {
 
 // Mutate applies the UpdateProjectInput on the ProjectMutation builder.
 func (i *UpdateProjectInput) Mutate(m *ProjectMutation) {
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
 	}
@@ -274,8 +236,6 @@ func (c *ProjectUpdateOne) SetInput(i UpdateProjectInput) *ProjectUpdateOne {
 
 // CreateRequestInput represents a mutation input for creating requests.
 type CreateRequestInput struct {
-	CreatedAt      *time.Time
-	UpdatedAt      *time.Time
 	Source         *request.Source
 	ModelID        string
 	Format         *string
@@ -292,12 +252,6 @@ type CreateRequestInput struct {
 
 // Mutate applies the CreateRequestInput on the RequestMutation builder.
 func (i *CreateRequestInput) Mutate(m *RequestMutation) {
-	if v := i.CreatedAt; v != nil {
-		m.SetCreatedAt(*v)
-	}
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	if v := i.Source; v != nil {
 		m.SetSource(*v)
 	}
@@ -338,7 +292,6 @@ func (c *RequestCreate) SetInput(i CreateRequestInput) *RequestCreate {
 
 // UpdateRequestInput represents a mutation input for updating requests.
 type UpdateRequestInput struct {
-	UpdatedAt            *time.Time
 	ClearResponseBody    bool
 	ResponseBody         objects.JSONRawMessage
 	AppendResponseBody   objects.JSONRawMessage
@@ -354,9 +307,6 @@ type UpdateRequestInput struct {
 
 // Mutate applies the UpdateRequestInput on the RequestMutation builder.
 func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	if i.ClearResponseBody {
 		m.ClearResponseBody()
 	}
@@ -406,8 +356,6 @@ func (c *RequestUpdateOne) SetInput(i UpdateRequestInput) *RequestUpdateOne {
 
 // CreateRoleInput represents a mutation input for creating roles.
 type CreateRoleInput struct {
-	CreatedAt *time.Time
-	UpdatedAt *time.Time
 	Name      string
 	Level     *role.Level
 	Scopes    []string
@@ -417,12 +365,6 @@ type CreateRoleInput struct {
 
 // Mutate applies the CreateRoleInput on the RoleMutation builder.
 func (i *CreateRoleInput) Mutate(m *RoleMutation) {
-	if v := i.CreatedAt; v != nil {
-		m.SetCreatedAt(*v)
-	}
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	m.SetName(i.Name)
 	if v := i.Level; v != nil {
 		m.SetLevel(*v)
@@ -446,7 +388,6 @@ func (c *RoleCreate) SetInput(i CreateRoleInput) *RoleCreate {
 
 // UpdateRoleInput represents a mutation input for updating roles.
 type UpdateRoleInput struct {
-	UpdatedAt     *time.Time
 	Name          *string
 	ClearScopes   bool
 	Scopes        []string
@@ -460,9 +401,6 @@ type UpdateRoleInput struct {
 
 // Mutate applies the UpdateRoleInput on the RoleMutation builder.
 func (i *UpdateRoleInput) Mutate(m *RoleMutation) {
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
 	}
@@ -506,20 +444,12 @@ func (c *RoleUpdateOne) SetInput(i UpdateRoleInput) *RoleUpdateOne {
 
 // CreateSystemInput represents a mutation input for creating systems.
 type CreateSystemInput struct {
-	CreatedAt *time.Time
-	UpdatedAt *time.Time
-	Key       string
-	Value     string
+	Key   string
+	Value string
 }
 
 // Mutate applies the CreateSystemInput on the SystemMutation builder.
 func (i *CreateSystemInput) Mutate(m *SystemMutation) {
-	if v := i.CreatedAt; v != nil {
-		m.SetCreatedAt(*v)
-	}
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	m.SetKey(i.Key)
 	m.SetValue(i.Value)
 }
@@ -532,16 +462,12 @@ func (c *SystemCreate) SetInput(i CreateSystemInput) *SystemCreate {
 
 // UpdateSystemInput represents a mutation input for updating systems.
 type UpdateSystemInput struct {
-	UpdatedAt *time.Time
-	Key       *string
-	Value     *string
+	Key   *string
+	Value *string
 }
 
 // Mutate applies the UpdateSystemInput on the SystemMutation builder.
 func (i *UpdateSystemInput) Mutate(m *SystemMutation) {
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	if v := i.Key; v != nil {
 		m.SetKey(*v)
 	}
@@ -564,8 +490,6 @@ func (c *SystemUpdateOne) SetInput(i UpdateSystemInput) *SystemUpdateOne {
 
 // CreateUsageLogInput represents a mutation input for creating usagelogs.
 type CreateUsageLogInput struct {
-	CreatedAt                          *time.Time
-	UpdatedAt                          *time.Time
 	ModelID                            string
 	PromptTokens                       *int64
 	CompletionTokens                   *int64
@@ -585,12 +509,6 @@ type CreateUsageLogInput struct {
 
 // Mutate applies the CreateUsageLogInput on the UsageLogMutation builder.
 func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
-	if v := i.CreatedAt; v != nil {
-		m.SetCreatedAt(*v)
-	}
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	m.SetModelID(i.ModelID)
 	if v := i.PromptTokens; v != nil {
 		m.SetPromptTokens(*v)
@@ -640,7 +558,6 @@ func (c *UsageLogCreate) SetInput(i CreateUsageLogInput) *UsageLogCreate {
 
 // UpdateUsageLogInput represents a mutation input for updating usagelogs.
 type UpdateUsageLogInput struct {
-	UpdatedAt                               *time.Time
 	PromptTokens                            *int64
 	CompletionTokens                        *int64
 	TotalTokens                             *int64
@@ -662,9 +579,6 @@ type UpdateUsageLogInput struct {
 
 // Mutate applies the UpdateUsageLogInput on the UsageLogMutation builder.
 func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	if v := i.PromptTokens; v != nil {
 		m.SetPromptTokens(*v)
 	}
@@ -732,8 +646,6 @@ func (c *UsageLogUpdateOne) SetInput(i UpdateUsageLogInput) *UsageLogUpdateOne {
 
 // CreateUserInput represents a mutation input for creating users.
 type CreateUserInput struct {
-	CreatedAt      *time.Time
-	UpdatedAt      *time.Time
 	Email          string
 	Status         *user.Status
 	PreferLanguage *string
@@ -749,12 +661,6 @@ type CreateUserInput struct {
 
 // Mutate applies the CreateUserInput on the UserMutation builder.
 func (i *CreateUserInput) Mutate(m *UserMutation) {
-	if v := i.CreatedAt; v != nil {
-		m.SetCreatedAt(*v)
-	}
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	m.SetEmail(i.Email)
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
@@ -794,7 +700,6 @@ func (c *UserCreate) SetInput(i CreateUserInput) *UserCreate {
 
 // UpdateUserInput represents a mutation input for updating users.
 type UpdateUserInput struct {
-	UpdatedAt        *time.Time
 	Email            *string
 	Status           *user.Status
 	PreferLanguage   *string
@@ -817,9 +722,6 @@ type UpdateUserInput struct {
 
 // Mutate applies the UpdateUserInput on the UserMutation builder.
 func (i *UpdateUserInput) Mutate(m *UserMutation) {
-	if v := i.UpdatedAt; v != nil {
-		m.SetUpdatedAt(*v)
-	}
 	if v := i.Email; v != nil {
 		m.SetEmail(*v)
 	}

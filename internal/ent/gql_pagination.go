@@ -331,6 +331,20 @@ var (
 			}
 		},
 	}
+	// APIKeyOrderFieldUpdatedAt orders APIKey by updated_at.
+	APIKeyOrderFieldUpdatedAt = &APIKeyOrderField{
+		Value: func(_m *APIKey) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: apikey.FieldUpdatedAt,
+		toTerm: apikey.ByUpdatedAt,
+		toCursor: func(_m *APIKey) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -339,6 +353,8 @@ func (f APIKeyOrderField) String() string {
 	switch f.column {
 	case APIKeyOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case APIKeyOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
 	}
 	return str
 }
@@ -357,6 +373,8 @@ func (f *APIKeyOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *APIKeyOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *APIKeyOrderFieldUpdatedAt
 	default:
 		return fmt.Errorf("%s is not a valid APIKeyOrderField", str)
 	}
@@ -627,6 +645,20 @@ var (
 			}
 		},
 	}
+	// ChannelOrderFieldUpdatedAt orders Channel by updated_at.
+	ChannelOrderFieldUpdatedAt = &ChannelOrderField{
+		Value: func(_m *Channel) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: channel.FieldUpdatedAt,
+		toTerm: channel.ByUpdatedAt,
+		toCursor: func(_m *Channel) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
 	// ChannelOrderFieldOrderingWeight orders Channel by ordering_weight.
 	ChannelOrderFieldOrderingWeight = &ChannelOrderField{
 		Value: func(_m *Channel) (ent.Value, error) {
@@ -649,6 +681,8 @@ func (f ChannelOrderField) String() string {
 	switch f.column {
 	case ChannelOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case ChannelOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
 	case ChannelOrderFieldOrderingWeight.column:
 		str = "ORDERING_WEIGHT"
 	}
@@ -669,6 +703,8 @@ func (f *ChannelOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *ChannelOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *ChannelOrderFieldUpdatedAt
 	case "ORDERING_WEIGHT":
 		*f = *ChannelOrderFieldOrderingWeight
 	default:
@@ -941,6 +977,20 @@ var (
 			}
 		},
 	}
+	// ProjectOrderFieldUpdatedAt orders Project by updated_at.
+	ProjectOrderFieldUpdatedAt = &ProjectOrderField{
+		Value: func(_m *Project) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: project.FieldUpdatedAt,
+		toTerm: project.ByUpdatedAt,
+		toCursor: func(_m *Project) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -949,6 +999,8 @@ func (f ProjectOrderField) String() string {
 	switch f.column {
 	case ProjectOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case ProjectOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
 	}
 	return str
 }
@@ -967,6 +1019,8 @@ func (f *ProjectOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *ProjectOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *ProjectOrderFieldUpdatedAt
 	default:
 		return fmt.Errorf("%s is not a valid ProjectOrderField", str)
 	}
@@ -1237,6 +1291,20 @@ var (
 			}
 		},
 	}
+	// RequestOrderFieldUpdatedAt orders Request by updated_at.
+	RequestOrderFieldUpdatedAt = &RequestOrderField{
+		Value: func(_m *Request) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: request.FieldUpdatedAt,
+		toTerm: request.ByUpdatedAt,
+		toCursor: func(_m *Request) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -1245,6 +1313,8 @@ func (f RequestOrderField) String() string {
 	switch f.column {
 	case RequestOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case RequestOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
 	}
 	return str
 }
@@ -1263,6 +1333,8 @@ func (f *RequestOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *RequestOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *RequestOrderFieldUpdatedAt
 	default:
 		return fmt.Errorf("%s is not a valid RequestOrderField", str)
 	}
@@ -1533,6 +1605,20 @@ var (
 			}
 		},
 	}
+	// RequestExecutionOrderFieldUpdatedAt orders RequestExecution by updated_at.
+	RequestExecutionOrderFieldUpdatedAt = &RequestExecutionOrderField{
+		Value: func(_m *RequestExecution) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: requestexecution.FieldUpdatedAt,
+		toTerm: requestexecution.ByUpdatedAt,
+		toCursor: func(_m *RequestExecution) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -1541,6 +1627,8 @@ func (f RequestExecutionOrderField) String() string {
 	switch f.column {
 	case RequestExecutionOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case RequestExecutionOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
 	}
 	return str
 }
@@ -1559,6 +1647,8 @@ func (f *RequestExecutionOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *RequestExecutionOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *RequestExecutionOrderFieldUpdatedAt
 	default:
 		return fmt.Errorf("%s is not a valid RequestExecutionOrderField", str)
 	}
@@ -1829,6 +1919,20 @@ var (
 			}
 		},
 	}
+	// RoleOrderFieldUpdatedAt orders Role by updated_at.
+	RoleOrderFieldUpdatedAt = &RoleOrderField{
+		Value: func(_m *Role) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: role.FieldUpdatedAt,
+		toTerm: role.ByUpdatedAt,
+		toCursor: func(_m *Role) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -1837,6 +1941,8 @@ func (f RoleOrderField) String() string {
 	switch f.column {
 	case RoleOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case RoleOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
 	}
 	return str
 }
@@ -1855,6 +1961,8 @@ func (f *RoleOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *RoleOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *RoleOrderFieldUpdatedAt
 	default:
 		return fmt.Errorf("%s is not a valid RoleOrderField", str)
 	}
@@ -2125,6 +2233,20 @@ var (
 			}
 		},
 	}
+	// SystemOrderFieldUpdatedAt orders System by updated_at.
+	SystemOrderFieldUpdatedAt = &SystemOrderField{
+		Value: func(_m *System) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: system.FieldUpdatedAt,
+		toTerm: system.ByUpdatedAt,
+		toCursor: func(_m *System) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -2133,6 +2255,8 @@ func (f SystemOrderField) String() string {
 	switch f.column {
 	case SystemOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case SystemOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
 	}
 	return str
 }
@@ -2151,6 +2275,8 @@ func (f *SystemOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *SystemOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *SystemOrderFieldUpdatedAt
 	default:
 		return fmt.Errorf("%s is not a valid SystemOrderField", str)
 	}
@@ -2421,6 +2547,20 @@ var (
 			}
 		},
 	}
+	// UsageLogOrderFieldUpdatedAt orders UsageLog by updated_at.
+	UsageLogOrderFieldUpdatedAt = &UsageLogOrderField{
+		Value: func(_m *UsageLog) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: usagelog.FieldUpdatedAt,
+		toTerm: usagelog.ByUpdatedAt,
+		toCursor: func(_m *UsageLog) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -2429,6 +2569,8 @@ func (f UsageLogOrderField) String() string {
 	switch f.column {
 	case UsageLogOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case UsageLogOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
 	}
 	return str
 }
@@ -2447,6 +2589,8 @@ func (f *UsageLogOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *UsageLogOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *UsageLogOrderFieldUpdatedAt
 	default:
 		return fmt.Errorf("%s is not a valid UsageLogOrderField", str)
 	}
@@ -2717,6 +2861,20 @@ var (
 			}
 		},
 	}
+	// UserOrderFieldUpdatedAt orders User by updated_at.
+	UserOrderFieldUpdatedAt = &UserOrderField{
+		Value: func(_m *User) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: user.FieldUpdatedAt,
+		toTerm: user.ByUpdatedAt,
+		toCursor: func(_m *User) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -2725,6 +2883,8 @@ func (f UserOrderField) String() string {
 	switch f.column {
 	case UserOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case UserOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
 	}
 	return str
 }
@@ -2743,6 +2903,8 @@ func (f *UserOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *UserOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *UserOrderFieldUpdatedAt
 	default:
 		return fmt.Errorf("%s is not a valid UserOrderField", str)
 	}
@@ -3013,6 +3175,20 @@ var (
 			}
 		},
 	}
+	// UserProjectOrderFieldUpdatedAt orders UserProject by updated_at.
+	UserProjectOrderFieldUpdatedAt = &UserProjectOrderField{
+		Value: func(_m *UserProject) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: userproject.FieldUpdatedAt,
+		toTerm: userproject.ByUpdatedAt,
+		toCursor: func(_m *UserProject) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -3021,6 +3197,8 @@ func (f UserProjectOrderField) String() string {
 	switch f.column {
 	case UserProjectOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case UserProjectOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
 	}
 	return str
 }
@@ -3039,6 +3217,8 @@ func (f *UserProjectOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *UserProjectOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *UserProjectOrderFieldUpdatedAt
 	default:
 		return fmt.Errorf("%s is not a valid UserProjectOrderField", str)
 	}
@@ -3309,6 +3489,20 @@ var (
 			}
 		},
 	}
+	// UserRoleOrderFieldUpdatedAt orders UserRole by updated_at.
+	UserRoleOrderFieldUpdatedAt = &UserRoleOrderField{
+		Value: func(_m *UserRole) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: userrole.FieldUpdatedAt,
+		toTerm: userrole.ByUpdatedAt,
+		toCursor: func(_m *UserRole) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -3317,6 +3511,8 @@ func (f UserRoleOrderField) String() string {
 	switch f.column {
 	case UserRoleOrderFieldCreatedAt.column:
 		str = "CREATED_AT"
+	case UserRoleOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
 	}
 	return str
 }
@@ -3335,6 +3531,8 @@ func (f *UserRoleOrderField) UnmarshalGQL(v interface{}) error {
 	switch str {
 	case "CREATED_AT":
 		*f = *UserRoleOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *UserRoleOrderFieldUpdatedAt
 	default:
 		return fmt.Errorf("%s is not a valid UserRoleOrderField", str)
 	}
