@@ -415,7 +415,10 @@
       "keyRequired": "API Key不能为空",
       "profileNameRequired": "配置名称不能为空",
       "sourceModelRequired": "原模型不能为空",
-      "targetModelRequired": "目标模型不能为空"
+      "targetModelRequired": "目标模型不能为空",
+      "activeProfileRequired": "生效配置不能为空",
+      "atLeastOneProfile": "至少需要一个配置",
+      "activeProfileMustExist": "生效配置必须存在于配置列表中"
     },
     "filters": {
       "filterId": "按 ID 筛选...",
@@ -526,6 +529,11 @@
         "delete": "删除",
         "deleting": "删除中..."
       }
+    },
+    "validation": {
+      "nameRequired": "角色名称不能为空",
+      "scopesRequired": "至少需要选择一个权限",
+      "projectIdRequired": "项目 ID不能为空"
     }
   },
   "projects": {
@@ -605,6 +613,9 @@
         "activate": "激活",
         "activating": "激活中..."
       }
+    },
+    "validation": {
+      "nameRequired": "项目名称不能为空"
     }
   },
   "channels": {
@@ -906,6 +917,22 @@
         "orderingWeight": "优先级",
         "noChannels": "没有可用于排序的渠道"
       }
+    },
+    "validation": {
+      "nameRequired": "名称不能为空",
+      "baseUrlInvalid": "请输入有效的 URL",
+      "baseUrlRequired": "Base URL 不能为空",
+      "apiKeyRequired": "API Key 不能为空",
+      "supportedModelsRequired": "至少选择一个支持的模型",
+      "defaultTestModelRequired": "请选择默认测试模型",
+      "importDataRequired": "请输入要导入的数据",
+      "awsAccessKeyIdRequired": "AWS Access Key ID 不能为空",
+      "awsSecretAccessKeyRequired": "AWS Secret Access Key 不能为空",
+      "awsRegionRequired": "AWS Region 不能为空",
+      "gcpRegionRequired": "GCP Region 不能为空",
+      "gcpProjectIdRequired": "GCP Project ID 不能为空",
+      "gcpJsonDataRequired": "GCP Service Account JSON 不能为空",
+      "atLeastOneChannel": "至少需要一个 channel"
     }
   },
   "system": {

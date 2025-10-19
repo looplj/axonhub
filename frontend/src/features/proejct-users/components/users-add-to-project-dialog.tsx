@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -63,11 +63,14 @@ export function UsersAddToProjectDialog({ open, onOpenChange }: Props) {
 
   const addUserToProject = useAddUserToProject()
 
-  // Fetch all users
-  const { data: usersData, isLoading: usersLoading } = useAllUsers({
-    first: 100,
-    where: searchTerm ? { emailContainsFold: searchTerm } : undefined,
-  })
+  // Fetch all users - only when dialog is open
+  const { data: usersData, isLoading: usersLoading } = useAllUsers(
+    {
+      first: 100,
+      where: searchTerm ? { emailContainsFold: searchTerm } : undefined,
+    },
+    { enabled: open }
+  )
 
   const form = useForm<AddUserForm>({
     resolver: zodResolver(formSchema),
@@ -170,6 +173,13 @@ export function UsersAddToProjectDialog({ open, onOpenChange }: Props) {
 
   const availableUsers = usersData?.edges?.map((edge) => edge.node) || []
 
+  // Get selected user for display in title
+  const selectedUser = useMemo(() => {
+    const userId = form.watch('userId')
+    if (!userId) return null
+    return availableUsers.find((user) => user.id === userId)
+  }, [form.watch('userId'), availableUsers])
+
   return (
     <Dialog
       open={open}
@@ -183,7 +193,11 @@ export function UsersAddToProjectDialog({ open, onOpenChange }: Props) {
     >
       <DialogContent className='sm:max-w-2xl'>
         <DialogHeader className='text-left'>
-          <DialogTitle>{t('users.dialogs.addToProject.title')}</DialogTitle>
+          <DialogTitle>
+            {selectedUser
+              ? `Add ${selectedUser.firstName} ${selectedUser.lastName} to a project with specific roles and permissions.`
+              : t('users.dialogs.addToProject.title')}
+          </DialogTitle>
           <DialogDescription>{t('users.dialogs.addToProject.description')}</DialogDescription>
         </DialogHeader>
 

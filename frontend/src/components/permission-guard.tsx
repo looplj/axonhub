@@ -3,12 +3,24 @@ import { usePermissions } from '@/hooks/usePermissions'
 
 export interface PermissionGuardProps {
   children?: React.ReactNode
-  /** Required scope(s) - user must have at least one of these scopes */
+  /** Required scope(s) - user must have at least one of these scopes (any level) */
   requiredScopes?: string[]
-  /** All scopes required - user must have all of these scopes */
+  /** All scopes required - user must have all of these scopes (any level) */
   requiredAllScopes?: string[]
-  /** Single scope required - shorthand for requiredScopes with one scope */
+  /** Single scope required - shorthand for requiredScopes with one scope (any level) */
   requiredScope?: string
+  /** Required system-level scope(s) - user must have at least one of these scopes at system level */
+  requiredSystemScopes?: string[]
+  /** All system-level scopes required - user must have all of these scopes at system level */
+  requiredAllSystemScopes?: string[]
+  /** Single system-level scope required */
+  requiredSystemScope?: string
+  /** Required project-level scope(s) - user must have at least one of these scopes at project level */
+  requiredProjectScopes?: string[]
+  /** All project-level scopes required - user must have all of these scopes at project level */
+  requiredAllProjectScopes?: string[]
+  /** Single project-level scope required */
+  requiredProjectScope?: string
   /** Whether to render children when permission is denied (default: false) */
   showWhenDenied?: boolean
   /** Custom component to render when permission is denied */
@@ -21,15 +33,21 @@ export interface PermissionGuardProps {
  * PermissionGuard component wraps content and conditionally renders it based on user permissions.
  * 
  * @example
- * // Show button only if user has write_channels scope
+ * // Show button only if user has write_channels scope (any level)
  * <PermissionGuard requiredScope="write_channels">
  *   <Button>Bulk Import</Button>
  * </PermissionGuard>
  * 
  * @example
- * // Show button only if user has any of the specified scopes
- * <PermissionGuard requiredScopes={["write_channels", "admin"]}>
- *   <Button>Admin Action</Button>
+ * // Show button only if user has system-level read_users scope
+ * <PermissionGuard requiredSystemScope="read_users">
+ *   <Button>View All Users</Button>
+ * </PermissionGuard>
+ * 
+ * @example
+ * // Show button only if user has project-level write_users scope
+ * <PermissionGuard requiredProjectScope="write_users">
+ *   <Button>Add User to Project</Button>
  * </PermissionGuard>
  * 
  * @example
@@ -63,27 +81,59 @@ export function PermissionGuard({
   requiredScopes = [],
   requiredAllScopes = [],
   requiredScope,
+  requiredSystemScopes = [],
+  requiredAllSystemScopes = [],
+  requiredSystemScope,
+  requiredProjectScopes = [],
+  requiredAllProjectScopes = [],
+  requiredProjectScope,
   showWhenDenied = false,
   fallback = null,
   render
 }: PermissionGuardProps) {
-  const { hasAnyScope, hasAllScopes } = usePermissions()
+  const { hasAnyScope, hasAllScopes, hasSystemScope, hasProjectScope } = usePermissions()
 
-  // Determine the required scopes array
+  // Determine the required scopes arrays
   let finalRequiredScopes: string[] = requiredScopes
   if (requiredScope) {
     finalRequiredScopes = [requiredScope]
   }
 
+  let finalRequiredSystemScopes: string[] = requiredSystemScopes
+  if (requiredSystemScope) {
+    finalRequiredSystemScopes = [requiredSystemScope]
+  }
+
+  let finalRequiredProjectScopes: string[] = requiredProjectScopes
+  if (requiredProjectScope) {
+    finalRequiredProjectScopes = [requiredProjectScope]
+  }
+
   // Check permissions
   let hasPermission = true
 
+  // Check system-level scopes
+  if (requiredAllSystemScopes.length > 0) {
+    hasPermission = hasPermission && requiredAllSystemScopes.every((scope) => hasSystemScope(scope))
+  }
+  if (finalRequiredSystemScopes.length > 0) {
+    hasPermission = hasPermission && finalRequiredSystemScopes.some((scope) => hasSystemScope(scope))
+  }
+
+  // Check project-level scopes
+  if (requiredAllProjectScopes.length > 0) {
+    hasPermission = hasPermission && requiredAllProjectScopes.every((scope) => hasProjectScope(scope))
+  }
+  if (finalRequiredProjectScopes.length > 0) {
+    hasPermission = hasPermission && finalRequiredProjectScopes.some((scope) => hasProjectScope(scope))
+  }
+
+  // Check any-level scopes (original behavior)
   if (requiredAllScopes.length > 0) {
-    // User must have all scopes in requiredAllScopes
-    hasPermission = hasAllScopes(requiredAllScopes)
-  } else if (finalRequiredScopes.length > 0) {
-    // User must have at least one scope in requiredScopes
-    hasPermission = hasAnyScope(finalRequiredScopes)
+    hasPermission = hasPermission && hasAllScopes(requiredAllScopes)
+  }
+  if (finalRequiredScopes.length > 0) {
+    hasPermission = hasPermission && hasAnyScope(finalRequiredScopes)
   }
 
   // If using render prop, always call it with permission state
@@ -132,21 +182,55 @@ export function withPermissionGuard<P extends object>(
 export function usePermissionCheck(
   requiredScopes?: string[],
   requiredAllScopes?: string[],
-  requiredScope?: string
+  requiredScope?: string,
+  requiredSystemScopes?: string[],
+  requiredAllSystemScopes?: string[],
+  requiredSystemScope?: string,
+  requiredProjectScopes?: string[],
+  requiredAllProjectScopes?: string[],
+  requiredProjectScope?: string
 ) {
-  const { hasAnyScope, hasAllScopes } = usePermissions()
+  const { hasAnyScope, hasAllScopes, hasSystemScope, hasProjectScope } = usePermissions()
 
   let finalRequiredScopes: string[] = requiredScopes || []
   if (requiredScope) {
     finalRequiredScopes = [requiredScope]
   }
 
+  let finalRequiredSystemScopes: string[] = requiredSystemScopes || []
+  if (requiredSystemScope) {
+    finalRequiredSystemScopes = [requiredSystemScope]
+  }
+
+  let finalRequiredProjectScopes: string[] = requiredProjectScopes || []
+  if (requiredProjectScope) {
+    finalRequiredProjectScopes = [requiredProjectScope]
+  }
+
   let hasPermission = true
 
+  // Check system-level scopes
+  if (requiredAllSystemScopes && requiredAllSystemScopes.length > 0) {
+    hasPermission = hasPermission && requiredAllSystemScopes.every((scope) => hasSystemScope(scope))
+  }
+  if (finalRequiredSystemScopes.length > 0) {
+    hasPermission = hasPermission && finalRequiredSystemScopes.some((scope) => hasSystemScope(scope))
+  }
+
+  // Check project-level scopes
+  if (requiredAllProjectScopes && requiredAllProjectScopes.length > 0) {
+    hasPermission = hasPermission && requiredAllProjectScopes.every((scope) => hasProjectScope(scope))
+  }
+  if (finalRequiredProjectScopes.length > 0) {
+    hasPermission = hasPermission && finalRequiredProjectScopes.some((scope) => hasProjectScope(scope))
+  }
+
+  // Check any-level scopes
   if (requiredAllScopes && requiredAllScopes.length > 0) {
-    hasPermission = hasAllScopes(requiredAllScopes)
-  } else if (finalRequiredScopes.length > 0) {
-    hasPermission = hasAnyScope(finalRequiredScopes)
+    hasPermission = hasPermission && hasAllScopes(requiredAllScopes)
+  }
+  if (finalRequiredScopes.length > 0) {
+    hasPermission = hasPermission && hasAnyScope(finalRequiredScopes)
   }
 
   return { hasPermission }

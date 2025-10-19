@@ -63,13 +63,13 @@ export type Channel = z.infer<typeof channelSchema>
 export const createChannelInputSchema = z
   .object({
     type: channelTypeSchema,
-    baseURL: z.string().url('请输入有效的 URL'),
-    name: z.string().min(1, '名称不能为空'),
-    supportedModels: z.array(z.string()).min(0, '至少选择一个支持的模型'),
-    defaultTestModel: z.string().min(1, '请选择默认测试模型'),
+    baseURL: z.string().url('Please enter a valid URL'),
+    name: z.string().min(1, 'Name is required'),
+    supportedModels: z.array(z.string()).min(0, 'At least one supported model is required'),
+    defaultTestModel: z.string().min(1, 'Please select a default test model'),
     settings: channelSettingsSchema.optional(),
     credentials: z.object({
-      apiKey: z.string().min(1, 'API Key 不能为空'),
+      apiKey: z.string().min(1, 'API Key is required'),
       aws: z
         .object({
           accessKeyID: z.string().optional(),
@@ -93,21 +93,21 @@ export const createChannelInputSchema = z
       if (!aws?.accessKeyID) {
         ctx.addIssue({
           code: 'custom',
-          message: 'AWS Access Key ID 不能为空',
+          message: 'AWS Access Key ID is required',
           path: ['credentials', 'aws', 'accessKeyID'],
         })
       }
       if (!aws?.secretAccessKey) {
         ctx.addIssue({
           code: 'custom',
-          message: 'AWS Secret Access Key 不能为空',
+          message: 'AWS Secret Access Key is required',
           path: ['credentials', 'aws', 'secretAccessKey'],
         })
       }
       if (!aws?.region) {
         ctx.addIssue({
           code: 'custom',
-          message: 'AWS Region 不能为空',
+          message: 'AWS Region is required',
           path: ['credentials', 'aws', 'region'],
         })
       }
@@ -118,21 +118,21 @@ export const createChannelInputSchema = z
       if (!gcp?.region) {
         ctx.addIssue({
           code: 'custom',
-          message: 'GCP Region 不能为空',
+          message: 'GCP Region is required',
           path: ['credentials', 'gcp', 'region'],
         })
       }
       if (!gcp?.projectID) {
         ctx.addIssue({
           code: 'custom',
-          message: 'GCP Project ID 不能为空',
+          message: 'GCP Project ID is required',
           path: ['credentials', 'gcp', 'projectID'],
         })
       }
       if (!gcp?.jsonData) {
         ctx.addIssue({
           code: 'custom',
-          message: 'GCP Service Account JSON 不能为空',
+          message: 'GCP Service Account JSON is required',
           path: ['credentials', 'gcp', 'jsonData'],
         })
       }
@@ -144,13 +144,13 @@ export type CreateChannelInput = z.infer<typeof createChannelInputSchema>
 export const updateChannelInputSchema = z
   .object({
     type: channelTypeSchema.optional(),
-    baseURL: z.string().url('请输入有效的 URL').optional(),
-    name: z.string().min(1, '名称不能为空').optional(),
+    baseURL: z.string().url('Please enter a valid URL').optional(),
+    name: z.string().min(1, 'Name is required').optional(),
     supportedModels: z
       .array(z.string())
-      .min(1, '至少选择一个支持的模型')
+      .min(1, 'At least one supported model is required')
       .optional(),
-    defaultTestModel: z.string().min(1, '请选择默认测试模型').optional(),
+    defaultTestModel: z.string().min(1, 'Please select a default test model').optional(),
     settings: channelSettingsSchema.optional(),
     credentials: z
       .object({
@@ -179,21 +179,21 @@ export const updateChannelInputSchema = z
       if (!aws?.accessKeyID) {
         ctx.addIssue({
           code: 'custom',
-          message: 'AWS Access Key ID 不能为空',
+          message: 'AWS Access Key ID is required',
           path: ['credentials', 'aws', 'accessKeyID'],
         })
       }
       if (!aws?.secretAccessKey) {
         ctx.addIssue({
           code: 'custom',
-          message: 'AWS Secret Access Key 不能为空',
+          message: 'AWS Secret Access Key is required',
           path: ['credentials', 'aws', 'secretAccessKey'],
         })
       }
       if (!aws?.region) {
         ctx.addIssue({
           code: 'custom',
-          message: 'AWS Region 不能为空',
+          message: 'AWS Region is required',
           path: ['credentials', 'aws', 'region'],
         })
       }
@@ -204,21 +204,21 @@ export const updateChannelInputSchema = z
       if (!gcp?.region) {
         ctx.addIssue({
           code: 'custom',
-          message: 'GCP Region 不能为空',
+          message: 'GCP Region is required',
           path: ['credentials', 'gcp', 'region'],
         })
       }
       if (!gcp?.projectID) {
         ctx.addIssue({
           code: 'custom',
-          message: 'GCP Project ID 不能为空',
+          message: 'GCP Project ID is required',
           path: ['credentials', 'gcp', 'projectID'],
         })
       }
       if (!gcp?.jsonData) {
         ctx.addIssue({
           code: 'custom',
-          message: 'GCP Service Account JSON 不能为空',
+          message: 'GCP Service Account JSON is required',
           path: ['credentials', 'gcp', 'jsonData'],
         })
       }
@@ -247,16 +247,16 @@ export type ChannelConnection = z.infer<typeof channelConnectionSchema>
 // Bulk Import Schemas
 export const bulkImportChannelItemSchema = z.object({
   type: channelTypeSchema,
-  name: z.string().min(1, '名称不能为空'),
-  baseURL: z.string().url('请输入有效的 URL').min(1, 'Base URL 不能为空'),
-  apiKey: z.string().min(1, 'API Key 不能为空'),
-  supportedModels: z.array(z.string()).min(1, '至少选择一个支持的模型'),
-  defaultTestModel: z.string().min(1, '请选择默认测试模型'),
+  name: z.string().min(1, 'Name is required'),
+  baseURL: z.string().url('Please enter a valid URL').min(1, 'Base URL is required'),
+  apiKey: z.string().min(1, 'API Key is required'),
+  supportedModels: z.array(z.string()).min(1, 'At least one supported model is required'),
+  defaultTestModel: z.string().min(1, 'Please select a default test model'),
 })
 export type BulkImportChannelItem = z.infer<typeof bulkImportChannelItemSchema>
 
 export const bulkImportChannelsInputSchema = z.object({
-  channels: z.array(bulkImportChannelItemSchema).min(1, '至少需要一个 channel'),
+  channels: z.array(bulkImportChannelItemSchema).min(1, 'At least one channel is required'),
 })
 export type BulkImportChannelsInput = z.infer<
   typeof bulkImportChannelsInputSchema
@@ -275,7 +275,7 @@ export type BulkImportChannelsResult = z.infer<
 
 // Raw text input for bulk import
 export const bulkImportTextSchema = z.object({
-  text: z.string().min(1, '请输入要导入的数据'),
+  text: z.string().min(1, 'Please enter data to import'),
 })
 export type BulkImportText = z.infer<typeof bulkImportTextSchema>
 
@@ -306,7 +306,7 @@ export const bulkUpdateChannelOrderingInputSchema = z.object({
   channels: z.array(z.object({
     id: z.string(),
     orderingWeight: z.number(),
-  })).min(1, '至少需要一个 channel'),
+  })).min(1, 'At least one channel is required'),
 })
 export type BulkUpdateChannelOrderingInput = z.infer<
   typeof bulkUpdateChannelOrderingInputSchema

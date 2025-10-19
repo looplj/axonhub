@@ -81,14 +81,14 @@ func (User) Annotations() []schema.Annotation {
 func (User) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
-			scopes.OwnerRule(), // owner 用户可以访问所有用户
-			scopes.UserReadScopeRule(scopes.ScopeReadUsers), // 需要 users 读取权限
-			scopes.UserOwnedQueryRule(),                     // 用户可以查询自己的信息
+			scopes.OwnerRule(),
+			scopes.UserReadScopeRule(scopes.ScopeReadUsers),
+			scopes.UserOwnedQueryRule(),
 		},
 		Mutation: scopes.MutationPolicy{
-			scopes.OwnerRule(), // owner 用户可以修改所有用户
-			scopes.UserWriteScopeRule(scopes.ScopeWriteUsers), // 需要 users 写入权限
-			scopes.UserOwnedMutationRule(),                    // 用户可以修改自己的信息
+			scopes.OwnerRule(),
+			scopes.UserWriteScopeRule(scopes.ScopeWriteUsers),
+			scopes.UserOwnedMutationRule(),
 		},
 	}
 }

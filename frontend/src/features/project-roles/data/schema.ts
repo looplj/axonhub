@@ -14,10 +14,17 @@ export {
   type RoleList,
 } from '@/features/roles/data/schema'
 
-// Project-specific Create Role Input - extends base schema with projectID
+// Project-specific Create Role Input - factory function for i18n support
+export const createRoleInputSchemaFactory = (t: (key: string) => string) => z.object({
+  projectID: z.string().min(1, t('roles.validation.projectIdRequired')),
+  name: z.string().min(1, t('roles.validation.nameRequired')),
+  scopes: z.array(z.string()).min(1, t('roles.validation.scopesRequired')),
+})
+
+// Default schema for backward compatibility - extends base schema with projectID
 export const createRoleInputSchema = z.object({
-  projectID: z.string().min(1, '项目 ID不能为空'),
-  name: z.string().min(1, '角色名称不能为空'),
-  scopes: z.array(z.string()).min(1, '至少需要选择一个权限'),
+  projectID: z.string().min(1, 'Project ID is required'),
+  name: z.string().min(1, 'Role name is required'),
+  scopes: z.array(z.string()).min(1, 'At least one permission is required'),
 })
 export type CreateRoleInput = z.infer<typeof createRoleInputSchema>

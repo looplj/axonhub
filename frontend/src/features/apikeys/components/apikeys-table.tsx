@@ -84,7 +84,7 @@ export function ApiKeysTable({
       newFilters.push({ id: 'status', value: statusFilter })
     }
     if (userFilter.length > 0) {
-      newFilters.push({ id: 'user', value: userFilter })
+      newFilters.push({ id: 'creator', value: userFilter })
     }
     setColumnFilters(newFilters)
   }, [nameFilter, statusFilter, userFilter])
@@ -101,7 +101,7 @@ export function ApiKeysTable({
     // Extract filter values
     const nameFilterValue = newFilters.find((f) => f.id === 'name')?.value
     const statusFilterValue = newFilters.find((f) => f.id === 'status')?.value
-    const userFilterValue = newFilters.find((f) => f.id === 'user')?.value
+    const userFilterValue = newFilters.find((f) => f.id === 'creator')?.value
 
     // Only update if values actually change to prevent reset issues
     const newNameFilter =

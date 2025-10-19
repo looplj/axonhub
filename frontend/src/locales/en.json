@@ -388,7 +388,10 @@
       "keyRequired": "API Key is required",
       "profileNameRequired": "Profile name is required",
       "sourceModelRequired": "Source model is required",
-      "targetModelRequired": "Target model is required"
+      "targetModelRequired": "Target model is required",
+      "activeProfileRequired": "Active profile is required",
+      "atLeastOneProfile": "At least one profile is required",
+      "activeProfileMustExist": "Active profile must exist in the profile list"
     },
     "filters": {
       "filterId": "Filter by ID...",
@@ -499,6 +502,11 @@
         "delete": "Delete",
         "deleting": "Deleting..."
       }
+    },
+    "validation": {
+      "nameRequired": "Role name is required",
+      "scopesRequired": "At least one permission is required",
+      "projectIdRequired": "Project ID is required"
     }
   },
   "projects": {
@@ -578,6 +586,9 @@
         "activate": "Activate",
         "activating": "Activating..."
       }
+    },
+    "validation": {
+      "nameRequired": "Project name is required"
     }
   },
   "channels": {
@@ -876,6 +887,22 @@
         "orderingWeight": "Priority",
         "noChannels": "No channels available for ordering"
       }
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "baseUrlInvalid": "Please enter a valid URL",
+      "baseUrlRequired": "Base URL is required",
+      "apiKeyRequired": "API Key is required",
+      "supportedModelsRequired": "At least one supported model is required",
+      "defaultTestModelRequired": "Please select a default test model",
+      "importDataRequired": "Please enter data to import",
+      "awsAccessKeyIdRequired": "AWS Access Key ID is required",
+      "awsSecretAccessKeyRequired": "AWS Secret Access Key is required",
+      "awsRegionRequired": "AWS Region is required",
+      "gcpRegionRequired": "GCP Region is required",
+      "gcpProjectIdRequired": "GCP Project ID is required",
+      "gcpJsonDataRequired": "GCP Service Account JSON is required",
+      "atLeastOneChannel": "At least one channel is required"
     }
   },
   "system": {

@@ -91,11 +91,11 @@ export function DataTableToolbar<TData>({
           />
         )}
         {canViewUsers &&
-          table.getColumn('user') &&
+          table.getColumn('creator') &&
           userOptions.length > 0 &&
           usersData?.edges && (
             <DataTableFacetedFilter
-              column={table.getColumn('user')}
+              column={table.getColumn('creator')}
               title={t('apikeys.filters.user')}
               options={userOptions}
             />
