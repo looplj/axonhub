@@ -1,6 +1,6 @@
 <div align="center">
 
-# AxonHub - Unified AI Gateway System
+# AxonHub - All-in-one AI Development Platform
 
 </div>
 
@@ -20,9 +20,9 @@
 
 ## 📖 Project Introduction
 
-### Unified AI Gateway
+### All-in-one AI Development Platform
 
-AxonHub is a modern AI gateway system that provides a unified OpenAI, Anthropic, and AI SDK compatible API layer, transforming requests to various AI providers through a transformer pipeline architecture. The system features comprehensive tracing capabilities, helping enterprises better manage and monitor AI service usage. It also includes comprehensive test coverage to ensure system stability and reliability.
+AxonHub is an all-in-one AI development platform that provides unified API gateway, project management, and comprehensive development tools. It offers OpenAI, Anthropic, and AI SDK compatible API layers, transforming requests to various AI providers through a transformer pipeline architecture. The platform features comprehensive tracing capabilities, project-based organization, and integrated playground for rapid prototyping, helping developers and enterprises better manage AI development workflows.
 
 <div align="center">
   <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
@@ -475,71 +475,7 @@ const completion = await openai.chat.completions.create({
 
 ## 🛠️ Development Guide
 
-### Architecture Design
-
-AxonHub implements a sophisticated bidirectional data transformation pipeline that ensures seamless communication between clients and AI providers:
-
-<div align="center">
-  <img src="docs/transformation-flow.svg" alt="AxonHub Transformation Flow" width="900"/>
-</div>
-
-#### Pipeline Components
-
-| Component                | Purpose               | Key Features                              |
-| ------------------------ | --------------------- | ----------------------------------------- |
-| **Client**               | Application layer     | Web apps, mobile apps, API clients        |
-| **Inbound Transformer**  | Request preprocessing | Parse, validate, normalize input          |
-| **Unified Request**      | Core processing       | Route selection, load balancing, failover |
-| **Outbound Transformer** | Provider adaptation   | Format conversion, protocol mapping       |
-| **Provider**             | AI services           | OpenAI, Anthropic, DeepSeek, etc.         |
-
-This architecture ensures:
-
-- ⚡ **Low Latency**: Optimized processing pipeline
-- 🔄 **Auto Failover**: Seamless provider switching
-- 📊 **Real-time Monitoring**: Complete request tracing
-- 🛡️ **Security & Validation**: Input sanitization and output verification
-
-### Technology Stack
-
-#### Backend Technology Stack
-
-- **Go 1.24+** - High-performance backend
-- **Gin** - HTTP framework
-- **Ent ORM** - Type-safe ORM
-- **gqlgen** - GraphQL code generation
-- **JWT** - Authentication
-
-#### Frontend Technology Stack
-
-- **React 19** - Modern UI framework
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling framework
-- **TanStack Router** - File-based routing
-- **Zustand** - State management
-
-### Development Environment Setup
-
-```bash
-# Clone project
-git clone https://github.com/looplj/axonhub.git
-cd axonhub
-
-# Start backend
-make build-backend
-./axonhub
-
-# Start frontend (new terminal)
-cd frontend
-pnpm install
-pnpm dev
-```
-
-### Build Project
-
-```bash
-make build
-```
+For detailed development instructions, architecture design, and contribution guidelines, please see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ---
 
@@ -564,7 +500,7 @@ This project is open source under the MIT License. See [LICENSE](LICENSE) file f
 
 <div align="center">
 
-**AxonHub** - Unified AI Gateway, making AI service integration simpler
+**AxonHub** - All-in-one AI Development Platform, making AI development simpler
 
 [🏠 Homepage](https://github.com/looplj/axonhub) • [📚 Documentation](https://deepwiki.com/looplj/axonhub) • [🐛 Issue Feedback](https://github.com/looplj/axonhub/issues)
 

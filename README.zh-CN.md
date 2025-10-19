@@ -1,6 +1,6 @@
 <div align="center">
 
-# AxonHub - 统一 AI 网关系统 | Unified AI Gateway
+# AxonHub - All-in-one AI 开发平台
 
 </div>
 
@@ -18,11 +18,11 @@
 
 ---
 
-## 📖 项目介绍 | Project Introduction
+## 📖 项目介绍
 
-### 统一 AI 网关
+### All-in-one AI 开发平台
 
-AxonHub 是一个现代化 AI 网关系统，提供统一的 OpenAI, Anthropic, AI SDK 兼容 API 层，通过转换器管道架构将请求转换到各种 AI 提供商。系统具备完整的追踪（Trace）能力，帮助企业更好地管理和监控 AI 服务使用情况。并且具备完善的测试覆盖，保障系统的稳定性和可靠性。
+AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项目管理和全面的开发工具。平台提供 OpenAI、Anthropic 和 AI SDK 兼容的 API 层，通过转换器管道架构将请求转换到各种 AI 提供商。系统具备完整的追踪能力、基于项目的组织结构以及集成的 Playground 快速原型开发，帮助开发者和企业更好地管理 AI 开发工作流。
 
 <div align="center">
   <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
@@ -454,58 +454,9 @@ const completion = await openai.chat.completions.create({
 ```
 
 
-## 🛠️ 开发指南 | Development Guide
+## 🛠️ 开发指南
 
-### 架构设计 | Architecture Design
-
-AxonHub 实现了一个复杂的双向数据转换管道，确保客户端和 AI 提供商之间的无缝通信。
-
-<div align="center">
-  <img src="docs/transformation-flow.svg" alt="AxonHub Transformation Flow" width="900"/>
-</div>
-
-### 技术框架 | Technology Stack
-
-#### 后端技术栈
-- **Go 1.24+** - 高性能后端
-- **Gin** - HTTP 框架
-- **Ent ORM** - 类型安全的 ORM
-- **gqlgen** - GraphQL 代码生成
-- **JWT** - 身份认证
-
-#### 前端技术栈
-- **React 19** - 现代 UI 框架
-- **TypeScript** - 类型安全
-- **Tailwind CSS** - 样式框架
-- **TanStack Router** - 文件路由
-- **Zustand** - 状态管理
-
-### 启动开发环境 | Development Setup
-
-```bash
-# 克隆项目
-git clone https://github.com/looplj/axonhub.git
-cd axonhub
-
-# 启动后端
-make build-backend
-./axonhub
-
-# 推荐：使用 air 自动重载 Go 服务
-go install github.com/air-verse/air@latest
-air
-
-# 启动前端（新终端）
-cd frontend
-pnpm install
-pnpm dev
-```
-
-### 构建项目 | Build Project
-
-```bash
-make build
-```
+详细的开发说明、架构设计和贡献指南，请查看 [DEVELOPMENT.md](DEVELOPMENT.md)。
 
 ---
 
@@ -530,7 +481,7 @@ make build
 
 <div align="center">
 
-**AxonHub** - 统一 AI 网关，让 AI 服务接入更简单
+**AxonHub** - All-in-one AI 开发平台，让 AI 开发更简单
 
 [🏠 官网](https://github.com/looplj/axonhub) • [📚 文档](https://deepwiki.com/looplj/axonhub) • [🐛 问题反馈](https://github.com/looplj/axonhub/issues)
 
