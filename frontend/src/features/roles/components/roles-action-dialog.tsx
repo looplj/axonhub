@@ -24,13 +24,21 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useRolesContext } from '../context/roles-context'
 import { useCreateRole, useUpdateRole, useDeleteRole, useBulkDeleteRoles } from '../data/roles'
 import { createRoleInputSchema, updateRoleInputSchema } from '../data/schema'
+import { useAuthStore } from '@/stores/authStore'
+import { filterGrantableScopes } from '@/lib/permission-utils'
 
 // Create Role Dialog
 export function CreateRoleDialog() {
   const { t } = useTranslation()
+  const currentUser = useAuthStore((state) => state.auth.user)
   const { isCreateDialogOpen, setIsCreateDialogOpen } = useRolesContext()
-  const { data: scopes = [] } = useAllScopes()
+  const { data: allScopes = [] } = useAllScopes()
   const createRole = useCreateRole()
+
+  // 过滤当前用户可以授予的权限
+  const scopes = allScopes.filter((scope) =>
+    filterGrantableScopes(currentUser, [scope.scope]).includes(scope.scope)
+  )
 
   const form = useForm<z.infer<typeof createRoleInputSchema>>({
     resolver: zodResolver(createRoleInputSchema),
@@ -153,9 +161,15 @@ export function CreateRoleDialog() {
 // Edit Role Dialog
 export function EditRoleDialog() {
   const { t } = useTranslation()
+  const currentUser = useAuthStore((state) => state.auth.user)
   const { editingRole, setEditingRole } = useRolesContext()
-  const { data: scopes = [] } = useAllScopes()
+  const { data: allScopes = [] } = useAllScopes()
   const updateRole = useUpdateRole()
+
+  // 过滤当前用户可以授予的权限
+  const scopes = allScopes.filter((scope) =>
+    filterGrantableScopes(currentUser, [scope.scope]).includes(scope.scope)
+  )
 
   const form = useForm<z.infer<typeof updateRoleInputSchema>>({
     resolver: zodResolver(updateRoleInputSchema),
@@ -169,7 +183,7 @@ export function EditRoleDialog() {
     if (editingRole) {
       form.reset({
         name: editingRole.name,
-        scopes: editingRole.scopes?.map((scope: any) => scope.id) || [],
+        scopes: editingRole.scopes?.map((scope: string) => scope) || [],
       })
     }
   }, [editingRole, form])
@@ -274,10 +288,10 @@ export function EditRoleDialog() {
 
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
-                {t('roles.dialogs.buttons.cancel')}
+                {t('common.cancel')}
               </Button>
               <Button type='submit' disabled={updateRole.isPending}>
-                {updateRole.isPending ? t('roles.dialogs.buttons.saving') : t('roles.dialogs.buttons.save')}
+                {updateRole.isPending ? t('common.saving') : t('common.save')}
               </Button>
             </DialogFooter>
           </form>
@@ -310,8 +324,8 @@ export function DeleteRoleDialog() {
       onOpenChange={() => setDeletingRole(null)}
       title={t('roles.dialogs.delete.title')}
       desc={t('roles.dialogs.delete.description', { name: deletingRole?.name })}
-      confirmText={t('roles.dialogs.buttons.delete')}
-      cancelBtnText={t('roles.dialogs.buttons.cancel')}
+      confirmText={t('common.delete')}
+      cancelBtnText={t('common.cancel')}
       handleConfirm={handleConfirm}
       isLoading={deleteRole.isPending}
       destructive
@@ -344,8 +358,8 @@ export function BulkDeleteRolesDialog() {
       onOpenChange={() => setDeletingRoles([])}
       title={t('roles.dialogs.bulkDelete.title')}
       desc={t('roles.dialogs.bulkDelete.description', { count: deletingRoles.length })}
-      confirmText={t('roles.dialogs.buttons.delete')}
-      cancelBtnText={t('roles.dialogs.buttons.cancel')}
+      confirmText={t('common.delete')}
+      cancelBtnText={t('common.cancel')}
       handleConfirm={handleConfirm}
       isLoading={bulkDeleteRoles.isPending}
       destructive

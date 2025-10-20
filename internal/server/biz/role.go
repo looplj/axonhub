@@ -21,23 +21,36 @@ type RoleServiceParams struct {
 }
 
 type RoleService struct {
-	userService *UserService
+	userService         *UserService
+	permissionValidator *PermissionValidator
 }
 
 func NewRoleService(params RoleServiceParams) *RoleService {
 	return &RoleService{
-		userService: params.UserService,
+		userService:         params.UserService,
+		permissionValidator: NewPermissionValidator(),
 	}
 }
 
 // CreateRole creates a new role.
 func (s *RoleService) CreateRole(ctx context.Context, input ent.CreateRoleInput) (*ent.Role, error) {
+	// Validate that current user can grant these scopes
+	var projectID *int
+	if input.ProjectID != nil {
+		projectID = input.ProjectID
+	}
+
+	if err := s.permissionValidator.CanGrantScopes(ctx, input.Scopes, projectID); err != nil {
+		return nil, fmt.Errorf("permission denied: %w", err)
+	}
+
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := ent.FromContext(ctx)
 
 	var (
-		level     role.Level
-		projectID int
+		level           role.Level
+		projectIDValue  int
+		projectIDForAPI *int
 	)
 
 	if input.Level == nil {
@@ -46,7 +59,8 @@ func (s *RoleService) CreateRole(ctx context.Context, input ent.CreateRoleInput)
 		}
 
 		level = role.LevelSystem
-		projectID = 0
+		projectIDValue = 0
+		projectIDForAPI = lo.ToPtr(0)
 	} else {
 		switch *input.Level {
 		case role.LevelSystem:
@@ -55,20 +69,22 @@ func (s *RoleService) CreateRole(ctx context.Context, input ent.CreateRoleInput)
 			}
 
 			level = role.LevelSystem
-			projectID = 0
+			projectIDValue = 0
+			projectIDForAPI = lo.ToPtr(0)
 		case role.LevelProject:
 			if input.ProjectID == nil {
 				return nil, fmt.Errorf("project ID is required for project roles")
 			}
 
 			level = role.LevelProject
-			projectID = *input.ProjectID
+			projectIDValue = *input.ProjectID
+			projectIDForAPI = input.ProjectID
 		default:
 			return nil, fmt.Errorf("invalid role level")
 		}
 	}
 
-	exists, err := s.RoleNameExists(ctx, level, input.Name, lo.ToPtr(projectID))
+	exists, err := s.RoleNameExists(ctx, level, input.Name, projectIDForAPI)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check role name uniqueness: %w", err)
 	}
@@ -81,7 +97,7 @@ func (s *RoleService) CreateRole(ctx context.Context, input ent.CreateRoleInput)
 		SetName(input.Name).
 		SetScopes(input.Scopes).
 		SetLevel(level).
-		SetProjectID(projectID).
+		SetProjectID(projectIDValue).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create role: %w", err)
@@ -92,6 +108,31 @@ func (s *RoleService) CreateRole(ctx context.Context, input ent.CreateRoleInput)
 
 // UpdateRole updates an existing role.
 func (s *RoleService) UpdateRole(ctx context.Context, id int, input ent.UpdateRoleInput) (*ent.Role, error) {
+	// First check if user can edit this role
+	if err := s.permissionValidator.CanEditRole(ctx, id, nil); err != nil {
+		return nil, fmt.Errorf("permission denied: %w", err)
+	}
+
+	// Validate new scopes if being updated
+	if input.Scopes != nil {
+		ctx2 := privacy.DecisionContext(ctx, privacy.Allow)
+		client2 := ent.FromContext(ctx2)
+
+		role, err := client2.Role.Get(ctx2, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get role: %w", err)
+		}
+
+		var projectID *int
+		if !role.IsSystemRole() {
+			projectID = role.ProjectID
+		}
+
+		if err := s.permissionValidator.CanGrantScopes(ctx, input.Scopes, projectID); err != nil {
+			return nil, fmt.Errorf("permission denied: %w", err)
+		}
+	}
+
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := ent.FromContext(ctx)
 

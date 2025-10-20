@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
@@ -21,10 +22,28 @@ func setupTestUserService(t *testing.T) (*UserService, *ent.Client) {
 
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 	userService := &UserService{
-		UserCache: xcache.NewFromConfig[ent.User](cacheConfig),
+		UserCache:           xcache.NewFromConfig[ent.User](cacheConfig),
+		permissionValidator: NewPermissionValidator(),
 	}
 
 	return userService, client
+}
+
+// createOwnerUser creates an owner user for testing permission-protected operations.
+func createOwnerUser(t *testing.T, ctx context.Context, client *ent.Client) *ent.User {
+	t.Helper()
+
+	owner, err := client.User.Create().
+		SetEmail("owner@test.com").
+		SetPassword("password").
+		SetFirstName("Owner").
+		SetLastName("User").
+		SetIsOwner(true).
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	return owner
 }
 
 func TestConvertUserToUserInfo_BasicUser(t *testing.T) {
@@ -648,6 +667,10 @@ func TestUpdateProjectUser_UpdateScopes(t *testing.T) {
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
+	// Create owner user for permission checks
+	owner := createOwnerUser(t, ctx, client)
+	ctx = contexts.WithUser(ctx, owner)
+
 	// Create a user
 	testUser, err := client.User.Create().
 		SetEmail("user@example.com").
@@ -687,6 +710,10 @@ func TestUpdateProjectUser_AddRoles(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create owner user for permission checks
+	owner := createOwnerUser(t, ctx, client)
+	ctx = contexts.WithUser(ctx, owner)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -752,6 +779,10 @@ func TestUpdateProjectUser_RemoveRoles(t *testing.T) {
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
+	// Create owner user for permission checks
+	owner := createOwnerUser(t, ctx, client)
+	ctx = contexts.WithUser(ctx, owner)
+
 	// Create a user
 	testUser, err := client.User.Create().
 		SetEmail("user@example.com").
@@ -814,6 +845,10 @@ func TestUpdateProjectUser_AddAndRemoveRoles(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create owner user for permission checks
+	owner := createOwnerUser(t, ctx, client)
+	ctx = contexts.WithUser(ctx, owner)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -889,6 +924,10 @@ func TestUpdateProjectUser_NotFound(t *testing.T) {
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
+	// Create owner user for permission checks
+	owner := createOwnerUser(t, ctx, client)
+	ctx = contexts.WithUser(ctx, owner)
+
 	// Create a user
 	testUser, err := client.User.Create().
 		SetEmail("user@example.com").
@@ -920,6 +959,10 @@ func TestUpdateProjectUser_UpdateScopesAndRoles(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create owner user for permission checks
+	owner := createOwnerUser(t, ctx, client)
+	ctx = contexts.WithUser(ctx, owner)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -979,6 +1022,10 @@ func TestUpdateUser_CacheInvalidation(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create owner user for permission checks
+	owner := createOwnerUser(t, ctx, client)
+	ctx = contexts.WithUser(ctx, owner)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -1140,6 +1187,10 @@ func TestUpdateProjectUser_CacheInvalidation(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create owner user for permission checks
+	owner := createOwnerUser(t, ctx, client)
+	ctx = contexts.WithUser(ctx, owner)
 
 	// Create a user
 	testUser, err := client.User.Create().

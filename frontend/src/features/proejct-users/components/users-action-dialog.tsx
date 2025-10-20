@@ -26,6 +26,8 @@ import { Input } from '@/components/ui/input'
 import { User, CreateUserInput } from '../data/schema'
 import { useCreateUser, useUpdateProjectUser } from '../data/users'
 import { useSelectedProjectId } from '@/stores/projectStore'
+import { useAuthStore } from '@/stores/authStore'
+import { filterGrantableRoles, filterGrantableScopes, canEditUserPermissions } from '@/lib/permission-utils'
 
 // 创建表单验证模式的工厂函数
 const createFormSchema = (t: (key: string) => string) =>
@@ -82,11 +84,13 @@ interface Props {
 
 export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
   const { t } = useTranslation()
+  const currentUser = useAuthStore((state) => state.auth.user)
   const selectedProjectId = useSelectedProjectId()
   const isEdit = !!currentRow
   const [roles, setRoles] = useState<Role[]>([])
   const [allScopes, setAllScopes] = useState<ScopeInfo[]>([])
   const [loading, setLoading] = useState(false)
+  const [canEdit, setCanEdit] = useState(true)
 
   const createUser = useCreateUser()
   const updateProjectUser = useUpdateProjectUser()
@@ -154,8 +158,31 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         }>
       }
 
-      setRoles(rolesResponse.roles.edges.map((edge) => edge.node))
-      setAllScopes(scopesResponse.allScopes)
+      const allRoles = rolesResponse.roles.edges.map((edge) => edge.node)
+      const allScopesList = scopesResponse.allScopes
+
+      // 过滤当前用户可以授予的角色和权限
+      const grantableRoles = filterGrantableRoles(currentUser, allRoles, selectedProjectId)
+      const grantableScopes = filterGrantableScopes(
+        currentUser,
+        allScopesList.map((s) => s.scope),
+        selectedProjectId
+      )
+
+      setRoles(grantableRoles)
+      setAllScopes(allScopesList.filter((s) => grantableScopes.includes(s.scope)))
+
+      // 检查是否可以编辑当前用户
+      if (isEdit && currentRow) {
+        const targetScopes = currentRow.scopes || []
+        const canEditTarget = canEditUserPermissions(
+          currentUser,
+          targetScopes,
+          currentRow.isOwner || false,
+          selectedProjectId
+        )
+        setCanEdit(canEditTarget)
+      }
     } catch (error) {
       console.error('Failed to load roles and scopes:', error)
       toast.error(t('common.errors.userLoadFailed'))
@@ -169,7 +196,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
     if (open) {
       loadRolesAndScopes()
     }
-  }, [open, loadRolesAndScopes])
+  }, [open, loadRolesAndScopes, currentUser, selectedProjectId, isEdit, currentRow])
 
   const onSubmit = async (values: UserForm) => {
     try {
@@ -440,7 +467,14 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         </div>
 
         <DialogFooter>
-          <Button type='submit' form='user-form' disabled={createUser.isPending || updateProjectUser.isPending}>
+          {isEdit && !canEdit && (
+            <p className='text-destructive text-sm mr-auto'>{t('users.errors.insufficientPermissions')}</p>
+          )}
+          <Button
+            type='submit'
+            form='user-form'
+            disabled={createUser.isPending || updateProjectUser.isPending || (isEdit && !canEdit)}
+          >
             {createUser.isPending || updateProjectUser.isPending ? t('users.buttons.saving') : t('users.buttons.saveChanges')}
           </Button>
         </DialogFooter>
