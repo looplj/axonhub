@@ -25,6 +25,21 @@ PLAN_FILE="${WORK_DIR}/migration-plan.json"
 # E2E configuration (keep consistent with e2e-test.sh)
 E2E_PORT=8099
 
+# Database configuration
+DB_TYPE="sqlite"  # Default: sqlite, mysql, postgres
+MYSQL_CONTAINER="axonhub-migration-mysql"
+MYSQL_PORT=13306
+MYSQL_ROOT_PASSWORD="axonhub_test_root"
+MYSQL_DATABASE="axonhub_test"
+MYSQL_USER="axonhub"
+MYSQL_PASSWORD="axonhub_test"
+
+POSTGRES_CONTAINER="axonhub-migration-postgres"
+POSTGRES_PORT=15432
+POSTGRES_DATABASE="axonhub_test"
+POSTGRES_USER="axonhub"
+POSTGRES_PASSWORD="axonhub_test"
+
 # GitHub repository
 REPO="looplj/axonhub"
 GITHUB_API="https://api.github.com/repos/${REPO}"
@@ -61,26 +76,185 @@ Arguments:
   from-tag         Git tag to test migration from (e.g., v0.1.0)
 
 Options:
+  --db-type TYPE   Database type: sqlite, mysql, postgres (default: sqlite)
   --skip-download  Skip downloading binary if cached version exists
   --skip-e2e       Skip running e2e tests after migration
   --keep-artifacts Keep work directory after test completion
+  --keep-db        Keep database container after test completion
   -h, --help       Show this help and exit
 
 Examples:
   ./migration-test.sh v0.1.0
-  ./migration-test.sh v0.1.0 --skip-e2e
+  ./migration-test.sh v0.1.0 --db-type mysql
+  ./migration-test.sh v0.1.0 --db-type postgres --skip-e2e
   ./migration-test.sh v0.2.0 --keep-artifacts
 
 Description:
   This script tests database migration by:
-  1. Downloading the binary for the specified tag from GitHub releases
-  2. Initializing a database with the old version
-  3. Running migration to the current branch version
-  4. Executing e2e tests to verify the migration
+  1. Setting up database (SQLite file or Docker container for MySQL/PostgreSQL)
+  2. Downloading the binary for the specified tag from GitHub releases
+  3. Initializing a database with the old version
+  4. Running migration to the current branch version
+  5. Executing e2e tests to verify the migration
+
+  Supported databases:
+  - SQLite (default, no Docker required)
+  - MySQL (requires Docker, creates temporary container)
+  - PostgreSQL (requires Docker, creates temporary container)
 
   Binaries are cached in: ${CACHE_DIR}
   Test artifacts are in: ${WORK_DIR}
 EOF
+}
+
+check_docker() {
+    if ! command -v docker >/dev/null 2>&1; then
+        print_error "Docker is not installed. Please install Docker to use MySQL or PostgreSQL."
+        exit 1
+    fi
+    
+    if ! docker info >/dev/null 2>&1; then
+        print_error "Docker daemon is not running. Please start Docker."
+        exit 1
+    fi
+}
+
+setup_mysql() {
+    print_step "Setting up MySQL database" >&2
+    
+    check_docker
+    
+    # Stop and remove existing container if exists
+    if docker ps -a --format '{{.Names}}' | grep -q "^${MYSQL_CONTAINER}$"; then
+        print_info "Removing existing MySQL container..." >&2
+        docker rm -f "$MYSQL_CONTAINER" >/dev/null 2>&1 || true
+    fi
+    
+    # Start MySQL container
+    print_info "Starting MySQL container..." >&2
+    docker run -d \
+        --name "$MYSQL_CONTAINER" \
+        -e MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD" \
+        -e MYSQL_DATABASE="$MYSQL_DATABASE" \
+        -e MYSQL_USER="$MYSQL_USER" \
+        -e MYSQL_PASSWORD="$MYSQL_PASSWORD" \
+        -p "${MYSQL_PORT}:3306" \
+        mysql:8.0 \
+        --character-set-server=utf8mb4 \
+        --collation-server=utf8mb4_unicode_ci \
+        >/dev/null
+    
+    # Wait for MySQL to be ready
+    print_info "Waiting for MySQL to be ready..." >&2
+    for i in {1..30}; do
+        if docker exec "$MYSQL_CONTAINER" mysqladmin ping -h localhost -u root -p"$MYSQL_ROOT_PASSWORD" >/dev/null 2>&1; then
+            print_success "MySQL is ready" >&2
+            return 0
+        fi
+        sleep 1
+    done
+    
+    print_error "MySQL failed to start" >&2
+    docker logs "$MYSQL_CONTAINER" >&2
+    exit 1
+}
+
+setup_postgres() {
+    print_step "Setting up PostgreSQL database" >&2
+    
+    check_docker
+    
+    # Stop and remove existing container if exists
+    if docker ps -a --format '{{.Names}}' | grep -q "^${POSTGRES_CONTAINER}$"; then
+        print_info "Removing existing PostgreSQL container..." >&2
+        docker rm -f "$POSTGRES_CONTAINER" >/dev/null 2>&1 || true
+    fi
+    
+    # Start PostgreSQL container
+    print_info "Starting PostgreSQL container..." >&2
+    docker run -d \
+        --name "$POSTGRES_CONTAINER" \
+        -e POSTGRES_DB="$POSTGRES_DATABASE" \
+        -e POSTGRES_USER="$POSTGRES_USER" \
+        -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+        -p "${POSTGRES_PORT}:5432" \
+        postgres:15-alpine \
+        >/dev/null
+    
+    # Wait for PostgreSQL to be ready
+    print_info "Waiting for PostgreSQL to be ready..." >&2
+    for i in {1..30}; do
+        if docker exec "$POSTGRES_CONTAINER" pg_isready -U "$POSTGRES_USER" >/dev/null 2>&1; then
+            print_success "PostgreSQL is ready" >&2
+            return 0
+        fi
+        sleep 1
+    done
+    
+    print_error "PostgreSQL failed to start" >&2
+    docker logs "$POSTGRES_CONTAINER" >&2
+    exit 1
+}
+
+cleanup_database() {
+    if [[ "$KEEP_DB" == "true" ]]; then
+        print_info "Keeping database container (--keep-db specified)" >&2
+        return
+    fi
+    
+    case "$DB_TYPE" in
+        mysql)
+            if docker ps -a --format '{{.Names}}' | grep -q "^${MYSQL_CONTAINER}$"; then
+                print_info "Removing MySQL container..." >&2
+                docker rm -f "$MYSQL_CONTAINER" >/dev/null 2>&1 || true
+            fi
+            ;;
+        postgres)
+            if docker ps -a --format '{{.Names}}' | grep -q "^${POSTGRES_CONTAINER}$"; then
+                print_info "Removing PostgreSQL container..." >&2
+                docker rm -f "$POSTGRES_CONTAINER" >/dev/null 2>&1 || true
+            fi
+            ;;
+        sqlite)
+            # SQLite cleanup handled by cleanup() function
+            ;;
+    esac
+}
+
+get_db_dsn() {
+    case "$DB_TYPE" in
+        sqlite)
+            echo "file:${DB_FILE}?cache=shared&_fk=1"
+            ;;
+        mysql)
+            echo "${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(localhost:${MYSQL_PORT})/${MYSQL_DATABASE}?charset=utf8mb4&parseTime=True&loc=Local"
+            ;;
+        postgres)
+            echo "host=localhost port=${POSTGRES_PORT} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DATABASE} sslmode=disable"
+            ;;
+        *)
+            print_error "Unknown database type: $DB_TYPE" >&2
+            exit 1
+            ;;
+    esac
+}
+
+get_db_dialect() {
+    case "$DB_TYPE" in
+        sqlite)
+            echo "sqlite3"
+            ;;
+        mysql)
+            echo "mysql"
+            ;;
+        postgres)
+            echo "postgres"
+            ;;
+        *)
+            print_error "Unknown database type: $DB_TYPE" >&2
+            exit 1
+            ;;
+    esac
 }
 
 detect_architecture() {
@@ -268,12 +442,21 @@ initialize_database() {
     
     print_info "Initializing database with version ${version}..." >&2
     
-    # Remove old database
-    rm -f "$DB_FILE"
+    # Remove old SQLite database file if using SQLite
+    if [[ "$DB_TYPE" == "sqlite" ]]; then
+        rm -f "$DB_FILE"
+    fi
+    
+    local db_dsn
+    db_dsn=$(get_db_dsn)
+    
+    local db_dialect
+    db_dialect=$(get_db_dialect)
     
     # Start server to initialize database
     AXONHUB_SERVER_PORT=$E2E_PORT \
-    AXONHUB_DB_DSN="file:${DB_FILE}?cache=shared&_fk=1" \
+    AXONHUB_DB_DIALECT="$db_dialect" \
+    AXONHUB_DB_DSN="$db_dsn" \
     AXONHUB_LOG_OUTPUT="file" \
     AXONHUB_LOG_FILE_PATH="$LOG_FILE" \
     AXONHUB_LOG_LEVEL="info" \
@@ -306,9 +489,16 @@ run_migration() {
     
     print_info "Running migration with version ${version}..." >&2
     
+    local db_dsn
+    db_dsn=$(get_db_dsn)
+    
+    local db_dialect
+    db_dialect=$(get_db_dialect)
+    
     # Run migration by starting and stopping the server
     AXONHUB_SERVER_PORT=$E2E_PORT \
-    AXONHUB_DB_DSN="file:${DB_FILE}?cache=shared&_fk=1" \
+    AXONHUB_DB_DIALECT="$db_dialect" \
+    AXONHUB_DB_DSN="$db_dsn" \
     AXONHUB_LOG_OUTPUT="file" \
     AXONHUB_LOG_FILE_PATH="$LOG_FILE" \
     AXONHUB_LOG_LEVEL="debug" \
@@ -446,11 +636,16 @@ execute_migration_plan() {
 run_e2e_tests() {
     print_step "Running e2e tests to verify migration" >&2
     
-    # Copy migrated database to e2e location
-    local e2e_db="${SCRIPT_DIR}/axonhub-e2e.db"
-    cp "$DB_FILE" "$e2e_db"
-    
-    print_info "Database copied to e2e location: $e2e_db" >&2
+    # Only copy database for SQLite
+    if [[ "$DB_TYPE" == "sqlite" ]]; then
+        local e2e_db="${SCRIPT_DIR}/axonhub-e2e.db"
+        cp "$DB_FILE" "$e2e_db"
+        print_info "Database copied to e2e location: $e2e_db" >&2
+    else
+        print_warning "E2E tests with MySQL/PostgreSQL require manual configuration" >&2
+        print_info "Skipping e2e tests for non-SQLite databases" >&2
+        return 0
+    fi
     
     # Run e2e tests
     cd "$PROJECT_ROOT"
@@ -464,6 +659,10 @@ run_e2e_tests() {
 }
 
 cleanup() {
+    # Cleanup database containers
+    cleanup_database
+    
+    # Cleanup work directory
     if [[ "$KEEP_ARTIFACTS" != "true" ]]; then
         print_info "Cleaning up work directory..." >&2
         rm -rf "$WORK_DIR"
@@ -481,9 +680,19 @@ main() {
     SKIP_DOWNLOAD="false"
     SKIP_E2E="false"
     KEEP_ARTIFACTS="false"
+    KEEP_DB="false"
     
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            --db-type)
+                if [[ -z "$2" || "$2" == -* ]]; then
+                    print_error "--db-type requires an argument" >&2
+                    usage
+                    exit 1
+                fi
+                DB_TYPE="$2"
+                shift 2
+                ;;
             --skip-download)
                 SKIP_DOWNLOAD="true"
                 shift
@@ -494,6 +703,10 @@ main() {
                 ;;
             --keep-artifacts)
                 KEEP_ARTIFACTS="true"
+                shift
+                ;;
+            --keep-db)
+                KEEP_DB="true"
                 shift
                 ;;
             -h|--help)
@@ -524,7 +737,18 @@ main() {
         exit 1
     fi
     
+    # Validate database type
+    case "$DB_TYPE" in
+        sqlite|mysql|postgres)
+            ;;
+        *)
+            print_error "Invalid database type: $DB_TYPE (must be sqlite, mysql, or postgres)" >&2
+            exit 1
+            ;;
+    esac
+    
     print_info "Testing migration from $from_tag to current branch" >&2
+    print_info "Database type: $DB_TYPE" >&2
     echo "" >&2
     
     # Detect platform
@@ -534,6 +758,19 @@ main() {
     
     # Setup directories
     mkdir -p "$CACHE_DIR" "$WORK_DIR"
+    
+    # Setup database
+    case "$DB_TYPE" in
+        mysql)
+            setup_mysql
+            ;;
+        postgres)
+            setup_postgres
+            ;;
+        sqlite)
+            print_info "Using SQLite database: $DB_FILE" >&2
+            ;;
+    esac
     
     # Generate migration plan
     print_step "Step 1: Generate migration plan" >&2
@@ -563,7 +800,28 @@ main() {
     print_info "Summary:" >&2
     echo "  From: $from_tag" >&2
     echo "  To:   current branch" >&2
-    echo "  Database: $DB_FILE" >&2
+    echo "  Database Type: $DB_TYPE" >&2
+    case "$DB_TYPE" in
+        sqlite)
+            echo "  Database File: $DB_FILE" >&2
+            ;;
+        mysql)
+            echo "  MySQL Container: $MYSQL_CONTAINER" >&2
+            echo "  MySQL Port: $MYSQL_PORT" >&2
+            echo "  MySQL Database: $MYSQL_DATABASE" >&2
+            if [[ "$KEEP_DB" == "true" ]]; then
+                echo "  MySQL DSN: ${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(localhost:${MYSQL_PORT})/${MYSQL_DATABASE}" >&2
+            fi
+            ;;
+        postgres)
+            echo "  PostgreSQL Container: $POSTGRES_CONTAINER" >&2
+            echo "  PostgreSQL Port: $POSTGRES_PORT" >&2
+            echo "  PostgreSQL Database: $POSTGRES_DATABASE" >&2
+            if [[ "$KEEP_DB" == "true" ]]; then
+                echo "  PostgreSQL DSN: host=localhost port=${POSTGRES_PORT} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DATABASE}" >&2
+            fi
+            ;;
+    esac
     echo "  Log: $LOG_FILE" >&2
     echo "  Cache: $CACHE_DIR" >&2
     echo "" >&2
