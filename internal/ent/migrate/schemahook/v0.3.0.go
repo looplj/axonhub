@@ -31,7 +31,7 @@ func V0_3_0(next schema.Creator) schema.Creator {
 			}
 
 			if table.Name == "user_roles" {
-				table = removeIndex(table, "userrole_role_id_user_id")
+				table = removeIndex(table, "userrole_user_id_role_id")
 				tables[i] = table
 			}
 		}
