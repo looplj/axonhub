@@ -4,8 +4,12 @@ import React from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useAllScopes } from '@/gql/scopes'
 import { useTranslation } from 'react-i18next'
+import { useSelectedProjectId } from '@/stores/projectStore'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -14,33 +18,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useRolesContext } from '../context/roles-context'
 import { useCreateRole, useUpdateRole, useDeleteRole } from '../data/roles'
 import { createRoleInputSchema, updateRoleInputSchema } from '../data/schema'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { useSelectedProjectId } from '@/stores/projectStore'
-import { useAllScopes } from '@/gql/scopes'
+import { useAuthStore } from '@/stores/authStore'
+import { filterGrantableScopes } from '@/lib/permission-utils'
 
 // Create Role Dialog
 export function CreateRoleDialog() {
   const { t } = useTranslation()
+  const currentUser = useAuthStore((state) => state.auth.user)
   const { isCreateDialogOpen, setIsCreateDialogOpen } = useRolesContext()
-  const { data: scopes = [] } = useAllScopes('project')
+  const { data: allScopes = [] } = useAllScopes('project')
   const createRole = useCreateRole()
   const selectedProjectId = useSelectedProjectId()
+
+  // 过滤当前用户可以授予的权限
+  const scopes = allScopes.filter((scope) =>
+    filterGrantableScopes(currentUser, [scope.scope], selectedProjectId).includes(scope.scope)
+  )
 
   const form = useForm<z.infer<typeof createRoleInputSchema>>({
     resolver: zodResolver(createRoleInputSchema),
@@ -78,9 +78,7 @@ export function CreateRoleDialog() {
       <DialogContent className='max-w-2xl'>
         <DialogHeader>
           <DialogTitle>{t('roles.dialogs.create.title')}</DialogTitle>
-          <DialogDescription>
-            {t('roles.dialogs.create.description')}
-          </DialogDescription>
+          <DialogDescription>{t('roles.dialogs.create.description')}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
@@ -91,22 +89,20 @@ export function CreateRoleDialog() {
                 <FormItem>
                   <FormLabel>{t('roles.dialogs.fields.name.label')}</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder={t('roles.dialogs.fields.name.placeholder')} 
+                    <Input
+                      placeholder={t('roles.dialogs.fields.name.placeholder')}
                       aria-invalid={!!fieldState.error}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
-                  <FormDescription>
-                    {t('roles.dialogs.fields.name.description')}
-                  </FormDescription>
+                  <FormDescription>{t('roles.dialogs.fields.name.description')}</FormDescription>
                   <div className='min-h-[1.25rem]'>
                     <FormMessage />
                   </div>
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name='scopes'
@@ -114,9 +110,7 @@ export function CreateRoleDialog() {
                 <FormItem>
                   <div className='mb-4'>
                     <FormLabel className='text-base'>{t('roles.dialogs.fields.scopes.label')}</FormLabel>
-                    <FormDescription>
-                      {t('roles.dialogs.fields.scopes.description')}
-                    </FormDescription>
+                    <FormDescription>{t('roles.dialogs.fields.scopes.description')}</FormDescription>
                   </div>
                   <ScrollArea className='h-[300px] w-full rounded-md border p-4'>
                     <div className='grid grid-cols-1 gap-3'>
@@ -127,10 +121,7 @@ export function CreateRoleDialog() {
                           name='scopes'
                           render={({ field }) => {
                             return (
-                              <FormItem
-                                key={scope.scope}
-                                className='flex flex-row items-start space-x-3 space-y-0'
-                              >
+                              <FormItem key={scope.scope} className='flex flex-row items-start space-y-0 space-x-3'>
                                 <FormControl>
                                   <Checkbox
                                     checked={field.value?.includes(scope.scope)}
@@ -138,11 +129,7 @@ export function CreateRoleDialog() {
                                       const currentValue = field.value || []
                                       return checked
                                         ? field.onChange([...currentValue, scope.scope])
-                                        : field.onChange(
-                                            currentValue.filter(
-                                              (value) => value !== scope.scope
-                                            )
-                                          )
+                                        : field.onChange(currentValue.filter((value) => value !== scope.scope))
                                     }}
                                   />
                                 </FormControl>
@@ -165,13 +152,13 @@ export function CreateRoleDialog() {
                 </FormItem>
               )}
             />
-            
+
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
-                {t('roles.dialogs.buttons.cancel')}
+                {t('common.cancel')}
               </Button>
               <Button type='submit' disabled={createRole.isPending}>
-                {createRole.isPending ? t('roles.dialogs.buttons.creating') : t('roles.dialogs.buttons.create')}
+                {createRole.isPending ? t('common.creating') : t('common.create')}
               </Button>
             </DialogFooter>
           </form>
@@ -184,9 +171,16 @@ export function CreateRoleDialog() {
 // Edit Role Dialog
 export function EditRoleDialog() {
   const { t } = useTranslation()
+  const currentUser = useAuthStore((state) => state.auth.user)
   const { editingRole, setEditingRole } = useRolesContext()
-  const { data: scopes = [] } = useAllScopes()
+  const { data: allScopes = [] } = useAllScopes('project')
   const updateRole = useUpdateRole()
+  const selectedProjectId = useSelectedProjectId()
+
+  // 过滤当前用户可以授予的权限
+  const scopes = allScopes.filter((scope) =>
+    filterGrantableScopes(currentUser, [scope.scope], selectedProjectId).includes(scope.scope)
+  )
 
   const form = useForm<z.infer<typeof updateRoleInputSchema>>({
     resolver: zodResolver(updateRoleInputSchema),
@@ -200,14 +194,14 @@ export function EditRoleDialog() {
     if (editingRole) {
       form.reset({
         name: editingRole.name,
-        scopes: editingRole.scopes?.map((scope: any) => scope.id) || [],
+        scopes: editingRole.scopes?.map((scope: string) => scope) || [],
       })
     }
   }, [editingRole, form])
 
   const onSubmit = async (values: z.infer<typeof updateRoleInputSchema>) => {
     if (!editingRole) return
-    
+
     try {
       await updateRole.mutateAsync({ id: editingRole.id, input: values })
       setEditingRole(null)
@@ -228,9 +222,7 @@ export function EditRoleDialog() {
       <DialogContent className='max-w-2xl'>
         <DialogHeader>
           <DialogTitle>{t('roles.dialogs.edit.title')}</DialogTitle>
-          <DialogDescription>
-            {t('roles.dialogs.edit.description')}
-          </DialogDescription>
+          <DialogDescription>{t('roles.dialogs.edit.description')}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
@@ -241,22 +233,20 @@ export function EditRoleDialog() {
                 <FormItem>
                   <FormLabel>{t('roles.dialogs.fields.name.label')}</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder={t('roles.dialogs.fields.name.placeholder')} 
+                    <Input
+                      placeholder={t('roles.dialogs.fields.name.placeholder')}
                       aria-invalid={!!fieldState.error}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
-                  <FormDescription>
-                    {t('roles.dialogs.fields.name.description')}
-                  </FormDescription>
+                  <FormDescription>{t('roles.dialogs.fields.name.description')}</FormDescription>
                   <div className='min-h-[1.25rem]'>
                     <FormMessage />
                   </div>
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name='scopes'
@@ -264,9 +254,7 @@ export function EditRoleDialog() {
                 <FormItem>
                   <div className='mb-4'>
                     <FormLabel className='text-base'>{t('roles.dialogs.fields.scopes.label')}</FormLabel>
-                    <FormDescription>
-                      {t('roles.dialogs.fields.scopes.description')}
-                    </FormDescription>
+                    <FormDescription>{t('roles.dialogs.fields.scopes.description')}</FormDescription>
                   </div>
                   <ScrollArea className='h-[300px] w-full rounded-md border p-4'>
                     <div className='grid grid-cols-1 gap-3'>
@@ -277,10 +265,7 @@ export function EditRoleDialog() {
                           name='scopes'
                           render={({ field }) => {
                             return (
-                              <FormItem
-                                key={scope.scope}
-                                className='flex flex-row items-start space-x-3 space-y-0'
-                              >
+                              <FormItem key={scope.scope} className='flex flex-row items-start space-y-0 space-x-3'>
                                 <FormControl>
                                   <Checkbox
                                     checked={field.value?.includes(scope.scope)}
@@ -288,11 +273,7 @@ export function EditRoleDialog() {
                                       const currentValue = field.value || []
                                       return checked
                                         ? field.onChange([...currentValue, scope.scope])
-                                        : field.onChange(
-                                            currentValue.filter(
-                                              (value) => value !== scope.scope
-                                            )
-                                          )
+                                        : field.onChange(currentValue.filter((value) => value !== scope.scope))
                                     }}
                                   />
                                 </FormControl>
@@ -315,13 +296,13 @@ export function EditRoleDialog() {
                 </FormItem>
               )}
             />
-            
+
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
                 {t('roles.dialogs.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={updateRole.isPending}>
-                {updateRole.isPending ? t('roles.dialogs.buttons.saving') : t('roles.dialogs.buttons.save')}
+                {updateRole.isPending ? t('common.saving') : t('common.save')}
               </Button>
             </DialogFooter>
           </form>
@@ -339,7 +320,7 @@ export function DeleteRoleDialog() {
 
   const handleConfirm = async () => {
     if (!deletingRole) return
-    
+
     try {
       await deleteRole.mutateAsync(deletingRole.id)
       setDeletingRole(null)

@@ -138,6 +138,7 @@ export function useCreateRole() {
         // Ensure projectID is set from the selected project
         const inputWithProjectId = {
           ...input,
+          level: 'project',
           projectID: input.projectID || selectedProjectId,
         }
         const data = await graphqlRequest<{ createRole: Role }>(CREATE_ROLE_MUTATION, { input: inputWithProjectId })

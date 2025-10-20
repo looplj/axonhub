@@ -7,6 +7,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
@@ -22,11 +23,13 @@ func setupTestRoleService(t *testing.T) (*RoleService, *UserService, *ent.Client
 
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 	userService := &UserService{
-		UserCache: xcache.NewFromConfig[ent.User](cacheConfig),
+		UserCache:           xcache.NewFromConfig[ent.User](cacheConfig),
+		permissionValidator: NewPermissionValidator(),
 	}
 
 	roleService := &RoleService{
-		userService: userService,
+		userService:         userService,
+		permissionValidator: NewPermissionValidator(),
 	}
 
 	return roleService, userService, client
@@ -39,6 +42,19 @@ func TestCreateRole(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create owner user for permission checks
+	owner, err := client.User.Create().
+		SetEmail("owner@test.com").
+		SetPassword("password").
+		SetFirstName("Owner").
+		SetLastName("User").
+		SetIsOwner(true).
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	ctx = contexts.WithUser(ctx, owner)
 
 	t.Run("create global role successfully", func(t *testing.T) {
 		input := ent.CreateRoleInput{
@@ -99,6 +115,19 @@ func TestUpdateRole(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create owner user for permission checks
+	owner, err := client.User.Create().
+		SetEmail("owner@test.com").
+		SetPassword("password").
+		SetFirstName("Owner").
+		SetLastName("User").
+		SetIsOwner(true).
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	ctx = contexts.WithUser(ctx, owner)
 
 	// Create a role first
 	createdRole, err := client.Role.Create().
@@ -410,6 +439,19 @@ func TestUpdateRole_CacheInvalidation(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create owner user for permission checks
+	owner, err := client.User.Create().
+		SetEmail("owner@test.com").
+		SetPassword("password").
+		SetFirstName("Owner").
+		SetLastName("User").
+		SetIsOwner(true).
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	ctx = contexts.WithUser(ctx, owner)
 
 	// Create a role
 	testRole, err := client.Role.Create().

@@ -287,6 +287,9 @@
       "addToProjectError": "添加用户到项目失败",
       "removeFromProjectSuccess": "用户已成功从项目中移除",
       "removeFromProjectError": "从项目中移除用户失败"
+    },
+    "errors": {
+      "insufficientPermissions": "您没有足够的权限编辑此用户"
     }
   },
   "apikeys": {
@@ -465,7 +468,7 @@
     "noResults": "无结果。",
     "noData": "暂无数据",
     "createRole": "新建角色",
-    "searchRoles": "按名称或代码搜索角色...",
+    "searchRoles": "按名称搜索角色...",
     "columns": {
       "code": "角色代码",
       "name": "角色名称",
@@ -1415,6 +1418,9 @@
     "clearFilters": "清除筛选",
     "loading": "加载中",
     "cancel": "取消",
+    "delete": "删除",
+    "create": "创建",
+    "creating": "创建中",
     "save": "保存",
     "saving": "保存中",
     "back": "返回",
@@ -1519,7 +1525,9 @@
     "write_requests": "管理请求记录",
     "read_dashboard": "查看仪表板",
     "read_settings": "查看系统设置",
-    "write_settings": "管理系统设置"
+    "write_settings": "管理系统设置",
+    "read_projects": "查看项目信息",
+    "write_projects": "管理项目"
   },
   "auth": {
     "brand": {

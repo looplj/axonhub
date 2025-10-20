@@ -24,12 +24,14 @@ type UserServiceParams struct {
 }
 
 type UserService struct {
-	UserCache xcache.Cache[ent.User]
+	UserCache           xcache.Cache[ent.User]
+	permissionValidator *PermissionValidator
 }
 
 func NewUserService(params UserServiceParams) *UserService {
 	return &UserService{
-		UserCache: xcache.NewFromConfig[ent.User](params.CacheConfig),
+		UserCache:           xcache.NewFromConfig[ent.User](params.CacheConfig),
+		permissionValidator: NewPermissionValidator(),
 	}
 }
 
@@ -65,6 +67,27 @@ func (s *UserService) CreateUser(ctx context.Context, input ent.CreateUserInput)
 
 // UpdateUser updates an existing user.
 func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUserInput) (*ent.User, error) {
+	// Validate permissions before updating
+	if err := s.permissionValidator.CanEditUserPermissions(ctx, id, nil); err != nil {
+		return nil, fmt.Errorf("permission denied: %w", err)
+	}
+
+	// Validate scope grants if scopes are being updated
+	if input.Scopes != nil {
+		if err := s.permissionValidator.CanGrantScopes(ctx, input.Scopes, nil); err != nil {
+			return nil, fmt.Errorf("permission denied: %w", err)
+		}
+	}
+
+	// Validate role grants if roles are being added
+	if input.AddRoleIDs != nil {
+		for _, roleID := range input.AddRoleIDs {
+			if err := s.permissionValidator.CanEditRole(ctx, roleID, nil); err != nil {
+				return nil, fmt.Errorf("permission denied: %w", err)
+			}
+		}
+	}
+
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := ent.FromContext(ctx)
 
@@ -196,7 +219,7 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 	userRoles := make([]objects.RoleInfo, 0)
 
 	for _, r := range u.Edges.Roles {
-		if r.ProjectID != nil {
+		if !r.IsSystemRole() {
 			// Skip project-specific roles, they will be included in project info
 			continue
 		}
@@ -218,7 +241,7 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 
 	// Add scopes from all global roles
 	for _, r := range u.Edges.Roles {
-		if r.ProjectID != nil {
+		if !r.IsSystemRole() {
 			projectRoles[*r.ProjectID] = append(projectRoles[*r.ProjectID], r)
 			continue
 		}
@@ -335,6 +358,27 @@ func (s *UserService) RemoveUserFromProject(ctx context.Context, userID, project
 
 // UpdateProjectUser updates a user's project relationship including scopes and roles.
 func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID int, scopes []string, addRoleIDs, removeRoleIDs []int) (*ent.UserProject, error) {
+	// Validate permissions before updating
+	if err := s.permissionValidator.CanEditUserPermissions(ctx, userID, &projectID); err != nil {
+		return nil, fmt.Errorf("permission denied: %w", err)
+	}
+
+	// Validate scope grants if scopes are being updated
+	if scopes != nil {
+		if err := s.permissionValidator.CanGrantScopes(ctx, scopes, &projectID); err != nil {
+			return nil, fmt.Errorf("permission denied: %w", err)
+		}
+	}
+
+	// Validate role grants if roles are being added
+	if len(addRoleIDs) > 0 {
+		for _, roleID := range addRoleIDs {
+			if err := s.permissionValidator.CanEditRole(ctx, roleID, &projectID); err != nil {
+				return nil, fmt.Errorf("permission denied: %w", err)
+			}
+		}
+	}
+
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := ent.FromContext(ctx)
 

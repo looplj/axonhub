@@ -260,6 +260,9 @@
       "addToProjectError": "Failed to add user to project",
       "removeFromProjectSuccess": "User removed from project successfully",
       "removeFromProjectError": "Failed to remove user from project"
+    },
+    "errors": {
+      "insufficientPermissions": "You don't have sufficient permissions to edit this user"
     }
   },
   "apikeys": {
@@ -438,7 +441,7 @@
     "noResults": "No results.",
     "noData": "No data available",
     "createRole": "Create Role",
-    "searchRoles": "Search roles by name or code...",
+    "searchRoles": "Search roles by name",
     "columns": {
       "code": "Role Code",
       "name": "Role Name",
@@ -1386,6 +1389,8 @@
     "cancel": "Cancel",
     "save": "Save",
     "saving": "Saving...",
+    "create": "Create",
+    "creating": "Creating...",
     "back": "Back",
     "moveUp": "Move Up",
     "moveDown": "Move Down",
@@ -1482,7 +1487,9 @@
     "write_requests": "Manage request records",
     "read_dashboard": "View dashboard",
     "read_settings": "View system settings",
-    "write_settings": "Manage system settings"
+    "write_settings": "Manage system settings",
+    "read_projects": "View project information",
+    "write_projects": "Manage projects"
   },
   "auth": {
     "brand": {
