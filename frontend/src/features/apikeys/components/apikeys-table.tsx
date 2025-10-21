@@ -212,7 +212,7 @@ export function ApiKeysTable({
                   colSpan={columns.length}
                   className='h-24 text-center'
                 >
-                  {t('apikeys.noData')}
+                  {t('common.noData')}
                 </TableCell>
               </TableRow>
             )}

@@ -145,10 +145,10 @@ export function CreateRoleDialog() {
 
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
-                {t('roles.dialogs.buttons.cancel')}
+                {t('common.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={createRole.isPending}>
-                {createRole.isPending ? t('roles.dialogs.buttons.creating') : t('roles.dialogs.buttons.create')}
+                {createRole.isPending ? t('common.buttons.creating') : t('common.buttons.create')}
               </Button>
             </DialogFooter>
           </form>
@@ -288,10 +288,10 @@ export function EditRoleDialog() {
 
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
-                {t('common.cancel')}
+                {t('common.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={updateRole.isPending}>
-                {updateRole.isPending ? t('common.saving') : t('common.save')}
+                {updateRole.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
               </Button>
             </DialogFooter>
           </form>
@@ -324,8 +324,8 @@ export function DeleteRoleDialog() {
       onOpenChange={() => setDeletingRole(null)}
       title={t('roles.dialogs.delete.title')}
       desc={t('roles.dialogs.delete.description', { name: deletingRole?.name })}
-      confirmText={t('common.delete')}
-      cancelBtnText={t('common.cancel')}
+      confirmText={t('common.buttons.delete')}
+      cancelBtnText={t('common.buttons.cancel')}
       handleConfirm={handleConfirm}
       isLoading={deleteRole.isPending}
       destructive
@@ -358,8 +358,8 @@ export function BulkDeleteRolesDialog() {
       onOpenChange={() => setDeletingRoles([])}
       title={t('roles.dialogs.bulkDelete.title')}
       desc={t('roles.dialogs.bulkDelete.description', { count: deletingRoles.length })}
-      confirmText={t('common.delete')}
-      cancelBtnText={t('common.cancel')}
+      confirmText={t('common.buttons.delete')}
+      cancelBtnText={t('common.buttons.cancel')}
       handleConfirm={handleConfirm}
       isLoading={bulkDeleteRoles.isPending}
       destructive

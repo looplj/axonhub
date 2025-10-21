@@ -144,7 +144,7 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
     )
   }
 
-  const actionText = isDisabling ? t('channels.dialogs.status.disable.button') : t('channels.dialogs.status.enable.button')
+  const actionText = isDisabling ? t('common.buttons.disable') : t('common.buttons.enable')
 
   return (
     <ConfirmDialog
@@ -163,7 +163,7 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
       }
       desc={getDescription()}
       confirmText={actionText}
-      cancelBtnText={t('channels.dialogs.buttons.cancel')}
+      cancelBtnText={t('common.buttons.cancel')}
     />
   )
 }

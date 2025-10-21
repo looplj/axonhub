@@ -61,7 +61,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
       <DropdownMenuContent align='end' className='w-[160px]'>
           <DropdownMenuItem onClick={() => handleEdit(apiKey)}>
             <IconEdit className='mr-2 h-4 w-4' />
-            {t('apikeys.actions.edit')}
+            {t('common.actions.edit')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleProfiles(apiKey)}>
             <IconSettings className='mr-2 h-4 w-4' />
@@ -75,12 +75,12 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               {apiKey.status === 'enabled' ? (
                 <>
                   <IconUserOff className='mr-2 h-4 w-4' />
-                  {t('apikeys.actions.disable')}
+                  {t('common.buttons.disable')}
                 </>
               ) : (
                 <>
                   <IconUserCheck className='mr-2 h-4 w-4' />
-                  {t('apikeys.actions.enable')}
+                  {t('common.buttons.enable')}
                 </>
               )}
             </DropdownMenuItem>
@@ -91,7 +91,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               className='text-orange-600'
             >
               <IconArchive className='mr-2 h-4 w-4' />
-              {t('apikeys.actions.archive')}
+              {t('common.buttons.archive')}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

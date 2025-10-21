@@ -18,7 +18,7 @@
       "apiKeys": "API Keys",
       "playground": "Playground",
       "profile": "Profile",
-      "projects":"Projects"
+      "projects": "Projects"
     },
     "team": {
       "name": "AxonHub",
@@ -81,8 +81,6 @@
   "users": {
     "title": "User Management",
     "description": "Manage system users and permission configurations.",
-    "loadError": "Load failed:",
-    "noResults": "No results.",
     "inviteUser": "Invite User",
     "addUser": "Add User",
     "filterUsers": "Filter users...",
@@ -121,14 +119,10 @@
     },
     "filters": {
       "status": "Status",
-      "role": "Role",
-      "reset": "Reset"
+      "role": "Role"
     },
     "actions": {
-      "openMenu": "Open menu",
-      "edit": "Edit",
       "changePassword": "Change Password",
-      "activate": "Activate",
       "deactivate": "Deactivate",
       "addToProject": "Add to Project",
       "removeFromProject": "Remove from Project"
@@ -140,7 +134,7 @@
       },
       "addToProject": {
         "title": "Add User to Project",
-        "description": "Add {{firstName}} {{lastName}} to a project with specific roles and permissions."
+        "description": "Add a user to a project with specific roles and permissions."
       },
       "edit": {
         "title": "Edit User",
@@ -148,7 +142,7 @@
       },
       "changePassword": {
         "title": "Change Password",
-        "description": "Change password for {{firstName}} {{lastName}} ({{email}})"
+        "description": "Change password for {{name}} ({{email}})"
       },
       "statusChange": {
         "title": "{{action}} User",
@@ -159,12 +153,12 @@
       "status": {
         "activate": {
           "title": "Activate User",
-          "description": "Are you sure you want to activate user {{firstName}} {{lastName}}?",
+          "description": "Are you sure you want to activate user {{name}}?",
           "note": "After activation, this user will be able to log in to the system normally."
         },
         "deactivate": {
           "title": "Deactivate User",
-          "description": "Are you sure you want to deactivate user {{firstName}} {{lastName}}?",
+          "description": "Are you sure you want to deactivate user {{name}}?",
           "note": "After deactivation, this user will not be able to log in to the system."
         }
       },
@@ -228,14 +222,9 @@
       "projectRequired": "Project is required"
     },
     "buttons": {
-      "save": "Save changes",
-      "saving": "Saving...",
-      "cancel": "Cancel",
-      "activate": "Activate",
       "deactivate": "Deactivate",
       "changePassword": "Change Password",
       "changing": "Changing...",
-      "saveChanges": "Save changes",
       "addToProject": "Add to Project",
       "adding": "Adding...",
       "remove": "Remove",
@@ -268,8 +257,6 @@
   "apikeys": {
     "title": "API Key Management",
     "description": "Manage system API keys and access permissions.",
-    "loadError": "Load failed:",
-    "noResults": "No results.",
     "createApiKey": "Create API Key",
     "filterApiKeys": "Filter API keys...",
     "columns": {
@@ -290,13 +277,7 @@
       "archived": "Archived"
     },
     "actions": {
-      "openMenu": "Open menu",
-      "edit": "Edit",
       "profiles": "Profiles",
-      "enable": "Enable",
-      "disable": "Disable",
-      "archive": "Archive",
-      "delete": "Delete",
       "copy": "Copy",
       "view": "View",
       "show": "Show",
@@ -351,23 +332,7 @@
           "description": "The API Key value"
         }
       },
-      "buttons": {
-        "cancel": "Cancel",
-        "create": "Create",
-        "creating": "Creating...",
-        "update": "Update",
-        "updating": "Updating...",
-        "delete": "Delete",
-        "deleting": "Deleting...",
-        "enable": "Enable",
-        "enabling": "Enabling...",
-        "disable": "Disable",
-        "disabling": "Disabling...",
-        "archive": "Archive",
-        "archiving": "Archiving...",
-        "save": "Save",
-        "saving": "Saving..."
-      }
+      "buttons": {}
     },
     "messages": {
       "copied": "API Key copied to clipboard",
@@ -401,9 +366,7 @@
       "filterName": "Filter by name...",
       "status": "Status",
       "user": "User",
-      "reset": "Reset",
       "selectedCount": "{{count}} selected",
-      "noResults": "No results found",
       "clearFilter": "Clear filter"
     },
     "view": {
@@ -415,7 +378,6 @@
       "descending": "Descending",
       "hide": "Hide"
     },
-    "noData": "No data available",
     "profiles": {
       "title": "API Key Profiles",
       "description": "Configure model mapping profiles for {{name}}. When an active profile has model mappings configured, the system will automatically map requested models to their target models during API requests.",
@@ -437,9 +399,6 @@
   "roles": {
     "title": "Role Management",
     "description": "Manage system roles and permission configurations.",
-    "loadError": "Load failed:",
-    "noResults": "No results.",
-    "noData": "No data available",
     "createRole": "Create Role",
     "searchRoles": "Search roles by name",
     "columns": {
@@ -453,13 +412,8 @@
       "selectRow": "Select row",
       "moreScopes": "more"
     },
-    "actions": {
-      "openMenu": "Open menu",
-      "edit": "Edit",
-      "delete": "Delete"
-    },
+    "actions": {},
     "filters": {
-      "reset": "Reset",
       "filterByName": "Filter by name...",
       "filterByCode": "Filter by code..."
     },
@@ -497,13 +451,8 @@
         }
       },
       "buttons": {
-        "cancel": "Cancel",
         "create": "Create Role",
-        "creating": "Creating...",
-        "update": "Update Role",
-        "updating": "Updating...",
-        "delete": "Delete",
-        "deleting": "Deleting..."
+        "update": "Update Role"
       }
     },
     "validation": {
@@ -515,10 +464,8 @@
   "projects": {
     "title": "Project Management",
     "description": "Manage system projects and configurations.",
-    "loadError": "Load failed:",
-    "noResults": "No results.",
     "createProject": "Create Project",
-    "searchProjects": "Search projects by name or slug...",
+    "searchProjects": "Search projects by name",
     "columns": {
       "slug": "Project Slug",
       "name": "Project Name",
@@ -534,15 +481,8 @@
       "active": "Active",
       "archived": "Archived"
     },
-    "actions": {
-      "openMenu": "Open menu",
-      "edit": "Edit",
-      "archive": "Archive",
-      "activate": "Activate"
-    },
-    "filters": {
-      "reset": "Reset"
-    },
+    "actions": {},
+    "filters": {},
     "dialogs": {
       "create": {
         "title": "Create Project",
@@ -579,15 +519,7 @@
         }
       },
       "buttons": {
-        "cancel": "Cancel",
-        "create": "Create Project",
-        "creating": "Creating...",
-        "save": "Save",
-        "saving": "Saving...",
-        "archive": "Archive",
-        "archiving": "Archiving...",
-        "activate": "Activate",
-        "activating": "Activating..."
+        "create": "Create Project"
       }
     },
     "validation": {
@@ -597,8 +529,6 @@
   "channels": {
     "title": "Channel Management",
     "description": "Manage your AI model channels and configurations.",
-    "loadError": "Load failed:",
-    "noResults": "No results.",
     "addChannel": "Add Channel",
     "importChannels": "Bulk Import",
     "orderChannels": "Bulk Ordering",
@@ -647,19 +577,12 @@
       "openai_fake": "OpenAI Fake"
     },
     "actions": {
-      "openMenu": "Open menu",
-      "edit": "Edit",
-      "delete": "Delete",
-      "enable": "Enable",
-      "disable": "Disable",
-      "archive": "Archive",
       "test": "Test",
       "settings": "Settings"
     },
     "filters": {
       "type": "Type",
       "status": "Status",
-      "reset": "Reset",
       "filterByName": "Search by name"
     },
     "messages": {
@@ -727,7 +650,6 @@
         "errors": "{{count}} errors",
         "validChannels": "Valid Channels",
         "importButton": "Import {{count}} Channels",
-        "cancel": "Cancel",
         "importing": "Importing...",
         "formatTitle": "Format Instructions",
         "formatNote": "Use | to separate multiple models",
@@ -816,21 +738,10 @@
         }
       },
       "buttons": {
-        "cancel": "Cancel",
         "create": "Create Channel",
-        "creating": "Creating...",
         "update": "Update Channel",
-        "updating": "Updating...",
-        "delete": "Delete",
-        "deleting": "Deleting...",
-        "enable": "Enable",
-        "enabling": "Enabling...",
-        "disable": "Disable",
-        "disabling": "Disabling...",
         "test": "Test Connection",
         "testing": "Testing...",
-        "save": "Save",
-        "saving": "Saving...",
         "add": "Add",
         "addSelected": "Add Selected",
         "fetchModels": "Fetch Models"
@@ -847,22 +758,16 @@
           "testSuccess": "✅ Test successful ({{latency}}s latency)",
           "testFailed": "❌ Test failed - please check configuration",
           "testMessage": "Response",
-          "errorDetails": "Error Details",
-          "confirmText": "Enable",
-          "button": "Enable"
+          "errorDetails": "Error Details"
         },
         "disable": {
           "title": "Disable Channel",
-          "description": "Are you sure you want to disable channel \"{{name}}\"? The channel will be unavailable after disabling.",
-          "confirmText": "Disable",
-          "button": "Disable"
+          "description": "Are you sure you want to disable channel \"{{name}}\"? The channel will be unavailable after disabling."
         },
         "archive": {
           "title": "Archive Channel",
           "description": "Are you sure you want to archive channel \"{{name}}\"? Archived channels are hidden by default and will not appear in the channel list unless the archived filter is explicitly selected.",
-          "warning": "This channel will be hidden from the default view. You can view archived channels by selecting the 'Archived' status filter.",
-          "confirmText": "Archive",
-          "button": "Archive"
+          "warning": "This channel will be hidden from the default view. You can view archived channels by selecting the 'Archived' status filter."
         }
       },
       "settings": {
@@ -885,8 +790,6 @@
         "description": "Drag and drop to reorder channels. Higher priority channels will be displayed first.",
         "dragHint": "Drag channels to reorder them",
         "saveButton": "Save Order",
-        "saving": "Saving...",
-        "cancel": "Cancel",
         "orderingWeight": "Priority",
         "noChannels": "No channels available for ordering"
       }
@@ -991,15 +894,12 @@
       }
     },
     "buttons": {
-      "save": "Save Settings",
-      "saving": "Saving..."
+      "save": "Save Settings"
     }
   },
   "requests": {
     "title": "Request Logs",
     "description": "View and manage LLM call request logs",
-    "loadError": "Load failed:",
-    "noResults": "No data",
     "refresh": "Refresh",
     "columns": {
       "id": "ID",
@@ -1038,7 +938,6 @@
       "test": "Test"
     },
     "actions": {
-      "openMenu": "Open menu",
       "viewDetails": "View Details",
       "viewRequest": "View Request",
       "viewResponse": "View Response",
@@ -1049,8 +948,7 @@
       "status": "Status",
       "source": "Source",
       "channel": "Channel",
-      "user": "User",
-      "reset": "Reset"
+      "user": "User"
     },
     "detail": {
       "title": "Request Details",
@@ -1113,8 +1011,6 @@
   "usageLogs": {
     "title": "Usage Logs",
     "description": "View and analyze AI model usage and token consumption",
-    "loadError": "Load failed:",
-    "noResults": "No data",
     "refresh": "Refresh",
     "columns": {
       "id": "ID",
@@ -1148,7 +1044,6 @@
       "test": "Test"
     },
     "actions": {
-      "openMenu": "Open menu",
       "viewDetails": "View Details",
       "copy": "Copy"
     },
@@ -1157,8 +1052,7 @@
       "source": "Source",
       "user": "User",
       "channel": "Channel",
-      "model": "Model",
-      "reset": "Reset"
+      "model": "Model"
     },
     "dialogs": {
       "usageDetail": {
@@ -1191,8 +1085,6 @@
   "dashboard": {
     "title": "Dashboard",
     "description": "System overview and statistics.",
-    "loadError": "Error loading dashboard:",
-    "noData": "No data available",
     "cards": {
       "overview": "Overview",
       "totalUsers": "Total Users",
@@ -1341,9 +1233,7 @@
         "languageRequired": "Please select a preferred language."
       },
       "buttons": {
-        "update": "Save Changes",
-        "updating": "Saving...",
-        "cancel": "Cancel"
+        "update": "Save Changes"
       },
       "messages": {
         "updateSuccess": "Profile updated successfully!",
@@ -1370,33 +1260,56 @@
     "hasNext": "Has next"
   },
   "loading": "Loading...",
-  "noData": "No data available",
   "view": "View",
   "toggleColumns": "Toggle columns",
-  "error": "Error",
-  "success": "Success",
-  "cancel": "Cancel",
-  "save": "Save",
-  "delete": "Delete",
-  "edit": "Edit",
-  "create": "Create",
-  "update": "Update",
   "common": {
     "selectedItems": "{{count}} selected",
     "noResultsFound": "No results found",
     "clearFilters": "Clear filters",
     "loading": "Loading",
-    "cancel": "Cancel",
-    "save": "Save",
-    "saving": "Saving...",
-    "create": "Create",
-    "creating": "Creating...",
+    "noData": "No data available",
+    "noResults": "No results.",
+    "loadError": "Load failed:",
     "back": "Back",
     "moveUp": "Move Up",
     "moveDown": "Move Down",
     "dragging": "Dragging",
     "unsavedChanges": "You have unsaved changes",
-    "errorMessage": "Error Message",
+    "messages": {
+      "errorMessage": "Error Message",
+      "success": "Success",
+      "error": "Error"
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving...",
+      "saveChanges": "Save changes",
+      "create": "Create",
+      "creating": "Creating...",
+      "update": "Update",
+      "updating": "Updating...",
+      "delete": "Delete",
+      "deleting": "Deleting...",
+      "edit": "Edit",
+      "editing": "Editing...",
+      "enable": "Enable",
+      "enabling": "Enabling...",
+      "disable": "Disable",
+      "disabling": "Disabling...",
+      "archive": "Archive",
+      "archiving": "Archiving...",
+      "activate": "Activate",
+      "activating": "Activating..."
+    },
+    "actions": {
+      "openMenu": "Open menu",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "filters": {
+      "reset": "Reset"
+    },
     "routeGuard": {
       "accessDenied": "Access Denied",
       "noPermission": "You do not have permission to access this page. Please contact the administrator to obtain the necessary access permissions.",

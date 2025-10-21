@@ -712,11 +712,11 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
           >
             {createChannel.isPending || updateChannel.isPending
               ? isEdit
-                ? t('channels.dialogs.buttons.updating')
-                : t('channels.dialogs.buttons.creating')
+                ? t('common.buttons.editing')
+                : t('common.buttons.creating')
               : isEdit
-                ? t('channels.dialogs.buttons.update')
-                : t('channels.dialogs.buttons.create')}
+                ? t('common.buttons.edit')
+                : t('common.buttons.create')}
           </Button>
         </DialogFooter>
       </DialogContent>

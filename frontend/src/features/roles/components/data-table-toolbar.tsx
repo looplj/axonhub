@@ -43,7 +43,7 @@ export function DataTableToolbar<TData>({
             className='h-8'
           >
             <Trash2 className='mr-2 h-4 w-4' />
-            {t('roles.dialogs.buttons.delete')} ({selectedRows.length})
+            {t('common.buttons.delete')} ({selectedRows.length})
           </Button>
         )}
         {isFiltered && (
@@ -52,7 +52,7 @@ export function DataTableToolbar<TData>({
             onClick={() => table.resetColumnFilters()}
             className='h-8 px-2 lg:px-3'
           >
-            {t('roles.filters.reset')}
+            {t('common.filters.reset')}
             <Cross2Icon className='ml-2 h-4 w-4' />
           </Button>
         )}

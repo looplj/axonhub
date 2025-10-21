@@ -6,7 +6,7 @@ test.describe('Admin Channels Management', () => {
     // Increase timeout for authentication
     test.setTimeout(60000)
     await gotoAndEnsureAuth(page, '/channels')
-    
+
     // Wait for page to fully load
     await page.waitForTimeout(2000)
   })
@@ -23,21 +23,19 @@ test.describe('Admin Channels Management', () => {
 
     const createDialog = page.getByRole('dialog')
     await expect(createDialog).toBeVisible()
-    await expect(createDialog).toContainText(/创建渠道|Create Channel/i)
+    await expect(createDialog).toContainText(/创建|Create/i)
 
     // Fill in channel details
     await createDialog.getByLabel(/名称|Name/i).fill(name)
-    
+
     // Select channel type (OpenAI)
-    const typeSelect = createDialog.locator('[name="type"]').or(
-      createDialog.getByLabel(/类型|Type/i)
-    )
+    const typeSelect = createDialog.locator('[name="type"]').or(createDialog.getByLabel(/类型|Type/i))
     await typeSelect.click()
-    
+
     // Wait for dropdown and select OpenAI
-    const openaiOption = page.getByRole('option', { name: /OpenAI/i }).or(
-      page.locator('[role="option"]').filter({ hasText: /OpenAI/i })
-    )
+    const openaiOption = page
+      .getByRole('option', { name: /OpenAI/i })
+      .or(page.locator('[role="option"]').filter({ hasText: /OpenAI/i }))
     await openaiOption.first().click()
 
     // Fill in base URL
@@ -50,25 +48,25 @@ test.describe('Admin Channels Management', () => {
     // Add at least one supported model (required to enable Create button)
     // Wait for Quick Add Models section to appear
     await page.waitForTimeout(500)
-    
+
     // Click on one of the quick add model badges (e.g., gpt-4o)
     const modelBadge = createDialog.locator('text=gpt-4o').first()
-    if (await modelBadge.count() > 0) {
+    if ((await modelBadge.count()) > 0) {
       await modelBadge.click()
-      
+
       // Click "Add Selected" button to add the selected models
       const addSelectedButton = createDialog.getByRole('button', { name: /Add Selected|添加选中/i })
       await addSelectedButton.click()
-      
+
       // Wait for model to be added
       await page.waitForTimeout(500)
     }
 
     // Select Default Test Model (required field)
-    const defaultTestModelSelect = createDialog.locator('[name="defaultTestModel"]').or(
-      createDialog.getByLabel(/Default Test Model|默认测试模型/i)
-    )
-    if (await defaultTestModelSelect.count() > 0) {
+    const defaultTestModelSelect = createDialog
+      .locator('[name="defaultTestModel"]')
+      .or(createDialog.getByLabel(/Default Test Model|默认测试模型/i))
+    if ((await defaultTestModelSelect.count()) > 0) {
       await defaultTestModelSelect.click()
       // Select the first available option (gpt-4o)
       const firstOption = page.getByRole('option').first()
@@ -79,7 +77,7 @@ test.describe('Admin Channels Management', () => {
     // Submit the form
     await Promise.all([
       waitForGraphQLOperation(page, 'CreateChannel'),
-      createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click()
+      createDialog.getByRole('button', { name: /Create|创建|保存|Save/i }).click(),
     ])
 
     // Wait for dialog to close
@@ -104,7 +102,7 @@ test.describe('Admin Channels Management', () => {
 
     const editDialog = page.getByRole('dialog')
     await expect(editDialog).toBeVisible()
-    await expect(editDialog).toContainText(/编辑渠道|Edit Channel/i)
+    await expect(editDialog).toContainText(/编辑|Edit Channel/i)
 
     // Update the name
     const updatedName = `${name} - Updated`
@@ -114,12 +112,12 @@ test.describe('Admin Channels Management', () => {
 
     await Promise.all([
       waitForGraphQLOperation(page, 'UpdateChannel'),
-      editDialog.getByRole('button', { name: /保存|Save|更新|Update/i }).click()
+      editDialog.getByRole('button', { name: /Edit|编辑|保存|Save|更新|Update/i }).click(),
     ])
 
     // Wait for dialog to close
     await expect(editDialog).not.toBeVisible({ timeout: 10000 })
-    
+
     // Wait for table to update
     await page.waitForTimeout(1000)
 
@@ -139,43 +137,44 @@ test.describe('Admin Channels Management', () => {
     const archiveDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
     await expect(archiveDialog).toBeVisible()
     await expect(archiveDialog).toContainText(/归档|Archive/i)
-    
+
     // Wait for dialog to stabilize
     await page.waitForTimeout(500)
-    
+
     // Click the confirm button - it's the last button (first is Cancel)
     const archiveButton = archiveDialog.locator('button').last()
-    await Promise.all([
-      waitForGraphQLOperation(page, 'UpdateChannelStatus'),
-      archiveButton.click()
-    ])
-    
+    await Promise.all([waitForGraphQLOperation(page, 'UpdateChannelStatus'), archiveButton.click()])
+
     // Wait for dialog to close before proceeding
     await expect(archiveDialog).not.toBeVisible({ timeout: 10000 })
 
     // Wait for table to update (archived channels are hidden by default)
     await page.waitForTimeout(1000)
-    
+
     // Archived channels are excluded from the default view, so we need to apply the status filter
     // Click on Status filter button (in the toolbar, not the table header)
     // The filter uses a Popover, not a DropdownMenu
-    const statusFilterButton = page.locator('button').filter({ hasText: /Status|状态/i }).and(page.locator('[aria-haspopup="dialog"]')).first()
+    const statusFilterButton = page
+      .locator('button')
+      .filter({ hasText: /Status|状态/i })
+      .and(page.locator('[aria-haspopup="dialog"]'))
+      .first()
     await statusFilterButton.click()
-    
+
     // Wait for popover to open
     await page.waitForTimeout(500)
-    
+
     // Select Archived filter - it's a CommandItem, not a menuitemcheckbox
     // Use a more flexible selector
-    const archivedFilter = page.getByRole('option', { name: /Archived|已归档/i }).or(
-      page.locator('[role="option"]').filter({ hasText: /Archived|已归档/i })
-    )
+    const archivedFilter = page
+      .getByRole('option', { name: /Archived|已归档/i })
+      .or(page.locator('[role="option"]').filter({ hasText: /Archived|已归档/i }))
     await expect(archivedFilter).toBeVisible({ timeout: 5000 })
     await archivedFilter.click()
-    
+
     // Wait for filter to apply
     await page.waitForTimeout(1000)
-    
+
     // Now verify the archived channel appears
     const archivedChannelRow = channelsTable.locator('tbody tr').filter({ hasText: updatedName })
     await expect(archivedChannelRow).toBeVisible()
@@ -192,37 +191,34 @@ test.describe('Admin Channels Management', () => {
     const enableDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
     await expect(enableDialog).toBeVisible()
     await expect(enableDialog).toContainText(/启用|Enable/i)
-    
+
     // Wait for dialog to stabilize
     await page.waitForTimeout(500)
-    
+
     // Click the confirm button - it's the last button (first is Cancel)
     const enableButton = enableDialog.locator('button').last()
-    await Promise.all([
-      waitForGraphQLOperation(page, 'UpdateChannelStatus'),
-      enableButton.click()
-    ])
-    
+    await Promise.all([waitForGraphQLOperation(page, 'UpdateChannelStatus'), enableButton.click()])
+
     // Wait for dialog to close before proceeding
     await expect(enableDialog).not.toBeVisible({ timeout: 10000 })
 
     // Wait for table to update
     await page.waitForTimeout(1000)
-    
+
     // Clear the Archived filter to see enabled channels
     await statusFilterButton.click()
     await page.waitForTimeout(500)
-    
+
     // Uncheck Archived filter (it's a CommandItem with role="option")
-    const archivedFilterToUncheck = page.getByRole('option', { name: /Archived|已归档/i }).or(
-      page.locator('[role="option"]').filter({ hasText: /Archived|已归档/i })
-    )
+    const archivedFilterToUncheck = page
+      .getByRole('option', { name: /Archived|已归档/i })
+      .or(page.locator('[role="option"]').filter({ hasText: /Archived|已归档/i }))
     await expect(archivedFilterToUncheck).toBeVisible({ timeout: 5000 })
     await archivedFilterToUncheck.click()
-    
+
     // Wait for filter to apply
     await page.waitForTimeout(1000)
-    
+
     // Now verify the enabled channel appears
     const enabledChannelRow = channelsTable.locator('tbody tr').filter({ hasText: updatedName })
     await expect(enabledChannelRow).toBeVisible()
@@ -235,7 +231,7 @@ test.describe('Admin Channels Management', () => {
 
     // Find the first enabled channel with a test button
     const testButton = page.getByRole('button', { name: /Test|测试/i }).first()
-    
+
     // Check if test button exists
     const testButtonCount = await testButton.count()
     if (testButtonCount === 0) {
@@ -244,12 +240,9 @@ test.describe('Admin Channels Management', () => {
     }
 
     await expect(testButton).toBeVisible()
-    
+
     // Click test button
-    await Promise.all([
-      waitForGraphQLOperation(page, 'TestChannel'),
-      testButton.click()
-    ])
+    await Promise.all([waitForGraphQLOperation(page, 'TestChannel'), testButton.click()])
 
     // Wait for toast notification (success or error)
     await page.waitForTimeout(2000)
@@ -258,32 +251,30 @@ test.describe('Admin Channels Management', () => {
   test('can search channels by name', async ({ page }) => {
     const uniqueSuffix = Date.now().toString().slice(-6)
     const searchTerm = `pw-test-SearchChannel${uniqueSuffix}`
-    
+
     // Create a channel with a unique name for searching
     const createButton = page.getByRole('button', { name: /Add Channel|添加渠道/i })
     await createButton.click()
 
     const createDialog = page.getByRole('dialog')
     await createDialog.getByLabel(/名称|Name/i).fill(searchTerm)
-    
+
     // Select channel type
-    const typeSelect = createDialog.locator('[name="type"]').or(
-      createDialog.getByLabel(/类型|Type/i)
-    )
+    const typeSelect = createDialog.locator('[name="type"]').or(createDialog.getByLabel(/类型|Type/i))
     await typeSelect.click()
-    const openaiOption = page.getByRole('option', { name: /OpenAI/i }).or(
-      page.locator('[role="option"]').filter({ hasText: /OpenAI/i })
-    )
+    const openaiOption = page
+      .getByRole('option', { name: /OpenAI/i })
+      .or(page.locator('[role="option"]').filter({ hasText: /OpenAI/i }))
     await openaiOption.first().click()
 
     await createDialog.getByLabel(/Base URL/i).fill('https://api.openai.com/v1')
     await createDialog.getByLabel(/API Key/i).fill('sk-test-key-' + uniqueSuffix)
-    
+
     // Add at least one supported model (required to enable Create button)
     await page.waitForTimeout(500)
-    
+
     const modelBadge = createDialog.locator('text=gpt-4o').first()
-    if (await modelBadge.count() > 0) {
+    if ((await modelBadge.count()) > 0) {
       await modelBadge.click()
       const addSelectedButton = createDialog.getByRole('button', { name: /Add Selected|添加选中/i })
       await addSelectedButton.click()
@@ -291,19 +282,19 @@ test.describe('Admin Channels Management', () => {
     }
 
     // Select Default Test Model (required field)
-    const defaultTestModelSelect = createDialog.locator('[name="defaultTestModel"]').or(
-      createDialog.getByLabel(/Default Test Model|默认测试模型/i)
-    )
-    if (await defaultTestModelSelect.count() > 0) {
+    const defaultTestModelSelect = createDialog
+      .locator('[name="defaultTestModel"]')
+      .or(createDialog.getByLabel(/Default Test Model|默认测试模型/i))
+    if ((await defaultTestModelSelect.count()) > 0) {
       await defaultTestModelSelect.click()
       const firstOption = page.getByRole('option').first()
       await firstOption.click()
       await page.waitForTimeout(300)
     }
-    
+
     await Promise.all([
       waitForGraphQLOperation(page, 'CreateChannel'),
-      createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click()
+      createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click(),
     ])
 
     // Wait for dialog to close
@@ -313,7 +304,9 @@ test.describe('Admin Channels Management', () => {
     await page.waitForTimeout(1000)
 
     // Use the search filter
-    const searchInput = page.locator('input[placeholder*="搜索"], input[placeholder*="Search"], input[type="search"]').first()
+    const searchInput = page
+      .locator('input[placeholder*="搜索"], input[placeholder*="Search"], input[type="search"]')
+      .first()
     await searchInput.fill(searchTerm)
 
     // Wait for debounce and API call
@@ -329,9 +322,9 @@ test.describe('Admin Channels Management', () => {
     await page.waitForTimeout(1000)
 
     // Look for type filter button/dropdown
-    const typeFilterButton = page.getByRole('button', { name: /Type|类型/i }).or(
-      page.locator('button').filter({ hasText: /Type|类型/i })
-    )
+    const typeFilterButton = page
+      .getByRole('button', { name: /Type|类型/i })
+      .or(page.locator('button').filter({ hasText: /Type|类型/i }))
 
     const typeFilterCount = await typeFilterButton.count()
     if (typeFilterCount === 0) {
@@ -345,21 +338,21 @@ test.describe('Admin Channels Management', () => {
     await page.waitForTimeout(500)
 
     // Select OpenAI filter
-    const openaiFilter = page.getByRole('menuitemcheckbox', { name: /OpenAI/i }).or(
-      page.locator('[role="menuitemcheckbox"]').filter({ hasText: /OpenAI/i })
-    )
+    const openaiFilter = page
+      .getByRole('menuitemcheckbox', { name: /OpenAI/i })
+      .or(page.locator('[role="menuitemcheckbox"]').filter({ hasText: /OpenAI/i }))
 
     const openaiFilterCount = await openaiFilter.count()
     if (openaiFilterCount > 0) {
       await openaiFilter.first().click()
-      
+
       // Wait for filter to apply
       await page.waitForTimeout(1000)
 
       // Verify filtered results
       const rows = page.locator('tbody tr')
       const rowCount = await rows.count()
-      
+
       if (rowCount > 0) {
         // Check that visible rows contain OpenAI type
         const firstRow = rows.first()
@@ -373,9 +366,9 @@ test.describe('Admin Channels Management', () => {
     await page.waitForTimeout(1000)
 
     // Look for status filter button/dropdown
-    const statusFilterButton = page.getByRole('button', { name: /Status|状态/i }).or(
-      page.locator('button').filter({ hasText: /Status|状态/i })
-    )
+    const statusFilterButton = page
+      .getByRole('button', { name: /Status|状态/i })
+      .or(page.locator('button').filter({ hasText: /Status|状态/i }))
 
     const statusFilterCount = await statusFilterButton.count()
     if (statusFilterCount === 0) {
@@ -389,21 +382,21 @@ test.describe('Admin Channels Management', () => {
     await page.waitForTimeout(500)
 
     // Select Enabled filter
-    const enabledFilter = page.getByRole('menuitemcheckbox', { name: /Enabled|启用/i }).or(
-      page.locator('[role="menuitemcheckbox"]').filter({ hasText: /Enabled|启用/i })
-    )
+    const enabledFilter = page
+      .getByRole('menuitemcheckbox', { name: /Enabled|启用/i })
+      .or(page.locator('[role="menuitemcheckbox"]').filter({ hasText: /Enabled|启用/i }))
 
     const enabledFilterCount = await enabledFilter.count()
     if (enabledFilterCount > 0) {
       await enabledFilter.first().click()
-      
+
       // Wait for filter to apply
       await page.waitForTimeout(1000)
 
       // Verify filtered results
       const rows = page.locator('tbody tr')
       const rowCount = await rows.count()
-      
+
       if (rowCount > 0) {
         // Check that visible rows contain enabled status
         const firstRow = rows.first()
@@ -415,16 +408,16 @@ test.describe('Admin Channels Management', () => {
   test('validates required fields when creating a channel', async ({ page }) => {
     // Wait for the page to be ready
     await page.waitForTimeout(1000)
-    
+
     const createButton = page.getByRole('button', { name: /Add Channel|添加渠道/i })
-    
+
     // Check if button exists (user may not have permission)
     const buttonCount = await createButton.count()
     if (buttonCount === 0) {
       test.skip()
       return
     }
-    
+
     await expect(createButton).toBeVisible()
     await createButton.click()
 
@@ -434,14 +427,14 @@ test.describe('Admin Channels Management', () => {
     // Verify that the Create button is disabled when required fields are empty
     const submitButton = createDialog.getByRole('button', { name: /创建|Create|保存|Save/i })
     await expect(submitButton).toBeDisabled()
-    
+
     // Fill in name but leave other required fields empty
     const nameInput = createDialog.getByLabel(/名称|Name/i)
     await nameInput.fill('Test Channel')
-    
+
     // Button should still be disabled (missing type, base URL, API key, and models)
     await expect(submitButton).toBeDisabled()
-    
+
     // Verify validation message for supported models
     await expect(createDialog).toContainText(/Please add at least one supported model|请至少添加一个支持的模型/i)
   })
@@ -451,9 +444,9 @@ test.describe('Admin Channels Management', () => {
     await page.waitForTimeout(1000)
 
     // Look for pagination controls
-    const pagination = page.locator('[data-testid="pagination"]').or(
-      page.locator('nav').filter({ hasText: /页|Page|Previous|Next/i })
-    )
+    const pagination = page
+      .locator('[data-testid="pagination"]')
+      .or(page.locator('nav').filter({ hasText: /页|Page|Previous|Next/i }))
 
     // Check if pagination exists
     const paginationCount = await pagination.count()
@@ -465,25 +458,25 @@ test.describe('Admin Channels Management', () => {
     // Check if Next button exists and is enabled
     const nextButton = pagination.getByRole('button', { name: /下一页|Next/i })
     const nextButtonCount = await nextButton.count()
-    
+
     if (nextButtonCount === 0) {
       test.skip()
       return
     }
-    
+
     // Only test pagination if there are multiple pages
     const isEnabled = await nextButton.isEnabled().catch(() => false)
     if (isEnabled) {
       const firstPageContent = await page.locator('tbody tr').first().textContent()
-      
+
       await nextButton.click()
       await page.waitForTimeout(1000)
-      
+
       const secondPageContent = await page.locator('tbody tr').first().textContent()
-      
+
       // Content should be different on the second page
       expect(firstPageContent).not.toBe(secondPageContent)
-      
+
       // Go back to previous page
       const prevButton = pagination.getByRole('button', { name: /上一页|Previous/i })
       await expect(prevButton).toBeEnabled()
@@ -502,7 +495,7 @@ test.describe('Admin Channels Management', () => {
     const channelsTable = page.locator('[data-testid="channels-table"]')
     const firstRow = channelsTable.locator('tbody tr').first()
     const rowCount = await channelsTable.locator('tbody tr').count()
-    
+
     if (rowCount === 0) {
       test.skip()
       return
@@ -512,14 +505,14 @@ test.describe('Admin Channels Management', () => {
 
     // Click actions menu
     const actionsTrigger = firstRow.locator('[data-testid="row-actions"]')
-    
+
     // Check if actions button exists (user may not have permission)
     const actionsCount = await actionsTrigger.count()
     if (actionsCount === 0) {
       test.skip()
       return
     }
-    
+
     await actionsTrigger.click()
 
     const menu = page.getByRole('menu')
@@ -528,7 +521,7 @@ test.describe('Admin Channels Management', () => {
     // Look for settings option
     const settingsOption = menu.getByRole('menuitem', { name: /设置|Settings/i })
     const settingsCount = await settingsOption.count()
-    
+
     if (settingsCount > 0) {
       await settingsOption.focus()
       await page.keyboard.press('Enter')
@@ -543,7 +536,7 @@ test.describe('Admin Channels Management', () => {
   test('can bulk import channels', async ({ page }) => {
     // Look for bulk import button
     const bulkImportButton = page.getByRole('button', { name: /Bulk Import|批量导入/i })
-    
+
     const bulkImportCount = await bulkImportButton.count()
     if (bulkImportCount === 0) {
       test.skip()
@@ -559,7 +552,7 @@ test.describe('Admin Channels Management', () => {
 
     // Close the dialog - use .first() to avoid strict mode violation
     const closeButton = bulkImportDialog.getByRole('button', { name: /取消|Cancel/i }).first()
-    if (await closeButton.count() > 0) {
+    if ((await closeButton.count()) > 0) {
       await closeButton.click()
     } else {
       await page.keyboard.press('Escape')

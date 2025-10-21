@@ -63,8 +63,8 @@ export function ChannelsArchiveDialog({ open, onOpenChange, currentRow }: Props)
         </span>
       }
       desc={getDescription()}
-      confirmText={t('channels.dialogs.status.archive.button')}
-      cancelBtnText={t('channels.dialogs.buttons.cancel')}
+      confirmText={t('common.buttons.archive')}
+      cancelBtnText={t('common.buttons.cancel')}
     />
   )
 }

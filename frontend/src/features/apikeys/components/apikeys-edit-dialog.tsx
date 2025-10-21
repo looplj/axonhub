@@ -128,10 +128,10 @@ export function ApiKeysEditDialog() {
                 onClick={handleClose}
                 disabled={isSubmitting}
               >
-                {t('apikeys.dialogs.buttons.cancel')}
+                {t('common.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={isSubmitting}>
-                {isSubmitting ? t('apikeys.dialogs.buttons.saving') : t('apikeys.dialogs.buttons.save')}
+                {isSubmitting ? t('common.buttons.saving') : t('common.buttons.save')}
               </Button>
             </DialogFooter>
           </form>

@@ -29,7 +29,7 @@ export function TokenStatsCard() {
           <CardTitle className='text-sm font-medium'>{t('dashboard.cards.tokenStats')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className='text-sm text-red-500'>{t('dashboard.loadError')}</div>
+          <div className='text-sm text-red-500'>{t('common.loadError')}</div>
         </CardContent>
       </Card>
     )

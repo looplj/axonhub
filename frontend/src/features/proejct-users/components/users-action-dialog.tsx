@@ -475,7 +475,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
             form='user-form'
             disabled={createUser.isPending || updateProjectUser.isPending || (isEdit && !canEdit)}
           >
-            {createUser.isPending || updateProjectUser.isPending ? t('users.buttons.saving') : t('users.buttons.saveChanges')}
+            {createUser.isPending || updateProjectUser.isPending ? t('common.buttons.saving') : t('common.buttons.saveChanges')}
           </Button>
         </DialogFooter>
       </DialogContent>

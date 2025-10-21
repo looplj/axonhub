@@ -123,7 +123,7 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
 
         <DialogFooter>
           <Button variant='outline' onClick={() => onOpenChange(false)}>
-            {t('users.buttons.cancel')}
+            {t('common.buttons.cancel')}
           </Button>
           <Button type='submit' form='change-password-form' disabled={form.formState.isSubmitting}>
             {form.formState.isSubmitting ? t('users.buttons.changing') : t('users.buttons.changePassword')}

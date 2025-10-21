@@ -9,6 +9,8 @@ import { ROLES_QUERY, ALL_SCOPES_QUERY } from '@/gql/roles'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/authStore'
+import { filterGrantableRoles, filterGrantableScopes, canEditUserPermissions } from '@/lib/permission-utils'
 import { passwordConfirmationSchema } from '@/lib/validation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,8 +27,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input'
 import { User, CreateUserInput, UpdateUserInput } from '../data/schema'
 import { useCreateUser, useUpdateUser } from '../data/users'
-import { useAuthStore } from '@/stores/authStore'
-import { filterGrantableRoles, filterGrantableScopes, canEditUserPermissions } from '@/lib/permission-utils'
 
 // 创建表单验证模式的工厂函数
 const createFormSchema = (t: (key: string) => string) =>
@@ -127,8 +127,8 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
     setLoading(true)
     try {
       const [rolesData, scopesData] = await Promise.all([
-        graphqlRequest(ROLES_QUERY, { first: 100, variables: { where: { projectID: 0 } } }),
-        graphqlRequest(ALL_SCOPES_QUERY),
+        graphqlRequest(ROLES_QUERY, { first: 100, where: { level: 'system' } }),
+        graphqlRequest(ALL_SCOPES_QUERY, { level: 'system' }),
       ])
 
       // Type the responses properly
@@ -169,11 +169,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
       // 检查是否可以编辑当前用户
       if (isEdit && currentRow) {
         const targetScopes = currentRow.scopes || []
-        const canEditTarget = canEditUserPermissions(
-          currentUser,
-          targetScopes,
-          currentRow.isOwner || false
-        )
+        const canEditTarget = canEditUserPermissions(currentUser, targetScopes, currentRow.isOwner || false)
         setCanEdit(canEditTarget)
       }
     } catch (error) {
@@ -473,14 +469,14 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
 
         <DialogFooter>
           {isEdit && !canEdit && (
-            <p className='text-destructive text-sm mr-auto'>{t('users.errors.insufficientPermissions')}</p>
+            <p className='text-destructive mr-auto text-sm'>{t('users.errors.insufficientPermissions')}</p>
           )}
           <Button
             type='submit'
             form='user-form'
             disabled={createUser.isPending || updateUser.isPending || (isEdit && !canEdit)}
           >
-            {createUser.isPending || updateUser.isPending ? t('common.saving') : t('common.save')}
+            {createUser.isPending || updateUser.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

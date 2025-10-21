@@ -107,8 +107,6 @@
   "users": {
     "title": "用户管理",
     "description": "管理系统用户和权限配置。",
-    "loadError": "加载失败:",
-    "noResults": "无结果。",
     "inviteUser": "邀请用户",
     "addUser": "添加用户",
     "filterUsers": "筛选用户...",
@@ -147,14 +145,10 @@
     },
     "filters": {
       "status": "状态",
-      "role": "角色",
-      "reset": "重置"
+      "role": "角色"
     },
     "actions": {
-      "openMenu": "打开菜单",
-      "edit": "编辑",
       "changePassword": "修改密码",
-      "activate": "激活",
       "deactivate": "停用",
       "addToProject": "添加到项目",
       "removeFromProject": "从项目中移除"
@@ -166,7 +160,7 @@
       },
       "addToProject": {
         "title": "添加用户到项目",
-        "description": "将 {{firstName}} {{lastName}} 添加到项目并分配特定角色和权限。"
+        "description": "将用户添加到项目并分配特定角色和权限。"
       },
       "edit": {
         "title": "编辑用户",
@@ -185,12 +179,12 @@
       "status": {
         "activate": {
           "title": "激活用户",
-          "description": "您确定要激活用户 {{firstName}} {{lastName}} 吗？",
+          "description": "您确定要激活用户 {{name}} 吗？",
           "note": "激活后，该用户将能够正常登录系统。"
         },
         "deactivate": {
           "title": "停用用户",
-          "description": "您确定要停用用户 {{firstName}} {{lastName}} 吗？",
+          "description": "您确定要停用用户 {{name}} 吗？",
           "note": "停用后，该用户将无法登录系统。"
         }
       },
@@ -255,14 +249,9 @@
       "projectRequired": "项目不能为空"
     },
     "buttons": {
-      "save": "保存更改",
-      "saving": "保存中...",
-      "cancel": "取消",
-      "activate": "激活",
       "deactivate": "停用",
       "changePassword": "修改密码",
       "changing": "修改中...",
-      "saveChanges": "保存更改",
       "addToProject": "添加到项目",
       "adding": "添加中...",
       "remove": "移除",
@@ -295,8 +284,6 @@
   "apikeys": {
     "title": "API 密钥管理",
     "description": "管理系统 API 密钥和访问权限。",
-    "loadError": "加载失败:",
-    "noResults": "无结果。",
     "createApiKey": "创建 API Key",
     "filterApiKeys": "筛选 API 密钥...",
     "columns": {
@@ -317,13 +304,7 @@
       "archived": "已归档"
     },
     "actions": {
-      "openMenu": "打开菜单",
-      "edit": "编辑",
       "profiles": "配置文件",
-      "enable": "启用",
-      "disable": "禁用",
-      "archive": "归档",
-      "delete": "删除",
       "copy": "复制",
       "view": "查看",
       "show": "显示",
@@ -378,23 +359,7 @@
           "description": "API Key 值"
         }
       },
-      "buttons": {
-        "cancel": "取消",
-        "create": "创建",
-        "creating": "创建中...",
-        "update": "更新",
-        "updating": "更新中...",
-        "delete": "删除",
-        "deleting": "删除中...",
-        "enable": "激活",
-        "enabling": "激活中...",
-        "disable": "停用",
-        "disabling": "停用中...",
-        "archive": "归档",
-        "archiving": "归档中...",
-        "save": "保存",
-        "saving": "保存中..."
-      }
+      "buttons": {}
     },
     "messages": {
       "copied": "API Key 已复制到剪贴板",
@@ -442,7 +407,6 @@
       "descending": "降序",
       "hide": "隐藏"
     },
-    "noData": "暂无数据",
     "profiles": {
       "title": "配置文件管理",
       "description": "为以下 API Key {{name}} 配置模型映射, 当一个活动配置有模型映射配置时, 系统将自动在 API 请求时将请求模型映射到目标模型",
@@ -464,9 +428,6 @@
   "roles": {
     "title": "角色管理",
     "description": "管理系统角色和权限配置。",
-    "loadError": "加载失败:",
-    "noResults": "无结果。",
-    "noData": "暂无数据",
     "createRole": "新建角色",
     "searchRoles": "按名称搜索角色...",
     "columns": {
@@ -480,13 +441,8 @@
       "selectRow": "选择行",
       "moreScopes": "更多"
     },
-    "actions": {
-      "openMenu": "打开菜单",
-      "edit": "编辑",
-      "delete": "删除"
-    },
+    "actions": {},
     "filters": {
-      "reset": "重置",
       "filterByName": "按名称筛选...",
       "filterByCode": "按代码筛选..."
     },
@@ -524,13 +480,8 @@
         }
       },
       "buttons": {
-        "cancel": "取消",
         "create": "创建角色",
-        "creating": "创建中...",
-        "update": "更新角色",
-        "updating": "更新中...",
-        "delete": "删除",
-        "deleting": "删除中..."
+        "update": "更新角色"
       }
     },
     "validation": {
@@ -542,10 +493,8 @@
   "projects": {
     "title": "项目管理",
     "description": "管理系统项目和配置。",
-    "loadError": "加载失败:",
-    "noResults": "无结果。",
     "createProject": "新建项目",
-    "searchProjects": "按名称或标识搜索项目...",
+    "searchProjects": "按名称搜索项目...",
     "columns": {
       "slug": "项目标识",
       "name": "项目名称",
@@ -561,15 +510,8 @@
       "active": "活跃",
       "archived": "已归档"
     },
-    "actions": {
-      "openMenu": "打开菜单",
-      "edit": "编辑",
-      "archive": "归档",
-      "activate": "激活"
-    },
-    "filters": {
-      "reset": "重置"
-    },
+    "actions": {},
+    "filters": {},
     "dialogs": {
       "create": {
         "title": "新建项目",
@@ -606,15 +548,7 @@
         }
       },
       "buttons": {
-        "cancel": "取消",
-        "create": "创建项目",
-        "creating": "创建中...",
-        "save": "保存",
-        "saving": "保存中...",
-        "archive": "归档",
-        "archiving": "归档中...",
-        "activate": "激活",
-        "activating": "激活中..."
+        "create": "创建项目"
       }
     },
     "validation": {
@@ -626,8 +560,6 @@
     "view": "视图",
     "toggleColumns": "切换列",
     "description": "管理您的 AI 模型渠道和配置。",
-    "loadError": "加载失败:",
-    "noResults": "无结果。",
     "addChannel": "添加渠道",
     "importChannels": "批量导入",
     "orderChannels": "批量排序",
@@ -676,12 +608,6 @@
       "openai_fake": "OpenAI Fake"
     },
     "actions": {
-      "openMenu": "打开菜单",
-      "edit": "编辑",
-      "delete": "删除",
-      "enable": "启用",
-      "disable": "禁用",
-      "archive": "归档",
       "test": "测试",
       "settings": "设置"
     },
@@ -715,7 +641,6 @@
     "filters": {
       "type": "类型",
       "status": "状态",
-      "reset": "重置",
       "filterByName": "按名称筛选"
     },
     "dialogs": {
@@ -846,21 +771,10 @@
         }
       },
       "buttons": {
-        "cancel": "取消",
         "create": "创建渠道",
-        "creating": "创建中...",
         "update": "更新渠道",
-        "updating": "更新中...",
-        "delete": "删除",
-        "deleting": "删除中...",
-        "enable": "启用",
-        "enabling": "启用中...",
-        "disable": "禁用",
-        "disabling": "禁用中...",
         "test": "测试连接",
         "testing": "测试中...",
-        "save": "保存",
-        "saving": "保存中...",
         "add": "添加",
         "addSelected": "添加选中",
         "fetchModels": "获取模型"
@@ -877,22 +791,16 @@
           "testSuccess": "✅ 测试成功（延迟 {{latency}}秒）",
           "testFailed": "❌ 测试失败 - 请检查配置",
           "testMessage": "响应内容",
-          "errorDetails": "错误详情",
-          "button": "启用",
-          "confirmText": "启用"
+          "errorDetails": "错误详情"
         },
         "disable": {
           "title": "禁用频道",
-          "description": "确定要禁用频道 \"{{name}}\" 吗？禁用后该渠道将无法使用。",
-          "button": "禁用",
-          "confirmText": "禁用"
+          "description": "确定要禁用频道 \"{{name}}\" 吗？禁用后该渠道将无法使用。"
         },
         "archive": {
           "title": "归档渠道",
           "description": "确定要归档渠道 \"{{name}}\" 吗？归档的渠道默认隐藏，除非明确选择了归档状态筛选器，否则不会出现在渠道列表中。",
-          "warning": "此渠道将从默认视图中隐藏。您可以通过选择\"已归档\"状态筛选器来查看归档的渠道。",
-          "confirmText": "归档",
-          "button": "归档"
+          "warning": "此渠道将从默认视图中隐藏。您可以通过选择\"已归档\"状态筛选器来查看归档的渠道。"
         }
       },
       "settings": {
@@ -915,8 +823,6 @@
         "description": "拖拽重新排列渠道。优先级高的渠道将优先显示。",
         "dragHint": "拖拽渠道重新排序",
         "saveButton": "保存排序",
-        "saving": "保存中...",
-        "cancel": "取消",
         "orderingWeight": "优先级",
         "noChannels": "没有可用于排序的渠道"
       }
@@ -1021,15 +927,12 @@
       }
     },
     "buttons": {
-      "save": "保存设置",
-      "saving": "保存中..."
+      "save": "保存设置"
     }
   },
   "requests": {
     "title": "请求日志",
     "description": "查看和管理 LLM 调用请求日志",
-    "loadError": "加载失败:",
-    "noResults": "暂无数据",
     "refresh": "刷新",
     "columns": {
       "id": "ID",
@@ -1068,7 +971,6 @@
       "test": "测试"
     },
     "actions": {
-      "openMenu": "打开菜单",
       "viewDetails": "查看详情",
       "viewRequest": "查看请求",
       "viewResponse": "查看响应",
@@ -1079,8 +981,7 @@
       "status": "状态",
       "source": "来源",
       "channel": "渠道",
-      "user": "用户",
-      "reset": "重置"
+      "user": "用户"
     },
     "detail": {
       "title": "请求详情",
@@ -1089,7 +990,7 @@
         "request": "请求",
         "response": "响应",
         "executions": "执行记录",
-        "usage":"用量"
+        "usage": "用量"
       },
       "noResponse": "暂无响应数据"
     },
@@ -1143,8 +1044,6 @@
   "usageLogs": {
     "title": "用量日志",
     "description": "查看和分析AI模型使用情况和令牌消耗",
-    "loadError": "加载失败:",
-    "noResults": "暂无数据",
     "refresh": "刷新",
     "columns": {
       "id": "ID",
@@ -1178,7 +1077,6 @@
       "test": "测试"
     },
     "actions": {
-      "openMenu": "打开菜单",
       "viewDetails": "查看详情",
       "copy": "复制"
     },
@@ -1187,8 +1085,7 @@
       "source": "来源",
       "user": "用户",
       "channel": "渠道",
-      "model": "模型",
-      "reset": "重置"
+      "model": "模型"
     },
     "dialogs": {
       "usageDetail": {
@@ -1221,8 +1118,6 @@
   "dashboard": {
     "title": "仪表板",
     "description": "系统概览和统计信息。",
-    "loadError": "加载仪表板失败:",
-    "noData": "暂无数据",
     "cards": {
       "overview": "概览",
       "totalUsers": "总用户数",
@@ -1371,9 +1266,7 @@
         "languageRequired": "请选择首选语言。"
       },
       "buttons": {
-        "update": "保存更改",
-        "updating": "保存中...",
-        "cancel": "取消"
+        "update": "保存更改"
       },
       "messages": {
         "updateSuccess": "个人资料更新成功！",
@@ -1400,34 +1293,56 @@
     "hasNext": "有下一页"
   },
   "loading": "加载中...",
-  "noData": "暂无数据",
   "view": "视图",
   "toggleColumns": "切换列",
-  "error": "错误",
-  "success": "成功",
-  "cancel": "取消",
-  "save": "保存",
-  "delete": "删除",
-  "edit": "编辑",
-  "create": "创建",
-  "update": "更新",
-  "errorMessage": "错误信息",
   "common": {
     "selectedItems": "已选择 {{count}} 项",
     "noResultsFound": "未找到结果",
     "clearFilters": "清除筛选",
     "loading": "加载中",
-    "cancel": "取消",
-    "delete": "删除",
-    "create": "创建",
-    "creating": "创建中",
-    "save": "保存",
-    "saving": "保存中",
+    "noData": "暂无数据",
+    "noResults": "无结果。",
+    "loadError": "加载失败:",
     "back": "返回",
     "moveUp": "上移",
     "moveDown": "下移",
     "dragging": "拖拽中",
     "unsavedChanges": "您有未保存的更改",
+    "messages": {
+      "errorMessage": "错误信息",
+      "success": "成功",
+      "error": "错误"
+    },
+    "buttons": {
+      "cancel": "取消",
+      "save": "保存",
+      "saving": "保存中...",
+      "saveChanges": "保存更改",
+      "create": "创建",
+      "creating": "创建中...",
+      "update": "更新",
+      "updating": "更新中...",
+      "delete": "删除",
+      "deleting": "删除中...",
+      "edit": "编辑",
+      "editing": "编辑中...",
+      "enable": "启用",
+      "enabling": "启用中...",
+      "disable": "禁用",
+      "disabling": "禁用中...",
+      "archive": "归档",
+      "archiving": "归档中...",
+      "activate": "激活",
+      "activating": "激活中..."
+    },
+    "actions": {
+      "openMenu": "打开菜单",
+      "edit": "编辑",
+      "delete": "删除"
+    },
+    "filters": {
+      "reset": "重置"
+    },
     "routeGuard": {
       "accessDenied": "访问被拒绝",
       "noPermission": "您没有访问此页面的权限。请联系管理员获取相应的访问权限。",
