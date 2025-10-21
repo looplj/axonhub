@@ -37,7 +37,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             className='data-[state=open]:bg-muted flex h-8 w-8 p-0'
           >
             <DotsHorizontalIcon className='h-4 w-4' />
-            <span className='sr-only'>{t('users.actions.openMenu')}</span>
+            <span className='sr-only'>{t('common.actions.openMenu')}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end' className='w-[160px]'>
@@ -50,7 +50,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               }}
             >
               <IconEdit size={16} className="mr-2" />
-              {t('users.actions.edit')}
+              {t('common.actions.edit')}
             </DropdownMenuItem>
           )}
           

@@ -1,33 +1,19 @@
+import { useRef } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
-import { useRef } from 'react'
-import { User, Upload } from 'lucide-react'
 import { graphqlRequest } from '@/gql/graphql'
 import { UPDATE_ME_MUTATION } from '@/gql/users'
+import { User, Upload } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/authStore'
-import { Button } from '@/components/ui/button'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useMe } from '@/features/auth/data/auth'
 
 type ProfileFormValues = {
@@ -61,11 +47,7 @@ export default function ProfileForm() {
       .max(50, {
         message: t('profile.form.validation.lastNameTooLong'),
       }),
-    email: z
-      .string({
-        required_error: t('profile.form.validation.emailRequired'),
-      })
-      .email(t('profile.form.validation.emailInvalid')),
+    email: z.email(t('profile.form.validation.emailInvalid')),
     preferLanguage: z.string().min(1, {
       message: t('profile.form.validation.languageRequired'),
     }),
@@ -163,13 +145,8 @@ export default function ProfileForm() {
                     </AvatarFallback>
                   </Avatar>
                   <div className='flex flex-col space-y-2'>
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className='h-4 w-4 mr-2' />
+                    <Button type='button' variant='outline' size='sm' onClick={() => fileInputRef.current?.click()}>
+                      <Upload className='mr-2 h-4 w-4' />
                       {t('profile.form.fields.avatar.upload')}
                     </Button>
                     <input
@@ -182,9 +159,7 @@ export default function ProfileForm() {
                   </div>
                 </div>
               </FormControl>
-              <FormDescription>
-                {t('profile.form.fields.avatar.description')}
-              </FormDescription>
+              <FormDescription>{t('profile.form.fields.avatar.description')}</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -200,9 +175,7 @@ export default function ProfileForm() {
                 <FormControl>
                   <Input placeholder={t('profile.form.fields.firstName.placeholder')} {...field} />
                 </FormControl>
-                <FormDescription>
-                  {t('profile.form.fields.firstName.description')}
-                </FormDescription>
+                <FormDescription>{t('profile.form.fields.firstName.description')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -217,9 +190,7 @@ export default function ProfileForm() {
                 <FormControl>
                   <Input placeholder={t('profile.form.fields.lastName.placeholder')} {...field} />
                 </FormControl>
-                <FormDescription>
-                  {t('profile.form.fields.lastName.description')}
-                </FormDescription>
+                <FormDescription>{t('profile.form.fields.lastName.description')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -233,15 +204,9 @@ export default function ProfileForm() {
             <FormItem>
               <FormLabel>{t('profile.form.fields.email.label')}</FormLabel>
               <FormControl>
-                <Input
-                  type='email'
-                  placeholder={t('profile.form.fields.email.placeholder')}
-                  {...field}
-                />
+                <Input type='email' placeholder={t('profile.form.fields.email.placeholder')} {...field} />
               </FormControl>
-              <FormDescription>
-                {t('profile.form.fields.email.description')}
-              </FormDescription>
+              <FormDescription>{t('profile.form.fields.email.description')}</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -266,19 +231,17 @@ export default function ProfileForm() {
                   {/* <SelectItem value='ko'>한국어</SelectItem> */}
                 </SelectContent>
               </Select>
-              <FormDescription>
-                {t('profile.form.fields.preferLanguage.description')}
-              </FormDescription>
+              <FormDescription>{t('profile.form.fields.preferLanguage.description')}</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <div className="flex justify-end">
-            <Button type="submit" disabled={updateProfileMutation.isPending}>
-              {updateProfileMutation.isPending ? t('profile.form.buttons.updating') : t('profile.form.buttons.update')}
-            </Button>
-          </div>
+        <div className='flex justify-end'>
+          <Button type='submit' disabled={updateProfileMutation.isPending}>
+            {updateProfileMutation.isPending ? t('common.buttons.updating') : t('common.buttons.update')}
+          </Button>
+        </div>
       </form>
     </Form>
   )

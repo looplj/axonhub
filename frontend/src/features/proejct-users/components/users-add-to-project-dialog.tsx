@@ -193,11 +193,7 @@ export function UsersAddToProjectDialog({ open, onOpenChange }: Props) {
     >
       <DialogContent className='sm:max-w-2xl'>
         <DialogHeader className='text-left'>
-          <DialogTitle>
-            {selectedUser
-              ? `Add ${selectedUser.firstName} ${selectedUser.lastName} to a project with specific roles and permissions.`
-              : t('users.dialogs.addToProject.title')}
-          </DialogTitle>
+          <DialogTitle>{t('users.dialogs.addToProject.title')}</DialogTitle>
           <DialogDescription>{t('users.dialogs.addToProject.description')}</DialogDescription>
         </DialogHeader>
 
@@ -346,7 +342,7 @@ export function UsersAddToProjectDialog({ open, onOpenChange }: Props) {
               onOpenChange(false)
             }}
           >
-            {t('common.cancel')}
+            {t('common.buttons.cancel')}
           </Button>
           <Button type='submit' form='add-user-form' disabled={addUserToProject.isPending}>
             {addUserToProject.isPending ? t('users.buttons.adding') : t('users.buttons.addToProject')}

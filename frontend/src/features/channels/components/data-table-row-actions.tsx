@@ -38,7 +38,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             data-testid='row-actions'
           >
             <DotsHorizontalIcon className='h-4 w-4' />
-            <span className='sr-only'>{t('channels.actions.openMenu')}</span>
+            <span className='sr-only'>{t('common.actions.openMenu')}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end' className='w-[160px]'>
@@ -51,7 +51,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               }}
             >
               <IconEdit size={16} className="mr-2" />
-              {t('channels.actions.edit')}
+              {t('common.actions.edit')}
             </DropdownMenuItem>
           )}
           
@@ -83,7 +83,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               className={row.original.status === 'enabled' ? 'text-red-500!' : 'text-green-500!'}
             >
               {row.original.status === 'enabled' ? <IconToggleLeft size={16} className="mr-2" /> : <IconToggleRight size={16} className="mr-2" />}
-              {row.original.status === 'enabled' ? t('channels.actions.disable') : t('channels.actions.enable')}
+              {row.original.status === 'enabled' ? t('common.buttons.disable') : t('common.buttons.enable')}
             </DropdownMenuItem>
           )}
           
@@ -97,7 +97,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               className="text-orange-500!"
             >
               <IconArchive size={16} className="mr-2" />
-              {t('channels.actions.archive')}
+              {t('common.buttons.archive')}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

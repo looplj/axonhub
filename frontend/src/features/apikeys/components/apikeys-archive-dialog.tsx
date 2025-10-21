@@ -60,8 +60,8 @@ export function ApiKeysArchiveDialog() {
         </span>
       }
       desc={getDescription()}
-      confirmText={t('apikeys.dialogs.buttons.archive')}
-      cancelBtnText={t('apikeys.dialogs.buttons.cancel')}
+      confirmText={t('common.buttons.archive')}
+      cancelBtnText={t('common.buttons.cancel')}
     />
   )
 }

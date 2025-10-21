@@ -179,7 +179,7 @@ export function UsageLogsTable({
                   colSpan={usageLogsColumns.length}
                   className='h-24 text-center'
                 >
-                  {t('usageLogs.noResults')}
+                  {t('common.noResults')}
                 </TableCell>
               </TableRow>
             )}

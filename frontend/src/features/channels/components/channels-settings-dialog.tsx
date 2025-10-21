@@ -254,10 +254,10 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
 
         <DialogFooter>
           <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
-            {t('channels.dialogs.buttons.cancel')}
+            {t('common.buttons.cancel')}
           </Button>
           <Button type='button' onClick={form.handleSubmit(onSubmit)} disabled={updateChannel.isPending}>
-            {updateChannel.isPending ? t('channels.dialogs.buttons.saving') : t('channels.dialogs.buttons.save')}
+            {updateChannel.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

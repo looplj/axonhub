@@ -54,7 +54,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           className='flex h-8 w-8 p-0 data-[state=open]:bg-muted'
         >
           <DotsHorizontalIcon className='h-4 w-4' />
-          <span className='sr-only'>{t('projects.actions.openMenu')}</span>
+          <span className='sr-only'>{t('common.actions.openMenu')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[160px]'>
@@ -62,7 +62,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         {projectPermissions.canEdit && (
           <DropdownMenuItem onClick={handleEdit}>
             <IconEdit className='mr-2 h-4 w-4' />
-            {t('projects.actions.edit')}
+            {t('common.actions.edit')}
           </DropdownMenuItem>
         )}
         
@@ -77,7 +77,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             className='text-destructive focus:text-destructive'
           >
             <IconTrash className='mr-2 h-4 w-4' />
-            {t('projects.actions.archive')}
+            {t('common.buttons.archive')}
           </DropdownMenuItem>
         )}
         
@@ -87,7 +87,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             onClick={handleActivate}
           >
             <IconEdit className='mr-2 h-4 w-4' />
-            {t('projects.actions.activate')}
+            {t('common.buttons.activate')}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

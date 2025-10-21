@@ -213,10 +213,10 @@ export function ApiKeyProfilesDialog({
 
         <DialogFooter>
           <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={loading}>
-            {t('common.cancel')}
+            {t('common.buttons.cancel')}
           </Button>
           <Button type='submit' form='apikey-profiles-form' disabled={loading}>
-            {loading ? t('common.saving') : t('common.save')}
+            {loading ? t('common.buttons.saving') : t('common.buttons.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

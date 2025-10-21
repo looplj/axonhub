@@ -118,10 +118,10 @@ export function CreateProjectDialog() {
             
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
-                {t('projects.dialogs.buttons.cancel')}
+                {t('common.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={createProject.isPending}>
-                {createProject.isPending ? t('projects.dialogs.buttons.creating') : t('projects.dialogs.buttons.create')}
+                {createProject.isPending ? t('common.buttons.creating') : t('common.buttons.create')}
               </Button>
             </DialogFooter>
           </form>
@@ -141,6 +141,7 @@ export function EditProjectDialog() {
     resolver: zodResolver(updateProjectInputSchema),
     defaultValues: {
       name: '',
+      description: '',
     },
   })
 
@@ -148,6 +149,7 @@ export function EditProjectDialog() {
     if (editingProject) {
       form.reset({
         name: editingProject.name,
+        description: editingProject.description || '',
       })
     }
   }, [editingProject, form])
@@ -204,12 +206,35 @@ export function EditProjectDialog() {
               )}
             />
             
+            <FormField
+              control={form.control}
+              name='description'
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>{t('projects.dialogs.fields.description.label')}</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder={t('projects.dialogs.fields.description.placeholder')} 
+                      aria-invalid={!!fieldState.error}
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('projects.dialogs.fields.description.description')}
+                  </FormDescription>
+                  <div className='min-h-[1.25rem]'>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
+            />
+            
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose}>
-                {t('projects.dialogs.buttons.cancel')}
+                {t('common.buttons.cancel')}
               </Button>
               <Button type='submit' disabled={updateProject.isPending}>
-                {updateProject.isPending ? t('projects.dialogs.buttons.saving') : t('projects.dialogs.buttons.save')}
+                {updateProject.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
               </Button>
             </DialogFooter>
           </form>
@@ -242,8 +267,8 @@ export function ArchiveProjectDialog() {
       onOpenChange={() => setArchivingProject(null)}
       title={t('projects.dialogs.archive.title')}
       desc={t('projects.dialogs.archive.description', { name: archivingProject?.name })}
-      confirmText={t('projects.dialogs.buttons.archive')}
-      cancelBtnText={t('projects.dialogs.buttons.cancel')}
+      confirmText={t('common.buttons.archive')}
+      cancelBtnText={t('common.buttons.cancel')}
       handleConfirm={handleConfirm}
       isLoading={archiveProject.isPending}
       destructive
@@ -274,8 +299,8 @@ export function ActivateProjectDialog() {
       onOpenChange={() => setActivatingProject(null)}
       title={t('projects.dialogs.activate.title')}
       desc={t('projects.dialogs.activate.description', { name: activatingProject?.name })}
-      confirmText={t('projects.dialogs.buttons.activate')}
-      cancelBtnText={t('projects.dialogs.buttons.cancel')}
+      confirmText={t('common.buttons.activate')}
+      cancelBtnText={t('common.buttons.cancel')}
       handleConfirm={handleConfirm}
       isLoading={activateProject.isPending}
     />

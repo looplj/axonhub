@@ -46,7 +46,7 @@ export default function DashboardPage() {
     return (
       <div className='flex-1 space-y-4 p-8 pt-6'>
         <div className='text-red-500'>
-          {t('dashboard.loadError')} {error.message}
+          {t('common.loadError')} {error.message}
         </div>
       </div>
     )

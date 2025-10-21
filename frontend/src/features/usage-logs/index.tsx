@@ -79,7 +79,7 @@ function UsageLogsContent() {
     return (
       <div className='flex h-64 items-center justify-center'>
         <p className='text-destructive'>
-          {t('usageLogs.loadError')} {error.message}
+          {t('common.loadError')} {error.message}
         </p>
       </div>
     )

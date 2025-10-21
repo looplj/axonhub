@@ -152,7 +152,7 @@ export function RolesTable({
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className='h-24 text-center'>
-                  {t('roles.noData')}
+                  {t('common.noData')}
                 </TableCell>
               </TableRow>
             )}

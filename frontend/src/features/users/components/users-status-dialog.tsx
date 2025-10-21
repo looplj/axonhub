@@ -66,7 +66,7 @@ export function UsersStatusDialog({ open, onOpenChange, currentRow }: Props) {
         </div>
       }
       confirmText={actionText}
-      cancelBtnText={t('users.buttons.cancel')}
+      cancelBtnText={t('common.buttons.cancel')}
     />
   )
 }

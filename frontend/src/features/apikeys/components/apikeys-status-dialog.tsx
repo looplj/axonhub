@@ -49,8 +49,8 @@ export function ApiKeysStatusDialog() {
           ? t('apikeys.dialogs.status.disableDescription', { name: selectedApiKey.name })
           : t('apikeys.dialogs.status.enableDescription', { name: selectedApiKey.name })
       }
-      confirmText={isDisabling ? t('apikeys.dialogs.buttons.disable') : t('apikeys.dialogs.buttons.enable')}
-      cancelBtnText={t('apikeys.dialogs.buttons.cancel')}
+      confirmText={isDisabling ? t('common.buttons.disable') : t('common.buttons.enable')}
+      cancelBtnText={t('common.buttons.cancel')}
     />
   )
 }
