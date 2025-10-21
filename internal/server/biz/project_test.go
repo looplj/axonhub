@@ -19,7 +19,7 @@ import (
 func setupTestProjectService(t *testing.T, cacheConfig xcache.Config) (*ProjectService, *ent.Client) {
 	t.Helper()
 
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	projectService := &ProjectService{
 		ProjectCache: xcache.NewFromConfig[ent.Project](cacheConfig),

@@ -36,7 +36,7 @@ func TestGenerateAPIKey(t *testing.T) {
 func setupTestAPIKeyService(t *testing.T, cacheConfig xcache.Config) (*APIKeyService, *ent.Client) {
 	t.Helper()
 
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	projectService := &ProjectService{
 		ProjectCache: xcache.NewFromConfig[ent.Project](cacheConfig),

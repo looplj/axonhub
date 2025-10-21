@@ -15,15 +15,14 @@ import (
 )
 
 func TestV0_3_0_NoOwnerUser(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
 	ctx := context.Background()
-	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Run migration when no owner user exists
-	err := V0_3_0(ctx, client)
+	err := NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify no project was created
@@ -33,7 +32,7 @@ func TestV0_3_0_NoOwnerUser(t *testing.T) {
 }
 
 func TestV0_3_0_WithOwnerUser(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
 	ctx := context.Background()
@@ -52,7 +51,7 @@ func TestV0_3_0_WithOwnerUser(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration
-	err = V0_3_0(ctx, client)
+	err = NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify default project was created
@@ -92,7 +91,7 @@ func TestV0_3_0_WithOwnerUser(t *testing.T) {
 }
 
 func TestV0_3_0_ProjectAlreadyExists(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
 	ctx := context.Background()
@@ -126,7 +125,7 @@ func TestV0_3_0_ProjectAlreadyExists(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration
-	err = V0_3_0(ctx, client)
+	err = NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify no new project was created (should still have only 1 project)
@@ -141,7 +140,7 @@ func TestV0_3_0_ProjectAlreadyExists(t *testing.T) {
 }
 
 func TestV0_3_0_MultipleOwnerUsers(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
 	ctx := context.Background()
@@ -171,25 +170,36 @@ func TestV0_3_0_MultipleOwnerUsers(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration - should use the first owner found
-	err = V0_3_0(ctx, client)
+	err = NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify default project was created
 	proj, err := client.Project.Query().Where(project.NameEQ("Default")).Only(ctx)
 	require.NoError(t, err)
 
-	// Verify first owner is assigned to the project
+	// Verify both owners are assigned to the project
 	userProjects, err := client.UserProject.Query().All(ctx)
 	require.NoError(t, err)
-	require.Len(t, userProjects, 1)
-	userProject := userProjects[0]
-	assert.Equal(t, owner1.ID, userProject.UserID)
-	assert.Equal(t, proj.ID, userProject.ProjectID)
-	assert.True(t, userProject.IsOwner)
+	require.Len(t, userProjects, 2) // Both owner1 and owner2 should be assigned
+
+	// Find owner1's project assignment
+	var owner1Project *ent.UserProject
+
+	for _, up := range userProjects {
+		if up.UserID == owner1.ID {
+			owner1Project = up
+			break
+		}
+	}
+
+	require.NotNil(t, owner1Project)
+	assert.Equal(t, owner1.ID, owner1Project.UserID)
+	assert.Equal(t, proj.ID, owner1Project.ProjectID)
+	assert.True(t, owner1Project.IsOwner) // owner1 is the project owner
 }
 
 func TestV0_3_0_Idempotency(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
 	ctx := context.Background()
@@ -208,7 +218,7 @@ func TestV0_3_0_Idempotency(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration first time
-	err = V0_3_0(ctx, client)
+	err = NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify project was created
@@ -217,7 +227,7 @@ func TestV0_3_0_Idempotency(t *testing.T) {
 	assert.Equal(t, 1, count1)
 
 	// Run migration second time - should be idempotent
-	err = V0_3_0(ctx, client)
+	err = NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify still only one project exists
@@ -232,7 +242,7 @@ func TestV0_3_0_Idempotency(t *testing.T) {
 }
 
 func TestV0_3_0_OwnerWithoutIsOwnerFlag(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
 	ctx := context.Background()
@@ -251,7 +261,7 @@ func TestV0_3_0_OwnerWithoutIsOwnerFlag(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration - should not create project since no owner exists
-	err = V0_3_0(ctx, client)
+	err = NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify no project was created
@@ -261,7 +271,7 @@ func TestV0_3_0_OwnerWithoutIsOwnerFlag(t *testing.T) {
 }
 
 func TestV0_3_0_VerifyRoleScopes(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
 	ctx := context.Background()
@@ -280,7 +290,7 @@ func TestV0_3_0_VerifyRoleScopes(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration
-	err = V0_3_0(ctx, client)
+	err = NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify admin role has correct scopes
@@ -312,4 +322,144 @@ func TestV0_3_0_VerifyRoleScopes(t *testing.T) {
 	assert.Contains(t, viewerRole.Scopes, "read_requests")
 	assert.NotContains(t, viewerRole.Scopes, "write_users")
 	assert.NotContains(t, viewerRole.Scopes, "write_api_keys")
+}
+
+func TestV0_3_0_AssignUsersToDefaultProject(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create an owner user
+	owner, err := client.User.Create().
+		SetEmail("owner@example.com").
+		SetPassword("hashedpassword").
+		SetFirstName("System").
+		SetLastName("Owner").
+		SetIsOwner(true).
+		SetScopes([]string{"*"}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create regular users
+	user1, err := client.User.Create().
+		SetEmail("user1@example.com").
+		SetPassword("hashedpassword").
+		SetFirstName("User").
+		SetLastName("One").
+		SetIsOwner(false).
+		SetScopes([]string{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	user2, err := client.User.Create().
+		SetEmail("user2@example.com").
+		SetPassword("hashedpassword").
+		SetFirstName("User").
+		SetLastName("Two").
+		SetIsOwner(false).
+		SetScopes([]string{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Run migration
+	err = NewV0_3_0().Migrate(ctx, client)
+	require.NoError(t, err)
+
+	// Verify default project was created
+	proj, err := client.Project.Query().Where(project.NameEQ("Default")).Only(ctx)
+	require.NoError(t, err)
+
+	// Verify all users are assigned to the default project
+	userProjects, err := client.UserProject.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, userProjects, 3) // owner + 2 regular users
+
+	// Check that owner is assigned
+	var (
+		ownerProject *ent.UserProject
+		user1Project *ent.UserProject
+		user2Project *ent.UserProject
+	)
+
+	for _, up := range userProjects {
+		if up.UserID == owner.ID {
+			ownerProject = up
+		} else if up.UserID == user1.ID {
+			user1Project = up
+		} else if up.UserID == user2.ID {
+			user2Project = up
+		}
+	}
+
+	require.NotNil(t, ownerProject)
+	assert.Equal(t, owner.ID, ownerProject.UserID)
+	assert.Equal(t, proj.ID, ownerProject.ProjectID)
+	assert.True(t, ownerProject.IsOwner)
+
+	require.NotNil(t, user1Project)
+	assert.Equal(t, user1.ID, user1Project.UserID)
+	assert.Equal(t, proj.ID, user1Project.ProjectID)
+	assert.False(t, user1Project.IsOwner)
+
+	require.NotNil(t, user2Project)
+	assert.Equal(t, user2.ID, user2Project.UserID)
+	assert.Equal(t, proj.ID, user2Project.ProjectID)
+	assert.False(t, user2Project.IsOwner)
+}
+
+func TestV0_3_0_AssignUsersToDefaultProject_ConstraintError(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create a regular user
+	user1, err := client.User.Create().
+		SetEmail("user1@example.com").
+		SetPassword("hashedpassword").
+		SetFirstName("User").
+		SetLastName("One").
+		SetIsOwner(false).
+		SetScopes([]string{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create default project manually
+	proj, err := client.Project.Create().
+		SetName("Default").
+		SetDescription("Default project").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Assign user to project manually before migration
+	_, err = client.UserProject.Create().
+		SetUserID(user1.ID).
+		SetProjectID(proj.ID).
+		SetIsOwner(false).
+		SetScopes([]string{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Run migration - should handle constraint error gracefully
+	err = NewV0_3_0().Migrate(ctx, client)
+	require.NoError(t, err)
+
+	// Verify only one assignment exists for user1
+	userProjects, err := client.UserProject.Query().All(ctx)
+	require.NoError(t, err)
+
+	count := 0
+
+	for _, up := range userProjects {
+		if up.UserID == user1.ID {
+			count++
+		}
+	}
+
+	assert.Equal(t, 1, count)
 }
