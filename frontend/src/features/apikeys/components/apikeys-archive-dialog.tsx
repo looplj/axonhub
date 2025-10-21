@@ -8,7 +8,7 @@ import { useApiKeysContext } from '../context/apikeys-context'
 
 export function ApiKeysArchiveDialog() {
   const { t } = useTranslation()
-  const { isDialogOpen, closeDialog, selectedApiKey } = useApiKeysContext()
+  const { isDialogOpen, closeDialog, selectedApiKey, resetRowSelection } = useApiKeysContext()
   const updateApiKeyStatus = useUpdateApiKeyStatus()
 
   if (!selectedApiKey) return null
@@ -20,14 +20,15 @@ export function ApiKeysArchiveDialog() {
         status: 'archived',
       })
       closeDialog('archive')
+      resetRowSelection() // 清空选中的行
     } catch (_error) {
       // Error will be handled by the mutation's error state
     }
   }
 
   const getDescription = () => {
-    const baseDescription = t('apikeys.dialogs.status.archive.description', { name: selectedApiKey.name })
-    const warningText = t('apikeys.dialogs.status.archive.warning')
+    const baseDescription = t('apikeys.dialogs.archive.description', { name: selectedApiKey.name })
+    const warningText = t('apikeys.dialogs.archive.warning')
 
     return (
       <div className="space-y-3">
@@ -56,7 +57,7 @@ export function ApiKeysArchiveDialog() {
             className="stroke-orange-600 mr-1 inline-block"
             size={18}
           />
-          {t('apikeys.dialogs.status.archive.title')}
+          {t('apikeys.dialogs.archive.title')}
         </span>
       }
       desc={getDescription()}

@@ -281,7 +281,8 @@
       "copy": "Copy",
       "view": "View",
       "show": "Show",
-      "hide": "Hide"
+      "hide": "Hide",
+      "archive": "Archive"
     },
     "dialogs": {
       "create": {
@@ -294,26 +295,33 @@
       },
       "delete": {
         "title": "Delete API Key",
-        "description": "Are you sure you want to delete API Key \"{{name}}\"? This action cannot be undone."
+        "description": "Are you sure you want to delete API Key {{name}}? This action cannot be undone."
       },
       "status": {
         "title": "Change Status",
         "description": "Are you sure you want to change the status of this API Key?",
         "enableTitle": "Enable API Key",
         "disableTitle": "Disable API Key",
-        "enableDescription": "Are you sure you want to enable API Key \"{{name}}\"?",
-        "disableDescription": "Are you sure you want to disable API Key \"{{name}}\"?",
-        "archive": {
-          "title": "Archive API Key",
-          "description": "Are you sure you want to archive API Key \"{{name}}\"?",
-          "warning": "This action will hide the API Key from the list. You can still view archived keys by using the status filter.",
-          "button": "Archive"
-        }
+        "enableDescription": "Are you sure you want to enable API Key {{name}}?",
+        "disableDescription": "Are you sure you want to disable API Key {{name}}?"
+      },
+      "archive": {
+        "title": "Archive API Key",
+        "description": "Are you sure you want to archive API Key {{name}}?",
+        "warning": "This action will hide the API Key from the list. You can still view archived keys by using the status filter."
       },
       "view": {
         "title": "View API Key",
         "description": "View the complete API key details.",
         "warning": "⚠️ Keep your API key secure and do not share it with unauthorized parties. Anyone with access to this key can make requests on your behalf."
+      },
+      "bulkDisable": {
+        "title": "Bulk Disable API Keys",
+        "description": "Are you sure you want to disable {{count}} selected API keys? This action cannot be undone."
+      },
+      "bulkArchive": {
+        "title": "Bulk Archive API Keys",
+        "description": "Are you sure you want to archive {{count}} selected API keys? This action cannot be undone."
       },
       "fields": {
         "name": {
@@ -344,7 +352,11 @@
       "statusUpdateSuccess": "API Key status updated to {{status}}",
       "statusUpdateError": "Failed to update status",
       "profilesUpdateSuccess": "Profiles updated successfully",
-      "profilesUpdateError": "Failed to update profiles"
+      "profilesUpdateError": "Failed to update profiles",
+      "bulkDisableSuccess": "Successfully disabled {{count}} API keys",
+      "bulkDisableError": "Failed to disable API keys",
+      "bulkArchiveSuccess": "Successfully archived {{count}} API keys",
+      "bulkArchiveError": "Failed to archive API keys"
     },
     "errors": {
       "fetchData": "Failed to fetch API key data",

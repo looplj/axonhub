@@ -10,7 +10,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -233,4 +235,184 @@ func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+func TestAPIKeyService_BulkDisableAPIKeys(t *testing.T) {
+	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create test user
+	hashedPassword, err := HashPassword("test-password")
+	require.NoError(t, err)
+
+	testUser, err := client.User.Create().
+		SetEmail(fmt.Sprintf("test-%d@example.com", time.Now().UnixNano())).
+		SetPassword(hashedPassword).
+		SetFirstName("Test").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create test project
+	projectName := uuid.NewString()
+	testProject, err := client.Project.Create().
+		SetName(projectName).
+		SetDescription(projectName).
+		SetStatus(project.StatusActive).
+		SetCreatedAt(time.Now()).
+		SetUpdatedAt(time.Now()).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create UserProject relationship
+	_, err = client.UserProject.Create().
+		SetUserID(testUser.ID).
+		SetProjectID(testProject.ID).
+		SetIsOwner(true).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create multiple API keys
+	apiKey1, err := client.APIKey.Create().
+		SetKey("ah-test-key-1").
+		SetName("Test API Key 1").
+		SetUser(testUser).
+		SetProject(testProject).
+		SetStatus(apikey.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	apiKey2, err := client.APIKey.Create().
+		SetKey("ah-test-key-2").
+		SetName("Test API Key 2").
+		SetUser(testUser).
+		SetProject(testProject).
+		SetStatus(apikey.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	apiKey3, err := client.APIKey.Create().
+		SetKey("ah-test-key-3").
+		SetName("Test API Key 3").
+		SetUser(testUser).
+		SetProject(testProject).
+		SetStatus(apikey.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Test bulk disable API keys
+	apiKeysIDs := []int{apiKey1.ID, apiKey2.ID, apiKey3.ID}
+	err = apiKeyService.BulkDisableAPIKeys(ctx, apiKeysIDs)
+	require.NoError(t, err)
+
+	// Verify all API keys are disabled
+	updatedAPIKeys, err := client.APIKey.Query().
+		Where(apikey.IDIn(apiKeysIDs...)).
+		All(ctx)
+	require.NoError(t, err)
+	require.Len(t, updatedAPIKeys, 3)
+
+	for _, updatedAPIKey := range updatedAPIKeys {
+		require.Equal(t, apikey.StatusDisabled, updatedAPIKey.Status)
+	}
+
+	// Test bulk disable with non-existent API key ID
+	apiKeysIDs = []int{apiKey1.ID, 99999}
+	err = apiKeyService.BulkDisableAPIKeys(ctx, apiKeysIDs)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "expected to find")
+
+	// Test bulk disable with empty list
+	err = apiKeyService.BulkDisableAPIKeys(ctx, []int{})
+	require.NoError(t, err)
+}
+
+func TestAPIKeyService_BulkArchiveAPIKeys(t *testing.T) {
+	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create test user
+	hashedPassword, err := HashPassword("test-password")
+	require.NoError(t, err)
+
+	testUser, err := client.User.Create().
+		SetEmail(fmt.Sprintf("test-%d@example.com", time.Now().UnixNano())).
+		SetPassword(hashedPassword).
+		SetFirstName("Test").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create test project
+	projectName := uuid.NewString()
+	testProject, err := client.Project.Create().
+		SetName(projectName).
+		SetDescription(projectName).
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create UserProject relationship
+	_, err = client.UserProject.Create().
+		SetUserID(testUser.ID).
+		SetProjectID(testProject.ID).
+		SetIsOwner(true).
+		Save(ctx)
+	require.NoError(t, err)
+
+	ctxWithUser := contexts.WithUser(ctx, testUser)
+	// Create multiple API keys
+	apiKey1, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+		Name:      "Test API Key 1",
+		ProjectID: testProject.ID,
+	})
+	require.NoError(t, err)
+
+	apiKey2, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+		Name:      "Test API Key 2",
+		ProjectID: testProject.ID,
+	})
+	require.NoError(t, err)
+
+	apiKey3, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+		Name:      "Test API Key 3",
+		ProjectID: testProject.ID,
+	})
+	require.NoError(t, err)
+
+	// Test bulk archive API keys
+	apiKeysIDs := []int{apiKey1.ID, apiKey2.ID, apiKey3.ID}
+	err = apiKeyService.BulkArchiveAPIKeys(ctx, apiKeysIDs)
+	require.NoError(t, err)
+
+	// Verify all API keys are archived
+	updatedAPIKeys, err := client.APIKey.Query().
+		Where(apikey.IDIn(apiKeysIDs...)).
+		All(ctx)
+	require.NoError(t, err)
+	require.Len(t, updatedAPIKeys, 3)
+
+	for _, updatedAPIKey := range updatedAPIKeys {
+		require.Equal(t, apikey.StatusArchived, updatedAPIKey.Status)
+	}
+
+	// Test bulk archive with non-existent API key ID
+	apiKeysIDs = []int{apiKey1.ID, 99999}
+	err = apiKeyService.BulkArchiveAPIKeys(ctx, apiKeysIDs)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "expected to find")
+
+	// Test bulk archive with empty list
+	err = apiKeyService.BulkArchiveAPIKeys(ctx, []int{})
+	require.NoError(t, err)
 }

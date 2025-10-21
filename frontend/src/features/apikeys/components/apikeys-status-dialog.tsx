@@ -8,7 +8,7 @@ import { useUpdateApiKeyStatus } from '../data/apikeys'
 
 export function ApiKeysStatusDialog() {
   const { t } = useTranslation()
-  const { isDialogOpen, closeDialog, selectedApiKey } = useApiKeysContext()
+  const { isDialogOpen, closeDialog, selectedApiKey, resetRowSelection } = useApiKeysContext()
   const updateApiKeyStatus = useUpdateApiKeyStatus()
 
   if (!selectedApiKey) return null
@@ -22,6 +22,7 @@ export function ApiKeysStatusDialog() {
         status: newStatus,
       })
       closeDialog('status')
+      resetRowSelection() // 清空选中的行
     } catch (error) {
       console.error('Failed to update API key status:', error)
     }
