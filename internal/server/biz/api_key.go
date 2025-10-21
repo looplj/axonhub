@@ -183,3 +183,89 @@ func (s *APIKeyService) invalidateAPIKeyCache(ctx context.Context, key string) {
 	cacheKey := buildAPIKeyCacheKey(key)
 	_ = s.APIKeyCache.Delete(ctx, cacheKey)
 }
+
+// BulkDisableAPIKeys disables multiple API keys by their IDs.
+func (s *APIKeyService) BulkDisableAPIKeys(ctx context.Context, ids []int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	client := ent.FromContext(ctx)
+	// Verify all API keys exist
+	count, err := client.APIKey.Query().
+		Where(apikey.IDIn(ids...)).
+		Count(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query API keys: %w", err)
+	}
+
+	if count != len(ids) {
+		return fmt.Errorf("expected to find %d API keys, but found %d", len(ids), count)
+	}
+
+	// Invalidate cache for all affected API keys
+	apiKeys, err := client.APIKey.Query().
+		Where(apikey.IDIn(ids...)).
+		All(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query API keys for cache invalidation: %w", err)
+	}
+
+	// Update all API keys status to disabled
+	_, err = client.APIKey.Update().
+		Where(apikey.IDIn(ids...)).
+		SetStatus(apikey.StatusDisabled).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to disable API keys: %w", err)
+	}
+
+	for _, apiKey := range apiKeys {
+		s.invalidateAPIKeyCache(ctx, apiKey.Key)
+	}
+
+	return nil
+}
+
+// BulkArchiveAPIKeys archives multiple API keys by their IDs.
+func (s *APIKeyService) BulkArchiveAPIKeys(ctx context.Context, ids []int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	client := ent.FromContext(ctx)
+	// Verify all API keys exist
+	count, err := client.APIKey.Query().
+		Where(apikey.IDIn(ids...)).
+		Count(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query API keys: %w", err)
+	}
+
+	if count != len(ids) {
+		return fmt.Errorf("expected to find %d API keys, but found %d", len(ids), count)
+	}
+
+	// Invalidate cache for all affected API keys
+	apiKeys, err := client.APIKey.Query().
+		Where(apikey.IDIn(ids...)).
+		All(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query API keys for cache invalidation: %w", err)
+	}
+
+	// Update all API keys status to archived
+	_, err = client.APIKey.Update().
+		Where(apikey.IDIn(ids...)).
+		SetStatus(apikey.StatusArchived).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to archive API keys: %w", err)
+	}
+
+	for _, apiKey := range apiKeys {
+		s.invalidateAPIKeyCache(ctx, apiKey.Key)
+	}
+
+	return nil
+}

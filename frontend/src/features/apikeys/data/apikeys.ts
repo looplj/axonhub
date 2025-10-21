@@ -152,6 +152,18 @@ const UPDATE_APIKEY_PROFILES_MUTATION = `
   }
 `
 
+const BULK_DISABLE_APIKEYS_MUTATION = `
+  mutation BulkDisableAPIKeys($ids: [ID!]!) {
+    bulkDisableAPIKeys(ids: $ids)
+  }
+`
+
+const BULK_ARCHIVE_APIKEYS_MUTATION = `
+  mutation BulkArchiveAPIKeys($ids: [ID!]!) {
+    bulkArchiveAPIKeys(ids: $ids)
+  }
+`
+
 // React Query hooks
 export function useApiKeys(variables?: {
   first?: number
@@ -308,6 +320,50 @@ export function useUpdateApiKeyProfiles() {
     onError: (error) => {
       toast.error(t('apikeys.messages.profilesUpdateError'))
       console.error('Update API Key profiles error:', error)
+    },
+  })
+}
+
+export function useBulkDisableApiKeys() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const selectedProjectId = useSelectedProjectId()
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
+      const data = await graphqlRequest<{ bulkDisableAPIKeys: boolean }>(BULK_DISABLE_APIKEYS_MUTATION, { ids }, headers)
+      return data.bulkDisableAPIKeys
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
+      toast.success(t('apikeys.messages.bulkDisableSuccess', { count: variables.length }))
+    },
+    onError: (error) => {
+      toast.error(t('apikeys.messages.bulkDisableError'))
+      console.error('Bulk disable API keys error:', error)
+    },
+  })
+}
+
+export function useBulkArchiveApiKeys() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const selectedProjectId = useSelectedProjectId()
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined
+      const data = await graphqlRequest<{ bulkArchiveAPIKeys: boolean }>(BULK_ARCHIVE_APIKEYS_MUTATION, { ids }, headers)
+      return data.bulkArchiveAPIKeys
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
+      toast.success(t('apikeys.messages.bulkArchiveSuccess', { count: variables.length }))
+    },
+    onError: (error) => {
+      toast.error(t('apikeys.messages.bulkArchiveError'))
+      console.error('Bulk archive API keys error:', error)
     },
   })
 }

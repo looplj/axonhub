@@ -212,7 +212,6 @@ func (s *RoleService) DeleteRole(ctx context.Context, id int) error {
 
 // BulkDeleteRoles deletes multiple roles and all associated user-role relationships.
 func (s *RoleService) BulkDeleteRoles(ctx context.Context, ids []int) error {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := ent.FromContext(ctx)
 
 	if len(ids) == 0 {

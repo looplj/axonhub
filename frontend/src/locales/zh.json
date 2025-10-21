@@ -308,7 +308,8 @@
       "copy": "复制",
       "view": "查看",
       "show": "显示",
-      "hide": "隐藏"
+      "hide": "隐藏",
+      "archive": "归档"
     },
     "dialogs": {
       "create": {
@@ -321,26 +322,33 @@
       },
       "delete": {
         "title": "删除 API Key",
-        "description": "确定要删除 API 密钥 \"{{name}}\" 吗？此操作无法撤销。"
+        "description": "确定要删除 API 密钥 {{name}} 吗？此操作无法撤销。"
       },
       "status": {
         "title": "更改状态",
         "description": "确定要更改此 API Key 的状态吗？",
         "disableTitle": "禁用 API Key",
         "enableTitle": "启用 API Key",
-        "disableDescription": "确定要禁用 API Key \"{{name}}\" 吗？",
-        "enableDescription": "确定要启用 API Key \"{{name}}\" 吗？",
-        "archive": {
-          "title": "归档 API Key",
-          "description": "确定要归档 API Key \"{{name}}\" 吗？",
-          "warning": "此操作将从列表中隐藏 API Key。您仍然可以通过使用状态筛选器来查看已归档的密钥。",
-          "button": "归档"
-        }
+        "disableDescription": "确定要禁用 API Key {{name}} 吗？",
+        "enableDescription": "确定要启用 API Key {{name}} 吗？"
+      },
+      "archive": {
+        "title": "归档 API Key",
+        "description": "确定要归档 API Key {{name}} 吗？",
+        "warning": "此操作将从列表中隐藏 API Key。您仍然可以通过使用状态筛选器来查看已归档的密钥。"
       },
       "view": {
         "title": "查看 API 密钥",
         "description": "查看完整的 API 密钥详情。",
-        "warning": "⚠️ 请妥善保管您的 API 密钥，不要与未授权的人员分享。任何拥有此密钥的人都可以代表您发出请求。"
+        "warning": "  请妥善保管您的 API 密钥，不要与未授权的人员分享。任何拥有此密钥的人都可以代表您发出请求。"
+      },
+      "bulkDisable": {
+        "title": "批量禁用 API Keys",
+        "description": "确定要禁用 {{count}} 个选定的 API Keys 吗？此操作无法撤销。"
+      },
+      "bulkArchive": {
+        "title": "批量归档 API Keys",
+        "description": "确定要归档 {{count}} 个选定的 API Keys 吗？此操作无法撤销。"
       },
       "fields": {
         "name": {
@@ -371,7 +379,11 @@
       "statusUpdateSuccess": "API Key 状态已更新为 {{status}}",
       "statusUpdateError": "状态更新失败",
       "profilesUpdateSuccess": "配置文件更新成功",
-      "profilesUpdateError": "配置文件更新失败"
+      "profilesUpdateError": "配置文件更新失败",
+      "bulkDisableSuccess": "成功禁用了 {{count}} 个 API Keys",
+      "bulkDisableError": "禁用 API Keys 失败",
+      "bulkArchiveSuccess": "成功归档了 {{count}} 个 API Keys",
+      "bulkArchiveError": "归档 API Keys 失败"
     },
     "errors": {
       "fetchData": "获取API密钥数据",

@@ -134,6 +134,30 @@ func (r *mutationResolver) UpdateAPIKeyProfiles(ctx context.Context, id objects.
 	return r.apiKeyService.UpdateAPIKeyProfiles(ctx, id.ID, input)
 }
 
+// BulkDisableAPIKeys is the resolver for the bulkDisableAPIKeys field.
+func (r *mutationResolver) BulkDisableAPIKeys(ctx context.Context, ids []*objects.GUID) (bool, error) {
+	apiKeyIDs := objects.IntGuids(ids)
+
+	err := r.apiKeyService.BulkDisableAPIKeys(ctx, apiKeyIDs)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// BulkArchiveAPIKeys is the resolver for the bulkArchiveAPIKeys field.
+func (r *mutationResolver) BulkArchiveAPIKeys(ctx context.Context, ids []*objects.GUID) (bool, error) {
+	apiKeyIDs := objects.IntGuids(ids)
+
+	err := r.apiKeyService.BulkArchiveAPIKeys(ctx, apiKeyIDs)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error) {
 	return r.userService.CreateUser(ctx, input)

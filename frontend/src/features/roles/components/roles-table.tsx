@@ -108,6 +108,7 @@ export function RolesTable({
     manualPagination: true,
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getRowId: (row) => row.id, // 使用Role的ID作为行ID
   })
 
   return (

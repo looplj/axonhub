@@ -8,6 +8,8 @@ import { ApiKeyProfilesDialog } from './apikeys-profiles-dialog'
 // import { ApiKeysDeleteDialog } from './apikeys-delete-dialog'
 import { ApiKeysStatusDialog } from './apikeys-status-dialog'
 import { ApiKeysViewDialog } from './apikeys-view-dialog'
+import { ApiKeysBulkDisableDialog } from './apikeys-bulk-disable-dialog'
+import { ApiKeysBulkArchiveDialog } from './apikeys-bulk-archive-dialog'
 
 export function ApiKeysDialogs() {
   return (
@@ -19,6 +21,8 @@ export function ApiKeysDialogs() {
       <ApiKeysViewDialog />
       <ApiKeysArchiveDialog />
       <ApiKeysProfilesDialogWrapper />
+      <ApiKeysBulkDisableDialog />
+      <ApiKeysBulkArchiveDialog />
     </>
   )
 }

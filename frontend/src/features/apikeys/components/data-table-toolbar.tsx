@@ -1,27 +1,28 @@
 import { useMemo } from 'react'
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { Table } from '@tanstack/react-table'
+import { IconArchive, IconUserOff } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { useMe } from '@/features/auth/data/auth'
 import { useUsers } from '@/features/users/data/users'
-import { DataTableViewOptions } from './data-table-view-options'
-import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
+import { useApiKeysContext } from '../context/apikeys-context'
 import { ApiKeyStatus } from '../data/schema'
+import { DataTableViewOptions } from './data-table-view-options'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
   onResetFilters?: () => void
 }
 
-export function DataTableToolbar<TData>({
-  table,
-  onResetFilters,
-}: DataTableToolbarProps<TData>) {
+export function DataTableToolbar<TData>({ table, onResetFilters }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
+  const { openDialog } = useApiKeysContext()
   const isFiltered = table.getState().columnFilters.length > 0
+  const selectedRows = table.getFilteredSelectedRowModel().rows
 
   // Get current user and permissions
   const { user: authUser } = useAuthStore((state) => state.auth)
@@ -32,9 +33,7 @@ export function DataTableToolbar<TData>({
 
   // Check if user has permission to view users and API keys
   const canViewUsers =
-    isOwner ||
-    userScopes.includes('*') ||
-    (userScopes.includes('read_users') && userScopes.includes('read_apikeys'))
+    isOwner || userScopes.includes('*') || (userScopes.includes('read_users') && userScopes.includes('read_apikeys'))
 
   // Fetch users data if user has permission
   const { data: usersData } = useUsers(
@@ -78,9 +77,7 @@ export function DataTableToolbar<TData>({
         <Input
           placeholder={t('apikeys.filters.filterName')}
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
-          onChange={(event) =>
-            table.getColumn('name')?.setFilterValue(event.target.value)
-          }
+          onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
           className='h-8 w-[150px] lg:w-[250px]'
         />
         {table.getColumn('status') && (
@@ -90,16 +87,13 @@ export function DataTableToolbar<TData>({
             options={statusOptions}
           />
         )}
-        {canViewUsers &&
-          table.getColumn('creator') &&
-          userOptions.length > 0 &&
-          usersData?.edges && (
-            <DataTableFacetedFilter
-              column={table.getColumn('creator')}
-              title={t('apikeys.filters.user')}
-              options={userOptions}
-            />
-          )}
+        {canViewUsers && table.getColumn('creator') && userOptions.length > 0 && usersData?.edges && (
+          <DataTableFacetedFilter
+            column={table.getColumn('creator')}
+            title={t('apikeys.filters.user')}
+            options={userOptions}
+          />
+        )}
         {isFiltered && (
           <Button
             variant='ghost'
@@ -111,6 +105,38 @@ export function DataTableToolbar<TData>({
           >
             {t('common.filters.reset')}
             <Cross2Icon className='ml-2 h-4 w-4' />
+          </Button>
+        )}
+        {selectedRows.length > 0 && (
+          <Button
+            variant='destructive'
+            size='sm'
+            onClick={() =>
+              openDialog(
+                'bulkDisable',
+                selectedRows.map((row) => row.original as any)
+              )
+            }
+            className='h-8'
+          >
+            <IconUserOff className='mr-2 h-4 w-4' />
+            {t('common.buttons.disable')} ({selectedRows.length})
+          </Button>
+        )}
+        {selectedRows.length > 0 && (
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() =>
+              openDialog(
+                'bulkArchive',
+                selectedRows.map((row) => row.original as any)
+              )
+            }
+            className='h-8 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
+          >
+            <IconArchive className='mr-2 h-4 w-4' />
+            {t('common.buttons.archive')} ({selectedRows.length})
           </Button>
         )}
       </div>

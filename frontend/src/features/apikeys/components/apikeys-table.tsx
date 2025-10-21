@@ -12,15 +12,9 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ServerSidePagination } from '@/components/server-side-pagination'
+import { useApiKeysContext } from '../context/apikeys-context'
 import { ApiKey, ApiKeyConnection } from '../data/schema'
 import { DataTableToolbar } from './data-table-toolbar'
 
@@ -48,6 +42,7 @@ interface DataTableProps {
   onStatusFilterChange: (value: string[]) => void
   onUserFilterChange: (value: string[]) => void
   onResetFilters?: () => void
+  onBulkDisable?: (apiKeys: ApiKey[]) => void
 }
 
 export function ApiKeysTable({
@@ -67,12 +62,19 @@ export function ApiKeysTable({
   onStatusFilterChange,
   onUserFilterChange,
   onResetFilters,
+  onBulkDisable,
 }: DataTableProps) {
   const { t } = useTranslation()
+  const { setResetRowSelection } = useApiKeysContext()
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
+
+  // 注册重置选择的方法到 context
+  React.useEffect(() => {
+    setResetRowSelection(() => () => setRowSelection({}))
+  }, [setRowSelection])
 
   // Sync server state to local column filters (for UI display)
   React.useEffect(() => {
@@ -90,12 +92,9 @@ export function ApiKeysTable({
   }, [nameFilter, statusFilter, userFilter])
 
   const handleColumnFiltersChange = (
-    updater:
-      | ColumnFiltersState
-      | ((prev: ColumnFiltersState) => ColumnFiltersState)
+    updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)
   ) => {
-    const newFilters =
-      typeof updater === 'function' ? updater(columnFilters) : updater
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
 
     // Extract filter values
@@ -104,26 +103,18 @@ export function ApiKeysTable({
     const userFilterValue = newFilters.find((f) => f.id === 'creator')?.value
 
     // Only update if values actually change to prevent reset issues
-    const newNameFilter =
-      typeof nameFilterValue === 'string' ? nameFilterValue : ''
+    const newNameFilter = typeof nameFilterValue === 'string' ? nameFilterValue : ''
     if (newNameFilter !== nameFilter) {
       onNameFilterChange(newNameFilter)
     }
 
-    const newStatusFilter = Array.isArray(statusFilterValue)
-      ? statusFilterValue
-      : []
-    if (
-      JSON.stringify(newStatusFilter.sort()) !==
-      JSON.stringify(statusFilter.sort())
-    ) {
+    const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : []
+    if (JSON.stringify(newStatusFilter.sort()) !== JSON.stringify(statusFilter.sort())) {
       onStatusFilterChange(newStatusFilter)
     }
 
     const newUserFilter = Array.isArray(userFilterValue) ? userFilterValue : []
-    if (
-      JSON.stringify(newUserFilter.sort()) !== JSON.stringify(userFilter.sort())
-    ) {
+    if (JSON.stringify(newUserFilter.sort()) !== JSON.stringify(userFilter.sort())) {
       onUserFilterChange(newUserFilter)
     }
   }
@@ -147,6 +138,7 @@ export function ApiKeysTable({
     manualFiltering: true,
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getRowId: (row) => row.id, // 使用API Key的ID作为行ID
   })
 
   return (
@@ -164,12 +156,7 @@ export function ApiKeysTable({
                       colSpan={header.colSpan}
                       className={header.column.columnDef.meta?.className}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   )
                 })}
@@ -179,39 +166,23 @@ export function ApiKeysTable({
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className='h-24 text-center'
-                >
+                <TableCell colSpan={columns.length} className='h-24 text-center'>
                   {t('loading')}
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                  className='group/row'
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row'>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={cell.column.columnDef.meta?.className}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                    <TableCell key={cell.id} className={cell.column.columnDef.meta?.className}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className='h-24 text-center'
-                >
+                <TableCell colSpan={columns.length} className='h-24 text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
