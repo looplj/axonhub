@@ -31,6 +31,35 @@ func TestV0_3_0_NoOwnerUser(t *testing.T) {
 	assert.Equal(t, 0, count)
 }
 
+func TestV0_3_0_MultipleProjectsExist(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create multiple existing projects
+	_, err := client.Project.Create().
+		SetName("Existing Project 1").
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.Project.Create().
+		SetName("Existing Project 2").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Run migration - should skip without error
+	err = NewV0_3_0().Migrate(ctx, client)
+	require.NoError(t, err)
+
+	// Verify no additional projects were created
+	count, err := client.Project.Query().Count(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
+}
+
 func TestV0_3_0_WithOwnerUser(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
