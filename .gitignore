@@ -130,6 +130,7 @@ scripts/.e2e-backend.pid
 scripts/axonhub-e2e.db
 scripts/e2e-backend.log
 scripts/axonhub-e2e
+scripts/.e2e-backend-db-type
 
 # Migration testing artifacts
 scripts/migration-test/
