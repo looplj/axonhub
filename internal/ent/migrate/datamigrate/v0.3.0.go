@@ -28,7 +28,7 @@ func NewV0_3_0() DataMigrator {
 func (v *V0_3_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	// Check if a project already exists
-	_, err = client.Project.Query().Limit(1).Only(ctx)
+	_, err = client.Project.Query().Limit(1).First(ctx)
 	if err == nil {
 		log.Info(ctx, "existed project found, skip migration")
 		return nil
