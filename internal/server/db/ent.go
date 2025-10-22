@@ -75,7 +75,7 @@ func NewEntClient(cfg Config) *ent.Client {
 		panic(err)
 	}
 
-	if err := datamigrate.V0_3_0(context.Background(), client); err != nil {
+	if err := datamigrate.NewV0_3_0().Migrate(context.Background(), client); err != nil {
 		panic(err)
 	}
 

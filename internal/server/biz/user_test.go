@@ -18,7 +18,7 @@ import (
 
 func setupTestUserService(t *testing.T) (*UserService, *ent.Client) {
 	t.Helper()
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 	userService := &UserService{
