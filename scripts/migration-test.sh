@@ -636,20 +636,37 @@ execute_migration_plan() {
 run_e2e_tests() {
     print_step "Running e2e tests to verify migration" >&2
     
-    # Only copy database for SQLite
+    local db_dsn
+    db_dsn=$(get_db_dsn)
+    local db_dialect
+    db_dialect=$(get_db_dialect)
+
     if [[ "$DB_TYPE" == "sqlite" ]]; then
         local e2e_db="${SCRIPT_DIR}/axonhub-e2e.db"
         cp "$DB_FILE" "$e2e_db"
         print_info "Database copied to e2e location: $e2e_db" >&2
-    else
-        print_warning "E2E tests with MySQL/PostgreSQL require manual configuration" >&2
-        print_info "Skipping e2e tests for non-SQLite databases" >&2
-        return 0
+        cd "$PROJECT_ROOT"
+        if env \
+            AXONHUB_E2E_DB_TYPE="$DB_TYPE" \
+            AXONHUB_E2E_DB_DIALECT="$db_dialect" \
+            ./scripts/e2e-test.sh; then
+            print_success "E2E tests passed!" >&2
+            return 0
+        else
+            print_error "E2E tests failed" >&2
+            return 1
+        fi
     fi
-    
-    # Run e2e tests
+
+    print_info "Reusing migrated $DB_TYPE database for e2e tests" >&2
+
     cd "$PROJECT_ROOT"
-    if ./scripts/e2e-test.sh; then
+    if env \
+        AXONHUB_E2E_DB_TYPE="$DB_TYPE" \
+        AXONHUB_E2E_DB_DIALECT="$db_dialect" \
+        AXONHUB_E2E_DB_DSN="$db_dsn" \
+        AXONHUB_E2E_USE_EXISTING_DB="true" \
+        ./scripts/e2e-test.sh; then
         print_success "E2E tests passed!" >&2
         return 0
     else
