@@ -47,19 +47,25 @@ type ProjectEdges struct {
 	Requests []*Request `json:"requests,omitempty"`
 	// UsageLogs holds the value of the usage_logs edge.
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
+	// Threads holds the value of the threads edge.
+	Threads []*Thread `json:"threads,omitempty"`
+	// Traces holds the value of the traces edge.
+	Traces []*Trace `json:"traces,omitempty"`
 	// ProjectUsers holds the value of the project_users edge.
 	ProjectUsers []*UserProject `json:"project_users,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [6]bool
+	loadedTypes [8]bool
 	// totalCount holds the count of the edges above.
-	totalCount [6]map[string]int
+	totalCount [8]map[string]int
 
 	namedUsers        map[string][]*User
 	namedRoles        map[string][]*Role
 	namedAPIKeys      map[string][]*APIKey
 	namedRequests     map[string][]*Request
 	namedUsageLogs    map[string][]*UsageLog
+	namedThreads      map[string][]*Thread
+	namedTraces       map[string][]*Trace
 	namedProjectUsers map[string][]*UserProject
 }
 
@@ -108,10 +114,28 @@ func (e ProjectEdges) UsageLogsOrErr() ([]*UsageLog, error) {
 	return nil, &NotLoadedError{edge: "usage_logs"}
 }
 
+// ThreadsOrErr returns the Threads value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) ThreadsOrErr() ([]*Thread, error) {
+	if e.loadedTypes[5] {
+		return e.Threads, nil
+	}
+	return nil, &NotLoadedError{edge: "threads"}
+}
+
+// TracesOrErr returns the Traces value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) TracesOrErr() ([]*Trace, error) {
+	if e.loadedTypes[6] {
+		return e.Traces, nil
+	}
+	return nil, &NotLoadedError{edge: "traces"}
+}
+
 // ProjectUsersOrErr returns the ProjectUsers value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) ProjectUsersOrErr() ([]*UserProject, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[7] {
 		return e.ProjectUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "project_users"}
@@ -221,6 +245,16 @@ func (_m *Project) QueryRequests() *RequestQuery {
 // QueryUsageLogs queries the "usage_logs" edge of the Project entity.
 func (_m *Project) QueryUsageLogs() *UsageLogQuery {
 	return NewProjectClient(_m.config).QueryUsageLogs(_m)
+}
+
+// QueryThreads queries the "threads" edge of the Project entity.
+func (_m *Project) QueryThreads() *ThreadQuery {
+	return NewProjectClient(_m.config).QueryThreads(_m)
+}
+
+// QueryTraces queries the "traces" edge of the Project entity.
+func (_m *Project) QueryTraces() *TraceQuery {
+	return NewProjectClient(_m.config).QueryTraces(_m)
 }
 
 // QueryProjectUsers queries the "project_users" edge of the Project entity.
@@ -389,6 +423,54 @@ func (_m *Project) appendNamedUsageLogs(name string, edges ...*UsageLog) {
 		_m.Edges.namedUsageLogs[name] = []*UsageLog{}
 	} else {
 		_m.Edges.namedUsageLogs[name] = append(_m.Edges.namedUsageLogs[name], edges...)
+	}
+}
+
+// NamedThreads returns the Threads named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Project) NamedThreads(name string) ([]*Thread, error) {
+	if _m.Edges.namedThreads == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedThreads[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Project) appendNamedThreads(name string, edges ...*Thread) {
+	if _m.Edges.namedThreads == nil {
+		_m.Edges.namedThreads = make(map[string][]*Thread)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedThreads[name] = []*Thread{}
+	} else {
+		_m.Edges.namedThreads[name] = append(_m.Edges.namedThreads[name], edges...)
+	}
+}
+
+// NamedTraces returns the Traces named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Project) NamedTraces(name string) ([]*Trace, error) {
+	if _m.Edges.namedTraces == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedTraces[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Project) appendNamedTraces(name string, edges ...*Trace) {
+	if _m.Edges.namedTraces == nil {
+		_m.Edges.namedTraces = make(map[string][]*Trace)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedTraces[name] = []*Trace{}
+	} else {
+		_m.Edges.namedTraces[name] = append(_m.Edges.namedTraces[name], edges...)
 	}
 }
 

@@ -26,6 +26,10 @@ type Tx struct {
 	Role *RoleClient
 	// System is the client for interacting with the System builders.
 	System *SystemClient
+	// Thread is the client for interacting with the Thread builders.
+	Thread *ThreadClient
+	// Trace is the client for interacting with the Trace builders.
+	Trace *TraceClient
 	// UsageLog is the client for interacting with the UsageLog builders.
 	UsageLog *UsageLogClient
 	// User is the client for interacting with the User builders.
@@ -172,6 +176,8 @@ func (tx *Tx) init() {
 	tx.RequestExecution = NewRequestExecutionClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
 	tx.System = NewSystemClient(tx.config)
+	tx.Thread = NewThreadClient(tx.config)
+	tx.Trace = NewTraceClient(tx.config)
 	tx.UsageLog = NewUsageLogClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.UserProject = NewUserProjectClient(tx.config)

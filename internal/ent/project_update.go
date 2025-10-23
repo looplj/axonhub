@@ -16,6 +16,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -179,6 +181,36 @@ func (_u *ProjectUpdate) AddUsageLogs(v ...*UsageLog) *ProjectUpdate {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddThreadIDs adds the "threads" edge to the Thread entity by IDs.
+func (_u *ProjectUpdate) AddThreadIDs(ids ...int) *ProjectUpdate {
+	_u.mutation.AddThreadIDs(ids...)
+	return _u
+}
+
+// AddThreads adds the "threads" edges to the Thread entity.
+func (_u *ProjectUpdate) AddThreads(v ...*Thread) *ProjectUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddThreadIDs(ids...)
+}
+
+// AddTraceIDs adds the "traces" edge to the Trace entity by IDs.
+func (_u *ProjectUpdate) AddTraceIDs(ids ...int) *ProjectUpdate {
+	_u.mutation.AddTraceIDs(ids...)
+	return _u
+}
+
+// AddTraces adds the "traces" edges to the Trace entity.
+func (_u *ProjectUpdate) AddTraces(v ...*Trace) *ProjectUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddTraceIDs(ids...)
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
 func (_u *ProjectUpdate) AddProjectUserIDs(ids ...int) *ProjectUpdate {
 	_u.mutation.AddProjectUserIDs(ids...)
@@ -302,6 +334,48 @@ func (_u *ProjectUpdate) RemoveUsageLogs(v ...*UsageLog) *ProjectUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearThreads clears all "threads" edges to the Thread entity.
+func (_u *ProjectUpdate) ClearThreads() *ProjectUpdate {
+	_u.mutation.ClearThreads()
+	return _u
+}
+
+// RemoveThreadIDs removes the "threads" edge to Thread entities by IDs.
+func (_u *ProjectUpdate) RemoveThreadIDs(ids ...int) *ProjectUpdate {
+	_u.mutation.RemoveThreadIDs(ids...)
+	return _u
+}
+
+// RemoveThreads removes "threads" edges to Thread entities.
+func (_u *ProjectUpdate) RemoveThreads(v ...*Thread) *ProjectUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveThreadIDs(ids...)
+}
+
+// ClearTraces clears all "traces" edges to the Trace entity.
+func (_u *ProjectUpdate) ClearTraces() *ProjectUpdate {
+	_u.mutation.ClearTraces()
+	return _u
+}
+
+// RemoveTraceIDs removes the "traces" edge to Trace entities by IDs.
+func (_u *ProjectUpdate) RemoveTraceIDs(ids ...int) *ProjectUpdate {
+	_u.mutation.RemoveTraceIDs(ids...)
+	return _u
+}
+
+// RemoveTraces removes "traces" edges to Trace entities.
+func (_u *ProjectUpdate) RemoveTraces(v ...*Trace) *ProjectUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveTraceIDs(ids...)
 }
 
 // ClearProjectUsers clears all "project_users" edges to the UserProject entity.
@@ -650,6 +724,96 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ThreadsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ThreadsTable,
+			Columns: []string{project.ThreadsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thread.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedThreadsIDs(); len(nodes) > 0 && !_u.mutation.ThreadsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ThreadsTable,
+			Columns: []string{project.ThreadsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thread.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ThreadsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ThreadsTable,
+			Columns: []string{project.ThreadsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thread.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.TracesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.TracesTable,
+			Columns: []string{project.TracesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trace.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedTracesIDs(); len(nodes) > 0 && !_u.mutation.TracesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.TracesTable,
+			Columns: []string{project.TracesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trace.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.TracesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.TracesTable,
+			Columns: []string{project.TracesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trace.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ProjectUsersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -861,6 +1025,36 @@ func (_u *ProjectUpdateOne) AddUsageLogs(v ...*UsageLog) *ProjectUpdateOne {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// AddThreadIDs adds the "threads" edge to the Thread entity by IDs.
+func (_u *ProjectUpdateOne) AddThreadIDs(ids ...int) *ProjectUpdateOne {
+	_u.mutation.AddThreadIDs(ids...)
+	return _u
+}
+
+// AddThreads adds the "threads" edges to the Thread entity.
+func (_u *ProjectUpdateOne) AddThreads(v ...*Thread) *ProjectUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddThreadIDs(ids...)
+}
+
+// AddTraceIDs adds the "traces" edge to the Trace entity by IDs.
+func (_u *ProjectUpdateOne) AddTraceIDs(ids ...int) *ProjectUpdateOne {
+	_u.mutation.AddTraceIDs(ids...)
+	return _u
+}
+
+// AddTraces adds the "traces" edges to the Trace entity.
+func (_u *ProjectUpdateOne) AddTraces(v ...*Trace) *ProjectUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddTraceIDs(ids...)
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
 func (_u *ProjectUpdateOne) AddProjectUserIDs(ids ...int) *ProjectUpdateOne {
 	_u.mutation.AddProjectUserIDs(ids...)
@@ -984,6 +1178,48 @@ func (_u *ProjectUpdateOne) RemoveUsageLogs(v ...*UsageLog) *ProjectUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearThreads clears all "threads" edges to the Thread entity.
+func (_u *ProjectUpdateOne) ClearThreads() *ProjectUpdateOne {
+	_u.mutation.ClearThreads()
+	return _u
+}
+
+// RemoveThreadIDs removes the "threads" edge to Thread entities by IDs.
+func (_u *ProjectUpdateOne) RemoveThreadIDs(ids ...int) *ProjectUpdateOne {
+	_u.mutation.RemoveThreadIDs(ids...)
+	return _u
+}
+
+// RemoveThreads removes "threads" edges to Thread entities.
+func (_u *ProjectUpdateOne) RemoveThreads(v ...*Thread) *ProjectUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveThreadIDs(ids...)
+}
+
+// ClearTraces clears all "traces" edges to the Trace entity.
+func (_u *ProjectUpdateOne) ClearTraces() *ProjectUpdateOne {
+	_u.mutation.ClearTraces()
+	return _u
+}
+
+// RemoveTraceIDs removes the "traces" edge to Trace entities by IDs.
+func (_u *ProjectUpdateOne) RemoveTraceIDs(ids ...int) *ProjectUpdateOne {
+	_u.mutation.RemoveTraceIDs(ids...)
+	return _u
+}
+
+// RemoveTraces removes "traces" edges to Trace entities.
+func (_u *ProjectUpdateOne) RemoveTraces(v ...*Trace) *ProjectUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveTraceIDs(ids...)
 }
 
 // ClearProjectUsers clears all "project_users" edges to the UserProject entity.
@@ -1355,6 +1591,96 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ThreadsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ThreadsTable,
+			Columns: []string{project.ThreadsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thread.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedThreadsIDs(); len(nodes) > 0 && !_u.mutation.ThreadsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ThreadsTable,
+			Columns: []string{project.ThreadsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thread.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ThreadsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ThreadsTable,
+			Columns: []string{project.ThreadsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thread.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.TracesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.TracesTable,
+			Columns: []string{project.TracesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trace.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedTracesIDs(); len(nodes) > 0 && !_u.mutation.TracesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.TracesTable,
+			Columns: []string{project.TracesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trace.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.TracesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.TracesTable,
+			Columns: []string{project.TracesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trace.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

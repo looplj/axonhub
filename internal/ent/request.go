@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -32,6 +33,8 @@ type Request struct {
 	APIKeyID int `json:"api_key_id,omitempty"`
 	// Project ID, default to 1 for backward compatibility
 	ProjectID int `json:"project_id,omitempty"`
+	// Trace ID that this request belongs to
+	TraceID int `json:"trace_id,omitempty"`
 	// Source holds the value of the "source" field.
 	Source request.Source `json:"source,omitempty"`
 	// ModelID holds the value of the "model_id" field.
@@ -64,6 +67,8 @@ type RequestEdges struct {
 	APIKey *APIKey `json:"api_key,omitempty"`
 	// Project holds the value of the project edge.
 	Project *Project `json:"project,omitempty"`
+	// Trace holds the value of the trace edge.
+	Trace *Trace `json:"trace,omitempty"`
 	// Executions holds the value of the executions edge.
 	Executions []*RequestExecution `json:"executions,omitempty"`
 	// Channel holds the value of the channel edge.
@@ -72,9 +77,9 @@ type RequestEdges struct {
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [5]bool
+	loadedTypes [6]bool
 	// totalCount holds the count of the edges above.
-	totalCount [5]map[string]int
+	totalCount [6]map[string]int
 
 	namedExecutions map[string][]*RequestExecution
 	namedUsageLogs  map[string][]*UsageLog
@@ -102,10 +107,21 @@ func (e RequestEdges) ProjectOrErr() (*Project, error) {
 	return nil, &NotLoadedError{edge: "project"}
 }
 
+// TraceOrErr returns the Trace value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e RequestEdges) TraceOrErr() (*Trace, error) {
+	if e.Trace != nil {
+		return e.Trace, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: trace.Label}
+	}
+	return nil, &NotLoadedError{edge: "trace"}
+}
+
 // ExecutionsOrErr returns the Executions value or an error if the edge
 // was not loaded in eager-loading.
 func (e RequestEdges) ExecutionsOrErr() ([]*RequestExecution, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.Executions, nil
 	}
 	return nil, &NotLoadedError{edge: "executions"}
@@ -116,7 +132,7 @@ func (e RequestEdges) ExecutionsOrErr() ([]*RequestExecution, error) {
 func (e RequestEdges) ChannelOrErr() (*Channel, error) {
 	if e.Channel != nil {
 		return e.Channel, nil
-	} else if e.loadedTypes[3] {
+	} else if e.loadedTypes[4] {
 		return nil, &NotFoundError{label: channel.Label}
 	}
 	return nil, &NotLoadedError{edge: "channel"}
@@ -125,7 +141,7 @@ func (e RequestEdges) ChannelOrErr() (*Channel, error) {
 // UsageLogsOrErr returns the UsageLogs value or an error if the edge
 // was not loaded in eager-loading.
 func (e RequestEdges) UsageLogsOrErr() ([]*UsageLog, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.UsageLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "usage_logs"}
@@ -140,7 +156,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case request.FieldStream:
 			values[i] = new(sql.NullBool)
-		case request.FieldID, request.FieldDeletedAt, request.FieldAPIKeyID, request.FieldProjectID, request.FieldChannelID:
+		case request.FieldID, request.FieldDeletedAt, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldChannelID:
 			values[i] = new(sql.NullInt64)
 		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -196,6 +212,12 @@ func (_m *Request) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field project_id", values[i])
 			} else if value.Valid {
 				_m.ProjectID = int(value.Int64)
+			}
+		case request.FieldTraceID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field trace_id", values[i])
+			} else if value.Valid {
+				_m.TraceID = int(value.Int64)
 			}
 		case request.FieldSource:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -286,6 +308,11 @@ func (_m *Request) QueryProject() *ProjectQuery {
 	return NewRequestClient(_m.config).QueryProject(_m)
 }
 
+// QueryTrace queries the "trace" edge of the Request entity.
+func (_m *Request) QueryTrace() *TraceQuery {
+	return NewRequestClient(_m.config).QueryTrace(_m)
+}
+
 // QueryExecutions queries the "executions" edge of the Request entity.
 func (_m *Request) QueryExecutions() *RequestExecutionQuery {
 	return NewRequestClient(_m.config).QueryExecutions(_m)
@@ -338,6 +365,9 @@ func (_m *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("project_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ProjectID))
+	builder.WriteString(", ")
+	builder.WriteString("trace_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TraceID))
 	builder.WriteString(", ")
 	builder.WriteString("source=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Source))

@@ -27,6 +27,12 @@ type Role func(*sql.Selector)
 // System is the predicate function for system builders.
 type System func(*sql.Selector)
 
+// Thread is the predicate function for thread builders.
+type Thread func(*sql.Selector)
+
+// Trace is the predicate function for trace builders.
+type Trace func(*sql.Selector)
+
 // UsageLog is the predicate function for usagelog builders.
 type UsageLog func(*sql.Selector)
 

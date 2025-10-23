@@ -15,6 +15,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -177,6 +179,36 @@ func (_c *ProjectCreate) AddUsageLogs(v ...*UsageLog) *ProjectCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddUsageLogIDs(ids...)
+}
+
+// AddThreadIDs adds the "threads" edge to the Thread entity by IDs.
+func (_c *ProjectCreate) AddThreadIDs(ids ...int) *ProjectCreate {
+	_c.mutation.AddThreadIDs(ids...)
+	return _c
+}
+
+// AddThreads adds the "threads" edges to the Thread entity.
+func (_c *ProjectCreate) AddThreads(v ...*Thread) *ProjectCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddThreadIDs(ids...)
+}
+
+// AddTraceIDs adds the "traces" edge to the Trace entity by IDs.
+func (_c *ProjectCreate) AddTraceIDs(ids ...int) *ProjectCreate {
+	_c.mutation.AddTraceIDs(ids...)
+	return _c
+}
+
+// AddTraces adds the "traces" edges to the Trace entity.
+func (_c *ProjectCreate) AddTraces(v ...*Trace) *ProjectCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTraceIDs(ids...)
 }
 
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
@@ -413,6 +445,38 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ThreadsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ThreadsTable,
+			Columns: []string{project.ThreadsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(thread.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TracesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.TracesTable,
+			Columns: []string{project.TracesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trace.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

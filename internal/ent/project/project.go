@@ -40,6 +40,10 @@ const (
 	EdgeRequests = "requests"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
+	// EdgeThreads holds the string denoting the threads edge name in mutations.
+	EdgeThreads = "threads"
+	// EdgeTraces holds the string denoting the traces edge name in mutations.
+	EdgeTraces = "traces"
 	// EdgeProjectUsers holds the string denoting the project_users edge name in mutations.
 	EdgeProjectUsers = "project_users"
 	// Table holds the table name of the project in the database.
@@ -77,6 +81,20 @@ const (
 	UsageLogsInverseTable = "usage_logs"
 	// UsageLogsColumn is the table column denoting the usage_logs relation/edge.
 	UsageLogsColumn = "project_id"
+	// ThreadsTable is the table that holds the threads relation/edge.
+	ThreadsTable = "threads"
+	// ThreadsInverseTable is the table name for the Thread entity.
+	// It exists in this package in order to avoid circular dependency with the "thread" package.
+	ThreadsInverseTable = "threads"
+	// ThreadsColumn is the table column denoting the threads relation/edge.
+	ThreadsColumn = "project_id"
+	// TracesTable is the table that holds the traces relation/edge.
+	TracesTable = "traces"
+	// TracesInverseTable is the table name for the Trace entity.
+	// It exists in this package in order to avoid circular dependency with the "trace" package.
+	TracesInverseTable = "traces"
+	// TracesColumn is the table column denoting the traces relation/edge.
+	TracesColumn = "project_id"
 	// ProjectUsersTable is the table that holds the project_users relation/edge.
 	ProjectUsersTable = "user_projects"
 	// ProjectUsersInverseTable is the table name for the UserProject entity.
@@ -268,6 +286,34 @@ func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByThreadsCount orders the results by threads count.
+func ByThreadsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newThreadsStep(), opts...)
+	}
+}
+
+// ByThreads orders the results by threads terms.
+func ByThreads(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newThreadsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByTracesCount orders the results by traces count.
+func ByTracesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newTracesStep(), opts...)
+	}
+}
+
+// ByTraces orders the results by traces terms.
+func ByTraces(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTracesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByProjectUsersCount orders the results by project_users count.
 func ByProjectUsersCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -314,6 +360,20 @@ func newUsageLogsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UsageLogsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
+	)
+}
+func newThreadsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ThreadsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ThreadsTable, ThreadsColumn),
+	)
+}
+func newTracesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TracesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, TracesTable, TracesColumn),
 	)
 }
 func newProjectUsersStep() *sqlgraph.Step {

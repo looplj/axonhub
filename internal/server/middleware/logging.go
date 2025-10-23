@@ -9,9 +9,9 @@ import (
 	"github.com/looplj/axonhub/internal/tracing"
 )
 
-// WithTracing 中间件用于处理 trace ID.
-// 如果请求头中包含配置的 trace header，则使用该 ID，否则生成一个新的 trace ID.
-func WithTracing(config tracing.Config) gin.HandlerFunc {
+// WithLoggingTracing save the trace ID to the request context.
+// So the logger can log the traace ID in the next logs.
+func WithLoggingTracing(config tracing.Config) gin.HandlerFunc {
 	// Use the configured trace header name, or default to "AH-Trace-Id"
 	traceHeader := config.TraceHeader
 	if traceHeader == "" {
@@ -25,9 +25,7 @@ func WithTracing(config tracing.Config) gin.HandlerFunc {
 			traceID = tracing.GenerateTraceID()
 		}
 
-		c.Header(traceHeader, traceID)
 		ctx := tracing.WithTraceID(c.Request.Context(), traceID)
-
 		if !strings.HasSuffix(c.FullPath(), "/graphql") {
 			operationName := fmt.Sprintf("%s %s", c.Request.Method, c.FullPath())
 			ctx = tracing.WithOperationName(ctx, operationName)

@@ -19,6 +19,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -42,6 +44,8 @@ const (
 	TypeRequestExecution = "RequestExecution"
 	TypeRole             = "Role"
 	TypeSystem           = "System"
+	TypeThread           = "Thread"
+	TypeTrace            = "Trace"
 	TypeUsageLog         = "UsageLog"
 	TypeUser             = "User"
 	TypeUserProject      = "UserProject"
@@ -2473,6 +2477,12 @@ type ProjectMutation struct {
 	usage_logs           map[int]struct{}
 	removedusage_logs    map[int]struct{}
 	clearedusage_logs    bool
+	threads              map[int]struct{}
+	removedthreads       map[int]struct{}
+	clearedthreads       bool
+	traces               map[int]struct{}
+	removedtraces        map[int]struct{}
+	clearedtraces        bool
 	project_users        map[int]struct{}
 	removedproject_users map[int]struct{}
 	clearedproject_users bool
@@ -3085,6 +3095,114 @@ func (m *ProjectMutation) ResetUsageLogs() {
 	m.removedusage_logs = nil
 }
 
+// AddThreadIDs adds the "threads" edge to the Thread entity by ids.
+func (m *ProjectMutation) AddThreadIDs(ids ...int) {
+	if m.threads == nil {
+		m.threads = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.threads[ids[i]] = struct{}{}
+	}
+}
+
+// ClearThreads clears the "threads" edge to the Thread entity.
+func (m *ProjectMutation) ClearThreads() {
+	m.clearedthreads = true
+}
+
+// ThreadsCleared reports if the "threads" edge to the Thread entity was cleared.
+func (m *ProjectMutation) ThreadsCleared() bool {
+	return m.clearedthreads
+}
+
+// RemoveThreadIDs removes the "threads" edge to the Thread entity by IDs.
+func (m *ProjectMutation) RemoveThreadIDs(ids ...int) {
+	if m.removedthreads == nil {
+		m.removedthreads = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.threads, ids[i])
+		m.removedthreads[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedThreads returns the removed IDs of the "threads" edge to the Thread entity.
+func (m *ProjectMutation) RemovedThreadsIDs() (ids []int) {
+	for id := range m.removedthreads {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ThreadsIDs returns the "threads" edge IDs in the mutation.
+func (m *ProjectMutation) ThreadsIDs() (ids []int) {
+	for id := range m.threads {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetThreads resets all changes to the "threads" edge.
+func (m *ProjectMutation) ResetThreads() {
+	m.threads = nil
+	m.clearedthreads = false
+	m.removedthreads = nil
+}
+
+// AddTraceIDs adds the "traces" edge to the Trace entity by ids.
+func (m *ProjectMutation) AddTraceIDs(ids ...int) {
+	if m.traces == nil {
+		m.traces = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.traces[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTraces clears the "traces" edge to the Trace entity.
+func (m *ProjectMutation) ClearTraces() {
+	m.clearedtraces = true
+}
+
+// TracesCleared reports if the "traces" edge to the Trace entity was cleared.
+func (m *ProjectMutation) TracesCleared() bool {
+	return m.clearedtraces
+}
+
+// RemoveTraceIDs removes the "traces" edge to the Trace entity by IDs.
+func (m *ProjectMutation) RemoveTraceIDs(ids ...int) {
+	if m.removedtraces == nil {
+		m.removedtraces = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.traces, ids[i])
+		m.removedtraces[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTraces returns the removed IDs of the "traces" edge to the Trace entity.
+func (m *ProjectMutation) RemovedTracesIDs() (ids []int) {
+	for id := range m.removedtraces {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TracesIDs returns the "traces" edge IDs in the mutation.
+func (m *ProjectMutation) TracesIDs() (ids []int) {
+	for id := range m.traces {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTraces resets all changes to the "traces" edge.
+func (m *ProjectMutation) ResetTraces() {
+	m.traces = nil
+	m.clearedtraces = false
+	m.removedtraces = nil
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by ids.
 func (m *ProjectMutation) AddProjectUserIDs(ids ...int) {
 	if m.project_users == nil {
@@ -3372,7 +3490,7 @@ func (m *ProjectMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ProjectMutation) AddedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 8)
 	if m.users != nil {
 		edges = append(edges, project.EdgeUsers)
 	}
@@ -3387,6 +3505,12 @@ func (m *ProjectMutation) AddedEdges() []string {
 	}
 	if m.usage_logs != nil {
 		edges = append(edges, project.EdgeUsageLogs)
+	}
+	if m.threads != nil {
+		edges = append(edges, project.EdgeThreads)
+	}
+	if m.traces != nil {
+		edges = append(edges, project.EdgeTraces)
 	}
 	if m.project_users != nil {
 		edges = append(edges, project.EdgeProjectUsers)
@@ -3428,6 +3552,18 @@ func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case project.EdgeThreads:
+		ids := make([]ent.Value, 0, len(m.threads))
+		for id := range m.threads {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeTraces:
+		ids := make([]ent.Value, 0, len(m.traces))
+		for id := range m.traces {
+			ids = append(ids, id)
+		}
+		return ids
 	case project.EdgeProjectUsers:
 		ids := make([]ent.Value, 0, len(m.project_users))
 		for id := range m.project_users {
@@ -3440,7 +3576,7 @@ func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ProjectMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 8)
 	if m.removedusers != nil {
 		edges = append(edges, project.EdgeUsers)
 	}
@@ -3455,6 +3591,12 @@ func (m *ProjectMutation) RemovedEdges() []string {
 	}
 	if m.removedusage_logs != nil {
 		edges = append(edges, project.EdgeUsageLogs)
+	}
+	if m.removedthreads != nil {
+		edges = append(edges, project.EdgeThreads)
+	}
+	if m.removedtraces != nil {
+		edges = append(edges, project.EdgeTraces)
 	}
 	if m.removedproject_users != nil {
 		edges = append(edges, project.EdgeProjectUsers)
@@ -3496,6 +3638,18 @@ func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case project.EdgeThreads:
+		ids := make([]ent.Value, 0, len(m.removedthreads))
+		for id := range m.removedthreads {
+			ids = append(ids, id)
+		}
+		return ids
+	case project.EdgeTraces:
+		ids := make([]ent.Value, 0, len(m.removedtraces))
+		for id := range m.removedtraces {
+			ids = append(ids, id)
+		}
+		return ids
 	case project.EdgeProjectUsers:
 		ids := make([]ent.Value, 0, len(m.removedproject_users))
 		for id := range m.removedproject_users {
@@ -3508,7 +3662,7 @@ func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ProjectMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 8)
 	if m.clearedusers {
 		edges = append(edges, project.EdgeUsers)
 	}
@@ -3523,6 +3677,12 @@ func (m *ProjectMutation) ClearedEdges() []string {
 	}
 	if m.clearedusage_logs {
 		edges = append(edges, project.EdgeUsageLogs)
+	}
+	if m.clearedthreads {
+		edges = append(edges, project.EdgeThreads)
+	}
+	if m.clearedtraces {
+		edges = append(edges, project.EdgeTraces)
 	}
 	if m.clearedproject_users {
 		edges = append(edges, project.EdgeProjectUsers)
@@ -3544,6 +3704,10 @@ func (m *ProjectMutation) EdgeCleared(name string) bool {
 		return m.clearedrequests
 	case project.EdgeUsageLogs:
 		return m.clearedusage_logs
+	case project.EdgeThreads:
+		return m.clearedthreads
+	case project.EdgeTraces:
+		return m.clearedtraces
 	case project.EdgeProjectUsers:
 		return m.clearedproject_users
 	}
@@ -3576,6 +3740,12 @@ func (m *ProjectMutation) ResetEdge(name string) error {
 		return nil
 	case project.EdgeUsageLogs:
 		m.ResetUsageLogs()
+		return nil
+	case project.EdgeThreads:
+		m.ResetThreads()
+		return nil
+	case project.EdgeTraces:
+		m.ResetTraces()
 		return nil
 	case project.EdgeProjectUsers:
 		m.ResetProjectUsers()
@@ -3611,6 +3781,8 @@ type RequestMutation struct {
 	clearedapi_key        bool
 	project               *int
 	clearedproject        bool
+	trace                 *int
+	clearedtrace          bool
 	executions            map[int]struct{}
 	removedexecutions     map[int]struct{}
 	clearedexecutions     bool
@@ -3933,6 +4105,55 @@ func (m *RequestMutation) OldProjectID(ctx context.Context) (v int, err error) {
 // ResetProjectID resets all changes to the "project_id" field.
 func (m *RequestMutation) ResetProjectID() {
 	m.project = nil
+}
+
+// SetTraceID sets the "trace_id" field.
+func (m *RequestMutation) SetTraceID(i int) {
+	m.trace = &i
+}
+
+// TraceID returns the value of the "trace_id" field in the mutation.
+func (m *RequestMutation) TraceID() (r int, exists bool) {
+	v := m.trace
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTraceID returns the old "trace_id" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldTraceID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTraceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTraceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTraceID: %w", err)
+	}
+	return oldValue.TraceID, nil
+}
+
+// ClearTraceID clears the value of the "trace_id" field.
+func (m *RequestMutation) ClearTraceID() {
+	m.trace = nil
+	m.clearedFields[request.FieldTraceID] = struct{}{}
+}
+
+// TraceIDCleared returns if the "trace_id" field was cleared in this mutation.
+func (m *RequestMutation) TraceIDCleared() bool {
+	_, ok := m.clearedFields[request.FieldTraceID]
+	return ok
+}
+
+// ResetTraceID resets all changes to the "trace_id" field.
+func (m *RequestMutation) ResetTraceID() {
+	m.trace = nil
+	delete(m.clearedFields, request.FieldTraceID)
 }
 
 // SetSource sets the "source" field.
@@ -4448,6 +4669,33 @@ func (m *RequestMutation) ResetProject() {
 	m.clearedproject = false
 }
 
+// ClearTrace clears the "trace" edge to the Trace entity.
+func (m *RequestMutation) ClearTrace() {
+	m.clearedtrace = true
+	m.clearedFields[request.FieldTraceID] = struct{}{}
+}
+
+// TraceCleared reports if the "trace" edge to the Trace entity was cleared.
+func (m *RequestMutation) TraceCleared() bool {
+	return m.TraceIDCleared() || m.clearedtrace
+}
+
+// TraceIDs returns the "trace" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// TraceID instead. It exists only for internal usage by the builders.
+func (m *RequestMutation) TraceIDs() (ids []int) {
+	if id := m.trace; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTrace resets all changes to the "trace" edge.
+func (m *RequestMutation) ResetTrace() {
+	m.trace = nil
+	m.clearedtrace = false
+}
+
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by ids.
 func (m *RequestMutation) AddExecutionIDs(ids ...int) {
 	if m.executions == nil {
@@ -4617,7 +4865,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -4632,6 +4880,9 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.project != nil {
 		fields = append(fields, request.FieldProjectID)
+	}
+	if m.trace != nil {
+		fields = append(fields, request.FieldTraceID)
 	}
 	if m.source != nil {
 		fields = append(fields, request.FieldSource)
@@ -4681,6 +4932,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.APIKeyID()
 	case request.FieldProjectID:
 		return m.ProjectID()
+	case request.FieldTraceID:
+		return m.TraceID()
 	case request.FieldSource:
 		return m.Source()
 	case request.FieldModelID:
@@ -4720,6 +4973,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldAPIKeyID(ctx)
 	case request.FieldProjectID:
 		return m.OldProjectID(ctx)
+	case request.FieldTraceID:
+		return m.OldTraceID(ctx)
 	case request.FieldSource:
 		return m.OldSource(ctx)
 	case request.FieldModelID:
@@ -4783,6 +5038,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetProjectID(v)
+		return nil
+	case request.FieldTraceID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTraceID(v)
 		return nil
 	case request.FieldSource:
 		v, ok := value.(request.Source)
@@ -4902,6 +5164,9 @@ func (m *RequestMutation) ClearedFields() []string {
 	if m.FieldCleared(request.FieldAPIKeyID) {
 		fields = append(fields, request.FieldAPIKeyID)
 	}
+	if m.FieldCleared(request.FieldTraceID) {
+		fields = append(fields, request.FieldTraceID)
+	}
 	if m.FieldCleared(request.FieldResponseBody) {
 		fields = append(fields, request.FieldResponseBody)
 	}
@@ -4930,6 +5195,9 @@ func (m *RequestMutation) ClearField(name string) error {
 	switch name {
 	case request.FieldAPIKeyID:
 		m.ClearAPIKeyID()
+		return nil
+	case request.FieldTraceID:
+		m.ClearTraceID()
 		return nil
 	case request.FieldResponseBody:
 		m.ClearResponseBody()
@@ -4965,6 +5233,9 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldProjectID:
 		m.ResetProjectID()
+		return nil
+	case request.FieldTraceID:
+		m.ResetTraceID()
 		return nil
 	case request.FieldSource:
 		m.ResetSource()
@@ -5002,12 +5273,15 @@ func (m *RequestMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RequestMutation) AddedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.api_key != nil {
 		edges = append(edges, request.EdgeAPIKey)
 	}
 	if m.project != nil {
 		edges = append(edges, request.EdgeProject)
+	}
+	if m.trace != nil {
+		edges = append(edges, request.EdgeTrace)
 	}
 	if m.executions != nil {
 		edges = append(edges, request.EdgeExecutions)
@@ -5033,6 +5307,10 @@ func (m *RequestMutation) AddedIDs(name string) []ent.Value {
 		if id := m.project; id != nil {
 			return []ent.Value{*id}
 		}
+	case request.EdgeTrace:
+		if id := m.trace; id != nil {
+			return []ent.Value{*id}
+		}
 	case request.EdgeExecutions:
 		ids := make([]ent.Value, 0, len(m.executions))
 		for id := range m.executions {
@@ -5055,7 +5333,7 @@ func (m *RequestMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RequestMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.removedexecutions != nil {
 		edges = append(edges, request.EdgeExecutions)
 	}
@@ -5087,12 +5365,15 @@ func (m *RequestMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RequestMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 6)
 	if m.clearedapi_key {
 		edges = append(edges, request.EdgeAPIKey)
 	}
 	if m.clearedproject {
 		edges = append(edges, request.EdgeProject)
+	}
+	if m.clearedtrace {
+		edges = append(edges, request.EdgeTrace)
 	}
 	if m.clearedexecutions {
 		edges = append(edges, request.EdgeExecutions)
@@ -5114,6 +5395,8 @@ func (m *RequestMutation) EdgeCleared(name string) bool {
 		return m.clearedapi_key
 	case request.EdgeProject:
 		return m.clearedproject
+	case request.EdgeTrace:
+		return m.clearedtrace
 	case request.EdgeExecutions:
 		return m.clearedexecutions
 	case request.EdgeChannel:
@@ -5134,6 +5417,9 @@ func (m *RequestMutation) ClearEdge(name string) error {
 	case request.EdgeProject:
 		m.ClearProject()
 		return nil
+	case request.EdgeTrace:
+		m.ClearTrace()
+		return nil
 	case request.EdgeChannel:
 		m.ClearChannel()
 		return nil
@@ -5150,6 +5436,9 @@ func (m *RequestMutation) ResetEdge(name string) error {
 		return nil
 	case request.EdgeProject:
 		m.ResetProject()
+		return nil
+	case request.EdgeTrace:
+		m.ResetTrace()
 		return nil
 	case request.EdgeExecutions:
 		m.ResetExecutions()
@@ -7945,6 +8234,1562 @@ func (m *SystemMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *SystemMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown System edge %s", name)
+}
+
+// ThreadMutation represents an operation that mutates the Thread nodes in the graph.
+type ThreadMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int
+	created_at     *time.Time
+	updated_at     *time.Time
+	deleted_at     *int
+	adddeleted_at  *int
+	thread_id      *string
+	clearedFields  map[string]struct{}
+	project        *int
+	clearedproject bool
+	traces         map[int]struct{}
+	removedtraces  map[int]struct{}
+	clearedtraces  bool
+	done           bool
+	oldValue       func(context.Context) (*Thread, error)
+	predicates     []predicate.Thread
+}
+
+var _ ent.Mutation = (*ThreadMutation)(nil)
+
+// threadOption allows management of the mutation configuration using functional options.
+type threadOption func(*ThreadMutation)
+
+// newThreadMutation creates new mutation for the Thread entity.
+func newThreadMutation(c config, op Op, opts ...threadOption) *ThreadMutation {
+	m := &ThreadMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeThread,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withThreadID sets the ID field of the mutation.
+func withThreadID(id int) threadOption {
+	return func(m *ThreadMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Thread
+		)
+		m.oldValue = func(ctx context.Context) (*Thread, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Thread.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withThread sets the old Thread of the mutation.
+func withThread(node *Thread) threadOption {
+	return func(m *ThreadMutation) {
+		m.oldValue = func(context.Context) (*Thread, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ThreadMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ThreadMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ThreadMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ThreadMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Thread.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ThreadMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ThreadMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Thread entity.
+// If the Thread object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ThreadMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ThreadMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ThreadMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ThreadMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Thread entity.
+// If the Thread object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ThreadMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ThreadMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *ThreadMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *ThreadMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the Thread entity.
+// If the Thread object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ThreadMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *ThreadMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *ThreadMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *ThreadMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *ThreadMutation) SetProjectID(i int) {
+	m.project = &i
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *ThreadMutation) ProjectID() (r int, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the Thread entity.
+// If the Thread object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ThreadMutation) OldProjectID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *ThreadMutation) ResetProjectID() {
+	m.project = nil
+}
+
+// SetThreadID sets the "thread_id" field.
+func (m *ThreadMutation) SetThreadID(s string) {
+	m.thread_id = &s
+}
+
+// ThreadID returns the value of the "thread_id" field in the mutation.
+func (m *ThreadMutation) ThreadID() (r string, exists bool) {
+	v := m.thread_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThreadID returns the old "thread_id" field's value of the Thread entity.
+// If the Thread object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ThreadMutation) OldThreadID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThreadID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThreadID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThreadID: %w", err)
+	}
+	return oldValue.ThreadID, nil
+}
+
+// ResetThreadID resets all changes to the "thread_id" field.
+func (m *ThreadMutation) ResetThreadID() {
+	m.thread_id = nil
+}
+
+// ClearProject clears the "project" edge to the Project entity.
+func (m *ThreadMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[thread.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *ThreadMutation) ProjectCleared() bool {
+	return m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *ThreadMutation) ProjectIDs() (ids []int) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *ThreadMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
+// AddTraceIDs adds the "traces" edge to the Trace entity by ids.
+func (m *ThreadMutation) AddTraceIDs(ids ...int) {
+	if m.traces == nil {
+		m.traces = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.traces[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTraces clears the "traces" edge to the Trace entity.
+func (m *ThreadMutation) ClearTraces() {
+	m.clearedtraces = true
+}
+
+// TracesCleared reports if the "traces" edge to the Trace entity was cleared.
+func (m *ThreadMutation) TracesCleared() bool {
+	return m.clearedtraces
+}
+
+// RemoveTraceIDs removes the "traces" edge to the Trace entity by IDs.
+func (m *ThreadMutation) RemoveTraceIDs(ids ...int) {
+	if m.removedtraces == nil {
+		m.removedtraces = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.traces, ids[i])
+		m.removedtraces[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTraces returns the removed IDs of the "traces" edge to the Trace entity.
+func (m *ThreadMutation) RemovedTracesIDs() (ids []int) {
+	for id := range m.removedtraces {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TracesIDs returns the "traces" edge IDs in the mutation.
+func (m *ThreadMutation) TracesIDs() (ids []int) {
+	for id := range m.traces {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTraces resets all changes to the "traces" edge.
+func (m *ThreadMutation) ResetTraces() {
+	m.traces = nil
+	m.clearedtraces = false
+	m.removedtraces = nil
+}
+
+// Where appends a list predicates to the ThreadMutation builder.
+func (m *ThreadMutation) Where(ps ...predicate.Thread) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ThreadMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ThreadMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Thread, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ThreadMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ThreadMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Thread).
+func (m *ThreadMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ThreadMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.created_at != nil {
+		fields = append(fields, thread.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, thread.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, thread.FieldDeletedAt)
+	}
+	if m.project != nil {
+		fields = append(fields, thread.FieldProjectID)
+	}
+	if m.thread_id != nil {
+		fields = append(fields, thread.FieldThreadID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ThreadMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case thread.FieldCreatedAt:
+		return m.CreatedAt()
+	case thread.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case thread.FieldDeletedAt:
+		return m.DeletedAt()
+	case thread.FieldProjectID:
+		return m.ProjectID()
+	case thread.FieldThreadID:
+		return m.ThreadID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ThreadMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case thread.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case thread.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case thread.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case thread.FieldProjectID:
+		return m.OldProjectID(ctx)
+	case thread.FieldThreadID:
+		return m.OldThreadID(ctx)
+	}
+	return nil, fmt.Errorf("unknown Thread field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ThreadMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case thread.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case thread.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case thread.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case thread.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
+		return nil
+	case thread.FieldThreadID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThreadID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Thread field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ThreadMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, thread.FieldDeletedAt)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ThreadMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case thread.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ThreadMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case thread.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Thread numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ThreadMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ThreadMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ThreadMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Thread nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ThreadMutation) ResetField(name string) error {
+	switch name {
+	case thread.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case thread.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case thread.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case thread.FieldProjectID:
+		m.ResetProjectID()
+		return nil
+	case thread.FieldThreadID:
+		m.ResetThreadID()
+		return nil
+	}
+	return fmt.Errorf("unknown Thread field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ThreadMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.project != nil {
+		edges = append(edges, thread.EdgeProject)
+	}
+	if m.traces != nil {
+		edges = append(edges, thread.EdgeTraces)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ThreadMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case thread.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
+	case thread.EdgeTraces:
+		ids := make([]ent.Value, 0, len(m.traces))
+		for id := range m.traces {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ThreadMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.removedtraces != nil {
+		edges = append(edges, thread.EdgeTraces)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ThreadMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case thread.EdgeTraces:
+		ids := make([]ent.Value, 0, len(m.removedtraces))
+		for id := range m.removedtraces {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ThreadMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedproject {
+		edges = append(edges, thread.EdgeProject)
+	}
+	if m.clearedtraces {
+		edges = append(edges, thread.EdgeTraces)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ThreadMutation) EdgeCleared(name string) bool {
+	switch name {
+	case thread.EdgeProject:
+		return m.clearedproject
+	case thread.EdgeTraces:
+		return m.clearedtraces
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ThreadMutation) ClearEdge(name string) error {
+	switch name {
+	case thread.EdgeProject:
+		m.ClearProject()
+		return nil
+	}
+	return fmt.Errorf("unknown Thread unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ThreadMutation) ResetEdge(name string) error {
+	switch name {
+	case thread.EdgeProject:
+		m.ResetProject()
+		return nil
+	case thread.EdgeTraces:
+		m.ResetTraces()
+		return nil
+	}
+	return fmt.Errorf("unknown Thread edge %s", name)
+}
+
+// TraceMutation represents an operation that mutates the Trace nodes in the graph.
+type TraceMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int
+	created_at      *time.Time
+	updated_at      *time.Time
+	deleted_at      *int
+	adddeleted_at   *int
+	trace_id        *string
+	clearedFields   map[string]struct{}
+	project         *int
+	clearedproject  bool
+	thread          *int
+	clearedthread   bool
+	requests        map[int]struct{}
+	removedrequests map[int]struct{}
+	clearedrequests bool
+	done            bool
+	oldValue        func(context.Context) (*Trace, error)
+	predicates      []predicate.Trace
+}
+
+var _ ent.Mutation = (*TraceMutation)(nil)
+
+// traceOption allows management of the mutation configuration using functional options.
+type traceOption func(*TraceMutation)
+
+// newTraceMutation creates new mutation for the Trace entity.
+func newTraceMutation(c config, op Op, opts ...traceOption) *TraceMutation {
+	m := &TraceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeTrace,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withTraceID sets the ID field of the mutation.
+func withTraceID(id int) traceOption {
+	return func(m *TraceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Trace
+		)
+		m.oldValue = func(ctx context.Context) (*Trace, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Trace.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withTrace sets the old Trace of the mutation.
+func withTrace(node *Trace) traceOption {
+	return func(m *TraceMutation) {
+		m.oldValue = func(context.Context) (*Trace, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m TraceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m TraceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *TraceMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *TraceMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Trace.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *TraceMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *TraceMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Trace entity.
+// If the Trace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TraceMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *TraceMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *TraceMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *TraceMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Trace entity.
+// If the Trace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TraceMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *TraceMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *TraceMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *TraceMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the Trace entity.
+// If the Trace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TraceMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *TraceMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *TraceMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *TraceMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *TraceMutation) SetProjectID(i int) {
+	m.project = &i
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *TraceMutation) ProjectID() (r int, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the Trace entity.
+// If the Trace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TraceMutation) OldProjectID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *TraceMutation) ResetProjectID() {
+	m.project = nil
+}
+
+// SetTraceID sets the "trace_id" field.
+func (m *TraceMutation) SetTraceID(s string) {
+	m.trace_id = &s
+}
+
+// TraceID returns the value of the "trace_id" field in the mutation.
+func (m *TraceMutation) TraceID() (r string, exists bool) {
+	v := m.trace_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTraceID returns the old "trace_id" field's value of the Trace entity.
+// If the Trace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TraceMutation) OldTraceID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTraceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTraceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTraceID: %w", err)
+	}
+	return oldValue.TraceID, nil
+}
+
+// ResetTraceID resets all changes to the "trace_id" field.
+func (m *TraceMutation) ResetTraceID() {
+	m.trace_id = nil
+}
+
+// SetThreadID sets the "thread_id" field.
+func (m *TraceMutation) SetThreadID(i int) {
+	m.thread = &i
+}
+
+// ThreadID returns the value of the "thread_id" field in the mutation.
+func (m *TraceMutation) ThreadID() (r int, exists bool) {
+	v := m.thread
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThreadID returns the old "thread_id" field's value of the Trace entity.
+// If the Trace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TraceMutation) OldThreadID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThreadID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThreadID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThreadID: %w", err)
+	}
+	return oldValue.ThreadID, nil
+}
+
+// ClearThreadID clears the value of the "thread_id" field.
+func (m *TraceMutation) ClearThreadID() {
+	m.thread = nil
+	m.clearedFields[trace.FieldThreadID] = struct{}{}
+}
+
+// ThreadIDCleared returns if the "thread_id" field was cleared in this mutation.
+func (m *TraceMutation) ThreadIDCleared() bool {
+	_, ok := m.clearedFields[trace.FieldThreadID]
+	return ok
+}
+
+// ResetThreadID resets all changes to the "thread_id" field.
+func (m *TraceMutation) ResetThreadID() {
+	m.thread = nil
+	delete(m.clearedFields, trace.FieldThreadID)
+}
+
+// ClearProject clears the "project" edge to the Project entity.
+func (m *TraceMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[trace.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *TraceMutation) ProjectCleared() bool {
+	return m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *TraceMutation) ProjectIDs() (ids []int) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *TraceMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
+// ClearThread clears the "thread" edge to the Thread entity.
+func (m *TraceMutation) ClearThread() {
+	m.clearedthread = true
+	m.clearedFields[trace.FieldThreadID] = struct{}{}
+}
+
+// ThreadCleared reports if the "thread" edge to the Thread entity was cleared.
+func (m *TraceMutation) ThreadCleared() bool {
+	return m.ThreadIDCleared() || m.clearedthread
+}
+
+// ThreadIDs returns the "thread" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ThreadID instead. It exists only for internal usage by the builders.
+func (m *TraceMutation) ThreadIDs() (ids []int) {
+	if id := m.thread; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetThread resets all changes to the "thread" edge.
+func (m *TraceMutation) ResetThread() {
+	m.thread = nil
+	m.clearedthread = false
+}
+
+// AddRequestIDs adds the "requests" edge to the Request entity by ids.
+func (m *TraceMutation) AddRequestIDs(ids ...int) {
+	if m.requests == nil {
+		m.requests = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.requests[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRequests clears the "requests" edge to the Request entity.
+func (m *TraceMutation) ClearRequests() {
+	m.clearedrequests = true
+}
+
+// RequestsCleared reports if the "requests" edge to the Request entity was cleared.
+func (m *TraceMutation) RequestsCleared() bool {
+	return m.clearedrequests
+}
+
+// RemoveRequestIDs removes the "requests" edge to the Request entity by IDs.
+func (m *TraceMutation) RemoveRequestIDs(ids ...int) {
+	if m.removedrequests == nil {
+		m.removedrequests = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.requests, ids[i])
+		m.removedrequests[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRequests returns the removed IDs of the "requests" edge to the Request entity.
+func (m *TraceMutation) RemovedRequestsIDs() (ids []int) {
+	for id := range m.removedrequests {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RequestsIDs returns the "requests" edge IDs in the mutation.
+func (m *TraceMutation) RequestsIDs() (ids []int) {
+	for id := range m.requests {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRequests resets all changes to the "requests" edge.
+func (m *TraceMutation) ResetRequests() {
+	m.requests = nil
+	m.clearedrequests = false
+	m.removedrequests = nil
+}
+
+// Where appends a list predicates to the TraceMutation builder.
+func (m *TraceMutation) Where(ps ...predicate.Trace) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the TraceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *TraceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Trace, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *TraceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *TraceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Trace).
+func (m *TraceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *TraceMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.created_at != nil {
+		fields = append(fields, trace.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, trace.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, trace.FieldDeletedAt)
+	}
+	if m.project != nil {
+		fields = append(fields, trace.FieldProjectID)
+	}
+	if m.trace_id != nil {
+		fields = append(fields, trace.FieldTraceID)
+	}
+	if m.thread != nil {
+		fields = append(fields, trace.FieldThreadID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *TraceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case trace.FieldCreatedAt:
+		return m.CreatedAt()
+	case trace.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case trace.FieldDeletedAt:
+		return m.DeletedAt()
+	case trace.FieldProjectID:
+		return m.ProjectID()
+	case trace.FieldTraceID:
+		return m.TraceID()
+	case trace.FieldThreadID:
+		return m.ThreadID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *TraceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case trace.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case trace.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case trace.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case trace.FieldProjectID:
+		return m.OldProjectID(ctx)
+	case trace.FieldTraceID:
+		return m.OldTraceID(ctx)
+	case trace.FieldThreadID:
+		return m.OldThreadID(ctx)
+	}
+	return nil, fmt.Errorf("unknown Trace field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TraceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case trace.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case trace.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case trace.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case trace.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
+		return nil
+	case trace.FieldTraceID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTraceID(v)
+		return nil
+	case trace.FieldThreadID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThreadID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Trace field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *TraceMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, trace.FieldDeletedAt)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *TraceMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case trace.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TraceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case trace.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Trace numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *TraceMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(trace.FieldThreadID) {
+		fields = append(fields, trace.FieldThreadID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *TraceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *TraceMutation) ClearField(name string) error {
+	switch name {
+	case trace.FieldThreadID:
+		m.ClearThreadID()
+		return nil
+	}
+	return fmt.Errorf("unknown Trace nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *TraceMutation) ResetField(name string) error {
+	switch name {
+	case trace.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case trace.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case trace.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case trace.FieldProjectID:
+		m.ResetProjectID()
+		return nil
+	case trace.FieldTraceID:
+		m.ResetTraceID()
+		return nil
+	case trace.FieldThreadID:
+		m.ResetThreadID()
+		return nil
+	}
+	return fmt.Errorf("unknown Trace field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *TraceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.project != nil {
+		edges = append(edges, trace.EdgeProject)
+	}
+	if m.thread != nil {
+		edges = append(edges, trace.EdgeThread)
+	}
+	if m.requests != nil {
+		edges = append(edges, trace.EdgeRequests)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *TraceMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case trace.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
+	case trace.EdgeThread:
+		if id := m.thread; id != nil {
+			return []ent.Value{*id}
+		}
+	case trace.EdgeRequests:
+		ids := make([]ent.Value, 0, len(m.requests))
+		for id := range m.requests {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *TraceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.removedrequests != nil {
+		edges = append(edges, trace.EdgeRequests)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *TraceMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case trace.EdgeRequests:
+		ids := make([]ent.Value, 0, len(m.removedrequests))
+		for id := range m.removedrequests {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *TraceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedproject {
+		edges = append(edges, trace.EdgeProject)
+	}
+	if m.clearedthread {
+		edges = append(edges, trace.EdgeThread)
+	}
+	if m.clearedrequests {
+		edges = append(edges, trace.EdgeRequests)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *TraceMutation) EdgeCleared(name string) bool {
+	switch name {
+	case trace.EdgeProject:
+		return m.clearedproject
+	case trace.EdgeThread:
+		return m.clearedthread
+	case trace.EdgeRequests:
+		return m.clearedrequests
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *TraceMutation) ClearEdge(name string) error {
+	switch name {
+	case trace.EdgeProject:
+		m.ClearProject()
+		return nil
+	case trace.EdgeThread:
+		m.ClearThread()
+		return nil
+	}
+	return fmt.Errorf("unknown Trace unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *TraceMutation) ResetEdge(name string) error {
+	switch name {
+	case trace.EdgeProject:
+		m.ResetProject()
+		return nil
+	case trace.EdgeThread:
+		m.ResetThread()
+		return nil
+	case trace.EdgeRequests:
+		m.ResetRequests()
+		return nil
+	}
+	return fmt.Errorf("unknown Trace edge %s", name)
 }
 
 // UsageLogMutation represents an operation that mutates the UsageLog nodes in the graph.

@@ -28,6 +28,8 @@ const (
 	FieldAPIKeyID = "api_key_id"
 	// FieldProjectID holds the string denoting the project_id field in the database.
 	FieldProjectID = "project_id"
+	// FieldTraceID holds the string denoting the trace_id field in the database.
+	FieldTraceID = "trace_id"
 	// FieldSource holds the string denoting the source field in the database.
 	FieldSource = "source"
 	// FieldModelID holds the string denoting the model_id field in the database.
@@ -52,6 +54,8 @@ const (
 	EdgeAPIKey = "api_key"
 	// EdgeProject holds the string denoting the project edge name in mutations.
 	EdgeProject = "project"
+	// EdgeTrace holds the string denoting the trace edge name in mutations.
+	EdgeTrace = "trace"
 	// EdgeExecutions holds the string denoting the executions edge name in mutations.
 	EdgeExecutions = "executions"
 	// EdgeChannel holds the string denoting the channel edge name in mutations.
@@ -74,6 +78,13 @@ const (
 	ProjectInverseTable = "projects"
 	// ProjectColumn is the table column denoting the project relation/edge.
 	ProjectColumn = "project_id"
+	// TraceTable is the table that holds the trace relation/edge.
+	TraceTable = "requests"
+	// TraceInverseTable is the table name for the Trace entity.
+	// It exists in this package in order to avoid circular dependency with the "trace" package.
+	TraceInverseTable = "traces"
+	// TraceColumn is the table column denoting the trace relation/edge.
+	TraceColumn = "trace_id"
 	// ExecutionsTable is the table that holds the executions relation/edge.
 	ExecutionsTable = "request_executions"
 	// ExecutionsInverseTable is the table name for the RequestExecution entity.
@@ -105,6 +116,7 @@ var Columns = []string{
 	FieldDeletedAt,
 	FieldAPIKeyID,
 	FieldProjectID,
+	FieldTraceID,
 	FieldSource,
 	FieldModelID,
 	FieldFormat,
@@ -238,6 +250,11 @@ func ByProjectID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProjectID, opts...).ToFunc()
 }
 
+// ByTraceID orders the results by the trace_id field.
+func ByTraceID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTraceID, opts...).ToFunc()
+}
+
 // BySource orders the results by the source field.
 func BySource(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSource, opts...).ToFunc()
@@ -287,6 +304,13 @@ func ByProjectField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
+// ByTraceField orders the results by trace field.
+func ByTraceField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTraceStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByExecutionsCount orders the results by executions count.
 func ByExecutionsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -333,6 +357,13 @@ func newProjectStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ProjectInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, ProjectTable, ProjectColumn),
+	)
+}
+func newTraceStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TraceInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, TraceTable, TraceColumn),
 	)
 }
 func newExecutionsStep() *sqlgraph.Step {

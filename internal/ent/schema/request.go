@@ -32,6 +32,8 @@ func (Request) Indexes() []ent.Index {
 			StorageKey("requests_by_project_id"),
 		index.Fields("channel_id").
 			StorageKey("requests_by_channel_id"),
+		index.Fields("trace_id").
+			StorageKey("requests_by_trace_id"),
 		// Performance indexes for dashboard queries
 		index.Fields("created_at").
 			StorageKey("requests_by_created_at"),
@@ -50,6 +52,10 @@ func (Request) Fields() []ent.Field {
 			Immutable().
 			Default(1).
 			Comment("Project ID, default to 1 for backward compatibility"),
+		field.Int("trace_id").
+			Optional().
+			Immutable().
+			Comment("Trace ID that this request belongs to"),
 		field.Enum("source").Values("api", "playground", "test").Default("api").Immutable(),
 		field.String("model_id").Immutable(),
 		// The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
@@ -80,6 +86,11 @@ func (Request) Edges() []ent.Edge {
 			Field("project_id").
 			Immutable().
 			Required().
+			Unique(),
+		edge.From("trace", Trace.Type).
+			Ref("requests").
+			Immutable().
+			Field("trace_id").
 			Unique(),
 		edge.To("executions", RequestExecution.Type).
 			Annotations(

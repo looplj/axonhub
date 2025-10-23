@@ -279,6 +279,54 @@ func (f SystemMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.SystemMutation", m)
 }
 
+// The ThreadQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type ThreadQueryRuleFunc func(context.Context, *ent.ThreadQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f ThreadQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ThreadQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.ThreadQuery", q)
+}
+
+// The ThreadMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type ThreadMutationRuleFunc func(context.Context, *ent.ThreadMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f ThreadMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.ThreadMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ThreadMutation", m)
+}
+
+// The TraceQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type TraceQueryRuleFunc func(context.Context, *ent.TraceQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f TraceQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.TraceQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.TraceQuery", q)
+}
+
+// The TraceMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type TraceMutationRuleFunc func(context.Context, *ent.TraceMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f TraceMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.TraceMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.TraceMutation", m)
+}
+
 // The UsageLogQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type UsageLogQueryRuleFunc func(context.Context, *ent.UsageLogQuery) error
@@ -424,6 +472,10 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.SystemQuery:
 		return q.Filter(), nil
+	case *ent.ThreadQuery:
+		return q.Filter(), nil
+	case *ent.TraceQuery:
+		return q.Filter(), nil
 	case *ent.UsageLogQuery:
 		return q.Filter(), nil
 	case *ent.UserQuery:
@@ -452,6 +504,10 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.RoleMutation:
 		return m.Filter(), nil
 	case *ent.SystemMutation:
+		return m.Filter(), nil
+	case *ent.ThreadMutation:
+		return m.Filter(), nil
+	case *ent.TraceMutation:
 		return m.Filter(), nil
 	case *ent.UsageLogMutation:
 		return m.Filter(), nil

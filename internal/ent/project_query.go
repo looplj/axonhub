@@ -18,6 +18,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -35,6 +37,8 @@ type ProjectQuery struct {
 	withAPIKeys           *APIKeyQuery
 	withRequests          *RequestQuery
 	withUsageLogs         *UsageLogQuery
+	withThreads           *ThreadQuery
+	withTraces            *TraceQuery
 	withProjectUsers      *UserProjectQuery
 	loadTotal             []func(context.Context, []*Project) error
 	modifiers             []func(*sql.Selector)
@@ -43,6 +47,8 @@ type ProjectQuery struct {
 	withNamedAPIKeys      map[string]*APIKeyQuery
 	withNamedRequests     map[string]*RequestQuery
 	withNamedUsageLogs    map[string]*UsageLogQuery
+	withNamedThreads      map[string]*ThreadQuery
+	withNamedTraces       map[string]*TraceQuery
 	withNamedProjectUsers map[string]*UserProjectQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -183,6 +189,50 @@ func (_q *ProjectQuery) QueryUsageLogs() *UsageLogQuery {
 			sqlgraph.From(project.Table, project.FieldID, selector),
 			sqlgraph.To(usagelog.Table, usagelog.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, project.UsageLogsTable, project.UsageLogsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryThreads chains the current query on the "threads" edge.
+func (_q *ProjectQuery) QueryThreads() *ThreadQuery {
+	query := (&ThreadClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(thread.Table, thread.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.ThreadsTable, project.ThreadsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTraces chains the current query on the "traces" edge.
+func (_q *ProjectQuery) QueryTraces() *TraceQuery {
+	query := (&TraceClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(trace.Table, trace.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.TracesTable, project.TracesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -409,6 +459,8 @@ func (_q *ProjectQuery) Clone() *ProjectQuery {
 		withAPIKeys:      _q.withAPIKeys.Clone(),
 		withRequests:     _q.withRequests.Clone(),
 		withUsageLogs:    _q.withUsageLogs.Clone(),
+		withThreads:      _q.withThreads.Clone(),
+		withTraces:       _q.withTraces.Clone(),
 		withProjectUsers: _q.withProjectUsers.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
@@ -469,6 +521,28 @@ func (_q *ProjectQuery) WithUsageLogs(opts ...func(*UsageLogQuery)) *ProjectQuer
 		opt(query)
 	}
 	_q.withUsageLogs = query
+	return _q
+}
+
+// WithThreads tells the query-builder to eager-load the nodes that are connected to
+// the "threads" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithThreads(opts ...func(*ThreadQuery)) *ProjectQuery {
+	query := (&ThreadClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withThreads = query
+	return _q
+}
+
+// WithTraces tells the query-builder to eager-load the nodes that are connected to
+// the "traces" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithTraces(opts ...func(*TraceQuery)) *ProjectQuery {
+	query := (&TraceClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTraces = query
 	return _q
 }
 
@@ -567,12 +641,14 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 	var (
 		nodes       = []*Project{}
 		_spec       = _q.querySpec()
-		loadedTypes = [6]bool{
+		loadedTypes = [8]bool{
 			_q.withUsers != nil,
 			_q.withRoles != nil,
 			_q.withAPIKeys != nil,
 			_q.withRequests != nil,
 			_q.withUsageLogs != nil,
+			_q.withThreads != nil,
+			_q.withTraces != nil,
 			_q.withProjectUsers != nil,
 		}
 	)
@@ -632,6 +708,20 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 			return nil, err
 		}
 	}
+	if query := _q.withThreads; query != nil {
+		if err := _q.loadThreads(ctx, query, nodes,
+			func(n *Project) { n.Edges.Threads = []*Thread{} },
+			func(n *Project, e *Thread) { n.Edges.Threads = append(n.Edges.Threads, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withTraces; query != nil {
+		if err := _q.loadTraces(ctx, query, nodes,
+			func(n *Project) { n.Edges.Traces = []*Trace{} },
+			func(n *Project, e *Trace) { n.Edges.Traces = append(n.Edges.Traces, e) }); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withProjectUsers; query != nil {
 		if err := _q.loadProjectUsers(ctx, query, nodes,
 			func(n *Project) { n.Edges.ProjectUsers = []*UserProject{} },
@@ -671,6 +761,20 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 		if err := _q.loadUsageLogs(ctx, query, nodes,
 			func(n *Project) { n.appendNamedUsageLogs(name) },
 			func(n *Project, e *UsageLog) { n.appendNamedUsageLogs(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedThreads {
+		if err := _q.loadThreads(ctx, query, nodes,
+			func(n *Project) { n.appendNamedThreads(name) },
+			func(n *Project, e *Thread) { n.appendNamedThreads(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedTraces {
+		if err := _q.loadTraces(ctx, query, nodes,
+			func(n *Project) { n.appendNamedTraces(name) },
+			func(n *Project, e *Trace) { n.appendNamedTraces(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -858,6 +962,66 @@ func (_q *ProjectQuery) loadUsageLogs(ctx context.Context, query *UsageLogQuery,
 	}
 	query.Where(predicate.UsageLog(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(project.UsageLogsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ProjectQuery) loadThreads(ctx context.Context, query *ThreadQuery, nodes []*Project, init func(*Project), assign func(*Project, *Thread)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(thread.FieldProjectID)
+	}
+	query.Where(predicate.Thread(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.ThreadsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ProjectQuery) loadTraces(ctx context.Context, query *TraceQuery, nodes []*Project, init func(*Project), assign func(*Project, *Trace)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(trace.FieldProjectID)
+	}
+	query.Where(predicate.Trace(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.TracesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -1064,6 +1228,34 @@ func (_q *ProjectQuery) WithNamedUsageLogs(name string, opts ...func(*UsageLogQu
 		_q.withNamedUsageLogs = make(map[string]*UsageLogQuery)
 	}
 	_q.withNamedUsageLogs[name] = query
+	return _q
+}
+
+// WithNamedThreads tells the query-builder to eager-load the nodes that are connected to the "threads"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithNamedThreads(name string, opts ...func(*ThreadQuery)) *ProjectQuery {
+	query := (&ThreadClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedThreads == nil {
+		_q.withNamedThreads = make(map[string]*ThreadQuery)
+	}
+	_q.withNamedThreads[name] = query
+	return _q
+}
+
+// WithNamedTraces tells the query-builder to eager-load the nodes that are connected to the "traces"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithNamedTraces(name string, opts ...func(*TraceQuery)) *ProjectQuery {
+	query := (&TraceClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedTraces == nil {
+		_q.withNamedTraces = make(map[string]*TraceQuery)
+	}
+	_q.withNamedTraces[name] = query
 	return _q
 }
 

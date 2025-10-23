@@ -93,6 +93,30 @@ func (f SystemFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SystemMutation", m)
 }
 
+// The ThreadFunc type is an adapter to allow the use of ordinary
+// function as Thread mutator.
+type ThreadFunc func(context.Context, *ent.ThreadMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ThreadFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ThreadMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ThreadMutation", m)
+}
+
+// The TraceFunc type is an adapter to allow the use of ordinary
+// function as Trace mutator.
+type TraceFunc func(context.Context, *ent.TraceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f TraceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.TraceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TraceMutation", m)
+}
+
 // The UsageLogFunc type is an adapter to allow the use of ordinary
 // function as UsageLog mutator.
 type UsageLogFunc func(context.Context, *ent.UsageLogMutation) (ent.Value, error)
