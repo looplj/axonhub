@@ -21,6 +21,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -2319,6 +2321,634 @@ func (_m *System) ToEdge(order *SystemOrder) *SystemEdge {
 		order = DefaultSystemOrder
 	}
 	return &SystemEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// ThreadEdge is the edge representation of Thread.
+type ThreadEdge struct {
+	Node   *Thread `json:"node"`
+	Cursor Cursor  `json:"cursor"`
+}
+
+// ThreadConnection is the connection containing edges to Thread.
+type ThreadConnection struct {
+	Edges      []*ThreadEdge `json:"edges"`
+	PageInfo   PageInfo      `json:"pageInfo"`
+	TotalCount int           `json:"totalCount"`
+}
+
+func (c *ThreadConnection) build(nodes []*Thread, pager *threadPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *Thread
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *Thread {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *Thread {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ThreadEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ThreadEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ThreadPaginateOption enables pagination customization.
+type ThreadPaginateOption func(*threadPager) error
+
+// WithThreadOrder configures pagination ordering.
+func WithThreadOrder(order *ThreadOrder) ThreadPaginateOption {
+	if order == nil {
+		order = DefaultThreadOrder
+	}
+	o := *order
+	return func(pager *threadPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultThreadOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithThreadFilter configures pagination filter.
+func WithThreadFilter(filter func(*ThreadQuery) (*ThreadQuery, error)) ThreadPaginateOption {
+	return func(pager *threadPager) error {
+		if filter == nil {
+			return errors.New("ThreadQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type threadPager struct {
+	reverse bool
+	order   *ThreadOrder
+	filter  func(*ThreadQuery) (*ThreadQuery, error)
+}
+
+func newThreadPager(opts []ThreadPaginateOption, reverse bool) (*threadPager, error) {
+	pager := &threadPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultThreadOrder
+	}
+	return pager, nil
+}
+
+func (p *threadPager) applyFilter(query *ThreadQuery) (*ThreadQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *threadPager) toCursor(_m *Thread) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *threadPager) applyCursors(query *ThreadQuery, after, before *Cursor) (*ThreadQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultThreadOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *threadPager) applyOrder(query *ThreadQuery) *ThreadQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultThreadOrder.Field {
+		query = query.Order(DefaultThreadOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *threadPager) orderExpr(query *ThreadQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultThreadOrder.Field {
+			b.Comma().Ident(DefaultThreadOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to Thread.
+func (_m *ThreadQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ThreadPaginateOption,
+) (*ThreadConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newThreadPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &ThreadConnection{Edges: []*ThreadEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// ThreadOrderFieldCreatedAt orders Thread by created_at.
+	ThreadOrderFieldCreatedAt = &ThreadOrderField{
+		Value: func(_m *Thread) (ent.Value, error) {
+			return _m.CreatedAt, nil
+		},
+		column: thread.FieldCreatedAt,
+		toTerm: thread.ByCreatedAt,
+		toCursor: func(_m *Thread) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.CreatedAt,
+			}
+		},
+	}
+	// ThreadOrderFieldUpdatedAt orders Thread by updated_at.
+	ThreadOrderFieldUpdatedAt = &ThreadOrderField{
+		Value: func(_m *Thread) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: thread.FieldUpdatedAt,
+		toTerm: thread.ByUpdatedAt,
+		toCursor: func(_m *Thread) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f ThreadOrderField) String() string {
+	var str string
+	switch f.column {
+	case ThreadOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	case ThreadOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f ThreadOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *ThreadOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ThreadOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *ThreadOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *ThreadOrderFieldUpdatedAt
+	default:
+		return fmt.Errorf("%s is not a valid ThreadOrderField", str)
+	}
+	return nil
+}
+
+// ThreadOrderField defines the ordering field of Thread.
+type ThreadOrderField struct {
+	// Value extracts the ordering value from the given Thread.
+	Value    func(*Thread) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) thread.OrderOption
+	toCursor func(*Thread) Cursor
+}
+
+// ThreadOrder defines the ordering of Thread.
+type ThreadOrder struct {
+	Direction OrderDirection    `json:"direction"`
+	Field     *ThreadOrderField `json:"field"`
+}
+
+// DefaultThreadOrder is the default ordering of Thread.
+var DefaultThreadOrder = &ThreadOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &ThreadOrderField{
+		Value: func(_m *Thread) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: thread.FieldID,
+		toTerm: thread.ByID,
+		toCursor: func(_m *Thread) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts Thread into ThreadEdge.
+func (_m *Thread) ToEdge(order *ThreadOrder) *ThreadEdge {
+	if order == nil {
+		order = DefaultThreadOrder
+	}
+	return &ThreadEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// TraceEdge is the edge representation of Trace.
+type TraceEdge struct {
+	Node   *Trace `json:"node"`
+	Cursor Cursor `json:"cursor"`
+}
+
+// TraceConnection is the connection containing edges to Trace.
+type TraceConnection struct {
+	Edges      []*TraceEdge `json:"edges"`
+	PageInfo   PageInfo     `json:"pageInfo"`
+	TotalCount int          `json:"totalCount"`
+}
+
+func (c *TraceConnection) build(nodes []*Trace, pager *tracePager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *Trace
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *Trace {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *Trace {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*TraceEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &TraceEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// TracePaginateOption enables pagination customization.
+type TracePaginateOption func(*tracePager) error
+
+// WithTraceOrder configures pagination ordering.
+func WithTraceOrder(order *TraceOrder) TracePaginateOption {
+	if order == nil {
+		order = DefaultTraceOrder
+	}
+	o := *order
+	return func(pager *tracePager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultTraceOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithTraceFilter configures pagination filter.
+func WithTraceFilter(filter func(*TraceQuery) (*TraceQuery, error)) TracePaginateOption {
+	return func(pager *tracePager) error {
+		if filter == nil {
+			return errors.New("TraceQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type tracePager struct {
+	reverse bool
+	order   *TraceOrder
+	filter  func(*TraceQuery) (*TraceQuery, error)
+}
+
+func newTracePager(opts []TracePaginateOption, reverse bool) (*tracePager, error) {
+	pager := &tracePager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultTraceOrder
+	}
+	return pager, nil
+}
+
+func (p *tracePager) applyFilter(query *TraceQuery) (*TraceQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *tracePager) toCursor(_m *Trace) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *tracePager) applyCursors(query *TraceQuery, after, before *Cursor) (*TraceQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultTraceOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *tracePager) applyOrder(query *TraceQuery) *TraceQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultTraceOrder.Field {
+		query = query.Order(DefaultTraceOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *tracePager) orderExpr(query *TraceQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultTraceOrder.Field {
+			b.Comma().Ident(DefaultTraceOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to Trace.
+func (_m *TraceQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...TracePaginateOption,
+) (*TraceConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newTracePager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &TraceConnection{Edges: []*TraceEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// TraceOrderFieldCreatedAt orders Trace by created_at.
+	TraceOrderFieldCreatedAt = &TraceOrderField{
+		Value: func(_m *Trace) (ent.Value, error) {
+			return _m.CreatedAt, nil
+		},
+		column: trace.FieldCreatedAt,
+		toTerm: trace.ByCreatedAt,
+		toCursor: func(_m *Trace) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.CreatedAt,
+			}
+		},
+	}
+	// TraceOrderFieldUpdatedAt orders Trace by updated_at.
+	TraceOrderFieldUpdatedAt = &TraceOrderField{
+		Value: func(_m *Trace) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: trace.FieldUpdatedAt,
+		toTerm: trace.ByUpdatedAt,
+		toCursor: func(_m *Trace) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f TraceOrderField) String() string {
+	var str string
+	switch f.column {
+	case TraceOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	case TraceOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f TraceOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *TraceOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("TraceOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *TraceOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *TraceOrderFieldUpdatedAt
+	default:
+		return fmt.Errorf("%s is not a valid TraceOrderField", str)
+	}
+	return nil
+}
+
+// TraceOrderField defines the ordering field of Trace.
+type TraceOrderField struct {
+	// Value extracts the ordering value from the given Trace.
+	Value    func(*Trace) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) trace.OrderOption
+	toCursor func(*Trace) Cursor
+}
+
+// TraceOrder defines the ordering of Trace.
+type TraceOrder struct {
+	Direction OrderDirection   `json:"direction"`
+	Field     *TraceOrderField `json:"field"`
+}
+
+// DefaultTraceOrder is the default ordering of Trace.
+var DefaultTraceOrder = &TraceOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &TraceOrderField{
+		Value: func(_m *Trace) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: trace.FieldID,
+		toTerm: trace.ByID,
+		toCursor: func(_m *Trace) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts Trace into TraceEdge.
+func (_m *Trace) ToEdge(order *TraceOrder) *TraceEdge {
+	if order == nil {
+		order = DefaultTraceOrder
+	}
+	return &TraceEdge{
 		Node:   _m,
 		Cursor: order.Field.toCursor(_m),
 	}

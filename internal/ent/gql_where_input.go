@@ -15,6 +15,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -1110,6 +1112,14 @@ type ProjectWhereInput struct {
 	HasUsageLogs     *bool                 `json:"hasUsageLogs,omitempty"`
 	HasUsageLogsWith []*UsageLogWhereInput `json:"hasUsageLogsWith,omitempty"`
 
+	// "threads" edge predicates.
+	HasThreads     *bool               `json:"hasThreads,omitempty"`
+	HasThreadsWith []*ThreadWhereInput `json:"hasThreadsWith,omitempty"`
+
+	// "traces" edge predicates.
+	HasTraces     *bool              `json:"hasTraces,omitempty"`
+	HasTracesWith []*TraceWhereInput `json:"hasTracesWith,omitempty"`
+
 	// "project_users" edge predicates.
 	HasProjectUsers     *bool                    `json:"hasProjectUsers,omitempty"`
 	HasProjectUsersWith []*UserProjectWhereInput `json:"hasProjectUsersWith,omitempty"`
@@ -1463,6 +1473,42 @@ func (i *ProjectWhereInput) P() (predicate.Project, error) {
 		}
 		predicates = append(predicates, project.HasUsageLogsWith(with...))
 	}
+	if i.HasThreads != nil {
+		p := project.HasThreads()
+		if !*i.HasThreads {
+			p = project.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasThreadsWith) > 0 {
+		with := make([]predicate.Thread, 0, len(i.HasThreadsWith))
+		for _, w := range i.HasThreadsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasThreadsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, project.HasThreadsWith(with...))
+	}
+	if i.HasTraces != nil {
+		p := project.HasTraces()
+		if !*i.HasTraces {
+			p = project.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasTracesWith) > 0 {
+		with := make([]predicate.Trace, 0, len(i.HasTracesWith))
+		for _, w := range i.HasTracesWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasTracesWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, project.HasTracesWith(with...))
+	}
 	if i.HasProjectUsers != nil {
 		p := project.HasProjectUsers()
 		if !*i.HasProjectUsers {
@@ -1552,6 +1598,14 @@ type RequestWhereInput struct {
 	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
 	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
 
+	// "trace_id" field predicates.
+	TraceID       *int  `json:"traceID,omitempty"`
+	TraceIDNEQ    *int  `json:"traceIDNEQ,omitempty"`
+	TraceIDIn     []int `json:"traceIDIn,omitempty"`
+	TraceIDNotIn  []int `json:"traceIDNotIn,omitempty"`
+	TraceIDIsNil  bool  `json:"traceIDIsNil,omitempty"`
+	TraceIDNotNil bool  `json:"traceIDNotNil,omitempty"`
+
 	// "source" field predicates.
 	Source      *request.Source  `json:"source,omitempty"`
 	SourceNEQ   *request.Source  `json:"sourceNEQ,omitempty"`
@@ -1630,6 +1684,10 @@ type RequestWhereInput struct {
 	// "project" edge predicates.
 	HasProject     *bool                `json:"hasProject,omitempty"`
 	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
+
+	// "trace" edge predicates.
+	HasTrace     *bool              `json:"hasTrace,omitempty"`
+	HasTraceWith []*TraceWhereInput `json:"hasTraceWith,omitempty"`
 
 	// "executions" edge predicates.
 	HasExecutions     *bool                         `json:"hasExecutions,omitempty"`
@@ -1841,6 +1899,24 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	if len(i.ProjectIDNotIn) > 0 {
 		predicates = append(predicates, request.ProjectIDNotIn(i.ProjectIDNotIn...))
 	}
+	if i.TraceID != nil {
+		predicates = append(predicates, request.TraceIDEQ(*i.TraceID))
+	}
+	if i.TraceIDNEQ != nil {
+		predicates = append(predicates, request.TraceIDNEQ(*i.TraceIDNEQ))
+	}
+	if len(i.TraceIDIn) > 0 {
+		predicates = append(predicates, request.TraceIDIn(i.TraceIDIn...))
+	}
+	if len(i.TraceIDNotIn) > 0 {
+		predicates = append(predicates, request.TraceIDNotIn(i.TraceIDNotIn...))
+	}
+	if i.TraceIDIsNil {
+		predicates = append(predicates, request.TraceIDIsNil())
+	}
+	if i.TraceIDNotNil {
+		predicates = append(predicates, request.TraceIDNotNil())
+	}
 	if i.Source != nil {
 		predicates = append(predicates, request.SourceEQ(*i.Source))
 	}
@@ -2048,6 +2124,24 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, request.HasProjectWith(with...))
+	}
+	if i.HasTrace != nil {
+		p := request.HasTrace()
+		if !*i.HasTrace {
+			p = request.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasTraceWith) > 0 {
+		with := make([]predicate.Trace, 0, len(i.HasTraceWith))
+		for _, w := range i.HasTraceWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasTraceWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, request.HasTraceWith(with...))
 	}
 	if i.HasExecutions != nil {
 		p := request.HasExecutions()
@@ -3390,6 +3484,738 @@ func (i *SystemWhereInput) P() (predicate.System, error) {
 		return predicates[0], nil
 	default:
 		return system.And(predicates...), nil
+	}
+}
+
+// ThreadWhereInput represents a where input for filtering Thread queries.
+type ThreadWhereInput struct {
+	Predicates []predicate.Thread  `json:"-"`
+	Not        *ThreadWhereInput   `json:"not,omitempty"`
+	Or         []*ThreadWhereInput `json:"or,omitempty"`
+	And        []*ThreadWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+
+	// "updated_at" field predicates.
+	UpdatedAt      *time.Time  `json:"updatedAt,omitempty"`
+	UpdatedAtNEQ   *time.Time  `json:"updatedAtNEQ,omitempty"`
+	UpdatedAtIn    []time.Time `json:"updatedAtIn,omitempty"`
+	UpdatedAtNotIn []time.Time `json:"updatedAtNotIn,omitempty"`
+	UpdatedAtGT    *time.Time  `json:"updatedAtGT,omitempty"`
+	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
+	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
+	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
+
+	// "deleted_at" field predicates.
+	DeletedAt      *int  `json:"deletedAt,omitempty"`
+	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
+	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
+	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
+	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
+	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
+	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
+	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
+
+	// "project_id" field predicates.
+	ProjectID      *int  `json:"projectID,omitempty"`
+	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
+	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
+	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
+
+	// "thread_id" field predicates.
+	ThreadID             *string  `json:"threadID,omitempty"`
+	ThreadIDNEQ          *string  `json:"threadIDNEQ,omitempty"`
+	ThreadIDIn           []string `json:"threadIDIn,omitempty"`
+	ThreadIDNotIn        []string `json:"threadIDNotIn,omitempty"`
+	ThreadIDGT           *string  `json:"threadIDGT,omitempty"`
+	ThreadIDGTE          *string  `json:"threadIDGTE,omitempty"`
+	ThreadIDLT           *string  `json:"threadIDLT,omitempty"`
+	ThreadIDLTE          *string  `json:"threadIDLTE,omitempty"`
+	ThreadIDContains     *string  `json:"threadIDContains,omitempty"`
+	ThreadIDHasPrefix    *string  `json:"threadIDHasPrefix,omitempty"`
+	ThreadIDHasSuffix    *string  `json:"threadIDHasSuffix,omitempty"`
+	ThreadIDEqualFold    *string  `json:"threadIDEqualFold,omitempty"`
+	ThreadIDContainsFold *string  `json:"threadIDContainsFold,omitempty"`
+
+	// "project" edge predicates.
+	HasProject     *bool                `json:"hasProject,omitempty"`
+	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
+
+	// "traces" edge predicates.
+	HasTraces     *bool              `json:"hasTraces,omitempty"`
+	HasTracesWith []*TraceWhereInput `json:"hasTracesWith,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *ThreadWhereInput) AddPredicates(predicates ...predicate.Thread) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the ThreadWhereInput filter on the ThreadQuery builder.
+func (i *ThreadWhereInput) Filter(q *ThreadQuery) (*ThreadQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyThreadWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyThreadWhereInput is returned in case the ThreadWhereInput is empty.
+var ErrEmptyThreadWhereInput = errors.New("ent: empty predicate ThreadWhereInput")
+
+// P returns a predicate for filtering threads.
+// An error is returned if the input is empty or invalid.
+func (i *ThreadWhereInput) P() (predicate.Thread, error) {
+	var predicates []predicate.Thread
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, thread.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.Thread, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, thread.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.Thread, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, thread.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, thread.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, thread.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, thread.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, thread.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, thread.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, thread.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, thread.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, thread.IDLTE(*i.IDLTE))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, thread.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, thread.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, thread.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, thread.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, thread.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, thread.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, thread.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, thread.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+	if i.UpdatedAt != nil {
+		predicates = append(predicates, thread.UpdatedAtEQ(*i.UpdatedAt))
+	}
+	if i.UpdatedAtNEQ != nil {
+		predicates = append(predicates, thread.UpdatedAtNEQ(*i.UpdatedAtNEQ))
+	}
+	if len(i.UpdatedAtIn) > 0 {
+		predicates = append(predicates, thread.UpdatedAtIn(i.UpdatedAtIn...))
+	}
+	if len(i.UpdatedAtNotIn) > 0 {
+		predicates = append(predicates, thread.UpdatedAtNotIn(i.UpdatedAtNotIn...))
+	}
+	if i.UpdatedAtGT != nil {
+		predicates = append(predicates, thread.UpdatedAtGT(*i.UpdatedAtGT))
+	}
+	if i.UpdatedAtGTE != nil {
+		predicates = append(predicates, thread.UpdatedAtGTE(*i.UpdatedAtGTE))
+	}
+	if i.UpdatedAtLT != nil {
+		predicates = append(predicates, thread.UpdatedAtLT(*i.UpdatedAtLT))
+	}
+	if i.UpdatedAtLTE != nil {
+		predicates = append(predicates, thread.UpdatedAtLTE(*i.UpdatedAtLTE))
+	}
+	if i.DeletedAt != nil {
+		predicates = append(predicates, thread.DeletedAtEQ(*i.DeletedAt))
+	}
+	if i.DeletedAtNEQ != nil {
+		predicates = append(predicates, thread.DeletedAtNEQ(*i.DeletedAtNEQ))
+	}
+	if len(i.DeletedAtIn) > 0 {
+		predicates = append(predicates, thread.DeletedAtIn(i.DeletedAtIn...))
+	}
+	if len(i.DeletedAtNotIn) > 0 {
+		predicates = append(predicates, thread.DeletedAtNotIn(i.DeletedAtNotIn...))
+	}
+	if i.DeletedAtGT != nil {
+		predicates = append(predicates, thread.DeletedAtGT(*i.DeletedAtGT))
+	}
+	if i.DeletedAtGTE != nil {
+		predicates = append(predicates, thread.DeletedAtGTE(*i.DeletedAtGTE))
+	}
+	if i.DeletedAtLT != nil {
+		predicates = append(predicates, thread.DeletedAtLT(*i.DeletedAtLT))
+	}
+	if i.DeletedAtLTE != nil {
+		predicates = append(predicates, thread.DeletedAtLTE(*i.DeletedAtLTE))
+	}
+	if i.ProjectID != nil {
+		predicates = append(predicates, thread.ProjectIDEQ(*i.ProjectID))
+	}
+	if i.ProjectIDNEQ != nil {
+		predicates = append(predicates, thread.ProjectIDNEQ(*i.ProjectIDNEQ))
+	}
+	if len(i.ProjectIDIn) > 0 {
+		predicates = append(predicates, thread.ProjectIDIn(i.ProjectIDIn...))
+	}
+	if len(i.ProjectIDNotIn) > 0 {
+		predicates = append(predicates, thread.ProjectIDNotIn(i.ProjectIDNotIn...))
+	}
+	if i.ThreadID != nil {
+		predicates = append(predicates, thread.ThreadIDEQ(*i.ThreadID))
+	}
+	if i.ThreadIDNEQ != nil {
+		predicates = append(predicates, thread.ThreadIDNEQ(*i.ThreadIDNEQ))
+	}
+	if len(i.ThreadIDIn) > 0 {
+		predicates = append(predicates, thread.ThreadIDIn(i.ThreadIDIn...))
+	}
+	if len(i.ThreadIDNotIn) > 0 {
+		predicates = append(predicates, thread.ThreadIDNotIn(i.ThreadIDNotIn...))
+	}
+	if i.ThreadIDGT != nil {
+		predicates = append(predicates, thread.ThreadIDGT(*i.ThreadIDGT))
+	}
+	if i.ThreadIDGTE != nil {
+		predicates = append(predicates, thread.ThreadIDGTE(*i.ThreadIDGTE))
+	}
+	if i.ThreadIDLT != nil {
+		predicates = append(predicates, thread.ThreadIDLT(*i.ThreadIDLT))
+	}
+	if i.ThreadIDLTE != nil {
+		predicates = append(predicates, thread.ThreadIDLTE(*i.ThreadIDLTE))
+	}
+	if i.ThreadIDContains != nil {
+		predicates = append(predicates, thread.ThreadIDContains(*i.ThreadIDContains))
+	}
+	if i.ThreadIDHasPrefix != nil {
+		predicates = append(predicates, thread.ThreadIDHasPrefix(*i.ThreadIDHasPrefix))
+	}
+	if i.ThreadIDHasSuffix != nil {
+		predicates = append(predicates, thread.ThreadIDHasSuffix(*i.ThreadIDHasSuffix))
+	}
+	if i.ThreadIDEqualFold != nil {
+		predicates = append(predicates, thread.ThreadIDEqualFold(*i.ThreadIDEqualFold))
+	}
+	if i.ThreadIDContainsFold != nil {
+		predicates = append(predicates, thread.ThreadIDContainsFold(*i.ThreadIDContainsFold))
+	}
+
+	if i.HasProject != nil {
+		p := thread.HasProject()
+		if !*i.HasProject {
+			p = thread.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProjectWith) > 0 {
+		with := make([]predicate.Project, 0, len(i.HasProjectWith))
+		for _, w := range i.HasProjectWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProjectWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, thread.HasProjectWith(with...))
+	}
+	if i.HasTraces != nil {
+		p := thread.HasTraces()
+		if !*i.HasTraces {
+			p = thread.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasTracesWith) > 0 {
+		with := make([]predicate.Trace, 0, len(i.HasTracesWith))
+		for _, w := range i.HasTracesWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasTracesWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, thread.HasTracesWith(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyThreadWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return thread.And(predicates...), nil
+	}
+}
+
+// TraceWhereInput represents a where input for filtering Trace queries.
+type TraceWhereInput struct {
+	Predicates []predicate.Trace  `json:"-"`
+	Not        *TraceWhereInput   `json:"not,omitempty"`
+	Or         []*TraceWhereInput `json:"or,omitempty"`
+	And        []*TraceWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+
+	// "updated_at" field predicates.
+	UpdatedAt      *time.Time  `json:"updatedAt,omitempty"`
+	UpdatedAtNEQ   *time.Time  `json:"updatedAtNEQ,omitempty"`
+	UpdatedAtIn    []time.Time `json:"updatedAtIn,omitempty"`
+	UpdatedAtNotIn []time.Time `json:"updatedAtNotIn,omitempty"`
+	UpdatedAtGT    *time.Time  `json:"updatedAtGT,omitempty"`
+	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
+	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
+	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
+
+	// "deleted_at" field predicates.
+	DeletedAt      *int  `json:"deletedAt,omitempty"`
+	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
+	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
+	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
+	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
+	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
+	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
+	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
+
+	// "project_id" field predicates.
+	ProjectID      *int  `json:"projectID,omitempty"`
+	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
+	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
+	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
+
+	// "trace_id" field predicates.
+	TraceID             *string  `json:"traceID,omitempty"`
+	TraceIDNEQ          *string  `json:"traceIDNEQ,omitempty"`
+	TraceIDIn           []string `json:"traceIDIn,omitempty"`
+	TraceIDNotIn        []string `json:"traceIDNotIn,omitempty"`
+	TraceIDGT           *string  `json:"traceIDGT,omitempty"`
+	TraceIDGTE          *string  `json:"traceIDGTE,omitempty"`
+	TraceIDLT           *string  `json:"traceIDLT,omitempty"`
+	TraceIDLTE          *string  `json:"traceIDLTE,omitempty"`
+	TraceIDContains     *string  `json:"traceIDContains,omitempty"`
+	TraceIDHasPrefix    *string  `json:"traceIDHasPrefix,omitempty"`
+	TraceIDHasSuffix    *string  `json:"traceIDHasSuffix,omitempty"`
+	TraceIDEqualFold    *string  `json:"traceIDEqualFold,omitempty"`
+	TraceIDContainsFold *string  `json:"traceIDContainsFold,omitempty"`
+
+	// "thread_id" field predicates.
+	ThreadID       *int  `json:"threadID,omitempty"`
+	ThreadIDNEQ    *int  `json:"threadIDNEQ,omitempty"`
+	ThreadIDIn     []int `json:"threadIDIn,omitempty"`
+	ThreadIDNotIn  []int `json:"threadIDNotIn,omitempty"`
+	ThreadIDIsNil  bool  `json:"threadIDIsNil,omitempty"`
+	ThreadIDNotNil bool  `json:"threadIDNotNil,omitempty"`
+
+	// "project" edge predicates.
+	HasProject     *bool                `json:"hasProject,omitempty"`
+	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
+
+	// "thread" edge predicates.
+	HasThread     *bool               `json:"hasThread,omitempty"`
+	HasThreadWith []*ThreadWhereInput `json:"hasThreadWith,omitempty"`
+
+	// "requests" edge predicates.
+	HasRequests     *bool                `json:"hasRequests,omitempty"`
+	HasRequestsWith []*RequestWhereInput `json:"hasRequestsWith,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *TraceWhereInput) AddPredicates(predicates ...predicate.Trace) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the TraceWhereInput filter on the TraceQuery builder.
+func (i *TraceWhereInput) Filter(q *TraceQuery) (*TraceQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyTraceWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyTraceWhereInput is returned in case the TraceWhereInput is empty.
+var ErrEmptyTraceWhereInput = errors.New("ent: empty predicate TraceWhereInput")
+
+// P returns a predicate for filtering traces.
+// An error is returned if the input is empty or invalid.
+func (i *TraceWhereInput) P() (predicate.Trace, error) {
+	var predicates []predicate.Trace
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, trace.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.Trace, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, trace.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.Trace, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, trace.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, trace.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, trace.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, trace.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, trace.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, trace.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, trace.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, trace.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, trace.IDLTE(*i.IDLTE))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, trace.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, trace.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, trace.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, trace.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, trace.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, trace.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, trace.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, trace.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+	if i.UpdatedAt != nil {
+		predicates = append(predicates, trace.UpdatedAtEQ(*i.UpdatedAt))
+	}
+	if i.UpdatedAtNEQ != nil {
+		predicates = append(predicates, trace.UpdatedAtNEQ(*i.UpdatedAtNEQ))
+	}
+	if len(i.UpdatedAtIn) > 0 {
+		predicates = append(predicates, trace.UpdatedAtIn(i.UpdatedAtIn...))
+	}
+	if len(i.UpdatedAtNotIn) > 0 {
+		predicates = append(predicates, trace.UpdatedAtNotIn(i.UpdatedAtNotIn...))
+	}
+	if i.UpdatedAtGT != nil {
+		predicates = append(predicates, trace.UpdatedAtGT(*i.UpdatedAtGT))
+	}
+	if i.UpdatedAtGTE != nil {
+		predicates = append(predicates, trace.UpdatedAtGTE(*i.UpdatedAtGTE))
+	}
+	if i.UpdatedAtLT != nil {
+		predicates = append(predicates, trace.UpdatedAtLT(*i.UpdatedAtLT))
+	}
+	if i.UpdatedAtLTE != nil {
+		predicates = append(predicates, trace.UpdatedAtLTE(*i.UpdatedAtLTE))
+	}
+	if i.DeletedAt != nil {
+		predicates = append(predicates, trace.DeletedAtEQ(*i.DeletedAt))
+	}
+	if i.DeletedAtNEQ != nil {
+		predicates = append(predicates, trace.DeletedAtNEQ(*i.DeletedAtNEQ))
+	}
+	if len(i.DeletedAtIn) > 0 {
+		predicates = append(predicates, trace.DeletedAtIn(i.DeletedAtIn...))
+	}
+	if len(i.DeletedAtNotIn) > 0 {
+		predicates = append(predicates, trace.DeletedAtNotIn(i.DeletedAtNotIn...))
+	}
+	if i.DeletedAtGT != nil {
+		predicates = append(predicates, trace.DeletedAtGT(*i.DeletedAtGT))
+	}
+	if i.DeletedAtGTE != nil {
+		predicates = append(predicates, trace.DeletedAtGTE(*i.DeletedAtGTE))
+	}
+	if i.DeletedAtLT != nil {
+		predicates = append(predicates, trace.DeletedAtLT(*i.DeletedAtLT))
+	}
+	if i.DeletedAtLTE != nil {
+		predicates = append(predicates, trace.DeletedAtLTE(*i.DeletedAtLTE))
+	}
+	if i.ProjectID != nil {
+		predicates = append(predicates, trace.ProjectIDEQ(*i.ProjectID))
+	}
+	if i.ProjectIDNEQ != nil {
+		predicates = append(predicates, trace.ProjectIDNEQ(*i.ProjectIDNEQ))
+	}
+	if len(i.ProjectIDIn) > 0 {
+		predicates = append(predicates, trace.ProjectIDIn(i.ProjectIDIn...))
+	}
+	if len(i.ProjectIDNotIn) > 0 {
+		predicates = append(predicates, trace.ProjectIDNotIn(i.ProjectIDNotIn...))
+	}
+	if i.TraceID != nil {
+		predicates = append(predicates, trace.TraceIDEQ(*i.TraceID))
+	}
+	if i.TraceIDNEQ != nil {
+		predicates = append(predicates, trace.TraceIDNEQ(*i.TraceIDNEQ))
+	}
+	if len(i.TraceIDIn) > 0 {
+		predicates = append(predicates, trace.TraceIDIn(i.TraceIDIn...))
+	}
+	if len(i.TraceIDNotIn) > 0 {
+		predicates = append(predicates, trace.TraceIDNotIn(i.TraceIDNotIn...))
+	}
+	if i.TraceIDGT != nil {
+		predicates = append(predicates, trace.TraceIDGT(*i.TraceIDGT))
+	}
+	if i.TraceIDGTE != nil {
+		predicates = append(predicates, trace.TraceIDGTE(*i.TraceIDGTE))
+	}
+	if i.TraceIDLT != nil {
+		predicates = append(predicates, trace.TraceIDLT(*i.TraceIDLT))
+	}
+	if i.TraceIDLTE != nil {
+		predicates = append(predicates, trace.TraceIDLTE(*i.TraceIDLTE))
+	}
+	if i.TraceIDContains != nil {
+		predicates = append(predicates, trace.TraceIDContains(*i.TraceIDContains))
+	}
+	if i.TraceIDHasPrefix != nil {
+		predicates = append(predicates, trace.TraceIDHasPrefix(*i.TraceIDHasPrefix))
+	}
+	if i.TraceIDHasSuffix != nil {
+		predicates = append(predicates, trace.TraceIDHasSuffix(*i.TraceIDHasSuffix))
+	}
+	if i.TraceIDEqualFold != nil {
+		predicates = append(predicates, trace.TraceIDEqualFold(*i.TraceIDEqualFold))
+	}
+	if i.TraceIDContainsFold != nil {
+		predicates = append(predicates, trace.TraceIDContainsFold(*i.TraceIDContainsFold))
+	}
+	if i.ThreadID != nil {
+		predicates = append(predicates, trace.ThreadIDEQ(*i.ThreadID))
+	}
+	if i.ThreadIDNEQ != nil {
+		predicates = append(predicates, trace.ThreadIDNEQ(*i.ThreadIDNEQ))
+	}
+	if len(i.ThreadIDIn) > 0 {
+		predicates = append(predicates, trace.ThreadIDIn(i.ThreadIDIn...))
+	}
+	if len(i.ThreadIDNotIn) > 0 {
+		predicates = append(predicates, trace.ThreadIDNotIn(i.ThreadIDNotIn...))
+	}
+	if i.ThreadIDIsNil {
+		predicates = append(predicates, trace.ThreadIDIsNil())
+	}
+	if i.ThreadIDNotNil {
+		predicates = append(predicates, trace.ThreadIDNotNil())
+	}
+
+	if i.HasProject != nil {
+		p := trace.HasProject()
+		if !*i.HasProject {
+			p = trace.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProjectWith) > 0 {
+		with := make([]predicate.Project, 0, len(i.HasProjectWith))
+		for _, w := range i.HasProjectWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProjectWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, trace.HasProjectWith(with...))
+	}
+	if i.HasThread != nil {
+		p := trace.HasThread()
+		if !*i.HasThread {
+			p = trace.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasThreadWith) > 0 {
+		with := make([]predicate.Thread, 0, len(i.HasThreadWith))
+		for _, w := range i.HasThreadWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasThreadWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, trace.HasThreadWith(with...))
+	}
+	if i.HasRequests != nil {
+		p := trace.HasRequests()
+		if !*i.HasRequests {
+			p = trace.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasRequestsWith) > 0 {
+		with := make([]predicate.Request, 0, len(i.HasRequestsWith))
+		for _, w := range i.HasRequestsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasRequestsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, trace.HasRequestsWith(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyTraceWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return trace.And(predicates...), nil
 	}
 }
 

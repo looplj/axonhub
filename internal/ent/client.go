@@ -22,6 +22,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -47,6 +49,10 @@ type Client struct {
 	Role *RoleClient
 	// System is the client for interacting with the System builders.
 	System *SystemClient
+	// Thread is the client for interacting with the Thread builders.
+	Thread *ThreadClient
+	// Trace is the client for interacting with the Trace builders.
+	Trace *TraceClient
 	// UsageLog is the client for interacting with the UsageLog builders.
 	UsageLog *UsageLogClient
 	// User is the client for interacting with the User builders.
@@ -75,6 +81,8 @@ func (c *Client) init() {
 	c.RequestExecution = NewRequestExecutionClient(c.config)
 	c.Role = NewRoleClient(c.config)
 	c.System = NewSystemClient(c.config)
+	c.Thread = NewThreadClient(c.config)
+	c.Trace = NewTraceClient(c.config)
 	c.UsageLog = NewUsageLogClient(c.config)
 	c.User = NewUserClient(c.config)
 	c.UserProject = NewUserProjectClient(c.config)
@@ -178,6 +186,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		RequestExecution: NewRequestExecutionClient(cfg),
 		Role:             NewRoleClient(cfg),
 		System:           NewSystemClient(cfg),
+		Thread:           NewThreadClient(cfg),
+		Trace:            NewTraceClient(cfg),
 		UsageLog:         NewUsageLogClient(cfg),
 		User:             NewUserClient(cfg),
 		UserProject:      NewUserProjectClient(cfg),
@@ -208,6 +218,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		RequestExecution: NewRequestExecutionClient(cfg),
 		Role:             NewRoleClient(cfg),
 		System:           NewSystemClient(cfg),
+		Thread:           NewThreadClient(cfg),
+		Trace:            NewTraceClient(cfg),
 		UsageLog:         NewUsageLogClient(cfg),
 		User:             NewUserClient(cfg),
 		UserProject:      NewUserProjectClient(cfg),
@@ -242,7 +254,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.APIKey, c.Channel, c.Project, c.Request, c.RequestExecution, c.Role, c.System,
-		c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -253,7 +265,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.APIKey, c.Channel, c.Project, c.Request, c.RequestExecution, c.Role, c.System,
-		c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -276,6 +288,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Role.mutate(ctx, m)
 	case *SystemMutation:
 		return c.System.mutate(ctx, m)
+	case *ThreadMutation:
+		return c.Thread.mutate(ctx, m)
+	case *TraceMutation:
+		return c.Trace.mutate(ctx, m)
 	case *UsageLogMutation:
 		return c.UsageLog.mutate(ctx, m)
 	case *UserMutation:
@@ -843,6 +859,38 @@ func (c *ProjectClient) QueryUsageLogs(_m *Project) *UsageLogQuery {
 	return query
 }
 
+// QueryThreads queries the threads edge of a Project.
+func (c *ProjectClient) QueryThreads(_m *Project) *ThreadQuery {
+	query := (&ThreadClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(thread.Table, thread.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.ThreadsTable, project.ThreadsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTraces queries the traces edge of a Project.
+func (c *ProjectClient) QueryTraces(_m *Project) *TraceQuery {
+	query := (&TraceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(trace.Table, trace.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.TracesTable, project.TracesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryProjectUsers queries the project_users edge of a Project.
 func (c *ProjectClient) QueryProjectUsers(_m *Project) *UserProjectQuery {
 	query := (&UserProjectClient{config: c.config}).Query()
@@ -1019,6 +1067,22 @@ func (c *RequestClient) QueryProject(_m *Request) *ProjectQuery {
 			sqlgraph.From(request.Table, request.FieldID, id),
 			sqlgraph.To(project.Table, project.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, request.ProjectTable, request.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTrace queries the trace edge of a Request.
+func (c *RequestClient) QueryTrace(_m *Request) *TraceQuery {
+	query := (&TraceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(request.Table, request.FieldID, id),
+			sqlgraph.To(trace.Table, trace.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, request.TraceTable, request.TraceColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1581,6 +1645,356 @@ func (c *SystemClient) mutate(ctx context.Context, m *SystemMutation) (Value, er
 		return (&SystemDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown System mutation op: %q", m.Op())
+	}
+}
+
+// ThreadClient is a client for the Thread schema.
+type ThreadClient struct {
+	config
+}
+
+// NewThreadClient returns a client for the Thread from the given config.
+func NewThreadClient(c config) *ThreadClient {
+	return &ThreadClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `thread.Hooks(f(g(h())))`.
+func (c *ThreadClient) Use(hooks ...Hook) {
+	c.hooks.Thread = append(c.hooks.Thread, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `thread.Intercept(f(g(h())))`.
+func (c *ThreadClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Thread = append(c.inters.Thread, interceptors...)
+}
+
+// Create returns a builder for creating a Thread entity.
+func (c *ThreadClient) Create() *ThreadCreate {
+	mutation := newThreadMutation(c.config, OpCreate)
+	return &ThreadCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Thread entities.
+func (c *ThreadClient) CreateBulk(builders ...*ThreadCreate) *ThreadCreateBulk {
+	return &ThreadCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ThreadClient) MapCreateBulk(slice any, setFunc func(*ThreadCreate, int)) *ThreadCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ThreadCreateBulk{err: fmt.Errorf("calling to ThreadClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ThreadCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ThreadCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Thread.
+func (c *ThreadClient) Update() *ThreadUpdate {
+	mutation := newThreadMutation(c.config, OpUpdate)
+	return &ThreadUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ThreadClient) UpdateOne(_m *Thread) *ThreadUpdateOne {
+	mutation := newThreadMutation(c.config, OpUpdateOne, withThread(_m))
+	return &ThreadUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ThreadClient) UpdateOneID(id int) *ThreadUpdateOne {
+	mutation := newThreadMutation(c.config, OpUpdateOne, withThreadID(id))
+	return &ThreadUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Thread.
+func (c *ThreadClient) Delete() *ThreadDelete {
+	mutation := newThreadMutation(c.config, OpDelete)
+	return &ThreadDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ThreadClient) DeleteOne(_m *Thread) *ThreadDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ThreadClient) DeleteOneID(id int) *ThreadDeleteOne {
+	builder := c.Delete().Where(thread.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ThreadDeleteOne{builder}
+}
+
+// Query returns a query builder for Thread.
+func (c *ThreadClient) Query() *ThreadQuery {
+	return &ThreadQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeThread},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Thread entity by its id.
+func (c *ThreadClient) Get(ctx context.Context, id int) (*Thread, error) {
+	return c.Query().Where(thread.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ThreadClient) GetX(ctx context.Context, id int) *Thread {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryProject queries the project edge of a Thread.
+func (c *ThreadClient) QueryProject(_m *Thread) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(thread.Table, thread.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, thread.ProjectTable, thread.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTraces queries the traces edge of a Thread.
+func (c *ThreadClient) QueryTraces(_m *Thread) *TraceQuery {
+	query := (&TraceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(thread.Table, thread.FieldID, id),
+			sqlgraph.To(trace.Table, trace.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, thread.TracesTable, thread.TracesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ThreadClient) Hooks() []Hook {
+	hooks := c.hooks.Thread
+	return append(hooks[:len(hooks):len(hooks)], thread.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *ThreadClient) Interceptors() []Interceptor {
+	inters := c.inters.Thread
+	return append(inters[:len(inters):len(inters)], thread.Interceptors[:]...)
+}
+
+func (c *ThreadClient) mutate(ctx context.Context, m *ThreadMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ThreadCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ThreadUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ThreadUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ThreadDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Thread mutation op: %q", m.Op())
+	}
+}
+
+// TraceClient is a client for the Trace schema.
+type TraceClient struct {
+	config
+}
+
+// NewTraceClient returns a client for the Trace from the given config.
+func NewTraceClient(c config) *TraceClient {
+	return &TraceClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `trace.Hooks(f(g(h())))`.
+func (c *TraceClient) Use(hooks ...Hook) {
+	c.hooks.Trace = append(c.hooks.Trace, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `trace.Intercept(f(g(h())))`.
+func (c *TraceClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Trace = append(c.inters.Trace, interceptors...)
+}
+
+// Create returns a builder for creating a Trace entity.
+func (c *TraceClient) Create() *TraceCreate {
+	mutation := newTraceMutation(c.config, OpCreate)
+	return &TraceCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Trace entities.
+func (c *TraceClient) CreateBulk(builders ...*TraceCreate) *TraceCreateBulk {
+	return &TraceCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *TraceClient) MapCreateBulk(slice any, setFunc func(*TraceCreate, int)) *TraceCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &TraceCreateBulk{err: fmt.Errorf("calling to TraceClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*TraceCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &TraceCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Trace.
+func (c *TraceClient) Update() *TraceUpdate {
+	mutation := newTraceMutation(c.config, OpUpdate)
+	return &TraceUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TraceClient) UpdateOne(_m *Trace) *TraceUpdateOne {
+	mutation := newTraceMutation(c.config, OpUpdateOne, withTrace(_m))
+	return &TraceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TraceClient) UpdateOneID(id int) *TraceUpdateOne {
+	mutation := newTraceMutation(c.config, OpUpdateOne, withTraceID(id))
+	return &TraceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Trace.
+func (c *TraceClient) Delete() *TraceDelete {
+	mutation := newTraceMutation(c.config, OpDelete)
+	return &TraceDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TraceClient) DeleteOne(_m *Trace) *TraceDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *TraceClient) DeleteOneID(id int) *TraceDeleteOne {
+	builder := c.Delete().Where(trace.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TraceDeleteOne{builder}
+}
+
+// Query returns a query builder for Trace.
+func (c *TraceClient) Query() *TraceQuery {
+	return &TraceQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeTrace},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Trace entity by its id.
+func (c *TraceClient) Get(ctx context.Context, id int) (*Trace, error) {
+	return c.Query().Where(trace.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TraceClient) GetX(ctx context.Context, id int) *Trace {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryProject queries the project edge of a Trace.
+func (c *TraceClient) QueryProject(_m *Trace) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(trace.Table, trace.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, trace.ProjectTable, trace.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryThread queries the thread edge of a Trace.
+func (c *TraceClient) QueryThread(_m *Trace) *ThreadQuery {
+	query := (&ThreadClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(trace.Table, trace.FieldID, id),
+			sqlgraph.To(thread.Table, thread.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, trace.ThreadTable, trace.ThreadColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRequests queries the requests edge of a Trace.
+func (c *TraceClient) QueryRequests(_m *Trace) *RequestQuery {
+	query := (&RequestClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(trace.Table, trace.FieldID, id),
+			sqlgraph.To(request.Table, request.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, trace.RequestsTable, trace.RequestsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *TraceClient) Hooks() []Hook {
+	hooks := c.hooks.Trace
+	return append(hooks[:len(hooks):len(hooks)], trace.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *TraceClient) Interceptors() []Interceptor {
+	inters := c.inters.Trace
+	return append(inters[:len(inters):len(inters)], trace.Interceptors[:]...)
+}
+
+func (c *TraceClient) mutate(ctx context.Context, m *TraceMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&TraceCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&TraceUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&TraceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&TraceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Trace mutation op: %q", m.Op())
 	}
 }
 
@@ -2319,11 +2733,11 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, Channel, Project, Request, RequestExecution, Role, System, UsageLog,
-		User, UserProject, UserRole []ent.Hook
+		APIKey, Channel, Project, Request, RequestExecution, Role, System, Thread,
+		Trace, UsageLog, User, UserProject, UserRole []ent.Hook
 	}
 	inters struct {
-		APIKey, Channel, Project, Request, RequestExecution, Role, System, UsageLog,
-		User, UserProject, UserRole []ent.Interceptor
+		APIKey, Channel, Project, Request, RequestExecution, Role, System, Thread,
+		Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
 	}
 )

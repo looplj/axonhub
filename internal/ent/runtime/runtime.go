@@ -14,6 +14,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/schema"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -201,11 +203,11 @@ func init() {
 	// request.DefaultProjectID holds the default value on creation for the project_id field.
 	request.DefaultProjectID = requestDescProjectID.Default.(int)
 	// requestDescFormat is the schema descriptor for format field.
-	requestDescFormat := requestFields[4].Descriptor()
+	requestDescFormat := requestFields[5].Descriptor()
 	// request.DefaultFormat holds the default value on creation for the format field.
 	request.DefaultFormat = requestDescFormat.Default.(string)
 	// requestDescStream is the schema descriptor for stream field.
-	requestDescStream := requestFields[11].Descriptor()
+	requestDescStream := requestFields[12].Descriptor()
 	// request.DefaultStream holds the default value on creation for the stream field.
 	request.DefaultStream = requestDescStream.Default.(bool)
 	requestexecutionMixin := schema.RequestExecution{}.Mixin()
@@ -305,6 +307,76 @@ func init() {
 	systemDescDeletedAt := systemMixinFields1[0].Descriptor()
 	// system.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	system.DefaultDeletedAt = systemDescDeletedAt.Default.(int)
+	threadMixin := schema.Thread{}.Mixin()
+	thread.Policy = privacy.NewPolicies(schema.Thread{})
+	thread.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := thread.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	threadMixinHooks1 := threadMixin[1].Hooks()
+
+	thread.Hooks[1] = threadMixinHooks1[0]
+	threadMixinInters1 := threadMixin[1].Interceptors()
+	thread.Interceptors[0] = threadMixinInters1[0]
+	threadMixinFields0 := threadMixin[0].Fields()
+	_ = threadMixinFields0
+	threadMixinFields1 := threadMixin[1].Fields()
+	_ = threadMixinFields1
+	threadFields := schema.Thread{}.Fields()
+	_ = threadFields
+	// threadDescCreatedAt is the schema descriptor for created_at field.
+	threadDescCreatedAt := threadMixinFields0[0].Descriptor()
+	// thread.DefaultCreatedAt holds the default value on creation for the created_at field.
+	thread.DefaultCreatedAt = threadDescCreatedAt.Default.(func() time.Time)
+	// threadDescUpdatedAt is the schema descriptor for updated_at field.
+	threadDescUpdatedAt := threadMixinFields0[1].Descriptor()
+	// thread.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	thread.DefaultUpdatedAt = threadDescUpdatedAt.Default.(func() time.Time)
+	// thread.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	thread.UpdateDefaultUpdatedAt = threadDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// threadDescDeletedAt is the schema descriptor for deleted_at field.
+	threadDescDeletedAt := threadMixinFields1[0].Descriptor()
+	// thread.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	thread.DefaultDeletedAt = threadDescDeletedAt.Default.(int)
+	traceMixin := schema.Trace{}.Mixin()
+	trace.Policy = privacy.NewPolicies(schema.Trace{})
+	trace.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := trace.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	traceMixinHooks1 := traceMixin[1].Hooks()
+
+	trace.Hooks[1] = traceMixinHooks1[0]
+	traceMixinInters1 := traceMixin[1].Interceptors()
+	trace.Interceptors[0] = traceMixinInters1[0]
+	traceMixinFields0 := traceMixin[0].Fields()
+	_ = traceMixinFields0
+	traceMixinFields1 := traceMixin[1].Fields()
+	_ = traceMixinFields1
+	traceFields := schema.Trace{}.Fields()
+	_ = traceFields
+	// traceDescCreatedAt is the schema descriptor for created_at field.
+	traceDescCreatedAt := traceMixinFields0[0].Descriptor()
+	// trace.DefaultCreatedAt holds the default value on creation for the created_at field.
+	trace.DefaultCreatedAt = traceDescCreatedAt.Default.(func() time.Time)
+	// traceDescUpdatedAt is the schema descriptor for updated_at field.
+	traceDescUpdatedAt := traceMixinFields0[1].Descriptor()
+	// trace.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	trace.DefaultUpdatedAt = traceDescUpdatedAt.Default.(func() time.Time)
+	// trace.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	trace.UpdateDefaultUpdatedAt = traceDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// traceDescDeletedAt is the schema descriptor for deleted_at field.
+	traceDescDeletedAt := traceMixinFields1[0].Descriptor()
+	// trace.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	trace.DefaultDeletedAt = traceDescDeletedAt.Default.(int)
 	usagelogMixin := schema.UsageLog{}.Mixin()
 	usagelog.Policy = privacy.NewPolicies(schema.UsageLog{})
 	usagelog.Hooks[0] = func(next ent.Mutator) ent.Mutator {

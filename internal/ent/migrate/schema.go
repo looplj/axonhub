@@ -129,6 +129,7 @@ var (
 		{Name: "api_key_id", Type: field.TypeInt, Nullable: true},
 		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
 		{Name: "project_id", Type: field.TypeInt, Default: 1},
+		{Name: "trace_id", Type: field.TypeInt, Nullable: true},
 	}
 	// RequestsTable holds the schema information for the "requests" table.
 	RequestsTable = &schema.Table{
@@ -154,6 +155,12 @@ var (
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
+			{
+				Symbol:     "requests_traces_requests",
+				Columns:    []*schema.Column{RequestsColumns[16]},
+				RefColumns: []*schema.Column{TracesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
 		},
 		Indexes: []*schema.Index{
 			{
@@ -170,6 +177,11 @@ var (
 				Name:    "requests_by_channel_id",
 				Unique:  false,
 				Columns: []*schema.Column{RequestsColumns[14]},
+			},
+			{
+				Name:    "requests_by_trace_id",
+				Unique:  false,
+				Columns: []*schema.Column{RequestsColumns[16]},
 			},
 			{
 				Name:    "requests_by_created_at",
@@ -283,6 +295,88 @@ var (
 		Name:       "systems",
 		Columns:    SystemsColumns,
 		PrimaryKey: []*schema.Column{SystemsColumns[0]},
+	}
+	// ThreadsColumns holds the columns for the "threads" table.
+	ThreadsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "thread_id", Type: field.TypeString, Unique: true},
+		{Name: "project_id", Type: field.TypeInt},
+	}
+	// ThreadsTable holds the schema information for the "threads" table.
+	ThreadsTable = &schema.Table{
+		Name:       "threads",
+		Columns:    ThreadsColumns,
+		PrimaryKey: []*schema.Column{ThreadsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "threads_projects_threads",
+				Columns:    []*schema.Column{ThreadsColumns[5]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "threads_by_project_id",
+				Unique:  false,
+				Columns: []*schema.Column{ThreadsColumns[5]},
+			},
+			{
+				Name:    "threads_by_thread_id",
+				Unique:  true,
+				Columns: []*schema.Column{ThreadsColumns[4]},
+			},
+		},
+	}
+	// TracesColumns holds the columns for the "traces" table.
+	TracesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "trace_id", Type: field.TypeString, Unique: true},
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "thread_id", Type: field.TypeInt, Nullable: true},
+	}
+	// TracesTable holds the schema information for the "traces" table.
+	TracesTable = &schema.Table{
+		Name:       "traces",
+		Columns:    TracesColumns,
+		PrimaryKey: []*schema.Column{TracesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "traces_projects_traces",
+				Columns:    []*schema.Column{TracesColumns[5]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "traces_threads_traces",
+				Columns:    []*schema.Column{TracesColumns[6]},
+				RefColumns: []*schema.Column{ThreadsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "traces_by_project_id",
+				Unique:  false,
+				Columns: []*schema.Column{TracesColumns[5]},
+			},
+			{
+				Name:    "traces_by_trace_id",
+				Unique:  true,
+				Columns: []*schema.Column{TracesColumns[4]},
+			},
+			{
+				Name:    "traces_by_thread_id",
+				Unique:  false,
+				Columns: []*schema.Column{TracesColumns[6]},
+			},
+		},
 	}
 	// UsageLogsColumns holds the columns for the "usage_logs" table.
 	UsageLogsColumns = []*schema.Column{
@@ -494,6 +588,8 @@ var (
 		RequestExecutionsTable,
 		RolesTable,
 		SystemsTable,
+		ThreadsTable,
+		TracesTable,
 		UsageLogsTable,
 		UsersTable,
 		UserProjectsTable,
@@ -507,9 +603,13 @@ func init() {
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[2].RefTable = ProjectsTable
+	RequestsTable.ForeignKeys[3].RefTable = TracesTable
 	RequestExecutionsTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestExecutionsTable.ForeignKeys[1].RefTable = RequestsTable
 	RolesTable.ForeignKeys[0].RefTable = ProjectsTable
+	ThreadsTable.ForeignKeys[0].RefTable = ProjectsTable
+	TracesTable.ForeignKeys[0].RefTable = ProjectsTable
+	TracesTable.ForeignKeys[1].RefTable = ThreadsTable
 	UsageLogsTable.ForeignKeys[0].RefTable = ChannelsTable
 	UsageLogsTable.ForeignKeys[1].RefTable = ProjectsTable
 	UsageLogsTable.ForeignKeys[2].RefTable = RequestsTable

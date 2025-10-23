@@ -81,6 +81,8 @@ AxonHub 采用多层级的权限管理架构，支持 Global（全局）和 Proj
 - 包含多个 API Keys
 - 包含多个 Requests
 - 包含多个 Usage Logs
+- 包含多个 Threads
+- 包含多个 Traces
 
 ---
 
@@ -216,7 +218,66 @@ AxonHub 采用多层级的权限管理架构，支持 Global（全局）和 Proj
 
 ---
 
-### 8. Request（请求）
+---
+
+### 8. Thread（线程）
+
+**描述**：线程实体，用于组织和追踪相关的 Trace 集合，实现请求链路的可观测性。
+
+**层级**：Project
+
+**字段**：
+- `id`: 线程唯一标识
+- `project_id`: 所属项目 ID
+- `name`: 线程名称
+- `description`: 线程描述
+- `status`: 线程状态（active/archived）
+- `trace_id`: 线程追踪 ID（唯一）
+- `created_at`: 创建时间
+- `updated_at`: 更新时间
+- `deleted_at`: 软删除时间
+
+**权限**：
+- 用户只能查看和管理项目内的 Threads
+- Owner 可以查看和管理所有 Threads
+
+**关联关系**：
+- 属于一个 Project
+- 包含多个 Traces
+- 包含一个 Trace ID 用于追踪
+
+---
+
+### 9. Trace（追踪）
+
+**描述**：追踪实体，用于记录和追踪一组相关的 Request，实现分布式链路追踪。
+
+**层级**：Project
+
+**字段**：
+- `id`: 追踪唯一标识
+- `project_id`: 所属项目 ID
+- `trace_id`: 追踪 ID（唯一）
+- `name`: 追踪名称
+- `description`: 追踪描述
+- `status`: 追踪状态（active/completed/failed）
+- `thread_id`: 所属线程 ID（可选）
+- `created_at`: 创建时间
+- `updated_at`: 更新时间
+- `deleted_at`: 软删除时间
+
+**权限**：
+- 用户只能查看和管理项目内的 Traces
+- Owner 可以查看和管理所有 Traces
+
+**关联关系**：
+- 属于一个 Project
+- 可选属于一个 Thread
+- 包含多个 Requests
+
+---
+
+### 10. Request（请求）
 
 **描述**：用户通过 API 或 Playground 发起的 AI 模型请求。
 
@@ -224,9 +285,9 @@ AxonHub 采用多层级的权限管理架构，支持 Global（全局）和 Proj
 
 **字段**：
 - `id`: 请求唯一标识
-- `user_id`: 发起用户 ID
 - `api_key_id`: API Key ID（可选，来自 Admin 的请求为空）
 - `project_id`: 所属项目 ID
+- `trace_id`: 所属追踪 ID（可选）
 - `source`: 请求来源（api/playground/test）
 - `model_id`: 模型标识
 - `format`: 请求格式（如 openai/chat_completions, claude/messages）
@@ -249,13 +310,14 @@ AxonHub 采用多层级的权限管理架构，支持 Global（全局）和 Proj
 - 属于一个 User
 - 属于一个 Project
 - 可选关联一个 API Key
+- 可选关联一个 Trace
 - 可选关联一个 Channel
 - 包含多个 Request Executions
 - 关联一个 Usage Log
 
 ---
 
-### 9. Request Execution（请求执行）
+### 11. Request Execution（请求执行）
 
 **描述**：Request 在特定 Channel 上的实际执行记录，一个 Request 可能有多次执行（如重试、fallback）。
 
@@ -263,7 +325,6 @@ AxonHub 采用多层级的权限管理架构，支持 Global（全局）和 Proj
 
 **字段**：
 - `id`: 执行唯一标识
-- `user_id`: 用户 ID
 - `request_id`: 关联的请求 ID
 - `channel_id`: 执行的渠道 ID
 - `external_id`: 外部系统追踪 ID
@@ -283,7 +344,7 @@ AxonHub 采用多层级的权限管理架构，支持 Global（全局）和 Proj
 
 ---
 
-### 10. Usage Log（使用日志）
+### 12. Usage Log（使用日志）
 
 **描述**：记录每个 Request 的 Token 使用情况和成本信息，用于统计和计费。
 
@@ -291,7 +352,6 @@ AxonHub 采用多层级的权限管理架构，支持 Global（全局）和 Proj
 
 **字段**：
 - `id`: 日志唯一标识
-- `user_id`: 用户 ID
 - `request_id`: 关联的请求 ID
 - `project_id`: 所属项目 ID
 - `channel_id`: 使用的渠道 ID
@@ -342,14 +402,17 @@ erDiagram
     
     Project ||--o{ Role : "contains"
     Project ||--o{ APIKey : "contains"
-    Project ||--o{ Request : "contains"
-    Project ||--o{ UsageLog : "contains"
+    Project ||--o{ Thread : "contains"
+    Project ||--o{ Trace : "contains"
+    Thread ||--o{ Trace : "contains"
+    Trace ||--o{ Request : "contains"
     
     APIKey }o--|| Project : "belongs to"
     APIKey ||--o{ Request : "authenticates"
     
     Request }o--|| Project : "belongs to"
     Request }o--o| APIKey : "uses"
+    Request }o--o| Trace : "belongs to"
     Request }o--o| Channel : "routes to"
     Request ||--o{ RequestExecution : "has"
     Request ||--|| UsageLog : "generates"
@@ -403,6 +466,23 @@ erDiagram
         jsonb scopes
     }
     
+    Thread {
+        uuid id PK
+        uuid project_id FK
+        string name
+        string status
+        string trace_id UK
+    }
+    
+    Trace {
+        uuid id PK
+        uuid project_id FK
+        string trace_id UK
+        string name
+        string status
+        uuid thread_id FK
+    }
+    
     APIKey {
         uuid id PK
         string key UK
@@ -413,8 +493,8 @@ erDiagram
     
     Request {
         uuid id PK
-        uuid user_id FK
         uuid project_id FK
+        uuid trace_id FK
         uuid api_key_id FK
         uuid channel_id FK
         string model_id
@@ -425,14 +505,12 @@ erDiagram
         uuid id PK
         uuid request_id FK
         uuid channel_id FK
-        uuid user_id FK
         string status
     }
     
     UsageLog {
         uuid id PK
         uuid request_id FK
-        uuid user_id FK
         uuid project_id FK
         uuid channel_id FK
         integer total_tokens
@@ -476,6 +554,8 @@ Project
 │   └── project_roles + scopes (项目内权限)
 ├── Project Roles (多个)
 ├── API Keys (多个)
+├── Threads (多个)
+├── Traces (多个)
 ├── Requests (多个)
 │   ├── Request Executions (多个)
 │   └── Usage Log (一个)
@@ -497,6 +577,8 @@ Project
 - **Project** → **API Keys** (一对多)：项目包含多个 API Keys
 - **Project** → **Requests** (一对多)：项目包含多个请求
 - **Project** → **Usage Logs** (一对多)：项目包含多个使用日志
+- **Project** → **Threads** (一对多)：项目包含多个线程
+- **Project** → **Traces** (一对多)：项目包含多个追踪
 
 #### Channel 关联
 - **Channel** → **Requests** (一对多)：渠道可以处理多个请求
@@ -507,6 +589,7 @@ Project
 - **Request** → **User** (多对一)：请求属于一个用户
 - **Request** → **Project** (多对一)：请求属于一个项目
 - **Request** → **API Key** (多对一，可选)：请求可能使用一个 API Key
+- **Request** → **Trace** (多对一，可选)：请求可能属于一个追踪
 - **Request** → **Channel** (多对一，可选)：请求可能使用一个渠道
 - **Request** → **Request Executions** (一对多)：请求包含多个执行记录
 - **Request** → **Usage Log** (一对一)：请求关联一个使用日志
@@ -514,6 +597,15 @@ Project
 #### Role 关联
 - **Role** → **Users** (多对多)：角色可以分配给多个用户
 - **Role** → **Scopes** (一对多)：角色包含多个权限范围
+
+#### Thread 关联
+- **Thread** → **Project** (多对一)：线程属于一个项目
+- **Thread** → **Traces** (一对多)：线程包含多个追踪
+
+#### Trace 关联
+- **Trace** → **Project** (多对一)：追踪属于一个项目
+- **Trace** → **Thread** (多对一，可选)：追踪可能属于一个线程
+- **Trace** → **Requests** (一对多)：追踪包含多个请求
 
 ---
 
@@ -627,18 +719,26 @@ Project
    - `user_id` (普通索引)
 
 5. **Request**：
-   - `user_id` (普通索引)
    - `api_key_id` (普通索引)
    - `channel_id` (普通索引)
+   - `trace_id` (普通索引)
    - `created_at` (普通索引，用于时间范围查询)
    - `status` (普通索引，用于状态过滤)
 
-6. **Request Execution**：
+6. **Thread**：
+   - `project_id` (普通索引)
+   - `trace_id` (唯一索引)
+
+7. **Trace**：
+   - `project_id` (普通索引)
+   - `trace_id` (唯一索引)
+   - `thread_id` (普通索引)
+
+8. **Request Execution**：
    - `request_id` (普通索引)
    - `channel_id` (普通索引)
 
-7. **Usage Log**：
-   - `user_id` (普通索引)
+9. **Usage Log**：
    - `request_id` (普通索引)
    - `channel_id` (普通索引)
    - `created_at` (普通索引)
@@ -659,6 +759,8 @@ Project
 - API Key
 - Request
 - Usage Log
+- Thread
+- Trace
 
 软删除通过 `deleted_at` 字段实现，删除时设置时间戳而不是物理删除记录，便于数据恢复和审计。
 
@@ -671,8 +773,9 @@ AxonHub 的数据模型设计遵循以下原则：
 1. **层级分离**：Global 和 Project 层级清晰分离，资源共享与隔离合理
 2. **权限细粒度**：通过 RBAC 模型实现细粒度权限控制
 3. **可追溯性**：完整记录请求执行和使用情况，支持审计和分析
-4. **可扩展性**：支持多渠道、多模型、多项目的扩展需求
-5. **性能优化**：合理的索引设计支持高效查询
-6. **数据安全**：敏感字段标记、软删除机制保障数据安全
+4. **可观测性**：通过 Thread 和 Trace 实现请求链路追踪和可观测性
+5. **可扩展性**：支持多渠道、多模型、多项目的扩展需求
+6. **性能优化**：合理的索引设计支持高效查询
+7. **数据安全**：敏感字段标记、软删除机制保障数据安全
 
-该设计为 AxonHub 提供了灵活、安全、高效的数据管理能力。
+该设计为 AxonHub 提供了灵活、安全、高效的数据管理能力，支持请求追踪、链路分析和可观测性需求。

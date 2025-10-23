@@ -465,6 +465,52 @@ func HasUsageLogsWith(preds ...predicate.UsageLog) predicate.Project {
 	})
 }
 
+// HasThreads applies the HasEdge predicate on the "threads" edge.
+func HasThreads() predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ThreadsTable, ThreadsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasThreadsWith applies the HasEdge predicate on the "threads" edge with a given conditions (other predicates).
+func HasThreadsWith(preds ...predicate.Thread) predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := newThreadsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasTraces applies the HasEdge predicate on the "traces" edge.
+func HasTraces() predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, TracesTable, TracesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasTracesWith applies the HasEdge predicate on the "traces" edge with a given conditions (other predicates).
+func HasTracesWith(preds ...predicate.Trace) predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := newTracesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasProjectUsers applies the HasEdge predicate on the "project_users" edge.
 func HasProjectUsers() predicate.Project {
 	return predicate.Project(func(s *sql.Selector) {

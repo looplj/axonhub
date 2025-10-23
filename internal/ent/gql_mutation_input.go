@@ -247,6 +247,7 @@ type CreateRequestInput struct {
 	Stream         *bool
 	APIKeyID       *int
 	ProjectID      int
+	TraceID        *int
 	ChannelID      *int
 }
 
@@ -279,6 +280,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 		m.SetAPIKeyID(*v)
 	}
 	m.SetProjectID(i.ProjectID)
+	if v := i.TraceID; v != nil {
+		m.SetTraceID(*v)
+	}
 	if v := i.ChannelID; v != nil {
 		m.SetChannelID(*v)
 	}
@@ -484,6 +488,94 @@ func (c *SystemUpdate) SetInput(i UpdateSystemInput) *SystemUpdate {
 
 // SetInput applies the change-set in the UpdateSystemInput on the SystemUpdateOne builder.
 func (c *SystemUpdateOne) SetInput(i UpdateSystemInput) *SystemUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateThreadInput represents a mutation input for creating threads.
+type CreateThreadInput struct {
+	ThreadID  string
+	ProjectID int
+}
+
+// Mutate applies the CreateThreadInput on the ThreadMutation builder.
+func (i *CreateThreadInput) Mutate(m *ThreadMutation) {
+	m.SetThreadID(i.ThreadID)
+	m.SetProjectID(i.ProjectID)
+}
+
+// SetInput applies the change-set in the CreateThreadInput on the ThreadCreate builder.
+func (c *ThreadCreate) SetInput(i CreateThreadInput) *ThreadCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateThreadInput represents a mutation input for updating threads.
+type UpdateThreadInput struct {
+	ThreadID *string
+}
+
+// Mutate applies the UpdateThreadInput on the ThreadMutation builder.
+func (i *UpdateThreadInput) Mutate(m *ThreadMutation) {
+	if v := i.ThreadID; v != nil {
+		m.SetThreadID(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateThreadInput on the ThreadUpdate builder.
+func (c *ThreadUpdate) SetInput(i UpdateThreadInput) *ThreadUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateThreadInput on the ThreadUpdateOne builder.
+func (c *ThreadUpdateOne) SetInput(i UpdateThreadInput) *ThreadUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateTraceInput represents a mutation input for creating traces.
+type CreateTraceInput struct {
+	TraceID   string
+	ProjectID int
+	ThreadID  *int
+}
+
+// Mutate applies the CreateTraceInput on the TraceMutation builder.
+func (i *CreateTraceInput) Mutate(m *TraceMutation) {
+	m.SetTraceID(i.TraceID)
+	m.SetProjectID(i.ProjectID)
+	if v := i.ThreadID; v != nil {
+		m.SetThreadID(*v)
+	}
+}
+
+// SetInput applies the change-set in the CreateTraceInput on the TraceCreate builder.
+func (c *TraceCreate) SetInput(i CreateTraceInput) *TraceCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateTraceInput represents a mutation input for updating traces.
+type UpdateTraceInput struct {
+	TraceID *string
+}
+
+// Mutate applies the UpdateTraceInput on the TraceMutation builder.
+func (i *UpdateTraceInput) Mutate(m *TraceMutation) {
+	if v := i.TraceID; v != nil {
+		m.SetTraceID(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateTraceInput on the TraceUpdate builder.
+func (c *TraceUpdate) SetInput(i UpdateTraceInput) *TraceUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateTraceInput on the TraceUpdateOne builder.
+func (c *TraceUpdateOne) SetInput(i UpdateTraceInput) *TraceUpdateOne {
 	i.Mutate(c.Mutation())
 	return c
 }
