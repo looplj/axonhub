@@ -25,21 +25,41 @@ pnpm test:e2e
 5. ✅ **Parallel tests** - All other tests run in parallel
 6. ✅ **Auto cleanup** - Stop backend server after tests
 
-## Common Commands
+## Database Support
+
+The E2E test suite supports multiple database types:
+
+**Supported databases:**
+- **SQLite** (default) - Fast, file-based database for development
+- **MySQL** - Production-like relational database with Docker
+- **PostgreSQL** - Advanced relational database with Docker
+
+**Using different databases:**
 
 ```bash
-# Run tests
-pnpm test:e2e                 # Run all tests in headless mode
-pnpm test:e2e:headed          # Run in headed mode (visible browser)
-pnpm test:e2e:ui              # Run in UI mode (interactive)
+# SQLite (default)
+./scripts/e2e-test.sh
 
-# Debug
-pnpm test:e2e:debug           # Debug mode
-pnpm test:e2e:setup           # Run only setup tests
+# MySQL
+./scripts/e2e-test.sh -d mysql
 
-# View reports
-pnpm test:e2e:report          # View test report
+# PostgreSQL
+./scripts/e2e-test.sh --dbtype postgres
+
+# With Playwright options
+./scripts/e2e-test.sh -d mysql --headed
+./scripts/e2e-test.sh --dbtype postgres --grep "user"
 ```
+
+**Database requirements:**
+- **MySQL**: Docker must be installed and running
+- **PostgreSQL**: Docker must be installed and running
+- **SQLite**: No additional requirements
+
+**Database configuration:**
+- SQLite uses `scripts/axonhub-e2e.db`
+- MySQL uses Docker container `axonhub-e2e-mysql` on port 13306
+- PostgreSQL uses Docker container `axonhub-e2e-postgres` on port 15432
 
 ## Output Example
 
@@ -143,17 +163,18 @@ When tests fail, the database is preserved for debugging:
 # View backend logs
 cat ../../scripts/e2e-backend.log
 
-# Check database
-sqlite3 ../../scripts/axonhub-e2e.db
+# Check database (varies by type)
+# SQLite
+sqlite3 ../../scripts/axonhub-e2e.db ".tables"
 
-# View all tables
-sqlite> .tables
+# MySQL (if using Docker)
+docker exec axonhub-e2e-mysql mysql -u axonhub -p axonhub_e2e -e "SHOW TABLES;"
 
-# View users
-sqlite> SELECT * FROM users;
+# PostgreSQL (if using Docker)
+docker exec axonhub-e2e-postgres psql -U axonhub -d axonhub_e2e -c "\dt"
 
-# Exit
-sqlite> .quit
+# View users (example)
+sqlite3 ../../scripts/axonhub-e2e.db "SELECT * FROM users;"
 ```
 
 ## Important Files
@@ -176,7 +197,7 @@ AXONHUB_API_URL=http://localhost:8099  # Backend API URL
 
 **Backend configuration:**
 - Port: 8099
-- Database: `axonhub-e2e.db`
+- Database: Configurable (SQLite `axonhub-e2e.db`, MySQL, PostgreSQL)
 - Logs: `e2e-backend.log`
 
 **Frontend configuration:**
@@ -211,9 +232,16 @@ pnpm test:e2e:report
 # Run in debug mode
 pnpm test:e2e:debug
 
-# Check database
+# Check database (varies by type)
+# SQLite
 sqlite3 ../../scripts/axonhub-e2e.db ".tables"
 sqlite3 ../../scripts/axonhub-e2e.db "SELECT * FROM users;"
+
+# MySQL (if using Docker)
+docker exec axonhub-e2e-mysql mysql -u axonhub -p axonhub_e2e -e "SHOW TABLES; SELECT * FROM users;"
+
+# PostgreSQL (if using Docker)
+docker exec axonhub-e2e-postgres psql -U axonhub -d axonhub_e2e -c "\dt; SELECT * FROM users;"
 ```
 
 ### Test Stuck
@@ -322,21 +350,41 @@ pnpm test:e2e
 5. ✅ **并行测试** - 所有其他测试并行运行
 6. ✅ **自动清理** - 测试结束后停止后端服务
 
-## 常用命令
+## 数据库支持
+
+E2E 测试套件支持多种数据库类型：
+
+**支持的数据库：**
+- **SQLite** (默认) - 快速、基于文件的数据库，适合开发
+- **MySQL** - 类似生产环境的关连式数据库，需要 Docker
+- **PostgreSQL** - 高级关连式数据库，需要 Docker
+
+**使用不同的数据库：**
 
 ```bash
-# 运行测试
-pnpm test:e2e                 # 无头模式运行所有测试
-pnpm test:e2e:headed          # 有头模式运行（可见浏览器）
-pnpm test:e2e:ui              # UI 模式运行（交互式）
+# SQLite (默认)
+./scripts/e2e-test.sh
 
-# 调试
-pnpm test:e2e:debug           # 调试模式
-pnpm test:e2e:setup           # 只运行初始化测试
+# MySQL
+./scripts/e2e-test.sh -d mysql
 
-# 查看报告
-pnpm test:e2e:report          # 查看测试报告
+# PostgreSQL
+./scripts/e2e-test.sh --dbtype postgres
+
+# 结合 Playwright 选项
+./scripts/e2e-test.sh -d mysql --headed
+./scripts/e2e-test.sh --dbtype postgres --grep "user"
 ```
+
+**数据库要求：**
+- **MySQL**: 需要安装并运行 Docker
+- **PostgreSQL**: 需要安装并运行 Docker
+- **SQLite**: 无额外要求
+
+**数据库配置：**
+- SQLite 使用 `scripts/axonhub-e2e.db`
+- MySQL 使用 Docker 容器 `axonhub-e2e-mysql` 端口 13306
+- PostgreSQL 使用 Docker 容器 `axonhub-e2e-postgres` 端口 15432
 
 ## 输出示例
 
@@ -440,17 +488,18 @@ cd ../..  # 回到项目根目录
 # 查看后端日志
 cat ../../scripts/e2e-backend.log
 
-# 检查数据库
-sqlite3 ../../scripts/axonhub-e2e.db
+# 检查数据库（根据类型不同）
+# SQLite
+sqlite3 ../../scripts/axonhub-e2e.db ".tables"
 
-# 查看所有表
-sqlite> .tables
+# MySQL (如果使用 Docker)
+docker exec axonhub-e2e-mysql mysql -u axonhub -p axonhub_e2e -e "SHOW TABLES;"
 
-# 查看用户
-sqlite> SELECT * FROM users;
+# PostgreSQL (如果使用 Docker)
+docker exec axonhub-e2e-postgres psql -U axonhub -d axonhub_e2e -c "\dt"
 
-# 退出
-sqlite> .quit
+# 查看用户（示例）
+sqlite3 ../../scripts/axonhub-e2e.db "SELECT * FROM users;"
 ```
 
 ## 重要文件
@@ -473,7 +522,7 @@ AXONHUB_API_URL=http://localhost:8099  # 后端 API 地址
 
 **后端配置:**
 - 端口: 8099
-- 数据库: `axonhub-e2e.db`
+- 数据库: 可配置 (SQLite `axonhub-e2e.db`, MySQL, PostgreSQL)
 - 日志: `e2e-backend.log`
 
 **前端配置:**
@@ -508,9 +557,16 @@ pnpm test:e2e:report
 # 调试模式运行
 pnpm test:e2e:debug
 
-# 检查数据库
+# 检查数据库（根据类型不同）
+# SQLite
 sqlite3 ../../scripts/axonhub-e2e.db ".tables"
 sqlite3 ../../scripts/axonhub-e2e.db "SELECT * FROM users;"
+
+# MySQL (如果使用 Docker)
+docker exec axonhub-e2e-mysql mysql -u axonhub -p axonhub_e2e -e "SHOW TABLES; SELECT * FROM users;"
+
+# PostgreSQL (如果使用 Docker)
+docker exec axonhub-e2e-postgres psql -U axonhub -d axonhub_e2e -c "\dt; SELECT * FROM users;"
 ```
 
 ### 测试卡住不动

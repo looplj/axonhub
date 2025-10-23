@@ -104,17 +104,19 @@ cleanup_database() {
 
   case "$type" in
     mysql)
-      if [ "$USE_EXISTING_DB" != "true" ] && command -v docker >/dev/null 2>&1; then
+      if [ "$USE_EXISTING_DB" != "true" ] && [ "${AXONHUB_E2E_KEEP_DB:-false}" != "true" ] && command -v docker >/dev/null 2>&1; then
         docker rm -f "$MYSQL_CONTAINER" >/dev/null 2>&1 || true
       fi
       ;;
     postgres)
-      if [ "$USE_EXISTING_DB" != "true" ] && command -v docker >/dev/null 2>&1; then
+      if [ "$USE_EXISTING_DB" != "true" ] && [ "${AXONHUB_E2E_KEEP_DB:-false}" != "true" ] && command -v docker >/dev/null 2>&1; then
         docker rm -f "$POSTGRES_CONTAINER" >/dev/null 2>&1 || true
       fi
       ;;
     sqlite)
-      :
+      if [ "${AXONHUB_E2E_KEEP_DB:-false}" != "true" ]; then
+        rm -f "$E2E_DB"
+      fi
       ;;
   esac
 }
@@ -214,6 +216,7 @@ case "${1:-}" in
       cd "$SCRIPT_DIR"
     fi
     
+    echo "Using $DB_DSN database for E2E..."
     # Start backend server with E2E configuration
     echo "Starting backend on port $E2E_PORT using $DB_TYPE database..."
     AXONHUB_SERVER_PORT=$E2E_PORT \
@@ -281,8 +284,14 @@ case "${1:-}" in
     fi
 
     rm -f "$PID_FILE"
-    cleanup_database "$DB_TYPE"
-    rm -f "$DB_TYPE_FILE"
+
+    if [ "${AXONHUB_E2E_KEEP_DB:-false}" != "true" ]; then
+      cleanup_database "$DB_TYPE"
+      rm -f "$DB_TYPE_FILE"
+    else
+      echo "Database preserved (--keep-db flag)"
+      rm -f "$DB_TYPE_FILE"
+    fi
     ;;
     
   restart)
