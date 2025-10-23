@@ -6,30 +6,29 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 )
 
-// ContextKey 定义 context key 类型.
+// ContextKey defines the context key type.
 type ContextKey string
 
 const (
-	// APIKeyContextKey 用于在 context 中存储 API key entity.
-	APIKeyContextKey ContextKey = "api_key"
-	// UserContextKey 用于在 context 中存储用户 entity.
-	UserContextKey ContextKey = "user"
-	// ProjectIDContextKey 用于在 context 中存储项目 ID.
-	ProjectIDContextKey ContextKey = "project_id"
+	// containerContextKey is used to store the context container in the context.
+	containerContextKey ContextKey = "context_container"
 )
 
-// WithAPIKey 将 API key entity 存储到 context 中.
+// WithAPIKey stores the API key entity in the context.
 func WithAPIKey(ctx context.Context, apiKey *ent.APIKey) context.Context {
-	return context.WithValue(ctx, APIKeyContextKey, apiKey)
+	container := getContainer(ctx)
+	container.APIKey = apiKey
+
+	return withContainer(ctx, container)
 }
 
-// GetAPIKey 从 context 中获取 API key entity.
+// GetAPIKey retrieves the API key entity from the context.
 func GetAPIKey(ctx context.Context) (*ent.APIKey, bool) {
-	apiKey, ok := ctx.Value(APIKeyContextKey).(*ent.APIKey)
-	return apiKey, ok
+	container := getContainer(ctx)
+	return container.APIKey, container.APIKey != nil
 }
 
-// GetAPIKeyString 从 context 中获取 API key 字符串（向后兼容）.
+// GetAPIKeyString retrieves the API key string from the context (for backward compatibility).
 func GetAPIKeyString(ctx context.Context) (string, bool) {
 	apiKey, ok := GetAPIKey(ctx)
 	if !ok || apiKey == nil {
@@ -39,24 +38,70 @@ func GetAPIKeyString(ctx context.Context) (string, bool) {
 	return apiKey.Key, true
 }
 
-// WithUser 将用户 entity 存储到 context 中.
+// WithUser stores the user entity in the context.
 func WithUser(ctx context.Context, user *ent.User) context.Context {
-	return context.WithValue(ctx, UserContextKey, user)
+	container := getContainer(ctx)
+	container.User = user
+
+	return withContainer(ctx, container)
 }
 
-// GetUser 从 context 中获取用户 entity.
+// GetUser retrieves the user entity from the context.
 func GetUser(ctx context.Context) (*ent.User, bool) {
-	user, ok := ctx.Value(UserContextKey).(*ent.User)
-	return user, ok
+	container := getContainer(ctx)
+	return container.User, container.User != nil
 }
 
-// WithProjectID 将项目 ID 存储到 context 中.
+// WithTraceID stores the trace id in the context.
+func WithTraceID(ctx context.Context, traceID string) context.Context {
+	container := getContainer(ctx)
+	container.TraceID = &traceID
+
+	return withContainer(ctx, container)
+}
+
+// GetTraceID retrieves the trace id from the context.
+func GetTraceID(ctx context.Context) (string, bool) {
+	container := getContainer(ctx)
+	if container.TraceID != nil {
+		return *container.TraceID, true
+	}
+
+	return "", false
+}
+
+// WithOperationName stores the operation name in the context.
+func WithOperationName(ctx context.Context, name string) context.Context {
+	container := getContainer(ctx)
+	container.OperationName = &name
+
+	return withContainer(ctx, container)
+}
+
+// GetOperationName retrieves the operation name from the context.
+func GetOperationName(ctx context.Context) (string, bool) {
+	container := getContainer(ctx)
+	if container.OperationName != nil {
+		return *container.OperationName, true
+	}
+
+	return "", false
+}
+
+// WithProjectID stores the project ID in the context.
 func WithProjectID(ctx context.Context, projectID int) context.Context {
-	return context.WithValue(ctx, ProjectIDContextKey, projectID)
+	container := getContainer(ctx)
+	container.ProjectID = &projectID
+
+	return withContainer(ctx, container)
 }
 
-// GetProjectID 从 context 中获取项目 ID.
+// GetProjectID retrieves the project ID from the context.
 func GetProjectID(ctx context.Context) (int, bool) {
-	projectID, ok := ctx.Value(ProjectIDContextKey).(int)
-	return projectID, ok
+	container := getContainer(ctx)
+	if container.ProjectID != nil {
+		return *container.ProjectID, true
+	}
+
+	return 0, false
 }

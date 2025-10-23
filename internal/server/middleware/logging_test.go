@@ -48,6 +48,7 @@ func TestWithTracingExistingHeader(t *testing.T) {
 	// Create a test request with an existing trace ID header
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Ah-Trace-Id", "at-existing-trace-id")
+
 	w := httptest.NewRecorder()
 
 	// Create a Gin engine and router
@@ -78,6 +79,7 @@ func TestWithTracingCustomHeader(t *testing.T) {
 	// Create a test request with a custom trace ID header
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("X-Custom-Trace-Id", "at-custom-trace-id")
+
 	w := httptest.NewRecorder()
 
 	// Create a Gin engine and router
