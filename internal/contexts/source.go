@@ -6,23 +6,25 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 )
 
-const (
-	// SourceContextKey 用于在 context 中存储请求来源.
-	SourceContextKey ContextKey = "source"
-)
-
-// WithSource 将请求来源存储到 context 中.
+// WithSource stores the request source in the context.
 func WithSource(ctx context.Context, source request.Source) context.Context {
-	return context.WithValue(ctx, SourceContextKey, source)
+	container := getContainer(ctx)
+	container.Source = &source
+
+	return withContainer(ctx, container)
 }
 
-// GetSource 从 context 中获取请求来源.
+// GetSource retrieves the request source from the context.
 func GetSource(ctx context.Context) (request.Source, bool) {
-	source, ok := ctx.Value(SourceContextKey).(request.Source)
-	return source, ok
+	container := getContainer(ctx)
+	if container.Source != nil {
+		return *container.Source, true
+	}
+
+	return request.SourceAPI, false
 }
 
-// GetSourceOrDefault 从 context 中获取请求来源，如果不存在则返回默认值.
+// GetSourceOrDefault retrieves the request source from the context, or returns the default value if it doesn't exist.
 func GetSourceOrDefault(ctx context.Context, defaultSource request.Source) request.Source {
 	if source, ok := GetSource(ctx); ok {
 		return source
