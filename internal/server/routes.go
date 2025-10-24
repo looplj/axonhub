@@ -25,7 +25,15 @@ type Handlers struct {
 	Auth       *api.AuthHandlers
 }
 
-func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, client *ent.Client) {
+type Services struct {
+	fx.In
+
+	TraceService  *biz.TraceService
+	ThreadService *biz.ThreadService
+	AuthService   *biz.AuthService
+}
+
+func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services Services) {
 	// Serve static frontend files
 	server.NoRoute(static.Handler())
 
@@ -52,7 +60,7 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 		unSecureAdminGroup.POST("/auth/signin", handlers.Auth.SignIn)
 	}
 
-	adminGroup := server.Group("/admin", middleware.WithJWTAuth(auth), middleware.WithProjectID())
+	adminGroup := server.Group("/admin", middleware.WithJWTAuth(services.AuthService), middleware.WithProjectID())
 	// 管理员路由 - 使用 JWT 认证
 	{
 		adminGroup.GET("/playground", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {
@@ -71,17 +79,25 @@ func SetupRoutes(server *Server, handlers Handlers, auth *biz.AuthService, clien
 		)
 	}
 
-	apiGroup := server.Group("/v1", middleware.WithTimeout(server.Config.LLMRequestTimeout))
-	apiGroup.Use(middleware.WithAPIKeyAuth(auth))
-	apiGroup.Use(middleware.WithSource(request.SourceAPI))
+	apiGroup := server.Group("/",
+		middleware.WithTimeout(server.Config.LLMRequestTimeout),
+		middleware.WithAPIKeyAuth(services.AuthService),
+		middleware.WithSource(request.SourceAPI),
+		middleware.WithTrace(server.Config.Trace, services.TraceService),
+		middleware.WithThread(services.ThreadService),
+	)
 	{
 		apiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)
 		apiGroup.GET("/models", handlers.OpenAI.ListModels)
 	}
 
-	anthropicGroup := server.Group("/anthropic/v1", middleware.WithTimeout(server.Config.LLMRequestTimeout))
-	anthropicGroup.Use(middleware.WithAPIKeyAuth(auth))
-	anthropicGroup.Use(middleware.WithSource(request.SourceAPI))
+	openaiGroup := apiGroup.Group("/v1")
+	{
+		openaiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)
+		openaiGroup.GET("/models", handlers.OpenAI.ListModels)
+	}
+
+	anthropicGroup := apiGroup.Group("/anthropic/v1")
 	{
 		anthropicGroup.POST("/messages", handlers.Anthropic.CreateMessage)
 		anthropicGroup.GET("/models", handlers.Anthropic.ListModels)
