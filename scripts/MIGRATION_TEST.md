@@ -6,10 +6,11 @@
 
 1. **自动下载和缓存二进制文件** - 从 GitHub Releases 下载指定 tag 的可执行文件，并缓存到本地
 2. **测试版本升级** - 支持从任意 tag 版本迁移到当前分支最新代码
-3. **生成迁移计划** - 自动生成迁移步骤计划（JSON 格式）
-4. **执行迁移** - 按计划执行数据库迁移
-5. **E2E 测试验证** - 迁移完成后自动运行 E2E 测试验证数据完整性
-6. **配置一致性** - 使用与 e2e-test.sh 相同的配置，确保测试环境一致
+3. **多数据库支持** - 支持 SQLite、MySQL、PostgreSQL 数据库的迁移测试
+4. **生成迁移计划** - 自动生成迁移步骤计划（JSON 格式）
+5. **执行迁移** - 按计划执行数据库迁移
+6. **E2E 测试验证** - 迁移完成后自动运行 E2E 测试验证数据完整性
+7. **配置一致性** - 使用与 e2e-test.sh 相同的配置，确保测试环境一致
 
 ## 使用方法
 
@@ -22,11 +23,59 @@
 # 测试从 v0.2.0 迁移，跳过 E2E 测试
 ./scripts/migration-test.sh v0.2.0 --skip-e2e
 
+# 测试从 v0.1.0 迁移，使用 MySQL 数据库
+./scripts/migration-test.sh v0.1.0 --db-type mysql
+
+# 测试从 v0.2.0 迁移，使用 PostgreSQL 数据库
+./scripts/migration-test.sh v0.2.0 --db-type postgres
+
 # 测试迁移并保留测试产物
 ./scripts/migration-test.sh v0.1.0 --keep-artifacts
 
 # 使用缓存的二进制文件（不重新下载）
 ./scripts/migration-test.sh v0.1.0 --skip-download
+```
+
+### 多数据库支持
+
+脚本支持以下数据库类型：
+
+**支持的数据库：**
+- **SQLite** (默认) - 快速、基于文件的数据库，适合开发
+- **MySQL** - 类似生产环境的关连式数据库，需要 Docker
+- **PostgreSQL** - 高级关连式数据库，需要 Docker
+
+**数据库要求：**
+- **MySQL**: 需要安装并运行 Docker
+- **PostgreSQL**: 需要安装并运行 Docker
+- **SQLite**: 无额外要求
+
+**使用不同数据库：**
+
+```bash
+# SQLite (默认)
+./scripts/migration-test.sh v0.1.0
+
+# MySQL
+./scripts/migration-test.sh v0.1.0 --db-type mysql
+
+# PostgreSQL
+./scripts/migration-test.sh v0.1.0 --db-type postgres
+```
+
+### 批量测试脚本
+
+`migration-test-all.sh` 脚本可以测试多个版本在所有支持的数据库上的迁移：
+
+```bash
+# 测试最近3个版本在所有数据库上的迁移
+./scripts/migration-test-all.sh
+
+# 测试指定版本在 SQLite 上的迁移
+./scripts/migration-test-all.sh --tags v0.1.0,v0.2.0 --db-type sqlite
+
+# 测试在 MySQL 上的迁移
+./scripts/migration-test-all.sh --db-type mysql
 ```
 
 ### 命令行参数
@@ -39,9 +88,11 @@ Arguments:
   from-tag         要测试迁移的起始 Git tag（例如：v0.1.0）
 
 Options:
+  --db-type TYPE   数据库类型: sqlite, mysql, postgres (默认: sqlite)
   --skip-download  如果缓存中已存在二进制文件，跳过下载
   --skip-e2e       迁移后跳过 E2E 测试
   --keep-artifacts 测试完成后保留工作目录
+  --keep-db        测试完成后保留数据库容器
   -h, --help       显示帮助信息
 ```
 
@@ -50,13 +101,14 @@ Options:
 脚本执行以下步骤：
 
 1. **检测系统架构** - 自动检测操作系统和 CPU 架构（linux/darwin, amd64/arm64）
-2. **下载旧版本二进制** - 从 GitHub Releases 下载指定 tag 的可执行文件
-3. **构建当前版本** - 编译当前分支的最新代码
-4. **生成迁移计划** - 创建包含迁移步骤的 JSON 文件
-5. **初始化数据库** - 使用旧版本初始化数据库
-6. **执行迁移** - 使用新版本运行数据库迁移
-7. **运行 E2E 测试** - 验证迁移后的数据库功能正常
-8. **清理** - 清理临时文件（可选保留）
+2. **设置数据库环境** - 根据指定类型设置 SQLite 文件或 Docker 容器（MySQL/PostgreSQL）
+3. **下载旧版本二进制** - 从 GitHub Releases 下载指定 tag 的可执行文件
+4. **构建当前版本** - 编译当前分支的最新代码
+5. **生成迁移计划** - 创建 JSON 格式的迁移步骤计划
+6. **初始化数据库** - 使用旧版本初始化数据库
+7. **执行迁移** - 使用新版本运行数据库迁移
+8. **运行 E2E 测试** - 验证迁移后的数据库功能正常
+9. **清理** - 清理临时文件（可选保留）
 
 ## 目录结构
 

@@ -30,13 +30,13 @@ DB_TYPE="sqlite"  # Default: sqlite, mysql, postgres
 MYSQL_CONTAINER="axonhub-migration-mysql"
 MYSQL_PORT=13306
 MYSQL_ROOT_PASSWORD="axonhub_test_root"
-MYSQL_DATABASE="axonhub_test"
+MYSQL_DATABASE="axonhub_e2e"
 MYSQL_USER="axonhub"
 MYSQL_PASSWORD="axonhub_test"
 
 POSTGRES_CONTAINER="axonhub-migration-postgres"
 POSTGRES_PORT=15432
-POSTGRES_DATABASE="axonhub_test"
+POSTGRES_DATABASE="axonhub_e2e"
 POSTGRES_USER="axonhub"
 POSTGRES_PASSWORD="axonhub_test"
 
