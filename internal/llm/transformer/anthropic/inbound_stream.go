@@ -35,6 +35,7 @@ type anthropicInboundStream struct {
 	hasThinkingContentStarted bool
 	hasToolContentStarted     bool
 	hasFinished               bool
+	messageStoped             bool
 	messageID                 string
 	model                     string
 	contentIndex              int64
@@ -344,6 +345,26 @@ func (s *anthropicInboundStream) Next() bool {
 						s.err = fmt.Errorf("failed to enqueue content_block_start event: %w", err)
 						return false
 					}
+
+					// If the tool call has arguments, we need to generate a content_block_delta.
+					if deltaToolCall.Function.Arguments != "" {
+						s.toolCalls[toolCallIndex].Function.Arguments += deltaToolCall.Function.Arguments
+
+						streamEvent := StreamEvent{
+							Type:  "content_block_delta",
+							Index: &s.contentIndex,
+							Delta: &StreamDelta{
+								Type:        lo.ToPtr("input_json_delta"),
+								PartialJSON: &deltaToolCall.Function.Arguments,
+							},
+						}
+
+						err := s.enqueEvent(&streamEvent)
+						if err != nil {
+							s.err = fmt.Errorf("failed to enqueue content_block_delta event: %w", err)
+							return false
+						}
+					}
 				} else {
 					s.toolCalls[toolCallIndex].Function.Arguments += deltaToolCall.Function.Arguments
 
@@ -404,7 +425,9 @@ func (s *anthropicInboundStream) Next() bool {
 			// We'll wait for the usage chunk to combine them
 			s.stopReason = &stopReason
 		}
-	} else if chunk.Usage != nil && s.hasFinished {
+	}
+
+	if chunk.Usage != nil && s.hasFinished && !s.messageStoped {
 		// Usage-only chunk after finish_reason - generate message_delta with both stop reason and usage
 		streamEvent := StreamEvent{
 			Type: "message_delta",
@@ -444,6 +467,8 @@ func (s *anthropicInboundStream) Next() bool {
 			s.err = fmt.Errorf("failed to enqueue message_stop event: %w", err)
 			return false
 		}
+
+		s.messageStoped = true
 	}
 
 	// Continue to the next event.

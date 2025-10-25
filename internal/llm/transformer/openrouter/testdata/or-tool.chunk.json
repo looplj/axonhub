@@ -1,0 +1,50 @@
+{
+  "id": "gen-1761367322-PVxDxpFLbMP0mk86V719",
+  "provider": "Minimax",
+  "model": "minimax/minimax-m2:free",
+  "object": "chat.completion.chunk",
+  "created": 1761367322,
+  "choices": [
+    {
+      "index": 0,
+      "delta": {
+        "role": "assistant",
+        "content": "<think>\n好的，现在我需要仔细review这个文件。让我再次查看文件内容并分析潜在的问题。\n</think>",
+        "tool_calls": [
+          {
+            "id": "call_function_7280296200_1",
+            "type": "function",
+            "function": {
+              "name": "Read",
+              "arguments": "{\"file_path\": \"/axonhub/internal/llm/transformer/openrouter/outbound.go\"}"
+            },
+            "index": 0
+          }
+        ]
+      },
+      "finish_reason": "tool_calls",
+      "native_finish_reason": "tool_calls",
+      "logprobs": null
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 18810,
+    "completion_tokens": 68,
+    "total_tokens": 18878,
+    "cost": 0,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "audio_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": null,
+      "upstream_inference_prompt_cost": 0,
+      "upstream_inference_completions_cost": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0
+    }
+  }
+}
