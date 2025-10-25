@@ -275,6 +275,52 @@ func (r *queryResolver) FetchModels(ctx context.Context, input FetchModelsInput)
 	}, nil
 }
 
+// Models is the resolver for the models field.
+func (r *queryResolver) Models(ctx context.Context, status *channel.Status) ([]*Model, error) {
+	// Build query for channels
+	query := r.client.Channel.Query()
+
+	// Apply status filter if provided, otherwise default to enabled
+	if status != nil {
+		query = query.Where(channel.StatusEQ(*status))
+	} else {
+		query = query.Where(channel.StatusEQ(channel.StatusEnabled))
+	}
+
+	// Get all channels matching the filter
+	channels, err := query.All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	// Collect all unique models from channels with their status
+	modelMap := make(map[string]channel.Status)
+
+	for _, ch := range channels {
+		for _, modelID := range ch.SupportedModels {
+			// Keep the highest priority status (enabled > disabled > archived)
+			if existingStatus, exists := modelMap[modelID]; exists {
+				if ch.Status == channel.StatusEnabled || (ch.Status == channel.StatusDisabled && existingStatus == channel.StatusArchived) {
+					modelMap[modelID] = ch.Status
+				}
+			} else {
+				modelMap[modelID] = ch.Status
+			}
+		}
+	}
+
+	// Convert map to slice
+	models := make([]*Model, 0, len(modelMap))
+	for modelID, status := range modelMap {
+		models = append(models, &Model{
+			ID:     modelID,
+			Status: status,
+		})
+	}
+
+	return models, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 

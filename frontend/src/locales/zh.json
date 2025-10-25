@@ -398,7 +398,8 @@
       "targetModelRequired": "目标模型不能为空",
       "activeProfileRequired": "生效配置不能为空",
       "atLeastOneProfile": "至少需要一个配置",
-      "activeProfileMustExist": "生效配置必须存在于配置列表中"
+      "activeProfileMustExist": "生效配置必须存在于配置列表中",
+      "duplicateProfileName": "配置名称不能重复"
     },
     "filters": {
       "filterId": "按 ID 筛选...",

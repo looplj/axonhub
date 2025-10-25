@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/cespare/xxhash/v2"
 	"go.uber.org/fx"
@@ -122,6 +123,16 @@ func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profil
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := ent.FromContext(ctx)
 
+	// Validate that profile names are unique (case-insensitive)
+	if err := validateProfileNames(profiles.Profiles); err != nil {
+		return nil, err
+	}
+
+	// Validate that active profile exists in the profiles list
+	if err := validateActiveProfile(profiles.ActiveProfile, profiles.Profiles); err != nil {
+		return nil, err
+	}
+
 	apiKey, err := client.APIKey.UpdateOneID(id).
 		SetProfiles(&profiles).
 		Save(ctx)
@@ -133,6 +144,37 @@ func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profil
 	s.invalidateAPIKeyCache(ctx, apiKey.Key)
 
 	return apiKey, nil
+}
+
+// validateProfileNames checks that all profile names are unique (case-insensitive).
+func validateProfileNames(profiles []objects.APIKeyProfile) error {
+	seen := make(map[string]bool)
+
+	for _, profile := range profiles {
+		nameLower := strings.ToLower(strings.TrimSpace(profile.Name))
+		if nameLower == "" {
+			return fmt.Errorf("profile name cannot be empty")
+		}
+
+		if seen[nameLower] {
+			return fmt.Errorf("duplicate profile name: %s", profile.Name)
+		}
+
+		seen[nameLower] = true
+	}
+
+	return nil
+}
+
+// validateActiveProfile checks that the active profile exists in the profiles list.
+func validateActiveProfile(activeProfile string, profiles []objects.APIKeyProfile) error {
+	for _, profile := range profiles {
+		if profile.Name == activeProfile {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("active profile '%s' does not exist in the profiles list", activeProfile)
 }
 
 func buildAPIKeyCacheKey(key string) string {

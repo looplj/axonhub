@@ -150,8 +150,18 @@ type ModelIdentify {
   id: String!
 }
 
+type Model {
+  id: String!
+  status: ChannelStatus!
+}
+
+input ModelsInput {
+  status: ChannelStatus
+}
+
 extend type Query {
   fetchModels(input: FetchModelsInput!): FetchModelsPayload!
+  models(status: ChannelStatus): [Model!]!
 }
 
 input AddUserToProjectInput {

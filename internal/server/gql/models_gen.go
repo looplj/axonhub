@@ -4,6 +4,7 @@ package gql
 
 import (
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -99,6 +100,15 @@ type InitializeSystemPayload struct {
 	Message string    `json:"message"`
 	User    *ent.User `json:"user,omitempty"`
 	Token   *string   `json:"token,omitempty"`
+}
+
+type Model struct {
+	ID     string         `json:"id"`
+	Status channel.Status `json:"status"`
+}
+
+type ModelsInput struct {
+	Status *channel.Status `json:"status,omitempty"`
 }
 
 type RemoveUserFromProjectInput struct {
