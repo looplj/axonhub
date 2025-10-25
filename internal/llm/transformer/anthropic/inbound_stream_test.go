@@ -135,6 +135,40 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 				require.Equal(t, "United States", unitInput["country"])
 			},
 		},
+		{
+			name:                "stream transformation with OpenRouter content and tool call",
+			inputStreamFile:     "or-tool.stream.jsonl",
+			expectedStreamFile:  "anthropic-or-tool.stream.jsonl",
+			expectedInputTokens: 18810,
+			expectedAggregated: func(t *testing.T, result *Message) {
+				t.Helper()
+				// Verify aggregated response
+				require.Equal(t, "gen-1761365834-YlzLUYrcuUQ4OsjtP1qS", result.ID)
+				require.Equal(t, "message", result.Type)
+				require.Equal(t, "minimax/minimax-m2:free", result.Model)
+				require.NotEmpty(t, result.Content)
+				require.Equal(t, "assistant", result.Role)
+				require.Equal(t, "tool_use", *result.StopReason)
+
+				// Verify we have 2 content blocks: text, and 1 tool use
+				require.Len(t, result.Content, 2)
+
+				// Verify text content block
+				require.Equal(t, "text", result.Content[0].Type)
+				require.Contains(t, result.Content[0].Text, "代码Review结果")
+
+				// Verify tool call (TodoWrite)
+				require.Equal(t, "tool_use", result.Content[1].Type)
+				require.Equal(t, "call_function_6091710012_1", result.Content[1].ID)
+				require.Equal(t, "TodoWrite", *result.Content[1].Name)
+
+				var toolInput map[string]interface{}
+
+				err := json.Unmarshal(result.Content[1].Input, &toolInput)
+				require.NoError(t, err)
+				require.NotNil(t, toolInput["todos"])
+			},
+		},
 	}
 
 	for _, tt := range tests {
