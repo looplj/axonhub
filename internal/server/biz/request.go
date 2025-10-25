@@ -34,11 +34,16 @@ func NewRequestService(systemService *SystemService, usageLogService *UsageLogSe
 // CreateRequest creates a new request record.
 func (s *RequestService) CreateRequest(
 	ctx context.Context,
-	apiKey *ent.APIKey,
 	llmRequest *llm.Request,
 	httpRequest *httpclient.Request,
 	format llm.APIFormat,
 ) (*ent.Request, error) {
+	// Get project ID from context.
+	// If project ID is not found, use zero.
+	// It will be not prsent in the admin pages,
+	// e.g: test channel.
+	projectID, _ := contexts.GetProjectID(ctx)
+
 	// Decide whether to store the original request body
 	storeRequestBody := true
 	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
@@ -59,24 +64,9 @@ func (s *RequestService) CreateRequest(
 		requestBodyBytes = b
 	} // else keep nil -> stored as JSON null
 
-	// Get source from context, default to API if not present
-	source := contexts.GetSourceOrDefault(ctx, request.SourceAPI)
-
-	// Determine if this is a streaming request
 	isStream := false
 	if llmRequest.Stream != nil {
 		isStream = *llmRequest.Stream
-	}
-
-	var projectID int
-	// First, try to get from context (e.g., from playground)
-	if ctxProjectID, ok := contexts.GetProjectID(ctx); ok {
-		projectID = ctxProjectID
-	} else if apiKey != nil {
-		// Fallback to API key's project
-		projectID = apiKey.ProjectID
-	} else {
-		return nil, errors.New("invalid project")
 	}
 
 	client := ent.FromContext(ctx)
@@ -84,18 +74,21 @@ func (s *RequestService) CreateRequest(
 		SetProjectID(projectID).
 		SetModelID(llmRequest.Model).
 		SetFormat(string(format)).
-		SetSource(source).
+		SetSource(contexts.GetSourceOrDefault(ctx, request.SourceAPI)).
 		SetStatus(request.StatusProcessing).
 		SetRequestBody(requestBodyBytes).
 		SetStream(isStream)
 
-	if apiKey != nil {
+	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
 		mut = mut.SetAPIKeyID(apiKey.ID)
+	}
+
+	if trace, ok := contexts.GetTrace(ctx); ok && trace != nil {
+		mut = mut.SetTraceID(trace.ID)
 	}
 
 	req, err := mut.Save(ctx)
 	if err != nil {
-		log.Error(ctx, "Failed to create request", log.Cause(err))
 		return nil, err
 	}
 

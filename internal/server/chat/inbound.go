@@ -163,7 +163,6 @@ func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, req
 	if p.state.Request == nil {
 		request, err := p.state.RequestService.CreateRequest(
 			ctx,
-			p.state.APIKey,
 			llmRequest,
 			request,
 			p.APIFormat(),

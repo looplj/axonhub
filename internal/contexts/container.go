@@ -15,6 +15,8 @@ type contextContainer struct {
 	APIKey        *ent.APIKey
 	User          *ent.User
 	Source        *request.Source
+	Thread        *ent.Thread
+	Trace         *ent.Trace
 }
 
 // getContainer retrieves the existing container from context, or creates a new one and stores it in the context if it doesn't exist.
