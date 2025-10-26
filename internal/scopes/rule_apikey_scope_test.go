@@ -63,7 +63,7 @@ func TestAPIKeyQueryRule(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rule := APIKeyQueryRule(tt.requiredScope)
+			rule := APIKeyScopeQueryRule(tt.requiredScope)
 			err := rule.EvalQuery(tt.ctx, &mockQuery{})
 
 			if tt.expectAllow {

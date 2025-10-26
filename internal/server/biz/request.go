@@ -406,7 +406,6 @@ func (s *RequestService) UpdateRequestChannelID(ctx context.Context, requestID i
 		SetChannelID(channelID).
 		Save(ctx)
 	if err != nil {
-		log.Error(ctx, "Failed to update request channel ID", log.Cause(err))
 		return err
 	}
 

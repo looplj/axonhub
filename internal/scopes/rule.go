@@ -12,6 +12,8 @@ import (
 // Common error messages.
 const (
 	ErrNoUser = "no user in context"
+	//nolint:gosec // False positive.
+	ErrNoAPIKey = "no api key in context"
 )
 
 // AlwaysDeny returns a rule that denies access if no user is in context.
@@ -67,7 +69,7 @@ func getUserFromContext(ctx context.Context) (*ent.User, error) {
 func getAPIKeyFromContext(ctx context.Context) (*ent.APIKey, error) {
 	apiKey, ok := contexts.GetAPIKey(ctx)
 	if !ok || apiKey == nil {
-		return nil, privacy.Skip
+		return nil, privacy.Skipf(ErrNoAPIKey)
 	}
 
 	return apiKey, nil

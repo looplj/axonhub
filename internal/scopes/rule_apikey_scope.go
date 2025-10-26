@@ -7,8 +7,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 )
 
-// APIKeyQueryRule checks API Key permissions for queries.
-func APIKeyQueryRule(requiredScope ScopeSlug) privacy.QueryRule {
+// APIKeyScopeQueryRule checks API Key permissions for queries.
+func APIKeyScopeQueryRule(requiredScope ScopeSlug) privacy.QueryRule {
 	return apiKeyQueryRule{requiredScope: requiredScope}
 }
 
