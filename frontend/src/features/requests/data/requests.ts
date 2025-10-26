@@ -38,7 +38,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
           node {
             id
             createdAt
-            updatedAt${apiKeyFields}
+            updatedAt${apiKeyFields}${channelFields}
             source
             modelID
             stream

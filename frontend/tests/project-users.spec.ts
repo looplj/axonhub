@@ -25,7 +25,7 @@ test.describe('Project Users Management', () => {
     await expect(addUserButton).toBeVisible()
     await addUserButton.click()
 
-    let createDialog = page.getByRole('dialog')
+    const createDialog = page.getByRole('dialog')
     await expect(createDialog).toBeVisible()
 
     await createDialog.getByLabel(/邮箱|Email/i).fill(email)

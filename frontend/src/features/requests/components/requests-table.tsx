@@ -114,20 +114,9 @@ export function RequestsTable({
     initialColumnFilters.push({ id: 'channel', value: channelFilter })
   }
 
-  // Filter data by channel on client-side since it's from executions
-  const filteredData = useMemo(() => {
-    if (channelFilter.length === 0) return data
-    
-    return data.filter(request => {
-      const execution = request.executions?.edges?.[0]?.node
-      const channelId = execution?.channel?.id
-      if (!channelId) return false
-      return channelFilter.includes(channelId)
-    })
-  }, [data, channelFilter])
 
   const table = useReactTable({
-    data: filteredData,
+    data: data,
     columns: requestsColumns,
     state: {
       sorting,
@@ -223,7 +212,7 @@ export function RequestsTable({
       <ServerSidePagination
         pageInfo={pageInfo}
         pageSize={pageSize}
-        dataLength={filteredData.length}
+        dataLength={data.length}
         totalCount={totalCount}
         selectedRows={table.getFilteredSelectedRowModel().rows.length}
         onNextPage={onNextPage}

@@ -123,12 +123,18 @@ func (r *queryResolver) Systems(ctx context.Context, after *entgql.Cursor[int], 
 
 // Threads is the resolver for the threads field.
 func (r *queryResolver) Threads(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ThreadOrder, where *ent.ThreadWhereInput) (*ent.ThreadConnection, error) {
-	panic(fmt.Errorf("not implemented: Threads - threads"))
+	return r.client.Thread.Query().Paginate(ctx, after, first, before, last,
+		ent.WithThreadOrder(orderBy),
+		ent.WithThreadFilter(where.Filter),
+	)
 }
 
 // Traces is the resolver for the traces field.
 func (r *queryResolver) Traces(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) (*ent.TraceConnection, error) {
-	panic(fmt.Errorf("not implemented: Traces - traces"))
+	return r.client.Trace.Query().Paginate(ctx, after, first, before, last,
+		ent.WithTraceOrder(orderBy),
+		ent.WithTraceFilter(where.Filter),
+	)
 }
 
 // UsageLogs is the resolver for the usageLogs field.
@@ -173,7 +179,10 @@ func (r *requestResolver) ProjectID(ctx context.Context, obj *ent.Request) (*obj
 
 // TraceID is the resolver for the traceID field.
 func (r *requestResolver) TraceID(ctx context.Context, obj *ent.Request) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: TraceID - traceID"))
+	return &objects.GUID{
+		Type: ent.TypeTrace,
+		ID:   obj.TraceID,
+	}, nil
 }
 
 // ChannelID is the resolver for the channelID field.
@@ -249,27 +258,42 @@ func (r *systemResolver) ID(ctx context.Context, obj *ent.System) (*objects.GUID
 
 // ID is the resolver for the id field.
 func (r *threadResolver) ID(ctx context.Context, obj *ent.Thread) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return &objects.GUID{
+		Type: ent.TypeThread,
+		ID:   obj.ID,
+	}, nil
 }
 
 // ProjectID is the resolver for the projectID field.
 func (r *threadResolver) ProjectID(ctx context.Context, obj *ent.Thread) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ProjectID - projectID"))
+	return &objects.GUID{
+		Type: ent.TypeProject,
+		ID:   obj.ProjectID,
+	}, nil
 }
 
 // ID is the resolver for the id field.
 func (r *traceResolver) ID(ctx context.Context, obj *ent.Trace) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return &objects.GUID{
+		Type: ent.TypeTrace,
+		ID:   obj.ID,
+	}, nil
 }
 
 // ProjectID is the resolver for the projectID field.
 func (r *traceResolver) ProjectID(ctx context.Context, obj *ent.Trace) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ProjectID - projectID"))
+	return &objects.GUID{
+		Type: ent.TypeProject,
+		ID:   obj.ProjectID,
+	}, nil
 }
 
 // ThreadID is the resolver for the threadID field.
 func (r *traceResolver) ThreadID(ctx context.Context, obj *ent.Trace) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ThreadID - threadID"))
+	return &objects.GUID{
+		Type: ent.TypeThread,
+		ID:   obj.ThreadID,
+	}, nil
 }
 
 // ID is the resolver for the id field.

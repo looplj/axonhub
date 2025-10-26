@@ -20,6 +20,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -93,4 +95,6 @@ var guidTypeToNodeType = map[string]string{
 	ent.TypeProject:          project.Table,
 	ent.TypeUserProject:      userproject.Table,
 	ent.TypeUserRole:         userrole.Table,
+	ent.TypeThread:           thread.Table,
+	ent.TypeTrace:            trace.Table,
 }

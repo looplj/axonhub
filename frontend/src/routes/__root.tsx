@@ -2,6 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { CommandMenu } from '@/components/command-menu'
 import { Toaster } from '@/components/ui/sonner'
 import { InitializationGuard } from '@/components/initialization-guard'
 import { NavigationProgress } from '@/components/navigation-progress'
@@ -18,6 +19,7 @@ export const Route = createRootRouteWithContext<{
         <InitializationGuard>
           <Outlet />
         </InitializationGuard>
+        <CommandMenu />
         <Toaster duration={3000} />
         {/* {import.meta.env.MODE === 'development' && (
           <>
