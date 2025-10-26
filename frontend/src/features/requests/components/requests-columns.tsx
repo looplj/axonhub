@@ -96,13 +96,11 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       ? ([
           {
             id: 'channel',
-            accessorFn: (row) => row.executions?.edges?.[0]?.node?.channel?.id || '',
+            accessorFn: (row) => row.channel?.id || '',
             header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.channel')} />,
             enableSorting: false,
             cell: ({ row }) => {
-              // 获取第一个 execution 的 channel 信息
-              const execution = row.original.executions?.edges?.[0]?.node
-              const channel = execution?.channel
+              const channel = row.original.channel
 
               if (!channel) {
                 return <div className='text-muted-foreground font-mono text-xs'>{t('requests.columns.unknown')}</div>
@@ -114,8 +112,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
               // For client-side filtering, check if any of the selected channels match
               if (value.length === 0) return true // No filter applied
 
-              const execution = row.original.executions?.edges?.[0]?.node
-              const channel = execution?.channel
+              const channel = row.original.channel
               if (!channel) return false
 
               return value.includes(channel.id)
