@@ -84,7 +84,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		middleware.WithAPIKeyAuth(services.AuthService),
 		middleware.WithSource(request.SourceAPI),
 		middleware.WithTrace(server.Config.Trace, services.TraceService),
-		middleware.WithThread(services.ThreadService),
+		middleware.WithThread(server.Config.Trace, services.ThreadService),
 	)
 	{
 		apiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)

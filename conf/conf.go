@@ -125,6 +125,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.request_timeout", "30s")
 	v.SetDefault("server.llm_request_timeout", "600s")
 	v.SetDefault("server.trace.trace_header", "AH-Trace-Id")
+	v.SetDefault("server.trace.thread_header", "AH-Thread-Id")
 	v.SetDefault("server.debug", false)
 
 	// Database defaults

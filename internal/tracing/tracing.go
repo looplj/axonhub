@@ -10,7 +10,8 @@ import (
 )
 
 type Config struct {
-	TraceHeader string `conf:"trace_header" yaml:"trace_header" json:"trace_header"`
+	ThreadHeader string `conf:"thread_header" yaml:"thread_header" json:"thread_header"`
+	TraceHeader  string `conf:"trace_header" yaml:"trace_header" json:"trace_header"`
 }
 
 // GenerateTraceID generate trace id, format as at-{{uuid}}.
