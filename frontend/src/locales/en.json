@@ -371,7 +371,8 @@
       "targetModelRequired": "Target model is required",
       "activeProfileRequired": "Active profile is required",
       "atLeastOneProfile": "At least one profile is required",
-      "activeProfileMustExist": "Active profile must exist in the profile list"
+      "activeProfileMustExist": "Active profile must exist in the profile list",
+      "duplicateProfileName": "Profile names must be unique"
     },
     "filters": {
       "filterId": "Filter by ID...",

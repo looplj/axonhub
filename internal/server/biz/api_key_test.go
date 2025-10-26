@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
@@ -415,4 +416,226 @@ func TestAPIKeyService_BulkArchiveAPIKeys(t *testing.T) {
 	// Test bulk archive with empty list
 	err = apiKeyService.BulkArchiveAPIKeys(ctx, []int{})
 	require.NoError(t, err)
+}
+
+func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
+	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create test user
+	hashedPassword, err := HashPassword("test-password")
+	require.NoError(t, err)
+
+	testUser, err := client.User.Create().
+		SetEmail(fmt.Sprintf("test-%d@example.com", time.Now().UnixNano())).
+		SetPassword(hashedPassword).
+		SetFirstName("Test").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create test project
+	projectName := uuid.NewString()
+	testProject, err := client.Project.Create().
+		SetName(projectName).
+		SetDescription(projectName).
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create UserProject relationship
+	_, err = client.UserProject.Create().
+		SetUserID(testUser.ID).
+		SetProjectID(testProject.ID).
+		SetIsOwner(true).
+		Save(ctx)
+	require.NoError(t, err)
+
+	ctxWithUser := contexts.WithUser(ctx, testUser)
+
+	// Create API key
+	apiKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+		Name:      "Test API Key",
+		ProjectID: testProject.ID,
+	})
+	require.NoError(t, err)
+
+	t.Run("Valid profiles update", func(t *testing.T) {
+		profiles := objects.APIKeyProfiles{
+			ActiveProfile: "production",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name: "production",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-4", To: "claude-3"},
+					},
+				},
+				{
+					Name: "development",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-3.5", To: "claude-2"},
+					},
+				},
+			},
+		}
+
+		updatedAPIKey, err := apiKeyService.UpdateAPIKeyProfiles(ctx, apiKey.ID, profiles)
+		require.NoError(t, err)
+		require.NotNil(t, updatedAPIKey)
+		require.NotNil(t, updatedAPIKey.Profiles)
+		require.Equal(t, "production", updatedAPIKey.Profiles.ActiveProfile)
+		require.Len(t, updatedAPIKey.Profiles.Profiles, 2)
+	})
+
+	t.Run("Duplicate profile names - exact match", func(t *testing.T) {
+		profiles := objects.APIKeyProfiles{
+			ActiveProfile: "production",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name: "production",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-4", To: "claude-3"},
+					},
+				},
+				{
+					Name: "production",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-3.5", To: "claude-2"},
+					},
+				},
+			},
+		}
+
+		_, err := apiKeyService.UpdateAPIKeyProfiles(ctx, apiKey.ID, profiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "duplicate profile name")
+	})
+
+	t.Run("Duplicate profile names - case insensitive", func(t *testing.T) {
+		profiles := objects.APIKeyProfiles{
+			ActiveProfile: "Production",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name: "Production",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-4", To: "claude-3"},
+					},
+				},
+				{
+					Name: "production",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-3.5", To: "claude-2"},
+					},
+				},
+			},
+		}
+
+		_, err := apiKeyService.UpdateAPIKeyProfiles(ctx, apiKey.ID, profiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "duplicate profile name")
+	})
+
+	t.Run("Duplicate profile names - with whitespace", func(t *testing.T) {
+		profiles := objects.APIKeyProfiles{
+			ActiveProfile: "production",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name: "production",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-4", To: "claude-3"},
+					},
+				},
+				{
+					Name: " production ",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-3.5", To: "claude-2"},
+					},
+				},
+			},
+		}
+
+		_, err := apiKeyService.UpdateAPIKeyProfiles(ctx, apiKey.ID, profiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "duplicate profile name")
+	})
+
+	t.Run("Empty profile name", func(t *testing.T) {
+		profiles := objects.APIKeyProfiles{
+			ActiveProfile: "production",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name: "production",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-4", To: "claude-3"},
+					},
+				},
+				{
+					Name: "",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-3.5", To: "claude-2"},
+					},
+				},
+			},
+		}
+
+		_, err := apiKeyService.UpdateAPIKeyProfiles(ctx, apiKey.ID, profiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "profile name cannot be empty")
+	})
+
+	t.Run("Active profile does not exist", func(t *testing.T) {
+		profiles := objects.APIKeyProfiles{
+			ActiveProfile: "nonexistent",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name: "production",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-4", To: "claude-3"},
+					},
+				},
+			},
+		}
+
+		_, err := apiKeyService.UpdateAPIKeyProfiles(ctx, apiKey.ID, profiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "does not exist in the profiles list")
+	})
+
+	t.Run("Multiple profiles with unique names", func(t *testing.T) {
+		profiles := objects.APIKeyProfiles{
+			ActiveProfile: "staging",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name: "production",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-4", To: "claude-3"},
+					},
+				},
+				{
+					Name: "staging",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-3.5", To: "claude-2"},
+					},
+				},
+				{
+					Name: "development",
+					ModelMappings: []objects.ModelMapping{
+						{From: "gpt-3.5-turbo", To: "claude-instant"},
+					},
+				},
+			},
+		}
+
+		updatedAPIKey, err := apiKeyService.UpdateAPIKeyProfiles(ctx, apiKey.ID, profiles)
+		require.NoError(t, err)
+		require.NotNil(t, updatedAPIKey)
+		require.NotNil(t, updatedAPIKey.Profiles)
+		require.Equal(t, "staging", updatedAPIKey.Profiles.ActiveProfile)
+		require.Len(t, updatedAPIKey.Profiles.Profiles, 3)
+	})
 }

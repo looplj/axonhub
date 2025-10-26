@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { IconPlus, IconTrash, IconSettings } from '@tabler/icons-react'
+import { useQueryModels } from '@/gql/models'
 import { useTranslation } from 'react-i18next'
+import { useDebounce } from '@/hooks/use-debounce'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -18,7 +20,6 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { AutoComplete } from '@/components/auto-complete'
-import { CHANNEL_CONFIGS } from '../../channels/data/constants'
 import { useApiKeysContext } from '../context/apikeys-context'
 import {
   updateApiKeyProfilesInputSchemaFactory,
@@ -90,6 +91,8 @@ export function ApiKeyProfilesDialog({
   }, [open, initialData, form])
 
   const handleSubmit = (data: UpdateApiKeyProfilesInput) => {
+    // Clear any previous form-level errors
+    form.clearErrors('profiles')
     onSubmit(data)
   }
 
@@ -211,13 +214,26 @@ export function ApiKeyProfilesDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={loading}>
-            {t('common.buttons.cancel')}
-          </Button>
-          <Button type='submit' form='apikey-profiles-form' disabled={loading}>
-            {loading ? t('common.buttons.saving') : t('common.buttons.save')}
-          </Button>
+        <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center'>
+          {/* Display form-level validation errors */}
+          {/* {(form.formState.errors.profiles ||
+            Object.keys(form.formState.errors).some((key) => key.startsWith('profiles.'))) && (
+            <div className='text-destructive w-full text-sm'>
+              {form.formState.errors.profiles?.message || t('apikeys.validation.duplicateProfileName')}
+            </div>
+          )} */}
+          <div className='flex gap-2 sm:ml-auto'>
+            <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={loading}>
+              {t('common.buttons.cancel')}
+            </Button>
+            <Button
+              type='submit'
+              form='apikey-profiles-form'
+              disabled={loading || !form.formState.isValid || Object.keys(form.formState.errors).length > 0}
+            >
+              {loading ? t('common.buttons.saving') : t('common.buttons.save')}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -233,6 +249,14 @@ interface ProfileCardProps {
 }
 
 function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCardProps) {
+  const [localProfileName, setLocalProfileName] = useState('')
+  const { data: availableModels, mutateAsync: fetchModels } = useQueryModels()
+  useEffect(() => {
+    fetchModels('enabled')
+  }, [])
+
+  const debouncedProfileName = useDebounce(localProfileName, 500)
+
   const {
     fields: mappingFields,
     append: appendMapping,
@@ -242,20 +266,46 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCard
     name: `profiles.${profileIndex}.modelMappings`,
   })
 
-  const addMapping = () => {
+  // Watch all profiles to check for duplicates
+  const allProfiles = form.watch('profiles') || []
+
+  // Initialize local state from form value
+  useEffect(() => {
+    const currentName = form.getValues(`profiles.${profileIndex}.name`)
+    setLocalProfileName(currentName || '')
+  }, [form, profileIndex])
+
+  // Immediate duplicate check (no debounce for error display)
+  const checkDuplicate = useCallback(
+    (value: string) => {
+      const trimmedValue = value.trim().toLowerCase()
+      if (trimmedValue === '') {
+        form.clearErrors(`profiles.${profileIndex}.name`)
+        return
+      }
+
+      const otherProfiles = allProfiles.filter((_: any, idx: number) => idx !== profileIndex)
+      const isDuplicate = otherProfiles.some((p: any) => p.name && p.name.trim().toLowerCase() === trimmedValue)
+
+      if (isDuplicate) {
+        form.setError(`profiles.${profileIndex}.name`, {
+          type: 'manual',
+          message: t('apikeys.validation.duplicateProfileName'),
+        })
+      } else {
+        form.clearErrors(`profiles.${profileIndex}.name`)
+      }
+    },
+    [form, profileIndex, allProfiles, t]
+  )
+  // Debounced form value update for performance
+  useEffect(() => {
+    checkDuplicate(debouncedProfileName)
+  }, [debouncedProfileName])
+
+  const addMapping = useCallback(() => {
     appendMapping({ from: '', to: '' })
-  }
-
-  // Get all available models from all providers
-  const getAllAvailableModels = () => {
-    const allModels = new Set<string>()
-    Object.values(CHANNEL_CONFIGS).forEach((config) => {
-      config.defaultModels.forEach((model: string) => allModels.add(model))
-    })
-    return Array.from(allModels).sort()
-  }
-
-  const availableModels = getAllAvailableModels()
+  }, [appendMapping])
 
   return (
     <Card>
@@ -268,7 +318,17 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCard
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <Input {...field} placeholder={t('apikeys.profiles.profileName')} className='font-medium' />
+                    <Input
+                      value={field.value}
+                      onChange={(e) => {
+                        const newValue = e.target.value
+                        setLocalProfileName(newValue)
+                        field.onChange(newValue)
+                      }}
+                      onBlur={field.onBlur}
+                      placeholder={t('apikeys.profiles.profileName')}
+                      className='font-medium'
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -309,7 +369,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCard
               mappingIndex={mappingIndex}
               form={form}
               onRemove={() => removeMapping(mappingIndex)}
-              availableModels={availableModels}
+              availableModels={availableModels?.map((model) => model.id) || []}
               t={t}
             />
           ))}
@@ -363,7 +423,6 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
               />
             </FormControl>
             <div className='text-muted-foreground mt-1 text-xs'>{t('apikeys.profiles.regexSupported')}</div>
-            <FormMessage />
           </FormItem>
         )}
       />
@@ -387,7 +446,6 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                 emptyMessage={t('apikeys.profiles.noModelsFound')}
               />
             </FormControl>
-            <FormMessage />
           </FormItem>
         )}
       />

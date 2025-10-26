@@ -117,6 +117,15 @@ export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => strin
     message: t('apikeys.validation.activeProfileMustExist'),
     path: ['activeProfile']
   }
+).refine(
+  (data) => {
+    const names = data.profiles.map(p => p.name.trim().toLowerCase())
+    return names.length === new Set(names).size
+  },
+  {
+    message: t('apikeys.validation.duplicateProfileName'),
+    path: ['profiles']
+  }
 )
 
 // Default schema for backward compatibility

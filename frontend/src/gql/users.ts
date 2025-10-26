@@ -203,29 +203,3 @@ export const UPDATE_ME_MUTATION = `
     }
   }
 `;
-
-export const INITIALIZE_SYSTEM_MUTATION = `
-  mutation InitializeSystem($input: InitializeSystemInput!) {
-    initializeSystem(input: $input) {
-      success
-      message
-      user {
-        id
-        email
-        firstName
-        lastName
-        isOwner
-        scopes
-        roles {
-          edges {
-            node {
-              id
-              name
-            }
-          }
-        }
-      }
-      token
-    }
-  }
-`;
