@@ -428,6 +428,10 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   ppio
   siliconflow
   volcengine
+  longcat
+  longcat_anthropic
+  minimax
+  minimax_anthropic
 }
 """
 ChannelWhereInput is used for filtering Channel objects.

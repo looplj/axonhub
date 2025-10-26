@@ -213,6 +213,22 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     baseURL: 'https://api.openai.com/v1',
     defaultModels: ['gpt-3.5-turbo', 'gpt-4.5', 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
   },
+  longcat: {
+    baseURL: 'https://api.longcat.chat/openai/v1',
+    defaultModels: ['LongCat-Flash-Chat', 'LongCat-Flash-Thinking'],
+  },
+  longcat_anthropic: {
+    baseURL: 'https://api.longcat.chat/anthropic',
+    defaultModels: ['LongCat-Flash-Chat', 'LongCat-Flash-Thinking'],
+  },
+  minimax: {
+    baseURL: 'https://api.minimax.com/v1',
+    defaultModels: ['MiniMax-M2'],
+  },
+  minimax_anthropic: {
+    baseURL: 'https://api.minimax.com/anthropic',
+    defaultModels: ['MiniMax-M2'],
+  },
 }
 
 /**

@@ -15,6 +15,8 @@ import {
   SiliconCloud,
   PPIO,
   ZAI,
+  LongCat,
+  Minimax,
 } from '@lobehub/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
@@ -143,6 +145,26 @@ const getChannelTypeConfig = (
     label: t('channels.types.volcengine'),
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: Volcengine,
+  },
+  longcat: {
+    label: t('channels.types.longcat'),
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: LongCat,
+  },
+  longcat_anthropic: {
+    label: t('channels.types.longcat_anthropic'),
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: LongCat,
+  },
+  minimax: {
+    label: t('channels.types.minimax'),
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: Minimax,
+  },
+  minimax_anthropic: {
+    label: t('channels.types.minimax_anthropic'),
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: Minimax,
   },
 })
 

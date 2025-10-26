@@ -57,6 +57,10 @@ func (Channel) Fields() []ent.Field {
 				"ppio",
 				"siliconflow",
 				"volcengine",
+				"longcat",
+				"longcat_anthropic",
+				"minimax",
+				"minimax_anthropic",
 			).
 			Immutable(),
 		field.String("base_url").Optional(),
