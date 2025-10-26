@@ -107,7 +107,7 @@ func (Channel) Annotations() []schema.Annotation {
 func (Channel) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
-			scopes.APIKeyQueryRule(scopes.ScopeReadChannels),
+			scopes.APIKeyScopeQueryRule(scopes.ScopeReadChannels),
 			scopes.OwnerRule(), // owner 用户可以访问所有渠道
 			scopes.UserReadScopeRule(scopes.ScopeReadChannels), // 需要 channels 读取权限
 		},

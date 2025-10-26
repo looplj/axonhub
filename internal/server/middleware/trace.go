@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/tracing"
 )
@@ -27,7 +28,6 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		// Get project ID from context
 		projectID, ok := contexts.GetProjectID(c.Request.Context())
 		if !ok {
-			// If no project ID in context, skip trace creation
 			c.Next()
 			return
 		}
@@ -41,12 +41,17 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		// Get or create trace (errors are logged but don't block the request)
 		trace, err := traceService.GetOrCreateTrace(c.Request.Context(), projectID, traceID, threadID)
 		if err != nil {
-			// Log error but continue - trace is optional
+			log.Warn(c.Request.Context(), "Failed to get or create trace", log.Cause(err))
 			c.Next()
+
 			return
 		}
 
 		// Store trace in context
+		if log.DebugEnabled(c.Request.Context()) {
+			log.Debug(c.Request.Context(), "Trace created", log.Any("trace", trace))
+		}
+
 		ctx := contexts.WithTrace(c.Request.Context(), trace)
 		c.Request = c.Request.WithContext(ctx)
 
