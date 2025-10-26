@@ -213,7 +213,7 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 			Channel:  c,
 			Outbound: transformer,
 		}, nil
-	case channel.TypeAnthropic:
+	case channel.TypeAnthropic, channel.TypeLongcatAnthropic, channel.TypeMinimaxAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:    anthropic.PlatformDirect,
 			BaseURL: c.BaseURL,
@@ -283,6 +283,7 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 			Channel:  c,
 			Outbound: transformer,
 		}, nil
+
 	case channel.TypeAnthropicAWS:
 		// For anthropic_aws, we need to create a transformer with AWS credentials
 		// The transformer will handle AWS Bedrock integration
@@ -336,7 +337,10 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 			Channel:  c,
 			Outbound: fakeTransformer,
 		}, nil
-	case channel.TypeOpenai, channel.TypeDeepseek, channel.TypeMoonshot, channel.TypeGeminiOpenai, channel.TypePpio, channel.TypeSiliconflow, channel.TypeVolcengine:
+	case channel.TypeOpenai,
+		channel.TypeDeepseek, channel.TypeMoonshot, channel.TypeLongcat, channel.TypeMinimax,
+		channel.TypeGeminiOpenai,
+		channel.TypePpio, channel.TypeSiliconflow, channel.TypeVolcengine:
 		transformer, err := openai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)

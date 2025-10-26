@@ -23,6 +23,10 @@ export const channelTypeSchema = z.enum([
   'ppio',
   'siliconflow',
   'volcengine',
+  'longcat',
+  'longcat_anthropic',
+  'minimax',
+  'minimax_anthropic',
 ])
 export type ChannelType = z.infer<typeof channelTypeSchema>
 

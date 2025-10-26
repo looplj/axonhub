@@ -587,7 +587,11 @@
       "siliconflow": "SiliconFlow",
       "volcengine": "Volcengine",
       "anthropic_fake": "Anthropic Fake",
-      "openai_fake": "OpenAI Fake"
+      "openai_fake": "OpenAI Fake",
+      "longcat": "LongCat",
+      "longcat_anthropic": "LongCat (Anthropic)",
+      "minimax": "Minimax",
+      "minimax_anthropic": "Minimax (Anthropic)"
     },
     "actions": {
       "test": "Test",

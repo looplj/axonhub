@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -23,15 +23,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { useCreateChannel, useUpdateChannel, useFetchModels } from '../data/channels'
-import { Channel, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
 import { getDefaultBaseURL, getDefaultModels } from '../data/constants'
+import { CHANNEL_CONFIGS } from '../data/constants'
+import { Channel, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
 
 interface Props {
   currentRow?: Channel
   open: boolean
   onOpenChange: (open: boolean) => void
 }
-
 
 export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) {
   const { t } = useTranslation()
@@ -45,29 +45,14 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
   const [fetchedModels, setFetchedModels] = useState<string[]>([])
   const [useFetchedModels, setUseFetchedModels] = useState(false)
 
-  const channelTypes = [
-    { value: 'openai', label: t('channels.types.openai') },
-    { value: 'anthropic', label: t('channels.types.anthropic') },
-    { value: 'anthropic_aws', label: t('channels.types.anthropic_aws') },
-    { value: 'anthropic_gcp', label: t('channels.types.anthropic_gcp') },
-    { value: 'gemini_openai', label: t('channels.types.gemini_openai') },
-    { value: 'deepseek', label: t('channels.types.deepseek') },
-    { value: 'doubao', label: t('channels.types.doubao') },
-    { value: 'moonshot', label: t('channels.types.moonshot') },
-    { value: 'zhipu', label: t('channels.types.zhipu') },
-    { value: 'zai', label: t('channels.types.zai') },
-    { value: 'deepseek_anthropic', label: t('channels.types.deepseek_anthropic') },
-    { value: 'moonshot_anthropic', label: t('channels.types.moonshot_anthropic') },
-    { value: 'zhipu_anthropic', label: t('channels.types.zhipu_anthropic') },
-    { value: 'zai_anthropic', label: t('channels.types.zai_anthropic') },
-    { value: 'openrouter', label: t('channels.types.openrouter') },
-    { value: 'xai', label: t('channels.types.xai') },
-    { value: 'siliconflow', label: t('channels.types.siliconflow') },
-    { value: 'ppio', label: t('channels.types.ppio') },
-    { value: 'volcengine', label: t('channels.types.volcengine') },
-    { value: 'anthropic_fake', label: t('channels.types.anthropic_fake') },
-    { value: 'openai_fake', label: t('channels.types.openai_fake') },
-  ]
+  const channelTypes = useMemo(
+    () =>
+      Object.keys(CHANNEL_CONFIGS).map((type) => ({
+        value: type,
+        label: t(`channels.types.${type}`),
+      })),
+    [t]
+  )
 
   // Filter out fake types for new channels, but keep them for editing existing channels
   const availableChannelTypes = isEdit ? channelTypes : channelTypes.filter((type) => !type.value.endsWith('_fake'))

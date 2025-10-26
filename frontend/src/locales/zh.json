@@ -618,7 +618,11 @@
       "siliconflow": "硅基流动",
       "volcengine": "火山引擎",
       "anthropic_fake": "Anthropic Fake",
-      "openai_fake": "OpenAI Fake"
+      "openai_fake": "OpenAI Fake",
+      "longcat": "LongCat",
+      "longcat_anthropic": "LongCat (Anthropic)",
+      "minimax": "Minimax",
+      "minimax_anthropic": "Minimax (Anthropic)"
     },
     "actions": {
       "test": "测试",
