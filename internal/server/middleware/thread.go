@@ -5,13 +5,20 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/tracing"
 )
 
 // WithThread is a middleware that extracts the X-Thread-ID header and
 // gets or creates the corresponding thread entity in the database.
-func WithThread(threadService *biz.ThreadService) gin.HandlerFunc {
+func WithThread(config tracing.Config, threadService *biz.ThreadService) gin.HandlerFunc {
+	// Use the configured thread header name, or default to "AH-Thread-Id"
+	threadHeader := config.ThreadHeader
+	if threadHeader == "" {
+		threadHeader = "AH-Thread-Id"
+	}
+
 	return func(c *gin.Context) {
-		threadID := c.GetHeader("X-Thread-ID")
+		threadID := c.GetHeader(threadHeader)
 		if threadID == "" {
 			c.Next()
 			return

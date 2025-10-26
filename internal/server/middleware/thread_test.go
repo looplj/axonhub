@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/tracing"
 )
 
 func setupTestThreadMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.ThreadService) {
@@ -54,7 +55,7 @@ func TestWithThreadID_Success(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.Use(WithThread(threadService))
+	router.Use(WithThread(tracing.Config{}, threadService))
 	router.GET("/test", func(c *gin.Context) {
 		thread, ok := contexts.GetThread(c.Request.Context())
 		if !ok {
@@ -65,9 +66,9 @@ func TestWithThreadID_Success(t *testing.T) {
 		c.JSON(200, gin.H{"thread_id": thread.ThreadID, "id": thread.ID})
 	})
 
-	// Test with X-Thread-ID header
+	// Test with AH-Thread-Id header
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("X-Thread-Id", "thread-test-123")
+	req.Header.Set("Ah-Thread-Id", "thread-test-123")
 
 	w := httptest.NewRecorder()
 
@@ -85,13 +86,13 @@ func TestWithThreadID_NoHeader(t *testing.T) {
 	router, client, threadService := setupTestThreadMiddleware(t)
 	defer client.Close()
 
-	router.Use(WithThread(threadService))
+	router.Use(WithThread(tracing.Config{}, threadService))
 	router.GET("/test", func(c *gin.Context) {
 		_, ok := contexts.GetThread(c.Request.Context())
 		c.JSON(200, gin.H{"has_thread": ok})
 	})
 
-	// Test without X-Thread-ID header
+	// Test without AH-Thread-Id header
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
@@ -108,15 +109,15 @@ func TestWithThreadID_NoProjectID(t *testing.T) {
 		c.Request = c.Request.WithContext(ent.NewContext(c.Request.Context(), client))
 		c.Next()
 	})
-	router.Use(WithThread(threadService))
+	router.Use(WithThread(tracing.Config{}, threadService))
 	router.GET("/test", func(c *gin.Context) {
 		_, ok := contexts.GetThread(c.Request.Context())
 		c.JSON(200, gin.H{"has_thread": ok})
 	})
 
-	// Test with X-Thread-ID header but no project ID in context
+	// Test with AH-Thread-Id header but no project ID in context
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("X-Thread-Id", "thread-test-123")
+	req.Header.Set("Ah-Thread-Id", "thread-test-123")
 
 	w := httptest.NewRecorder()
 
@@ -147,7 +148,7 @@ func TestWithThreadID_Idempotent(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.Use(WithThread(threadService))
+	router.Use(WithThread(tracing.Config{}, threadService))
 	router.GET("/test", func(c *gin.Context) {
 		thread, ok := contexts.GetThread(c.Request.Context())
 		if !ok {
@@ -162,7 +163,7 @@ func TestWithThreadID_Idempotent(t *testing.T) {
 
 	// First request
 	req1 := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req1.Header.Set("X-Thread-Id", threadID)
+	req1.Header.Set("Ah-Thread-Id", threadID)
 
 	w1 := httptest.NewRecorder()
 	router.ServeHTTP(w1, req1)
@@ -173,7 +174,7 @@ func TestWithThreadID_Idempotent(t *testing.T) {
 
 	// Second request with same thread ID
 	req2 := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req2.Header.Set("X-Thread-Id", threadID)
+	req2.Header.Set("Ah-Thread-Id", threadID)
 
 	w2 := httptest.NewRecorder()
 	router.ServeHTTP(w2, req2)
