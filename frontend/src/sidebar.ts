@@ -12,6 +12,7 @@ import {
   IconSausage,
   IconActivity,
   IconActivityHeartbeat,
+  IconDatabase,
 } from '@tabler/icons-react'
 import { Command } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -77,6 +78,11 @@ export function useSidebarData(): SidebarData {
           title: t('sidebar.items.channels'),
           url: '/channels',
           icon: IconChecklist,
+        } as NavLink,
+        {
+          title: t('sidebar.items.dataStorages'),
+          url: '/data-storages',
+          icon: IconDatabase,
         } as NavLink,
         {
           title: t('sidebar.items.users'),

@@ -213,6 +213,10 @@ type UpdateBrandSettingsInput struct {
 	BrandLogo *string `json:"brandLogo,omitempty"`
 }
 
+type UpdateDefaultDataStorageInput struct {
+	DataStorageID objects.GUID `json:"dataStorageID"`
+}
+
 type UpdateMeInput struct {
 	Email          *string `json:"email,omitempty"`
 	FirstName      *string `json:"firstName,omitempty"`

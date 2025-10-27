@@ -254,6 +254,80 @@ func (r *mutationResolver) UpdateProjectUser(ctx context.Context, input UpdatePr
 	return r.userService.UpdateProjectUser(ctx, input.UserID.ID, input.ProjectID.ID, input.Scopes, addRoleIDs, removeRoleIDs)
 }
 
+// CreateDataStorage is the resolver for the createDataStorage field.
+func (r *mutationResolver) CreateDataStorage(ctx context.Context, input ent.CreateDataStorageInput) (*ent.DataStorage, error) {
+	client := ent.FromContext(ctx)
+
+	// Build the create mutation
+	mutation := client.DataStorage.Create().
+		SetName(input.Name).
+		SetSettings(input.Settings)
+
+	if input.Description != nil {
+		mutation = mutation.SetDescription(*input.Description)
+	}
+
+	if input.Type != nil {
+		mutation = mutation.SetType(*input.Type)
+	}
+
+	if input.Primary != nil {
+		mutation = mutation.SetPrimary(*input.Primary)
+	}
+
+	if input.Status != nil {
+		mutation = mutation.SetStatus(*input.Status)
+	}
+
+	// Create the data storage
+	dataStorage, err := mutation.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create data storage: %w", err)
+	}
+
+	return dataStorage, nil
+}
+
+// UpdateDataStorage is the resolver for the updateDataStorage field.
+func (r *mutationResolver) UpdateDataStorage(ctx context.Context, id objects.GUID, input ent.UpdateDataStorageInput) (*ent.DataStorage, error) {
+	client := ent.FromContext(ctx)
+
+	// Build the update mutation
+	mutation := client.DataStorage.UpdateOneID(id.ID)
+
+	if input.Name != nil {
+		mutation = mutation.SetName(*input.Name)
+	}
+
+	if input.Description != nil {
+		mutation = mutation.SetDescription(*input.Description)
+	}
+
+	if input.Type != nil {
+		mutation = mutation.SetType(*input.Type)
+	}
+
+	if input.Primary != nil {
+		mutation = mutation.SetPrimary(*input.Primary)
+	}
+
+	if input.Status != nil {
+		mutation = mutation.SetStatus(*input.Status)
+	}
+
+	if input.Settings != nil {
+		mutation = mutation.SetSettings(input.Settings)
+	}
+
+	// Update the data storage
+	dataStorage, err := mutation.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update data storage: %w", err)
+	}
+
+	return dataStorage, nil
+}
+
 // FetchModels is the resolver for the fetchModels field.
 func (r *queryResolver) FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsPayload, error) {
 	// Convert input to biz layer input

@@ -255,4 +255,7 @@ type Mutation {
   addUserToProject(input: AddUserToProjectInput!): UserProject!
   removeUserFromProject(input: RemoveUserFromProjectInput!): Boolean!
   updateProjectUser(input: UpdateProjectUserInput!): UserProject!
+
+  createDataStorage(input: CreateDataStorageInput!): DataStorage!
+  updateDataStorage(id: ID!, input: UpdateDataStorageInput!): DataStorage!
 }

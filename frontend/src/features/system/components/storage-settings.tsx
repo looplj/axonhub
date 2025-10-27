@@ -14,17 +14,33 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useSystemContext } from '../context/system-context'
 import { 
   useStoragePolicy,
   useUpdateStoragePolicy,
+  useDefaultDataStorageID,
+  useUpdateDefaultDataStorage,
   CleanupOption
 } from '../data/system'
+import { useDataStorages } from '@/features/data-storages/data/data-storages'
 
 export function StorageSettings() {
   const { t } = useTranslation()
   const { data: storagePolicy, isLoading: isLoadingStoragePolicy } = useStoragePolicy()
+  const { data: defaultDataStorageID, isLoading: isLoadingDefaultDataStorage } = useDefaultDataStorageID()
+  const { data: dataStorages } = useDataStorages({
+    first: 100,
+    where: { statusIn: ['active'] },
+  })
   const updateStoragePolicy = useUpdateStoragePolicy()
+  const updateDefaultDataStorage = useUpdateDefaultDataStorage()
   const { isLoading, setIsLoading } = useSystemContext()
 
   const [storagePolicyState, setStoragePolicyState] = useState({
@@ -33,6 +49,10 @@ export function StorageSettings() {
     storeResponseBody: storagePolicy?.storeResponseBody ?? true,
     cleanupOptions: storagePolicy?.cleanupOptions ?? []
   })
+
+  const [selectedDataStorageID, setSelectedDataStorageID] = useState<string | undefined>(
+    defaultDataStorageID || undefined
+  )
 
   // Update local state when storage policy is loaded
   React.useEffect(() => {
@@ -46,6 +66,13 @@ export function StorageSettings() {
     }
   }, [storagePolicy])
 
+  // Update selected data storage when loaded
+  React.useEffect(() => {
+    if (defaultDataStorageID) {
+      setSelectedDataStorageID(defaultDataStorageID)
+    }
+  }, [defaultDataStorageID])
+
   const handleSaveStoragePolicy = async () => {
     setIsLoading(true)
     try {
@@ -58,6 +85,19 @@ export function StorageSettings() {
           enabled: option.enabled,
           cleanupDays: option.cleanupDays
         }))
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSaveDefaultDataStorage = async () => {
+    if (!selectedDataStorageID) return
+    
+    setIsLoading(true)
+    try {
+      await updateDefaultDataStorage.mutateAsync({
+        dataStorageID: selectedDataStorageID
       })
     } finally {
       setIsLoading(false)
@@ -83,7 +123,10 @@ export function StorageSettings() {
       storagePolicy.storeResponseBody !== storagePolicyState.storeResponseBody ||
       JSON.stringify(storagePolicy.cleanupOptions) !== JSON.stringify(storagePolicyState.cleanupOptions))
 
-  if (isLoadingStoragePolicy) {
+  const hasDataStorageChanges = 
+    defaultDataStorageID !== selectedDataStorageID
+
+  if (isLoadingStoragePolicy || isLoadingDefaultDataStorage) {
     return (
       <div className='flex h-32 items-center justify-center'>
         <Loader2 className='h-6 w-6 animate-spin' />
@@ -96,6 +139,62 @@ export function StorageSettings() {
 
   return (
     <div className='space-y-6'>
+      {/* Data Storage Selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('system.storage.dataStorage.title', '默认数据存储')}</CardTitle>
+          <CardDescription>
+            {t('system.storage.dataStorage.description', '选择用于存储请求和响应数据的默认存储位置')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='space-y-4'>
+          <div className='grid gap-2'>
+            <Label htmlFor='default-data-storage'>
+              {t('system.storage.dataStorage.label', '数据存储')}
+            </Label>
+            <Select
+              value={selectedDataStorageID}
+              onValueChange={setSelectedDataStorageID}
+              disabled={isLoading}
+            >
+              <SelectTrigger id='default-data-storage'>
+                <SelectValue placeholder={t('system.storage.dataStorage.placeholder', '选择数据存储')} />
+              </SelectTrigger>
+              <SelectContent>
+                {dataStorages?.edges?.map((edge) => (
+                  <SelectItem key={edge.node.id} value={edge.node.id}>
+                    {edge.node.name} ({edge.node.type})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {hasDataStorageChanges && (
+            <div className='flex justify-end'>
+              <Button
+                onClick={handleSaveDefaultDataStorage}
+                disabled={isLoading || updateDefaultDataStorage.isPending}
+                size='sm'
+              >
+                {isLoading || updateDefaultDataStorage.isPending ? (
+                  <>
+                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    {t('system.buttons.saving')}
+                  </>
+                ) : (
+                  <>
+                    <Save className='mr-2 h-4 w-4' />
+                    {t('system.buttons.save')}
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Storage Policy */}
       <Card>
         <CardHeader>
           <CardTitle>{t('system.storage.policy.title')}</CardTitle>

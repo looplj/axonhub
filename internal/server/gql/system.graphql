@@ -68,10 +68,15 @@ input UpdateRetryPolicyInput {
   enabled: Boolean
 }
 
+input UpdateDefaultDataStorageInput {
+  dataStorageID: ID!
+}
+
 extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
   updateRetryPolicy(input: UpdateRetryPolicyInput!): Boolean!
+  updateDefaultDataStorage(input: UpdateDefaultDataStorageInput!): Boolean!
 }
 
 extend type Query {
@@ -79,4 +84,5 @@ extend type Query {
   brandSettings: BrandSettings!
   storagePolicy: StoragePolicy!
   retryPolicy: RetryPolicy!
+  defaultDataStorageID: ID
 }

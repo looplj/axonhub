@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"entgo.io/ent/privacy"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -46,6 +47,16 @@ func (r *mutationResolver) UpdateRetryPolicy(ctx context.Context, input biz.Retr
 	err := r.systemService.SetRetryPolicy(ctx, &input)
 	if err != nil {
 		return false, fmt.Errorf("failed to update retry policy: %w", err)
+	}
+
+	return true, nil
+}
+
+// UpdateDefaultDataStorage is the resolver for the updateDefaultDataStorage field.
+func (r *mutationResolver) UpdateDefaultDataStorage(ctx context.Context, input UpdateDefaultDataStorageInput) (bool, error) {
+	err := r.systemService.SetDefaultDataStorageID(ctx, input.DataStorageID.ID)
+	if err != nil {
+		return false, fmt.Errorf("failed to update default data storage: %w", err)
 	}
 
 	return true, nil
@@ -91,4 +102,21 @@ func (r *queryResolver) StoragePolicy(ctx context.Context) (*biz.StoragePolicy, 
 // RetryPolicy is the resolver for the retryPolicy field.
 func (r *queryResolver) RetryPolicy(ctx context.Context) (*biz.RetryPolicy, error) {
 	return r.systemService.RetryPolicy(ctx)
+}
+
+// DefaultDataStorageID is the resolver for the defaultDataStorageID field.
+func (r *queryResolver) DefaultDataStorageID(ctx context.Context) (*objects.GUID, error) {
+	id, err := r.systemService.DefaultDataStorageID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get default data storage ID: %w", err)
+	}
+
+	if id == 0 {
+		return nil, nil
+	}
+
+	return &objects.GUID{
+		Type: "DataStorage",
+		ID:   id,
+	}, nil
 }
