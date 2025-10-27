@@ -4,6 +4,7 @@ package ent
 
 import (
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -162,6 +163,86 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 	return c
 }
 
+// CreateDataStorageInput represents a mutation input for creating datastorages.
+type CreateDataStorageInput struct {
+	Name        string
+	Description *string
+	Primary     *bool
+	Type        *datastorage.Type
+	Settings    *objects.DataStorageSettings
+	Status      *datastorage.Status
+}
+
+// Mutate applies the CreateDataStorageInput on the DataStorageMutation builder.
+func (i *CreateDataStorageInput) Mutate(m *DataStorageMutation) {
+	m.SetName(i.Name)
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+	if v := i.Primary; v != nil {
+		m.SetPrimary(*v)
+	}
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
+	if v := i.Settings; v != nil {
+		m.SetSettings(v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+}
+
+// SetInput applies the change-set in the CreateDataStorageInput on the DataStorageCreate builder.
+func (c *DataStorageCreate) SetInput(i CreateDataStorageInput) *DataStorageCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateDataStorageInput represents a mutation input for updating datastorages.
+type UpdateDataStorageInput struct {
+	Name        *string
+	Description *string
+	Primary     *bool
+	Type        *datastorage.Type
+	Settings    *objects.DataStorageSettings
+	Status      *datastorage.Status
+}
+
+// Mutate applies the UpdateDataStorageInput on the DataStorageMutation builder.
+func (i *UpdateDataStorageInput) Mutate(m *DataStorageMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+	if v := i.Primary; v != nil {
+		m.SetPrimary(*v)
+	}
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
+	if v := i.Settings; v != nil {
+		m.SetSettings(v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateDataStorageInput on the DataStorageUpdate builder.
+func (c *DataStorageUpdate) SetInput(i UpdateDataStorageInput) *DataStorageUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateDataStorageInput on the DataStorageUpdateOne builder.
+func (c *DataStorageUpdateOne) SetInput(i UpdateDataStorageInput) *DataStorageUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
 // CreateProjectInput represents a mutation input for creating projects.
 type CreateProjectInput struct {
 	Name        string
@@ -248,6 +329,7 @@ type CreateRequestInput struct {
 	APIKeyID       *int
 	ProjectID      int
 	TraceID        *int
+	DataStorageID  *int
 	ChannelID      *int
 }
 
@@ -282,6 +364,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	m.SetProjectID(i.ProjectID)
 	if v := i.TraceID; v != nil {
 		m.SetTraceID(*v)
+	}
+	if v := i.DataStorageID; v != nil {
+		m.SetDataStorageID(*v)
 	}
 	if v := i.ChannelID; v != nil {
 		m.SetChannelID(*v)

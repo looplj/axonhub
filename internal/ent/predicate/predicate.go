@@ -12,6 +12,9 @@ type APIKey func(*sql.Selector)
 // Channel is the predicate function for channel builders.
 type Channel func(*sql.Selector)
 
+// DataStorage is the predicate function for datastorage builders.
+type DataStorage func(*sql.Selector)
+
 // Project is the predicate function for project builders.
 type Project func(*sql.Selector)
 

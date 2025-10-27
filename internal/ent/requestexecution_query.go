@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -20,14 +21,15 @@ import (
 // RequestExecutionQuery is the builder for querying RequestExecution entities.
 type RequestExecutionQuery struct {
 	config
-	ctx         *QueryContext
-	order       []requestexecution.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.RequestExecution
-	withRequest *RequestQuery
-	withChannel *ChannelQuery
-	loadTotal   []func(context.Context, []*RequestExecution) error
-	modifiers   []func(*sql.Selector)
+	ctx             *QueryContext
+	order           []requestexecution.OrderOption
+	inters          []Interceptor
+	predicates      []predicate.RequestExecution
+	withRequest     *RequestQuery
+	withChannel     *ChannelQuery
+	withDataStorage *DataStorageQuery
+	loadTotal       []func(context.Context, []*RequestExecution) error
+	modifiers       []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -101,6 +103,28 @@ func (_q *RequestExecutionQuery) QueryChannel() *ChannelQuery {
 			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, selector),
 			sqlgraph.To(channel.Table, channel.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, requestexecution.ChannelTable, requestexecution.ChannelColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryDataStorage chains the current query on the "data_storage" edge.
+func (_q *RequestExecutionQuery) QueryDataStorage() *DataStorageQuery {
+	query := (&DataStorageClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, selector),
+			sqlgraph.To(datastorage.Table, datastorage.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, requestexecution.DataStorageTable, requestexecution.DataStorageColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -295,13 +319,14 @@ func (_q *RequestExecutionQuery) Clone() *RequestExecutionQuery {
 		return nil
 	}
 	return &RequestExecutionQuery{
-		config:      _q.config,
-		ctx:         _q.ctx.Clone(),
-		order:       append([]requestexecution.OrderOption{}, _q.order...),
-		inters:      append([]Interceptor{}, _q.inters...),
-		predicates:  append([]predicate.RequestExecution{}, _q.predicates...),
-		withRequest: _q.withRequest.Clone(),
-		withChannel: _q.withChannel.Clone(),
+		config:          _q.config,
+		ctx:             _q.ctx.Clone(),
+		order:           append([]requestexecution.OrderOption{}, _q.order...),
+		inters:          append([]Interceptor{}, _q.inters...),
+		predicates:      append([]predicate.RequestExecution{}, _q.predicates...),
+		withRequest:     _q.withRequest.Clone(),
+		withChannel:     _q.withChannel.Clone(),
+		withDataStorage: _q.withDataStorage.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -328,6 +353,17 @@ func (_q *RequestExecutionQuery) WithChannel(opts ...func(*ChannelQuery)) *Reque
 		opt(query)
 	}
 	_q.withChannel = query
+	return _q
+}
+
+// WithDataStorage tells the query-builder to eager-load the nodes that are connected to
+// the "data_storage" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *RequestExecutionQuery) WithDataStorage(opts ...func(*DataStorageQuery)) *RequestExecutionQuery {
+	query := (&DataStorageClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDataStorage = query
 	return _q
 }
 
@@ -409,9 +445,10 @@ func (_q *RequestExecutionQuery) sqlAll(ctx context.Context, hooks ...queryHook)
 	var (
 		nodes       = []*RequestExecution{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withRequest != nil,
 			_q.withChannel != nil,
+			_q.withDataStorage != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -444,6 +481,12 @@ func (_q *RequestExecutionQuery) sqlAll(ctx context.Context, hooks ...queryHook)
 	if query := _q.withChannel; query != nil {
 		if err := _q.loadChannel(ctx, query, nodes, nil,
 			func(n *RequestExecution, e *Channel) { n.Edges.Channel = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withDataStorage; query != nil {
+		if err := _q.loadDataStorage(ctx, query, nodes, nil,
+			func(n *RequestExecution, e *DataStorage) { n.Edges.DataStorage = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -513,6 +556,35 @@ func (_q *RequestExecutionQuery) loadChannel(ctx context.Context, query *Channel
 	}
 	return nil
 }
+func (_q *RequestExecutionQuery) loadDataStorage(ctx context.Context, query *DataStorageQuery, nodes []*RequestExecution, init func(*RequestExecution), assign func(*RequestExecution, *DataStorage)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*RequestExecution)
+	for i := range nodes {
+		fk := nodes[i].DataStorageID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(datastorage.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "data_storage_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
 
 func (_q *RequestExecutionQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
@@ -547,6 +619,9 @@ func (_q *RequestExecutionQuery) querySpec() *sqlgraph.QuerySpec {
 		}
 		if _q.withChannel != nil {
 			_spec.Node.AddColumnOnce(requestexecution.FieldChannelID)
+		}
+		if _q.withDataStorage != nil {
+			_spec.Node.AddColumnOnce(requestexecution.FieldDataStorageID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

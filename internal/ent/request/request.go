@@ -30,6 +30,8 @@ const (
 	FieldProjectID = "project_id"
 	// FieldTraceID holds the string denoting the trace_id field in the database.
 	FieldTraceID = "trace_id"
+	// FieldDataStorageID holds the string denoting the data_storage_id field in the database.
+	FieldDataStorageID = "data_storage_id"
 	// FieldSource holds the string denoting the source field in the database.
 	FieldSource = "source"
 	// FieldModelID holds the string denoting the model_id field in the database.
@@ -56,6 +58,8 @@ const (
 	EdgeProject = "project"
 	// EdgeTrace holds the string denoting the trace edge name in mutations.
 	EdgeTrace = "trace"
+	// EdgeDataStorage holds the string denoting the data_storage edge name in mutations.
+	EdgeDataStorage = "data_storage"
 	// EdgeExecutions holds the string denoting the executions edge name in mutations.
 	EdgeExecutions = "executions"
 	// EdgeChannel holds the string denoting the channel edge name in mutations.
@@ -85,6 +89,13 @@ const (
 	TraceInverseTable = "traces"
 	// TraceColumn is the table column denoting the trace relation/edge.
 	TraceColumn = "trace_id"
+	// DataStorageTable is the table that holds the data_storage relation/edge.
+	DataStorageTable = "requests"
+	// DataStorageInverseTable is the table name for the DataStorage entity.
+	// It exists in this package in order to avoid circular dependency with the "datastorage" package.
+	DataStorageInverseTable = "data_storages"
+	// DataStorageColumn is the table column denoting the data_storage relation/edge.
+	DataStorageColumn = "data_storage_id"
 	// ExecutionsTable is the table that holds the executions relation/edge.
 	ExecutionsTable = "request_executions"
 	// ExecutionsInverseTable is the table name for the RequestExecution entity.
@@ -117,6 +128,7 @@ var Columns = []string{
 	FieldAPIKeyID,
 	FieldProjectID,
 	FieldTraceID,
+	FieldDataStorageID,
 	FieldSource,
 	FieldModelID,
 	FieldFormat,
@@ -255,6 +267,11 @@ func ByTraceID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTraceID, opts...).ToFunc()
 }
 
+// ByDataStorageID orders the results by the data_storage_id field.
+func ByDataStorageID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDataStorageID, opts...).ToFunc()
+}
+
 // BySource orders the results by the source field.
 func BySource(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSource, opts...).ToFunc()
@@ -311,6 +328,13 @@ func ByTraceField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
+// ByDataStorageField orders the results by data_storage field.
+func ByDataStorageField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDataStorageStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByExecutionsCount orders the results by executions count.
 func ByExecutionsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -364,6 +388,13 @@ func newTraceStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TraceInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, TraceTable, TraceColumn),
+	)
+}
+func newDataStorageStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DataStorageInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, DataStorageTable, DataStorageColumn),
 	)
 }
 func newExecutionsStep() *sqlgraph.Step {

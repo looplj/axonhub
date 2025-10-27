@@ -69,13 +69,17 @@ func NewEntClient(cfg Config) *ent.Client {
 		migrate.WithForeignKeys(false),
 		migrate.WithDropIndex(true),
 		migrate.WithDropColumn(true),
-		schema.WithHooks(schemahook.V0_3_0),
+		schema.WithHooks(schemahook.V0_3_0, schemahook.V0_4_0),
 	)
 	if err != nil {
 		panic(err)
 	}
 
 	if err := datamigrate.NewV0_3_0().Migrate(context.Background(), client); err != nil {
+		panic(err)
+	}
+
+	if err := datamigrate.NewV0_4_0().Migrate(context.Background(), client); err != nil {
 		panic(err)
 	}
 

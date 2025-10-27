@@ -35,6 +35,10 @@ func (RequestExecution) Fields() []ent.Field {
 		field.Int("project_id").Immutable().Default(1),
 		field.Int("request_id").Immutable(),
 		field.Int("channel_id").Immutable(),
+		field.Int("data_storage_id").
+			Optional().
+			Immutable().
+			Comment("Data Storage ID that this request belongs to"),
 		// External ID for tracking requests in external systems
 		field.String("external_id").Optional(),
 		field.String("model_id").Immutable(),
@@ -67,6 +71,11 @@ func (RequestExecution) Edges() []ent.Edge {
 			Field("channel_id").
 			Ref("executions").
 			Required().
+			Immutable().
+			Unique(),
+		edge.From("data_storage", DataStorage.Type).
+			Ref("executions").
+			Field("data_storage_id").
 			Immutable().
 			Unique(),
 	}

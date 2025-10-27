@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
@@ -46,6 +47,10 @@ const (
 	// SystemKeyRetryPolicy is the key used to store the retry policy configuration.
 	// The value is JSON-encoded RetryPolicy struct.
 	SystemKeyRetryPolicy = "retry_policy"
+
+	// SystemKeyDefaultDataStorage is the key used to store the default data storage ID.
+	// If not set, the primary data storage will be used.
+	SystemKeyDefaultDataStorage = "default_data_storage_id"
 )
 
 // StoragePolicy represents the storage policy configuration.
@@ -194,6 +199,27 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	if err != nil {
 		return fmt.Errorf("failed to set brand name: %w", err)
 	}
+
+	// Create primary data storage
+	primaryDataStorage, err := tx.DataStorage.Create().
+		SetName("primary").
+		SetDescription("Primary database storage").
+		SetPrimary(true).
+		SetType("database").
+		SetSettings(&objects.DataStorageSettings{}).
+		SetStatus("active").
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create primary data storage: %w", err)
+	}
+
+	// Set default data storage ID.
+	err = s.SetDefaultDataStorageID(ctx, primaryDataStorage.ID)
+	if err != nil {
+		return fmt.Errorf("failed to set default data storage ID: %w", err)
+	}
+
+	log.Info(ctx, "created primary data storage", zap.Int("data_storage_id", primaryDataStorage.ID))
 
 	// Set initialized flag to true.
 	err = s.setSystemValue(ctx, SystemKeyInitialized, "true")
@@ -435,4 +461,31 @@ func (s *SystemService) SetRetryPolicy(ctx context.Context, policy *RetryPolicy)
 	}
 
 	return s.setSystemValue(ctx, SystemKeyRetryPolicy, string(jsonBytes))
+}
+
+// DefaultDataStorageID retrieves the default data storage ID from system settings.
+// Returns 0 if not set.
+func (s *SystemService) DefaultDataStorageID(ctx context.Context) (int, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	value, err := s.getSystemValue(ctx, SystemKeyDefaultDataStorage)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return 0, nil
+		}
+
+		return 0, fmt.Errorf("failed to get default data storage ID: %w", err)
+	}
+
+	var id int
+	if _, err := fmt.Sscanf(value, "%d", &id); err != nil {
+		return 0, fmt.Errorf("failed to parse default data storage ID: %w", err)
+	}
+
+	return id, nil
+}
+
+// SetDefaultDataStorageID sets the default data storage ID.
+func (s *SystemService) SetDefaultDataStorageID(ctx context.Context, id int) error {
+	return s.setSystemValue(ctx, SystemKeyDefaultDataStorage, fmt.Sprintf("%d", id))
 }

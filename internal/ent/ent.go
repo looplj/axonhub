@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -87,6 +88,7 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			apikey.Table:           apikey.ValidColumn,
 			channel.Table:          channel.ValidColumn,
+			datastorage.Table:      datastorage.ValidColumn,
 			project.Table:          project.ValidColumn,
 			request.Table:          request.ValidColumn,
 			requestexecution.Table: requestexecution.ValidColumn,

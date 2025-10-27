@@ -14,6 +14,11 @@ const (
 	// ScopeWriteChannels manage the channels of the system.
 	ScopeWriteChannels ScopeSlug = "write_channels"
 
+	// ScopeReadDataStorages read the data storages of the system.
+	ScopeReadDataStorages ScopeSlug = "read_data_storages"
+	// ScopeWriteDataStorages manage the data storages of the system.
+	ScopeWriteDataStorages ScopeSlug = "write_data_storages"
+
 	// ScopeReadUsers read the users of the system or project.
 	ScopeReadUsers ScopeSlug = "read_users"
 	// ScopeWriteUsers manage the users of the system or project.
@@ -89,6 +94,16 @@ var scopeConfigs = []Scope{
 	{
 		Slug:        ScopeWriteChannels,
 		Description: "Manage channels (create, edit, delete)",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeReadDataStorages,
+		Description: "View data storage information",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeWriteDataStorages,
+		Description: "Manage data storages (create, edit, delete)",
 		Levels:      []ScopeLevel{ScopeLevelSystem},
 	},
 	{

@@ -82,6 +82,16 @@ type FetchModelsPayload struct {
 	Error  *string                  `json:"error,omitempty"`
 }
 
+type Gcs struct {
+	BucketName string                 `json:"bucketName"`
+	Credential *objects.GCPCredential `json:"credential"`
+}
+
+type GCSInput struct {
+	BucketName string                 `json:"bucketName"`
+	Credential *objects.GCPCredential `json:"credential"`
+}
+
 type HourlyRequestStats struct {
 	Hour  int `json:"hour"`
 	Count int `json:"count"`
@@ -131,6 +141,20 @@ type RequestStatsByChannel struct {
 type RequestStatsByModel struct {
 	ModelID string `json:"modelId"`
 	Count   int    `json:"count"`
+}
+
+type S3 struct {
+	BucketName string `json:"bucketName"`
+	Endpoint   string `json:"endpoint"`
+	AccessKey  string `json:"accessKey"`
+	SecretKey  string `json:"secretKey"`
+}
+
+type S3Input struct {
+	BucketName string `json:"bucketName"`
+	Endpoint   string `json:"endpoint"`
+	AccessKey  string `json:"accessKey"`
+	SecretKey  string `json:"secretKey"`
 }
 
 type ScopeInfo struct {

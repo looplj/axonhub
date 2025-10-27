@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -124,6 +125,49 @@ func init() {
 	channelDescOrderingWeight := channelFields[8].Descriptor()
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
+	datastorageMixin := schema.DataStorage{}.Mixin()
+	datastorage.Policy = privacy.NewPolicies(schema.DataStorage{})
+	datastorage.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := datastorage.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	datastorageMixinHooks1 := datastorageMixin[1].Hooks()
+
+	datastorage.Hooks[1] = datastorageMixinHooks1[0]
+	datastorageMixinInters1 := datastorageMixin[1].Interceptors()
+	datastorage.Interceptors[0] = datastorageMixinInters1[0]
+	datastorageMixinFields0 := datastorageMixin[0].Fields()
+	_ = datastorageMixinFields0
+	datastorageMixinFields1 := datastorageMixin[1].Fields()
+	_ = datastorageMixinFields1
+	datastorageFields := schema.DataStorage{}.Fields()
+	_ = datastorageFields
+	// datastorageDescCreatedAt is the schema descriptor for created_at field.
+	datastorageDescCreatedAt := datastorageMixinFields0[0].Descriptor()
+	// datastorage.DefaultCreatedAt holds the default value on creation for the created_at field.
+	datastorage.DefaultCreatedAt = datastorageDescCreatedAt.Default.(func() time.Time)
+	// datastorageDescUpdatedAt is the schema descriptor for updated_at field.
+	datastorageDescUpdatedAt := datastorageMixinFields0[1].Descriptor()
+	// datastorage.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	datastorage.DefaultUpdatedAt = datastorageDescUpdatedAt.Default.(func() time.Time)
+	// datastorage.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	datastorage.UpdateDefaultUpdatedAt = datastorageDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// datastorageDescDeletedAt is the schema descriptor for deleted_at field.
+	datastorageDescDeletedAt := datastorageMixinFields1[0].Descriptor()
+	// datastorage.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	datastorage.DefaultDeletedAt = datastorageDescDeletedAt.Default.(int)
+	// datastorageDescDescription is the schema descriptor for description field.
+	datastorageDescDescription := datastorageFields[1].Descriptor()
+	// datastorage.DefaultDescription holds the default value on creation for the description field.
+	datastorage.DefaultDescription = datastorageDescDescription.Default.(string)
+	// datastorageDescPrimary is the schema descriptor for primary field.
+	datastorageDescPrimary := datastorageFields[2].Descriptor()
+	// datastorage.DefaultPrimary holds the default value on creation for the primary field.
+	datastorage.DefaultPrimary = datastorageDescPrimary.Default.(bool)
 	projectMixin := schema.Project{}.Mixin()
 	project.Policy = privacy.NewPolicies(schema.Project{})
 	project.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -203,11 +247,11 @@ func init() {
 	// request.DefaultProjectID holds the default value on creation for the project_id field.
 	request.DefaultProjectID = requestDescProjectID.Default.(int)
 	// requestDescFormat is the schema descriptor for format field.
-	requestDescFormat := requestFields[5].Descriptor()
+	requestDescFormat := requestFields[6].Descriptor()
 	// request.DefaultFormat holds the default value on creation for the format field.
 	request.DefaultFormat = requestDescFormat.Default.(string)
 	// requestDescStream is the schema descriptor for stream field.
-	requestDescStream := requestFields[12].Descriptor()
+	requestDescStream := requestFields[13].Descriptor()
 	// request.DefaultStream holds the default value on creation for the stream field.
 	request.DefaultStream = requestDescStream.Default.(bool)
 	requestexecutionMixin := schema.RequestExecution{}.Mixin()
@@ -230,7 +274,7 @@ func init() {
 	// requestexecution.DefaultProjectID holds the default value on creation for the project_id field.
 	requestexecution.DefaultProjectID = requestexecutionDescProjectID.Default.(int)
 	// requestexecutionDescFormat is the schema descriptor for format field.
-	requestexecutionDescFormat := requestexecutionFields[5].Descriptor()
+	requestexecutionDescFormat := requestexecutionFields[6].Descriptor()
 	// requestexecution.DefaultFormat holds the default value on creation for the format field.
 	requestexecution.DefaultFormat = requestexecutionDescFormat.Default.(string)
 	roleMixin := schema.Role{}.Mixin()

@@ -12,6 +12,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -680,6 +681,313 @@ func newChannelPaginateArgs(rv map[string]any) *channelPaginateArgs {
 	}
 	if v, ok := rv[whereField].(*ChannelWhereInput); ok {
 		args.opts = append(args.opts, WithChannelFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *DataStorageQuery) CollectFields(ctx context.Context, satisfies ...string) (*DataStorageQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *DataStorageQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(datastorage.Columns))
+		selectedFields = []string{datastorage.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "requests":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&RequestClient{config: _q.config}).Query()
+			)
+			args := newRequestPaginateArgs(fieldArgs(ctx, new(RequestWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newRequestPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*DataStorage) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"data_storage_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(datastorage.RequestsColumn), ids...))
+						})
+						if err := query.GroupBy(datastorage.RequestsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[0] == nil {
+								nodes[i].Edges.totalCount[0] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[0][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*DataStorage) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Requests)
+							if nodes[i].Edges.totalCount[0] == nil {
+								nodes[i].Edges.totalCount[0] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[0][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, requestImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(datastorage.RequestsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedRequests(alias, func(wq *RequestQuery) {
+				*wq = *query
+			})
+
+		case "executions":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&RequestExecutionClient{config: _q.config}).Query()
+			)
+			args := newRequestExecutionPaginateArgs(fieldArgs(ctx, new(RequestExecutionWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newRequestExecutionPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*DataStorage) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"data_storage_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(datastorage.ExecutionsColumn), ids...))
+						})
+						if err := query.GroupBy(datastorage.ExecutionsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[1] == nil {
+								nodes[i].Edges.totalCount[1] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[1][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*DataStorage) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Executions)
+							if nodes[i].Edges.totalCount[1] == nil {
+								nodes[i].Edges.totalCount[1] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[1][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, requestexecutionImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(datastorage.ExecutionsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedExecutions(alias, func(wq *RequestExecutionQuery) {
+				*wq = *query
+			})
+		case "createdAt":
+			if _, ok := fieldSeen[datastorage.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, datastorage.FieldCreatedAt)
+				fieldSeen[datastorage.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[datastorage.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, datastorage.FieldUpdatedAt)
+				fieldSeen[datastorage.FieldUpdatedAt] = struct{}{}
+			}
+		case "deletedAt":
+			if _, ok := fieldSeen[datastorage.FieldDeletedAt]; !ok {
+				selectedFields = append(selectedFields, datastorage.FieldDeletedAt)
+				fieldSeen[datastorage.FieldDeletedAt] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[datastorage.FieldName]; !ok {
+				selectedFields = append(selectedFields, datastorage.FieldName)
+				fieldSeen[datastorage.FieldName] = struct{}{}
+			}
+		case "description":
+			if _, ok := fieldSeen[datastorage.FieldDescription]; !ok {
+				selectedFields = append(selectedFields, datastorage.FieldDescription)
+				fieldSeen[datastorage.FieldDescription] = struct{}{}
+			}
+		case "primary":
+			if _, ok := fieldSeen[datastorage.FieldPrimary]; !ok {
+				selectedFields = append(selectedFields, datastorage.FieldPrimary)
+				fieldSeen[datastorage.FieldPrimary] = struct{}{}
+			}
+		case "type":
+			if _, ok := fieldSeen[datastorage.FieldType]; !ok {
+				selectedFields = append(selectedFields, datastorage.FieldType)
+				fieldSeen[datastorage.FieldType] = struct{}{}
+			}
+		case "settings":
+			if _, ok := fieldSeen[datastorage.FieldSettings]; !ok {
+				selectedFields = append(selectedFields, datastorage.FieldSettings)
+				fieldSeen[datastorage.FieldSettings] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[datastorage.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, datastorage.FieldStatus)
+				fieldSeen[datastorage.FieldStatus] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type datastoragePaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []DataStoragePaginateOption
+}
+
+func newDataStoragePaginateArgs(rv map[string]any) *datastoragePaginateArgs {
+	args := &datastoragePaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &DataStorageOrder{Field: &DataStorageOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithDataStorageOrder(order))
+			}
+		case *DataStorageOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithDataStorageOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*DataStorageWhereInput); ok {
+		args.opts = append(args.opts, WithDataStorageFilter(v.Filter))
 	}
 	return args
 }
@@ -1581,6 +1889,21 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				fieldSeen[request.FieldTraceID] = struct{}{}
 			}
 
+		case "dataStorage":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&DataStorageClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, datastorageImplementors)...); err != nil {
+				return err
+			}
+			_q.withDataStorage = query
+			if _, ok := fieldSeen[request.FieldDataStorageID]; !ok {
+				selectedFields = append(selectedFields, request.FieldDataStorageID)
+				fieldSeen[request.FieldDataStorageID] = struct{}{}
+			}
+
 		case "executions":
 			var (
 				alias = field.Alias
@@ -1624,10 +1947,10 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[3] == nil {
-								nodes[i].Edges.totalCount[3] = make(map[string]int)
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[3][alias] = n
+							nodes[i].Edges.totalCount[4][alias] = n
 						}
 						return nil
 					})
@@ -1635,10 +1958,10 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Request) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.Executions)
-							if nodes[i].Edges.totalCount[3] == nil {
-								nodes[i].Edges.totalCount[3] = make(map[string]int)
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[3][alias] = n
+							nodes[i].Edges.totalCount[4][alias] = n
 						}
 						return nil
 					})
@@ -1728,10 +2051,10 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[5] == nil {
-								nodes[i].Edges.totalCount[5] = make(map[string]int)
+							if nodes[i].Edges.totalCount[6] == nil {
+								nodes[i].Edges.totalCount[6] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[5][alias] = n
+							nodes[i].Edges.totalCount[6][alias] = n
 						}
 						return nil
 					})
@@ -1739,10 +2062,10 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Request) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.UsageLogs)
-							if nodes[i].Edges.totalCount[5] == nil {
-								nodes[i].Edges.totalCount[5] = make(map[string]int)
+							if nodes[i].Edges.totalCount[6] == nil {
+								nodes[i].Edges.totalCount[6] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[5][alias] = n
+							nodes[i].Edges.totalCount[6][alias] = n
 						}
 						return nil
 					})
@@ -1802,6 +2125,11 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			if _, ok := fieldSeen[request.FieldTraceID]; !ok {
 				selectedFields = append(selectedFields, request.FieldTraceID)
 				fieldSeen[request.FieldTraceID] = struct{}{}
+			}
+		case "dataStorageID":
+			if _, ok := fieldSeen[request.FieldDataStorageID]; !ok {
+				selectedFields = append(selectedFields, request.FieldDataStorageID)
+				fieldSeen[request.FieldDataStorageID] = struct{}{}
 			}
 		case "source":
 			if _, ok := fieldSeen[request.FieldSource]; !ok {
@@ -1967,6 +2295,21 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 				selectedFields = append(selectedFields, requestexecution.FieldChannelID)
 				fieldSeen[requestexecution.FieldChannelID] = struct{}{}
 			}
+
+		case "dataStorage":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&DataStorageClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, datastorageImplementors)...); err != nil {
+				return err
+			}
+			_q.withDataStorage = query
+			if _, ok := fieldSeen[requestexecution.FieldDataStorageID]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldDataStorageID)
+				fieldSeen[requestexecution.FieldDataStorageID] = struct{}{}
+			}
 		case "createdAt":
 			if _, ok := fieldSeen[requestexecution.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldCreatedAt)
@@ -1991,6 +2334,11 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 			if _, ok := fieldSeen[requestexecution.FieldChannelID]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldChannelID)
 				fieldSeen[requestexecution.FieldChannelID] = struct{}{}
+			}
+		case "dataStorageID":
+			if _, ok := fieldSeen[requestexecution.FieldDataStorageID]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldDataStorageID)
+				fieldSeen[requestexecution.FieldDataStorageID] = struct{}{}
 			}
 		case "externalID":
 			if _, ok := fieldSeen[requestexecution.FieldExternalID]; !ok {
