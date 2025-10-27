@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -39,6 +40,7 @@ const (
 	// Node types.
 	TypeAPIKey           = "APIKey"
 	TypeChannel          = "Channel"
+	TypeDataStorage      = "DataStorage"
 	TypeProject          = "Project"
 	TypeRequest          = "Request"
 	TypeRequestExecution = "RequestExecution"
@@ -2448,6 +2450,976 @@ func (m *ChannelMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Channel edge %s", name)
 }
 
+// DataStorageMutation represents an operation that mutates the DataStorage nodes in the graph.
+type DataStorageMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	created_at        *time.Time
+	updated_at        *time.Time
+	deleted_at        *int
+	adddeleted_at     *int
+	name              *string
+	description       *string
+	primary           *bool
+	_type             *datastorage.Type
+	settings          **objects.DataStorageSettings
+	status            *datastorage.Status
+	clearedFields     map[string]struct{}
+	requests          map[int]struct{}
+	removedrequests   map[int]struct{}
+	clearedrequests   bool
+	executions        map[int]struct{}
+	removedexecutions map[int]struct{}
+	clearedexecutions bool
+	done              bool
+	oldValue          func(context.Context) (*DataStorage, error)
+	predicates        []predicate.DataStorage
+}
+
+var _ ent.Mutation = (*DataStorageMutation)(nil)
+
+// datastorageOption allows management of the mutation configuration using functional options.
+type datastorageOption func(*DataStorageMutation)
+
+// newDataStorageMutation creates new mutation for the DataStorage entity.
+func newDataStorageMutation(c config, op Op, opts ...datastorageOption) *DataStorageMutation {
+	m := &DataStorageMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDataStorage,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDataStorageID sets the ID field of the mutation.
+func withDataStorageID(id int) datastorageOption {
+	return func(m *DataStorageMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DataStorage
+		)
+		m.oldValue = func(ctx context.Context) (*DataStorage, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DataStorage.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDataStorage sets the old DataStorage of the mutation.
+func withDataStorage(node *DataStorage) datastorageOption {
+	return func(m *DataStorageMutation) {
+		m.oldValue = func(context.Context) (*DataStorage, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DataStorageMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DataStorageMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DataStorageMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DataStorageMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DataStorage.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *DataStorageMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *DataStorageMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the DataStorage entity.
+// If the DataStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataStorageMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *DataStorageMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *DataStorageMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *DataStorageMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the DataStorage entity.
+// If the DataStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataStorageMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *DataStorageMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *DataStorageMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *DataStorageMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the DataStorage entity.
+// If the DataStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataStorageMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *DataStorageMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *DataStorageMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *DataStorageMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetName sets the "name" field.
+func (m *DataStorageMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *DataStorageMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the DataStorage entity.
+// If the DataStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataStorageMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *DataStorageMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *DataStorageMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *DataStorageMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the DataStorage entity.
+// If the DataStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataStorageMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *DataStorageMutation) ResetDescription() {
+	m.description = nil
+}
+
+// SetPrimary sets the "primary" field.
+func (m *DataStorageMutation) SetPrimary(b bool) {
+	m.primary = &b
+}
+
+// Primary returns the value of the "primary" field in the mutation.
+func (m *DataStorageMutation) Primary() (r bool, exists bool) {
+	v := m.primary
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPrimary returns the old "primary" field's value of the DataStorage entity.
+// If the DataStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataStorageMutation) OldPrimary(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPrimary is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPrimary requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPrimary: %w", err)
+	}
+	return oldValue.Primary, nil
+}
+
+// ResetPrimary resets all changes to the "primary" field.
+func (m *DataStorageMutation) ResetPrimary() {
+	m.primary = nil
+}
+
+// SetType sets the "type" field.
+func (m *DataStorageMutation) SetType(d datastorage.Type) {
+	m._type = &d
+}
+
+// GetType returns the value of the "type" field in the mutation.
+func (m *DataStorageMutation) GetType() (r datastorage.Type, exists bool) {
+	v := m._type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldType returns the old "type" field's value of the DataStorage entity.
+// If the DataStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataStorageMutation) OldType(ctx context.Context) (v datastorage.Type, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldType: %w", err)
+	}
+	return oldValue.Type, nil
+}
+
+// ResetType resets all changes to the "type" field.
+func (m *DataStorageMutation) ResetType() {
+	m._type = nil
+}
+
+// SetSettings sets the "settings" field.
+func (m *DataStorageMutation) SetSettings(oss *objects.DataStorageSettings) {
+	m.settings = &oss
+}
+
+// Settings returns the value of the "settings" field in the mutation.
+func (m *DataStorageMutation) Settings() (r *objects.DataStorageSettings, exists bool) {
+	v := m.settings
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSettings returns the old "settings" field's value of the DataStorage entity.
+// If the DataStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataStorageMutation) OldSettings(ctx context.Context) (v *objects.DataStorageSettings, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSettings is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSettings requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSettings: %w", err)
+	}
+	return oldValue.Settings, nil
+}
+
+// ResetSettings resets all changes to the "settings" field.
+func (m *DataStorageMutation) ResetSettings() {
+	m.settings = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *DataStorageMutation) SetStatus(d datastorage.Status) {
+	m.status = &d
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *DataStorageMutation) Status() (r datastorage.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the DataStorage entity.
+// If the DataStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DataStorageMutation) OldStatus(ctx context.Context) (v datastorage.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *DataStorageMutation) ResetStatus() {
+	m.status = nil
+}
+
+// AddRequestIDs adds the "requests" edge to the Request entity by ids.
+func (m *DataStorageMutation) AddRequestIDs(ids ...int) {
+	if m.requests == nil {
+		m.requests = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.requests[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRequests clears the "requests" edge to the Request entity.
+func (m *DataStorageMutation) ClearRequests() {
+	m.clearedrequests = true
+}
+
+// RequestsCleared reports if the "requests" edge to the Request entity was cleared.
+func (m *DataStorageMutation) RequestsCleared() bool {
+	return m.clearedrequests
+}
+
+// RemoveRequestIDs removes the "requests" edge to the Request entity by IDs.
+func (m *DataStorageMutation) RemoveRequestIDs(ids ...int) {
+	if m.removedrequests == nil {
+		m.removedrequests = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.requests, ids[i])
+		m.removedrequests[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRequests returns the removed IDs of the "requests" edge to the Request entity.
+func (m *DataStorageMutation) RemovedRequestsIDs() (ids []int) {
+	for id := range m.removedrequests {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RequestsIDs returns the "requests" edge IDs in the mutation.
+func (m *DataStorageMutation) RequestsIDs() (ids []int) {
+	for id := range m.requests {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRequests resets all changes to the "requests" edge.
+func (m *DataStorageMutation) ResetRequests() {
+	m.requests = nil
+	m.clearedrequests = false
+	m.removedrequests = nil
+}
+
+// AddExecutionIDs adds the "executions" edge to the RequestExecution entity by ids.
+func (m *DataStorageMutation) AddExecutionIDs(ids ...int) {
+	if m.executions == nil {
+		m.executions = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.executions[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExecutions clears the "executions" edge to the RequestExecution entity.
+func (m *DataStorageMutation) ClearExecutions() {
+	m.clearedexecutions = true
+}
+
+// ExecutionsCleared reports if the "executions" edge to the RequestExecution entity was cleared.
+func (m *DataStorageMutation) ExecutionsCleared() bool {
+	return m.clearedexecutions
+}
+
+// RemoveExecutionIDs removes the "executions" edge to the RequestExecution entity by IDs.
+func (m *DataStorageMutation) RemoveExecutionIDs(ids ...int) {
+	if m.removedexecutions == nil {
+		m.removedexecutions = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.executions, ids[i])
+		m.removedexecutions[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExecutions returns the removed IDs of the "executions" edge to the RequestExecution entity.
+func (m *DataStorageMutation) RemovedExecutionsIDs() (ids []int) {
+	for id := range m.removedexecutions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExecutionsIDs returns the "executions" edge IDs in the mutation.
+func (m *DataStorageMutation) ExecutionsIDs() (ids []int) {
+	for id := range m.executions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExecutions resets all changes to the "executions" edge.
+func (m *DataStorageMutation) ResetExecutions() {
+	m.executions = nil
+	m.clearedexecutions = false
+	m.removedexecutions = nil
+}
+
+// Where appends a list predicates to the DataStorageMutation builder.
+func (m *DataStorageMutation) Where(ps ...predicate.DataStorage) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DataStorageMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DataStorageMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DataStorage, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DataStorageMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DataStorageMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DataStorage).
+func (m *DataStorageMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DataStorageMutation) Fields() []string {
+	fields := make([]string, 0, 9)
+	if m.created_at != nil {
+		fields = append(fields, datastorage.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, datastorage.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, datastorage.FieldDeletedAt)
+	}
+	if m.name != nil {
+		fields = append(fields, datastorage.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, datastorage.FieldDescription)
+	}
+	if m.primary != nil {
+		fields = append(fields, datastorage.FieldPrimary)
+	}
+	if m._type != nil {
+		fields = append(fields, datastorage.FieldType)
+	}
+	if m.settings != nil {
+		fields = append(fields, datastorage.FieldSettings)
+	}
+	if m.status != nil {
+		fields = append(fields, datastorage.FieldStatus)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DataStorageMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case datastorage.FieldCreatedAt:
+		return m.CreatedAt()
+	case datastorage.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case datastorage.FieldDeletedAt:
+		return m.DeletedAt()
+	case datastorage.FieldName:
+		return m.Name()
+	case datastorage.FieldDescription:
+		return m.Description()
+	case datastorage.FieldPrimary:
+		return m.Primary()
+	case datastorage.FieldType:
+		return m.GetType()
+	case datastorage.FieldSettings:
+		return m.Settings()
+	case datastorage.FieldStatus:
+		return m.Status()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DataStorageMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case datastorage.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case datastorage.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case datastorage.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case datastorage.FieldName:
+		return m.OldName(ctx)
+	case datastorage.FieldDescription:
+		return m.OldDescription(ctx)
+	case datastorage.FieldPrimary:
+		return m.OldPrimary(ctx)
+	case datastorage.FieldType:
+		return m.OldType(ctx)
+	case datastorage.FieldSettings:
+		return m.OldSettings(ctx)
+	case datastorage.FieldStatus:
+		return m.OldStatus(ctx)
+	}
+	return nil, fmt.Errorf("unknown DataStorage field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DataStorageMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case datastorage.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case datastorage.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case datastorage.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case datastorage.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case datastorage.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case datastorage.FieldPrimary:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPrimary(v)
+		return nil
+	case datastorage.FieldType:
+		v, ok := value.(datastorage.Type)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetType(v)
+		return nil
+	case datastorage.FieldSettings:
+		v, ok := value.(*objects.DataStorageSettings)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSettings(v)
+		return nil
+	case datastorage.FieldStatus:
+		v, ok := value.(datastorage.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DataStorage field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DataStorageMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, datastorage.FieldDeletedAt)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DataStorageMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case datastorage.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DataStorageMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case datastorage.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DataStorage numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DataStorageMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DataStorageMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DataStorageMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown DataStorage nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DataStorageMutation) ResetField(name string) error {
+	switch name {
+	case datastorage.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case datastorage.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case datastorage.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case datastorage.FieldName:
+		m.ResetName()
+		return nil
+	case datastorage.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case datastorage.FieldPrimary:
+		m.ResetPrimary()
+		return nil
+	case datastorage.FieldType:
+		m.ResetType()
+		return nil
+	case datastorage.FieldSettings:
+		m.ResetSettings()
+		return nil
+	case datastorage.FieldStatus:
+		m.ResetStatus()
+		return nil
+	}
+	return fmt.Errorf("unknown DataStorage field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DataStorageMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.requests != nil {
+		edges = append(edges, datastorage.EdgeRequests)
+	}
+	if m.executions != nil {
+		edges = append(edges, datastorage.EdgeExecutions)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DataStorageMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case datastorage.EdgeRequests:
+		ids := make([]ent.Value, 0, len(m.requests))
+		for id := range m.requests {
+			ids = append(ids, id)
+		}
+		return ids
+	case datastorage.EdgeExecutions:
+		ids := make([]ent.Value, 0, len(m.executions))
+		for id := range m.executions {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DataStorageMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.removedrequests != nil {
+		edges = append(edges, datastorage.EdgeRequests)
+	}
+	if m.removedexecutions != nil {
+		edges = append(edges, datastorage.EdgeExecutions)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DataStorageMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case datastorage.EdgeRequests:
+		ids := make([]ent.Value, 0, len(m.removedrequests))
+		for id := range m.removedrequests {
+			ids = append(ids, id)
+		}
+		return ids
+	case datastorage.EdgeExecutions:
+		ids := make([]ent.Value, 0, len(m.removedexecutions))
+		for id := range m.removedexecutions {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DataStorageMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedrequests {
+		edges = append(edges, datastorage.EdgeRequests)
+	}
+	if m.clearedexecutions {
+		edges = append(edges, datastorage.EdgeExecutions)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DataStorageMutation) EdgeCleared(name string) bool {
+	switch name {
+	case datastorage.EdgeRequests:
+		return m.clearedrequests
+	case datastorage.EdgeExecutions:
+		return m.clearedexecutions
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DataStorageMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DataStorage unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DataStorageMutation) ResetEdge(name string) error {
+	switch name {
+	case datastorage.EdgeRequests:
+		m.ResetRequests()
+		return nil
+	case datastorage.EdgeExecutions:
+		m.ResetExecutions()
+		return nil
+	}
+	return fmt.Errorf("unknown DataStorage edge %s", name)
+}
+
 // ProjectMutation represents an operation that mutates the Project nodes in the graph.
 type ProjectMutation struct {
 	config
@@ -3783,6 +4755,8 @@ type RequestMutation struct {
 	clearedproject        bool
 	trace                 *int
 	clearedtrace          bool
+	data_storage          *int
+	cleareddata_storage   bool
 	executions            map[int]struct{}
 	removedexecutions     map[int]struct{}
 	clearedexecutions     bool
@@ -4154,6 +5128,55 @@ func (m *RequestMutation) TraceIDCleared() bool {
 func (m *RequestMutation) ResetTraceID() {
 	m.trace = nil
 	delete(m.clearedFields, request.FieldTraceID)
+}
+
+// SetDataStorageID sets the "data_storage_id" field.
+func (m *RequestMutation) SetDataStorageID(i int) {
+	m.data_storage = &i
+}
+
+// DataStorageID returns the value of the "data_storage_id" field in the mutation.
+func (m *RequestMutation) DataStorageID() (r int, exists bool) {
+	v := m.data_storage
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDataStorageID returns the old "data_storage_id" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldDataStorageID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDataStorageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDataStorageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDataStorageID: %w", err)
+	}
+	return oldValue.DataStorageID, nil
+}
+
+// ClearDataStorageID clears the value of the "data_storage_id" field.
+func (m *RequestMutation) ClearDataStorageID() {
+	m.data_storage = nil
+	m.clearedFields[request.FieldDataStorageID] = struct{}{}
+}
+
+// DataStorageIDCleared returns if the "data_storage_id" field was cleared in this mutation.
+func (m *RequestMutation) DataStorageIDCleared() bool {
+	_, ok := m.clearedFields[request.FieldDataStorageID]
+	return ok
+}
+
+// ResetDataStorageID resets all changes to the "data_storage_id" field.
+func (m *RequestMutation) ResetDataStorageID() {
+	m.data_storage = nil
+	delete(m.clearedFields, request.FieldDataStorageID)
 }
 
 // SetSource sets the "source" field.
@@ -4696,6 +5719,33 @@ func (m *RequestMutation) ResetTrace() {
 	m.clearedtrace = false
 }
 
+// ClearDataStorage clears the "data_storage" edge to the DataStorage entity.
+func (m *RequestMutation) ClearDataStorage() {
+	m.cleareddata_storage = true
+	m.clearedFields[request.FieldDataStorageID] = struct{}{}
+}
+
+// DataStorageCleared reports if the "data_storage" edge to the DataStorage entity was cleared.
+func (m *RequestMutation) DataStorageCleared() bool {
+	return m.DataStorageIDCleared() || m.cleareddata_storage
+}
+
+// DataStorageIDs returns the "data_storage" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DataStorageID instead. It exists only for internal usage by the builders.
+func (m *RequestMutation) DataStorageIDs() (ids []int) {
+	if id := m.data_storage; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDataStorage resets all changes to the "data_storage" edge.
+func (m *RequestMutation) ResetDataStorage() {
+	m.data_storage = nil
+	m.cleareddata_storage = false
+}
+
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by ids.
 func (m *RequestMutation) AddExecutionIDs(ids ...int) {
 	if m.executions == nil {
@@ -4865,7 +5915,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 17)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -4883,6 +5933,9 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.trace != nil {
 		fields = append(fields, request.FieldTraceID)
+	}
+	if m.data_storage != nil {
+		fields = append(fields, request.FieldDataStorageID)
 	}
 	if m.source != nil {
 		fields = append(fields, request.FieldSource)
@@ -4934,6 +5987,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.ProjectID()
 	case request.FieldTraceID:
 		return m.TraceID()
+	case request.FieldDataStorageID:
+		return m.DataStorageID()
 	case request.FieldSource:
 		return m.Source()
 	case request.FieldModelID:
@@ -4975,6 +6030,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldProjectID(ctx)
 	case request.FieldTraceID:
 		return m.OldTraceID(ctx)
+	case request.FieldDataStorageID:
+		return m.OldDataStorageID(ctx)
 	case request.FieldSource:
 		return m.OldSource(ctx)
 	case request.FieldModelID:
@@ -5045,6 +6102,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetTraceID(v)
+		return nil
+	case request.FieldDataStorageID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDataStorageID(v)
 		return nil
 	case request.FieldSource:
 		v, ok := value.(request.Source)
@@ -5167,6 +6231,9 @@ func (m *RequestMutation) ClearedFields() []string {
 	if m.FieldCleared(request.FieldTraceID) {
 		fields = append(fields, request.FieldTraceID)
 	}
+	if m.FieldCleared(request.FieldDataStorageID) {
+		fields = append(fields, request.FieldDataStorageID)
+	}
 	if m.FieldCleared(request.FieldResponseBody) {
 		fields = append(fields, request.FieldResponseBody)
 	}
@@ -5198,6 +6265,9 @@ func (m *RequestMutation) ClearField(name string) error {
 		return nil
 	case request.FieldTraceID:
 		m.ClearTraceID()
+		return nil
+	case request.FieldDataStorageID:
+		m.ClearDataStorageID()
 		return nil
 	case request.FieldResponseBody:
 		m.ClearResponseBody()
@@ -5237,6 +6307,9 @@ func (m *RequestMutation) ResetField(name string) error {
 	case request.FieldTraceID:
 		m.ResetTraceID()
 		return nil
+	case request.FieldDataStorageID:
+		m.ResetDataStorageID()
+		return nil
 	case request.FieldSource:
 		m.ResetSource()
 		return nil
@@ -5273,7 +6346,7 @@ func (m *RequestMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RequestMutation) AddedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.api_key != nil {
 		edges = append(edges, request.EdgeAPIKey)
 	}
@@ -5282,6 +6355,9 @@ func (m *RequestMutation) AddedEdges() []string {
 	}
 	if m.trace != nil {
 		edges = append(edges, request.EdgeTrace)
+	}
+	if m.data_storage != nil {
+		edges = append(edges, request.EdgeDataStorage)
 	}
 	if m.executions != nil {
 		edges = append(edges, request.EdgeExecutions)
@@ -5311,6 +6387,10 @@ func (m *RequestMutation) AddedIDs(name string) []ent.Value {
 		if id := m.trace; id != nil {
 			return []ent.Value{*id}
 		}
+	case request.EdgeDataStorage:
+		if id := m.data_storage; id != nil {
+			return []ent.Value{*id}
+		}
 	case request.EdgeExecutions:
 		ids := make([]ent.Value, 0, len(m.executions))
 		for id := range m.executions {
@@ -5333,7 +6413,7 @@ func (m *RequestMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RequestMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.removedexecutions != nil {
 		edges = append(edges, request.EdgeExecutions)
 	}
@@ -5365,7 +6445,7 @@ func (m *RequestMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RequestMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.clearedapi_key {
 		edges = append(edges, request.EdgeAPIKey)
 	}
@@ -5374,6 +6454,9 @@ func (m *RequestMutation) ClearedEdges() []string {
 	}
 	if m.clearedtrace {
 		edges = append(edges, request.EdgeTrace)
+	}
+	if m.cleareddata_storage {
+		edges = append(edges, request.EdgeDataStorage)
 	}
 	if m.clearedexecutions {
 		edges = append(edges, request.EdgeExecutions)
@@ -5397,6 +6480,8 @@ func (m *RequestMutation) EdgeCleared(name string) bool {
 		return m.clearedproject
 	case request.EdgeTrace:
 		return m.clearedtrace
+	case request.EdgeDataStorage:
+		return m.cleareddata_storage
 	case request.EdgeExecutions:
 		return m.clearedexecutions
 	case request.EdgeChannel:
@@ -5420,6 +6505,9 @@ func (m *RequestMutation) ClearEdge(name string) error {
 	case request.EdgeTrace:
 		m.ClearTrace()
 		return nil
+	case request.EdgeDataStorage:
+		m.ClearDataStorage()
+		return nil
 	case request.EdgeChannel:
 		m.ClearChannel()
 		return nil
@@ -5439,6 +6527,9 @@ func (m *RequestMutation) ResetEdge(name string) error {
 		return nil
 	case request.EdgeTrace:
 		m.ResetTrace()
+		return nil
+	case request.EdgeDataStorage:
+		m.ResetDataStorage()
 		return nil
 	case request.EdgeExecutions:
 		m.ResetExecutions()
@@ -5479,6 +6570,8 @@ type RequestExecutionMutation struct {
 	clearedrequest        bool
 	channel               *int
 	clearedchannel        bool
+	data_storage          *int
+	cleareddata_storage   bool
 	done                  bool
 	oldValue              func(context.Context) (*RequestExecution, error)
 	predicates            []predicate.RequestExecution
@@ -5780,6 +6873,55 @@ func (m *RequestExecutionMutation) OldChannelID(ctx context.Context) (v int, err
 // ResetChannelID resets all changes to the "channel_id" field.
 func (m *RequestExecutionMutation) ResetChannelID() {
 	m.channel = nil
+}
+
+// SetDataStorageID sets the "data_storage_id" field.
+func (m *RequestExecutionMutation) SetDataStorageID(i int) {
+	m.data_storage = &i
+}
+
+// DataStorageID returns the value of the "data_storage_id" field in the mutation.
+func (m *RequestExecutionMutation) DataStorageID() (r int, exists bool) {
+	v := m.data_storage
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDataStorageID returns the old "data_storage_id" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldDataStorageID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDataStorageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDataStorageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDataStorageID: %w", err)
+	}
+	return oldValue.DataStorageID, nil
+}
+
+// ClearDataStorageID clears the value of the "data_storage_id" field.
+func (m *RequestExecutionMutation) ClearDataStorageID() {
+	m.data_storage = nil
+	m.clearedFields[requestexecution.FieldDataStorageID] = struct{}{}
+}
+
+// DataStorageIDCleared returns if the "data_storage_id" field was cleared in this mutation.
+func (m *RequestExecutionMutation) DataStorageIDCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldDataStorageID]
+	return ok
+}
+
+// ResetDataStorageID resets all changes to the "data_storage_id" field.
+func (m *RequestExecutionMutation) ResetDataStorageID() {
+	m.data_storage = nil
+	delete(m.clearedFields, requestexecution.FieldDataStorageID)
 }
 
 // SetExternalID sets the "external_id" field.
@@ -6223,6 +7365,33 @@ func (m *RequestExecutionMutation) ResetChannel() {
 	m.clearedchannel = false
 }
 
+// ClearDataStorage clears the "data_storage" edge to the DataStorage entity.
+func (m *RequestExecutionMutation) ClearDataStorage() {
+	m.cleareddata_storage = true
+	m.clearedFields[requestexecution.FieldDataStorageID] = struct{}{}
+}
+
+// DataStorageCleared reports if the "data_storage" edge to the DataStorage entity was cleared.
+func (m *RequestExecutionMutation) DataStorageCleared() bool {
+	return m.DataStorageIDCleared() || m.cleareddata_storage
+}
+
+// DataStorageIDs returns the "data_storage" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DataStorageID instead. It exists only for internal usage by the builders.
+func (m *RequestExecutionMutation) DataStorageIDs() (ids []int) {
+	if id := m.data_storage; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDataStorage resets all changes to the "data_storage" edge.
+func (m *RequestExecutionMutation) ResetDataStorage() {
+	m.data_storage = nil
+	m.cleareddata_storage = false
+}
+
 // Where appends a list predicates to the RequestExecutionMutation builder.
 func (m *RequestExecutionMutation) Where(ps ...predicate.RequestExecution) {
 	m.predicates = append(m.predicates, ps...)
@@ -6257,7 +7426,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 14)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -6272,6 +7441,9 @@ func (m *RequestExecutionMutation) Fields() []string {
 	}
 	if m.channel != nil {
 		fields = append(fields, requestexecution.FieldChannelID)
+	}
+	if m.data_storage != nil {
+		fields = append(fields, requestexecution.FieldDataStorageID)
 	}
 	if m.external_id != nil {
 		fields = append(fields, requestexecution.FieldExternalID)
@@ -6315,6 +7487,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.RequestID()
 	case requestexecution.FieldChannelID:
 		return m.ChannelID()
+	case requestexecution.FieldDataStorageID:
+		return m.DataStorageID()
 	case requestexecution.FieldExternalID:
 		return m.ExternalID()
 	case requestexecution.FieldModelID:
@@ -6350,6 +7524,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldRequestID(ctx)
 	case requestexecution.FieldChannelID:
 		return m.OldChannelID(ctx)
+	case requestexecution.FieldDataStorageID:
+		return m.OldDataStorageID(ctx)
 	case requestexecution.FieldExternalID:
 		return m.OldExternalID(ctx)
 	case requestexecution.FieldModelID:
@@ -6409,6 +7585,13 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetChannelID(v)
+		return nil
+	case requestexecution.FieldDataStorageID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDataStorageID(v)
 		return nil
 	case requestexecution.FieldExternalID:
 		v, ok := value.(string)
@@ -6511,6 +7694,9 @@ func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error 
 // mutation.
 func (m *RequestExecutionMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(requestexecution.FieldDataStorageID) {
+		fields = append(fields, requestexecution.FieldDataStorageID)
+	}
 	if m.FieldCleared(requestexecution.FieldExternalID) {
 		fields = append(fields, requestexecution.FieldExternalID)
 	}
@@ -6537,6 +7723,9 @@ func (m *RequestExecutionMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *RequestExecutionMutation) ClearField(name string) error {
 	switch name {
+	case requestexecution.FieldDataStorageID:
+		m.ClearDataStorageID()
+		return nil
 	case requestexecution.FieldExternalID:
 		m.ClearExternalID()
 		return nil
@@ -6572,6 +7761,9 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 	case requestexecution.FieldChannelID:
 		m.ResetChannelID()
 		return nil
+	case requestexecution.FieldDataStorageID:
+		m.ResetDataStorageID()
+		return nil
 	case requestexecution.FieldExternalID:
 		m.ResetExternalID()
 		return nil
@@ -6602,12 +7794,15 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RequestExecutionMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.request != nil {
 		edges = append(edges, requestexecution.EdgeRequest)
 	}
 	if m.channel != nil {
 		edges = append(edges, requestexecution.EdgeChannel)
+	}
+	if m.data_storage != nil {
+		edges = append(edges, requestexecution.EdgeDataStorage)
 	}
 	return edges
 }
@@ -6624,13 +7819,17 @@ func (m *RequestExecutionMutation) AddedIDs(name string) []ent.Value {
 		if id := m.channel; id != nil {
 			return []ent.Value{*id}
 		}
+	case requestexecution.EdgeDataStorage:
+		if id := m.data_storage; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RequestExecutionMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	return edges
 }
 
@@ -6642,12 +7841,15 @@ func (m *RequestExecutionMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RequestExecutionMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.clearedrequest {
 		edges = append(edges, requestexecution.EdgeRequest)
 	}
 	if m.clearedchannel {
 		edges = append(edges, requestexecution.EdgeChannel)
+	}
+	if m.cleareddata_storage {
+		edges = append(edges, requestexecution.EdgeDataStorage)
 	}
 	return edges
 }
@@ -6660,6 +7862,8 @@ func (m *RequestExecutionMutation) EdgeCleared(name string) bool {
 		return m.clearedrequest
 	case requestexecution.EdgeChannel:
 		return m.clearedchannel
+	case requestexecution.EdgeDataStorage:
+		return m.cleareddata_storage
 	}
 	return false
 }
@@ -6674,6 +7878,9 @@ func (m *RequestExecutionMutation) ClearEdge(name string) error {
 	case requestexecution.EdgeChannel:
 		m.ClearChannel()
 		return nil
+	case requestexecution.EdgeDataStorage:
+		m.ClearDataStorage()
+		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution unique edge %s", name)
 }
@@ -6687,6 +7894,9 @@ func (m *RequestExecutionMutation) ResetEdge(name string) error {
 		return nil
 	case requestexecution.EdgeChannel:
 		m.ResetChannel()
+		return nil
+	case requestexecution.EdgeDataStorage:
+		m.ResetDataStorage()
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution edge %s", name)

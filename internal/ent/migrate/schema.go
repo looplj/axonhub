@@ -88,6 +88,32 @@ var (
 			},
 		},
 	}
+	// DataStoragesColumns holds the columns for the "data_storages" table.
+	DataStoragesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "primary", Type: field.TypeBool, Default: false},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"database", "fs", "s3", "gcs"}, Default: "database"},
+		{Name: "settings", Type: field.TypeJSON},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived"}, Default: "active"},
+	}
+	// DataStoragesTable holds the schema information for the "data_storages" table.
+	DataStoragesTable = &schema.Table{
+		Name:       "data_storages",
+		Columns:    DataStoragesColumns,
+		PrimaryKey: []*schema.Column{DataStoragesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "data_sources_by_name",
+				Unique:  true,
+				Columns: []*schema.Column{DataStoragesColumns[4]},
+			},
+		},
+	}
 	// ProjectsColumns holds the columns for the "projects" table.
 	ProjectsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -128,6 +154,7 @@ var (
 		{Name: "stream", Type: field.TypeBool, Default: false},
 		{Name: "api_key_id", Type: field.TypeInt, Nullable: true},
 		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
+		{Name: "data_storage_id", Type: field.TypeInt, Nullable: true},
 		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "trace_id", Type: field.TypeInt, Nullable: true},
 	}
@@ -150,14 +177,20 @@ var (
 				OnDelete:   schema.SetNull,
 			},
 			{
-				Symbol:     "requests_projects_requests",
+				Symbol:     "requests_data_storages_requests",
 				Columns:    []*schema.Column{RequestsColumns[15]},
+				RefColumns: []*schema.Column{DataStoragesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "requests_projects_requests",
+				Columns:    []*schema.Column{RequestsColumns[16]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "requests_traces_requests",
-				Columns:    []*schema.Column{RequestsColumns[16]},
+				Columns:    []*schema.Column{RequestsColumns[17]},
 				RefColumns: []*schema.Column{TracesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -171,7 +204,7 @@ var (
 			{
 				Name:    "requests_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[15]},
+				Columns: []*schema.Column{RequestsColumns[16]},
 			},
 			{
 				Name:    "requests_by_channel_id",
@@ -181,7 +214,7 @@ var (
 			{
 				Name:    "requests_by_trace_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[16]},
+				Columns: []*schema.Column{RequestsColumns[17]},
 			},
 			{
 				Name:    "requests_by_created_at",
@@ -210,6 +243,7 @@ var (
 		{Name: "error_message", Type: field.TypeString, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed", "canceled"}},
 		{Name: "channel_id", Type: field.TypeInt},
+		{Name: "data_storage_id", Type: field.TypeInt, Nullable: true},
 		{Name: "request_id", Type: field.TypeInt},
 	}
 	// RequestExecutionsTable holds the schema information for the "request_executions" table.
@@ -225,8 +259,14 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "request_executions_requests_executions",
+				Symbol:     "request_executions_data_storages_executions",
 				Columns:    []*schema.Column{RequestExecutionsColumns[13]},
+				RefColumns: []*schema.Column{DataStoragesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "request_executions_requests_executions",
+				Columns:    []*schema.Column{RequestExecutionsColumns[14]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -235,7 +275,7 @@ var (
 			{
 				Name:    "request_executions_by_request_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[13]},
+				Columns: []*schema.Column{RequestExecutionsColumns[14]},
 			},
 			{
 				Name:    "request_executions_by_channel_id_created_at",
@@ -583,6 +623,7 @@ var (
 	Tables = []*schema.Table{
 		APIKeysTable,
 		ChannelsTable,
+		DataStoragesTable,
 		ProjectsTable,
 		RequestsTable,
 		RequestExecutionsTable,
@@ -602,10 +643,12 @@ func init() {
 	APIKeysTable.ForeignKeys[1].RefTable = UsersTable
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
-	RequestsTable.ForeignKeys[2].RefTable = ProjectsTable
-	RequestsTable.ForeignKeys[3].RefTable = TracesTable
+	RequestsTable.ForeignKeys[2].RefTable = DataStoragesTable
+	RequestsTable.ForeignKeys[3].RefTable = ProjectsTable
+	RequestsTable.ForeignKeys[4].RefTable = TracesTable
 	RequestExecutionsTable.ForeignKeys[0].RefTable = ChannelsTable
-	RequestExecutionsTable.ForeignKeys[1].RefTable = RequestsTable
+	RequestExecutionsTable.ForeignKeys[1].RefTable = DataStoragesTable
+	RequestExecutionsTable.ForeignKeys[2].RefTable = RequestsTable
 	RolesTable.ForeignKeys[0].RefTable = ProjectsTable
 	ThreadsTable.ForeignKeys[0].RefTable = ProjectsTable
 	TracesTable.ForeignKeys[0].RefTable = ProjectsTable

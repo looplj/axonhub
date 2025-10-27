@@ -143,3 +143,9 @@ models:
   UserProjectInfo:
     model:
       - github.com/looplj/axonhub/internal/objects.UserProjectInfo
+  DataStorageSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DataStorageSettings
+  DataStorageSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DataStorageSettings

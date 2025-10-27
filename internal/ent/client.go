@@ -17,6 +17,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -39,6 +40,8 @@ type Client struct {
 	APIKey *APIKeyClient
 	// Channel is the client for interacting with the Channel builders.
 	Channel *ChannelClient
+	// DataStorage is the client for interacting with the DataStorage builders.
+	DataStorage *DataStorageClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
 	// Request is the client for interacting with the Request builders.
@@ -76,6 +79,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.APIKey = NewAPIKeyClient(c.config)
 	c.Channel = NewChannelClient(c.config)
+	c.DataStorage = NewDataStorageClient(c.config)
 	c.Project = NewProjectClient(c.config)
 	c.Request = NewRequestClient(c.config)
 	c.RequestExecution = NewRequestExecutionClient(c.config)
@@ -181,6 +185,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:           cfg,
 		APIKey:           NewAPIKeyClient(cfg),
 		Channel:          NewChannelClient(cfg),
+		DataStorage:      NewDataStorageClient(cfg),
 		Project:          NewProjectClient(cfg),
 		Request:          NewRequestClient(cfg),
 		RequestExecution: NewRequestExecutionClient(cfg),
@@ -213,6 +218,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:           cfg,
 		APIKey:           NewAPIKeyClient(cfg),
 		Channel:          NewChannelClient(cfg),
+		DataStorage:      NewDataStorageClient(cfg),
 		Project:          NewProjectClient(cfg),
 		Request:          NewRequestClient(cfg),
 		RequestExecution: NewRequestExecutionClient(cfg),
@@ -253,8 +259,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.APIKey, c.Channel, c.Project, c.Request, c.RequestExecution, c.Role, c.System,
-		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.APIKey, c.Channel, c.DataStorage, c.Project, c.Request, c.RequestExecution,
+		c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject,
+		c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -264,8 +271,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.APIKey, c.Channel, c.Project, c.Request, c.RequestExecution, c.Role, c.System,
-		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.APIKey, c.Channel, c.DataStorage, c.Project, c.Request, c.RequestExecution,
+		c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject,
+		c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -278,6 +286,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.APIKey.mutate(ctx, m)
 	case *ChannelMutation:
 		return c.Channel.mutate(ctx, m)
+	case *DataStorageMutation:
+		return c.DataStorage.mutate(ctx, m)
 	case *ProjectMutation:
 		return c.Project.mutate(ctx, m)
 	case *RequestMutation:
@@ -668,6 +678,173 @@ func (c *ChannelClient) mutate(ctx context.Context, m *ChannelMutation) (Value, 
 		return (&ChannelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Channel mutation op: %q", m.Op())
+	}
+}
+
+// DataStorageClient is a client for the DataStorage schema.
+type DataStorageClient struct {
+	config
+}
+
+// NewDataStorageClient returns a client for the DataStorage from the given config.
+func NewDataStorageClient(c config) *DataStorageClient {
+	return &DataStorageClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `datastorage.Hooks(f(g(h())))`.
+func (c *DataStorageClient) Use(hooks ...Hook) {
+	c.hooks.DataStorage = append(c.hooks.DataStorage, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `datastorage.Intercept(f(g(h())))`.
+func (c *DataStorageClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DataStorage = append(c.inters.DataStorage, interceptors...)
+}
+
+// Create returns a builder for creating a DataStorage entity.
+func (c *DataStorageClient) Create() *DataStorageCreate {
+	mutation := newDataStorageMutation(c.config, OpCreate)
+	return &DataStorageCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DataStorage entities.
+func (c *DataStorageClient) CreateBulk(builders ...*DataStorageCreate) *DataStorageCreateBulk {
+	return &DataStorageCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DataStorageClient) MapCreateBulk(slice any, setFunc func(*DataStorageCreate, int)) *DataStorageCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DataStorageCreateBulk{err: fmt.Errorf("calling to DataStorageClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DataStorageCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DataStorageCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DataStorage.
+func (c *DataStorageClient) Update() *DataStorageUpdate {
+	mutation := newDataStorageMutation(c.config, OpUpdate)
+	return &DataStorageUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DataStorageClient) UpdateOne(_m *DataStorage) *DataStorageUpdateOne {
+	mutation := newDataStorageMutation(c.config, OpUpdateOne, withDataStorage(_m))
+	return &DataStorageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DataStorageClient) UpdateOneID(id int) *DataStorageUpdateOne {
+	mutation := newDataStorageMutation(c.config, OpUpdateOne, withDataStorageID(id))
+	return &DataStorageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DataStorage.
+func (c *DataStorageClient) Delete() *DataStorageDelete {
+	mutation := newDataStorageMutation(c.config, OpDelete)
+	return &DataStorageDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DataStorageClient) DeleteOne(_m *DataStorage) *DataStorageDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DataStorageClient) DeleteOneID(id int) *DataStorageDeleteOne {
+	builder := c.Delete().Where(datastorage.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DataStorageDeleteOne{builder}
+}
+
+// Query returns a query builder for DataStorage.
+func (c *DataStorageClient) Query() *DataStorageQuery {
+	return &DataStorageQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDataStorage},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DataStorage entity by its id.
+func (c *DataStorageClient) Get(ctx context.Context, id int) (*DataStorage, error) {
+	return c.Query().Where(datastorage.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DataStorageClient) GetX(ctx context.Context, id int) *DataStorage {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryRequests queries the requests edge of a DataStorage.
+func (c *DataStorageClient) QueryRequests(_m *DataStorage) *RequestQuery {
+	query := (&RequestClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(datastorage.Table, datastorage.FieldID, id),
+			sqlgraph.To(request.Table, request.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, datastorage.RequestsTable, datastorage.RequestsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryExecutions queries the executions edge of a DataStorage.
+func (c *DataStorageClient) QueryExecutions(_m *DataStorage) *RequestExecutionQuery {
+	query := (&RequestExecutionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(datastorage.Table, datastorage.FieldID, id),
+			sqlgraph.To(requestexecution.Table, requestexecution.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, datastorage.ExecutionsTable, datastorage.ExecutionsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DataStorageClient) Hooks() []Hook {
+	hooks := c.hooks.DataStorage
+	return append(hooks[:len(hooks):len(hooks)], datastorage.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *DataStorageClient) Interceptors() []Interceptor {
+	inters := c.inters.DataStorage
+	return append(inters[:len(inters):len(inters)], datastorage.Interceptors[:]...)
+}
+
+func (c *DataStorageClient) mutate(ctx context.Context, m *DataStorageMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DataStorageCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DataStorageUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DataStorageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DataStorageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DataStorage mutation op: %q", m.Op())
 	}
 }
 
@@ -1090,6 +1267,22 @@ func (c *RequestClient) QueryTrace(_m *Request) *TraceQuery {
 	return query
 }
 
+// QueryDataStorage queries the data_storage edge of a Request.
+func (c *RequestClient) QueryDataStorage(_m *Request) *DataStorageQuery {
+	query := (&DataStorageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(request.Table, request.FieldID, id),
+			sqlgraph.To(datastorage.Table, datastorage.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, request.DataStorageTable, request.DataStorageColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryExecutions queries the executions edge of a Request.
 func (c *RequestClient) QueryExecutions(_m *Request) *RequestExecutionQuery {
 	query := (&RequestExecutionClient{config: c.config}).Query()
@@ -1298,6 +1491,22 @@ func (c *RequestExecutionClient) QueryChannel(_m *RequestExecution) *ChannelQuer
 			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, id),
 			sqlgraph.To(channel.Table, channel.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, requestexecution.ChannelTable, requestexecution.ChannelColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDataStorage queries the data_storage edge of a RequestExecution.
+func (c *RequestExecutionClient) QueryDataStorage(_m *RequestExecution) *DataStorageQuery {
+	query := (&DataStorageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, id),
+			sqlgraph.To(datastorage.Table, datastorage.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, requestexecution.DataStorageTable, requestexecution.DataStorageColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -2733,11 +2942,11 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, Channel, Project, Request, RequestExecution, Role, System, Thread,
-		Trace, UsageLog, User, UserProject, UserRole []ent.Hook
+		APIKey, Channel, DataStorage, Project, Request, RequestExecution, Role, System,
+		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Hook
 	}
 	inters struct {
-		APIKey, Channel, Project, Request, RequestExecution, Role, System, Thread,
-		Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
+		APIKey, Channel, DataStorage, Project, Request, RequestExecution, Role, System,
+		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
 	}
 )

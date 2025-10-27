@@ -16,6 +16,8 @@ type Tx struct {
 	APIKey *APIKeyClient
 	// Channel is the client for interacting with the Channel builders.
 	Channel *ChannelClient
+	// DataStorage is the client for interacting with the DataStorage builders.
+	DataStorage *DataStorageClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
 	// Request is the client for interacting with the Request builders.
@@ -171,6 +173,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.APIKey = NewAPIKeyClient(tx.config)
 	tx.Channel = NewChannelClient(tx.config)
+	tx.DataStorage = NewDataStorageClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)
 	tx.Request = NewRequestClient(tx.config)
 	tx.RequestExecution = NewRequestExecutionClient(tx.config)

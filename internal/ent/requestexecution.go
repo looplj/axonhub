@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/objects"
@@ -31,6 +32,8 @@ type RequestExecution struct {
 	RequestID int `json:"request_id,omitempty"`
 	// ChannelID holds the value of the "channel_id" field.
 	ChannelID int `json:"channel_id,omitempty"`
+	// Data Storage ID that this request belongs to
+	DataStorageID int `json:"data_storage_id,omitempty"`
 	// ExternalID holds the value of the "external_id" field.
 	ExternalID string `json:"external_id,omitempty"`
 	// ModelID holds the value of the "model_id" field.
@@ -59,11 +62,13 @@ type RequestExecutionEdges struct {
 	Request *Request `json:"request,omitempty"`
 	// Channel holds the value of the channel edge.
 	Channel *Channel `json:"channel,omitempty"`
+	// DataStorage holds the value of the data_storage edge.
+	DataStorage *DataStorage `json:"data_storage,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 	// totalCount holds the count of the edges above.
-	totalCount [2]map[string]int
+	totalCount [3]map[string]int
 }
 
 // RequestOrErr returns the Request value or an error if the edge
@@ -88,6 +93,17 @@ func (e RequestExecutionEdges) ChannelOrErr() (*Channel, error) {
 	return nil, &NotLoadedError{edge: "channel"}
 }
 
+// DataStorageOrErr returns the DataStorage value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e RequestExecutionEdges) DataStorageOrErr() (*DataStorage, error) {
+	if e.DataStorage != nil {
+		return e.DataStorage, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: datastorage.Label}
+	}
+	return nil, &NotLoadedError{edge: "data_storage"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -95,7 +111,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case requestexecution.FieldRequestBody, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks:
 			values[i] = new([]byte)
-		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID:
+		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID:
 			values[i] = new(sql.NullInt64)
 		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -151,6 +167,12 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field channel_id", values[i])
 			} else if value.Valid {
 				_m.ChannelID = int(value.Int64)
+			}
+		case requestexecution.FieldDataStorageID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field data_storage_id", values[i])
+			} else if value.Valid {
+				_m.DataStorageID = int(value.Int64)
 			}
 		case requestexecution.FieldExternalID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -229,6 +251,11 @@ func (_m *RequestExecution) QueryChannel() *ChannelQuery {
 	return NewRequestExecutionClient(_m.config).QueryChannel(_m)
 }
 
+// QueryDataStorage queries the "data_storage" edge of the RequestExecution entity.
+func (_m *RequestExecution) QueryDataStorage() *DataStorageQuery {
+	return NewRequestExecutionClient(_m.config).QueryDataStorage(_m)
+}
+
 // Update returns a builder for updating this RequestExecution.
 // Note that you need to call RequestExecution.Unwrap() before calling this method if this RequestExecution
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -266,6 +293,9 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("channel_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ChannelID))
+	builder.WriteString(", ")
+	builder.WriteString("data_storage_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.DataStorageID))
 	builder.WriteString(", ")
 	builder.WriteString("external_id=")
 	builder.WriteString(_m.ExternalID)

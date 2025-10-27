@@ -46,6 +46,11 @@ func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (*objects.GU
 }
 
 // ID is the resolver for the id field.
+func (r *dataStorageResolver) ID(ctx context.Context, obj *ent.DataStorage) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// ID is the resolver for the id field.
 func (r *projectResolver) ID(ctx context.Context, obj *ent.Project) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeProject,
@@ -87,6 +92,11 @@ func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int],
 		ent.WithChannelOrder(orderBy),
 		ent.WithChannelFilter(where.Filter),
 	)
+}
+
+// DataStorages is the resolver for the dataStorages field.
+func (r *queryResolver) DataStorages(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.DataStorageOrder, where *ent.DataStorageWhereInput) (*ent.DataStorageConnection, error) {
+	panic(fmt.Errorf("not implemented: DataStorages - dataStorages"))
 }
 
 // Projects is the resolver for the projects field.
@@ -185,6 +195,11 @@ func (r *requestResolver) TraceID(ctx context.Context, obj *ent.Request) (*objec
 	}, nil
 }
 
+// DataStorageID is the resolver for the dataStorageID field.
+func (r *requestResolver) DataStorageID(ctx context.Context, obj *ent.Request) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: DataStorageID - dataStorageID"))
+}
+
 // ChannelID is the resolver for the channelID field.
 func (r *requestResolver) ChannelID(ctx context.Context, obj *ent.Request) (*objects.GUID, error) {
 	if obj.ChannelID == 0 {
@@ -220,6 +235,11 @@ func (r *requestExecutionResolver) ChannelID(ctx context.Context, obj *ent.Reque
 		Type: ent.TypeChannel,
 		ID:   obj.ChannelID,
 	}, nil
+}
+
+// DataStorageID is the resolver for the dataStorageID field.
+func (r *requestExecutionResolver) DataStorageID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: DataStorageID - dataStorageID"))
 }
 
 // ID is the resolver for the id field.
@@ -400,6 +420,9 @@ func (r *Resolver) APIKey() APIKeyResolver { return &aPIKeyResolver{r} }
 // Channel returns ChannelResolver implementation.
 func (r *Resolver) Channel() ChannelResolver { return &channelResolver{r} }
 
+// DataStorage returns DataStorageResolver implementation.
+func (r *Resolver) DataStorage() DataStorageResolver { return &dataStorageResolver{r} }
+
 // Project returns ProjectResolver implementation.
 func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 
@@ -438,6 +461,7 @@ func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
 
 type aPIKeyResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
+type dataStorageResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }

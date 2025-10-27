@@ -20,6 +20,16 @@ import (
 	"github.com/looplj/axonhub/internal/server/chat"
 )
 
+// S3 is the resolver for the s3 field.
+func (r *dataStorageSettingsResolver) S3(ctx context.Context, obj *objects.DataStorageSettings) (*S3, error) {
+	panic(fmt.Errorf("not implemented: S3 - s3"))
+}
+
+// Gcs is the resolver for the gcs field.
+func (r *dataStorageSettingsResolver) Gcs(ctx context.Context, obj *objects.DataStorageSettings) (*Gcs, error) {
+	panic(fmt.Errorf("not implemented: Gcs - gcs"))
+}
+
 // CreateChannel is the resolver for the createChannel field.
 func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
 	return r.channelService.CreateChannel(ctx, &input)
@@ -321,7 +331,29 @@ func (r *queryResolver) Models(ctx context.Context, status *channel.Status) ([]*
 	return models, nil
 }
 
+// S3 is the resolver for the s3 field.
+func (r *dataStorageSettingsInputResolver) S3(ctx context.Context, obj *objects.DataStorageSettings, data *S3Input) error {
+	panic(fmt.Errorf("not implemented: S3 - s3"))
+}
+
+// Gcs is the resolver for the gcs field.
+func (r *dataStorageSettingsInputResolver) Gcs(ctx context.Context, obj *objects.DataStorageSettings, data *GCSInput) error {
+	panic(fmt.Errorf("not implemented: Gcs - gcs"))
+}
+
+// DataStorageSettings returns DataStorageSettingsResolver implementation.
+func (r *Resolver) DataStorageSettings() DataStorageSettingsResolver {
+	return &dataStorageSettingsResolver{r}
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
+// DataStorageSettingsInput returns DataStorageSettingsInputResolver implementation.
+func (r *Resolver) DataStorageSettingsInput() DataStorageSettingsInputResolver {
+	return &dataStorageSettingsInputResolver{r}
+}
+
+type dataStorageSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
+type dataStorageSettingsInputResolver struct{ *Resolver }

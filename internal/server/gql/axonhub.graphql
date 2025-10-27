@@ -186,6 +186,44 @@ input RemoveUserFromProjectInput {
   userId: ID!
 }
 
+input DataStorageSettingsInput {
+  dsn: String
+  directory: String
+  s3: S3Input
+  gcs: GCSInput
+}
+
+input S3Input {
+  bucketName: String!
+  endpoint: String!
+  accessKey: String!
+  secretKey: String!
+}
+
+input GCSInput {
+  bucketName: String!
+  credential: GCPCredentialInput!
+}
+
+type DataStorageSettings {
+  dsn: String
+  directory: String
+  s3: S3
+  gcs: GCS
+}
+
+type S3 {
+  bucketName: String!
+  endpoint: String!
+  accessKey: String!
+  secretKey: String!
+}
+
+type GCS {
+  bucketName: String!
+  credential: GCPCredential!
+}
+
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   updateChannel(id: ID!, input: UpdateChannelInput!): Channel!

@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -109,6 +110,20 @@ func (_c *RequestCreate) SetTraceID(v int) *RequestCreate {
 func (_c *RequestCreate) SetNillableTraceID(v *int) *RequestCreate {
 	if v != nil {
 		_c.SetTraceID(*v)
+	}
+	return _c
+}
+
+// SetDataStorageID sets the "data_storage_id" field.
+func (_c *RequestCreate) SetDataStorageID(v int) *RequestCreate {
+	_c.mutation.SetDataStorageID(v)
+	return _c
+}
+
+// SetNillableDataStorageID sets the "data_storage_id" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableDataStorageID(v *int) *RequestCreate {
+	if v != nil {
+		_c.SetDataStorageID(*v)
 	}
 	return _c
 }
@@ -226,6 +241,11 @@ func (_c *RequestCreate) SetProject(v *Project) *RequestCreate {
 // SetTrace sets the "trace" edge to the Trace entity.
 func (_c *RequestCreate) SetTrace(v *Trace) *RequestCreate {
 	return _c.SetTraceID(v.ID)
+}
+
+// SetDataStorage sets the "data_storage" edge to the DataStorage entity.
+func (_c *RequestCreate) SetDataStorage(v *DataStorage) *RequestCreate {
+	return _c.SetDataStorageID(v.ID)
 }
 
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
@@ -508,6 +528,23 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_node.TraceID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.DataStorageIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   request.DataStorageTable,
+			Columns: []string{request.DataStorageColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(datastorage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.DataStorageID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.ExecutionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -745,6 +782,9 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 		}
 		if _, exists := u.create.mutation.TraceID(); exists {
 			s.SetIgnore(request.FieldTraceID)
+		}
+		if _, exists := u.create.mutation.DataStorageID(); exists {
+			s.SetIgnore(request.FieldDataStorageID)
 		}
 		if _, exists := u.create.mutation.Source(); exists {
 			s.SetIgnore(request.FieldSource)
@@ -1112,6 +1152,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 			}
 			if _, exists := b.mutation.TraceID(); exists {
 				s.SetIgnore(request.FieldTraceID)
+			}
+			if _, exists := b.mutation.DataStorageID(); exists {
+				s.SetIgnore(request.FieldDataStorageID)
 			}
 			if _, exists := b.mutation.Source(); exists {
 				s.SetIgnore(request.FieldSource)

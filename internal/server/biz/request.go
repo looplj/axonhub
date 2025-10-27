@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/llm"
@@ -19,16 +19,58 @@ import (
 
 // RequestService handles request and request execution operations.
 type RequestService struct {
-	SystemService   *SystemService
-	UsageLogService *UsageLogService
+	SystemService      *SystemService
+	UsageLogService    *UsageLogService
+	DataStorageService *DataStorageService
 }
 
 // NewRequestService creates a new RequestService.
-func NewRequestService(systemService *SystemService, usageLogService *UsageLogService) *RequestService {
+func NewRequestService(systemService *SystemService, usageLogService *UsageLogService, dataStorageService *DataStorageService) *RequestService {
 	return &RequestService{
-		SystemService:   systemService,
-		UsageLogService: usageLogService,
+		SystemService:      systemService,
+		UsageLogService:    usageLogService,
+		DataStorageService: dataStorageService,
 	}
+}
+
+// shouldUseExternalStorage checks if data should be saved to external storage.
+// Returns true if the data storage is not primary (database).
+func (s *RequestService) shouldUseExternalStorage(_ context.Context, ds *ent.DataStorage) bool {
+	if ds == nil {
+		return false
+	}
+
+	return !ds.Primary
+}
+
+// generateRequestBodyKey generates the storage key for request body.
+func (s *RequestService) generateRequestBodyKey(projectID, requestID int) string {
+	return fmt.Sprintf("/%d/request/%d/request_body.json", projectID, requestID)
+}
+
+// generateResponseBodyKey generates the storage key for response body.
+func (s *RequestService) generateResponseBodyKey(projectID, requestID int) string {
+	return fmt.Sprintf("/%d/request/%d/response_body.json", projectID, requestID)
+}
+
+// generateResponseChunksKey generates the storage key for response chunks.
+func (s *RequestService) generateResponseChunksKey(projectID, requestID int) string {
+	return fmt.Sprintf("/%d/request/%d/response_chunks.json", projectID, requestID)
+}
+
+// generateExecutionRequestBodyKey generates the storage key for execution request body.
+func (s *RequestService) generateExecutionRequestBodyKey(projectID, requestID, executionID int) string {
+	return fmt.Sprintf("/%d/request/%d/executions/%d/request_body.json", projectID, requestID, executionID)
+}
+
+// generateExecutionResponseBodyKey generates the storage key for execution response body.
+func (s *RequestService) generateExecutionResponseBodyKey(projectID, requestID, executionID int) string {
+	return fmt.Sprintf("/%d/request/%d/executions/%d/response_body.json", projectID, requestID, executionID)
+}
+
+// generateExecutionResponseChunksKey generates the storage key for execution response chunks.
+func (s *RequestService) generateExecutionResponseChunksKey(projectID, requestID, executionID int) string {
+	return fmt.Sprintf("/%d/request/%d/executions/%d/response_chunks.json", projectID, requestID, executionID)
 }
 
 // CreateRequest creates a new request record.
@@ -69,6 +111,12 @@ func (s *RequestService) CreateRequest(
 		isStream = *llmRequest.Stream
 	}
 
+	// Get default data storage
+	dataStorage, err := s.DataStorageService.GetDefaultDataStorage(ctx)
+	if err != nil {
+		log.Warn(ctx, "Failed to get default data storage, request will be created without data storage", log.Cause(err))
+	}
+
 	client := ent.FromContext(ctx)
 	mut := client.Request.Create().
 		SetProjectID(projectID).
@@ -76,8 +124,22 @@ func (s *RequestService) CreateRequest(
 		SetFormat(string(format)).
 		SetSource(contexts.GetSourceOrDefault(ctx, request.SourceAPI)).
 		SetStatus(request.StatusProcessing).
-		SetRequestBody(requestBodyBytes).
 		SetStream(isStream)
+
+	// Determine if we should store in database or external storage
+	useExternalStorage := storeRequestBody && s.shouldUseExternalStorage(ctx, dataStorage)
+
+	if useExternalStorage {
+		// Set empty JSON for database, actual data will be in external storage
+		mut = mut.SetRequestBody([]byte("{}"))
+	} else {
+		// Store in database
+		mut = mut.SetRequestBody(requestBodyBytes)
+	}
+
+	if dataStorage != nil {
+		mut = mut.SetDataStorageID(dataStorage.ID)
+	}
 
 	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
 		mut = mut.SetAPIKeyID(apiKey.ID)
@@ -87,9 +149,21 @@ func (s *RequestService) CreateRequest(
 		mut = mut.SetTraceID(trace.ID)
 	}
 
+	// Create request
 	req, err := mut.Save(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	// Save request body to external storage if needed
+	if useExternalStorage {
+		key := s.generateRequestBodyKey(projectID, req.ID)
+
+		_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, requestBodyBytes)
+		if err != nil {
+			log.Error(ctx, "Failed to save request body to external storage", log.Cause(err))
+			// Continue anyway, don't fail the request creation
+		}
 	}
 
 	return req, nil
@@ -130,15 +204,61 @@ func (s *RequestService) CreateRequestExecution(
 
 	client := ent.FromContext(ctx)
 
-	return client.RequestExecution.Create().
+	// Get data storage if set on request
+	var dataStorage *ent.DataStorage
+
+	if request.DataStorageID != 0 {
+		var err error
+
+		dataStorage, err = client.DataStorage.Get(ctx, request.DataStorageID)
+		if err != nil {
+			log.Warn(ctx, "Failed to get data storage for request execution", log.Cause(err))
+		}
+	}
+
+	// Determine if we should store in database or external storage
+	useExternalStorage := storeRequestBody && s.shouldUseExternalStorage(ctx, dataStorage)
+
+	var requestBodyForDB objects.JSONRawMessage
+	if useExternalStorage {
+		// Set empty JSON for database, actual data will be in external storage
+		requestBodyForDB = []byte("{}")
+	} else {
+		// Store in database
+		requestBodyForDB = requestBodyBytes
+	}
+
+	mut := client.RequestExecution.Create().
 		SetFormat(string(format)).
 		SetRequestID(request.ID).
 		SetProjectID(request.ProjectID).
 		SetChannelID(channel.ID).
 		SetModelID(modelID).
-		SetRequestBody(requestBodyBytes).
-		SetStatus(requestexecution.StatusProcessing).
-		Save(ctx)
+		SetRequestBody(requestBodyForDB).
+		SetStatus(requestexecution.StatusProcessing)
+
+	// Use the same data storage as the request
+	if request.DataStorageID != 0 {
+		mut = mut.SetDataStorageID(request.DataStorageID)
+	}
+
+	execution, err := mut.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Save request body to external storage if needed
+	if useExternalStorage {
+		key := s.generateExecutionRequestBodyKey(request.ProjectID, request.ID, execution.ID)
+
+		_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, requestBodyBytes)
+		if err != nil {
+			log.Error(ctx, "Failed to save execution request body to external storage", log.Cause(err))
+			// Continue anyway, don't fail the execution creation
+		}
+	}
+
+	return execution, nil
 }
 
 // UpdateRequestCompleted updates request status to completed with response body.
@@ -158,6 +278,22 @@ func (s *RequestService) UpdateRequestCompleted(
 
 	client := ent.FromContext(ctx)
 
+	// Get the request to check data storage
+	req, err := client.Request.Get(ctx, requestID)
+	if err != nil {
+		log.Error(ctx, "Failed to get request", log.Cause(err))
+		return err
+	}
+
+	// Get data storage if set
+	var dataStorage *ent.DataStorage
+	if req.DataStorageID != 0 {
+		dataStorage, err = client.DataStorage.Get(ctx, req.DataStorageID)
+		if err != nil {
+			log.Warn(ctx, "Failed to get data storage", log.Cause(err))
+		}
+	}
+
 	upd := client.Request.UpdateOneID(requestID).
 		SetStatus(request.StatusCompleted).
 		SetExternalID(externalId)
@@ -169,10 +305,23 @@ func (s *RequestService) UpdateRequestCompleted(
 			return err
 		}
 
-		upd = upd.SetResponseBody(responseBodyBytes)
+		// Check if we should use external storage
+		if s.shouldUseExternalStorage(ctx, dataStorage) {
+			// Save to external storage
+			key := s.generateResponseBodyKey(req.ProjectID, requestID)
+
+			_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
+			if err != nil {
+				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
+				// Continue anyway
+			}
+		} else {
+			// Store in database
+			upd = upd.SetResponseBody(responseBodyBytes)
+		}
 	}
 
-	_, err := upd.Save(ctx)
+	_, err = upd.Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request status to completed", log.Cause(err))
 		return err
@@ -198,6 +347,22 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 
 	client := ent.FromContext(ctx)
 
+	// Get the execution to check data storage
+	execution, err := client.RequestExecution.Get(ctx, executionID)
+	if err != nil {
+		log.Error(ctx, "Failed to get request execution", log.Cause(err))
+		return err
+	}
+
+	// Get data storage if set
+	var dataStorage *ent.DataStorage
+	if execution.DataStorageID != 0 {
+		dataStorage, err = client.DataStorage.Get(ctx, execution.DataStorageID)
+		if err != nil {
+			log.Warn(ctx, "Failed to get data storage", log.Cause(err))
+		}
+	}
+
 	upd := client.RequestExecution.UpdateOneID(executionID).
 		SetStatus(requestexecution.StatusCompleted).
 		SetExternalID(externalId)
@@ -208,10 +373,23 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 			return err
 		}
 
-		upd = upd.SetResponseBody(responseBodyBytes)
+		// Check if we should use external storage
+		if s.shouldUseExternalStorage(ctx, dataStorage) {
+			// Save to external storage
+			key := s.generateExecutionResponseBodyKey(execution.ProjectID, execution.RequestID, executionID)
+
+			_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
+			if err != nil {
+				log.Error(ctx, "Failed to save execution response body to external storage", log.Cause(err))
+				// Continue anyway
+			}
+		} else {
+			// Store in database
+			upd = upd.SetResponseBody(responseBodyBytes)
+		}
 	}
 
-	_, err := upd.Save(ctx)
+	_, err = upd.Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request execution status to completed", log.Cause(err))
 		return err
@@ -285,7 +463,6 @@ func (s *RequestService) AppendRequestExecutionChunk(
 	executionID int,
 	chunk *httpclient.StreamEvent,
 ) error {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	// Check if chunk storage is enabled
 	storeChunks, err := s.SystemService.StoreChunks(ctx)
 	if err != nil {
@@ -311,12 +488,65 @@ func (s *RequestService) AppendRequestExecutionChunk(
 
 	client := ent.FromContext(ctx)
 
-	_, err = client.RequestExecution.UpdateOneID(executionID).
-		AppendResponseChunks([]objects.JSONRawMessage{chunkBytes}).
-		Save(ctx)
+	// Get the execution to check data storage
+	execution, err := client.RequestExecution.Get(ctx, executionID)
 	if err != nil {
-		log.Error(ctx, "Failed to append response chunk", log.Cause(err))
+		log.Error(ctx, "Failed to get request execution", log.Cause(err))
 		return err
+	}
+
+	// Get data storage if set
+	var dataStorage *ent.DataStorage
+	if execution.DataStorageID != 0 {
+		dataStorage, err = client.DataStorage.Get(ctx, execution.DataStorageID)
+		if err != nil {
+			log.Warn(ctx, "Failed to get data storage", log.Cause(err))
+		}
+	}
+
+	// Check if we should use external storage
+	if s.shouldUseExternalStorage(ctx, dataStorage) {
+		// For external storage, we need to read existing chunks, append, and save back
+		// This is not ideal for streaming, but maintains consistency
+		key := s.generateExecutionResponseChunksKey(execution.ProjectID, execution.RequestID, executionID)
+
+		// Read existing chunks
+		var existingChunks []objects.JSONRawMessage
+
+		existingData, err := s.DataStorageService.LoadData(ctx, dataStorage, key)
+		if err == nil && len(existingData) > 0 {
+			// Parse existing chunks
+			if err := json.Unmarshal(existingData, &existingChunks); err != nil {
+				log.Warn(ctx, "Failed to unmarshal existing chunks, starting fresh", log.Cause(err))
+
+				existingChunks = []objects.JSONRawMessage{}
+			}
+		}
+
+		// Append new chunk
+		existingChunks = append(existingChunks, chunkBytes)
+
+		// Save back
+		allChunksBytes, err := json.Marshal(existingChunks)
+		if err != nil {
+			log.Error(ctx, "Failed to marshal all chunks", log.Cause(err))
+			return err
+		}
+
+		_, err = s.DataStorageService.SaveData(ctx, dataStorage, key, allChunksBytes)
+		if err != nil {
+			log.Error(ctx, "Failed to save chunks to external storage", log.Cause(err))
+			return err
+		}
+	} else {
+		// Store in database
+		_, err = client.RequestExecution.UpdateOneID(executionID).
+			AppendResponseChunks([]objects.JSONRawMessage{chunkBytes}).
+			Save(ctx)
+		if err != nil {
+			log.Error(ctx, "Failed to append response chunk", log.Cause(err))
+			return err
+		}
 	}
 
 	return nil
@@ -327,8 +557,6 @@ func (s *RequestService) AppendRequestChunk(
 	requestID int,
 	chunk *httpclient.StreamEvent,
 ) error {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	storeChunks, err := s.SystemService.StoreChunks(ctx)
 	if err != nil {
 		log.Warn(ctx, "Failed to get StoreChunks setting, defaulting to false", log.Cause(err))
@@ -353,12 +581,64 @@ func (s *RequestService) AppendRequestChunk(
 
 	client := ent.FromContext(ctx)
 
-	_, err = client.Request.UpdateOneID(requestID).
-		AppendResponseChunks([]objects.JSONRawMessage{chunkBytes}).
-		Save(ctx)
+	// Get the request to check data storage
+	req, err := client.Request.Get(ctx, requestID)
 	if err != nil {
-		log.Error(ctx, "Failed to append response chunk", log.Cause(err))
+		log.Error(ctx, "Failed to get request", log.Cause(err))
 		return err
+	}
+
+	// Get data storage if set
+	var dataStorage *ent.DataStorage
+	if req.DataStorageID != 0 {
+		dataStorage, err = client.DataStorage.Get(ctx, req.DataStorageID)
+		if err != nil {
+			log.Warn(ctx, "Failed to get data storage", log.Cause(err))
+		}
+	}
+
+	// Check if we should use external storage
+	if s.shouldUseExternalStorage(ctx, dataStorage) {
+		// For external storage, we need to read existing chunks, append, and save back
+		key := s.generateResponseChunksKey(req.ProjectID, requestID)
+
+		// Read existing chunks
+		var existingChunks []objects.JSONRawMessage
+
+		existingData, err := s.DataStorageService.LoadData(ctx, dataStorage, key)
+		if err == nil && len(existingData) > 0 {
+			// Parse existing chunks
+			if err := json.Unmarshal(existingData, &existingChunks); err != nil {
+				log.Warn(ctx, "Failed to unmarshal existing chunks, starting fresh", log.Cause(err))
+
+				existingChunks = []objects.JSONRawMessage{}
+			}
+		}
+
+		// Append new chunk
+		existingChunks = append(existingChunks, chunkBytes)
+
+		// Save back
+		allChunksBytes, err := json.Marshal(existingChunks)
+		if err != nil {
+			log.Error(ctx, "Failed to marshal all chunks", log.Cause(err))
+			return err
+		}
+
+		_, err = s.DataStorageService.SaveData(ctx, dataStorage, key, allChunksBytes)
+		if err != nil {
+			log.Error(ctx, "Failed to save chunks to external storage", log.Cause(err))
+			return err
+		}
+	} else {
+		// Store in database
+		_, err = client.Request.UpdateOneID(requestID).
+			AppendResponseChunks([]objects.JSONRawMessage{chunkBytes}).
+			Save(ctx)
+		if err != nil {
+			log.Error(ctx, "Failed to append response chunk", log.Cause(err))
+			return err
+		}
 	}
 
 	return nil

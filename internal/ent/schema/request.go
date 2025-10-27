@@ -56,6 +56,10 @@ func (Request) Fields() []ent.Field {
 			Optional().
 			Immutable().
 			Comment("Trace ID that this request belongs to"),
+		field.Int("data_storage_id").
+			Optional().
+			Immutable().
+			Comment("Data Storage ID that this request belongs to"),
 		field.Enum("source").Values("api", "playground", "test").Default("api").Immutable(),
 		field.String("model_id").Immutable(),
 		// The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
@@ -92,6 +96,11 @@ func (Request) Edges() []ent.Edge {
 			Immutable().
 			Field("trace_id").
 			Unique(),
+		edge.From("data_storage", DataStorage.Type).
+			Ref("requests").
+			Field("data_storage_id").
+			Immutable().
+			Unique(),
 		edge.To("executions", RequestExecution.Type).
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
@@ -121,6 +130,7 @@ func (Request) Annotations() []schema.Annotation {
 func (Request) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
+			scopes.APIKeyScopeQueryRule(scopes.ScopeWriteRequests),
 			scopes.UserProjectScopeReadRule(scopes.ScopeReadRequests),
 			scopes.OwnerRule(), // owner 用户可以访问所有请求
 			scopes.UserReadScopeRule(scopes.ScopeReadRequests), // 需要 requests 读取权限

@@ -85,6 +85,11 @@ func TraceID(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldTraceID, v))
 }
 
+// DataStorageID applies equality check predicate on the "data_storage_id" field. It's identical to DataStorageIDEQ.
+func DataStorageID(v int) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldDataStorageID, v))
+}
+
 // ModelID applies equality check predicate on the "model_id" field. It's identical to ModelIDEQ.
 func ModelID(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldModelID, v))
@@ -308,6 +313,36 @@ func TraceIDIsNil() predicate.Request {
 // TraceIDNotNil applies the NotNil predicate on the "trace_id" field.
 func TraceIDNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldTraceID))
+}
+
+// DataStorageIDEQ applies the EQ predicate on the "data_storage_id" field.
+func DataStorageIDEQ(v int) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldDataStorageID, v))
+}
+
+// DataStorageIDNEQ applies the NEQ predicate on the "data_storage_id" field.
+func DataStorageIDNEQ(v int) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldDataStorageID, v))
+}
+
+// DataStorageIDIn applies the In predicate on the "data_storage_id" field.
+func DataStorageIDIn(vs ...int) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldDataStorageID, vs...))
+}
+
+// DataStorageIDNotIn applies the NotIn predicate on the "data_storage_id" field.
+func DataStorageIDNotIn(vs ...int) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldDataStorageID, vs...))
+}
+
+// DataStorageIDIsNil applies the IsNil predicate on the "data_storage_id" field.
+func DataStorageIDIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldDataStorageID))
+}
+
+// DataStorageIDNotNil applies the NotNil predicate on the "data_storage_id" field.
+func DataStorageIDNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldDataStorageID))
 }
 
 // SourceEQ applies the EQ predicate on the "source" field.
@@ -676,6 +711,29 @@ func HasTrace() predicate.Request {
 func HasTraceWith(preds ...predicate.Trace) predicate.Request {
 	return predicate.Request(func(s *sql.Selector) {
 		step := newTraceStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasDataStorage applies the HasEdge predicate on the "data_storage" edge.
+func HasDataStorage() predicate.Request {
+	return predicate.Request(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, DataStorageTable, DataStorageColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDataStorageWith applies the HasEdge predicate on the "data_storage" edge with a given conditions (other predicates).
+func HasDataStorageWith(preds ...predicate.DataStorage) predicate.Request {
+	return predicate.Request(func(s *sql.Selector) {
+		step := newDataStorageStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
