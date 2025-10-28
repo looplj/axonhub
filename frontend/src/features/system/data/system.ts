@@ -58,6 +58,18 @@ const UPDATE_RETRY_POLICY_MUTATION = `
   }
 `
 
+const DEFAULT_DATA_STORAGE_QUERY = `
+  query DefaultDataStorageID {
+    defaultDataStorageID
+  }
+`
+
+const UPDATE_DEFAULT_DATA_STORAGE_MUTATION = `
+  mutation UpdateDefaultDataStorage($input: UpdateDefaultDataStorageInput!) {
+    updateDefaultDataStorage(input: $input)
+  }
+`
+
 // Types
 export interface BrandSettings {
   brandName?: string
@@ -107,6 +119,10 @@ export interface RetryPolicyInput {
   maxSingleChannelRetries?: number
   retryDelayMs?: number
   enabled?: boolean
+}
+
+export interface UpdateDefaultDataStorageInput {
+  dataStorageID: string
 }
 
 // Hooks
@@ -222,6 +238,46 @@ export function useUpdateRetryPolicy() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['retryPolicy'] })
+      toast.success(i18n.t('common.success.systemUpdated'))
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'))
+    },
+  })
+}
+
+export function useDefaultDataStorageID() {
+  const { handleError } = useErrorHandler()
+  
+  return useQuery({
+    queryKey: ['defaultDataStorageID'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ defaultDataStorageID: string | null }>(
+          DEFAULT_DATA_STORAGE_QUERY
+        )
+        return data.defaultDataStorageID
+      } catch (error) {
+        handleError(error, '获取默认数据存储')
+        throw error
+      }
+    },
+  })
+}
+
+export function useUpdateDefaultDataStorage() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (input: UpdateDefaultDataStorageInput) => {
+      const data = await graphqlRequest<{ updateDefaultDataStorage: boolean }>(
+        UPDATE_DEFAULT_DATA_STORAGE_MUTATION,
+        { input }
+      )
+      return data.updateDefaultDataStorage
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['defaultDataStorageID'] })
       toast.success(i18n.t('common.success.systemUpdated'))
     },
     onError: () => {

@@ -281,6 +281,7 @@ type ComplexityRoot struct {
 		BulkUpdateChannelOrdering func(childComplexity int, input BulkUpdateChannelOrderingInput) int
 		CreateAPIKey              func(childComplexity int, input ent.CreateAPIKeyInput) int
 		CreateChannel             func(childComplexity int, input ent.CreateChannelInput) int
+		CreateDataStorage         func(childComplexity int, input ent.CreateDataStorageInput) int
 		CreateProject             func(childComplexity int, input ent.CreateProjectInput) int
 		CreateRole                func(childComplexity int, input ent.CreateRoleInput) int
 		CreateUser                func(childComplexity int, input ent.CreateUserInput) int
@@ -293,6 +294,8 @@ type ComplexityRoot struct {
 		UpdateBrandSettings       func(childComplexity int, input UpdateBrandSettingsInput) int
 		UpdateChannel             func(childComplexity int, id objects.GUID, input ent.UpdateChannelInput) int
 		UpdateChannelStatus       func(childComplexity int, id objects.GUID, status channel.Status) int
+		UpdateDataStorage         func(childComplexity int, id objects.GUID, input ent.UpdateDataStorageInput) int
+		UpdateDefaultDataStorage  func(childComplexity int, input UpdateDefaultDataStorageInput) int
 		UpdateMe                  func(childComplexity int, input UpdateMeInput) int
 		UpdateProject             func(childComplexity int, id objects.GUID, input ent.UpdateProjectInput) int
 		UpdateProjectStatus       func(childComplexity int, id objects.GUID, status project.Status) int
@@ -348,6 +351,7 @@ type ComplexityRoot struct {
 		DailyRequestStats     func(childComplexity int, days *int) int
 		DashboardOverview     func(childComplexity int) int
 		DataStorages          func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.DataStorageOrder, where *ent.DataStorageWhereInput) int
+		DefaultDataStorageID  func(childComplexity int) int
 		FetchModels           func(childComplexity int, input FetchModelsInput) int
 		Me                    func(childComplexity int) int
 		Models                func(childComplexity int, status *channel.Status) int
@@ -770,10 +774,13 @@ type MutationResolver interface {
 	AddUserToProject(ctx context.Context, input AddUserToProjectInput) (*ent.UserProject, error)
 	RemoveUserFromProject(ctx context.Context, input RemoveUserFromProjectInput) (bool, error)
 	UpdateProjectUser(ctx context.Context, input UpdateProjectUserInput) (*ent.UserProject, error)
+	CreateDataStorage(ctx context.Context, input ent.CreateDataStorageInput) (*ent.DataStorage, error)
+	UpdateDataStorage(ctx context.Context, id objects.GUID, input ent.UpdateDataStorageInput) (*ent.DataStorage, error)
 	UpdateMe(ctx context.Context, input UpdateMeInput) (*ent.User, error)
 	UpdateBrandSettings(ctx context.Context, input UpdateBrandSettingsInput) (bool, error)
 	UpdateStoragePolicy(ctx context.Context, input biz.StoragePolicy) (bool, error)
 	UpdateRetryPolicy(ctx context.Context, input biz.RetryPolicy) (bool, error)
+	UpdateDefaultDataStorage(ctx context.Context, input UpdateDefaultDataStorageInput) (bool, error)
 }
 type ProjectResolver interface {
 	ID(ctx context.Context, obj *ent.Project) (*objects.GUID, error)
@@ -810,6 +817,7 @@ type QueryResolver interface {
 	BrandSettings(ctx context.Context) (*BrandSettings, error)
 	StoragePolicy(ctx context.Context) (*biz.StoragePolicy, error)
 	RetryPolicy(ctx context.Context) (*biz.RetryPolicy, error)
+	DefaultDataStorageID(ctx context.Context) (*objects.GUID, error)
 }
 type RequestResolver interface {
 	ID(ctx context.Context, obj *ent.Request) (*objects.GUID, error)
@@ -1789,6 +1797,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.CreateChannel(childComplexity, args["input"].(ent.CreateChannelInput)), true
 
+	case "Mutation.createDataStorage":
+		if e.complexity.Mutation.CreateDataStorage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createDataStorage_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateDataStorage(childComplexity, args["input"].(ent.CreateDataStorageInput)), true
+
 	case "Mutation.createProject":
 		if e.complexity.Mutation.CreateProject == nil {
 			break
@@ -1932,6 +1952,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateChannelStatus(childComplexity, args["id"].(objects.GUID), args["status"].(channel.Status)), true
+
+	case "Mutation.updateDataStorage":
+		if e.complexity.Mutation.UpdateDataStorage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateDataStorage_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateDataStorage(childComplexity, args["id"].(objects.GUID), args["input"].(ent.UpdateDataStorageInput)), true
+
+	case "Mutation.updateDefaultDataStorage":
+		if e.complexity.Mutation.UpdateDefaultDataStorage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateDefaultDataStorage_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateDefaultDataStorage(childComplexity, args["input"].(UpdateDefaultDataStorageInput)), true
 
 	case "Mutation.updateMe":
 		if e.complexity.Mutation.UpdateMe == nil {
@@ -2317,6 +2361,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.DataStorages(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.DataStorageOrder), args["where"].(*ent.DataStorageWhereInput)), true
+
+	case "Query.defaultDataStorageID":
+		if e.complexity.Query.DefaultDataStorageID == nil {
+			break
+		}
+
+		return e.complexity.Query.DefaultDataStorageID(childComplexity), true
 
 	case "Query.fetchModels":
 		if e.complexity.Query.FetchModels == nil {
@@ -4266,6 +4317,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateBrandSettingsInput,
 		ec.unmarshalInputUpdateChannelInput,
 		ec.unmarshalInputUpdateDataStorageInput,
+		ec.unmarshalInputUpdateDefaultDataStorageInput,
 		ec.unmarshalInputUpdateMeInput,
 		ec.unmarshalInputUpdateProjectInput,
 		ec.unmarshalInputUpdateProjectUserInput,
@@ -4711,6 +4763,17 @@ func (ec *executionContext) field_Mutation_createChannel_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createDataStorage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateDataStorageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateDataStorageInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4865,6 +4928,33 @@ func (ec *executionContext) field_Mutation_updateChannel_args(ctx context.Contex
 		return nil, err
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateDataStorage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateDataStorageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdateDataStorageInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateDefaultDataStorage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateDefaultDataStorageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateDefaultDataStorageInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -13208,6 +13298,168 @@ func (ec *executionContext) fieldContext_Mutation_updateProjectUser(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createDataStorage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createDataStorage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateDataStorage(rctx, fc.Args["input"].(ent.CreateDataStorageInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.DataStorage)
+	fc.Result = res
+	return ec.marshalNDataStorage2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐDataStorage(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createDataStorage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_DataStorage_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_DataStorage_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_DataStorage_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_DataStorage_deletedAt(ctx, field)
+			case "name":
+				return ec.fieldContext_DataStorage_name(ctx, field)
+			case "description":
+				return ec.fieldContext_DataStorage_description(ctx, field)
+			case "primary":
+				return ec.fieldContext_DataStorage_primary(ctx, field)
+			case "type":
+				return ec.fieldContext_DataStorage_type(ctx, field)
+			case "settings":
+				return ec.fieldContext_DataStorage_settings(ctx, field)
+			case "status":
+				return ec.fieldContext_DataStorage_status(ctx, field)
+			case "requests":
+				return ec.fieldContext_DataStorage_requests(ctx, field)
+			case "executions":
+				return ec.fieldContext_DataStorage_executions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DataStorage", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createDataStorage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateDataStorage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateDataStorage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateDataStorage(rctx, fc.Args["id"].(objects.GUID), fc.Args["input"].(ent.UpdateDataStorageInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.DataStorage)
+	fc.Result = res
+	return ec.marshalNDataStorage2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐDataStorage(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateDataStorage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_DataStorage_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_DataStorage_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_DataStorage_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_DataStorage_deletedAt(ctx, field)
+			case "name":
+				return ec.fieldContext_DataStorage_name(ctx, field)
+			case "description":
+				return ec.fieldContext_DataStorage_description(ctx, field)
+			case "primary":
+				return ec.fieldContext_DataStorage_primary(ctx, field)
+			case "type":
+				return ec.fieldContext_DataStorage_type(ctx, field)
+			case "settings":
+				return ec.fieldContext_DataStorage_settings(ctx, field)
+			case "status":
+				return ec.fieldContext_DataStorage_status(ctx, field)
+			case "requests":
+				return ec.fieldContext_DataStorage_requests(ctx, field)
+			case "executions":
+				return ec.fieldContext_DataStorage_executions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DataStorage", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateDataStorage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_updateMe(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_updateMe(ctx, field)
 	if err != nil {
@@ -13458,6 +13710,61 @@ func (ec *executionContext) fieldContext_Mutation_updateRetryPolicy(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateRetryPolicy_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateDefaultDataStorage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateDefaultDataStorage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateDefaultDataStorage(rctx, fc.Args["input"].(UpdateDefaultDataStorageInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateDefaultDataStorage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateDefaultDataStorage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -16434,6 +16741,47 @@ func (ec *executionContext) fieldContext_Query_retryPolicy(_ context.Context, fi
 				return ec.fieldContext_RetryPolicy_enabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RetryPolicy", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_defaultDataStorageID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_defaultDataStorageID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().DefaultDataStorageID(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*objects.GUID)
+	fc.Result = res
+	return ec.marshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_defaultDataStorageID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
 		},
 	}
 	return fc, nil
@@ -38572,6 +38920,33 @@ func (ec *executionContext) unmarshalInputUpdateDataStorageInput(ctx context.Con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateDefaultDataStorageInput(ctx context.Context, obj any) (UpdateDefaultDataStorageInput, error) {
+	var it UpdateDefaultDataStorageInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"dataStorageID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "dataStorageID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dataStorageID"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DataStorageID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateMeInput(ctx context.Context, obj any) (UpdateMeInput, error) {
 	var it UpdateMeInput
 	asMap := map[string]any{}
@@ -44589,6 +44964,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createDataStorage":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createDataStorage(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateDataStorage":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateDataStorage(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "updateMe":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateMe(ctx, field)
@@ -44613,6 +45002,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateRetryPolicy":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateRetryPolicy(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateDefaultDataStorage":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateDefaultDataStorage(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -45805,6 +46201,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "defaultDataStorageID":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_defaultDataStorageID(ctx, field)
 				return res
 			}
 
@@ -50749,6 +51164,11 @@ func (ec *executionContext) unmarshalNCreateChannelInput2githubᚗcomᚋlooplj�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCreateDataStorageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateDataStorageInput(ctx context.Context, v any) (ent.CreateDataStorageInput, error) {
+	res, err := ec.unmarshalInputCreateDataStorageInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCreateProjectInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateProjectInput(ctx context.Context, v any) (ent.CreateProjectInput, error) {
 	res, err := ec.unmarshalInputCreateProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -50840,6 +51260,20 @@ func (ec *executionContext) marshalNDashboardOverview2ᚖgithubᚗcomᚋlooplj�
 		return graphql.Null
 	}
 	return ec._DashboardOverview(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNDataStorage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐDataStorage(ctx context.Context, sel ast.SelectionSet, v ent.DataStorage) graphql.Marshaler {
+	return ec._DataStorage(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDataStorage2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐDataStorage(ctx context.Context, sel ast.SelectionSet, v *ent.DataStorage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DataStorage(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNDataStorageConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐDataStorageConnection(ctx context.Context, sel ast.SelectionSet, v ent.DataStorageConnection) graphql.Marshaler {
@@ -52061,6 +52495,16 @@ func (ec *executionContext) unmarshalNUpdateBrandSettingsInput2githubᚗcomᚋlo
 
 func (ec *executionContext) unmarshalNUpdateChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdateChannelInput(ctx context.Context, v any) (ent.UpdateChannelInput, error) {
 	res, err := ec.unmarshalInputUpdateChannelInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateDataStorageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdateDataStorageInput(ctx context.Context, v any) (ent.UpdateDataStorageInput, error) {
+	res, err := ec.unmarshalInputUpdateDataStorageInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateDefaultDataStorageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateDefaultDataStorageInput(ctx context.Context, v any) (UpdateDefaultDataStorageInput, error) {
+	res, err := ec.unmarshalInputUpdateDefaultDataStorageInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

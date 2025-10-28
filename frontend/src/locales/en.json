@@ -10,6 +10,7 @@
     "items": {
       "dashboard": "Dashboard",
       "channels": "Channels",
+      "dataStorages": "Data Storages",
       "users": "Users",
       "roles": "Roles",
       "system": "System",
@@ -828,8 +829,116 @@
       "atLeastOneChannel": "At least one channel is required"
     }
   },
+  "dataStorages": {
+    "title": "Data Storage Management",
+    "description": "Manage your data storage configurations and settings.",
+    "createStorage": "Create Data Storage",
+    "filterStorages": "Filter data storages...",
+    "columns": {
+      "name": "Name",
+      "primary": "Primary",
+      "description": "Description",
+      "type": "Type",
+      "settings": "Settings",
+      "status": "Status",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row"
+    },
+    "status": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "types": {
+      "database": "Database",
+      "fs": "File System",
+      "s3": "S3",
+      "gcs": "GCS"
+    },
+    "primary": "Primary Storage",
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "filters": {
+      "type": "Type",
+      "status": "Status",
+      "searchByName": "Search by name..."
+    },
+    "messages": {
+      "createSuccess": "Data storage created successfully",
+      "createError": "Failed to create data storage",
+      "updateSuccess": "Data storage updated successfully",
+      "updateError": "Failed to update data storage",
+      "deleteSuccess": "Data storage deleted successfully",
+      "deleteError": "Failed to delete data storage",
+      "statusUpdateSuccess": "Data storage status updated to {{status}}",
+      "statusUpdateError": "Failed to update status"
+    },
+    "dialogs": {
+      "create": {
+        "title": "Create Data Storage",
+        "description": "Configure a new data storage location."
+      },
+      "edit": {
+        "title": "Edit Data Storage",
+        "description": "Modify data storage configuration."
+      },
+      "delete": {
+        "title": "Delete Data Storage",
+        "description": "Are you sure you want to delete data storage {{name}}? This action cannot be undone."
+      },
+      "status": {
+        "title": "Change Status",
+        "description": "Are you sure you want to change the status of this data storage?",
+        "activateTitle": "Activate Data Storage",
+        "archiveTitle": "Archive Data Storage",
+        "activateDescription": "Are you sure you want to activate data storage {{name}}?",
+        "archiveDescription": "Are you sure you want to archive data storage {{name}}?"
+      },
+      "fields": {
+        "name": {
+          "label": "Name",
+          "placeholder": "Enter storage name",
+          "description": "Set an easily recognizable name for this storage"
+        },
+        "description": {
+          "label": "Description",
+          "placeholder": "Enter storage description",
+          "description": "Detailed description of the storage"
+        },
+        "type": {
+          "label": "Type",
+          "description": "Select the storage type"
+        },
+        "directory": {
+          "label": "Directory Path",
+          "placeholder": "/var/axonhub/data",
+          "description": "Directory path for file system storage"
+        }
+      },
+      "buttons": {
+        "create": "Create Storage",
+        "update": "Update Storage",
+        "delete": "Delete"
+      }
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "directoryRequired": "Directory path is required",
+      "typeRequired": "Storage type is required"
+    },
+    "buttons": {
+      "create": "Create Data Storage",
+      "edit": "Edit",
+      "delete": "Delete",
+      "activate": "Activate",
+      "archive": "Archive"
+    }
+  },
   "system": {
-    "title": "System Management",
     "description": "Manage system configurations and options.",
     "loading": "Loading system settings...",
     "tabs": {

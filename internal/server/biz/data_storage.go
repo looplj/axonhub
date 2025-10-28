@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/afero"
 
@@ -109,8 +110,12 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 			return "", fmt.Errorf("failed to get file system: %w", err)
 		}
 
+		err = fs.MkdirAll(filepath.Dir(key), 0o777)
+		if err != nil {
+			return "", fmt.Errorf("failed to create directory: %w", err)
+		}
 		// Write data to file
-		if err := afero.WriteFile(fs, key, data, 0o644); err != nil {
+		if err := afero.WriteFile(fs, key, data, 0o777); err != nil {
 			return "", fmt.Errorf("failed to write file: %w", err)
 		}
 

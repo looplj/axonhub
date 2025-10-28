@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -97,4 +98,5 @@ var guidTypeToNodeType = map[string]string{
 	ent.TypeUserRole:         userrole.Table,
 	ent.TypeThread:           thread.Table,
 	ent.TypeTrace:            trace.Table,
+	ent.TypeDataStorage:      datastorage.Table,
 }

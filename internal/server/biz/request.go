@@ -45,32 +45,32 @@ func (s *RequestService) shouldUseExternalStorage(_ context.Context, ds *ent.Dat
 
 // generateRequestBodyKey generates the storage key for request body.
 func (s *RequestService) generateRequestBodyKey(projectID, requestID int) string {
-	return fmt.Sprintf("/%d/request/%d/request_body.json", projectID, requestID)
+	return fmt.Sprintf("/%d/requests/%d/request_body.json", projectID, requestID)
 }
 
 // generateResponseBodyKey generates the storage key for response body.
 func (s *RequestService) generateResponseBodyKey(projectID, requestID int) string {
-	return fmt.Sprintf("/%d/request/%d/response_body.json", projectID, requestID)
+	return fmt.Sprintf("/%d/requests/%d/response_body.json", projectID, requestID)
 }
 
 // generateResponseChunksKey generates the storage key for response chunks.
 func (s *RequestService) generateResponseChunksKey(projectID, requestID int) string {
-	return fmt.Sprintf("/%d/request/%d/response_chunks.json", projectID, requestID)
+	return fmt.Sprintf("/%d/requests/%d/response_chunks.json", projectID, requestID)
 }
 
 // generateExecutionRequestBodyKey generates the storage key for execution request body.
 func (s *RequestService) generateExecutionRequestBodyKey(projectID, requestID, executionID int) string {
-	return fmt.Sprintf("/%d/request/%d/executions/%d/request_body.json", projectID, requestID, executionID)
+	return fmt.Sprintf("/%d/requests/%d/executions/%d/request_body.json", projectID, requestID, executionID)
 }
 
 // generateExecutionResponseBodyKey generates the storage key for execution response body.
 func (s *RequestService) generateExecutionResponseBodyKey(projectID, requestID, executionID int) string {
-	return fmt.Sprintf("/%d/request/%d/executions/%d/response_body.json", projectID, requestID, executionID)
+	return fmt.Sprintf("/%d/requests/%d/executions/%d/response_body.json", projectID, requestID, executionID)
 }
 
 // generateExecutionResponseChunksKey generates the storage key for execution response chunks.
 func (s *RequestService) generateExecutionResponseChunksKey(projectID, requestID, executionID int) string {
-	return fmt.Sprintf("/%d/request/%d/executions/%d/response_chunks.json", projectID, requestID, executionID)
+	return fmt.Sprintf("/%d/requests/%d/executions/%d/response_chunks.json", projectID, requestID, executionID)
 }
 
 // CreateRequest creates a new request record.
