@@ -87,34 +87,6 @@ func (_u *DataStorageUpdate) SetNillableDescription(v *string) *DataStorageUpdat
 	return _u
 }
 
-// SetPrimary sets the "primary" field.
-func (_u *DataStorageUpdate) SetPrimary(v bool) *DataStorageUpdate {
-	_u.mutation.SetPrimary(v)
-	return _u
-}
-
-// SetNillablePrimary sets the "primary" field if the given value is not nil.
-func (_u *DataStorageUpdate) SetNillablePrimary(v *bool) *DataStorageUpdate {
-	if v != nil {
-		_u.SetPrimary(*v)
-	}
-	return _u
-}
-
-// SetType sets the "type" field.
-func (_u *DataStorageUpdate) SetType(v datastorage.Type) *DataStorageUpdate {
-	_u.mutation.SetType(v)
-	return _u
-}
-
-// SetNillableType sets the "type" field if the given value is not nil.
-func (_u *DataStorageUpdate) SetNillableType(v *datastorage.Type) *DataStorageUpdate {
-	if v != nil {
-		_u.SetType(*v)
-	}
-	return _u
-}
-
 // SetSettings sets the "settings" field.
 func (_u *DataStorageUpdate) SetSettings(v *objects.DataStorageSettings) *DataStorageUpdate {
 	_u.mutation.SetSettings(v)
@@ -256,11 +228,6 @@ func (_u *DataStorageUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *DataStorageUpdate) check() error {
-	if v, ok := _u.mutation.GetType(); ok {
-		if err := datastorage.TypeValidator(v); err != nil {
-			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "DataStorage.type": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := datastorage.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "DataStorage.status": %w`, err)}
@@ -301,12 +268,6 @@ func (_u *DataStorageUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	}
 	if value, ok := _u.mutation.Description(); ok {
 		_spec.SetField(datastorage.FieldDescription, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Primary(); ok {
-		_spec.SetField(datastorage.FieldPrimary, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.GetType(); ok {
-		_spec.SetField(datastorage.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Settings(); ok {
 		_spec.SetField(datastorage.FieldSettings, field.TypeJSON, value)
@@ -481,34 +442,6 @@ func (_u *DataStorageUpdateOne) SetNillableDescription(v *string) *DataStorageUp
 	return _u
 }
 
-// SetPrimary sets the "primary" field.
-func (_u *DataStorageUpdateOne) SetPrimary(v bool) *DataStorageUpdateOne {
-	_u.mutation.SetPrimary(v)
-	return _u
-}
-
-// SetNillablePrimary sets the "primary" field if the given value is not nil.
-func (_u *DataStorageUpdateOne) SetNillablePrimary(v *bool) *DataStorageUpdateOne {
-	if v != nil {
-		_u.SetPrimary(*v)
-	}
-	return _u
-}
-
-// SetType sets the "type" field.
-func (_u *DataStorageUpdateOne) SetType(v datastorage.Type) *DataStorageUpdateOne {
-	_u.mutation.SetType(v)
-	return _u
-}
-
-// SetNillableType sets the "type" field if the given value is not nil.
-func (_u *DataStorageUpdateOne) SetNillableType(v *datastorage.Type) *DataStorageUpdateOne {
-	if v != nil {
-		_u.SetType(*v)
-	}
-	return _u
-}
-
 // SetSettings sets the "settings" field.
 func (_u *DataStorageUpdateOne) SetSettings(v *objects.DataStorageSettings) *DataStorageUpdateOne {
 	_u.mutation.SetSettings(v)
@@ -663,11 +596,6 @@ func (_u *DataStorageUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *DataStorageUpdateOne) check() error {
-	if v, ok := _u.mutation.GetType(); ok {
-		if err := datastorage.TypeValidator(v); err != nil {
-			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "DataStorage.type": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := datastorage.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "DataStorage.status": %w`, err)}
@@ -725,12 +653,6 @@ func (_u *DataStorageUpdateOne) sqlSave(ctx context.Context) (_node *DataStorage
 	}
 	if value, ok := _u.mutation.Description(); ok {
 		_spec.SetField(datastorage.FieldDescription, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Primary(); ok {
-		_spec.SetField(datastorage.FieldPrimary, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.GetType(); ok {
-		_spec.SetField(datastorage.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Settings(); ok {
 		_spec.SetField(datastorage.FieldSettings, field.TypeJSON, value)

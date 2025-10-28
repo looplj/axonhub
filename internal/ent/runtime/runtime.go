@@ -160,10 +160,6 @@ func init() {
 	datastorageDescDeletedAt := datastorageMixinFields1[0].Descriptor()
 	// datastorage.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	datastorage.DefaultDeletedAt = datastorageDescDeletedAt.Default.(int)
-	// datastorageDescDescription is the schema descriptor for description field.
-	datastorageDescDescription := datastorageFields[1].Descriptor()
-	// datastorage.DefaultDescription holds the default value on creation for the description field.
-	datastorage.DefaultDescription = datastorageDescDescription.Default.(string)
 	// datastorageDescPrimary is the schema descriptor for primary field.
 	datastorageDescPrimary := datastorageFields[2].Descriptor()
 	// datastorage.DefaultPrimary holds the default value on creation for the primary field.

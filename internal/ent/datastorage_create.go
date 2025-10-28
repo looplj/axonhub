@@ -79,14 +79,6 @@ func (_c *DataStorageCreate) SetDescription(v string) *DataStorageCreate {
 	return _c
 }
 
-// SetNillableDescription sets the "description" field if the given value is not nil.
-func (_c *DataStorageCreate) SetNillableDescription(v *string) *DataStorageCreate {
-	if v != nil {
-		_c.SetDescription(*v)
-	}
-	return _c
-}
-
 // SetPrimary sets the "primary" field.
 func (_c *DataStorageCreate) SetPrimary(v bool) *DataStorageCreate {
 	_c.mutation.SetPrimary(v)
@@ -104,14 +96,6 @@ func (_c *DataStorageCreate) SetNillablePrimary(v *bool) *DataStorageCreate {
 // SetType sets the "type" field.
 func (_c *DataStorageCreate) SetType(v datastorage.Type) *DataStorageCreate {
 	_c.mutation.SetType(v)
-	return _c
-}
-
-// SetNillableType sets the "type" field if the given value is not nil.
-func (_c *DataStorageCreate) SetNillableType(v *datastorage.Type) *DataStorageCreate {
-	if v != nil {
-		_c.SetType(*v)
-	}
 	return _c
 }
 
@@ -220,17 +204,9 @@ func (_c *DataStorageCreate) defaults() error {
 		v := datastorage.DefaultDeletedAt
 		_c.mutation.SetDeletedAt(v)
 	}
-	if _, ok := _c.mutation.Description(); !ok {
-		v := datastorage.DefaultDescription
-		_c.mutation.SetDescription(v)
-	}
 	if _, ok := _c.mutation.Primary(); !ok {
 		v := datastorage.DefaultPrimary
 		_c.mutation.SetPrimary(v)
-	}
-	if _, ok := _c.mutation.GetType(); !ok {
-		v := datastorage.DefaultType
-		_c.mutation.SetType(v)
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := datastorage.DefaultStatus
@@ -479,30 +455,6 @@ func (u *DataStorageUpsert) UpdateDescription() *DataStorageUpsert {
 	return u
 }
 
-// SetPrimary sets the "primary" field.
-func (u *DataStorageUpsert) SetPrimary(v bool) *DataStorageUpsert {
-	u.Set(datastorage.FieldPrimary, v)
-	return u
-}
-
-// UpdatePrimary sets the "primary" field to the value that was provided on create.
-func (u *DataStorageUpsert) UpdatePrimary() *DataStorageUpsert {
-	u.SetExcluded(datastorage.FieldPrimary)
-	return u
-}
-
-// SetType sets the "type" field.
-func (u *DataStorageUpsert) SetType(v datastorage.Type) *DataStorageUpsert {
-	u.Set(datastorage.FieldType, v)
-	return u
-}
-
-// UpdateType sets the "type" field to the value that was provided on create.
-func (u *DataStorageUpsert) UpdateType() *DataStorageUpsert {
-	u.SetExcluded(datastorage.FieldType)
-	return u
-}
-
 // SetSettings sets the "settings" field.
 func (u *DataStorageUpsert) SetSettings(v *objects.DataStorageSettings) *DataStorageUpsert {
 	u.Set(datastorage.FieldSettings, v)
@@ -540,6 +492,12 @@ func (u *DataStorageUpsertOne) UpdateNewValues() *DataStorageUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(datastorage.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.Primary(); exists {
+			s.SetIgnore(datastorage.FieldPrimary)
+		}
+		if _, exists := u.create.mutation.GetType(); exists {
+			s.SetIgnore(datastorage.FieldType)
 		}
 	}))
 	return u
@@ -632,34 +590,6 @@ func (u *DataStorageUpsertOne) SetDescription(v string) *DataStorageUpsertOne {
 func (u *DataStorageUpsertOne) UpdateDescription() *DataStorageUpsertOne {
 	return u.Update(func(s *DataStorageUpsert) {
 		s.UpdateDescription()
-	})
-}
-
-// SetPrimary sets the "primary" field.
-func (u *DataStorageUpsertOne) SetPrimary(v bool) *DataStorageUpsertOne {
-	return u.Update(func(s *DataStorageUpsert) {
-		s.SetPrimary(v)
-	})
-}
-
-// UpdatePrimary sets the "primary" field to the value that was provided on create.
-func (u *DataStorageUpsertOne) UpdatePrimary() *DataStorageUpsertOne {
-	return u.Update(func(s *DataStorageUpsert) {
-		s.UpdatePrimary()
-	})
-}
-
-// SetType sets the "type" field.
-func (u *DataStorageUpsertOne) SetType(v datastorage.Type) *DataStorageUpsertOne {
-	return u.Update(func(s *DataStorageUpsert) {
-		s.SetType(v)
-	})
-}
-
-// UpdateType sets the "type" field to the value that was provided on create.
-func (u *DataStorageUpsertOne) UpdateType() *DataStorageUpsertOne {
-	return u.Update(func(s *DataStorageUpsert) {
-		s.UpdateType()
 	})
 }
 
@@ -870,6 +800,12 @@ func (u *DataStorageUpsertBulk) UpdateNewValues() *DataStorageUpsertBulk {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(datastorage.FieldCreatedAt)
 			}
+			if _, exists := b.mutation.Primary(); exists {
+				s.SetIgnore(datastorage.FieldPrimary)
+			}
+			if _, exists := b.mutation.GetType(); exists {
+				s.SetIgnore(datastorage.FieldType)
+			}
 		}
 	}))
 	return u
@@ -962,34 +898,6 @@ func (u *DataStorageUpsertBulk) SetDescription(v string) *DataStorageUpsertBulk 
 func (u *DataStorageUpsertBulk) UpdateDescription() *DataStorageUpsertBulk {
 	return u.Update(func(s *DataStorageUpsert) {
 		s.UpdateDescription()
-	})
-}
-
-// SetPrimary sets the "primary" field.
-func (u *DataStorageUpsertBulk) SetPrimary(v bool) *DataStorageUpsertBulk {
-	return u.Update(func(s *DataStorageUpsert) {
-		s.SetPrimary(v)
-	})
-}
-
-// UpdatePrimary sets the "primary" field to the value that was provided on create.
-func (u *DataStorageUpsertBulk) UpdatePrimary() *DataStorageUpsertBulk {
-	return u.Update(func(s *DataStorageUpsert) {
-		s.UpdatePrimary()
-	})
-}
-
-// SetType sets the "type" field.
-func (u *DataStorageUpsertBulk) SetType(v datastorage.Type) *DataStorageUpsertBulk {
-	return u.Update(func(s *DataStorageUpsert) {
-		s.SetType(v)
-	})
-}
-
-// UpdateType sets the "type" field to the value that was provided on create.
-func (u *DataStorageUpsertBulk) UpdateType() *DataStorageUpsertBulk {
-	return u.Update(func(s *DataStorageUpsert) {
-		s.UpdateType()
 	})
 }
 

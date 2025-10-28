@@ -14,17 +14,18 @@ import (
 
 // Resolver is the resolver root.
 type Resolver struct {
-	client         *ent.Client
-	authService    *biz.AuthService
-	apiKeyService  *biz.APIKeyService
-	userService    *biz.UserService
-	systemService  *biz.SystemService
-	channelService *biz.ChannelService
-	requestService *biz.RequestService
-	projectService *biz.ProjectService
-	roleService    *biz.RoleService
-	httpClient     *httpclient.HttpClient
-	modelFetcher   *biz.ModelFetcher
+	client             *ent.Client
+	authService        *biz.AuthService
+	apiKeyService      *biz.APIKeyService
+	userService        *biz.UserService
+	systemService      *biz.SystemService
+	channelService     *biz.ChannelService
+	requestService     *biz.RequestService
+	projectService     *biz.ProjectService
+	dataStorageService *biz.DataStorageService
+	roleService        *biz.RoleService
+	httpClient         *httpclient.HttpClient
+	modelFetcher       *biz.ModelFetcher
 }
 
 // NewSchema creates a graphql executable schema.
@@ -37,6 +38,7 @@ func NewSchema(
 	channelService *biz.ChannelService,
 	requestService *biz.RequestService,
 	projectService *biz.ProjectService,
+	dataStorageService *biz.DataStorageService,
 	roleService *biz.RoleService,
 ) graphql.ExecutableSchema {
 	httpClient := httpclient.NewHttpClient()
@@ -44,17 +46,18 @@ func NewSchema(
 
 	return NewExecutableSchema(Config{
 		Resolvers: &Resolver{
-			client:         client,
-			authService:    authService,
-			apiKeyService:  apiKeyService,
-			userService:    userService,
-			systemService:  systemService,
-			channelService: channelService,
-			requestService: requestService,
-			projectService: projectService,
-			roleService:    roleService,
-			httpClient:     httpClient,
-			modelFetcher:   modelFetcher,
+			client:             client,
+			authService:        authService,
+			apiKeyService:      apiKeyService,
+			userService:        userService,
+			systemService:      systemService,
+			channelService:     channelService,
+			requestService:     requestService,
+			projectService:     projectService,
+			dataStorageService: dataStorageService,
+			roleService:        roleService,
+			httpClient:         httpClient,
+			modelFetcher:       modelFetcher,
 		},
 	})
 }

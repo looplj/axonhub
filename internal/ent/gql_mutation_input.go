@@ -166,9 +166,8 @@ func (c *ChannelUpdateOne) SetInput(i UpdateChannelInput) *ChannelUpdateOne {
 // CreateDataStorageInput represents a mutation input for creating datastorages.
 type CreateDataStorageInput struct {
 	Name        string
-	Description *string
-	Primary     *bool
-	Type        *datastorage.Type
+	Description string
+	Type        datastorage.Type
 	Settings    *objects.DataStorageSettings
 	Status      *datastorage.Status
 }
@@ -176,15 +175,8 @@ type CreateDataStorageInput struct {
 // Mutate applies the CreateDataStorageInput on the DataStorageMutation builder.
 func (i *CreateDataStorageInput) Mutate(m *DataStorageMutation) {
 	m.SetName(i.Name)
-	if v := i.Description; v != nil {
-		m.SetDescription(*v)
-	}
-	if v := i.Primary; v != nil {
-		m.SetPrimary(*v)
-	}
-	if v := i.Type; v != nil {
-		m.SetType(*v)
-	}
+	m.SetDescription(i.Description)
+	m.SetType(i.Type)
 	if v := i.Settings; v != nil {
 		m.SetSettings(v)
 	}
@@ -203,8 +195,6 @@ func (c *DataStorageCreate) SetInput(i CreateDataStorageInput) *DataStorageCreat
 type UpdateDataStorageInput struct {
 	Name        *string
 	Description *string
-	Primary     *bool
-	Type        *datastorage.Type
 	Settings    *objects.DataStorageSettings
 	Status      *datastorage.Status
 }
@@ -216,12 +206,6 @@ func (i *UpdateDataStorageInput) Mutate(m *DataStorageMutation) {
 	}
 	if v := i.Description; v != nil {
 		m.SetDescription(*v)
-	}
-	if v := i.Primary; v != nil {
-		m.SetPrimary(*v)
-	}
-	if v := i.Type; v != nil {
-		m.SetType(*v)
 	}
 	if v := i.Settings; v != nil {
 		m.SetSettings(v)
