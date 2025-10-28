@@ -821,6 +821,9 @@ type RequestResolver interface {
 	TraceID(ctx context.Context, obj *ent.Request) (*objects.GUID, error)
 	DataStorageID(ctx context.Context, obj *ent.Request) (*objects.GUID, error)
 
+	RequestBody(ctx context.Context, obj *ent.Request) (objects.JSONRawMessage, error)
+	ResponseBody(ctx context.Context, obj *ent.Request) (objects.JSONRawMessage, error)
+	ResponseChunks(ctx context.Context, obj *ent.Request) ([]objects.JSONRawMessage, error)
 	ChannelID(ctx context.Context, obj *ent.Request) (*objects.GUID, error)
 }
 type RequestExecutionResolver interface {
@@ -829,6 +832,10 @@ type RequestExecutionResolver interface {
 	RequestID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error)
 	ChannelID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error)
 	DataStorageID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error)
+
+	RequestBody(ctx context.Context, obj *ent.RequestExecution) (objects.JSONRawMessage, error)
+	ResponseBody(ctx context.Context, obj *ent.RequestExecution) (objects.JSONRawMessage, error)
+	ResponseChunks(ctx context.Context, obj *ent.RequestExecution) ([]objects.JSONRawMessage, error)
 }
 type RoleResolver interface {
 	ID(ctx context.Context, obj *ent.Role) (*objects.GUID, error)
@@ -17396,7 +17403,7 @@ func (ec *executionContext) _Request_requestBody(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.RequestBody, nil
+		return ec.resolvers.Request().RequestBody(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17417,8 +17424,8 @@ func (ec *executionContext) fieldContext_Request_requestBody(_ context.Context, 
 	fc = &graphql.FieldContext{
 		Object:     "Request",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type JSONRawMessage does not have child fields")
 		},
@@ -17440,7 +17447,7 @@ func (ec *executionContext) _Request_responseBody(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ResponseBody, nil
+		return ec.resolvers.Request().ResponseBody(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17458,8 +17465,8 @@ func (ec *executionContext) fieldContext_Request_responseBody(_ context.Context,
 	fc = &graphql.FieldContext{
 		Object:     "Request",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type JSONRawMessage does not have child fields")
 		},
@@ -17481,7 +17488,7 @@ func (ec *executionContext) _Request_responseChunks(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ResponseChunks, nil
+		return ec.resolvers.Request().ResponseChunks(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17499,8 +17506,8 @@ func (ec *executionContext) fieldContext_Request_responseChunks(_ context.Contex
 	fc = &graphql.FieldContext{
 		Object:     "Request",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type JSONRawMessage does not have child fields")
 		},
@@ -18884,7 +18891,7 @@ func (ec *executionContext) _RequestExecution_requestBody(ctx context.Context, f
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.RequestBody, nil
+		return ec.resolvers.RequestExecution().RequestBody(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18905,8 +18912,8 @@ func (ec *executionContext) fieldContext_RequestExecution_requestBody(_ context.
 	fc = &graphql.FieldContext{
 		Object:     "RequestExecution",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type JSONRawMessage does not have child fields")
 		},
@@ -18928,7 +18935,7 @@ func (ec *executionContext) _RequestExecution_responseBody(ctx context.Context, 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ResponseBody, nil
+		return ec.resolvers.RequestExecution().ResponseBody(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18946,8 +18953,8 @@ func (ec *executionContext) fieldContext_RequestExecution_responseBody(_ context
 	fc = &graphql.FieldContext{
 		Object:     "RequestExecution",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type JSONRawMessage does not have child fields")
 		},
@@ -18969,7 +18976,7 @@ func (ec *executionContext) _RequestExecution_responseChunks(ctx context.Context
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ResponseChunks, nil
+		return ec.resolvers.RequestExecution().ResponseChunks(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18987,8 +18994,8 @@ func (ec *executionContext) fieldContext_RequestExecution_responseChunks(_ conte
 	fc = &graphql.FieldContext{
 		Object:     "RequestExecution",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type JSONRawMessage does not have child fields")
 		},
@@ -46375,14 +46382,107 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "requestBody":
-			out.Values[i] = ec._Request_requestBody(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Request_requestBody(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "responseBody":
-			out.Values[i] = ec._Request_responseBody(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Request_responseBody(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "responseChunks":
-			out.Values[i] = ec._Request_responseChunks(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Request_responseChunks(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "channelID":
 			field := field
 
@@ -46958,14 +47058,107 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "requestBody":
-			out.Values[i] = ec._RequestExecution_requestBody(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RequestExecution_requestBody(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "responseBody":
-			out.Values[i] = ec._RequestExecution_responseBody(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RequestExecution_responseBody(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "responseChunks":
-			out.Values[i] = ec._RequestExecution_responseChunks(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RequestExecution_responseChunks(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "errorMessage":
 			out.Values[i] = ec._RequestExecution_errorMessage(ctx, field, obj)
 		case "status":
