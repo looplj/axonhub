@@ -55,7 +55,6 @@ type ResolverRoot interface {
 	APIKey() APIKeyResolver
 	Channel() ChannelResolver
 	DataStorage() DataStorageResolver
-	DataStorageSettings() DataStorageSettingsResolver
 	Mutation() MutationResolver
 	Project() ProjectResolver
 	Query() QueryResolver
@@ -69,7 +68,6 @@ type ResolverRoot interface {
 	User() UserResolver
 	UserProject() UserProjectResolver
 	UserRole() UserRoleResolver
-	DataStorageSettingsInput() DataStorageSettingsInputResolver
 }
 
 type DirectiveRoot struct {
@@ -226,7 +224,7 @@ type ComplexityRoot struct {
 	DataStorageSettings struct {
 		DSN       func(childComplexity int) int
 		Directory func(childComplexity int) int
-		Gcs       func(childComplexity int) int
+		GCS       func(childComplexity int) int
 		S3        func(childComplexity int) int
 	}
 
@@ -744,10 +742,6 @@ type ChannelResolver interface {
 type DataStorageResolver interface {
 	ID(ctx context.Context, obj *ent.DataStorage) (*objects.GUID, error)
 }
-type DataStorageSettingsResolver interface {
-	S3(ctx context.Context, obj *objects.DataStorageSettings) (*S3, error)
-	Gcs(ctx context.Context, obj *objects.DataStorageSettings) (*Gcs, error)
-}
 type MutationResolver interface {
 	CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error)
 	UpdateChannel(ctx context.Context, id objects.GUID, input ent.UpdateChannelInput) (*ent.Channel, error)
@@ -882,11 +876,6 @@ type UserRoleResolver interface {
 
 	UserID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	RoleID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
-}
-
-type DataStorageSettingsInputResolver interface {
-	S3(ctx context.Context, obj *objects.DataStorageSettings, data *S3Input) error
-	Gcs(ctx context.Context, obj *objects.DataStorageSettings, data *GCSInput) error
 }
 
 type executableSchema struct {
@@ -1562,11 +1551,11 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		return e.complexity.DataStorageSettings.Directory(childComplexity), true
 
 	case "DataStorageSettings.gcs":
-		if e.complexity.DataStorageSettings.Gcs == nil {
+		if e.complexity.DataStorageSettings.GCS == nil {
 			break
 		}
 
-		return e.complexity.DataStorageSettings.Gcs(childComplexity), true
+		return e.complexity.DataStorageSettings.GCS(childComplexity), true
 
 	case "DataStorageSettings.s3":
 		if e.complexity.DataStorageSettings.S3 == nil {
@@ -10466,7 +10455,7 @@ func (ec *executionContext) _DataStorageSettings_s3(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.DataStorageSettings().S3(rctx, obj)
+		return obj.S3, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10475,17 +10464,17 @@ func (ec *executionContext) _DataStorageSettings_s3(ctx context.Context, field g
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*S3)
+	res := resTmp.(*objects.S3)
 	fc.Result = res
-	return ec.marshalOS32ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐS3(ctx, field.Selections, res)
+	return ec.marshalOS32ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐS3(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_DataStorageSettings_s3(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "DataStorageSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "bucketName":
@@ -10517,7 +10506,7 @@ func (ec *executionContext) _DataStorageSettings_gcs(ctx context.Context, field 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.DataStorageSettings().Gcs(rctx, obj)
+		return obj.GCS, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10526,17 +10515,17 @@ func (ec *executionContext) _DataStorageSettings_gcs(ctx context.Context, field 
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Gcs)
+	res := resTmp.(*objects.GCS)
 	fc.Result = res
-	return ec.marshalOGCS2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGcs(ctx, field.Selections, res)
+	return ec.marshalOGCS2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCS(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_DataStorageSettings_gcs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "DataStorageSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "bucketName":
@@ -10771,7 +10760,7 @@ func (ec *executionContext) fieldContext_GCPCredential_jsonData(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _GCS_bucketName(ctx context.Context, field graphql.CollectedField, obj *Gcs) (ret graphql.Marshaler) {
+func (ec *executionContext) _GCS_bucketName(ctx context.Context, field graphql.CollectedField, obj *objects.GCS) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GCS_bucketName(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10815,7 +10804,7 @@ func (ec *executionContext) fieldContext_GCS_bucketName(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _GCS_credential(ctx context.Context, field graphql.CollectedField, obj *Gcs) (ret graphql.Marshaler) {
+func (ec *executionContext) _GCS_credential(ctx context.Context, field graphql.CollectedField, obj *objects.GCS) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GCS_credential(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10841,9 +10830,9 @@ func (ec *executionContext) _GCS_credential(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*objects.GCPCredential)
+	res := resTmp.(objects.GCPCredential)
 	fc.Result = res
-	return ec.marshalNGCPCredential2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, field.Selections, res)
+	return ec.marshalNGCPCredential2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_GCS_credential(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -20966,7 +20955,7 @@ func (ec *executionContext) fieldContext_RoleInfo_name(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _S3_bucketName(ctx context.Context, field graphql.CollectedField, obj *S3) (ret graphql.Marshaler) {
+func (ec *executionContext) _S3_bucketName(ctx context.Context, field graphql.CollectedField, obj *objects.S3) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_S3_bucketName(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21010,7 +20999,7 @@ func (ec *executionContext) fieldContext_S3_bucketName(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _S3_endpoint(ctx context.Context, field graphql.CollectedField, obj *S3) (ret graphql.Marshaler) {
+func (ec *executionContext) _S3_endpoint(ctx context.Context, field graphql.CollectedField, obj *objects.S3) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_S3_endpoint(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21054,7 +21043,7 @@ func (ec *executionContext) fieldContext_S3_endpoint(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _S3_accessKey(ctx context.Context, field graphql.CollectedField, obj *S3) (ret graphql.Marshaler) {
+func (ec *executionContext) _S3_accessKey(ctx context.Context, field graphql.CollectedField, obj *objects.S3) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_S3_accessKey(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21098,7 +21087,7 @@ func (ec *executionContext) fieldContext_S3_accessKey(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _S3_secretKey(ctx context.Context, field graphql.CollectedField, obj *S3) (ret graphql.Marshaler) {
+func (ec *executionContext) _S3_secretKey(ctx context.Context, field graphql.CollectedField, obj *objects.S3) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_S3_secretKey(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -32134,7 +32123,7 @@ func (ec *executionContext) unmarshalInputCreateDataStorageInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "description", "primary", "type", "settings", "status"}
+	fieldsInOrder := [...]string{"name", "description", "type", "settings", "status"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -32150,21 +32139,14 @@ func (ec *executionContext) unmarshalInputCreateDataStorageInput(ctx context.Con
 			it.Name = data
 		case "description":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Description = data
-		case "primary":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("primary"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Primary = data
 		case "type":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
-			data, err := ec.unmarshalODataStorageType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋdatastorageᚐType(ctx, v)
+			data, err := ec.unmarshalNDataStorageType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋdatastorageᚐType(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -32873,22 +32855,18 @@ func (ec *executionContext) unmarshalInputDataStorageSettingsInput(ctx context.C
 			it.Directory = data
 		case "s3":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("s3"))
-			data, err := ec.unmarshalOS3Input2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐS3Input(ctx, v)
+			data, err := ec.unmarshalOS3Input2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐS3(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.DataStorageSettingsInput().S3(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.S3 = data
 		case "gcs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gcs"))
-			data, err := ec.unmarshalOGCSInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGCSInput(ctx, v)
+			data, err := ec.unmarshalOGCSInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCS(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.DataStorageSettingsInput().Gcs(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.GCS = data
 		}
 	}
 
@@ -33561,8 +33539,8 @@ func (ec *executionContext) unmarshalInputGCPCredentialInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputGCSInput(ctx context.Context, obj any) (GCSInput, error) {
-	var it GCSInput
+func (ec *executionContext) unmarshalInputGCSInput(ctx context.Context, obj any) (objects.GCS, error) {
+	var it objects.GCS
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -33584,7 +33562,7 @@ func (ec *executionContext) unmarshalInputGCSInput(ctx context.Context, obj any)
 			it.BucketName = data
 		case "credential":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("credential"))
-			data, err := ec.unmarshalNGCPCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, v)
+			data, err := ec.unmarshalNGCPCredentialInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36965,8 +36943,8 @@ func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputS3Input(ctx context.Context, obj any) (S3Input, error) {
-	var it S3Input
+func (ec *executionContext) unmarshalInputS3Input(ctx context.Context, obj any) (objects.S3, error) {
+	var it objects.S3
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -38865,7 +38843,7 @@ func (ec *executionContext) unmarshalInputUpdateDataStorageInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "description", "primary", "type", "settings", "status"}
+	fieldsInOrder := [...]string{"name", "description", "settings", "status"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -38886,20 +38864,6 @@ func (ec *executionContext) unmarshalInputUpdateDataStorageInput(ctx context.Con
 				return it, err
 			}
 			it.Description = data
-		case "primary":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("primary"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Primary = data
-		case "type":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
-			data, err := ec.unmarshalODataStorageType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋdatastorageᚐType(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Type = data
 		case "settings":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("settings"))
 			data, err := ec.unmarshalODataStorageSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDataStorageSettings(ctx, v)
@@ -44329,71 +44293,9 @@ func (ec *executionContext) _DataStorageSettings(ctx context.Context, sel ast.Se
 		case "directory":
 			out.Values[i] = ec._DataStorageSettings_directory(ctx, field, obj)
 		case "s3":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._DataStorageSettings_s3(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._DataStorageSettings_s3(ctx, field, obj)
 		case "gcs":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._DataStorageSettings_gcs(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._DataStorageSettings_gcs(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -44509,7 +44411,7 @@ func (ec *executionContext) _GCPCredential(ctx context.Context, sel ast.Selectio
 
 var gCSImplementors = []string{"GCS"}
 
-func (ec *executionContext) _GCS(ctx context.Context, sel ast.SelectionSet, obj *Gcs) graphql.Marshaler {
+func (ec *executionContext) _GCS(ctx context.Context, sel ast.SelectionSet, obj *objects.GCS) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, gCSImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -47842,7 +47744,7 @@ func (ec *executionContext) _RoleInfo(ctx context.Context, sel ast.SelectionSet,
 
 var s3Implementors = []string{"S3"}
 
-func (ec *executionContext) _S3(ctx context.Context, sel ast.SelectionSet, obj *S3) graphql.Marshaler {
+func (ec *executionContext) _S3(ctx context.Context, sel ast.SelectionSet, obj *objects.S3) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, s3Implementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -51381,19 +51283,13 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
-func (ec *executionContext) marshalNGCPCredential2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, sel ast.SelectionSet, v *objects.GCPCredential) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._GCPCredential(ctx, sel, v)
+func (ec *executionContext) marshalNGCPCredential2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, sel ast.SelectionSet, v objects.GCPCredential) graphql.Marshaler {
+	return ec._GCPCredential(ctx, sel, &v)
 }
 
-func (ec *executionContext) unmarshalNGCPCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, v any) (*objects.GCPCredential, error) {
+func (ec *executionContext) unmarshalNGCPCredentialInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, v any) (objects.GCPCredential, error) {
 	res, err := ec.unmarshalInputGCPCredentialInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx context.Context, v any) (objects.GUID, error) {
@@ -53914,14 +53810,14 @@ func (ec *executionContext) unmarshalOGCPCredentialInput2ᚖgithubᚗcomᚋloopl
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOGCS2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGcs(ctx context.Context, sel ast.SelectionSet, v *Gcs) graphql.Marshaler {
+func (ec *executionContext) marshalOGCS2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCS(ctx context.Context, sel ast.SelectionSet, v *objects.GCS) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._GCS(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOGCSInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGCSInput(ctx context.Context, v any) (*GCSInput, error) {
+func (ec *executionContext) unmarshalOGCSInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCS(ctx context.Context, v any) (*objects.GCS, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -55050,14 +54946,14 @@ func (ec *executionContext) unmarshalORoleWhereInput2ᚖgithubᚗcomᚋloopljᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOS32ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐS3(ctx context.Context, sel ast.SelectionSet, v *S3) graphql.Marshaler {
+func (ec *executionContext) marshalOS32ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐS3(ctx context.Context, sel ast.SelectionSet, v *objects.S3) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._S3(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOS3Input2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐS3Input(ctx context.Context, v any) (*S3Input, error) {
+func (ec *executionContext) unmarshalOS3Input2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐS3(ctx context.Context, v any) (*objects.S3, error) {
 	if v == nil {
 		return nil, nil
 	}

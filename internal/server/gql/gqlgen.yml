@@ -149,3 +149,15 @@ models:
   DataStorageSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.DataStorageSettings
+  S3:
+    model:
+      - github.com/looplj/axonhub/internal/objects.S3
+  S3Input:
+    model:
+      - github.com/looplj/axonhub/internal/objects.S3
+  GCS:
+    model:
+      - github.com/looplj/axonhub/internal/objects.GCS
+  GCSInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.GCS

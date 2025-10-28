@@ -20,16 +20,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/chat"
 )
 
-// S3 is the resolver for the s3 field.
-func (r *dataStorageSettingsResolver) S3(ctx context.Context, obj *objects.DataStorageSettings) (*S3, error) {
-	panic(fmt.Errorf("not implemented: S3 - s3"))
-}
-
-// Gcs is the resolver for the gcs field.
-func (r *dataStorageSettingsResolver) Gcs(ctx context.Context, obj *objects.DataStorageSettings) (*Gcs, error) {
-	panic(fmt.Errorf("not implemented: Gcs - gcs"))
-}
-
 // CreateChannel is the resolver for the createChannel field.
 func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
 	return r.channelService.CreateChannel(ctx, &input)
@@ -256,76 +246,12 @@ func (r *mutationResolver) UpdateProjectUser(ctx context.Context, input UpdatePr
 
 // CreateDataStorage is the resolver for the createDataStorage field.
 func (r *mutationResolver) CreateDataStorage(ctx context.Context, input ent.CreateDataStorageInput) (*ent.DataStorage, error) {
-	client := ent.FromContext(ctx)
-
-	// Build the create mutation
-	mutation := client.DataStorage.Create().
-		SetName(input.Name).
-		SetSettings(input.Settings)
-
-	if input.Description != nil {
-		mutation = mutation.SetDescription(*input.Description)
-	}
-
-	if input.Type != nil {
-		mutation = mutation.SetType(*input.Type)
-	}
-
-	if input.Primary != nil {
-		mutation = mutation.SetPrimary(*input.Primary)
-	}
-
-	if input.Status != nil {
-		mutation = mutation.SetStatus(*input.Status)
-	}
-
-	// Create the data storage
-	dataStorage, err := mutation.Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create data storage: %w", err)
-	}
-
-	return dataStorage, nil
+	return r.dataStorageService.CreateDataStorage(ctx, &input)
 }
 
 // UpdateDataStorage is the resolver for the updateDataStorage field.
 func (r *mutationResolver) UpdateDataStorage(ctx context.Context, id objects.GUID, input ent.UpdateDataStorageInput) (*ent.DataStorage, error) {
-	client := ent.FromContext(ctx)
-
-	// Build the update mutation
-	mutation := client.DataStorage.UpdateOneID(id.ID)
-
-	if input.Name != nil {
-		mutation = mutation.SetName(*input.Name)
-	}
-
-	if input.Description != nil {
-		mutation = mutation.SetDescription(*input.Description)
-	}
-
-	if input.Type != nil {
-		mutation = mutation.SetType(*input.Type)
-	}
-
-	if input.Primary != nil {
-		mutation = mutation.SetPrimary(*input.Primary)
-	}
-
-	if input.Status != nil {
-		mutation = mutation.SetStatus(*input.Status)
-	}
-
-	if input.Settings != nil {
-		mutation = mutation.SetSettings(input.Settings)
-	}
-
-	// Update the data storage
-	dataStorage, err := mutation.Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update data storage: %w", err)
-	}
-
-	return dataStorage, nil
+	return r.dataStorageService.UpdateDataStorage(ctx, id.ID, &input)
 }
 
 // FetchModels is the resolver for the fetchModels field.
@@ -405,29 +331,7 @@ func (r *queryResolver) Models(ctx context.Context, status *channel.Status) ([]*
 	return models, nil
 }
 
-// S3 is the resolver for the s3 field.
-func (r *dataStorageSettingsInputResolver) S3(ctx context.Context, obj *objects.DataStorageSettings, data *S3Input) error {
-	panic(fmt.Errorf("not implemented: S3 - s3"))
-}
-
-// Gcs is the resolver for the gcs field.
-func (r *dataStorageSettingsInputResolver) Gcs(ctx context.Context, obj *objects.DataStorageSettings, data *GCSInput) error {
-	panic(fmt.Errorf("not implemented: Gcs - gcs"))
-}
-
-// DataStorageSettings returns DataStorageSettingsResolver implementation.
-func (r *Resolver) DataStorageSettings() DataStorageSettingsResolver {
-	return &dataStorageSettingsResolver{r}
-}
-
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
-// DataStorageSettingsInput returns DataStorageSettingsInputResolver implementation.
-func (r *Resolver) DataStorageSettingsInput() DataStorageSettingsInputResolver {
-	return &dataStorageSettingsInputResolver{r}
-}
-
-type dataStorageSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
-type dataStorageSettingsInputResolver struct{ *Resolver }

@@ -33,15 +33,16 @@ import (
 type Dependencies struct {
 	fx.In
 
-	Ent            *ent.Client
-	AuthService    *biz.AuthService
-	APIKeyService  *biz.APIKeyService
-	UserService    *biz.UserService
-	SystemService  *biz.SystemService
-	ChannelService *biz.ChannelService
-	RequestService *biz.RequestService
-	ProjectService *biz.ProjectService
-	RoleService    *biz.RoleService
+	Ent                *ent.Client
+	AuthService        *biz.AuthService
+	APIKeyService      *biz.APIKeyService
+	UserService        *biz.UserService
+	SystemService      *biz.SystemService
+	ChannelService     *biz.ChannelService
+	RequestService     *biz.RequestService
+	ProjectService     *biz.ProjectService
+	DataStorageService *biz.DataStorageService
+	RoleService        *biz.RoleService
 }
 
 type GraphqlHandler struct {
@@ -60,6 +61,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.ChannelService,
 			deps.RequestService,
 			deps.ProjectService,
+			deps.DataStorageService,
 			deps.RoleService,
 		),
 	)

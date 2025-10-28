@@ -99,17 +99,12 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
-	// DefaultDescription holds the default value on creation for the "description" field.
-	DefaultDescription string
 	// DefaultPrimary holds the default value on creation for the "primary" field.
 	DefaultPrimary bool
 )
 
 // Type defines the type for the "type" enum field.
 type Type string
-
-// TypeDatabase is the default value of the Type enum.
-const DefaultType = TypeDatabase
 
 // Type values.
 const (

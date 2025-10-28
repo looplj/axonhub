@@ -614,15 +614,11 @@ input CreateDataStorageInput {
   """
   data source description
   """
-  description: String
-  """
-  data source is primary, only the system database is the primary, it can not be archived.
-  """
-  primary: Boolean
+  description: String!
   """
   data source type
   """
-  type: DataStorageType
+  type: DataStorageType!
   """
   data source setting
   """
@@ -3305,14 +3301,6 @@ input UpdateDataStorageInput {
   data source description
   """
   description: String
-  """
-  data source is primary, only the system database is the primary, it can not be archived.
-  """
-  primary: Boolean
-  """
-  data source type
-  """
-  type: DataStorageType
   """
   data source setting
   """

@@ -39,14 +39,17 @@ func (DataStorage) Fields() []ent.Field {
 		field.String("name").
 			Comment("data source name"),
 		field.String("description").
-			Default("").
 			Comment("data source description"),
 		field.Bool("primary").
+			Immutable().
 			Default(false).
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			).
 			Comment("data source is primary, only the system database is the primary, it can not be archived."),
 		field.Enum("type").
+			Immutable().
 			Values("database", "fs", "s3", "gcs").
-			Default("database").
 			Comment("data source type"),
 		field.JSON("settings", &objects.DataStorageSettings{}).
 			Comment("data source setting"),

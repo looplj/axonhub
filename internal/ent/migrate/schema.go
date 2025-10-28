@@ -95,9 +95,9 @@ var (
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "name", Type: field.TypeString},
-		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "description", Type: field.TypeString},
 		{Name: "primary", Type: field.TypeBool, Default: false},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"database", "fs", "s3", "gcs"}, Default: "database"},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"database", "fs", "s3", "gcs"}},
 		{Name: "settings", Type: field.TypeJSON},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived"}, Default: "active"},
 	}
