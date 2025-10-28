@@ -1930,9 +1930,9 @@ type Request implements Node {
   source: RequestSource!
   modelID: String!
   format: String!
-  requestBody: JSONRawMessage!
-  responseBody: JSONRawMessage
-  responseChunks: [JSONRawMessage!]
+  requestBody: JSONRawMessage! @goField(forceResolver: true)
+  responseBody: JSONRawMessage @goField(forceResolver: true)
+  responseChunks: [JSONRawMessage!] @goField(forceResolver: true)
   channelID: ID
   externalID: String
   status: RequestStatus!
@@ -2049,9 +2049,9 @@ type RequestExecution implements Node {
   externalID: String
   modelID: String!
   format: String!
-  requestBody: JSONRawMessage!
-  responseBody: JSONRawMessage
-  responseChunks: [JSONRawMessage!]
+  requestBody: JSONRawMessage! @goField(forceResolver: true)
+  responseBody: JSONRawMessage @goField(forceResolver: true)
+  responseChunks: [JSONRawMessage!] @goField(forceResolver: true)
   errorMessage: String
   status: RequestExecutionStatus!
   request: Request!

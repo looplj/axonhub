@@ -66,12 +66,20 @@ func (Request) Fields() []ent.Field {
 		field.String("format").Immutable().Default("openai/chat_completions"),
 		// The original request from the user.
 		// e.g: the user request via OpenAI request format, but the actual request to the provider with Claude format, the request_body is the OpenAI request format.
-		field.JSON("request_body", objects.JSONRawMessage{}).Immutable(),
+		field.JSON("request_body", objects.JSONRawMessage{}).
+			Immutable().
+			Annotations(
+				entgql.Directives(forceResolver()),
+			),
 		// The final response to the user.
 		// e.g: the provider response with Claude format, but the user expects the response with OpenAI format, the response_body is the OpenAI response format.
-		field.JSON("response_body", objects.JSONRawMessage{}).Optional(),
+		field.JSON("response_body", objects.JSONRawMessage{}).Optional().Annotations(
+			entgql.Directives(forceResolver()),
+		),
 		// The response chunks to the user.
-		field.JSON("response_chunks", []objects.JSONRawMessage{}).Optional(),
+		field.JSON("response_chunks", []objects.JSONRawMessage{}).Optional().Annotations(
+			entgql.Directives(forceResolver()),
+		),
 		field.Int("channel_id").Optional(),
 		// External ID for tracking requests in external systems
 		field.String("external_id").Optional(),

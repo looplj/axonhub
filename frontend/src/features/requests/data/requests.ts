@@ -87,33 +87,13 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           source
           modelID
           stream
+          projectID
+          dataStorage {
+            id
+          }
           requestBody
           responseBody
           status
-          executions(first: 100, orderBy: { field: CREATED_AT, direction: DESC }) {
-            edges {
-              node {
-                id
-                createdAt
-                updatedAt
-                requestID${executionChannelFields}
-                modelID
-                requestBody
-                responseBody
-                responseChunks
-                errorMessage
-                status
-              }
-              cursor
-            }
-            pageInfo {
-              hasNextPage
-              hasPreviousPage
-              startCursor
-              endCursor
-            }
-            totalCount
-          }
         }
       }
     }
@@ -145,6 +125,10 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 updatedAt
                 requestID${channelFields}
                 modelID
+                projectID
+                dataStorage {
+                  id
+                }
                 requestBody
                 responseBody
                 responseChunks

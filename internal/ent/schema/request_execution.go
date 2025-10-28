@@ -46,13 +46,19 @@ func (RequestExecution) Fields() []ent.Field {
 		field.String("format").Immutable().Default("openai/chat_completions"),
 		// The original request to the provider.
 		// e.g: the user request via OpenAI request format, but the actual request to the provider with Claude format, the request_body is the Claude request format.
-		field.JSON("request_body", objects.JSONRawMessage{}).Immutable(),
+		field.JSON("request_body", objects.JSONRawMessage{}).Immutable().Annotations(
+			entgql.Directives(forceResolver()),
+		),
 		// The final response from the provider.
 		// e.g: the provider response with Claude format, and the user expects the response with OpenAI format, the response_body is the Claude response format.
-		field.JSON("response_body", objects.JSONRawMessage{}).Optional(),
+		field.JSON("response_body", objects.JSONRawMessage{}).Optional().Annotations(
+			entgql.Directives(forceResolver()),
+		),
 		// The streaming response chunks from the provider.
 		// e.g: the provider response with Claude format, and the user expects the response with OpenAI format, the response_chunks is the Claude response format.
-		field.JSON("response_chunks", []objects.JSONRawMessage{}).Optional(),
+		field.JSON("response_chunks", []objects.JSONRawMessage{}).Optional().Annotations(
+			entgql.Directives(forceResolver()),
+		),
 		field.String("error_message").Optional(),
 		// The status of the request execution.
 		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
