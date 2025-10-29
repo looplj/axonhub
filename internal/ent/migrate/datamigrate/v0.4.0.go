@@ -20,6 +20,11 @@ func NewV0_4_0() DataMigrator {
 	return &V0_4_0{}
 }
 
+// Version returns the version of this migrator.
+func (v *V0_4_0) Version() string {
+	return "v0.4.0"
+}
+
 // Migrate performs the version 0.4.0 data migration.
 // Creates a primary data storage if it doesn't exist.
 func (v *V0_4_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
@@ -75,6 +80,15 @@ func (v *V0_4_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
 
 	// Set initialized flag to true.
 	log.Info(ctx, "saved the default data storage ID")
+
+	// Set system version to v0.4.0
+	_, err = ent.FromContext(ctx).System.Create().
+		SetKey(biz.SystemKeyVersion).
+		SetValue("v0.4.0").
+		Save(ctx)
+	if err != nil {
+		return err
+	}
 
 	return tx.Commit()
 }

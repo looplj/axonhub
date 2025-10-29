@@ -1,4 +1,4 @@
-package datamigrate
+package datamigrate_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/migrate/datamigrate"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/objects"
@@ -25,7 +26,7 @@ func TestV0_4_0_CreatePrimaryDataStorage(t *testing.T) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Run migration
-	err := NewV0_4_0().Migrate(ctx, client)
+	err := datamigrate.NewV0_4_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify primary data storage was created
@@ -68,7 +69,7 @@ func TestV0_4_0_PrimaryDataStorageAlreadyExists(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration
-	err = NewV0_4_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_4_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify no new primary data storage was created
@@ -95,7 +96,7 @@ func TestV0_4_0_Idempotency(t *testing.T) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Run migration first time
-	err := NewV0_4_0().Migrate(ctx, client)
+	err := datamigrate.NewV0_4_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Get the created data storage ID
@@ -105,7 +106,7 @@ func TestV0_4_0_Idempotency(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration second time - should be idempotent
-	err = NewV0_4_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_4_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify still only one primary data storage exists
@@ -131,7 +132,7 @@ func TestV0_4_0_VerifyDataStorageFields(t *testing.T) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Run migration
-	err := NewV0_4_0().Migrate(ctx, client)
+	err := datamigrate.NewV0_4_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify all fields of the created data storage
@@ -161,7 +162,7 @@ func TestV0_4_0_DefaultDataStorageSystemSetting(t *testing.T) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Run migration
-	err := NewV0_4_0().Migrate(ctx, client)
+	err := datamigrate.NewV0_4_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Get the created data storage
@@ -206,7 +207,7 @@ func TestV0_4_0_MultipleNonPrimaryDataStorages(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration
-	err = NewV0_4_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_4_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify primary data storage was created

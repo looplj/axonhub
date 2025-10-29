@@ -9,11 +9,12 @@ import (
 
 // Build information.
 var (
-	Version   = "dev"
+	Version   = "v0.4.0"
 	Commit    = ""
 	BuildTime = ""
 	GoVersion = runtime.Version()
 	Platform  = fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+	StartTime = time.Now()
 )
 
 // Info contains build information.
@@ -28,15 +29,13 @@ type Info struct {
 
 // GetBuildInfo returns build information.
 func GetBuildInfo() Info {
-	startTime := time.Now()
-
 	return Info{
 		Version:   Version,
 		Commit:    Commit,
 		BuildTime: BuildTime,
 		GoVersion: GoVersion,
 		Platform:  Platform,
-		Uptime:    startTime.Format(time.RFC3339),
+		Uptime:    time.Since(StartTime).String(),
 	}
 }
 

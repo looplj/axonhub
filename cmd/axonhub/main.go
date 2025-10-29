@@ -34,11 +34,17 @@ func main() {
 			return
 		case "help", "--help", "-h":
 			showHelp()
+		case "build-info":
+			showBuildInfo()
 			return
 		}
 	}
 
 	startServer()
+}
+
+func showBuildInfo() {
+	fmt.Println(build.GetBuildInfo())
 }
 
 type logger struct{}
