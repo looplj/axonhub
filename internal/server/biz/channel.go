@@ -162,6 +162,8 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 		channels = append(channels, channel)
 	}
 
+	log.Info(ctx, "loaded channels", log.Int("count", len(channels)))
+
 	svc.EnabledChannels = channels
 
 	return nil

@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
@@ -35,9 +36,17 @@ func setupDataStorageTest(t *testing.T) (*ent.Client, *DataStorageService, conte
 		CacheConfig: cacheConfig,
 	})
 
+	executor := executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1))
+
+	t.Cleanup(func() {
+		_ = executor.Shutdown(context.Background())
+	})
+
 	service := NewDataStorageService(DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
+		Executor:      executor,
+		Client:        client,
 	})
 
 	ctx := context.Background()
@@ -64,9 +73,17 @@ func setupDataStorageTestWithRedis(t *testing.T) (*ent.Client, *DataStorageServi
 		CacheConfig: cacheConfig,
 	})
 
+	executor := executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1))
+
+	t.Cleanup(func() {
+		_ = executor.Shutdown(context.Background())
+	})
+
 	service := NewDataStorageService(DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
+		Executor:      executor,
+		Client:        client,
 	})
 
 	ctx := context.Background()
@@ -395,17 +412,17 @@ func TestDataStorageService_GetFileSystem(t *testing.T) {
 		assert.Contains(t, err.Error(), "directory not configured for fs storage")
 	})
 
-	t.Run("unsupported storage types", func(t *testing.T) {
+	t.Run("storage types without settings", func(t *testing.T) {
 		s3DS := createTestDataStorage(t, client, ctx, "s3-storage", false, datastorage.TypeS3)
 		gcsDS := createTestDataStorage(t, client, ctx, "gcs-storage", false, datastorage.TypeGcs)
 
 		_, err := service.GetFileSystem(ctx, s3DS)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "s3 storage not yet implemented")
+		assert.Contains(t, err.Error(), "s3 settings not configured")
 
 		_, err = service.GetFileSystem(ctx, gcsDS)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "gcs storage not yet implemented")
+		assert.Contains(t, err.Error(), "gcs settings not configured")
 	})
 }
 
@@ -506,6 +523,8 @@ func TestDataStorageService_CacheExpiration(t *testing.T) {
 	service := NewDataStorageService(DataStorageServiceParams{
 		SystemService: systemService,
 		CacheConfig:   cacheConfig,
+		Executor:      executors.NewPoolScheduleExecutor(),
+		Client:        client,
 	})
 
 	ctx := context.Background()

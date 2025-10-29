@@ -51,7 +51,7 @@ func (v *V0_4_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
 
 	// Create primary data storage
 	primaryDataStorage, err := ent.FromContext(ctx).DataStorage.Create().
-		SetName("primary").
+		SetName("Primary").
 		SetDescription("Primary database storage").
 		SetPrimary(true).
 		SetType(datastorage.TypeDatabase).

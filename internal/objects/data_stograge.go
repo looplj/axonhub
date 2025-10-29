@@ -17,11 +17,12 @@ type DataStorageSettings struct {
 type S3 struct {
 	BucketName string `json:"bucketName"`
 	Endpoint   string `json:"endpoint"`
+	Region     string `json:"region"`
 	AccessKey  string `json:"accessKey"`
 	SecretKey  string `json:"secretKey"`
 }
 
 type GCS struct {
-	BucketName string        `json:"bucketName"`
-	Credential GCPCredential `json:"credential"`
+	BucketName string `json:"bucketName"`
+	Credential string `json:"credential"`
 }

@@ -4,14 +4,28 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
+	"cloud.google.com/go/storage"
+	"github.com/samber/lo"
 	"github.com/spf13/afero"
+	"github.com/spf13/afero/gcsfs"
+	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
+	"golang.org/x/oauth2/google"
+
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	awscredentials "github.com/aws/aws-sdk-go-v2/credentials"
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	s3fs "github.com/looplj/afero-s3"
+	googleoption "google.golang.org/api/option"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
@@ -19,6 +33,13 @@ import (
 type DataStorageService struct {
 	SystemService *SystemService
 	Cache         xcache.Cache[ent.DataStorage]
+	Executors     executors.ScheduledExecutor
+	Ent           *ent.Client
+
+	// fsCache caches afero filesystem instances by data storage ID
+	fsCache      map[int]afero.Fs
+	fsCacheMu    sync.RWMutex
+	latestUpdate time.Time
 }
 
 // DataStorageServiceParams holds the dependencies for DataStorageService.
@@ -27,13 +48,133 @@ type DataStorageServiceParams struct {
 
 	SystemService *SystemService
 	CacheConfig   xcache.Config
+	Executor      executors.ScheduledExecutor
+	Client        *ent.Client
 }
 
 // NewDataStorageService creates a new DataStorageService.
 func NewDataStorageService(params DataStorageServiceParams) *DataStorageService {
-	return &DataStorageService{
+	svc := &DataStorageService{
 		SystemService: params.SystemService,
 		Cache:         xcache.NewFromConfig[ent.DataStorage](params.CacheConfig),
+		Executors:     params.Executor,
+		Ent:           params.Client,
+		fsCache:       make(map[int]afero.Fs),
+	}
+
+	if err := svc.refreshFileSystems(context.Background()); err != nil {
+		log.Error(context.Background(), "failed to preload data storage filesystems", log.Cause(err))
+	}
+
+	if _, err := svc.Executors.ScheduleFuncAtCronRate(
+		svc.refreshFileSystemsPeriodic,
+		executors.CRONRule{Expr: "*/1 * * * *"},
+	); err != nil {
+		log.Error(context.Background(), "failed to schedule data storage filesystem refresh", log.Cause(err))
+	}
+
+	return svc
+}
+
+func (s *DataStorageService) refreshFileSystemsPeriodic(ctx context.Context) {
+	if err := s.refreshFileSystems(ctx); err != nil {
+		log.Error(ctx, "failed to refresh data storage filesystems", log.Cause(err))
+	}
+}
+
+func (s *DataStorageService) refreshFileSystems(ctx context.Context) error {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	latestUpdatedStorage, err := s.Ent.DataStorage.Query().
+		Order(ent.Desc(datastorage.FieldUpdatedAt)).
+		First(ctx)
+	if err != nil && !ent.IsNotFound(err) {
+		return err
+	}
+
+	if latestUpdatedStorage != nil {
+		if !latestUpdatedStorage.UpdatedAt.After(s.latestUpdate) {
+			log.Debug(ctx, "no data storage updates detected")
+			return nil
+		}
+
+		s.latestUpdate = latestUpdatedStorage.UpdatedAt
+	} else {
+		s.latestUpdate = time.Time{}
+	}
+
+	storages, err := s.Ent.DataStorage.Query().
+		Where(datastorage.StatusEQ(datastorage.StatusActive)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+
+	newCache := make(map[int]afero.Fs, len(storages))
+
+	for _, ds := range storages {
+		if ds.Type == datastorage.TypeDatabase {
+			continue
+		}
+
+		fs, err := s.buildFileSystem(ctx, ds)
+		if err != nil {
+			log.Warn(ctx, "failed to build data storage filesystem",
+				log.Int("data_storage_id", ds.ID),
+				log.String("data_storage_name", ds.Name),
+				log.String("type", ds.Type.String()),
+				log.Cause(err),
+			)
+
+			continue
+		}
+
+		newCache[ds.ID] = fs
+	}
+
+	s.fsCacheMu.Lock()
+	s.fsCache = newCache
+	s.fsCacheMu.Unlock()
+
+	log.Info(ctx, "refreshed data storage filesystems", log.Int("count", len(newCache)))
+
+	return nil
+}
+
+func (s *DataStorageService) buildFileSystem(ctx context.Context, ds *ent.DataStorage) (afero.Fs, error) {
+	switch ds.Type {
+	case datastorage.TypeDatabase:
+		return nil, fmt.Errorf("database storage does not support file system operations")
+	case datastorage.TypeFs:
+		if ds.Settings == nil || ds.Settings.Directory == nil {
+			return nil, fmt.Errorf("directory not configured for fs storage")
+		}
+
+		return afero.NewBasePathFs(afero.NewOsFs(), *ds.Settings.Directory), nil
+	case datastorage.TypeS3:
+		if ds.Settings == nil || ds.Settings.S3 == nil {
+			return nil, fmt.Errorf("s3 settings not configured")
+		}
+
+		fs, err := s.createS3Fs(ctx, ds.Settings.S3)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create s3 filesystem: %w", err)
+		}
+
+		return fs, nil
+	case datastorage.TypeGcs:
+		if ds.Settings == nil || ds.Settings.GCS == nil {
+			return nil, fmt.Errorf("gcs settings not configured")
+		}
+
+		fs, err := s.createGcsFs(ctx, ds.Settings.GCS)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gcs filesystem: %w", err)
+		}
+
+		return fs, nil
+	default:
+		return nil, fmt.Errorf("unsupported storage type: %s", ds.Type)
 	}
 }
 
@@ -52,6 +193,7 @@ func (s *DataStorageService) CreateDataStorage(ctx context.Context, input *ent.C
 
 	// Clear caches so subsequent reads observe the latest data.
 	_ = s.InvalidateAllDataStorageCache(ctx)
+	_ = s.InvalidateFsCache(dataStorage.ID)
 
 	return dataStorage, nil
 }
@@ -74,6 +216,8 @@ func (s *DataStorageService) UpdateDataStorage(ctx context.Context, id int, inpu
 	}
 
 	_ = s.InvalidateDataStorageCache(ctx, dataStorage.ID)
+
+	_ = s.InvalidateFsCache(dataStorage.ID)
 	if dataStorage.Primary {
 		_ = s.InvalidatePrimaryDataStorageCache(ctx)
 	}
@@ -175,35 +319,102 @@ func (s *DataStorageService) InvalidatePrimaryDataStorageCache(ctx context.Conte
 
 // InvalidateAllDataStorageCache clears all data storage related cache entries.
 func (s *DataStorageService) InvalidateAllDataStorageCache(ctx context.Context) error {
+	// Also clear filesystem cache
+	s.fsCacheMu.Lock()
+	s.fsCache = make(map[int]afero.Fs)
+	s.fsCacheMu.Unlock()
+
+	s.latestUpdate = time.Time{}
+
 	return s.Cache.Clear(ctx)
 }
 
-// GetFileSystem returns an afero.Fs for the given data storage.
-func (s *DataStorageService) GetFileSystem(ctx context.Context, ds *ent.DataStorage) (afero.Fs, error) {
-	switch ds.Type {
-	case datastorage.TypeDatabase:
-		// For database storage, we don't use afero
-		return nil, fmt.Errorf("database storage does not support file system operations")
-	case datastorage.TypeFs:
-		// Local file system storage
-		if ds.Settings.Directory == nil {
-			return nil, fmt.Errorf("directory not configured for fs storage")
-		}
+// InvalidateFsCache invalidates the cached filesystem for a specific data storage.
+func (s *DataStorageService) InvalidateFsCache(id int) error {
+	s.fsCacheMu.Lock()
+	delete(s.fsCache, id)
+	s.fsCacheMu.Unlock()
 
-		return afero.NewBasePathFs(afero.NewOsFs(), *ds.Settings.Directory), nil
-	case datastorage.TypeS3:
-		// S3 storage - would need to implement S3 afero adapter
-		return nil, fmt.Errorf("s3 storage not yet implemented")
-	case datastorage.TypeGcs:
-		// GCS storage - would need to implement GCS afero adapter
-		return nil, fmt.Errorf("gcs storage not yet implemented")
-	default:
-		return nil, fmt.Errorf("unsupported storage type: %s", ds.Type)
+	return nil
+}
+
+// createS3Fs creates an S3 filesystem using the afero-s3 adapter.
+func (s *DataStorageService) createS3Fs(ctx context.Context, s3Config *objects.S3) (afero.Fs, error) {
+	credProvider := awscredentials.NewStaticCredentialsProvider(
+		s3Config.AccessKey,
+		s3Config.SecretKey,
+		"",
+	)
+
+	loadOptions := []func(*awsconfig.LoadOptions) error{
+		awsconfig.WithRegion(s3Config.Region),
+		awsconfig.WithCredentialsProvider(credProvider),
 	}
+
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, loadOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load AWS config: %w", err)
+	}
+
+	client := awss3.NewFromConfig(awsCfg, func(o *awss3.Options) {
+		if s3Config.Endpoint != "" {
+			o.BaseEndpoint = lo.ToPtr(s3Config.Endpoint)
+		}
+	})
+
+	return s3fs.NewFsFromClient(s3Config.BucketName, client), nil
+}
+
+// createGcsFs creates a GCS filesystem using the afero gcsfs adapter.
+func (s *DataStorageService) createGcsFs(ctx context.Context, gcsConfig *objects.GCS) (afero.Fs, error) {
+	// Parse GCP credentials
+	creds, err := google.CredentialsFromJSON(ctx, []byte(gcsConfig.Credential), storage.ScopeFullControl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse GCP credentials: %w", err)
+	}
+
+	// Create GCS client
+	client, err := storage.NewClient(context.Background(), googleoption.WithCredentials(creds))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCS client: %w", err)
+	}
+
+	// Create GCS filesystem
+	fs, err := gcsfs.NewGcsFSFromClient(context.Background(), client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCS filesystem: %w", err)
+	}
+
+	return afero.NewBasePathFs(fs, gcsConfig.BucketName), nil
+}
+
+// GetFileSystem returns an afero.Fs for the given data storage.
+// Filesystem instances are cached to avoid recreating them on every call.
+func (s *DataStorageService) GetFileSystem(ctx context.Context, ds *ent.DataStorage) (afero.Fs, error) {
+	// Check cache first
+	s.fsCacheMu.RLock()
+
+	if fs, ok := s.fsCache[ds.ID]; ok {
+		s.fsCacheMu.RUnlock()
+		return fs, nil
+	}
+
+	s.fsCacheMu.RUnlock()
+
+	fs, err := s.buildFileSystem(ctx, ds)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache the filesystem instance
+	s.fsCacheMu.Lock()
+	s.fsCache[ds.ID] = fs
+	s.fsCacheMu.Unlock()
+
+	return fs, nil
 }
 
 // SaveData saves data to the specified data storage.
-// For database storage, it returns the data as-is to be stored in the database.
 // For file system storage, it writes the data to a file and returns the file path.
 func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, key string, data []byte) (string, error) {
 	switch ds.Type {
@@ -218,16 +429,23 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 			return "", fmt.Errorf("failed to get file system: %w", err)
 		}
 
-		err = fs.MkdirAll(filepath.Dir(key), 0o777)
-		if err != nil {
-			return "", fmt.Errorf("failed to create directory: %w", err)
-		}
-		// Write data to file
-		if err := afero.WriteFile(fs, key, data, 0o777); err != nil {
-			return "", fmt.Errorf("failed to write file: %w", err)
+		if ds.Type == datastorage.TypeFs {
+			err = fs.MkdirAll(filepath.Dir(key), 0o777)
+			if err != nil {
+				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
+			}
+		} else {
+			_, err = fs.Create(key)
+			if err != nil {
+				return "", fmt.Errorf("failed to create file: %w, key: %s", err, key)
+			}
 		}
 
-		// Return the file path/key
+		// Write data to file
+		if err := afero.WriteFile(fs, key, data, 0o777); err != nil {
+			return "", fmt.Errorf("failed to write file: %w, key: %s", err, key)
+		}
+
 		return key, nil
 	default:
 		return "", fmt.Errorf("unsupported storage type: %s", ds.Type)
@@ -249,7 +467,6 @@ func (s *DataStorageService) LoadData(ctx context.Context, ds *ent.DataStorage, 
 			return nil, fmt.Errorf("failed to get file system: %w", err)
 		}
 
-		// Read data from file
 		data, err := afero.ReadFile(fs, key)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read file: %w", err)

@@ -202,7 +202,7 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 
 	// Create primary data storage
 	primaryDataStorage, err := tx.DataStorage.Create().
-		SetName("primary").
+		SetName("Primary").
 		SetDescription("Primary database storage").
 		SetPrimary(true).
 		SetType("database").

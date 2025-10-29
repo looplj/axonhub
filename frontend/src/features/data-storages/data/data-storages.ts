@@ -28,6 +28,17 @@ const DATA_STORAGES_QUERY = `
           status
           settings {
             directory
+            s3 {
+              bucketName
+              endpoint
+              region
+              accessKey
+              secretKey
+            }
+            gcs {
+              bucketName
+              credential
+            }
           }
           createdAt
           updatedAt
@@ -55,6 +66,17 @@ const CREATE_DATA_STORAGE_MUTATION = `
       status
       settings {
         directory
+        s3 {
+          bucketName
+          endpoint
+          region
+          accessKey
+          secretKey
+        }
+        gcs {
+          bucketName
+          credential
+        }
       }
       createdAt
       updatedAt
@@ -73,6 +95,17 @@ const UPDATE_DATA_STORAGE_MUTATION = `
       status
       settings {
         directory
+        s3 {
+          bucketName
+          endpoint
+          region
+          accessKey
+          secretKey
+        }
+        gcs {
+          bucketName
+          credential
+        }
       }
       createdAt
       updatedAt
@@ -81,8 +114,23 @@ const UPDATE_DATA_STORAGE_MUTATION = `
 `
 
 // Types
+export interface S3Settings {
+  bucketName: string
+  endpoint: string
+  region: string
+  accessKey: string
+  secretKey: string
+}
+
+export interface GCSSettings {
+  bucketName: string
+  credential: string
+}
+
 export interface DataStorageSettings {
   directory?: string
+  s3?: S3Settings
+  gcs?: GCSSettings
 }
 
 export interface DataStorage {
