@@ -67,6 +67,11 @@ test.describe('Usage Logs Management', () => {
     
     // Check if we're on the usage logs page
     await expect(page).toHaveURL(/.*usage-logs/);
-    await expect(page.locator('h2, h1')).toContainText(/Usage Logs|用量日志/);
+    await expect(
+      page
+        .getByRole('main')
+        .getByRole('heading', { name: /Usage Logs|用量日志/i })
+        .first()
+    ).toBeVisible();
   });
 });

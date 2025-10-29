@@ -7,7 +7,9 @@ test.describe('Admin System Management', () => {
   })
 
   test('can view system tabs and update brand settings', async ({ page }) => {
-    await expect(page.locator('h2')).toContainText(/System|系统/i)
+    await expect(
+      page.getByRole('heading', { name: /System|系统/i }).first()
+    ).toBeVisible()
 
     const brandTab = page.getByRole('tab', { name: /Brand|品牌/i })
     await expect(brandTab).toHaveAttribute('aria-selected', 'true')

@@ -12,84 +12,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
-
-func TestSystemService_Initialize(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-	defer client.Close()
-
-	service := NewSystemService(SystemServiceParams{})
-	ctx := t.Context()
-	ctx = ent.NewContext(ctx, client)
-
-	// Test system initialization with auto-generated secret key
-	err := service.Initialize(ctx, &InitializeSystemArgs{
-		OwnerEmail:     "owner@example.com",
-		OwnerPassword:  "password123",
-		OwnerFirstName: "System",
-		OwnerLastName:  "Owner",
-		BrandName:      "Test Brand",
-	})
-	require.NoError(t, err)
-
-	// Verify system is initialized
-	isInitialized, err := service.IsInitialized(ctx)
-	require.NoError(t, err)
-	require.True(t, isInitialized)
-
-	// Verify secret key is set
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	secretKey, err := service.SecretKey(ctx)
-	require.NoError(t, err)
-	require.NotEmpty(t, secretKey)
-	require.Len(t, secretKey, 64) // Should be 64 hex characters (32 bytes)
-
-	// Verify owner user is created
-	owner, err := client.User.Query().Where().First(ctx)
-	require.NoError(t, err)
-	require.Equal(t, "owner@example.com", owner.Email)
-	require.True(t, owner.IsOwner)
-
-	// Verify default project is created
-	project, err := client.Project.Query().Where().First(ctx)
-	require.NoError(t, err)
-	require.Equal(t, "Default", project.Name)
-
-	// Verify owner is assigned to the project
-	userProject, err := client.UserProject.Query().Where().First(ctx)
-	require.NoError(t, err)
-	require.Equal(t, owner.ID, userProject.UserID)
-	require.Equal(t, project.ID, userProject.ProjectID)
-	require.True(t, userProject.IsOwner)
-
-	// Verify default roles are created (admin, developer, viewer)
-	roles, err := client.Role.Query().All(ctx)
-	require.NoError(t, err)
-	require.Len(t, roles, 3)
-
-	// Test idempotency - calling Initialize again should not error
-	// but should not change the existing secret key or create duplicate projects
-	originalKey := secretKey
-	err = service.Initialize(ctx, &InitializeSystemArgs{
-		OwnerEmail:     "owner@example.com",
-		OwnerPassword:  "password123",
-		OwnerFirstName: "System",
-		OwnerLastName:  "Owner",
-		BrandName:      "Test Brand",
-	})
-	require.NoError(t, err)
-
-	// Secret key should remain the same after second initialization
-	secretKey2, err := service.SecretKey(ctx)
-	require.NoError(t, err)
-	require.Equal(t, originalKey, secretKey2)
-
-	// Should still have only one project
-	projectCount, err := client.Project.Query().Count(ctx)
-	require.NoError(t, err)
-	require.Equal(t, 1, projectCount)
-}
 
 func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
@@ -522,4 +447,375 @@ func TestSystemService_BrandLogo_NotSet(t *testing.T) {
 	brandLogo, err := service.BrandLogo(ctx)
 	require.NoError(t, err)
 	require.Empty(t, brandLogo)
+}
+
+func TestSystemService_Version(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Test getting version when not set
+	version, err := service.Version(ctx)
+	require.NoError(t, err)
+	require.Empty(t, version)
+
+	// Test setting version
+	testVersion := "v0.4.0"
+	err = service.SetVersion(ctx, testVersion)
+	require.NoError(t, err)
+
+	// Test getting version after setting
+	retrievedVersion, err := service.Version(ctx)
+	require.NoError(t, err)
+	require.Equal(t, testVersion, retrievedVersion)
+
+	// Test updating version
+	newVersion := "v0.5.0"
+	err = service.SetVersion(ctx, newVersion)
+	require.NoError(t, err)
+
+	retrievedVersion2, err := service.Version(ctx)
+	require.NoError(t, err)
+	require.Equal(t, newVersion, retrievedVersion2)
+}
+
+func TestSystemService_Initialize_SetsVersion(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	service := NewSystemService(SystemServiceParams{})
+	ctx := t.Context()
+	ctx = ent.NewContext(ctx, client)
+
+	// Test system initialization sets version
+	err := service.Initialize(ctx, &InitializeSystemArgs{
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
+	})
+	require.NoError(t, err)
+
+	// Verify system version is set
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	version, err := service.Version(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, version)
+	require.Equal(t, "v0.4.0", version) // Should match build.Version
+}
+
+func TestSystemService_Version_WithCache(t *testing.T) {
+	mr := miniredis.RunT(t)
+	defer mr.Close()
+
+	cacheConfig := xcache.Config{
+		Mode: xcache.ModeRedis,
+		Redis: xcache.RedisConfig{
+			Addr: mr.Addr(),
+		},
+	}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Set version
+	testVersion := "v0.4.0"
+	err := service.SetVersion(ctx, testVersion)
+	require.NoError(t, err)
+
+	// First call should hit database and cache the result
+	retrievedVersion, err := service.Version(ctx)
+	require.NoError(t, err)
+	require.Equal(t, testVersion, retrievedVersion)
+
+	// Second call should hit cache
+	retrievedVersion2, err := service.Version(ctx)
+	require.NoError(t, err)
+	require.Equal(t, testVersion, retrievedVersion2)
+
+	// Update version should invalidate cache
+	newVersion := "v0.5.0"
+	err = service.SetVersion(ctx, newVersion)
+	require.NoError(t, err)
+
+	// Should get updated version
+	retrievedVersion3, err := service.Version(ctx)
+	require.NoError(t, err)
+	require.Equal(t, newVersion, retrievedVersion3)
+}
+
+func TestSystemService_Initialize_WithDataMigration(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	service := NewSystemService(SystemServiceParams{})
+	ctx := t.Context()
+	ctx = ent.NewContext(ctx, client)
+
+	// Test system initialization
+	err := service.Initialize(ctx, &InitializeSystemArgs{
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
+	})
+	require.NoError(t, err)
+
+	// Verify system is initialized
+	isInitialized, err := service.IsInitialized(ctx)
+	require.NoError(t, err)
+	require.True(t, isInitialized)
+
+	// Verify version is set
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	version, err := service.Version(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, version)
+
+	// Verify primary data storage was created during initialization
+	primaryDS, err := client.DataStorage.Query().
+		Where().
+		First(ctx)
+	require.NoError(t, err)
+	require.True(t, primaryDS.Primary)
+	require.Equal(t, "Primary", primaryDS.Name)
+
+	// Verify default data storage ID is set
+	defaultID, err := service.DefaultDataStorageID(ctx)
+	require.NoError(t, err)
+	require.Equal(t, primaryDS.ID, defaultID)
+}
+
+func TestSystemService_Initialize_DataMigrationIdempotency(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	service := NewSystemService(SystemServiceParams{})
+	ctx := t.Context()
+	ctx = ent.NewContext(ctx, client)
+
+	// First initialization
+	err := service.Initialize(ctx, &InitializeSystemArgs{
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
+	})
+	require.NoError(t, err)
+
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Get initial data storage ID
+	initialID, err := service.DefaultDataStorageID(ctx)
+	require.NoError(t, err)
+
+	// Second initialization (should be idempotent)
+	err = service.Initialize(ctx, &InitializeSystemArgs{
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
+	})
+	require.NoError(t, err)
+
+	// Verify data storage ID hasn't changed
+	currentID, err := service.DefaultDataStorageID(ctx)
+	require.NoError(t, err)
+	require.Equal(t, initialID, currentID)
+
+	// Verify only one primary data storage exists
+	count, err := client.DataStorage.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+}
+
+func TestSystemService_Initialize_CreatesDefaultProject(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	service := NewSystemService(SystemServiceParams{})
+	ctx := t.Context()
+	ctx = ent.NewContext(ctx, client)
+
+	// Initialize system
+	err := service.Initialize(ctx, &InitializeSystemArgs{
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
+	})
+	require.NoError(t, err)
+
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Verify default project was created
+	project, err := client.Project.Query().First(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "Default", project.Name)
+
+	// Verify owner is assigned to the project
+	userProject, err := client.UserProject.Query().First(ctx)
+	require.NoError(t, err)
+	require.True(t, userProject.IsOwner)
+
+	// Verify default roles were created
+	roles, err := client.Role.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, roles, 3) // Admin, Developer, Viewer
+}
+
+func TestSystemService_Initialize_SetsAllSystemKeys(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	service := NewSystemService(SystemServiceParams{})
+	ctx := t.Context()
+	ctx = ent.NewContext(ctx, client)
+
+	// Initialize system
+	err := service.Initialize(ctx, &InitializeSystemArgs{
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
+	})
+	require.NoError(t, err)
+
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Verify all system keys are set
+	systemKeys := []string{
+		SystemKeyInitialized,
+		SystemKeyVersion,
+		SystemKeySecretKey,
+		SystemKeyBrandName,
+		SystemKeyDefaultDataStorage,
+	}
+
+	for _, key := range systemKeys {
+		sys, err := client.System.Query().Where().First(ctx)
+		require.NoError(t, err, "key %s should exist", key)
+		require.NotNil(t, sys)
+	}
+
+	// Verify brand name is set correctly
+	brandName, err := service.BrandName(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "Test Brand", brandName)
+
+	// Verify secret key is set and has correct length
+	secretKey, err := service.SecretKey(ctx)
+	require.NoError(t, err)
+	require.Len(t, secretKey, 64)
+
+	// Verify version is set
+	version, err := service.Version(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, version)
+}
+
+func TestSystemService_DefaultDataStorageID(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	service := NewSystemService(SystemServiceParams{})
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Test getting default data storage ID when not set (should return 0)
+	defaultID, err := service.DefaultDataStorageID(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 0, defaultID)
+
+	// Create a data storage
+	ds, err := client.DataStorage.Create().
+		SetName("Test Storage").
+		SetDescription("Test storage").
+		SetPrimary(true).
+		SetType("database").
+		SetSettings(&objects.DataStorageSettings{}).
+		SetStatus("active").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Set default data storage ID
+	err = service.SetDefaultDataStorageID(ctx, ds.ID)
+	require.NoError(t, err)
+
+	// Get default data storage ID
+	retrievedID, err := service.DefaultDataStorageID(ctx)
+	require.NoError(t, err)
+	require.Equal(t, ds.ID, retrievedID)
+}
+
+func TestSystemService_Initialize_TransactionRollback(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	service := NewSystemService(SystemServiceParams{})
+	ctx := t.Context()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// First, create a user with the same email to cause a constraint violation
+	_, err := client.User.Create().
+		SetEmail("owner@example.com").
+		SetPassword("hashedpassword").
+		SetFirstName("Existing").
+		SetLastName("User").
+		SetIsOwner(false).
+		SetScopes([]string{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Try to initialize with duplicate email (should fail due to unique constraint)
+	err = service.Initialize(ctx, &InitializeSystemArgs{
+		OwnerEmail:     "owner@example.com", // Duplicate email
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
+	})
+	require.Error(t, err)
+
+	// Verify system is not initialized (transaction rolled back)
+	isInitialized, err := service.IsInitialized(ctx)
+	require.NoError(t, err)
+	require.False(t, isInitialized)
+
+	// Verify only the original user exists (no owner created)
+	userCount, err := client.User.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, userCount)
+
+	// Verify the existing user is not an owner
+	user, err := client.User.Query().First(ctx)
+	require.NoError(t, err)
+	require.False(t, user.IsOwner)
+
+	// Verify no projects were created
+	projectCount, err := client.Project.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 0, projectCount)
+
+	// Verify no data storages were created
+	dsCount, err := client.DataStorage.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 0, dsCount)
 }

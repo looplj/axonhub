@@ -11,6 +11,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
@@ -23,6 +24,9 @@ import (
 const (
 	// SystemKeyInitialized is the key used to store the initialized flag in the system table.
 	SystemKeyInitialized = "system_initialized"
+
+	// SystemKeyVersion is the key used to store the version in the system table.
+	SystemKeyVersion = "system_version"
 
 	// SystemKeySecretKey is the key used to store the secret key in the system table.
 	//
@@ -220,6 +224,12 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 	}
 
 	log.Info(ctx, "created primary data storage", zap.Int("data_storage_id", primaryDataStorage.ID))
+
+	// Set system version.
+	err = s.setSystemValue(ctx, SystemKeyVersion, build.Version)
+	if err != nil {
+		return fmt.Errorf("failed to set system version: %w", err)
+	}
 
 	// Set initialized flag to true.
 	err = s.setSystemValue(ctx, SystemKeyInitialized, "true")
@@ -488,4 +498,26 @@ func (s *SystemService) DefaultDataStorageID(ctx context.Context) (int, error) {
 // SetDefaultDataStorageID sets the default data storage ID.
 func (s *SystemService) SetDefaultDataStorageID(ctx context.Context, id int) error {
 	return s.setSystemValue(ctx, SystemKeyDefaultDataStorage, fmt.Sprintf("%d", id))
+}
+
+// Version retrieves the system version from system settings.
+// Returns empty string if not set.
+func (s *SystemService) Version(ctx context.Context) (string, error) {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	value, err := s.getSystemValue(ctx, SystemKeyVersion)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return "", nil
+		}
+
+		return "", fmt.Errorf("failed to get system version: %w", err)
+	}
+
+	return value, nil
+}
+
+// SetVersion sets the system version.
+func (s *SystemService) SetVersion(ctx context.Context, version string) error {
+	return s.setSystemValue(ctx, SystemKeyVersion, version)
 }

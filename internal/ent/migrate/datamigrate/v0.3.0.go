@@ -24,6 +24,11 @@ func NewV0_3_0() DataMigrator {
 	return &V0_3_0{}
 }
 
+// Version returns the version of this migrator.
+func (v *V0_3_0) Version() string {
+	return "v0.3.0"
+}
+
 // Migrate performs the version 0.3.0 data migration.
 func (v *V0_3_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)

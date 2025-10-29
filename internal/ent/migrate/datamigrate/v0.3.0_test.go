@@ -1,4 +1,4 @@
-package datamigrate
+package datamigrate_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/migrate/datamigrate"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/role"
@@ -22,7 +23,7 @@ func TestV0_3_0_NoOwnerUser(t *testing.T) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Run migration when no owner user exists
-	err := NewV0_3_0().Migrate(ctx, client)
+	err := datamigrate.NewMigrator(client).Run(ctx)
 	require.NoError(t, err)
 
 	// Verify no project was created
@@ -51,7 +52,7 @@ func TestV0_3_0_MultipleProjectsExist(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration - should skip without error
-	err = NewV0_3_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify no additional projects were created
@@ -80,7 +81,7 @@ func TestV0_3_0_WithOwnerUser(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration
-	err = NewV0_3_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify default project was created
@@ -154,7 +155,7 @@ func TestV0_3_0_ProjectAlreadyExists(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration
-	err = NewV0_3_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify no new project was created (should still have only 1 project)
@@ -199,7 +200,7 @@ func TestV0_3_0_MultipleOwnerUsers(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration - should use the first owner found
-	err = NewV0_3_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify default project was created
@@ -247,7 +248,7 @@ func TestV0_3_0_Idempotency(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration first time
-	err = NewV0_3_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify project was created
@@ -256,7 +257,7 @@ func TestV0_3_0_Idempotency(t *testing.T) {
 	assert.Equal(t, 1, count1)
 
 	// Run migration second time - should be idempotent
-	err = NewV0_3_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify still only one project exists
@@ -290,7 +291,7 @@ func TestV0_3_0_OwnerWithoutIsOwnerFlag(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration - should not create project since no owner exists
-	err = NewV0_3_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify no project was created
@@ -319,7 +320,7 @@ func TestV0_3_0_VerifyRoleScopes(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration
-	err = NewV0_3_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify admin role has correct scopes
@@ -394,7 +395,7 @@ func TestV0_3_0_AssignUsersToDefaultProject(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration
-	err = NewV0_3_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify default project was created
@@ -475,7 +476,7 @@ func TestV0_3_0_AssignUsersToDefaultProject_ConstraintError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration - should handle constraint error gracefully
-	err = NewV0_3_0().Migrate(ctx, client)
+	err = datamigrate.NewV0_3_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
 	// Verify only one assignment exists for user1
