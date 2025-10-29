@@ -33,7 +33,7 @@ func TestV0_4_0_CreatePrimaryDataStorage(t *testing.T) {
 		Where(datastorage.Primary(true)).
 		Only(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, "primary", ds.Name)
+	assert.Equal(t, "Primary", ds.Name)
 	assert.Equal(t, "Primary database storage", ds.Description)
 	assert.True(t, ds.Primary)
 	assert.Equal(t, datastorage.TypeDatabase, ds.Type)
@@ -144,7 +144,7 @@ func TestV0_4_0_VerifyDataStorageFields(t *testing.T) {
 	assert.NotZero(t, ds.ID)
 	assert.NotZero(t, ds.CreatedAt)
 	assert.NotZero(t, ds.UpdatedAt)
-	assert.Equal(t, "primary", ds.Name)
+	assert.Equal(t, "Primary", ds.Name)
 	assert.Equal(t, "Primary database storage", ds.Description)
 	assert.True(t, ds.Primary)
 	assert.Equal(t, datastorage.TypeDatabase, ds.Type)
@@ -214,7 +214,7 @@ func TestV0_4_0_MultipleNonPrimaryDataStorages(t *testing.T) {
 		Where(datastorage.Primary(true)).
 		Only(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, "primary", primaryDS.Name)
+	assert.Equal(t, "Primary", primaryDS.Name)
 
 	// Verify total count is 3 (2 existing + 1 new primary)
 	totalCount, err := client.DataStorage.Query().Count(ctx)

@@ -41,7 +41,7 @@ export function DataStorageActions({ dataStorage }: DataStorageActionsProps) {
       <DropdownMenuContent align='end'>
         <DropdownMenuItem onClick={handleEdit}>
           <Pencil className='mr-2 h-4 w-4' />
-          {t('common.edit')}
+          {t('common.buttons.edit')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

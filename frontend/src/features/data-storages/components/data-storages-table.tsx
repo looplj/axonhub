@@ -15,10 +15,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataStorage, PageInfo } from '../data/data-storages'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ServerSidePagination } from '@/components/server-side-pagination'
 
 interface DataStoragesTableProps {
   data: DataStorage[]
@@ -117,35 +116,16 @@ export function DataStoragesTable({
         </Table>
       </div>
 
-      <div className='flex items-center justify-between'>
-        <div className='text-muted-foreground text-sm'>
-          {totalCount !== undefined && (
-            <span>
-              {t('common.totalCount', { count: totalCount })}
-            </span>
-          )}
-        </div>
-        <div className='flex items-center space-x-2'>
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={onPreviousPage}
-            disabled={!pageInfo?.hasPreviousPage}
-          >
-            <ChevronLeft className='h-4 w-4' />
-            {t('common.previous')}
-          </Button>
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={onNextPage}
-            disabled={!pageInfo?.hasNextPage}
-          >
-            {t('common.next')}
-            <ChevronRight className='h-4 w-4' />
-          </Button>
-        </div>
-      </div>
+      <ServerSidePagination
+        pageInfo={pageInfo}
+        pageSize={pageSize}
+        dataLength={data.length}
+        totalCount={totalCount}
+        selectedRows={0}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   )
 }

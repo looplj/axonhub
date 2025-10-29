@@ -62,6 +62,22 @@ export const createColumns = (t: TFunction): ColumnDef<DataStorage>[] => [
           </span>
         )
       }
+
+      if (type === 's3' && settings.s3?.bucketName) {
+        return (
+          <span className='font-mono text-sm text-muted-foreground'>
+            {settings.s3.bucketName}
+          </span>
+        )
+      }
+
+      if (type === 'gcs' && settings.gcs?.bucketName) {
+        return (
+          <span className='font-mono text-sm text-muted-foreground'>
+            {settings.gcs.bucketName}
+          </span>
+        )
+      }
       
       return <span className='text-muted-foreground'>-</span>
     },

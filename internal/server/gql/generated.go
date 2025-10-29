@@ -502,6 +502,7 @@ type ComplexityRoot struct {
 		AccessKey  func(childComplexity int) int
 		BucketName func(childComplexity int) int
 		Endpoint   func(childComplexity int) int
+		Region     func(childComplexity int) int
 		SecretKey  func(childComplexity int) int
 	}
 
@@ -3193,6 +3194,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.S3.Endpoint(childComplexity), true
+
+	case "S3.region":
+		if e.complexity.S3.Region == nil {
+			break
+		}
+
+		return e.complexity.S3.Region(childComplexity), true
 
 	case "S3.secretKey":
 		if e.complexity.S3.SecretKey == nil {
@@ -10488,6 +10496,8 @@ func (ec *executionContext) fieldContext_DataStorageSettings_s3(_ context.Contex
 				return ec.fieldContext_S3_bucketName(ctx, field)
 			case "endpoint":
 				return ec.fieldContext_S3_endpoint(ctx, field)
+			case "region":
+				return ec.fieldContext_S3_region(ctx, field)
 			case "accessKey":
 				return ec.fieldContext_S3_accessKey(ctx, field)
 			case "secretKey":
@@ -10837,9 +10847,9 @@ func (ec *executionContext) _GCS_credential(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(objects.GCPCredential)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNGCPCredential2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_GCS_credential(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -10849,15 +10859,7 @@ func (ec *executionContext) fieldContext_GCS_credential(_ context.Context, field
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "region":
-				return ec.fieldContext_GCPCredential_region(ctx, field)
-			case "projectID":
-				return ec.fieldContext_GCPCredential_projectID(ctx, field)
-			case "jsonData":
-				return ec.fieldContext_GCPCredential_jsonData(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type GCPCredential", field.Name)
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21038,6 +21040,50 @@ func (ec *executionContext) _S3_endpoint(ctx context.Context, field graphql.Coll
 }
 
 func (ec *executionContext) fieldContext_S3_endpoint(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3_region(ctx context.Context, field graphql.CollectedField, obj *objects.S3) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_S3_region(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Region, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_S3_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "S3",
 		Field:      field,
@@ -33569,7 +33615,7 @@ func (ec *executionContext) unmarshalInputGCSInput(ctx context.Context, obj any)
 			it.BucketName = data
 		case "credential":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("credential"))
-			data, err := ec.unmarshalNGCPCredentialInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, v)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36957,7 +37003,7 @@ func (ec *executionContext) unmarshalInputS3Input(ctx context.Context, obj any) 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"bucketName", "endpoint", "accessKey", "secretKey"}
+	fieldsInOrder := [...]string{"bucketName", "endpoint", "region", "accessKey", "secretKey"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -36978,6 +37024,13 @@ func (ec *executionContext) unmarshalInputS3Input(ctx context.Context, obj any) 
 				return it, err
 			}
 			it.Endpoint = data
+		case "region":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("region"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Region = data
 		case "accessKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accessKey"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -47956,6 +48009,11 @@ func (ec *executionContext) _S3(ctx context.Context, sel ast.SelectionSet, obj *
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "region":
+			out.Values[i] = ec._S3_region(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "accessKey":
 			out.Values[i] = ec._S3_accessKey(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -51474,15 +51532,6 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 		}
 	}
 	return graphql.WrapContextMarshaler(ctx, res)
-}
-
-func (ec *executionContext) marshalNGCPCredential2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, sel ast.SelectionSet, v objects.GCPCredential) graphql.Marshaler {
-	return ec._GCPCredential(ctx, sel, &v)
-}
-
-func (ec *executionContext) unmarshalNGCPCredentialInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, v any) (objects.GCPCredential, error) {
-	res, err := ec.unmarshalInputGCPCredentialInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx context.Context, v any) (objects.GUID, error) {
