@@ -331,7 +331,30 @@ func (r *queryResolver) Models(ctx context.Context, status *channel.Status) ([]*
 	return models, nil
 }
 
+// ID is the resolver for the id field.
+func (r *requestTraceResolver) ID(ctx context.Context, obj *biz.RequestTrace) (*objects.GUID, error) {
+	return &objects.GUID{Type: ent.TypeRequest, ID: obj.ID}, nil
+}
+
+// ParentID is the resolver for the parentId field.
+func (r *requestTraceResolver) ParentID(ctx context.Context, obj *biz.RequestTrace) (*objects.GUID, error) {
+	if obj.ParentID == nil {
+		return nil, nil
+	}
+
+	return &objects.GUID{Type: ent.TypeRequest, ID: *obj.ParentID}, nil
+}
+
+// RootRequestTrace is the resolver for the rootRequestTrace field.
+func (r *traceResolver) RootRequestTrace(ctx context.Context, obj *ent.Trace) (*biz.RequestTrace, error) {
+	return r.traceService.GetRootRequestTrace(ctx, obj.ID)
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
+// RequestTrace returns RequestTraceResolver implementation.
+func (r *Resolver) RequestTrace() RequestTraceResolver { return &requestTraceResolver{r} }
+
 type mutationResolver struct{ *Resolver }
+type requestTraceResolver struct{ *Resolver }

@@ -15,6 +15,7 @@
       "roles": "Roles",
       "system": "System",
       "requests": "Requests",
+      "traces": "Traces",
       "usageLogs": "Usage Logs",
       "apiKeys": "API Keys",
       "playground": "Playground",
@@ -968,6 +969,12 @@
       "retry": "Retry"
     },
     "storage": {
+      "dataStorage": {
+        "title": "Default Data Storage",
+        "description": "Select the default storage location for storing request and response data",
+        "label": "Data Storage",
+        "placeholder": "Select data storage"
+      },
       "title": "Storage Settings",
       "description": "Configure how the system handles and stores response data",
       "storeChunks": {
@@ -1043,14 +1050,6 @@
     "buttons": {
       "save": "Save Settings",
       "saving": "Saving..."
-    },
-    "storage": {
-      "dataStorage": {
-        "title": "Default Data Storage",
-        "description": "Select the default storage location for storing request and response data",
-        "label": "Data Storage",
-        "placeholder": "Select data storage"
-      }
     }
   },
   "requests": {
@@ -1161,6 +1160,78 @@
       "executionsDrawer": {
         "title": "Execution List",
         "noExecutions": "No execution records"
+      }
+    }
+  },
+  "traces": {
+    "title": "Trace Management",
+    "description": "View and manage AI request traces and execution flows",
+    "refresh": "Refresh",
+    "common": {
+      "badges": {
+        "request": "Request",
+        "response": "Response",
+        "trace": "Trace"
+      }
+    },
+    "columns": {
+      "id": "ID",
+      "traceId": "Trace ID",
+      "project": "Project",
+      "thread": "Thread",
+      "requestCount": "Request Count",
+      "details": "Details",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "actions": "Actions",
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "unknown": "Unknown",
+      "noThread": "No Thread"
+    },
+    "actions": {
+      "viewDetails": "View Details",
+      "viewTrace": "View Trace",
+      "openMenu": "Open menu"
+    },
+    "filters": {
+      "filterId": "Filter by ID...",
+      "filterTraceId": "Filter by Trace ID...",
+      "project": "Project",
+      "thread": "Thread"
+    },
+    "detail": {
+      "title": "Trace Details",
+      "basicInfo": "Basic Information",
+      "additionalInfo": "Additional Information",
+      "notFound": "Trace not found",
+      "overview": "Overview",
+      "requestTrace": "Request Trace",
+      "traceTree": "Trace Tree",
+      "noTraceData": "No trace data available",
+      "metadata": "Metadata",
+      "duration": "Duration",
+      "tokens": "Tokens",
+      "cost": "Cost",
+      "items": "Items",
+      "requestSpans": "Request Spans",
+      "responseSpans": "Response Spans",
+      "levelBadge": "Level {{level}}",
+      "durationLabel": "Duration",
+      "tokensLabel": "Tokens",
+      "costLabel": "Cost",
+      "itemsLabel": "Items",
+      "requestSpansHeader": "Request Spans ({{count}})",
+      "responseSpansHeader": "Response Spans ({{count}})"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "emptyDescription": "Timeline data is unavailable for this trace.",
+      "itemsCount": "{{count}} item",
+      "itemsCount_plural": "{{count}} items",
+      "aria": {
+        "expandRow": "Expand row",
+        "collapseRow": "Collapse row"
       }
     }
   },

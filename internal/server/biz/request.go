@@ -720,8 +720,8 @@ func (s *RequestService) LoadRequestBody(ctx context.Context, req *ent.Request) 
 	return objects.JSONRawMessage(data), nil
 }
 
-// LoadRequestResponseBody returns the request response body, loading from external storage when necessary.
-func (s *RequestService) LoadRequestResponseBody(ctx context.Context, req *ent.Request) (objects.JSONRawMessage, error) {
+// LoadResponseBody returns the request response body, loading from external storage when necessary.
+func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request) (objects.JSONRawMessage, error) {
 	if req == nil {
 		return nil, fmt.Errorf("request is nil")
 	}
@@ -752,8 +752,8 @@ func (s *RequestService) LoadRequestResponseBody(ctx context.Context, req *ent.R
 	return objects.JSONRawMessage(data), nil
 }
 
-// LoadRequestResponseChunks returns the request response chunks, loading from external storage when necessary.
-func (s *RequestService) LoadRequestResponseChunks(ctx context.Context, req *ent.Request) ([]objects.JSONRawMessage, error) {
+// LoadResponseChunks returns the request response chunks, loading from external storage when necessary.
+func (s *RequestService) LoadResponseChunks(ctx context.Context, req *ent.Request) ([]objects.JSONRawMessage, error) {
 	if req == nil {
 		return nil, fmt.Errorf("request is nil")
 	}

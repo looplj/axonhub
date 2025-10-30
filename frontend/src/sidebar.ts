@@ -13,6 +13,8 @@ import {
   IconActivity,
   IconActivityHeartbeat,
   IconDatabase,
+  IconTrack,
+  IconTractor,
 } from '@tabler/icons-react'
 import { Command } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -110,6 +112,11 @@ export function useSidebarData(): SidebarData {
     {
       title: t('sidebar.groups.project'),
       items: [
+        {
+          title: t('sidebar.items.traces'),
+          url: '/project/traces',
+          icon: IconTractor,
+        } as NavLink,
         {
           title: t('sidebar.items.requests'),
           url: '/project/requests',
