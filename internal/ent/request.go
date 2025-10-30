@@ -28,8 +28,6 @@ type Request struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt int `json:"deleted_at,omitempty"`
 	// API Key ID of the request, null for the request from the Admin.
 	APIKeyID int `json:"api_key_id,omitempty"`
 	// Project ID, default to 1 for backward compatibility
@@ -172,7 +170,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case request.FieldStream:
 			values[i] = new(sql.NullBool)
-		case request.FieldID, request.FieldDeletedAt, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID:
+		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID:
 			values[i] = new(sql.NullInt64)
 		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -210,12 +208,6 @@ func (_m *Request) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
-			}
-		case request.FieldDeletedAt:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
-			} else if value.Valid {
-				_m.DeletedAt = int(value.Int64)
 			}
 		case request.FieldAPIKeyID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -383,9 +375,6 @@ func (_m *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("api_key_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.APIKeyID))

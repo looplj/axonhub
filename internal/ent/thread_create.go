@@ -52,20 +52,6 @@ func (_c *ThreadCreate) SetNillableUpdatedAt(v *time.Time) *ThreadCreate {
 	return _c
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_c *ThreadCreate) SetDeletedAt(v int) *ThreadCreate {
-	_c.mutation.SetDeletedAt(v)
-	return _c
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_c *ThreadCreate) SetNillableDeletedAt(v *int) *ThreadCreate {
-	if v != nil {
-		_c.SetDeletedAt(*v)
-	}
-	return _c
-}
-
 // SetProjectID sets the "project_id" field.
 func (_c *ThreadCreate) SetProjectID(v int) *ThreadCreate {
 	_c.mutation.SetProjectID(v)
@@ -149,10 +135,6 @@ func (_c *ThreadCreate) defaults() error {
 		v := thread.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		v := thread.DefaultDeletedAt
-		_c.mutation.SetDeletedAt(v)
-	}
 	return nil
 }
 
@@ -163,9 +145,6 @@ func (_c *ThreadCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Thread.updated_at"`)}
-	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Thread.deleted_at"`)}
 	}
 	if _, ok := _c.mutation.ProjectID(); !ok {
 		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "Thread.project_id"`)}
@@ -210,10 +189,6 @@ func (_c *ThreadCreate) createSpec() (*Thread, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(thread.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
-	}
-	if value, ok := _c.mutation.DeletedAt(); ok {
-		_spec.SetField(thread.FieldDeletedAt, field.TypeInt, value)
-		_node.DeletedAt = value
 	}
 	if value, ok := _c.mutation.ThreadID(); ok {
 		_spec.SetField(thread.FieldThreadID, field.TypeString, value)
@@ -316,24 +291,6 @@ func (u *ThreadUpsert) UpdateUpdatedAt() *ThreadUpsert {
 	return u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (u *ThreadUpsert) SetDeletedAt(v int) *ThreadUpsert {
-	u.Set(thread.FieldDeletedAt, v)
-	return u
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *ThreadUpsert) UpdateDeletedAt() *ThreadUpsert {
-	u.SetExcluded(thread.FieldDeletedAt)
-	return u
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *ThreadUpsert) AddDeletedAt(v int) *ThreadUpsert {
-	u.Add(thread.FieldDeletedAt, v)
-	return u
-}
-
 // SetThreadID sets the "thread_id" field.
 func (u *ThreadUpsert) SetThreadID(v string) *ThreadUpsert {
 	u.Set(thread.FieldThreadID, v)
@@ -405,27 +362,6 @@ func (u *ThreadUpsertOne) SetUpdatedAt(v time.Time) *ThreadUpsertOne {
 func (u *ThreadUpsertOne) UpdateUpdatedAt() *ThreadUpsertOne {
 	return u.Update(func(s *ThreadUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *ThreadUpsertOne) SetDeletedAt(v int) *ThreadUpsertOne {
-	return u.Update(func(s *ThreadUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *ThreadUpsertOne) AddDeletedAt(v int) *ThreadUpsertOne {
-	return u.Update(func(s *ThreadUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *ThreadUpsertOne) UpdateDeletedAt() *ThreadUpsertOne {
-	return u.Update(func(s *ThreadUpsert) {
-		s.UpdateDeletedAt()
 	})
 }
 
@@ -668,27 +604,6 @@ func (u *ThreadUpsertBulk) SetUpdatedAt(v time.Time) *ThreadUpsertBulk {
 func (u *ThreadUpsertBulk) UpdateUpdatedAt() *ThreadUpsertBulk {
 	return u.Update(func(s *ThreadUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *ThreadUpsertBulk) SetDeletedAt(v int) *ThreadUpsertBulk {
-	return u.Update(func(s *ThreadUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *ThreadUpsertBulk) AddDeletedAt(v int) *ThreadUpsertBulk {
-	return u.Update(func(s *ThreadUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *ThreadUpsertBulk) UpdateDeletedAt() *ThreadUpsertBulk {
-	return u.Update(func(s *ThreadUpsert) {
-		s.UpdateDeletedAt()
 	})
 }
 

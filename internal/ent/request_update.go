@@ -40,27 +40,6 @@ func (_u *RequestUpdate) SetUpdatedAt(v time.Time) *RequestUpdate {
 	return _u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *RequestUpdate) SetDeletedAt(v int) *RequestUpdate {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *RequestUpdate) SetNillableDeletedAt(v *int) *RequestUpdate {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *RequestUpdate) AddDeletedAt(v int) *RequestUpdate {
-	_u.mutation.AddDeletedAt(v)
-	return _u
-}
-
 // SetResponseBody sets the "response_body" field.
 func (_u *RequestUpdate) SetResponseBody(v objects.JSONRawMessage) *RequestUpdate {
 	_u.mutation.SetResponseBody(v)
@@ -315,12 +294,6 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(request.FieldDeletedAt, field.TypeInt, value)
-	}
 	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
 	}
@@ -496,27 +469,6 @@ type RequestUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *RequestUpdateOne) SetUpdatedAt(v time.Time) *RequestUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *RequestUpdateOne) SetDeletedAt(v int) *RequestUpdateOne {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *RequestUpdateOne) SetNillableDeletedAt(v *int) *RequestUpdateOne {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *RequestUpdateOne) AddDeletedAt(v int) *RequestUpdateOne {
-	_u.mutation.AddDeletedAt(v)
 	return _u
 }
 
@@ -803,12 +755,6 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(request.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(request.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)

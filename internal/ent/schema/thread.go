@@ -8,7 +8,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 
-	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -20,7 +19,6 @@ type Thread struct {
 func (Thread) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
-		schematype.SoftDeleteMixin{},
 	}
 }
 
@@ -75,6 +73,7 @@ func (Thread) Annotations() []schema.Annotation {
 func (Thread) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
+			scopes.APIKeyScopeQueryRule(scopes.ScopeWriteRequests),
 			scopes.UserProjectScopeReadRule(scopes.ScopeReadRequests),
 			scopes.OwnerRule(),
 			scopes.UserReadScopeRule(scopes.ScopeReadRequests),

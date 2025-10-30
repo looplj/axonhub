@@ -22,8 +22,6 @@ type Thread struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt int `json:"deleted_at,omitempty"`
 	// Project ID that this thread belongs to
 	ProjectID int `json:"project_id,omitempty"`
 	// Unique thread identifier for this thread
@@ -74,7 +72,7 @@ func (*Thread) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case thread.FieldID, thread.FieldDeletedAt, thread.FieldProjectID:
+		case thread.FieldID, thread.FieldProjectID:
 			values[i] = new(sql.NullInt64)
 		case thread.FieldThreadID:
 			values[i] = new(sql.NullString)
@@ -112,12 +110,6 @@ func (_m *Thread) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
-			}
-		case thread.FieldDeletedAt:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
-			} else if value.Valid {
-				_m.DeletedAt = int(value.Int64)
 			}
 		case thread.FieldProjectID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -182,9 +174,6 @@ func (_m *Thread) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("project_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ProjectID))

@@ -130,7 +130,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		Fields: map[string]*sqlgraph.FieldSpec{
 			request.FieldCreatedAt:      {Type: field.TypeTime, Column: request.FieldCreatedAt},
 			request.FieldUpdatedAt:      {Type: field.TypeTime, Column: request.FieldUpdatedAt},
-			request.FieldDeletedAt:      {Type: field.TypeInt, Column: request.FieldDeletedAt},
 			request.FieldAPIKeyID:       {Type: field.TypeInt, Column: request.FieldAPIKeyID},
 			request.FieldProjectID:      {Type: field.TypeInt, Column: request.FieldProjectID},
 			request.FieldTraceID:        {Type: field.TypeInt, Column: request.FieldTraceID},
@@ -225,7 +224,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		Fields: map[string]*sqlgraph.FieldSpec{
 			thread.FieldCreatedAt: {Type: field.TypeTime, Column: thread.FieldCreatedAt},
 			thread.FieldUpdatedAt: {Type: field.TypeTime, Column: thread.FieldUpdatedAt},
-			thread.FieldDeletedAt: {Type: field.TypeInt, Column: thread.FieldDeletedAt},
 			thread.FieldProjectID: {Type: field.TypeInt, Column: thread.FieldProjectID},
 			thread.FieldThreadID:  {Type: field.TypeString, Column: thread.FieldThreadID},
 		},
@@ -243,7 +241,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		Fields: map[string]*sqlgraph.FieldSpec{
 			trace.FieldCreatedAt: {Type: field.TypeTime, Column: trace.FieldCreatedAt},
 			trace.FieldUpdatedAt: {Type: field.TypeTime, Column: trace.FieldUpdatedAt},
-			trace.FieldDeletedAt: {Type: field.TypeInt, Column: trace.FieldDeletedAt},
 			trace.FieldProjectID: {Type: field.TypeInt, Column: trace.FieldProjectID},
 			trace.FieldTraceID:   {Type: field.TypeString, Column: trace.FieldTraceID},
 			trace.FieldThreadID:  {Type: field.TypeInt, Column: trace.FieldThreadID},
@@ -1523,11 +1520,6 @@ func (f *RequestFilter) WhereUpdatedAt(p entql.TimeP) {
 	f.Where(p.Field(request.FieldUpdatedAt))
 }
 
-// WhereDeletedAt applies the entql int predicate on the deleted_at field.
-func (f *RequestFilter) WhereDeletedAt(p entql.IntP) {
-	f.Where(p.Field(request.FieldDeletedAt))
-}
-
 // WhereAPIKeyID applies the entql int predicate on the api_key_id field.
 func (f *RequestFilter) WhereAPIKeyID(p entql.IntP) {
 	f.Where(p.Field(request.FieldAPIKeyID))
@@ -2080,11 +2072,6 @@ func (f *ThreadFilter) WhereUpdatedAt(p entql.TimeP) {
 	f.Where(p.Field(thread.FieldUpdatedAt))
 }
 
-// WhereDeletedAt applies the entql int predicate on the deleted_at field.
-func (f *ThreadFilter) WhereDeletedAt(p entql.IntP) {
-	f.Where(p.Field(thread.FieldDeletedAt))
-}
-
 // WhereProjectID applies the entql int predicate on the project_id field.
 func (f *ThreadFilter) WhereProjectID(p entql.IntP) {
 	f.Where(p.Field(thread.FieldProjectID))
@@ -2171,11 +2158,6 @@ func (f *TraceFilter) WhereCreatedAt(p entql.TimeP) {
 // WhereUpdatedAt applies the entql time.Time predicate on the updated_at field.
 func (f *TraceFilter) WhereUpdatedAt(p entql.TimeP) {
 	f.Where(p.Field(trace.FieldUpdatedAt))
-}
-
-// WhereDeletedAt applies the entql int predicate on the deleted_at field.
-func (f *TraceFilter) WhereDeletedAt(p entql.IntP) {
-	f.Where(p.Field(trace.FieldDeletedAt))
 }
 
 // WhereProjectID applies the entql int predicate on the project_id field.

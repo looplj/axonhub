@@ -142,7 +142,6 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "source", Type: field.TypeEnum, Enums: []string{"api", "playground", "test"}, Default: "api"},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "format", Type: field.TypeString, Default: "openai/chat_completions"},
@@ -166,31 +165,31 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "requests_api_keys_requests",
-				Columns:    []*schema.Column{RequestsColumns[13]},
+				Columns:    []*schema.Column{RequestsColumns[12]},
 				RefColumns: []*schema.Column{APIKeysColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_channels_requests",
-				Columns:    []*schema.Column{RequestsColumns[14]},
+				Columns:    []*schema.Column{RequestsColumns[13]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_data_storages_requests",
-				Columns:    []*schema.Column{RequestsColumns[15]},
+				Columns:    []*schema.Column{RequestsColumns[14]},
 				RefColumns: []*schema.Column{DataStoragesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_projects_requests",
-				Columns:    []*schema.Column{RequestsColumns[16]},
+				Columns:    []*schema.Column{RequestsColumns[15]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "requests_traces_requests",
-				Columns:    []*schema.Column{RequestsColumns[17]},
+				Columns:    []*schema.Column{RequestsColumns[16]},
 				RefColumns: []*schema.Column{TracesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -199,22 +198,22 @@ var (
 			{
 				Name:    "requests_by_api_key_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[13]},
+				Columns: []*schema.Column{RequestsColumns[12]},
 			},
 			{
 				Name:    "requests_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[16]},
+				Columns: []*schema.Column{RequestsColumns[15]},
 			},
 			{
 				Name:    "requests_by_channel_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[14]},
+				Columns: []*schema.Column{RequestsColumns[13]},
 			},
 			{
 				Name:    "requests_by_trace_id",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[17]},
+				Columns: []*schema.Column{RequestsColumns[16]},
 			},
 			{
 				Name:    "requests_by_created_at",
@@ -224,7 +223,7 @@ var (
 			{
 				Name:    "requests_by_status",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[11]},
+				Columns: []*schema.Column{RequestsColumns[10]},
 			},
 		},
 	}
@@ -341,7 +340,6 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "thread_id", Type: field.TypeString, Unique: true},
 		{Name: "project_id", Type: field.TypeInt},
 	}
@@ -353,7 +351,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "threads_projects_threads",
-				Columns:    []*schema.Column{ThreadsColumns[5]},
+				Columns:    []*schema.Column{ThreadsColumns[4]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -362,12 +360,12 @@ var (
 			{
 				Name:    "threads_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{ThreadsColumns[5]},
+				Columns: []*schema.Column{ThreadsColumns[4]},
 			},
 			{
 				Name:    "threads_by_thread_id",
 				Unique:  true,
-				Columns: []*schema.Column{ThreadsColumns[4]},
+				Columns: []*schema.Column{ThreadsColumns[3]},
 			},
 		},
 	}
@@ -376,7 +374,6 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "trace_id", Type: field.TypeString, Unique: true},
 		{Name: "project_id", Type: field.TypeInt},
 		{Name: "thread_id", Type: field.TypeInt, Nullable: true},
@@ -389,13 +386,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "traces_projects_traces",
-				Columns:    []*schema.Column{TracesColumns[5]},
+				Columns:    []*schema.Column{TracesColumns[4]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "traces_threads_traces",
-				Columns:    []*schema.Column{TracesColumns[6]},
+				Columns:    []*schema.Column{TracesColumns[5]},
 				RefColumns: []*schema.Column{ThreadsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -404,17 +401,17 @@ var (
 			{
 				Name:    "traces_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{TracesColumns[5]},
+				Columns: []*schema.Column{TracesColumns[4]},
 			},
 			{
 				Name:    "traces_by_trace_id",
 				Unique:  true,
-				Columns: []*schema.Column{TracesColumns[4]},
+				Columns: []*schema.Column{TracesColumns[3]},
 			},
 			{
 				Name:    "traces_by_thread_id",
 				Unique:  false,
-				Columns: []*schema.Column{TracesColumns[6]},
+				Columns: []*schema.Column{TracesColumns[5]},
 			},
 		},
 	}

@@ -2106,11 +2106,6 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldUpdatedAt)
 				fieldSeen[request.FieldUpdatedAt] = struct{}{}
 			}
-		case "deletedAt":
-			if _, ok := fieldSeen[request.FieldDeletedAt]; !ok {
-				selectedFields = append(selectedFields, request.FieldDeletedAt)
-				fieldSeen[request.FieldDeletedAt] = struct{}{}
-			}
 		case "apiKeyID":
 			if _, ok := fieldSeen[request.FieldAPIKeyID]; !ok {
 				selectedFields = append(selectedFields, request.FieldAPIKeyID)
@@ -3003,11 +2998,6 @@ func (_q *ThreadQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 				selectedFields = append(selectedFields, thread.FieldUpdatedAt)
 				fieldSeen[thread.FieldUpdatedAt] = struct{}{}
 			}
-		case "deletedAt":
-			if _, ok := fieldSeen[thread.FieldDeletedAt]; !ok {
-				selectedFields = append(selectedFields, thread.FieldDeletedAt)
-				fieldSeen[thread.FieldDeletedAt] = struct{}{}
-			}
 		case "projectID":
 			if _, ok := fieldSeen[thread.FieldProjectID]; !ok {
 				selectedFields = append(selectedFields, thread.FieldProjectID)
@@ -3230,11 +3220,6 @@ func (_q *TraceQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 			if _, ok := fieldSeen[trace.FieldUpdatedAt]; !ok {
 				selectedFields = append(selectedFields, trace.FieldUpdatedAt)
 				fieldSeen[trace.FieldUpdatedAt] = struct{}{}
-			}
-		case "deletedAt":
-			if _, ok := fieldSeen[trace.FieldDeletedAt]; !ok {
-				selectedFields = append(selectedFields, trace.FieldDeletedAt)
-				fieldSeen[trace.FieldDeletedAt] = struct{}{}
 			}
 		case "projectID":
 			if _, ok := fieldSeen[trace.FieldProjectID]; !ok {

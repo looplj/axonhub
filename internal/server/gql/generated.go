@@ -382,7 +382,6 @@ type ComplexityRoot struct {
 		CreatedAt      func(childComplexity int) int
 		DataStorage    func(childComplexity int) int
 		DataStorageID  func(childComplexity int) int
-		DeletedAt      func(childComplexity int) int
 		Executions     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestExecutionOrder, where *ent.RequestExecutionWhereInput) int
 		ExternalID     func(childComplexity int) int
 		Format         func(childComplexity int) int
@@ -557,7 +556,6 @@ type ComplexityRoot struct {
 
 	Thread struct {
 		CreatedAt func(childComplexity int) int
-		DeletedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Project   func(childComplexity int) int
 		ProjectID func(childComplexity int) int
@@ -598,7 +596,6 @@ type ComplexityRoot struct {
 
 	Trace struct {
 		CreatedAt func(childComplexity int) int
-		DeletedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Project   func(childComplexity int) int
 		ProjectID func(childComplexity int) int
@@ -2634,13 +2631,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Request.DataStorageID(childComplexity), true
 
-	case "Request.deletedAt":
-		if e.complexity.Request.DeletedAt == nil {
-			break
-		}
-
-		return e.complexity.Request.DeletedAt(childComplexity), true
-
 	case "Request.executions":
 		if e.complexity.Request.Executions == nil {
 			break
@@ -3391,13 +3381,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Thread.CreatedAt(childComplexity), true
 
-	case "Thread.deletedAt":
-		if e.complexity.Thread.DeletedAt == nil {
-			break
-		}
-
-		return e.complexity.Thread.DeletedAt(childComplexity), true
-
 	case "Thread.id":
 		if e.complexity.Thread.ID == nil {
 			break
@@ -3577,13 +3560,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Trace.CreatedAt(childComplexity), true
-
-	case "Trace.deletedAt":
-		if e.complexity.Trace.DeletedAt == nil {
-			break
-		}
-
-		return e.complexity.Trace.DeletedAt(childComplexity), true
 
 	case "Trace.id":
 		if e.complexity.Trace.ID == nil {
@@ -17048,50 +17024,6 @@ func (ec *executionContext) fieldContext_Request_updatedAt(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Request_deletedAt(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Request_deletedAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DeletedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Request_deletedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Request",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Request_apiKeyID(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Request_apiKeyID(ctx, field)
 	if err != nil {
@@ -17876,8 +17808,6 @@ func (ec *executionContext) fieldContext_Request_trace(_ context.Context, field 
 				return ec.fieldContext_Trace_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Trace_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_Trace_deletedAt(ctx, field)
 			case "projectID":
 				return ec.fieldContext_Trace_projectID(ctx, field)
 			case "traceID":
@@ -18350,8 +18280,6 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Request_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_Request_deletedAt(ctx, field)
 			case "apiKeyID":
 				return ec.fieldContext_Request_apiKeyID(ctx, field)
 			case "projectID":
@@ -19135,8 +19063,6 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Request_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_Request_deletedAt(ctx, field)
 			case "apiKeyID":
 				return ec.fieldContext_Request_apiKeyID(ctx, field)
 			case "projectID":
@@ -22478,50 +22404,6 @@ func (ec *executionContext) fieldContext_Thread_updatedAt(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Thread_deletedAt(ctx context.Context, field graphql.CollectedField, obj *ent.Thread) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Thread_deletedAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DeletedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Thread_deletedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Thread",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Thread_projectID(ctx context.Context, field graphql.CollectedField, obj *ent.Thread) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Thread_projectID(ctx, field)
 	if err != nil {
@@ -22936,8 +22818,6 @@ func (ec *executionContext) fieldContext_ThreadEdge_node(_ context.Context, fiel
 				return ec.fieldContext_Thread_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Thread_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_Thread_deletedAt(ctx, field)
 			case "projectID":
 				return ec.fieldContext_Thread_projectID(ctx, field)
 			case "threadID":
@@ -23701,50 +23581,6 @@ func (ec *executionContext) fieldContext_Trace_updatedAt(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Trace_deletedAt(ctx context.Context, field graphql.CollectedField, obj *ent.Trace) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Trace_deletedAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DeletedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Trace_deletedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Trace",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Trace_projectID(ctx context.Context, field graphql.CollectedField, obj *ent.Trace) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Trace_projectID(ctx, field)
 	if err != nil {
@@ -23992,8 +23828,6 @@ func (ec *executionContext) fieldContext_Trace_thread(_ context.Context, field g
 				return ec.fieldContext_Thread_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Thread_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_Thread_deletedAt(ctx, field)
 			case "projectID":
 				return ec.fieldContext_Thread_projectID(ctx, field)
 			case "threadID":
@@ -24259,8 +24093,6 @@ func (ec *executionContext) fieldContext_TraceEdge_node(_ context.Context, field
 				return ec.fieldContext_Trace_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Trace_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_Trace_deletedAt(ctx, field)
 			case "projectID":
 				return ec.fieldContext_Trace_projectID(ctx, field)
 			case "traceID":
@@ -25184,8 +25016,6 @@ func (ec *executionContext) fieldContext_UsageLog_request(_ context.Context, fie
 				return ec.fieldContext_Request_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Request_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_Request_deletedAt(ctx, field)
 			case "apiKeyID":
 				return ec.fieldContext_Request_apiKeyID(ctx, field)
 			case "projectID":
@@ -35421,7 +35251,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -35649,62 +35479,6 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.UpdatedAtLTE = data
-		case "deletedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAt"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAt = data
-		case "deletedAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNEQ = data
-		case "deletedAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtIn = data
-		case "deletedAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNotIn = data
-		case "deletedAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGT = data
-		case "deletedAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGTE = data
-		case "deletedAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLT = data
-		case "deletedAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLTE = data
 		case "apiKeyID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyID"))
 			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -37681,7 +37455,7 @@ func (ec *executionContext) unmarshalInputThreadWhereInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "threadID", "threadIDNEQ", "threadIDIn", "threadIDNotIn", "threadIDGT", "threadIDGTE", "threadIDLT", "threadIDLTE", "threadIDContains", "threadIDHasPrefix", "threadIDHasSuffix", "threadIDEqualFold", "threadIDContainsFold", "hasProject", "hasProjectWith", "hasTraces", "hasTracesWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "threadID", "threadIDNEQ", "threadIDIn", "threadIDNotIn", "threadIDGT", "threadIDGTE", "threadIDLT", "threadIDLTE", "threadIDContains", "threadIDHasPrefix", "threadIDHasSuffix", "threadIDEqualFold", "threadIDContainsFold", "hasProject", "hasProjectWith", "hasTraces", "hasTracesWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -37909,62 +37683,6 @@ func (ec *executionContext) unmarshalInputThreadWhereInput(ctx context.Context, 
 				return it, err
 			}
 			it.UpdatedAtLTE = data
-		case "deletedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAt"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAt = data
-		case "deletedAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNEQ = data
-		case "deletedAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtIn = data
-		case "deletedAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNotIn = data
-		case "deletedAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGT = data
-		case "deletedAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGTE = data
-		case "deletedAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLT = data
-		case "deletedAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLTE = data
 		case "projectID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectID"))
 			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -38179,7 +37897,7 @@ func (ec *executionContext) unmarshalInputTraceWhereInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDGT", "traceIDGTE", "traceIDLT", "traceIDLTE", "traceIDContains", "traceIDHasPrefix", "traceIDHasSuffix", "traceIDEqualFold", "traceIDContainsFold", "threadID", "threadIDNEQ", "threadIDIn", "threadIDNotIn", "threadIDIsNil", "threadIDNotNil", "hasProject", "hasProjectWith", "hasThread", "hasThreadWith", "hasRequests", "hasRequestsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDGT", "traceIDGTE", "traceIDLT", "traceIDLTE", "traceIDContains", "traceIDHasPrefix", "traceIDHasSuffix", "traceIDEqualFold", "traceIDContainsFold", "threadID", "threadIDNEQ", "threadIDIn", "threadIDNotIn", "threadIDIsNil", "threadIDNotNil", "hasProject", "hasProjectWith", "hasThread", "hasThreadWith", "hasRequests", "hasRequestsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -38407,62 +38125,6 @@ func (ec *executionContext) unmarshalInputTraceWhereInput(ctx context.Context, o
 				return it, err
 			}
 			it.UpdatedAtLTE = data
-		case "deletedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAt"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAt = data
-		case "deletedAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNEQ = data
-		case "deletedAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtIn = data
-		case "deletedAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNotIn = data
-		case "deletedAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGT = data
-		case "deletedAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGTE = data
-		case "deletedAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLT = data
-		case "deletedAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLTE = data
 		case "projectID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectID"))
 			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -46279,11 +45941,6 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "deletedAt":
-			out.Values[i] = ec._Request_deletedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "apiKeyID":
 			field := field
 
@@ -48520,11 +48177,6 @@ func (ec *executionContext) _Thread(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "deletedAt":
-			out.Values[i] = ec._Thread_deletedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "projectID":
 			field := field
 
@@ -48935,11 +48587,6 @@ func (ec *executionContext) _Trace(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Trace_updatedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "deletedAt":
-			out.Values[i] = ec._Trace_deletedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

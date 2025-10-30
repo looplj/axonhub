@@ -6,6 +6,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/log"
 )
 
 type ThreadService struct{}
@@ -47,6 +48,8 @@ func (s *ThreadService) GetOrCreateThread(ctx context.Context, projectID int, th
 	if err != nil {
 		return nil, fmt.Errorf("failed to create thread: %w", err)
 	}
+
+	log.Debug(ctx, "created new thread", log.String("thread_id", threadID), log.Int("project_id", projectID))
 
 	return newThread, nil
 }

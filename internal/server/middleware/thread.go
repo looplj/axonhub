@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/tracing"
 )
@@ -27,7 +28,6 @@ func WithThread(config tracing.Config, threadService *biz.ThreadService) gin.Han
 		// Get project ID from context
 		projectID, ok := contexts.GetProjectID(c.Request.Context())
 		if !ok {
-			// If no project ID in context, skip thread creation
 			c.Next()
 			return
 		}
@@ -35,8 +35,9 @@ func WithThread(config tracing.Config, threadService *biz.ThreadService) gin.Han
 		// Get or create thread (errors are logged but don't block the request)
 		thread, err := threadService.GetOrCreateThread(c.Request.Context(), projectID, threadID)
 		if err != nil {
-			// Log error but continue - thread is optional
+			log.Warn(c.Request.Context(), "failed to get or create thread", log.String("thread_id", threadID), log.Int("project_id", projectID), log.Cause(err))
 			c.Next()
+
 			return
 		}
 
