@@ -81,14 +81,5 @@ func (v *V0_4_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
 	// Set initialized flag to true.
 	log.Info(ctx, "saved the default data storage ID")
 
-	// Set system version to v0.4.0
-	_, err = ent.FromContext(ctx).System.Create().
-		SetKey(biz.SystemKeyVersion).
-		SetValue("v0.4.0").
-		Save(ctx)
-	if err != nil {
-		return err
-	}
-
 	return tx.Commit()
 }

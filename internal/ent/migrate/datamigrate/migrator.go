@@ -3,6 +3,7 @@ package datamigrate
 import (
 	"context"
 
+	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -112,6 +113,18 @@ func (m *Migrator) Run(ctx context.Context) error {
 		}
 
 		log.Info(ctx, "completed migration", log.String("version", version))
+	}
+
+	// Set system version if newer or unset.
+	currentVersion, err := m.systemService.Version(ctx)
+	if err != nil {
+		return err
+	}
+
+	if currentVersion == "" || currentVersion < build.Version {
+		if err := m.systemService.SetVersion(ctx, build.Version); err != nil {
+			return err
+		}
 	}
 
 	return nil

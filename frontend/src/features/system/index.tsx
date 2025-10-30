@@ -1,29 +1,35 @@
 'use client'
 
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { Search } from '@/components/search'
 import { SystemSettingsTabs } from './components/tabs'
 import SystemProvider from './context/system-context'
 
-function SystemContent() {
+type SystemTabKey = 'brand' | 'storage' | 'retry'
+
+interface SystemContentProps {
+  initialTab?: SystemTabKey
+}
+
+function SystemContent({ initialTab }: SystemContentProps) {
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-      <SystemSettingsTabs />
+      <SystemSettingsTabs initialTab={initialTab} />
     </div>
   )
 }
 
-export default function SystemManagement() {
+interface SystemManagementProps {
+  initialTab?: SystemTabKey
+}
+
+export default function SystemManagement({ initialTab }: SystemManagementProps) {
   const { t } = useTranslation()
   
   return (
     <SystemProvider>
-      <Header fixed>
-        {/* <Search /> */}
-      </Header>
+      <Header fixed></Header>
 
       <Main>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
@@ -34,7 +40,7 @@ export default function SystemManagement() {
             </p>
           </div>
         </div>
-        <SystemContent />
+        <SystemContent initialTab={initialTab} />
       </Main>
     </SystemProvider>
   )

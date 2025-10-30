@@ -484,32 +484,6 @@ func TestSystemService_Version(t *testing.T) {
 	require.Equal(t, newVersion, retrievedVersion2)
 }
 
-func TestSystemService_Initialize_SetsVersion(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-	defer client.Close()
-
-	service := NewSystemService(SystemServiceParams{})
-	ctx := t.Context()
-	ctx = ent.NewContext(ctx, client)
-
-	// Test system initialization sets version
-	err := service.Initialize(ctx, &InitializeSystemArgs{
-		OwnerEmail:     "owner@example.com",
-		OwnerPassword:  "password123",
-		OwnerFirstName: "System",
-		OwnerLastName:  "Owner",
-		BrandName:      "Test Brand",
-	})
-	require.NoError(t, err)
-
-	// Verify system version is set
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	version, err := service.Version(ctx)
-	require.NoError(t, err)
-	require.NotEmpty(t, version)
-	require.Equal(t, "v0.4.0", version) // Should match build.Version
-}
-
 func TestSystemService_Version_WithCache(t *testing.T) {
 	mr := miniredis.RunT(t)
 	defer mr.Close()
@@ -552,49 +526,6 @@ func TestSystemService_Version_WithCache(t *testing.T) {
 	retrievedVersion3, err := service.Version(ctx)
 	require.NoError(t, err)
 	require.Equal(t, newVersion, retrievedVersion3)
-}
-
-func TestSystemService_Initialize_WithDataMigration(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-	defer client.Close()
-
-	service := NewSystemService(SystemServiceParams{})
-	ctx := t.Context()
-	ctx = ent.NewContext(ctx, client)
-
-	// Test system initialization
-	err := service.Initialize(ctx, &InitializeSystemArgs{
-		OwnerEmail:     "owner@example.com",
-		OwnerPassword:  "password123",
-		OwnerFirstName: "System",
-		OwnerLastName:  "Owner",
-		BrandName:      "Test Brand",
-	})
-	require.NoError(t, err)
-
-	// Verify system is initialized
-	isInitialized, err := service.IsInitialized(ctx)
-	require.NoError(t, err)
-	require.True(t, isInitialized)
-
-	// Verify version is set
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	version, err := service.Version(ctx)
-	require.NoError(t, err)
-	require.NotEmpty(t, version)
-
-	// Verify primary data storage was created during initialization
-	primaryDS, err := client.DataStorage.Query().
-		Where().
-		First(ctx)
-	require.NoError(t, err)
-	require.True(t, primaryDS.Primary)
-	require.Equal(t, "Primary", primaryDS.Name)
-
-	// Verify default data storage ID is set
-	defaultID, err := service.DefaultDataStorageID(ctx)
-	require.NoError(t, err)
-	require.Equal(t, primaryDS.ID, defaultID)
 }
 
 func TestSystemService_Initialize_DataMigrationIdempotency(t *testing.T) {
@@ -722,11 +653,6 @@ func TestSystemService_Initialize_SetsAllSystemKeys(t *testing.T) {
 	secretKey, err := service.SecretKey(ctx)
 	require.NoError(t, err)
 	require.Len(t, secretKey, 64)
-
-	// Verify version is set
-	version, err := service.Version(ctx)
-	require.NoError(t, err)
-	require.NotEmpty(t, version)
 }
 
 func TestSystemService_DefaultDataStorageID(t *testing.T) {

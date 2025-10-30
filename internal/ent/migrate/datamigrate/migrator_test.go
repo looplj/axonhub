@@ -7,7 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/migrate/datamigrate"
 	"github.com/looplj/axonhub/internal/ent/privacy"
@@ -326,4 +328,51 @@ func TestMigrator_IntegrationTest(t *testing.T) {
 	isInitialized, err := systemService.IsInitialized(ctx)
 	require.NoError(t, err)
 	assert.True(t, isInitialized)
+}
+
+func TestMigrator_UpgradeFromV0_3_0(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Simulate an already initialized system on v0.3.0 without primary data storage
+	_, err := client.System.Create().
+		SetKey(biz.SystemKeyInitialized).
+		SetValue("true").
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.System.Create().
+		SetKey(biz.SystemKeyVersion).
+		SetValue("v0.3.0").
+		Save(ctx)
+	require.NoError(t, err)
+
+	migrator := datamigrate.NewMigrator(client)
+	err = migrator.Run(ctx)
+	require.NoError(t, err)
+
+	primaryCount, err := client.DataStorage.Query().
+		Where(datastorage.Primary(true)).
+		Count(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, primaryCount)
+
+	primaryDS, err := client.DataStorage.Query().
+		Where(datastorage.Primary(true)).
+		Only(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, "Primary", primaryDS.Name)
+
+	systemService := biz.NewSystemService(biz.SystemServiceParams{})
+	defaultID, err := systemService.DefaultDataStorageID(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, primaryDS.ID, defaultID)
+
+	version, err := systemService.Version(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, build.Version, version)
 }

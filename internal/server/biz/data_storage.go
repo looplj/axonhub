@@ -362,7 +362,11 @@ func (s *DataStorageService) createS3Fs(ctx context.Context, s3Config *objects.S
 		}
 	})
 
-	return s3fs.NewFsFromClient(s3Config.BucketName, client), nil
+	baseFs := s3fs.NewFsFromClient(s3Config.BucketName, client)
+
+	cachedFs := afero.NewCacheOnReadFs(baseFs, afero.NewMemMapFs(), 5*time.Minute)
+
+	return cachedFs, nil
 }
 
 // createGcsFs creates a GCS filesystem using the afero gcsfs adapter.
@@ -385,7 +389,11 @@ func (s *DataStorageService) createGcsFs(ctx context.Context, gcsConfig *objects
 		return nil, fmt.Errorf("failed to create GCS filesystem: %w", err)
 	}
 
-	return afero.NewBasePathFs(fs, gcsConfig.BucketName), nil
+	basePathFs := afero.NewBasePathFs(fs, gcsConfig.BucketName)
+
+	cachedFs := afero.NewCacheOnReadFs(basePathFs, afero.NewMemMapFs(), 5*time.Minute)
+
+	return cachedFs, nil
 }
 
 // GetFileSystem returns an afero.Fs for the given data storage.

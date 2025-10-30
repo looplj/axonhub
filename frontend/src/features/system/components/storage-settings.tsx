@@ -142,15 +142,15 @@ export function StorageSettings() {
       {/* Data Storage Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('system.storage.dataStorage.title', '默认数据存储')}</CardTitle>
+          <CardTitle>{t('system.storage.dataStorage.title')}</CardTitle>
           <CardDescription>
-            {t('system.storage.dataStorage.description', '选择用于存储请求和响应数据的默认存储位置')}
+            {t('system.storage.dataStorage.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className='space-y-4'>
           <div className='grid gap-2'>
             <Label htmlFor='default-data-storage'>
-              {t('system.storage.dataStorage.label', '数据存储')}
+              {t('system.storage.dataStorage.label')}
             </Label>
             <Select
               value={selectedDataStorageID}
@@ -158,7 +158,7 @@ export function StorageSettings() {
               disabled={isLoading}
             >
               <SelectTrigger id='default-data-storage'>
-                <SelectValue placeholder={t('system.storage.dataStorage.placeholder', '选择数据存储')} />
+                <SelectValue placeholder={t('system.storage.dataStorage.placeholder')} />
               </SelectTrigger>
               <SelectContent>
                 {dataStorages?.edges?.map((edge) => (
@@ -224,10 +224,10 @@ export function StorageSettings() {
           <div className='flex items-center justify-between'>
             <div className='space-y-0.5'>
               <Label htmlFor='storage-policy-store-request-body'>
-                {t('system.storage.policy.storeRequestBody.label', 'Store request body')}
+                {t('system.storage.policy.storeRequestBody.label')}
               </Label>
               <div className='text-muted-foreground text-sm'>
-                {t('system.storage.policy.storeRequestBody.description', 'If disabled, original request body will not be persisted.')}
+                {t('system.storage.policy.storeRequestBody.description')}
               </div>
             </div>
             <Switch
@@ -244,10 +244,10 @@ export function StorageSettings() {
           <div className='flex items-center justify-between'>
             <div className='space-y-0.5'>
               <Label htmlFor='storage-policy-store-response-body'>
-                {t('system.storage.policy.storeResponseBody.label', 'Store response body')}
+                {t('system.storage.policy.storeResponseBody.label')}
               </Label>
               <div className='text-muted-foreground text-sm'>
-                {t('system.storage.policy.storeResponseBody.description', 'If disabled, final response body will not be persisted.')}
+                {t('system.storage.policy.storeResponseBody.description')}
               </div>
             </div>
             <Switch
@@ -269,7 +269,7 @@ export function StorageSettings() {
               <div key={option.resourceType} className='flex flex-col gap-4 rounded-lg border p-4'>
                 <div className='flex items-center justify-between'>
                   <div className='font-medium'>
-                    {t(`system.storage.policy.resourceTypes.${option.resourceType}`) || option.resourceType}
+                    {t(`system.storage.policy.resourceTypes.${option.resourceType}`)}
                   </div>
                   <Switch
                     checked={option.enabled}

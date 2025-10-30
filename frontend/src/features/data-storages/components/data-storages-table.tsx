@@ -60,7 +60,7 @@ export function DataStoragesTable({
     <div className='space-y-4'>
       <div className='flex items-center gap-2'>
         <Input
-          placeholder={t('dataStorages.filters.searchByName', '按名称搜索...')}
+          placeholder={t('dataStorages.filters.searchByName')}
           value={nameFilter}
           onChange={(e) => onNameFilterChange(e.target.value)}
           className='max-w-sm'

@@ -857,7 +857,7 @@
       "s3": "S3",
       "gcs": "GCS"
     },
-    "primary": "Primary Storage",
+    "primary": "Primary",
     "actions": {
       "edit": "Edit",
       "delete": "Delete"
@@ -928,17 +928,38 @@
     "validation": {
       "nameRequired": "Name is required",
       "directoryRequired": "Directory path is required",
-      "typeRequired": "Storage type is required"
+      "typeRequired": "Storage type is required",
+      "s3BucketRequired": "S3 bucket name is required",
+      "s3AccessKeyRequired": "S3 access key is required",
+      "s3SecretKeyRequired": "S3 secret key is required",
+      "gcsBucketRequired": "GCS bucket name is required",
+      "gcsCredentialRequired": "GCS service account JSON is required"
+    },
+    "fields": {
+      "name": "Name",
+      "description": "Description",
+      "type": "Type",
+      "directory": "Directory Path",
+      "s3BucketName": "Bucket Name",
+      "s3Endpoint": "Endpoint (optional)",
+      "s3Region": "Region (optional)",
+      "s3AccessKey": "Access Key",
+      "s3SecretKey": "Secret Key",
+      "gcsBucketName": "Bucket Name",
+      "gcsCredential": "Service Account JSON"
     },
     "buttons": {
       "create": "Create Data Storage",
       "edit": "Edit",
       "delete": "Delete",
       "activate": "Activate",
-      "archive": "Archive"
-    }
+      "archive": "Archive",
+      "openStorageSettings": "Storage Settings"
+    },
+    "llmStorageHint": "Can be used to configure storage for LLM request and response bodies"
   },
   "system": {
+    "title": "System Settings",
     "description": "Manage system configurations and options.",
     "loading": "Loading system settings...",
     "tabs": {
@@ -1020,7 +1041,16 @@
       }
     },
     "buttons": {
-      "save": "Save Settings"
+      "save": "Save Settings",
+      "saving": "Saving..."
+    },
+    "storage": {
+      "dataStorage": {
+        "title": "Default Data Storage",
+        "description": "Select the default storage location for storing request and response data",
+        "label": "Data Storage",
+        "placeholder": "Select data storage"
+      }
     }
   },
   "requests": {

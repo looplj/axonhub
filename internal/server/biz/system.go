@@ -225,16 +225,16 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 
 	log.Info(ctx, "created primary data storage", zap.Int("data_storage_id", primaryDataStorage.ID))
 
-	// Set system version.
-	err = s.setSystemValue(ctx, SystemKeyVersion, build.Version)
-	if err != nil {
-		return fmt.Errorf("failed to set system version: %w", err)
-	}
-
 	// Set initialized flag to true.
 	err = s.setSystemValue(ctx, SystemKeyInitialized, "true")
 	if err != nil {
 		return fmt.Errorf("failed to set initialized flag: %w", err)
+	}
+
+	// Record current build version for initialized system.
+	err = s.SetVersion(ctx, build.Version)
+	if err != nil {
+		return fmt.Errorf("failed to set system version: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
