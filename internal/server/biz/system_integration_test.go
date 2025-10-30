@@ -16,13 +16,13 @@ func TestSystemService_Initialize(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
+	ctx := ent.NewContext(t.Context(), client)
+
 	migrator := datamigrate.NewMigrator(client)
-	err := migrator.Run(t.Context())
+	err := migrator.Run(ctx)
 	require.NoError(t, err)
 
 	service := biz.NewSystemService(biz.SystemServiceParams{})
-	ctx := t.Context()
-	ctx = ent.NewContext(ctx, client)
 
 	// Test system initialization with auto-generated secret key
 	err = service.Initialize(ctx, &biz.InitializeSystemArgs{
@@ -90,4 +90,21 @@ func TestSystemService_Initialize(t *testing.T) {
 	projectCount, err := client.Project.Query().Count(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, projectCount)
+
+	version, err := service.Version(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, version)
+
+	// Verify primary data storage was created during initialization
+	primaryDS, err := client.DataStorage.Query().
+		Where().
+		First(ctx)
+	require.NoError(t, err)
+	require.True(t, primaryDS.Primary)
+	require.Equal(t, "Primary", primaryDS.Name)
+
+	// Verify default data storage ID is set
+	defaultID, err := service.DefaultDataStorageID(ctx)
+	require.NoError(t, err)
+	require.Equal(t, primaryDS.ID, defaultID)
 }

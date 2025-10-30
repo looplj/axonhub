@@ -961,17 +961,38 @@
     "validation": {
       "nameRequired": "名称不能为空",
       "directoryRequired": "目录路径不能为空",
-      "typeRequired": "存储类型不能为空"
+      "typeRequired": "存储类型不能为空",
+      "s3BucketRequired": "Bucket 名称不能为空",
+      "s3AccessKeyRequired": "Access Key 不能为空",
+      "s3SecretKeyRequired": "Secret Key 不能为空",
+      "gcsBucketRequired": "Bucket 名称不能为空",
+      "gcsCredentialRequired": "Service Account JSON 不能为空"
+    },
+    "fields": {
+      "name": "名称",
+      "description": "描述",
+      "type": "类型",
+      "directory": "目录路径",
+      "s3BucketName": "Bucket 名称",
+      "s3Endpoint": "Endpoint (可选)",
+      "s3Region": "Region (可选)",
+      "s3AccessKey": "Access Key",
+      "s3SecretKey": "Secret Key",
+      "gcsBucketName": "Bucket 名称",
+      "gcsCredential": "Service Account JSON"
     },
     "buttons": {
       "create": "创建数据存储",
       "edit": "编辑",
       "delete": "删除",
       "activate": "激活",
-      "archive": "归档"
-    }
+      "archive": "归档",
+      "openStorageSettings": "系统存储配置"
+    },
+    "llmStorageHint": "可用于配置存储 LLM 的请求体和响应体"
   },
   "system": {
+    "title": "系统设置",
     "description": "管理系统配置和选项。",
     "loading": "加载系统设置...",
     "tabs": {
@@ -1053,7 +1074,16 @@
       }
     },
     "buttons": {
-      "save": "保存设置"
+      "save": "保存设置",
+      "saving": "保存中..."
+    },
+    "storage": {
+      "dataStorage": {
+        "title": "默认数据存储",
+        "description": "选择用于存储请求和响应数据的默认存储位置",
+        "label": "数据存储",
+        "placeholder": "选择数据存储"
+      }
     }
   },
   "requests": {

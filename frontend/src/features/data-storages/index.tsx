@@ -117,10 +117,13 @@ export default function DataStoragesManagement() {
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>
-              {t('dataStorages.title', '数据存储管理')}
+              {t('dataStorages.title')}
             </h2>
             <p className='text-muted-foreground'>
-              {t('dataStorages.description', '管理数据存储配置和设置')}
+              {t('dataStorages.description')}
+            </p>
+            <p className='text-sm text-muted-foreground'>
+              {t('dataStorages.llmStorageHint')}
             </p>
           </div>
           <DataStoragesPrimaryButtons />

@@ -7,19 +7,19 @@ import { TFunction } from 'i18next'
 export const createColumns = (t: TFunction): ColumnDef<DataStorage>[] => [
   {
     accessorKey: 'name',
-    header: t('dataStorages.columns.name', '名称'),
+    header: t('dataStorages.columns.name'),
     cell: ({ row }) => {
       return <span className='font-medium'>{row.getValue('name')}</span>
     },
   },
   {
     accessorKey: 'primary',
-    header: t('dataStorages.columns.primary', '主存储'),
+    header: t('dataStorages.columns.primary'),
     cell: ({ row }) => {
       const isPrimary = row.original.primary
       return isPrimary ? (
         <Badge variant='secondary' className='text-xs'>
-          {t('dataStorages.primary', '主存储')}
+          {t('dataStorages.primary')}
         </Badge>
       ) : (
         <span className='text-muted-foreground'>-</span>
@@ -28,7 +28,7 @@ export const createColumns = (t: TFunction): ColumnDef<DataStorage>[] => [
   },
   {
     accessorKey: 'description',
-    header: t('dataStorages.columns.description', '描述'),
+    header: t('dataStorages.columns.description'),
     cell: ({ row }) => {
       const description = row.getValue('description') as string
       return <span className='text-muted-foreground'>{description || '-'}</span>
@@ -36,21 +36,21 @@ export const createColumns = (t: TFunction): ColumnDef<DataStorage>[] => [
   },
   {
     accessorKey: 'type',
-    header: t('dataStorages.columns.type', '类型'),
+    header: t('dataStorages.columns.type'),
     cell: ({ row }) => {
       const type = row.getValue('type') as string
       const typeLabels: Record<string, string> = {
-        database: t('dataStorages.types.database', '数据库'),
-        fs: t('dataStorages.types.fs', '文件系统'),
-        s3: t('dataStorages.types.s3', 'S3'),
-        gcs: t('dataStorages.types.gcs', 'GCS'),
+        database: t('dataStorages.types.database'),
+        fs: t('dataStorages.types.fs'),
+        s3: t('dataStorages.types.s3'),
+        gcs: t('dataStorages.types.gcs'),
       }
       return <Badge variant='outline'>{typeLabels[type] || type}</Badge>
     },
   },
   {
     accessorKey: 'settings',
-    header: t('dataStorages.columns.settings', '配置'),
+    header: t('dataStorages.columns.settings'),
     cell: ({ row }) => {
       const settings = row.getValue('settings') as DataStorage['settings']
       const type = row.original.type
@@ -84,7 +84,7 @@ export const createColumns = (t: TFunction): ColumnDef<DataStorage>[] => [
   },
   {
     accessorKey: 'status',
-    header: t('dataStorages.columns.status', '状态'),
+    header: t('dataStorages.columns.status'),
     cell: ({ row }) => {
       const status = row.getValue('status') as string
       const statusVariants: Record<string, 'default' | 'secondary'> = {
@@ -92,8 +92,8 @@ export const createColumns = (t: TFunction): ColumnDef<DataStorage>[] => [
         archived: 'secondary',
       }
       const statusLabels: Record<string, string> = {
-        active: t('dataStorages.status.active', '活跃'),
-        archived: t('dataStorages.status.archived', '已归档'),
+        active: t('dataStorages.status.active'),
+        archived: t('dataStorages.status.archived'),
       }
       return (
         <Badge variant={statusVariants[status] || 'default'}>
@@ -104,7 +104,7 @@ export const createColumns = (t: TFunction): ColumnDef<DataStorage>[] => [
   },
   {
     id: 'actions',
-    header: t('dataStorages.columns.actions', '操作'),
+    header: t('dataStorages.columns.actions'),
     cell: ({ row }) => <DataStorageActions dataStorage={row.original} />,
   },
 ]

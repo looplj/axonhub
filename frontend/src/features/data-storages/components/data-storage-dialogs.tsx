@@ -239,13 +239,10 @@ export function DataStorageDialogs() {
         <DialogContent className='sm:max-w-[525px]'>
           <DialogHeader>
             <DialogTitle>
-              {t('dataStorages.dialogs.create.title', '创建数据存储')}
+              {t('dataStorages.dialogs.create.title')}
             </DialogTitle>
             <DialogDescription>
-              {t(
-                'dataStorages.dialogs.create.description',
-                '配置新的数据存储位置'
-              )}
+              {t('dataStorages.dialogs.create.description')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(
@@ -260,12 +257,12 @@ export function DataStorageDialogs() {
             <div className='grid gap-4 py-4 max-h-[60vh] overflow-y-auto'>
               <div className='grid gap-2'>
                 <Label htmlFor='create-name'>
-                  {t('dataStorages.fields.name', '名称')}
+                  {t('dataStorages.fields.name')}
                 </Label>
                 <Input
                   id='create-name'
                   {...register('name', {
-                    required: t('dataStorages.validation.nameRequired', '名称不能为空'),
+                    required: t('dataStorages.validation.nameRequired'),
                   })}
                 />
                 {errors.name && (
@@ -277,7 +274,7 @@ export function DataStorageDialogs() {
 
               <div className='grid gap-2'>
                 <Label htmlFor='create-description'>
-                  {t('dataStorages.fields.description', '描述')}
+                  {t('dataStorages.fields.description')}
                 </Label>
                 <Textarea
                   id='create-description'
@@ -288,7 +285,7 @@ export function DataStorageDialogs() {
 
               <div className='grid gap-2'>
                 <Label htmlFor='create-type'>
-                  {t('dataStorages.fields.type', '类型')}
+                  {t('dataStorages.fields.type')}
                 </Label>
                 <Select
                   value={selectedType}
@@ -301,13 +298,13 @@ export function DataStorageDialogs() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='fs'>
-                      {t('dataStorages.types.fs', '文件系统')}
+                      {t('dataStorages.types.fs')}
                     </SelectItem>
                     <SelectItem value='s3'>
-                      {t('dataStorages.types.s3', 'S3')}
+                      {t('dataStorages.types.s3')}
                     </SelectItem>
                     <SelectItem value='gcs'>
-                      {t('dataStorages.types.gcs', 'GCS')}
+                      {t('dataStorages.types.gcs')}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -316,7 +313,7 @@ export function DataStorageDialogs() {
               {selectedType === 'fs' && (
                 <div className='grid gap-2'>
                   <Label htmlFor='create-directory'>
-                    {t('dataStorages.fields.directory', '目录路径')}
+                    {t('dataStorages.fields.directory')}
                   </Label>
                   <Input
                     id='create-directory'
@@ -325,8 +322,7 @@ export function DataStorageDialogs() {
                         // Only validate if the current type is 'fs'
                         if (watch('type') === 'fs' && !value) {
                           return t(
-                            'dataStorages.validation.directoryRequired',
-                            '目录路径不能为空'
+                            'dataStorages.validation.directoryRequired'
                           )
                         }
                         return true
@@ -346,14 +342,14 @@ export function DataStorageDialogs() {
                 <>
                   <div className='grid gap-2'>
                     <Label htmlFor='create-s3-bucket'>
-                      {t('dataStorages.fields.s3BucketName', 'Bucket 名称')}
+                      {t('dataStorages.fields.s3BucketName')}
                     </Label>
                     <Input
                       id='create-s3-bucket'
                       {...register('s3BucketName', {
                         validate: (value) => {
                           if (watch('type') === 's3' && !value) {
-                            return t('dataStorages.validation.s3BucketRequired', 'Bucket 名称不能为空')
+                            return t('dataStorages.validation.s3BucketRequired')
                           }
                           return true
                         },
@@ -366,7 +362,7 @@ export function DataStorageDialogs() {
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='create-s3-endpoint'>
-                      {t('dataStorages.fields.s3Endpoint', 'Endpoint (可选)')}
+                      {t('dataStorages.fields.s3Endpoint')}
                     </Label>
                     <Input
                       id='create-s3-endpoint'
@@ -376,7 +372,7 @@ export function DataStorageDialogs() {
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='create-s3-region'>
-                      {t('dataStorages.fields.s3Region', 'Region (可选)')}
+                      {t('dataStorages.fields.s3Region')}
                     </Label>
                     <Input
                       id='create-s3-region'
@@ -386,14 +382,14 @@ export function DataStorageDialogs() {
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='create-s3-access-key'>
-                      {t('dataStorages.fields.s3AccessKey', 'Access Key')}
+                      {t('dataStorages.fields.s3AccessKey')}
                     </Label>
                     <Input
                       id='create-s3-access-key'
                       {...register('s3AccessKey', {
                         validate: (value) => {
                           if (watch('type') === 's3' && !value) {
-                            return t('dataStorages.validation.s3AccessKeyRequired', 'Access Key 不能为空')
+                            return t('dataStorages.validation.s3AccessKeyRequired')
                           }
                           return true
                         },
@@ -405,7 +401,7 @@ export function DataStorageDialogs() {
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='create-s3-secret-key'>
-                      {t('dataStorages.fields.s3SecretKey', 'Secret Key')}
+                      {t('dataStorages.fields.s3SecretKey')}
                     </Label>
                     <Input
                       id='create-s3-secret-key'
@@ -413,7 +409,7 @@ export function DataStorageDialogs() {
                       {...register('s3SecretKey', {
                         validate: (value) => {
                           if (watch('type') === 's3' && !value) {
-                            return t('dataStorages.validation.s3SecretKeyRequired', 'Secret Key 不能为空')
+                            return t('dataStorages.validation.s3SecretKeyRequired')
                           }
                           return true
                         },
@@ -430,14 +426,14 @@ export function DataStorageDialogs() {
                 <>
                   <div className='grid gap-2'>
                     <Label htmlFor='create-gcs-bucket'>
-                      {t('dataStorages.fields.gcsBucketName', 'Bucket 名称')}
+                      {t('dataStorages.fields.gcsBucketName')}
                     </Label>
                     <Input
                       id='create-gcs-bucket'
                       {...register('gcsBucketName', {
                         validate: (value) => {
                           if (watch('type') === 'gcs' && !value) {
-                            return t('dataStorages.validation.gcsBucketRequired', 'Bucket 名称不能为空')
+                            return t('dataStorages.validation.gcsBucketRequired')
                           }
                           return true
                         },
@@ -450,14 +446,14 @@ export function DataStorageDialogs() {
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='create-gcs-credential'>
-                      {t('dataStorages.fields.gcsCredential', 'Service Account JSON')}
+                      {t('dataStorages.fields.gcsCredential')}
                     </Label>
                     <Textarea
                       id='create-gcs-credential'
                       {...register('gcsCredential', {
                         validate: (value) => {
                           if (watch('type') === 'gcs' && !value) {
-                            return t('dataStorages.validation.gcsCredentialRequired', 'Service Account JSON 不能为空')
+                            return t('dataStorages.validation.gcsCredentialRequired')
                           }
                           return true
                         },
@@ -506,13 +502,10 @@ export function DataStorageDialogs() {
         <DialogContent className='sm:max-w-[525px]'>
           <DialogHeader>
             <DialogTitle>
-              {t('dataStorages.dialogs.edit.title', '编辑数据存储')}
+              {t('dataStorages.dialogs.edit.title')}
             </DialogTitle>
             <DialogDescription>
-              {t(
-                'dataStorages.dialogs.edit.description',
-                '修改数据存储配置'
-              )}
+              {t('dataStorages.dialogs.edit.description')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(
@@ -527,12 +520,12 @@ export function DataStorageDialogs() {
             <div className='grid gap-4 py-4 max-h-[60vh] overflow-y-auto'>
               <div className='grid gap-2'>
                 <Label htmlFor='edit-name'>
-                  {t('dataStorages.fields.name', '名称')}
+                  {t('dataStorages.fields.name')}
                 </Label>
                 <Input
                   id='edit-name'
                   {...register('name', {
-                    required: t('dataStorages.validation.nameRequired', '名称不能为空'),
+                    required: t('dataStorages.validation.nameRequired'),
                   })}
                 />
                 {errors.name && (
@@ -544,7 +537,7 @@ export function DataStorageDialogs() {
 
               <div className='grid gap-2'>
                 <Label htmlFor='edit-description'>
-                  {t('dataStorages.fields.description', '描述')}
+                  {t('dataStorages.fields.description')}
                 </Label>
                 <Textarea
                   id='edit-description'
@@ -556,7 +549,7 @@ export function DataStorageDialogs() {
               {selectedType === 'fs' && (
                 <div className='grid gap-2'>
                   <Label htmlFor='edit-directory'>
-                    {t('dataStorages.fields.directory', '目录路径')}
+                    {t('dataStorages.fields.directory')}
                   </Label>
                   <Input
                     id='edit-directory'
@@ -565,8 +558,7 @@ export function DataStorageDialogs() {
                         // Only validate if the current type is 'fs'
                         if (watch('type') === 'fs' && !value) {
                           return t(
-                            'dataStorages.validation.directoryRequired',
-                            '目录路径不能为空'
+                            'dataStorages.validation.directoryRequired'
                           )
                         }
                         return true
@@ -586,14 +578,14 @@ export function DataStorageDialogs() {
                 <>
                   <div className='grid gap-2'>
                     <Label htmlFor='edit-s3-bucket'>
-                      {t('dataStorages.fields.s3BucketName', 'Bucket 名称')}
+                      {t('dataStorages.fields.s3BucketName')}
                     </Label>
                     <Input
                       id='edit-s3-bucket'
                       {...register('s3BucketName', {
                         validate: (value) => {
                           if (watch('type') === 's3' && !value) {
-                            return t('dataStorages.validation.s3BucketRequired', 'Bucket 名称不能为空')
+                            return t('dataStorages.validation.s3BucketRequired')
                           }
                           return true
                         },
@@ -606,7 +598,7 @@ export function DataStorageDialogs() {
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='edit-s3-endpoint'>
-                      {t('dataStorages.fields.s3Endpoint', 'Endpoint (可选)')}
+                      {t('dataStorages.fields.s3Endpoint')}
                     </Label>
                     <Input
                       id='edit-s3-endpoint'
@@ -616,7 +608,7 @@ export function DataStorageDialogs() {
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='edit-s3-region'>
-                      {t('dataStorages.fields.s3Region', 'Region (可选)')}
+                      {t('dataStorages.fields.s3Region')}
                     </Label>
                     <Input
                       id='edit-s3-region'
@@ -626,14 +618,14 @@ export function DataStorageDialogs() {
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='edit-s3-access-key'>
-                      {t('dataStorages.fields.s3AccessKey', 'Access Key')}
+                      {t('dataStorages.fields.s3AccessKey')}
                     </Label>
                     <Input
                       id='edit-s3-access-key'
                       {...register('s3AccessKey', {
                         validate: (value) => {
                           if (watch('type') === 's3' && !value) {
-                            return t('dataStorages.validation.s3AccessKeyRequired', 'Access Key 不能为空')
+                            return t('dataStorages.validation.s3AccessKeyRequired')
                           }
                           return true
                         },
@@ -645,7 +637,7 @@ export function DataStorageDialogs() {
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='edit-s3-secret-key'>
-                      {t('dataStorages.fields.s3SecretKey', 'Secret Key')}
+                      {t('dataStorages.fields.s3SecretKey')}
                     </Label>
                     <Input
                       id='edit-s3-secret-key'
@@ -653,7 +645,7 @@ export function DataStorageDialogs() {
                       {...register('s3SecretKey', {
                         validate: (value) => {
                           if (watch('type') === 's3' && !value) {
-                            return t('dataStorages.validation.s3SecretKeyRequired', 'Secret Key 不能为空')
+                            return t('dataStorages.validation.s3SecretKeyRequired')
                           }
                           return true
                         },
@@ -670,14 +662,14 @@ export function DataStorageDialogs() {
                 <>
                   <div className='grid gap-2'>
                     <Label htmlFor='edit-gcs-bucket'>
-                      {t('dataStorages.fields.gcsBucketName', 'Bucket 名称')}
+                      {t('dataStorages.fields.gcsBucketName')}
                     </Label>
                     <Input
                       id='edit-gcs-bucket'
                       {...register('gcsBucketName', {
                         validate: (value) => {
                           if (watch('type') === 'gcs' && !value) {
-                            return t('dataStorages.validation.gcsBucketRequired', 'Bucket 名称不能为空')
+                            return t('dataStorages.validation.gcsBucketRequired')
                           }
                           return true
                         },
@@ -690,14 +682,14 @@ export function DataStorageDialogs() {
                   </div>
                   <div className='grid gap-2'>
                     <Label htmlFor='edit-gcs-credential'>
-                      {t('dataStorages.fields.gcsCredential', 'Service Account JSON')}
+                      {t('dataStorages.fields.gcsCredential')}
                     </Label>
                     <Textarea
                       id='edit-gcs-credential'
                       {...register('gcsCredential', {
                         validate: (value) => {
                           if (watch('type') === 'gcs' && !value) {
-                            return t('dataStorages.validation.gcsCredentialRequired', 'Service Account JSON 不能为空')
+                            return t('dataStorages.validation.gcsCredentialRequired')
                           }
                           return true
                         },
