@@ -1910,7 +1910,6 @@ type Request implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   API Key ID of the request, null for the request from the Admin.
   """
@@ -2363,17 +2362,6 @@ input RequestWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   api_key_id field predicates
   """
@@ -2878,7 +2866,6 @@ type Thread implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   Project ID that this thread belongs to
   """
@@ -3012,17 +2999,6 @@ input ThreadWhereInput {
   updatedAtLT: Time
   updatedAtLTE: Time
   """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
-  """
   project_id field predicates
   """
   projectID: ID
@@ -3064,7 +3040,6 @@ type Trace implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   Project ID that this trace belongs to
   """
@@ -3202,17 +3177,6 @@ input TraceWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   project_id field predicates
   """

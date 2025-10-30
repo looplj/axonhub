@@ -36,27 +36,6 @@ func (_u *ThreadUpdate) SetUpdatedAt(v time.Time) *ThreadUpdate {
 	return _u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *ThreadUpdate) SetDeletedAt(v int) *ThreadUpdate {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *ThreadUpdate) SetNillableDeletedAt(v *int) *ThreadUpdate {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *ThreadUpdate) AddDeletedAt(v int) *ThreadUpdate {
-	_u.mutation.AddDeletedAt(v)
-	return _u
-}
-
 // SetThreadID sets the "thread_id" field.
 func (_u *ThreadUpdate) SetThreadID(v string) *ThreadUpdate {
 	_u.mutation.SetThreadID(v)
@@ -183,12 +162,6 @@ func (_u *ThreadUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(thread.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(thread.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(thread.FieldDeletedAt, field.TypeInt, value)
-	}
 	if value, ok := _u.mutation.ThreadID(); ok {
 		_spec.SetField(thread.FieldThreadID, field.TypeString, value)
 	}
@@ -262,27 +235,6 @@ type ThreadUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ThreadUpdateOne) SetUpdatedAt(v time.Time) *ThreadUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *ThreadUpdateOne) SetDeletedAt(v int) *ThreadUpdateOne {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *ThreadUpdateOne) SetNillableDeletedAt(v *int) *ThreadUpdateOne {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *ThreadUpdateOne) AddDeletedAt(v int) *ThreadUpdateOne {
-	_u.mutation.AddDeletedAt(v)
 	return _u
 }
 
@@ -441,12 +393,6 @@ func (_u *ThreadUpdateOne) sqlSave(ctx context.Context) (_node *Thread, err erro
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(thread.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(thread.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(thread.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.ThreadID(); ok {
 		_spec.SetField(thread.FieldThreadID, field.TypeString, value)

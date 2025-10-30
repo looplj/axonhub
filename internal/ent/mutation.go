@@ -4734,8 +4734,6 @@ type RequestMutation struct {
 	id                    *int
 	created_at            *time.Time
 	updated_at            *time.Time
-	deleted_at            *int
-	adddeleted_at         *int
 	source                *request.Source
 	model_id              *string
 	format                *string
@@ -4938,62 +4936,6 @@ func (m *RequestMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err er
 // ResetUpdatedAt resets all changes to the "updated_at" field.
 func (m *RequestMutation) ResetUpdatedAt() {
 	m.updated_at = nil
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (m *RequestMutation) SetDeletedAt(i int) {
-	m.deleted_at = &i
-	m.adddeleted_at = nil
-}
-
-// DeletedAt returns the value of the "deleted_at" field in the mutation.
-func (m *RequestMutation) DeletedAt() (r int, exists bool) {
-	v := m.deleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldDeletedAt returns the old "deleted_at" field's value of the Request entity.
-// If the Request object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
-	}
-	return oldValue.DeletedAt, nil
-}
-
-// AddDeletedAt adds i to the "deleted_at" field.
-func (m *RequestMutation) AddDeletedAt(i int) {
-	if m.adddeleted_at != nil {
-		*m.adddeleted_at += i
-	} else {
-		m.adddeleted_at = &i
-	}
-}
-
-// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
-func (m *RequestMutation) AddedDeletedAt() (r int, exists bool) {
-	v := m.adddeleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetDeletedAt resets all changes to the "deleted_at" field.
-func (m *RequestMutation) ResetDeletedAt() {
-	m.deleted_at = nil
-	m.adddeleted_at = nil
 }
 
 // SetAPIKeyID sets the "api_key_id" field.
@@ -5915,15 +5857,12 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 16)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, request.FieldUpdatedAt)
-	}
-	if m.deleted_at != nil {
-		fields = append(fields, request.FieldDeletedAt)
 	}
 	if m.api_key != nil {
 		fields = append(fields, request.FieldAPIKeyID)
@@ -5979,8 +5918,6 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case request.FieldUpdatedAt:
 		return m.UpdatedAt()
-	case request.FieldDeletedAt:
-		return m.DeletedAt()
 	case request.FieldAPIKeyID:
 		return m.APIKeyID()
 	case request.FieldProjectID:
@@ -6022,8 +5959,6 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldCreatedAt(ctx)
 	case request.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
-	case request.FieldDeletedAt:
-		return m.OldDeletedAt(ctx)
 	case request.FieldAPIKeyID:
 		return m.OldAPIKeyID(ctx)
 	case request.FieldProjectID:
@@ -6074,13 +6009,6 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
-		return nil
-	case request.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetDeletedAt(v)
 		return nil
 	case request.FieldAPIKeyID:
 		v, ok := value.(int)
@@ -6188,9 +6116,6 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *RequestMutation) AddedFields() []string {
 	var fields []string
-	if m.adddeleted_at != nil {
-		fields = append(fields, request.FieldDeletedAt)
-	}
 	return fields
 }
 
@@ -6199,8 +6124,6 @@ func (m *RequestMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *RequestMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case request.FieldDeletedAt:
-		return m.AddedDeletedAt()
 	}
 	return nil, false
 }
@@ -6210,13 +6133,6 @@ func (m *RequestMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *RequestMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case request.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddDeletedAt(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Request numeric field %s", name)
 }
@@ -6294,9 +6210,6 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldUpdatedAt:
 		m.ResetUpdatedAt()
-		return nil
-	case request.FieldDeletedAt:
-		m.ResetDeletedAt()
 		return nil
 	case request.FieldAPIKeyID:
 		m.ResetAPIKeyID()
@@ -9454,8 +9367,6 @@ type ThreadMutation struct {
 	id             *int
 	created_at     *time.Time
 	updated_at     *time.Time
-	deleted_at     *int
-	adddeleted_at  *int
 	thread_id      *string
 	clearedFields  map[string]struct{}
 	project        *int
@@ -9636,62 +9547,6 @@ func (m *ThreadMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err err
 // ResetUpdatedAt resets all changes to the "updated_at" field.
 func (m *ThreadMutation) ResetUpdatedAt() {
 	m.updated_at = nil
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (m *ThreadMutation) SetDeletedAt(i int) {
-	m.deleted_at = &i
-	m.adddeleted_at = nil
-}
-
-// DeletedAt returns the value of the "deleted_at" field in the mutation.
-func (m *ThreadMutation) DeletedAt() (r int, exists bool) {
-	v := m.deleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldDeletedAt returns the old "deleted_at" field's value of the Thread entity.
-// If the Thread object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ThreadMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
-	}
-	return oldValue.DeletedAt, nil
-}
-
-// AddDeletedAt adds i to the "deleted_at" field.
-func (m *ThreadMutation) AddDeletedAt(i int) {
-	if m.adddeleted_at != nil {
-		*m.adddeleted_at += i
-	} else {
-		m.adddeleted_at = &i
-	}
-}
-
-// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
-func (m *ThreadMutation) AddedDeletedAt() (r int, exists bool) {
-	v := m.adddeleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetDeletedAt resets all changes to the "deleted_at" field.
-func (m *ThreadMutation) ResetDeletedAt() {
-	m.deleted_at = nil
-	m.adddeleted_at = nil
 }
 
 // SetProjectID sets the "project_id" field.
@@ -9881,15 +9736,12 @@ func (m *ThreadMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ThreadMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 4)
 	if m.created_at != nil {
 		fields = append(fields, thread.FieldCreatedAt)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, thread.FieldUpdatedAt)
-	}
-	if m.deleted_at != nil {
-		fields = append(fields, thread.FieldDeletedAt)
 	}
 	if m.project != nil {
 		fields = append(fields, thread.FieldProjectID)
@@ -9909,8 +9761,6 @@ func (m *ThreadMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case thread.FieldUpdatedAt:
 		return m.UpdatedAt()
-	case thread.FieldDeletedAt:
-		return m.DeletedAt()
 	case thread.FieldProjectID:
 		return m.ProjectID()
 	case thread.FieldThreadID:
@@ -9928,8 +9778,6 @@ func (m *ThreadMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldCreatedAt(ctx)
 	case thread.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
-	case thread.FieldDeletedAt:
-		return m.OldDeletedAt(ctx)
 	case thread.FieldProjectID:
 		return m.OldProjectID(ctx)
 	case thread.FieldThreadID:
@@ -9957,13 +9805,6 @@ func (m *ThreadMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUpdatedAt(v)
 		return nil
-	case thread.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetDeletedAt(v)
-		return nil
 	case thread.FieldProjectID:
 		v, ok := value.(int)
 		if !ok {
@@ -9986,9 +9827,6 @@ func (m *ThreadMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *ThreadMutation) AddedFields() []string {
 	var fields []string
-	if m.adddeleted_at != nil {
-		fields = append(fields, thread.FieldDeletedAt)
-	}
 	return fields
 }
 
@@ -9997,8 +9835,6 @@ func (m *ThreadMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *ThreadMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case thread.FieldDeletedAt:
-		return m.AddedDeletedAt()
 	}
 	return nil, false
 }
@@ -10008,13 +9844,6 @@ func (m *ThreadMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *ThreadMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case thread.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddDeletedAt(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Thread numeric field %s", name)
 }
@@ -10047,9 +9876,6 @@ func (m *ThreadMutation) ResetField(name string) error {
 		return nil
 	case thread.FieldUpdatedAt:
 		m.ResetUpdatedAt()
-		return nil
-	case thread.FieldDeletedAt:
-		m.ResetDeletedAt()
 		return nil
 	case thread.FieldProjectID:
 		m.ResetProjectID()
@@ -10171,8 +9997,6 @@ type TraceMutation struct {
 	id              *int
 	created_at      *time.Time
 	updated_at      *time.Time
-	deleted_at      *int
-	adddeleted_at   *int
 	trace_id        *string
 	clearedFields   map[string]struct{}
 	project         *int
@@ -10355,62 +10179,6 @@ func (m *TraceMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err erro
 // ResetUpdatedAt resets all changes to the "updated_at" field.
 func (m *TraceMutation) ResetUpdatedAt() {
 	m.updated_at = nil
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (m *TraceMutation) SetDeletedAt(i int) {
-	m.deleted_at = &i
-	m.adddeleted_at = nil
-}
-
-// DeletedAt returns the value of the "deleted_at" field in the mutation.
-func (m *TraceMutation) DeletedAt() (r int, exists bool) {
-	v := m.deleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldDeletedAt returns the old "deleted_at" field's value of the Trace entity.
-// If the Trace object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *TraceMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
-	}
-	return oldValue.DeletedAt, nil
-}
-
-// AddDeletedAt adds i to the "deleted_at" field.
-func (m *TraceMutation) AddDeletedAt(i int) {
-	if m.adddeleted_at != nil {
-		*m.adddeleted_at += i
-	} else {
-		m.adddeleted_at = &i
-	}
-}
-
-// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
-func (m *TraceMutation) AddedDeletedAt() (r int, exists bool) {
-	v := m.adddeleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetDeletedAt resets all changes to the "deleted_at" field.
-func (m *TraceMutation) ResetDeletedAt() {
-	m.deleted_at = nil
-	m.adddeleted_at = nil
 }
 
 // SetProjectID sets the "project_id" field.
@@ -10676,15 +10444,12 @@ func (m *TraceMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TraceMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 5)
 	if m.created_at != nil {
 		fields = append(fields, trace.FieldCreatedAt)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, trace.FieldUpdatedAt)
-	}
-	if m.deleted_at != nil {
-		fields = append(fields, trace.FieldDeletedAt)
 	}
 	if m.project != nil {
 		fields = append(fields, trace.FieldProjectID)
@@ -10707,8 +10472,6 @@ func (m *TraceMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case trace.FieldUpdatedAt:
 		return m.UpdatedAt()
-	case trace.FieldDeletedAt:
-		return m.DeletedAt()
 	case trace.FieldProjectID:
 		return m.ProjectID()
 	case trace.FieldTraceID:
@@ -10728,8 +10491,6 @@ func (m *TraceMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldCreatedAt(ctx)
 	case trace.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
-	case trace.FieldDeletedAt:
-		return m.OldDeletedAt(ctx)
 	case trace.FieldProjectID:
 		return m.OldProjectID(ctx)
 	case trace.FieldTraceID:
@@ -10758,13 +10519,6 @@ func (m *TraceMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
-		return nil
-	case trace.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetDeletedAt(v)
 		return nil
 	case trace.FieldProjectID:
 		v, ok := value.(int)
@@ -10795,9 +10549,6 @@ func (m *TraceMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *TraceMutation) AddedFields() []string {
 	var fields []string
-	if m.adddeleted_at != nil {
-		fields = append(fields, trace.FieldDeletedAt)
-	}
 	return fields
 }
 
@@ -10806,8 +10557,6 @@ func (m *TraceMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *TraceMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case trace.FieldDeletedAt:
-		return m.AddedDeletedAt()
 	}
 	return nil, false
 }
@@ -10817,13 +10566,6 @@ func (m *TraceMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *TraceMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case trace.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddDeletedAt(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Trace numeric field %s", name)
 }
@@ -10865,9 +10607,6 @@ func (m *TraceMutation) ResetField(name string) error {
 		return nil
 	case trace.FieldUpdatedAt:
 		m.ResetUpdatedAt()
-		return nil
-	case trace.FieldDeletedAt:
-		m.ResetDeletedAt()
 		return nil
 	case trace.FieldProjectID:
 		m.ResetProjectID()

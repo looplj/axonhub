@@ -213,15 +213,8 @@ func init() {
 			return next.Mutate(ctx, m)
 		})
 	}
-	requestMixinHooks1 := requestMixin[1].Hooks()
-
-	request.Hooks[1] = requestMixinHooks1[0]
-	requestMixinInters1 := requestMixin[1].Interceptors()
-	request.Interceptors[0] = requestMixinInters1[0]
 	requestMixinFields0 := requestMixin[0].Fields()
 	_ = requestMixinFields0
-	requestMixinFields1 := requestMixin[1].Fields()
-	_ = requestMixinFields1
 	requestFields := schema.Request{}.Fields()
 	_ = requestFields
 	// requestDescCreatedAt is the schema descriptor for created_at field.
@@ -234,10 +227,6 @@ func init() {
 	request.DefaultUpdatedAt = requestDescUpdatedAt.Default.(func() time.Time)
 	// request.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	request.UpdateDefaultUpdatedAt = requestDescUpdatedAt.UpdateDefault.(func() time.Time)
-	// requestDescDeletedAt is the schema descriptor for deleted_at field.
-	requestDescDeletedAt := requestMixinFields1[0].Descriptor()
-	// request.DefaultDeletedAt holds the default value on creation for the deleted_at field.
-	request.DefaultDeletedAt = requestDescDeletedAt.Default.(int)
 	// requestDescProjectID is the schema descriptor for project_id field.
 	requestDescProjectID := requestFields[1].Descriptor()
 	// request.DefaultProjectID holds the default value on creation for the project_id field.
@@ -357,15 +346,8 @@ func init() {
 			return next.Mutate(ctx, m)
 		})
 	}
-	threadMixinHooks1 := threadMixin[1].Hooks()
-
-	thread.Hooks[1] = threadMixinHooks1[0]
-	threadMixinInters1 := threadMixin[1].Interceptors()
-	thread.Interceptors[0] = threadMixinInters1[0]
 	threadMixinFields0 := threadMixin[0].Fields()
 	_ = threadMixinFields0
-	threadMixinFields1 := threadMixin[1].Fields()
-	_ = threadMixinFields1
 	threadFields := schema.Thread{}.Fields()
 	_ = threadFields
 	// threadDescCreatedAt is the schema descriptor for created_at field.
@@ -378,10 +360,6 @@ func init() {
 	thread.DefaultUpdatedAt = threadDescUpdatedAt.Default.(func() time.Time)
 	// thread.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	thread.UpdateDefaultUpdatedAt = threadDescUpdatedAt.UpdateDefault.(func() time.Time)
-	// threadDescDeletedAt is the schema descriptor for deleted_at field.
-	threadDescDeletedAt := threadMixinFields1[0].Descriptor()
-	// thread.DefaultDeletedAt holds the default value on creation for the deleted_at field.
-	thread.DefaultDeletedAt = threadDescDeletedAt.Default.(int)
 	traceMixin := schema.Trace{}.Mixin()
 	trace.Policy = privacy.NewPolicies(schema.Trace{})
 	trace.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -392,15 +370,8 @@ func init() {
 			return next.Mutate(ctx, m)
 		})
 	}
-	traceMixinHooks1 := traceMixin[1].Hooks()
-
-	trace.Hooks[1] = traceMixinHooks1[0]
-	traceMixinInters1 := traceMixin[1].Interceptors()
-	trace.Interceptors[0] = traceMixinInters1[0]
 	traceMixinFields0 := traceMixin[0].Fields()
 	_ = traceMixinFields0
-	traceMixinFields1 := traceMixin[1].Fields()
-	_ = traceMixinFields1
 	traceFields := schema.Trace{}.Fields()
 	_ = traceFields
 	// traceDescCreatedAt is the schema descriptor for created_at field.
@@ -413,10 +384,6 @@ func init() {
 	trace.DefaultUpdatedAt = traceDescUpdatedAt.Default.(func() time.Time)
 	// trace.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	trace.UpdateDefaultUpdatedAt = traceDescUpdatedAt.UpdateDefault.(func() time.Time)
-	// traceDescDeletedAt is the schema descriptor for deleted_at field.
-	traceDescDeletedAt := traceMixinFields1[0].Descriptor()
-	// trace.DefaultDeletedAt holds the default value on creation for the deleted_at field.
-	trace.DefaultDeletedAt = traceDescDeletedAt.Default.(int)
 	usagelogMixin := schema.UsageLog{}.Mixin()
 	usagelog.Policy = privacy.NewPolicies(schema.UsageLog{})
 	usagelog.Hooks[0] = func(next ent.Mutator) ent.Mutator {

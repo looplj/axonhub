@@ -36,27 +36,6 @@ func (_u *TraceUpdate) SetUpdatedAt(v time.Time) *TraceUpdate {
 	return _u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *TraceUpdate) SetDeletedAt(v int) *TraceUpdate {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *TraceUpdate) SetNillableDeletedAt(v *int) *TraceUpdate {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *TraceUpdate) AddDeletedAt(v int) *TraceUpdate {
-	_u.mutation.AddDeletedAt(v)
-	return _u
-}
-
 // SetTraceID sets the "trace_id" field.
 func (_u *TraceUpdate) SetTraceID(v string) *TraceUpdate {
 	_u.mutation.SetTraceID(v)
@@ -183,12 +162,6 @@ func (_u *TraceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(trace.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(trace.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(trace.FieldDeletedAt, field.TypeInt, value)
-	}
 	if value, ok := _u.mutation.TraceID(); ok {
 		_spec.SetField(trace.FieldTraceID, field.TypeString, value)
 	}
@@ -262,27 +235,6 @@ type TraceUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *TraceUpdateOne) SetUpdatedAt(v time.Time) *TraceUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *TraceUpdateOne) SetDeletedAt(v int) *TraceUpdateOne {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *TraceUpdateOne) SetNillableDeletedAt(v *int) *TraceUpdateOne {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *TraceUpdateOne) AddDeletedAt(v int) *TraceUpdateOne {
-	_u.mutation.AddDeletedAt(v)
 	return _u
 }
 
@@ -441,12 +393,6 @@ func (_u *TraceUpdateOne) sqlSave(ctx context.Context) (_node *Trace, err error)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(trace.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(trace.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(trace.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.TraceID(); ok {
 		_spec.SetField(trace.FieldTraceID, field.TypeString, value)

@@ -53,20 +53,6 @@ func (_c *TraceCreate) SetNillableUpdatedAt(v *time.Time) *TraceCreate {
 	return _c
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_c *TraceCreate) SetDeletedAt(v int) *TraceCreate {
-	_c.mutation.SetDeletedAt(v)
-	return _c
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_c *TraceCreate) SetNillableDeletedAt(v *int) *TraceCreate {
-	if v != nil {
-		_c.SetDeletedAt(*v)
-	}
-	return _c
-}
-
 // SetProjectID sets the "project_id" field.
 func (_c *TraceCreate) SetProjectID(v int) *TraceCreate {
 	_c.mutation.SetProjectID(v)
@@ -169,10 +155,6 @@ func (_c *TraceCreate) defaults() error {
 		v := trace.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		v := trace.DefaultDeletedAt
-		_c.mutation.SetDeletedAt(v)
-	}
 	return nil
 }
 
@@ -183,9 +165,6 @@ func (_c *TraceCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Trace.updated_at"`)}
-	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Trace.deleted_at"`)}
 	}
 	if _, ok := _c.mutation.ProjectID(); !ok {
 		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "Trace.project_id"`)}
@@ -230,10 +209,6 @@ func (_c *TraceCreate) createSpec() (*Trace, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(trace.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
-	}
-	if value, ok := _c.mutation.DeletedAt(); ok {
-		_spec.SetField(trace.FieldDeletedAt, field.TypeInt, value)
-		_node.DeletedAt = value
 	}
 	if value, ok := _c.mutation.TraceID(); ok {
 		_spec.SetField(trace.FieldTraceID, field.TypeString, value)
@@ -353,24 +328,6 @@ func (u *TraceUpsert) UpdateUpdatedAt() *TraceUpsert {
 	return u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (u *TraceUpsert) SetDeletedAt(v int) *TraceUpsert {
-	u.Set(trace.FieldDeletedAt, v)
-	return u
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *TraceUpsert) UpdateDeletedAt() *TraceUpsert {
-	u.SetExcluded(trace.FieldDeletedAt)
-	return u
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *TraceUpsert) AddDeletedAt(v int) *TraceUpsert {
-	u.Add(trace.FieldDeletedAt, v)
-	return u
-}
-
 // SetTraceID sets the "trace_id" field.
 func (u *TraceUpsert) SetTraceID(v string) *TraceUpsert {
 	u.Set(trace.FieldTraceID, v)
@@ -445,27 +402,6 @@ func (u *TraceUpsertOne) SetUpdatedAt(v time.Time) *TraceUpsertOne {
 func (u *TraceUpsertOne) UpdateUpdatedAt() *TraceUpsertOne {
 	return u.Update(func(s *TraceUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *TraceUpsertOne) SetDeletedAt(v int) *TraceUpsertOne {
-	return u.Update(func(s *TraceUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *TraceUpsertOne) AddDeletedAt(v int) *TraceUpsertOne {
-	return u.Update(func(s *TraceUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *TraceUpsertOne) UpdateDeletedAt() *TraceUpsertOne {
-	return u.Update(func(s *TraceUpsert) {
-		s.UpdateDeletedAt()
 	})
 }
 
@@ -711,27 +647,6 @@ func (u *TraceUpsertBulk) SetUpdatedAt(v time.Time) *TraceUpsertBulk {
 func (u *TraceUpsertBulk) UpdateUpdatedAt() *TraceUpsertBulk {
 	return u.Update(func(s *TraceUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *TraceUpsertBulk) SetDeletedAt(v int) *TraceUpsertBulk {
-	return u.Update(func(s *TraceUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *TraceUpsertBulk) AddDeletedAt(v int) *TraceUpsertBulk {
-	return u.Update(func(s *TraceUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *TraceUpsertBulk) UpdateDeletedAt() *TraceUpsertBulk {
-	return u.Update(func(s *TraceUpsert) {
-		s.UpdateDeletedAt()
 	})
 }
 
