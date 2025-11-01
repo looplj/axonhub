@@ -226,6 +226,79 @@ type GCS {
   credential: String!
 }
 
+extend type Trace {
+  rootRequestTrace: RequestTrace!
+}
+
+type RequestTrace {
+  id: ID!
+  parentId: ID
+  model: String!
+  children: [RequestTrace!]
+  requestSpans: [Span!]
+  responseSpans: [Span!]
+  metadata: RequestMetadata
+  startTime: Time!
+  endTime: Time!
+  duration: String!
+}
+
+type RequestMetadata {
+  cost: Float
+  itemCount: Int
+  tokens: Int
+}
+
+type Span {
+  id: String!
+  name: String
+  type: String!
+  startTime: Time!
+  endTime: Time!
+  value: SpanValue
+}
+
+type SpanValue {
+  query: SpanQuery
+  text: SpanText
+  imageUrl: SpanImageURL
+  thinking: SpanThinking
+  functionCall: SpanFunctionCall
+  functionResult: SpanFunctionResult
+}
+
+type SpanQuery {
+  modelId: String
+  prompt: String
+}
+
+type SpanThinking {
+  thinking: String
+}
+
+type SpanText {
+  text: String
+}
+
+type SpanImageURL {
+  url: String
+}
+
+type SpanFunctionCall {
+  id: String
+  name: String!
+  arguments: String
+}
+
+type SpanFunctionResult {
+  id: String
+  isError: Boolean
+  type: String
+  text: String
+}
+
+
+
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   updateChannel(id: ID!, input: UpdateChannelInput!): Channel!

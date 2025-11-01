@@ -60,6 +60,7 @@ type ResolverRoot interface {
 	Query() QueryResolver
 	Request() RequestResolver
 	RequestExecution() RequestExecutionResolver
+	RequestTrace() RequestTraceResolver
 	Role() RoleResolver
 	System() SystemResolver
 	Thread() ThreadResolver
@@ -444,6 +445,12 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
+	RequestMetadata struct {
+		Cost      func(childComplexity int) int
+		ItemCount func(childComplexity int) int
+		Tokens    func(childComplexity int) int
+	}
+
 	RequestStats struct {
 		RequestsThisMonth func(childComplexity int) int
 		RequestsThisWeek  func(childComplexity int) int
@@ -459,6 +466,19 @@ type ComplexityRoot struct {
 	RequestStatsByModel struct {
 		Count   func(childComplexity int) int
 		ModelID func(childComplexity int) int
+	}
+
+	RequestTrace struct {
+		Children      func(childComplexity int) int
+		Duration      func(childComplexity int) int
+		EndTime       func(childComplexity int) int
+		ID            func(childComplexity int) int
+		Metadata      func(childComplexity int) int
+		Model         func(childComplexity int) int
+		ParentID      func(childComplexity int) int
+		RequestSpans  func(childComplexity int) int
+		ResponseSpans func(childComplexity int) int
+		StartTime     func(childComplexity int) int
 	}
 
 	RetryPolicy struct {
@@ -514,6 +534,54 @@ type ComplexityRoot struct {
 	SignInPayload struct {
 		Token func(childComplexity int) int
 		User  func(childComplexity int) int
+	}
+
+	Span struct {
+		EndTime   func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Name      func(childComplexity int) int
+		StartTime func(childComplexity int) int
+		Type      func(childComplexity int) int
+		Value     func(childComplexity int) int
+	}
+
+	SpanFunctionCall struct {
+		Arguments func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Name      func(childComplexity int) int
+	}
+
+	SpanFunctionResult struct {
+		ID      func(childComplexity int) int
+		IsError func(childComplexity int) int
+		Text    func(childComplexity int) int
+		Type    func(childComplexity int) int
+	}
+
+	SpanImageURL struct {
+		URL func(childComplexity int) int
+	}
+
+	SpanQuery struct {
+		ModelID func(childComplexity int) int
+		Prompt  func(childComplexity int) int
+	}
+
+	SpanText struct {
+		Text func(childComplexity int) int
+	}
+
+	SpanThinking struct {
+		Thinking func(childComplexity int) int
+	}
+
+	SpanValue struct {
+		FunctionCall   func(childComplexity int) int
+		FunctionResult func(childComplexity int) int
+		ImageURL       func(childComplexity int) int
+		Query          func(childComplexity int) int
+		Text           func(childComplexity int) int
+		Thinking       func(childComplexity int) int
 	}
 
 	StoragePolicy struct {
@@ -595,15 +663,16 @@ type ComplexityRoot struct {
 	}
 
 	Trace struct {
-		CreatedAt func(childComplexity int) int
-		ID        func(childComplexity int) int
-		Project   func(childComplexity int) int
-		ProjectID func(childComplexity int) int
-		Requests  func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
-		Thread    func(childComplexity int) int
-		ThreadID  func(childComplexity int) int
-		TraceID   func(childComplexity int) int
-		UpdatedAt func(childComplexity int) int
+		CreatedAt        func(childComplexity int) int
+		ID               func(childComplexity int) int
+		Project          func(childComplexity int) int
+		ProjectID        func(childComplexity int) int
+		Requests         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
+		RootRequestTrace func(childComplexity int) int
+		Thread           func(childComplexity int) int
+		ThreadID         func(childComplexity int) int
+		TraceID          func(childComplexity int) int
+		UpdatedAt        func(childComplexity int) int
 	}
 
 	TraceConnection struct {
@@ -835,6 +904,10 @@ type RequestExecutionResolver interface {
 	ResponseBody(ctx context.Context, obj *ent.RequestExecution) (objects.JSONRawMessage, error)
 	ResponseChunks(ctx context.Context, obj *ent.RequestExecution) ([]objects.JSONRawMessage, error)
 }
+type RequestTraceResolver interface {
+	ID(ctx context.Context, obj *biz.RequestTrace) (*objects.GUID, error)
+	ParentID(ctx context.Context, obj *biz.RequestTrace) (*objects.GUID, error)
+}
 type RoleResolver interface {
 	ID(ctx context.Context, obj *ent.Role) (*objects.GUID, error)
 
@@ -856,6 +929,8 @@ type TraceResolver interface {
 	ProjectID(ctx context.Context, obj *ent.Trace) (*objects.GUID, error)
 
 	ThreadID(ctx context.Context, obj *ent.Trace) (*objects.GUID, error)
+
+	RootRequestTrace(ctx context.Context, obj *ent.Trace) (*biz.RequestTrace, error)
 }
 type UsageLogResolver interface {
 	ID(ctx context.Context, obj *ent.UsageLog) (*objects.GUID, error)
@@ -2956,6 +3031,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RequestExecutionEdge.Node(childComplexity), true
 
+	case "RequestMetadata.cost":
+		if e.complexity.RequestMetadata.Cost == nil {
+			break
+		}
+
+		return e.complexity.RequestMetadata.Cost(childComplexity), true
+
+	case "RequestMetadata.itemCount":
+		if e.complexity.RequestMetadata.ItemCount == nil {
+			break
+		}
+
+		return e.complexity.RequestMetadata.ItemCount(childComplexity), true
+
+	case "RequestMetadata.tokens":
+		if e.complexity.RequestMetadata.Tokens == nil {
+			break
+		}
+
+		return e.complexity.RequestMetadata.Tokens(childComplexity), true
+
 	case "RequestStats.requestsThisMonth":
 		if e.complexity.RequestStats.RequestsThisMonth == nil {
 			break
@@ -3011,6 +3107,76 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestStatsByModel.ModelID(childComplexity), true
+
+	case "RequestTrace.children":
+		if e.complexity.RequestTrace.Children == nil {
+			break
+		}
+
+		return e.complexity.RequestTrace.Children(childComplexity), true
+
+	case "RequestTrace.duration":
+		if e.complexity.RequestTrace.Duration == nil {
+			break
+		}
+
+		return e.complexity.RequestTrace.Duration(childComplexity), true
+
+	case "RequestTrace.endTime":
+		if e.complexity.RequestTrace.EndTime == nil {
+			break
+		}
+
+		return e.complexity.RequestTrace.EndTime(childComplexity), true
+
+	case "RequestTrace.id":
+		if e.complexity.RequestTrace.ID == nil {
+			break
+		}
+
+		return e.complexity.RequestTrace.ID(childComplexity), true
+
+	case "RequestTrace.metadata":
+		if e.complexity.RequestTrace.Metadata == nil {
+			break
+		}
+
+		return e.complexity.RequestTrace.Metadata(childComplexity), true
+
+	case "RequestTrace.model":
+		if e.complexity.RequestTrace.Model == nil {
+			break
+		}
+
+		return e.complexity.RequestTrace.Model(childComplexity), true
+
+	case "RequestTrace.parentId":
+		if e.complexity.RequestTrace.ParentID == nil {
+			break
+		}
+
+		return e.complexity.RequestTrace.ParentID(childComplexity), true
+
+	case "RequestTrace.requestSpans":
+		if e.complexity.RequestTrace.RequestSpans == nil {
+			break
+		}
+
+		return e.complexity.RequestTrace.RequestSpans(childComplexity), true
+
+	case "RequestTrace.responseSpans":
+		if e.complexity.RequestTrace.ResponseSpans == nil {
+			break
+		}
+
+		return e.complexity.RequestTrace.ResponseSpans(childComplexity), true
+
+	case "RequestTrace.startTime":
+		if e.complexity.RequestTrace.StartTime == nil {
+			break
+		}
+
+		return e.complexity.RequestTrace.StartTime(childComplexity), true
 
 	case "RetryPolicy.enabled":
 		if e.complexity.RetryPolicy.Enabled == nil {
@@ -3233,6 +3399,174 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SignInPayload.User(childComplexity), true
+
+	case "Span.endTime":
+		if e.complexity.Span.EndTime == nil {
+			break
+		}
+
+		return e.complexity.Span.EndTime(childComplexity), true
+
+	case "Span.id":
+		if e.complexity.Span.ID == nil {
+			break
+		}
+
+		return e.complexity.Span.ID(childComplexity), true
+
+	case "Span.name":
+		if e.complexity.Span.Name == nil {
+			break
+		}
+
+		return e.complexity.Span.Name(childComplexity), true
+
+	case "Span.startTime":
+		if e.complexity.Span.StartTime == nil {
+			break
+		}
+
+		return e.complexity.Span.StartTime(childComplexity), true
+
+	case "Span.type":
+		if e.complexity.Span.Type == nil {
+			break
+		}
+
+		return e.complexity.Span.Type(childComplexity), true
+
+	case "Span.value":
+		if e.complexity.Span.Value == nil {
+			break
+		}
+
+		return e.complexity.Span.Value(childComplexity), true
+
+	case "SpanFunctionCall.arguments":
+		if e.complexity.SpanFunctionCall.Arguments == nil {
+			break
+		}
+
+		return e.complexity.SpanFunctionCall.Arguments(childComplexity), true
+
+	case "SpanFunctionCall.id":
+		if e.complexity.SpanFunctionCall.ID == nil {
+			break
+		}
+
+		return e.complexity.SpanFunctionCall.ID(childComplexity), true
+
+	case "SpanFunctionCall.name":
+		if e.complexity.SpanFunctionCall.Name == nil {
+			break
+		}
+
+		return e.complexity.SpanFunctionCall.Name(childComplexity), true
+
+	case "SpanFunctionResult.id":
+		if e.complexity.SpanFunctionResult.ID == nil {
+			break
+		}
+
+		return e.complexity.SpanFunctionResult.ID(childComplexity), true
+
+	case "SpanFunctionResult.isError":
+		if e.complexity.SpanFunctionResult.IsError == nil {
+			break
+		}
+
+		return e.complexity.SpanFunctionResult.IsError(childComplexity), true
+
+	case "SpanFunctionResult.text":
+		if e.complexity.SpanFunctionResult.Text == nil {
+			break
+		}
+
+		return e.complexity.SpanFunctionResult.Text(childComplexity), true
+
+	case "SpanFunctionResult.type":
+		if e.complexity.SpanFunctionResult.Type == nil {
+			break
+		}
+
+		return e.complexity.SpanFunctionResult.Type(childComplexity), true
+
+	case "SpanImageURL.url":
+		if e.complexity.SpanImageURL.URL == nil {
+			break
+		}
+
+		return e.complexity.SpanImageURL.URL(childComplexity), true
+
+	case "SpanQuery.modelId":
+		if e.complexity.SpanQuery.ModelID == nil {
+			break
+		}
+
+		return e.complexity.SpanQuery.ModelID(childComplexity), true
+
+	case "SpanQuery.prompt":
+		if e.complexity.SpanQuery.Prompt == nil {
+			break
+		}
+
+		return e.complexity.SpanQuery.Prompt(childComplexity), true
+
+	case "SpanText.text":
+		if e.complexity.SpanText.Text == nil {
+			break
+		}
+
+		return e.complexity.SpanText.Text(childComplexity), true
+
+	case "SpanThinking.thinking":
+		if e.complexity.SpanThinking.Thinking == nil {
+			break
+		}
+
+		return e.complexity.SpanThinking.Thinking(childComplexity), true
+
+	case "SpanValue.functionCall":
+		if e.complexity.SpanValue.FunctionCall == nil {
+			break
+		}
+
+		return e.complexity.SpanValue.FunctionCall(childComplexity), true
+
+	case "SpanValue.functionResult":
+		if e.complexity.SpanValue.FunctionResult == nil {
+			break
+		}
+
+		return e.complexity.SpanValue.FunctionResult(childComplexity), true
+
+	case "SpanValue.imageUrl":
+		if e.complexity.SpanValue.ImageURL == nil {
+			break
+		}
+
+		return e.complexity.SpanValue.ImageURL(childComplexity), true
+
+	case "SpanValue.query":
+		if e.complexity.SpanValue.Query == nil {
+			break
+		}
+
+		return e.complexity.SpanValue.Query(childComplexity), true
+
+	case "SpanValue.text":
+		if e.complexity.SpanValue.Text == nil {
+			break
+		}
+
+		return e.complexity.SpanValue.Text(childComplexity), true
+
+	case "SpanValue.thinking":
+		if e.complexity.SpanValue.Thinking == nil {
+			break
+		}
+
+		return e.complexity.SpanValue.Thinking(childComplexity), true
 
 	case "StoragePolicy.cleanupOptions":
 		if e.complexity.StoragePolicy.CleanupOptions == nil {
@@ -3593,6 +3927,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Trace.Requests(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.RequestOrder), args["where"].(*ent.RequestWhereInput)), true
+
+	case "Trace.rootRequestTrace":
+		if e.complexity.Trace.RootRequestTrace == nil {
+			break
+		}
+
+		return e.complexity.Trace.RootRequestTrace(childComplexity), true
 
 	case "Trace.thread":
 		if e.complexity.Trace.Thread == nil {
@@ -17820,6 +18161,8 @@ func (ec *executionContext) fieldContext_Request_trace(_ context.Context, field 
 				return ec.fieldContext_Trace_thread(ctx, field)
 			case "requests":
 				return ec.fieldContext_Trace_requests(ctx, field)
+			case "rootRequestTrace":
+				return ec.fieldContext_Trace_rootRequestTrace(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trace", field.Name)
 		},
@@ -19523,6 +19866,129 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_cursor(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _RequestMetadata_cost(ctx context.Context, field graphql.CollectedField, obj *biz.RequestMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestMetadata_cost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestMetadata_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestMetadata_itemCount(ctx context.Context, field graphql.CollectedField, obj *biz.RequestMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestMetadata_itemCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ItemCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestMetadata_itemCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestMetadata_tokens(ctx context.Context, field graphql.CollectedField, obj *biz.RequestMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestMetadata_tokens(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Tokens, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int64)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestMetadata_tokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RequestStats_requestsToday(ctx context.Context, field graphql.CollectedField, obj *RequestStats) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RequestStats_requestsToday(ctx, field)
 	if err != nil {
@@ -19870,6 +20336,489 @@ func (ec *executionContext) fieldContext_RequestStatsByModel_count(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestTrace_id(ctx context.Context, field graphql.CollectedField, obj *biz.RequestTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestTrace_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.RequestTrace().ID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*objects.GUID)
+	fc.Result = res
+	return ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestTrace_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestTrace",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestTrace_parentId(ctx context.Context, field graphql.CollectedField, obj *biz.RequestTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestTrace_parentId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.RequestTrace().ParentID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*objects.GUID)
+	fc.Result = res
+	return ec.marshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestTrace_parentId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestTrace",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestTrace_model(ctx context.Context, field graphql.CollectedField, obj *biz.RequestTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestTrace_model(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Model, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestTrace_model(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestTrace_children(ctx context.Context, field graphql.CollectedField, obj *biz.RequestTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestTrace_children(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Children, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*biz.RequestTrace)
+	fc.Result = res
+	return ec.marshalORequestTrace2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRequestTraceᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestTrace_children(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_RequestTrace_id(ctx, field)
+			case "parentId":
+				return ec.fieldContext_RequestTrace_parentId(ctx, field)
+			case "model":
+				return ec.fieldContext_RequestTrace_model(ctx, field)
+			case "children":
+				return ec.fieldContext_RequestTrace_children(ctx, field)
+			case "requestSpans":
+				return ec.fieldContext_RequestTrace_requestSpans(ctx, field)
+			case "responseSpans":
+				return ec.fieldContext_RequestTrace_responseSpans(ctx, field)
+			case "metadata":
+				return ec.fieldContext_RequestTrace_metadata(ctx, field)
+			case "startTime":
+				return ec.fieldContext_RequestTrace_startTime(ctx, field)
+			case "endTime":
+				return ec.fieldContext_RequestTrace_endTime(ctx, field)
+			case "duration":
+				return ec.fieldContext_RequestTrace_duration(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RequestTrace", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestTrace_requestSpans(ctx context.Context, field graphql.CollectedField, obj *biz.RequestTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestTrace_requestSpans(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequestSpans, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]biz.Span)
+	fc.Result = res
+	return ec.marshalOSpan2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestTrace_requestSpans(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Span_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Span_name(ctx, field)
+			case "type":
+				return ec.fieldContext_Span_type(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Span_startTime(ctx, field)
+			case "endTime":
+				return ec.fieldContext_Span_endTime(ctx, field)
+			case "value":
+				return ec.fieldContext_Span_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Span", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestTrace_responseSpans(ctx context.Context, field graphql.CollectedField, obj *biz.RequestTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestTrace_responseSpans(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResponseSpans, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]biz.Span)
+	fc.Result = res
+	return ec.marshalOSpan2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestTrace_responseSpans(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Span_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Span_name(ctx, field)
+			case "type":
+				return ec.fieldContext_Span_type(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Span_startTime(ctx, field)
+			case "endTime":
+				return ec.fieldContext_Span_endTime(ctx, field)
+			case "value":
+				return ec.fieldContext_Span_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Span", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestTrace_metadata(ctx context.Context, field graphql.CollectedField, obj *biz.RequestTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestTrace_metadata(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Metadata, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*biz.RequestMetadata)
+	fc.Result = res
+	return ec.marshalORequestMetadata2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRequestMetadata(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestTrace_metadata(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "cost":
+				return ec.fieldContext_RequestMetadata_cost(ctx, field)
+			case "itemCount":
+				return ec.fieldContext_RequestMetadata_itemCount(ctx, field)
+			case "tokens":
+				return ec.fieldContext_RequestMetadata_tokens(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RequestMetadata", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestTrace_startTime(ctx context.Context, field graphql.CollectedField, obj *biz.RequestTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestTrace_startTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StartTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestTrace_startTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestTrace_endTime(ctx context.Context, field graphql.CollectedField, obj *biz.RequestTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestTrace_endTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EndTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestTrace_endTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RequestTrace_duration(ctx context.Context, field graphql.CollectedField, obj *biz.RequestTrace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RequestTrace_duration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Duration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RequestTrace_duration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestTrace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21361,6 +22310,1055 @@ func (ec *executionContext) fieldContext_SignInPayload_token(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Span_id(ctx context.Context, field graphql.CollectedField, obj *biz.Span) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Span_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Span_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Span",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Span_name(ctx context.Context, field graphql.CollectedField, obj *biz.Span) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Span_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Span_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Span",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Span_type(ctx context.Context, field graphql.CollectedField, obj *biz.Span) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Span_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Span_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Span",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Span_startTime(ctx context.Context, field graphql.CollectedField, obj *biz.Span) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Span_startTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StartTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Span_startTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Span",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Span_endTime(ctx context.Context, field graphql.CollectedField, obj *biz.Span) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Span_endTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EndTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Span_endTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Span",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Span_value(ctx context.Context, field graphql.CollectedField, obj *biz.Span) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Span_value(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*biz.SpanValue)
+	fc.Result = res
+	return ec.marshalOSpanValue2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanValue(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Span_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Span",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "query":
+				return ec.fieldContext_SpanValue_query(ctx, field)
+			case "text":
+				return ec.fieldContext_SpanValue_text(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_SpanValue_imageUrl(ctx, field)
+			case "thinking":
+				return ec.fieldContext_SpanValue_thinking(ctx, field)
+			case "functionCall":
+				return ec.fieldContext_SpanValue_functionCall(ctx, field)
+			case "functionResult":
+				return ec.fieldContext_SpanValue_functionResult(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpanValue", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanFunctionCall_id(ctx context.Context, field graphql.CollectedField, obj *biz.SpanFunctionCall) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanFunctionCall_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanFunctionCall_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanFunctionCall",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanFunctionCall_name(ctx context.Context, field graphql.CollectedField, obj *biz.SpanFunctionCall) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanFunctionCall_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanFunctionCall_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanFunctionCall",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanFunctionCall_arguments(ctx context.Context, field graphql.CollectedField, obj *biz.SpanFunctionCall) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanFunctionCall_arguments(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Arguments, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanFunctionCall_arguments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanFunctionCall",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanFunctionResult_id(ctx context.Context, field graphql.CollectedField, obj *biz.SpanFunctionResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanFunctionResult_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanFunctionResult_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanFunctionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanFunctionResult_isError(ctx context.Context, field graphql.CollectedField, obj *biz.SpanFunctionResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanFunctionResult_isError(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsError, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanFunctionResult_isError(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanFunctionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanFunctionResult_type(ctx context.Context, field graphql.CollectedField, obj *biz.SpanFunctionResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanFunctionResult_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanFunctionResult_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanFunctionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanFunctionResult_text(ctx context.Context, field graphql.CollectedField, obj *biz.SpanFunctionResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanFunctionResult_text(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Text, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanFunctionResult_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanFunctionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanImageURL_url(ctx context.Context, field graphql.CollectedField, obj *biz.SpanImageURL) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanImageURL_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanImageURL_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanImageURL",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanQuery_modelId(ctx context.Context, field graphql.CollectedField, obj *biz.SpanQuery) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanQuery_modelId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ModelID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanQuery_modelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanQuery",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanQuery_prompt(ctx context.Context, field graphql.CollectedField, obj *biz.SpanQuery) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanQuery_prompt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Prompt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanQuery_prompt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanQuery",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanText_text(ctx context.Context, field graphql.CollectedField, obj *biz.SpanText) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanText_text(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Text, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanText_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanText",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanThinking_thinking(ctx context.Context, field graphql.CollectedField, obj *biz.SpanThinking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanThinking_thinking(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Thinking, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanThinking_thinking(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanThinking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanValue_query(ctx context.Context, field graphql.CollectedField, obj *biz.SpanValue) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanValue_query(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Query, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*biz.SpanQuery)
+	fc.Result = res
+	return ec.marshalOSpanQuery2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanQuery(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanValue_query(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanValue",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "modelId":
+				return ec.fieldContext_SpanQuery_modelId(ctx, field)
+			case "prompt":
+				return ec.fieldContext_SpanQuery_prompt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpanQuery", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanValue_text(ctx context.Context, field graphql.CollectedField, obj *biz.SpanValue) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanValue_text(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Text, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*biz.SpanText)
+	fc.Result = res
+	return ec.marshalOSpanText2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanText(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanValue_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanValue",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "text":
+				return ec.fieldContext_SpanText_text(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpanText", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanValue_imageUrl(ctx context.Context, field graphql.CollectedField, obj *biz.SpanValue) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanValue_imageUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ImageURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*biz.SpanImageURL)
+	fc.Result = res
+	return ec.marshalOSpanImageURL2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanImageURL(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanValue_imageUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanValue",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_SpanImageURL_url(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpanImageURL", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanValue_thinking(ctx context.Context, field graphql.CollectedField, obj *biz.SpanValue) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanValue_thinking(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Thinking, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*biz.SpanThinking)
+	fc.Result = res
+	return ec.marshalOSpanThinking2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanThinking(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanValue_thinking(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanValue",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "thinking":
+				return ec.fieldContext_SpanThinking_thinking(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpanThinking", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanValue_functionCall(ctx context.Context, field graphql.CollectedField, obj *biz.SpanValue) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanValue_functionCall(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FunctionCall, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*biz.SpanFunctionCall)
+	fc.Result = res
+	return ec.marshalOSpanFunctionCall2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanFunctionCall(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanValue_functionCall(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanValue",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SpanFunctionCall_id(ctx, field)
+			case "name":
+				return ec.fieldContext_SpanFunctionCall_name(ctx, field)
+			case "arguments":
+				return ec.fieldContext_SpanFunctionCall_arguments(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpanFunctionCall", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanValue_functionResult(ctx context.Context, field graphql.CollectedField, obj *biz.SpanValue) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanValue_functionResult(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FunctionResult, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*biz.SpanFunctionResult)
+	fc.Result = res
+	return ec.marshalOSpanFunctionResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanFunctionResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanValue_functionResult(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanValue",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SpanFunctionResult_id(ctx, field)
+			case "isError":
+				return ec.fieldContext_SpanFunctionResult_isError(ctx, field)
+			case "type":
+				return ec.fieldContext_SpanFunctionResult_type(ctx, field)
+			case "text":
+				return ec.fieldContext_SpanFunctionResult_text(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpanFunctionResult", field.Name)
 		},
 	}
 	return fc, nil
@@ -23906,6 +25904,72 @@ func (ec *executionContext) fieldContext_Trace_requests(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Trace_rootRequestTrace(ctx context.Context, field graphql.CollectedField, obj *ent.Trace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Trace_rootRequestTrace(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Trace().RootRequestTrace(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*biz.RequestTrace)
+	fc.Result = res
+	return ec.marshalNRequestTrace2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRequestTrace(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Trace_rootRequestTrace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Trace",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_RequestTrace_id(ctx, field)
+			case "parentId":
+				return ec.fieldContext_RequestTrace_parentId(ctx, field)
+			case "model":
+				return ec.fieldContext_RequestTrace_model(ctx, field)
+			case "children":
+				return ec.fieldContext_RequestTrace_children(ctx, field)
+			case "requestSpans":
+				return ec.fieldContext_RequestTrace_requestSpans(ctx, field)
+			case "responseSpans":
+				return ec.fieldContext_RequestTrace_responseSpans(ctx, field)
+			case "metadata":
+				return ec.fieldContext_RequestTrace_metadata(ctx, field)
+			case "startTime":
+				return ec.fieldContext_RequestTrace_startTime(ctx, field)
+			case "endTime":
+				return ec.fieldContext_RequestTrace_endTime(ctx, field)
+			case "duration":
+				return ec.fieldContext_RequestTrace_duration(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RequestTrace", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TraceConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.TraceConnection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TraceConnection_edges(ctx, field)
 	if err != nil {
@@ -24105,6 +26169,8 @@ func (ec *executionContext) fieldContext_TraceEdge_node(_ context.Context, field
 				return ec.fieldContext_Trace_thread(ctx, field)
 			case "requests":
 				return ec.fieldContext_Trace_requests(ctx, field)
+			case "rootRequestTrace":
+				return ec.fieldContext_Trace_rootRequestTrace(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trace", field.Name)
 		},
@@ -47091,6 +49157,46 @@ func (ec *executionContext) _RequestExecutionEdge(ctx context.Context, sel ast.S
 	return out
 }
 
+var requestMetadataImplementors = []string{"RequestMetadata"}
+
+func (ec *executionContext) _RequestMetadata(ctx context.Context, sel ast.SelectionSet, obj *biz.RequestMetadata) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, requestMetadataImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RequestMetadata")
+		case "cost":
+			out.Values[i] = ec._RequestMetadata_cost(ctx, field, obj)
+		case "itemCount":
+			out.Values[i] = ec._RequestMetadata_itemCount(ctx, field, obj)
+		case "tokens":
+			out.Values[i] = ec._RequestMetadata_tokens(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var requestStatsImplementors = []string{"RequestStats"}
 
 func (ec *executionContext) _RequestStats(ctx context.Context, sel ast.SelectionSet, obj *RequestStats) graphql.Marshaler {
@@ -47209,6 +49315,137 @@ func (ec *executionContext) _RequestStatsByModel(ctx context.Context, sel ast.Se
 			out.Values[i] = ec._RequestStatsByModel_count(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var requestTraceImplementors = []string{"RequestTrace"}
+
+func (ec *executionContext) _RequestTrace(ctx context.Context, sel ast.SelectionSet, obj *biz.RequestTrace) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, requestTraceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RequestTrace")
+		case "id":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RequestTrace_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "parentId":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RequestTrace_parentId(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "model":
+			out.Values[i] = ec._RequestTrace_model(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "children":
+			out.Values[i] = ec._RequestTrace_children(ctx, field, obj)
+		case "requestSpans":
+			out.Values[i] = ec._RequestTrace_requestSpans(ctx, field, obj)
+		case "responseSpans":
+			out.Values[i] = ec._RequestTrace_responseSpans(ctx, field, obj)
+		case "metadata":
+			out.Values[i] = ec._RequestTrace_metadata(ctx, field, obj)
+		case "startTime":
+			out.Values[i] = ec._RequestTrace_startTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "endTime":
+			out.Values[i] = ec._RequestTrace_endTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "duration":
+			out.Values[i] = ec._RequestTrace_duration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -47774,6 +50011,341 @@ func (ec *executionContext) _SignInPayload(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var spanImplementors = []string{"Span"}
+
+func (ec *executionContext) _Span(ctx context.Context, sel ast.SelectionSet, obj *biz.Span) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spanImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Span")
+		case "id":
+			out.Values[i] = ec._Span_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._Span_name(ctx, field, obj)
+		case "type":
+			out.Values[i] = ec._Span_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startTime":
+			out.Values[i] = ec._Span_startTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "endTime":
+			out.Values[i] = ec._Span_endTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._Span_value(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var spanFunctionCallImplementors = []string{"SpanFunctionCall"}
+
+func (ec *executionContext) _SpanFunctionCall(ctx context.Context, sel ast.SelectionSet, obj *biz.SpanFunctionCall) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spanFunctionCallImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpanFunctionCall")
+		case "id":
+			out.Values[i] = ec._SpanFunctionCall_id(ctx, field, obj)
+		case "name":
+			out.Values[i] = ec._SpanFunctionCall_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "arguments":
+			out.Values[i] = ec._SpanFunctionCall_arguments(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var spanFunctionResultImplementors = []string{"SpanFunctionResult"}
+
+func (ec *executionContext) _SpanFunctionResult(ctx context.Context, sel ast.SelectionSet, obj *biz.SpanFunctionResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spanFunctionResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpanFunctionResult")
+		case "id":
+			out.Values[i] = ec._SpanFunctionResult_id(ctx, field, obj)
+		case "isError":
+			out.Values[i] = ec._SpanFunctionResult_isError(ctx, field, obj)
+		case "type":
+			out.Values[i] = ec._SpanFunctionResult_type(ctx, field, obj)
+		case "text":
+			out.Values[i] = ec._SpanFunctionResult_text(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var spanImageURLImplementors = []string{"SpanImageURL"}
+
+func (ec *executionContext) _SpanImageURL(ctx context.Context, sel ast.SelectionSet, obj *biz.SpanImageURL) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spanImageURLImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpanImageURL")
+		case "url":
+			out.Values[i] = ec._SpanImageURL_url(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var spanQueryImplementors = []string{"SpanQuery"}
+
+func (ec *executionContext) _SpanQuery(ctx context.Context, sel ast.SelectionSet, obj *biz.SpanQuery) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spanQueryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpanQuery")
+		case "modelId":
+			out.Values[i] = ec._SpanQuery_modelId(ctx, field, obj)
+		case "prompt":
+			out.Values[i] = ec._SpanQuery_prompt(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var spanTextImplementors = []string{"SpanText"}
+
+func (ec *executionContext) _SpanText(ctx context.Context, sel ast.SelectionSet, obj *biz.SpanText) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spanTextImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpanText")
+		case "text":
+			out.Values[i] = ec._SpanText_text(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var spanThinkingImplementors = []string{"SpanThinking"}
+
+func (ec *executionContext) _SpanThinking(ctx context.Context, sel ast.SelectionSet, obj *biz.SpanThinking) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spanThinkingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpanThinking")
+		case "thinking":
+			out.Values[i] = ec._SpanThinking_thinking(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var spanValueImplementors = []string{"SpanValue"}
+
+func (ec *executionContext) _SpanValue(ctx context.Context, sel ast.SelectionSet, obj *biz.SpanValue) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spanValueImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpanValue")
+		case "query":
+			out.Values[i] = ec._SpanValue_query(ctx, field, obj)
+		case "text":
+			out.Values[i] = ec._SpanValue_text(ctx, field, obj)
+		case "imageUrl":
+			out.Values[i] = ec._SpanValue_imageUrl(ctx, field, obj)
+		case "thinking":
+			out.Values[i] = ec._SpanValue_thinking(ctx, field, obj)
+		case "functionCall":
+			out.Values[i] = ec._SpanValue_functionCall(ctx, field, obj)
+		case "functionResult":
+			out.Values[i] = ec._SpanValue_functionResult(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -48743,6 +51315,42 @@ func (ec *executionContext) _Trace(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Trace_requests(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "rootRequestTrace":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Trace_rootRequestTrace(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -51801,6 +54409,20 @@ func (ec *executionContext) marshalNRequestStatus2githubᚗcomᚋloopljᚋaxonhu
 	return v
 }
 
+func (ec *executionContext) marshalNRequestTrace2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRequestTrace(ctx context.Context, sel ast.SelectionSet, v biz.RequestTrace) graphql.Marshaler {
+	return ec._RequestTrace(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRequestTrace2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRequestTrace(ctx context.Context, sel ast.SelectionSet, v *biz.RequestTrace) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RequestTrace(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNRequestWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRequestWhereInput(ctx context.Context, v any) (*ent.RequestWhereInput, error) {
 	res, err := ec.unmarshalInputRequestWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -51979,6 +54601,10 @@ func (ec *executionContext) marshalNScopeInfo2ᚖgithubᚗcomᚋloopljᚋaxonhub
 		return graphql.Null
 	}
 	return ec._ScopeInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSpan2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpan(ctx context.Context, sel ast.SelectionSet, v biz.Span) graphql.Marshaler {
+	return ec._Span(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNStoragePolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐStoragePolicy(ctx context.Context, sel ast.SelectionSet, v biz.StoragePolicy) graphql.Marshaler {
@@ -54469,6 +57095,13 @@ func (ec *executionContext) unmarshalORequestExecutionWhereInput2ᚖgithubᚗcom
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalORequestMetadata2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRequestMetadata(ctx context.Context, sel ast.SelectionSet, v *biz.RequestMetadata) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RequestMetadata(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalORequestOrder2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRequestOrder(ctx context.Context, v any) (*ent.RequestOrder, error) {
 	if v == nil {
 		return nil, nil
@@ -54637,6 +57270,53 @@ func (ec *executionContext) marshalORequestStatus2ᚖgithubᚗcomᚋloopljᚋaxo
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalORequestTrace2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRequestTraceᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.RequestTrace) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRequestTrace2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐRequestTrace(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalORequestWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRequestWhereInputᚄ(ctx context.Context, v any) ([]*ent.RequestWhereInput, error) {
@@ -54848,6 +57528,102 @@ func (ec *executionContext) unmarshalOS3Input2ᚖgithubᚗcomᚋloopljᚋaxonhub
 	}
 	res, err := ec.unmarshalInputS3Input(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSpan2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanᚄ(ctx context.Context, sel ast.SelectionSet, v []biz.Span) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNSpan2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpan(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOSpanFunctionCall2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanFunctionCall(ctx context.Context, sel ast.SelectionSet, v *biz.SpanFunctionCall) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SpanFunctionCall(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSpanFunctionResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanFunctionResult(ctx context.Context, sel ast.SelectionSet, v *biz.SpanFunctionResult) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SpanFunctionResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSpanImageURL2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanImageURL(ctx context.Context, sel ast.SelectionSet, v *biz.SpanImageURL) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SpanImageURL(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSpanQuery2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanQuery(ctx context.Context, sel ast.SelectionSet, v *biz.SpanQuery) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SpanQuery(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSpanText2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanText(ctx context.Context, sel ast.SelectionSet, v *biz.SpanText) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SpanText(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSpanThinking2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanThinking(ctx context.Context, sel ast.SelectionSet, v *biz.SpanThinking) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SpanThinking(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSpanValue2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanValue(ctx context.Context, sel ast.SelectionSet, v *biz.SpanValue) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SpanValue(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v any) (string, error) {

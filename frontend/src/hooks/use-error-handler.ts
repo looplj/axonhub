@@ -11,10 +11,10 @@ export function useErrorHandler() {
     
     if (error instanceof ZodError) {
       // Schema validation error
-      const fieldErrors = error.errors.map(err => {
+      const fieldErrors = error.errors?.map(err => {
         const path = err.path.join('.')
         return `${path}: ${err.message}`
-      }).join(', ')
+      }).join(', ') || 'Validation failed'
       
       errorMessage = t('common.errors.validationFailed', { details: fieldErrors })
       

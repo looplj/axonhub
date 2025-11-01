@@ -228,7 +228,7 @@ func (r *requestResolver) RequestBody(ctx context.Context, obj *ent.Request) (ob
 
 // ResponseBody is the resolver for the responseBody field.
 func (r *requestResolver) ResponseBody(ctx context.Context, obj *ent.Request) (objects.JSONRawMessage, error) {
-	value, err := r.requestService.LoadRequestResponseBody(ctx, obj)
+	value, err := r.requestService.LoadResponseBody(ctx, obj)
 	if err != nil {
 		log.Error(ctx, "Failed to load request response body", log.Cause(err), log.Int("request_id", obj.ID))
 		return nil, fmt.Errorf("failed to load response body: %w", err)
@@ -239,7 +239,7 @@ func (r *requestResolver) ResponseBody(ctx context.Context, obj *ent.Request) (o
 
 // ResponseChunks is the resolver for the responseChunks field.
 func (r *requestResolver) ResponseChunks(ctx context.Context, obj *ent.Request) ([]objects.JSONRawMessage, error) {
-	value, err := r.requestService.LoadRequestResponseChunks(ctx, obj)
+	value, err := r.requestService.LoadResponseChunks(ctx, obj)
 	if err != nil {
 		log.Error(ctx, "Failed to load request response chunks", log.Cause(err), log.Int("request_id", obj.ID))
 

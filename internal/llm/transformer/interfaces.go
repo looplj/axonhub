@@ -8,8 +8,8 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
-// Inbound represents a transformer accpet the request from user and respond to use the transformed response.
-// e.g: OpenAPI transformer accepts the request from user with OpenAPI format and respond with OpenAI format.
+// Inbound represents a transformer accpet the request from client and respond to client with the transformed response.
+// e.g: OpenAPI transformer accepts the request from client with OpenAPI format and respond with OpenAI format.
 type Inbound interface {
 	// APIFormat returns the API format of the transformer.
 	APIFormat() llm.APIFormat
@@ -26,24 +26,21 @@ type Inbound interface {
 	// TransformError transforms the unified error response to HTTP error response.
 	TransformError(ctx context.Context, err error) *httpclient.Error
 
-	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
-	// This method handles unified-specific streaming formats and converts the chunks to a the user request format complete response.
-	// e.g: the user request with OpenAI format, but the provider response with Claude format, the chunks is the unified response format, the AggregateStreamChunks will convert
-	// the chunks to the OpenAI response format.
+	// AggregateStreamChunks aggregates streaming chunks into a complete response body.
+	// This method handles unified-specific streaming formats and converts the chunks to a the client request format complete response.
+	// e.g: the client request with OpenAI chat completion format, and the provider is Anthropic Claude, the chunks is the unified stream event format,
+	// the AggregateStreamChunks will convert the chunks to the OpenAI chat completion format.
 	AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
 }
 
-// Outbound represents a transformer that convert the generic Request to the undering provider format.
-// And transform the response from the undering provider format to generic Response format.
+// Outbound represents a transformer that convert the unified Request to the undering provider format.
+// And transform the response from the undering provider format to unified Response format.
 type Outbound interface {
 	// APIFormat returns the API format of the transformer.
 	// e.g: openai/chat_completions, claude/messages.
 	APIFormat() llm.APIFormat
 
-	// TransformError transforms the HTTP error response to the unified error response.
-	TransformError(ctx context.Context, err *httpclient.Error) *llm.ResponseError
-
-	// TransformRequest transforms the generic request to HTTP request.
+	// TransformRequest transforms the unified request to HTTP request.
 	TransformRequest(ctx context.Context, request *llm.Request) (*httpclient.Request, error)
 
 	// TransformResponse transforms the HTTP response to the unified response format.
@@ -52,9 +49,12 @@ type Outbound interface {
 	// TransformStream transforms the HTTP stream response to the unified response format.
 	TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error)
 
+	// TransformError transforms the HTTP error response to the unified error response.
+	TransformError(ctx context.Context, err *httpclient.Error) *llm.ResponseError
+
 	// AggregateStreamChunks aggregates streaming response chunks into a complete response.
 	// This method handles provider-specific streaming formats and converts the chunks to a original provider format complete response.
 	// e.g: the user request with OpenAI format, but the provider response with Claude format, the chunks is the Claude response format, the AggregateStreamChunks will convert
-	// the chunks to the Claude response format.
+	// the chunks to the OpenAI chat completion response format.
 	AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
 }
