@@ -161,9 +161,9 @@ models:
   GCSInput:
     model:
       - github.com/looplj/axonhub/internal/objects.GCS
-  RequestTrace:
+  Segment:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.RequestTrace
+      - github.com/looplj/axonhub/internal/server/biz.Segment
   RequestMetadata:
     model:
       - github.com/looplj/axonhub/internal/server/biz.RequestMetadata
@@ -173,9 +173,12 @@ models:
   SpanValue:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SpanValue
-  SpanQuery:
+  SpanUserQuery:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.SpanQuery
+      - github.com/looplj/axonhub/internal/server/biz.SpanUserQuery
+  SpanUserImageURL:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SpanUserImageURL
   SpanThinking:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SpanThinking
@@ -191,3 +194,12 @@ models:
   SpanFunctionResult:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SpanFunctionResult
+  SpanToolUse:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SpanToolUse
+  SpanToolResult:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SpanToolResult
+  SpanType:
+    model:
+      - string

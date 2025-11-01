@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -83,24 +82,32 @@ func (s *TraceService) GetTraceByID(ctx context.Context, traceID string, project
 	return trace, nil
 }
 
-type RequestTrace struct {
+// Segment represents a segment in a trace.
+// A trace contains multiple segments, and each segment contains multiple spans.
+type Segment struct {
 	ID            int              `json:"id"`
 	ParentID      *int             `json:"parentId,omitempty"`
 	Model         string           `json:"model"`
-	Children      []*RequestTrace  `json:"children,omitempty"`
+	Children      []*Segment       `json:"children,omitempty"`
 	RequestSpans  []Span           `json:"requestSpans,omitempty"`
 	ResponseSpans []Span           `json:"responseSpans,omitempty"`
 	Metadata      *RequestMetadata `json:"metadata,omitempty"`
 	StartTime     time.Time        `json:"startTime"`
 	EndTime       time.Time        `json:"endTime"`
-	Duration      string           `json:"duration"`
+	Duration      int64            `json:"duration"` // Duration in milliseconds
 }
 
 // Span represents a trace span with timing and metadata information.
 type Span struct {
-	ID   string `json:"id"`
-	Name string `json:"name,omitempty"`
-	// "query" | "image_url" | "embedding" | "tool_use" | "tool_result" | "text" | "thinking"
+	ID string `json:"id"`
+	// Type of the span.
+	// "user_query": the query from user.
+	// "user_image_url": the image url from user.
+	// "text": llm responsed text.
+	// "thinking": llm responsed thinking.
+	// "image_url": User image url
+	// "tool_use": llm responsed tool use.
+	// "tool_result": result of tool running.
 	Type      string     `json:"type"`
 	StartTime time.Time  `json:"startTime,omitempty"`
 	EndTime   time.Time  `json:"endTime,omitempty"`
@@ -108,17 +115,21 @@ type Span struct {
 }
 
 type SpanValue struct {
-	Query          *SpanQuery          `json:"query,omitempty"`
-	Text           *SpanText           `json:"text,omitempty"`
-	ImageURL       *SpanImageURL       `json:"imageUrl,omitempty"`
-	Thinking       *SpanThinking       `json:"thinking,omitempty"`
-	FunctionCall   *SpanFunctionCall   `json:"functionCall,omitempty"`
-	FunctionResult *SpanFunctionResult `json:"functionResult,omitempty"`
+	UserQuery    *SpanUserQuery    `json:"userQuery,omitempty"`
+	UserImageURL *SpanUserImageURL `json:"userImageUrl,omitempty"`
+	Text         *SpanText         `json:"text,omitempty"`
+	Thinking     *SpanThinking     `json:"thinking,omitempty"`
+	ImageURL     *SpanImageURL     `json:"imageUrl,omitempty"`
+	ToolUse      *SpanToolUse      `json:"toolUse,omitempty"`
+	ToolResult   *SpanToolResult   `json:"toolResult,omitempty"`
 }
 
-type SpanQuery struct {
-	ModelID string `json:"modelId,omitempty"`
-	Prompt  string `json:"prompt,omitempty"`
+type SpanUserQuery struct {
+	Text string `json:"text,omitempty"`
+}
+
+type SpanUserImageURL struct {
+	URL string `json:"url,omitempty"`
 }
 
 type SpanThinking struct {
@@ -133,41 +144,31 @@ type SpanImageURL struct {
 	URL string `json:"url,omitempty"`
 }
 
-type SpanFunctionCall struct {
+type SpanToolUse struct {
 	ID        string  `json:"id,omitempty"`
 	Name      string  `json:"name"`
 	Arguments *string `json:"arguments,omitempty"`
 }
 
-type SpanFunctionResult struct {
-	ID      string `json:"id,omitempty"`
-	IsError bool   `json:"error,omitempty"`
-	// Text
-	Type string  `json:"type,omitempty"`
+type SpanToolResult struct {
+	ToolCallID string `json:"id,omitempty"`
+	IsError    bool   `json:"error,omitempty"`
+	// Text or image_url
+	// Type string  `json:"type,omitempty"`
 	Text *string `json:"text,omitempty"`
 }
 
-// RequestMetadata contains additional metadata for a span.
+// RequestMetadata contains additional metadata for a segment.
 type RequestMetadata struct {
-	Cost      *float64 `json:"cost,omitempty"`
-	ItemCount *int     `json:"itemCount,omitempty"`
-	Tokens    *int64   `json:"tokens,omitempty"`
+	ItemCount    *int   `json:"itemCount,omitempty"`
+	InputTokens  *int64 `json:"inputTokens,omitempty"`
+	OutputTokens *int64 `json:"outputTokens,omitempty"`
+	TotalTokens  *int64 `json:"totalTokens,omitempty"`
+	CachedTokens *int64 `json:"cachedTokens,omitempty"`
 }
 
-type SpanToolCall struct {
-	ID    string  `json:"id,omitempty"`
-	Name  string  `json:"name"`
-	Input *string `json:"input,omitempty"`
-}
-
-type SpanToolResult struct {
-	ID      string  `json:"id,omitempty"`
-	IsError bool    `json:"error,omitempty"`
-	Output  *string `json:"output,omitempty"`
-}
-
-// GetRootRequestTrace retrieves the hierarchical request traces for a trace ID.
-func (s *TraceService) GetRootRequestTrace(ctx context.Context, traceID int) (*RequestTrace, error) {
+// GetRootSegment retrieves the hierarchical segments for a trace ID.
+func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segment, error) {
 	client := ent.FromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
@@ -206,32 +207,44 @@ func (s *TraceService) GetRootRequestTrace(ctx context.Context, traceID int) (*R
 		return nil, fmt.Errorf("failed to load request body: %w", err)
 	}
 
-	traces := make([]*RequestTrace, len(requests))
+	segments := make([]*Segment, len(requests))
+	// Store the original spans for each segment (including request and response) for later comparison
+	var originSegmentSpans [][]Span
+
 	for i, req := range requests {
-		traces[i], err = s.requestToTrace(ctx, req)
+		segments[i], err = s.requestToSegment(ctx, req)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build request trace: %w", err)
+			return nil, fmt.Errorf("failed to build segment: %w", err)
 		}
+
+		// Preserve the original spans (request + response) for subsequent comparison
+		segmentSpans := segments[i].RequestSpans
+		segmentSpans = append(segmentSpans, segments[i].ResponseSpans...)
+		originSegmentSpans = append(originSegmentSpans, segmentSpans)
 
 		if i == 0 {
 			continue
 		}
 
-		traces[i].ParentID = &requests[i-1].ID
-		traces[i-1].Children = append(traces[i-1].Children, traces[i])
+		segments[i].ParentID = &requests[i-1].ID
+		segments[i-1].Children = append(segments[i-1].Children, segments[i])
+
+		// Deduplicate requestSpans because later requests carry previous context messages as a prefix
+		// Remove spans that duplicate those in the parent segment
+		segments[i].RequestSpans = deduplicateSpansWithParent(segments[i].RequestSpans, originSegmentSpans[i-1])
 	}
 
-	return traces[0], nil
+	return segments[0], nil
 }
 
-// requestToTrace converts a request entity to a RequestTrace.
-func (s *TraceService) requestToTrace(ctx context.Context, req *ent.Request) (*RequestTrace, error) {
-	trace := &RequestTrace{
+// requestToSegment converts a request entity to a Segment.
+func (s *TraceService) requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
+	segment := &Segment{
 		ID:        req.ID,
 		Model:     req.ModelID,
 		StartTime: req.CreatedAt,
 		EndTime:   req.UpdatedAt,
-		Duration:  req.UpdatedAt.Sub(req.CreatedAt).String(),
+		Duration:  req.UpdatedAt.Sub(req.CreatedAt).Milliseconds(),
 	}
 
 	var (
@@ -279,16 +292,16 @@ func (s *TraceService) requestToTrace(ctx context.Context, req *ent.Request) (*R
 			return nil, fmt.Errorf("failed to transform response body: %w", err)
 		}
 
-		// trace.Metadata = s.extractMetadataFromResponse(unifiedResp)
+		segment.Metadata = s.extractMetadataFromResponse(unifiedResp)
 		if len(unifiedResp.Choices) > 0 && unifiedResp.Choices[0].Message != nil {
 			responseSpans = append(responseSpans, s.extractSpansFromMessage(unifiedResp.Choices[0].Message, "response")...)
 		}
 	}
 
-	trace.RequestSpans = requestSpans
-	trace.ResponseSpans = responseSpans
+	segment.RequestSpans = requestSpans
+	segment.ResponseSpans = responseSpans
 
-	return trace, nil
+	return segment, nil
 }
 
 func (s *TraceService) extractSpansFromMessages(messages []llm.Message, idPrefix string) []Span {
@@ -312,7 +325,6 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 	if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
 		spans = append(spans, Span{
 			ID:        fmt.Sprintf("%s-reasoning", idPrefix),
-			Name:      "Reasoning",
 			Type:      "thinking",
 			StartTime: now,
 			EndTime:   now,
@@ -326,18 +338,44 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 
 	// Handle text content
 	if msg.Content.Content != nil && *msg.Content.Content != "" {
-		spans = append(spans, Span{
-			ID:        fmt.Sprintf("%s-text", idPrefix),
-			Name:      fmt.Sprintf("%s message", msg.Role),
-			Type:      lo.Ternary(msg.Role == "user", "query", "text"),
-			StartTime: now,
-			EndTime:   now,
-			Value: &SpanValue{
-				Text: &SpanText{
-					Text: *msg.Content.Content,
+		switch msg.Role {
+		case "user":
+			spans = append(spans, Span{
+				ID:        fmt.Sprintf("%s-text", idPrefix),
+				Type:      "user_query",
+				StartTime: now,
+				EndTime:   now,
+				Value: &SpanValue{
+					UserQuery: &SpanUserQuery{
+						Text: *msg.Content.Content,
+					},
 				},
-			},
-		})
+			})
+		case "tool":
+			spans = append(spans, Span{
+				ID:        fmt.Sprintf("%s-text", idPrefix),
+				Type:      "tool_result",
+				StartTime: now,
+				EndTime:   now,
+				Value: &SpanValue{
+					ToolResult: &SpanToolResult{
+						Text: msg.Content.Content,
+					},
+				},
+			})
+		default:
+			spans = append(spans, Span{
+				ID:        fmt.Sprintf("%s-text", idPrefix),
+				Type:      "text",
+				StartTime: now,
+				EndTime:   now,
+				Value: &SpanValue{
+					Text: &SpanText{
+						Text: *msg.Content.Content,
+					},
+				},
+			})
+		}
 	}
 
 	// Handle multiple content parts
@@ -350,27 +388,93 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 
 		switch part.Type {
 		case "text":
-			partSpan.Name = "Text content"
+			if part.Text == nil {
+				continue
+			}
 
-			partSpan.Type = "text"
-			if part.Text != nil {
-				partSpan.Value = &SpanValue{
-					Text: &SpanText{
-						Text: *part.Text,
+			switch msg.Role {
+			case "user":
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-text", idPrefix),
+					Type:      "user_query",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						UserQuery: &SpanUserQuery{
+							Text: *part.Text,
+						},
 					},
-				}
+				})
+			case "tool":
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-text", idPrefix),
+					Type:      "tool_result",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						ToolResult: &SpanToolResult{
+							Text: part.Text,
+						},
+					},
+				})
+			default:
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-text", idPrefix),
+					Type:      "text",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						Text: &SpanText{
+							Text: *part.Text,
+						},
+					},
+				})
 			}
 		case "image_url":
-			partSpan.Name = "Image"
-
-			partSpan.Type = "image_url"
-			if part.ImageURL != nil {
-				partSpan.Value = &SpanValue{
-					ImageURL: &SpanImageURL{
-						URL: part.ImageURL.URL,
-					},
-				}
+			if part.ImageURL == nil {
+				continue
 			}
+
+			switch msg.Role {
+			case "user":
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-image", idPrefix),
+					Type:      "user_image_url",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						UserImageURL: &SpanUserImageURL{
+							URL: part.ImageURL.URL,
+						},
+					},
+				})
+			case "tool":
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-image", idPrefix),
+					Type:      "tool_result",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						ToolResult: &SpanToolResult{
+							// Image URL in tool result - store as output
+							Text: &part.ImageURL.URL,
+						},
+					},
+				})
+			default:
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-image", idPrefix),
+					Type:      "image_url",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						ImageURL: &SpanImageURL{
+							URL: part.ImageURL.URL,
+						},
+					},
+				})
+			}
+
 		default:
 			// ignore for now.
 		}
@@ -383,12 +487,11 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 		args := toolCall.Function.Arguments
 		toolSpan := Span{
 			ID:        fmt.Sprintf("%s-tool-%d", idPrefix, i),
-			Name:      fmt.Sprintf("Tool: %s", toolCall.Function.Name),
 			Type:      "tool_use",
 			StartTime: now,
 			EndTime:   now,
 			Value: &SpanValue{
-				FunctionCall: &SpanFunctionCall{
+				ToolUse: &SpanToolUse{
 					ID:        toolCall.ID,
 					Name:      toolCall.Function.Name,
 					Arguments: &args,
@@ -396,36 +499,6 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 			},
 		}
 		spans = append(spans, toolSpan)
-	}
-
-	// Handle tool results (when role is "tool")
-	if msg.Role == "tool" && msg.ToolCallID != nil {
-		var text *string
-		if msg.Content.Content != nil {
-			text = msg.Content.Content
-		}
-
-		isError := false
-		if msg.ToolCallIsError != nil {
-			isError = *msg.ToolCallIsError
-		}
-
-		toolResultSpan := Span{
-			ID:        fmt.Sprintf("%s-tool-result", idPrefix),
-			Name:      "Tool Result",
-			Type:      "tool_result",
-			StartTime: now,
-			EndTime:   now,
-			Value: &SpanValue{
-				FunctionResult: &SpanFunctionResult{
-					ID:      *msg.ToolCallID,
-					IsError: isError,
-					Type:    "text",
-					Text:    text,
-				},
-			},
-		}
-		spans = append(spans, toolResultSpan)
 	}
 
 	return spans
@@ -466,4 +539,117 @@ func (s *TraceService) getOutboundTransformer(format llm.APIFormat) (transformer
 	default:
 		return nil, fmt.Errorf("unsupported format for outbound transformation: %s", format)
 	}
+}
+
+// extractMetadataFromResponse extracts metadata from the unified response.
+func (s *TraceService) extractMetadataFromResponse(resp *llm.Response) *RequestMetadata {
+	if resp == nil || resp.Usage == nil {
+		return nil
+	}
+
+	usage := resp.Usage
+	metadata := &RequestMetadata{
+		TotalTokens: &usage.TotalTokens,
+	}
+
+	if usage.PromptTokens > 0 {
+		metadata.InputTokens = &usage.PromptTokens
+	}
+
+	if usage.CompletionTokens > 0 {
+		metadata.OutputTokens = &usage.CompletionTokens
+	}
+
+	if usage.PromptTokensDetails != nil && usage.PromptTokensDetails.CachedTokens > 0 {
+		metadata.CachedTokens = &usage.PromptTokensDetails.CachedTokens
+	}
+
+	return metadata
+}
+
+// deduplicateSpansWithParent removes spans from current that already exist in parent.
+// This is needed because subsequent requests in a trace carry previous context messages as prefix.
+func deduplicateSpansWithParent(current, parent []Span) []Span {
+	if len(current) == 0 {
+		return current
+	}
+
+	if len(parent) == 0 {
+		return current
+	}
+
+	capacity := len(current) - len(parent)
+	if capacity < 0 {
+		capacity = 0
+	}
+
+	result := make([]Span, 0, capacity)
+
+	for i, span := range current {
+		if i >= len(parent) {
+			result = append(result, span)
+			continue
+		}
+
+		currentKey := spanToKey(span)
+
+		parentKey := spanToKey(parent[i])
+		if currentKey == parentKey {
+			continue
+		}
+
+		result = append(result, span)
+	}
+
+	return result
+}
+
+// spanToKey generates a unique key for a span based on its content.
+func spanToKey(span Span) string {
+	if span.Value == nil {
+		return fmt.Sprintf("%s:", span.Type)
+	}
+
+	switch span.Type {
+	case "user_query":
+		if span.Value.UserQuery != nil {
+			return fmt.Sprintf("%s:%s", span.Type, span.Value.UserQuery.Text)
+		}
+	case "user_image_url":
+		if span.Value.UserImageURL != nil {
+			return fmt.Sprintf("%s:%s", span.Type, span.Value.UserImageURL.URL)
+		}
+	case "text":
+		if span.Value.Text != nil {
+			return fmt.Sprintf("%s:%s", span.Type, span.Value.Text.Text)
+		}
+	case "thinking":
+		if span.Value.Thinking != nil {
+			return fmt.Sprintf("%s:%s", span.Type, span.Value.Thinking.Thinking)
+		}
+	case "image_url":
+		if span.Value.ImageURL != nil {
+			return fmt.Sprintf("%s:%s", span.Type, span.Value.ImageURL.URL)
+		}
+	case "tool_use":
+		if span.Value.ToolUse != nil {
+			args := ""
+			if span.Value.ToolUse.Arguments != nil {
+				args = *span.Value.ToolUse.Arguments
+			}
+
+			return fmt.Sprintf("%s:%s:%s:%s", span.Type, span.Value.ToolUse.ID, span.Value.ToolUse.Name, args)
+		}
+	case "tool_result":
+		if span.Value.ToolResult != nil {
+			output := ""
+			if span.Value.ToolResult.Text != nil {
+				output = *span.Value.ToolResult.Text
+			}
+
+			return fmt.Sprintf("%s:%s:%v:%s", span.Type, span.Value.ToolResult.ToolCallID, span.Value.ToolResult.IsError, output)
+		}
+	}
+
+	return fmt.Sprintf("%s:", span.Type)
 }

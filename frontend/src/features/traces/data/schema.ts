@@ -16,7 +16,7 @@ const threadSchema = z
   .nullable()
   .optional()
 
-const traceRequestsSummarySchema = z
+export const traceRequestsSummarySchema = z
   .object({
     totalCount: z.number().nullable().optional(),
   })
@@ -53,10 +53,16 @@ export const traceConnectionSchema = z.object({
 
 export type TraceConnection = z.infer<typeof traceConnectionSchema>
 
-const spanQuerySchema = z
+const spanUserQuerySchema = z
   .object({
-    modelId: z.string().nullable().optional(),
-    prompt: z.string().nullable().optional(),
+    text: z.string().nullable().optional(),
+  })
+  .nullable()
+  .optional()
+
+const spanUserImageURLSchema = z
+  .object({
+    url: z.string().nullable().optional(),
   })
   .nullable()
   .optional()
@@ -82,7 +88,7 @@ const spanThinkingSchema = z
   .nullable()
   .optional()
 
-const spanFunctionCallSchema = z
+const spanToolUseSchema = z
   .object({
     id: z.string().nullable().optional(),
     name: z.string(),
@@ -91,11 +97,10 @@ const spanFunctionCallSchema = z
   .nullable()
   .optional()
 
-const spanFunctionResultSchema = z
+const spanToolResultSchema = z
   .object({
-    id: z.string().nullable().optional(),
+    toolCallID: z.string().nullable().optional(),
     isError: z.boolean().nullable().optional(),
-    type: z.string().nullable().optional(),
     text: z.string().nullable().optional(),
   })
   .nullable()
@@ -103,19 +108,19 @@ const spanFunctionResultSchema = z
 
 const spanValueSchema = z
   .object({
-    query: spanQuerySchema,
+    userQuery: spanUserQuerySchema,
+    userImageUrl: spanUserImageURLSchema,
     text: spanTextSchema,
-    imageUrl: spanImageURLSchema,
     thinking: spanThinkingSchema,
-    functionCall: spanFunctionCallSchema,
-    functionResult: spanFunctionResultSchema,
+    imageUrl: spanImageURLSchema,
+    toolUse: spanToolUseSchema,
+    toolResult: spanToolResultSchema,
   })
   .nullable()
   .optional()
 
 export const spanSchema = z.object({
   id: z.string(),
-  name: z.string().nullable().optional(),
   type: z.string(),
   startTime: z.coerce.date().nullable().optional(),
   endTime: z.coerce.date().nullable().optional(),
@@ -126,31 +131,33 @@ export type Span = z.infer<typeof spanSchema>
 
 const requestMetadataSchema = z
   .object({
-    cost: z.number().nullable().optional(),
     itemCount: z.number().nullable().optional(),
-    tokens: z.number().nullable().optional(),
+    inputTokens: z.number().nullable().optional(),
+    outputTokens: z.number().nullable().optional(),
+    totalTokens: z.number().nullable().optional(),
+    cachedTokens: z.number().nullable().optional(),
   })
   .nullable()
   .optional()
 
 export type RequestMetadata = z.infer<typeof requestMetadataSchema>
 
-export const requestTraceSchema: z.ZodType<any> = z.lazy(() =>
+export const segmentSchema: z.ZodType<any> = z.lazy(() =>
   z.object({
     id: z.string(),
     parentId: z.string().nullable().optional(),
     model: z.string(),
-    duration: z.string(),
+    duration: z.number(),
     startTime: z.coerce.date(),
     endTime: z.coerce.date(),
     metadata: requestMetadataSchema,
     requestSpans: z.array(spanSchema).nullable().optional().default([]),
     responseSpans: z.array(spanSchema).nullable().optional().default([]),
-    children: z.array(requestTraceSchema).nullable().optional().default([]),
+    children: z.array(segmentSchema).nullable().optional().default([]),
   })
 )
 
-export type RequestTrace = z.infer<typeof requestTraceSchema>
+export type Segment = z.infer<typeof segmentSchema>
 
 export const traceDetailSchema = z.object({
   id: z.string(),
@@ -160,7 +167,7 @@ export const traceDetailSchema = z.object({
   project: projectSchema,
   thread: threadSchema,
   requests: traceRequestsSummarySchema,
-  rootRequestTrace: requestTraceSchema.nullable().optional(),
+  rootSegment: segmentSchema.nullable().optional(),
 })
 
 export type TraceDetail = z.infer<typeof traceDetailSchema>

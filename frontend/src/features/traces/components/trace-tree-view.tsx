@@ -4,13 +4,13 @@ import { format } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { RequestTrace, Span } from '../data/schema'
+import { Segment, Span } from '../data/schema'
 import { cn } from '@/lib/utils'
 
 interface TraceTreeViewProps {
-  trace: RequestTrace
+  trace: Segment
   level?: number
-  onSpanSelect?: (trace: RequestTrace, span: Span, type: 'request' | 'response') => void
+  onSpanSelect?: (trace: Segment, span: Span, type: 'request' | 'response') => void
   selectedSpanId?: string
 }
 
@@ -28,17 +28,18 @@ function SpanItem({
   const { t } = useTranslation()
   const getSpanIcon = () => {
     switch (span.type) {
-      case 'query':
+      case 'user_query':
         return '🔍'
       case 'text':
         return '📝'
       case 'thinking':
         return '💭'
-      case 'function-call':
-        return '⚙️'
-      case 'function-result':
+      case 'tool_use':
+        return '🔧'
+      case 'tool_result':
         return '✅'
-      case 'image-url':
+      case 'user_image_url':
+      case 'image_url':
         return '🖼️'
       default:
         return '•'
@@ -65,7 +66,7 @@ function SpanItem({
       <div className='flex items-center justify-between gap-4'>
         <div className='flex items-center gap-2 min-w-0'>
           <span className='text-lg'>{getSpanIcon()}</span>
-          <span className='truncate text-sm font-medium'>{span.name || span.type}</span>
+          <span className='truncate text-sm font-medium'>{span.type}</span>
           <Badge variant='secondary' className='text-xs capitalize'>
             {t(`traces.common.badges.${type}`)}
           </Badge>
@@ -81,10 +82,29 @@ export function TraceTreeView({ trace, level = 0, onSpanSelect, selectedSpanId }
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(level === 0)
 
-  const duration = trace.duration || '0s'
+  const duration = trace.duration ? `${(trace.duration / 1000).toFixed(3)}s` : '0s'
   const hasChildren = trace.children && trace.children.length > 0
   const hasSpans = (trace.requestSpans && trace.requestSpans.length > 0) || 
                    (trace.responseSpans && trace.responseSpans.length > 0)
+
+  const tokenRows = [
+    trace.metadata?.inputTokens != null && {
+      label: t('traces.detail.inputTokensLabel'),
+      value: trace.metadata.inputTokens.toLocaleString(),
+    },
+    trace.metadata?.outputTokens != null && {
+      label: t('traces.detail.outputTokensLabel'),
+      value: trace.metadata.outputTokens.toLocaleString(),
+    },
+    trace.metadata?.totalTokens != null && {
+      label: t('traces.detail.totalTokensLabel'),
+      value: trace.metadata.totalTokens.toLocaleString(),
+    },
+    trace.metadata?.cachedTokens != null && {
+      label: t('traces.detail.cachedTokensLabel'),
+      value: trace.metadata.cachedTokens.toLocaleString(),
+    },
+  ].filter(Boolean) as { label: string; value: string }[]
 
   return (
     <div className={cn('space-y-2', level > 0 && 'ml-6')}>
@@ -115,25 +135,18 @@ export function TraceTreeView({ trace, level = 0, onSpanSelect, selectedSpanId }
                   <span className='text-muted-foreground'>{t('traces.detail.durationLabel')}</span>
                   <span className='font-medium'>{duration}</span>
                 </div>
-                
-                {trace.metadata?.tokens && (
-                  <div>
-                    <span className='text-muted-foreground'>{t('traces.detail.tokensLabel')}</span>
-                    <span className='font-medium ml-1'>{trace.metadata.tokens.toLocaleString()}</span>
+
+                {tokenRows.map((item) => (
+                  <div key={item.label} className='flex items-center gap-1'>
+                    <span className='text-muted-foreground'>{item.label}</span>
+                    <span className='font-medium'>{item.value}</span>
                   </div>
-                )}
-                
-                {trace.metadata?.cost && (
-                  <div>
-                    <span className='text-muted-foreground'>{t('traces.detail.costLabel')}</span>
-                    <span className='font-medium ml-1'>${trace.metadata.cost.toFixed(4)}</span>
-                  </div>
-                )}
-                
-                {trace.metadata?.itemCount && (
-                  <div>
+                ))}
+
+                {trace.metadata?.itemCount != null && (
+                  <div className='flex items-center gap-1'>
                     <span className='text-muted-foreground'>{t('traces.detail.itemsLabel')}</span>
-                    <span className='font-medium ml-1'>{trace.metadata.itemCount}</span>
+                    <span className='font-medium'>{trace.metadata.itemCount}</span>
                   </div>
                 )}
               </div>
@@ -193,7 +206,7 @@ export function TraceTreeView({ trace, level = 0, onSpanSelect, selectedSpanId }
           {/* Children */}
           {expanded && hasChildren && (
             <div className='space-y-2'>
-              {trace.children!.map((child: RequestTrace) => (
+              {trace.children!.map((child: Segment) => (
                 <TraceTreeView
                   key={child.id}
                   trace={child}
