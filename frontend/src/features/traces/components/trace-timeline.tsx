@@ -1,20 +1,20 @@
 "use client"
 
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Link2, Zap } from 'lucide-react'
+import { ChevronDown, ChevronRight, Circle, Workflow, MessageSquare, Sparkles, Wrench, CheckCircle2, Image } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
-import type { RequestTrace, RequestMetadata, Span } from '../data/schema'
+import type { Segment, RequestMetadata, Span } from '../data/schema'
+import { getSpanDisplayLabels, normalizeSpanType } from '../utils/span-display'
 
 type SpanKind = 'request' | 'response'
 
 interface TraceTimelineProps {
-  trace: RequestTrace
-  onSelectSpan: (trace: RequestTrace, span: Span, type: SpanKind) => void
+  trace: Segment
+  onSelectSpan: (trace: Segment, span: Span, type: SpanKind) => void
   selectedSpanId?: string
 }
 
@@ -27,33 +27,49 @@ interface TimelineNode {
   metadata?: RequestMetadata | null
   children: TimelineNode[]
   spanKind?: SpanKind
+  color: string
   source:
     | {
         type: 'span'
         span: Span
-        trace: RequestTrace
+        trace: Segment
         spanKind: SpanKind
       }
     | {
-        type: 'trace'
-        trace: RequestTrace
+        type: 'segment'
+        trace: Segment
       }
 }
 
-const spanTypeColors: Record<string, string> = {
-  query: 'bg-primary/80',
-  retrieve: 'bg-secondary/80',
-  embedding: 'bg-secondary/80',
-  synthesize: 'bg-accent/70',
-  chunking: 'bg-accent/60',
-  templating: 'bg-primary/60',
-  llm: 'bg-primary',
-  message: 'bg-primary/70',
-  default: 'bg-muted',
+const segmentHueCache = new Map<string, number>()
+
+type ColorVariant = 'segment' | 'request' | 'response'
+
+function hashStringToHue(value: string): number {
+  if (segmentHueCache.has(value)) {
+    return segmentHueCache.get(value) as number
+  }
+
+  let hash = 0
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) % 360
+  }
+
+  const hue = (hash + 360) % 360
+  segmentHueCache.set(value, hue)
+  return hue
 }
 
-function getTypeColor(type: string) {
-  return spanTypeColors[type] || spanTypeColors.default
+function getSegmentTimelineColor(segmentId: string, variant: ColorVariant): string {
+  const hue = hashStringToHue(segmentId)
+  const variantConfig: Record<ColorVariant, { lightness: number; alpha: number }> = {
+    segment: { lightness: 56, alpha: 0.75 },
+    request: { lightness: 64, alpha: 0.62 },
+    response: { lightness: 70, alpha: 0.55 },
+  }
+
+  const { lightness, alpha } = variantConfig[variant]
+  return `hsla(${hue}, 70%, ${lightness}%, ${alpha})`
 }
 
 function safeTime(value?: Date | string | null) {
@@ -75,7 +91,7 @@ function countNodes(node: TimelineNode): number {
 }
 
 function buildSpanNode(
-  trace: RequestTrace,
+  trace: Segment,
   span: Span,
   spanKind: SpanKind,
   rootStart: number
@@ -85,15 +101,17 @@ function buildSpanNode(
   if (spanStart == null || spanEnd == null) return null
 
   const duration = Math.max(spanEnd - spanStart, 0)
+  const colorVariant: ColorVariant = spanKind === 'request' ? 'request' : 'response'
   return {
     id: span.id,
-    name: span.name || span.type,
+    name: span.type,
     type: span.type || 'default',
     startOffset: Math.max(spanStart - rootStart, 0),
     duration,
     metadata: trace.metadata,
     children: [],
     spanKind,
+    color: getSegmentTimelineColor(trace.id, colorVariant),
     source: {
       type: 'span',
       span,
@@ -103,7 +121,7 @@ function buildSpanNode(
   }
 }
 
-function buildTraceNode(trace: RequestTrace, rootStart: number): TimelineNode | null {
+function buildSegmentNode(trace: Segment, rootStart: number): TimelineNode | null {
   const traceStart = safeTime(trace.startTime)
   const traceEnd = safeTime(trace.endTime)
   if (traceStart == null || traceEnd == null) return null
@@ -117,8 +135,9 @@ function buildTraceNode(trace: RequestTrace, rootStart: number): TimelineNode | 
     duration,
     metadata: trace.metadata,
     children: [],
+    color: getSegmentTimelineColor(trace.id, 'segment'),
     source: {
-      type: 'trace',
+      type: 'segment',
       trace,
     },
   }
@@ -133,7 +152,7 @@ function buildTraceNode(trace: RequestTrace, rootStart: number): TimelineNode | 
   ] as TimelineNode[]
 
   const childTraceNodes = (trace.children || [])
-    .map((child: RequestTrace) => buildTraceNode(child, rootStart))
+    .map((child: Segment) => buildSegmentNode(child, rootStart))
     .filter(Boolean) as TimelineNode[]
 
   spanNodes.sort((a, b) => a.startOffset - b.startOffset)
@@ -149,7 +168,7 @@ interface SpanRowProps {
   depth: number
   totalDuration: number
   selectedSpanId?: string
-  onSelectSpan: (trace: RequestTrace, span: Span, kind: SpanKind) => void
+  onSelectSpan: (trace: Segment, span: Span, kind: SpanKind) => void
 }
 
 function SpanRow({ node, depth, totalDuration, onSelectSpan, selectedSpanId }: SpanRowProps) {
@@ -161,16 +180,43 @@ function SpanRow({ node, depth, totalDuration, onSelectSpan, selectedSpanId }: S
 
   const leftOffset = totalDuration > 0 ? (node.startOffset / totalDuration) * 100 : 0
   const width = totalDuration > 0 ? (node.duration / totalDuration) * 100 : 0
-  const colorClass = getTypeColor(node.type)
-  const iconColor = node.source.type === 'trace' ? 'text-primary' : 'text-muted-foreground'
+  const iconColor = node.source.type === 'segment' ? 'text-primary' : 'text-muted-foreground'
+  const spanDisplay = spanSource ? getSpanDisplayLabels(spanSource.span, t) : null
+  const spanKindLabel = spanSource ? t(`traces.common.badges.${spanSource.spanKind}`) : null
+  const normalizedSpanType = spanSource ? normalizeSpanType(spanSource.span.type) : null
+
+  const spanIcon = () => {
+    switch (normalizedSpanType) {
+      case 'user_query':
+      case 'text':
+      case 'message':
+        return MessageSquare
+      case 'thinking':
+      case 'llm':
+        return Sparkles
+      case 'tool_use':
+      case 'function_call':
+        return Wrench
+      case 'tool_result':
+      case 'function_result':
+        return CheckCircle2
+      case 'user_image_url':
+      case 'image_url':
+        return Image
+      default:
+        return Circle
+    }
+  }
+
+  const SpanIcon = spanIcon()
 
   return (
-    <div className="border-b border-border/60">
+    <div className="border-b border-border/40">
       <div
         className={cn(
           'flex items-center gap-3 py-2.5 px-3 transition-colors',
           spanSource ? 'hover:bg-accent/30 cursor-pointer' : 'cursor-default',
-          isActive && 'bg-accent/40 shadow-inner ring-1 ring-primary/60'
+          isActive && 'bg-accent/40'
         )}
         style={{ paddingLeft: `${depth * 24 + 12}px` }}
         onClick={() => {
@@ -206,47 +252,61 @@ function SpanRow({ node, depth, totalDuration, onSelectSpan, selectedSpanId }: S
         </button>
 
         <div className="flex-shrink-0 text-muted-foreground">
-          {node.type === 'llm' ? (
-            <Zap className={cn('h-4 w-4', iconColor)} />
+          {node.source.type === 'segment' ? (
+            <Workflow className={cn('h-4 w-4', iconColor)} />
           ) : (
-            <Link2 className={cn('h-4 w-4', iconColor)} />
+            <SpanIcon className={cn('h-4 w-4', iconColor)} />
           )}
         </div>
 
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="truncate text-sm font-medium">{node.name}</span>
-            {node.source.type === 'trace' ? (
-              <Badge variant="secondary" className="text-xs capitalize">
-                {t('traces.common.badges.trace')}
-              </Badge>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {node.source.type === 'segment' ? (
+              <>
+                <Badge variant="secondary" className="text-xs font-medium">
+                  {node.name}
+                </Badge>
+                <span className="text-xs text-muted-foreground">{formatDuration(node.duration)}</span>
+                {node.metadata?.totalTokens && (
+                  <span className="text-xs text-muted-foreground">
+                    {t('traces.timeline.summary.tokenCount', {
+                      value: node.metadata.totalTokens.toLocaleString(),
+                    })}
+                  </span>
+                )}
+              </>
             ) : (
-              <Badge variant="outline" className="text-xs capitalize">
-                {spanSource?.spanKind ? t(`traces.common.badges.${spanSource.spanKind}`) : ''}
-              </Badge>
+              <div className="flex min-w-0 flex-col gap-1">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="truncate text-sm font-medium">
+                    {spanDisplay?.primary ?? node.name}
+                  </span>
+                  {spanKindLabel && (
+                    <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                      {spanKindLabel}
+                    </Badge>
+                  )}
+                  {spanDisplay?.secondary && (
+                    <span className="truncate text-xs text-muted-foreground">
+                      {spanDisplay.secondary}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>{formatDuration(node.duration)}</span>
+                </div>
+              </div>
             )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>{formatDuration(node.duration)}</span>
-            {node.metadata?.itemCount && (
-              <span className="flex items-center gap-1">
-                <span>#</span>
-                <span>{node.metadata.itemCount}</span>
-              </span>
-            )}
-            {node.metadata?.cost != null && (
-              <span>${node.metadata.cost.toFixed(3)}</span>
-            )}
-            {node.metadata?.tokens && <span>{node.metadata.tokens}</span>}
           </div>
         </div>
 
-        <div className="relative h-6 min-w-[200px] flex-1 rounded bg-muted/40">
+        <div className="relative h-5 min-w-[180px] w-[180px] rounded bg-muted/30">
           <div
-            className={cn('absolute inset-y-0 rounded-lg', colorClass)}
+            className="absolute inset-y-0 rounded"
             style={{
               left: `${Math.min(Math.max(leftOffset, 0), 100)}%`,
               width: `${Math.max(Math.min(width, 100), 0.5)}%`,
+              backgroundColor: node.color,
             }}
           />
         </div>
@@ -270,36 +330,71 @@ function SpanRow({ node, depth, totalDuration, onSelectSpan, selectedSpanId }: S
   )
 }
 
+// Helper function to calculate total duration from all segments
+function calculateTotalDuration(segment: Segment): number {
+  const segStart = safeTime(segment.startTime)
+  const segEnd = safeTime(segment.endTime)
+  let total = 0
+  
+  if (segStart != null && segEnd != null) {
+    total = Math.max(segEnd - segStart, 0)
+  }
+  
+  // Add children durations
+  if (segment.children && segment.children.length > 0) {
+    for (const child of segment.children) {
+      total += calculateTotalDuration(child)
+    }
+  }
+  
+  return total
+}
+
+// Helper function to find the earliest start time across all segments
+function findEarliestStart(segment: Segment): number | null {
+  const times: number[] = []
+  
+  const collectTimes = (seg: Segment) => {
+    const start = safeTime(seg.startTime)
+    if (start != null) {
+      times.push(start)
+    }
+    if (seg.children) {
+      seg.children.forEach(collectTimes)
+    }
+  }
+  
+  collectTimes(segment)
+  return times.length > 0 ? Math.min(...times) : null
+}
+
 export function TraceTimeline({ trace, onSelectSpan, selectedSpanId }: TraceTimelineProps) {
   const { t } = useTranslation()
+
   const timelineData = useMemo(() => {
-    const start = safeTime(trace.startTime)
-    const end = safeTime(trace.endTime)
-    if (start == null || end == null || end <= start) {
+    const earliestStart = findEarliestStart(trace)
+    if (earliestStart == null) {
       return null
     }
 
-    const rootNode = buildTraceNode(trace, start)
+    const rootNode = buildSegmentNode(trace, earliestStart)
     if (!rootNode) {
       return null
     }
 
+    const totalDuration = calculateTotalDuration(trace)
+
     return {
       rootNode,
-      totalDuration: Math.max(end - start, 1),
+      totalDuration: Math.max(totalDuration, 1),
     }
   }, [trace])
 
   if (!timelineData) {
     return (
-      <Card className="h-full border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle>{t('traces.timeline.title')}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex h-full items-center justify-center text-sm text-muted-foreground">
-          {t('traces.timeline.emptyDescription')}
-        </CardContent>
-      </Card>
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        {t('traces.timeline.emptyDescription')}
+      </div>
     )
   }
 
@@ -307,26 +402,33 @@ export function TraceTimeline({ trace, onSelectSpan, selectedSpanId }: TraceTime
   const totalItems = countNodes(rootNode)
 
   return (
-    <Card className="h-full border border-border/60 bg-card/90 shadow-sm backdrop-blur">
-      <CardHeader className="border-b border-border/60">
-        <div className="flex items-center justify-between">
-          <CardTitle>{t('traces.timeline.title')}</CardTitle>
+    <div className="h-full flex flex-col">
+      <div className="border-b border-border/60 pb-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">{t('traces.timeline.title')}</h2>
           <div className="text-sm text-muted-foreground">
             {t('traces.timeline.itemsCount', { count: totalItems })}
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="flex-1 overflow-auto p-0">
-        <div>
-          <SpanRow
-            node={rootNode}
-            depth={0}
-            totalDuration={totalDuration}
-            onSelectSpan={onSelectSpan}
-            selectedSpanId={selectedSpanId}
-          />
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">
+            {t('traces.timeline.totalDurationLabel')}
+          </span>
+          <span className="text-sm font-medium">{formatDuration(totalDuration)}</span>
+          <div className="flex-1 h-6 rounded bg-muted/30 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/60 to-primary/80 rounded" />
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="flex-1 overflow-auto border border-border/40 rounded-lg bg-card/50">
+        <SpanRow
+          node={rootNode}
+          depth={0}
+          totalDuration={totalDuration}
+          onSelectSpan={onSelectSpan}
+          selectedSpanId={selectedSpanId}
+        />
+      </div>
+    </div>
   )
 }

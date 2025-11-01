@@ -275,7 +275,7 @@ func TestTraceService_GetRequestTrace(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test GetRequestTrace
-	traceRoot, err := traceService.GetRootRequestTrace(ctx, trace.ID)
+	traceRoot, err := traceService.GetRootSegment(ctx, trace.ID)
 	require.NoError(t, err)
 	require.NotNil(t, traceRoot)
 
@@ -288,12 +288,16 @@ func TestTraceService_GetRequestTrace(t *testing.T) {
 
 	// Verify spans
 	require.NotEmpty(t, traceRoot.RequestSpans)
-	require.NotNil(t, findSpanByType(traceRoot.RequestSpans, "query"))
+	require.NotNil(t, findSpanByType(traceRoot.RequestSpans, "user_query"))
 	require.NotEmpty(t, traceRoot.ResponseSpans)
 	require.NotNil(t, findSpanByType(traceRoot.ResponseSpans, "text"))
 
-	// Metadata is currently not populated by the service
-	require.Nil(t, traceRoot.Metadata)
+	// Metadata should be populated from the response usage
+	require.NotNil(t, traceRoot.Metadata)
+	require.NotNil(t, traceRoot.Metadata.InputTokens)
+	require.Equal(t, int64(10), *traceRoot.Metadata.InputTokens)
+	require.NotNil(t, traceRoot.Metadata.OutputTokens)
+	require.Equal(t, int64(20), *traceRoot.Metadata.OutputTokens)
 }
 
 func TestTraceService_GetRequestTrace_WithToolCalls(t *testing.T) {
@@ -377,20 +381,19 @@ func TestTraceService_GetRequestTrace_WithToolCalls(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	traceRoot, err := traceService.GetRootRequestTrace(ctx, trace.ID)
+	traceRoot, err := traceService.GetRootSegment(ctx, trace.ID)
 	require.NoError(t, err)
 	require.NotNil(t, traceRoot)
 
 	// Ensure request spans still capture the original user message
-	require.NotNil(t, findSpanByType(traceRoot.RequestSpans, "query"))
+	require.NotNil(t, findSpanByType(traceRoot.RequestSpans, "user_query"))
 
 	// Tool calls from the assistant should be captured in the response spans
 	toolSpan := findSpanByType(traceRoot.ResponseSpans, "tool_use")
 	require.NotNil(t, toolSpan, "expected tool_use span in response spans")
-	require.Contains(t, toolSpan.Name, "get_weather")
 	require.NotNil(t, toolSpan.Value)
-	require.NotNil(t, toolSpan.Value.FunctionCall)
-	require.Equal(t, "get_weather", toolSpan.Value.FunctionCall.Name)
+	require.NotNil(t, toolSpan.Value.ToolUse)
+	require.Equal(t, "get_weather", toolSpan.Value.ToolUse.Name)
 }
 
 func TestTraceService_GetRequestTrace_AnthropicResponseTransformation(t *testing.T) {
@@ -456,15 +459,19 @@ func TestTraceService_GetRequestTrace_AnthropicResponseTransformation(t *testing
 		Save(ctx)
 	require.NoError(t, err)
 
-	traceRoot, err := traceService.GetRootRequestTrace(ctx, traceEntity.ID)
+	traceRoot, err := traceService.GetRootSegment(ctx, traceEntity.ID)
 	require.NoError(t, err)
 	require.NotNil(t, traceRoot)
 
-	// Metadata is not currently populated
-	require.Nil(t, traceRoot.Metadata)
+	// Metadata should be populated from the response usage
+	require.NotNil(t, traceRoot.Metadata)
+	require.NotNil(t, traceRoot.Metadata.InputTokens)
+	require.Equal(t, int64(12), *traceRoot.Metadata.InputTokens)
+	require.NotNil(t, traceRoot.Metadata.OutputTokens)
+	require.Equal(t, int64(18), *traceRoot.Metadata.OutputTokens)
 
 	// The original user query should be in the request spans
-	require.NotNil(t, findSpanByType(traceRoot.RequestSpans, "query"))
+	require.NotNil(t, findSpanByType(traceRoot.RequestSpans, "user_query"))
 
 	// Anthropic responses expose content blocks via response spans
 	textSpan := findSpanByType(traceRoot.ResponseSpans, "text")
@@ -476,8 +483,8 @@ func TestTraceService_GetRequestTrace_AnthropicResponseTransformation(t *testing
 	toolSpan := findSpanByType(traceRoot.ResponseSpans, "tool_use")
 	require.NotNil(t, toolSpan, "expected tool_use span from anthropic response")
 	require.NotNil(t, toolSpan.Value)
-	require.NotNil(t, toolSpan.Value.FunctionCall)
-	require.Equal(t, "get_weather", toolSpan.Value.FunctionCall.Name)
+	require.NotNil(t, toolSpan.Value.ToolUse)
+	require.Equal(t, "get_weather", toolSpan.Value.ToolUse.Name)
 }
 
 func TestTraceService_GetRequestTrace_WithReasoningContent(t *testing.T) {
@@ -545,14 +552,13 @@ func TestTraceService_GetRequestTrace_WithReasoningContent(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	traceRoot, err := traceService.GetRootRequestTrace(ctx, trace.ID)
+	traceRoot, err := traceService.GetRootSegment(ctx, trace.ID)
 	require.NoError(t, err)
 	require.NotNil(t, traceRoot)
 
 	// Reasoning content should be exposed as a thinking span in the response
 	thinkingSpan := findSpanByType(traceRoot.ResponseSpans, "thinking")
 	require.NotNil(t, thinkingSpan, "expected thinking span in response")
-	require.Equal(t, "Reasoning", thinkingSpan.Name)
 	require.NotNil(t, thinkingSpan.Value)
 	require.NotNil(t, thinkingSpan.Value.Thinking)
 	require.Contains(t, thinkingSpan.Value.Thinking.Thinking, "Let me think")
@@ -582,7 +588,7 @@ func TestTraceService_GetRequestTrace_EmptyTrace(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	traceRoot, err := traceService.GetRootRequestTrace(ctx, trace.ID)
+	traceRoot, err := traceService.GetRootSegment(ctx, trace.ID)
 	require.NoError(t, err)
 	require.Nil(t, traceRoot)
 }
@@ -714,7 +720,7 @@ func TestTraceService_GetRequestTrace_MultipleRequestsWithToolResults(t *testing
 		Save(ctx)
 	require.NoError(t, err)
 
-	traceRoot, err := traceService.GetRootRequestTrace(ctx, traceEntity.ID)
+	traceRoot, err := traceService.GetRootSegment(ctx, traceEntity.ID)
 	require.NoError(t, err)
 	require.NotNil(t, traceRoot)
 
@@ -735,7 +741,7 @@ func TestTraceService_GetRequestTrace_MultipleRequestsWithToolResults(t *testing
 	require.NotNil(t, findSpanByType(traceRoot.ResponseSpans, "text"))
 
 	// The follow-up request should capture the user query and assistant reply
-	require.NotNil(t, findSpanByType(child.RequestSpans, "query"))
+	require.NotNil(t, findSpanByType(child.RequestSpans, "user_query"))
 	require.NotNil(t, findSpanByType(child.ResponseSpans, "text"))
 }
 
@@ -754,7 +760,7 @@ func TestTraceService_GetRequestTrace_integration(t *testing.T) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Test GetRequestTrace
-	traceRoot, err := traceService.GetRootRequestTrace(ctx, 153)
+	traceRoot, err := traceService.GetRootSegment(ctx, 153)
 	require.NoError(t, err)
 
 	data, err := json.Marshal(traceRoot)

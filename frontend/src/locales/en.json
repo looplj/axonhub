@@ -1167,6 +1167,11 @@
     "title": "Trace Management",
     "description": "View and manage AI request traces and execution flows",
     "refresh": "Refresh",
+    "sort": {
+      "ascending": "Ascending",
+      "descending": "Descending",
+      "hide": "Hide"
+    },
     "common": {
       "badges": {
         "request": "Request",
@@ -1221,8 +1226,29 @@
       "tokensLabel": "Tokens",
       "costLabel": "Cost",
       "itemsLabel": "Items",
+      "inputTokensLabel": "Input Tokens",
+      "outputTokensLabel": "Output Tokens",
+      "totalTokensLabel": "Total Tokens",
+      "cachedTokensLabel": "Cached Tokens",
       "requestSpansHeader": "Request Spans ({{count}})",
-      "responseSpansHeader": "Response Spans ({{count}})"
+      "responseSpansHeader": "Response Spans ({{count}})",
+      "requestQuery": "Request",
+      "promptLabel": "Prompt",
+      "textOutput": "Text Output",
+      "thinking": "Thinking",
+      "functionCall": "Function Call",
+      "nameLabel": "Name",
+      "argumentsLabel": "Arguments",
+      "functionResult": "Function Result",
+      "error": "Error",
+      "image": "Generated Image",
+      "imageAlt": "Generated span image",
+      "noSpanContent": "No additional content for this span.",
+      "selectSpanHint": "Select a span from the timeline to inspect its detail.",
+      "tokenSummary": {
+        "input": "Input Tokens: {{value}}",
+        "output": "Output Tokens: {{value}}"
+      }
     },
     "timeline": {
       "title": "Timeline",
@@ -1232,6 +1258,26 @@
       "aria": {
         "expandRow": "Expand row",
         "collapseRow": "Collapse row"
+      },
+      "spanTypes": {
+        "default": "Span",
+        "userQuery": "User Query",
+        "text": "Text",
+        "thinking": "Thinking",
+        "toolUse": "Tool Call",
+        "toolResult": "Tool Result",
+        "message": "Message",
+        "retrieve": "Retrieve",
+        "embedding": "Embedding",
+        "synthesize": "Synthesize",
+        "chunking": "Chunking",
+        "templating": "Templating",
+        "llm": "LLM",
+        "imageUrl": "Image"
+      },
+      "totalDurationLabel": "Total Duration",
+      "summary": {
+        "tokenCount": "{{value}} tokens"
       }
     }
   },

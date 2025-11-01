@@ -83,35 +83,35 @@ function buildTraceDetailQuery() {
 function buildTraceWithRequestTracesQuery() {
   return `
     fragment SpanValue on SpanValue {
-      query {
-        modelId
-        prompt
+      userQuery {
+        text
+      }
+      userImageUrl {
+        url
       }
       text {
         text
       }
-      imageUrl {
-        url
-      }
       thinking {
         thinking
       }
-      functionCall {
+      imageUrl {
+        url
+      }
+      toolUse {
         id
         name
         arguments
       }
-      functionResult {
-        id
+      toolResult {
+        toolCallID
         isError
-        type
         text
       }
     }
 
     fragment SpanFields on Span {
       id
-      name
       type
       startTime
       endTime
@@ -120,7 +120,7 @@ function buildTraceWithRequestTracesQuery() {
       }
     }
 
-    fragment RequestTraceFields on RequestTrace {
+    fragment SegmentFields on Segment {
       id
       parentId
       model
@@ -128,9 +128,11 @@ function buildTraceWithRequestTracesQuery() {
       startTime
       endTime
       metadata {
-        cost
         itemCount
-        tokens
+        inputTokens
+        outputTokens
+        totalTokens
+        cachedTokens
       }
       requestSpans {
         ...SpanFields
@@ -140,16 +142,16 @@ function buildTraceWithRequestTracesQuery() {
       }
     }
 
-    fragment RequestTraceRecursive on RequestTrace {
-      ...RequestTraceFields
+    fragment SegmentRecursive on Segment {
+      ...SegmentFields
       children {
-        ...RequestTraceFields
+        ...SegmentFields
         children {
-          ...RequestTraceFields
+          ...SegmentFields
           children {
-            ...RequestTraceFields
+            ...SegmentFields
             children {
-              ...RequestTraceFields
+              ...SegmentFields
               # Support up to 5 levels of nesting
             }
           }
@@ -157,7 +159,7 @@ function buildTraceWithRequestTracesQuery() {
       }
     }
 
-    query GetTraceWithRequestTraces($id: ID!) {
+    query GetTraceWithSegments($id: ID!) {
       node(id: $id) {
         ... on Trace {
           id
@@ -175,8 +177,8 @@ function buildTraceWithRequestTracesQuery() {
           requests {
             totalCount
           }
-          rootRequestTrace {
-            ...RequestTraceRecursive
+          rootSegment {
+            ...SegmentRecursive
           }
         }
       }
@@ -258,12 +260,12 @@ export function useTrace(id: string) {
   })
 }
 
-export function useTraceWithRequestTraces(id: string) {
+export function useTraceWithSegments(id: string) {
   const { handleError } = useErrorHandler()
   const selectedProjectId = useSelectedProjectId()
   
   return useQuery({
-    queryKey: ['trace-with-requests', id, selectedProjectId],
+    queryKey: ['trace-with-segments', id, selectedProjectId],
     queryFn: async () => {
       try {
         const query = buildTraceWithRequestTracesQuery()
@@ -285,3 +287,6 @@ export function useTraceWithRequestTraces(id: string) {
     enabled: !!id,
   })
 }
+
+// Backward compatibility alias
+export const useTraceWithRequestTraces = useTraceWithSegments

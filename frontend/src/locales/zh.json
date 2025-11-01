@@ -1200,6 +1200,11 @@
     "title": "追踪管理",
     "description": "查看和管理AI请求追踪和执行流程",
     "refresh": "刷新",
+    "sort": {
+      "ascending": "升序",
+      "descending": "降序",
+      "hide": "隐藏"
+    },
     "common": {
       "badges": {
         "request": "请求",
@@ -1254,8 +1259,29 @@
       "tokensLabel": "令牌数",
       "costLabel": "成本",
       "itemsLabel": "项目数",
+      "inputTokensLabel": "输入令牌数",
+      "outputTokensLabel": "输出令牌数",
+      "totalTokensLabel": "总令牌数",
+      "cachedTokensLabel": "缓存令牌数",
       "requestSpansHeader": "请求片段 ({{count}})",
-      "responseSpansHeader": "响应片段 ({{count}})"
+      "responseSpansHeader": "响应片段 ({{count}})",
+      "requestQuery": "请求内容",
+      "promptLabel": "提示词",
+      "textOutput": "文本输出",
+      "thinking": "思考内容",
+      "functionCall": "函数调用",
+      "nameLabel": "名称",
+      "argumentsLabel": "参数",
+      "functionResult": "函数结果",
+      "error": "错误",
+      "image": "生成图像",
+      "imageAlt": "追踪片段图像",
+      "noSpanContent": "该片段没有额外内容。",
+      "selectSpanHint": "请从时间线选择片段查看详情。",
+      "tokenSummary": {
+        "input": "输入令牌：{{value}}",
+        "output": "输出令牌：{{value}}"
+      }
     },
     "timeline": {
       "title": "时间线",
@@ -1264,7 +1290,27 @@
       "itemsCount_plural": "{{count}} 项",
       "aria": {
         "expandRow": "展开行",
-        "collapseRow": "收起行"
+        "collapseRow": "折叠行"
+      },
+      "spanTypes": {
+        "default": "片段",
+        "userQuery": "用户查询",
+        "text": "文本",
+        "thinking": "思考",
+        "toolUse": "工具调用",
+        "toolResult": "工具结果",
+        "message": "消息",
+        "retrieve": "检索",
+        "embedding": "向量化",
+        "synthesize": "合成",
+        "chunking": "分块",
+        "templating": "模板化",
+        "llm": "大模型",
+        "imageUrl": "图像"
+      },
+      "totalDurationLabel": "总持续时间",
+      "summary": {
+        "tokenCount": "令牌数：{{value}}"
       }
     }
   },

@@ -227,31 +227,32 @@ type GCS {
 }
 
 extend type Trace {
-  rootRequestTrace: RequestTrace!
+  rootSegment: Segment
 }
 
-type RequestTrace {
+type Segment {
   id: ID!
   parentId: ID
   model: String!
-  children: [RequestTrace!]
+  children: [Segment!]
   requestSpans: [Span!]
   responseSpans: [Span!]
   metadata: RequestMetadata
   startTime: Time!
   endTime: Time!
-  duration: String!
+  duration: Int!
 }
 
 type RequestMetadata {
-  cost: Float
   itemCount: Int
-  tokens: Int
+  inputTokens: Int
+  outputTokens: Int
+  totalTokens: Int
+  cachedTokens: Int
 }
 
 type Span {
   id: String!
-  name: String
   type: String!
   startTime: Time!
   endTime: Time!
@@ -259,17 +260,21 @@ type Span {
 }
 
 type SpanValue {
-  query: SpanQuery
+  userQuery: SpanUserQuery
+  userImageUrl: SpanUserImageURL
   text: SpanText
-  imageUrl: SpanImageURL
   thinking: SpanThinking
-  functionCall: SpanFunctionCall
-  functionResult: SpanFunctionResult
+  imageUrl: SpanImageURL
+  toolUse: SpanToolUse
+  toolResult: SpanToolResult
 }
 
-type SpanQuery {
-  modelId: String
-  prompt: String
+type SpanUserQuery {
+  text: String
+}
+
+type SpanUserImageURL {
+  url: String
 }
 
 type SpanThinking {
@@ -284,20 +289,17 @@ type SpanImageURL {
   url: String
 }
 
-type SpanFunctionCall {
+type SpanToolUse {
   id: String
   name: String!
   arguments: String
 }
 
-type SpanFunctionResult {
-  id: String
+type SpanToolResult {
+  toolCallID: String
   isError: Boolean
-  type: String
   text: String
 }
-
-
 
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!

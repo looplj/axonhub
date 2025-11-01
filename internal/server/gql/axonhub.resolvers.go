@@ -332,12 +332,12 @@ func (r *queryResolver) Models(ctx context.Context, status *channel.Status) ([]*
 }
 
 // ID is the resolver for the id field.
-func (r *requestTraceResolver) ID(ctx context.Context, obj *biz.RequestTrace) (*objects.GUID, error) {
+func (r *segmentResolver) ID(ctx context.Context, obj *biz.Segment) (*objects.GUID, error) {
 	return &objects.GUID{Type: ent.TypeRequest, ID: obj.ID}, nil
 }
 
 // ParentID is the resolver for the parentId field.
-func (r *requestTraceResolver) ParentID(ctx context.Context, obj *biz.RequestTrace) (*objects.GUID, error) {
+func (r *segmentResolver) ParentID(ctx context.Context, obj *biz.Segment) (*objects.GUID, error) {
 	if obj.ParentID == nil {
 		return nil, nil
 	}
@@ -345,16 +345,30 @@ func (r *requestTraceResolver) ParentID(ctx context.Context, obj *biz.RequestTra
 	return &objects.GUID{Type: ent.TypeRequest, ID: *obj.ParentID}, nil
 }
 
-// RootRequestTrace is the resolver for the rootRequestTrace field.
-func (r *traceResolver) RootRequestTrace(ctx context.Context, obj *ent.Trace) (*biz.RequestTrace, error) {
-	return r.traceService.GetRootRequestTrace(ctx, obj.ID)
+// RootSegment is the resolver for the rootSegment field.
+func (r *traceResolver) RootSegment(ctx context.Context, obj *ent.Trace) (*biz.Segment, error) {
+	return r.traceService.GetRootSegment(ctx, obj.ID)
 }
 
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
-// RequestTrace returns RequestTraceResolver implementation.
-func (r *Resolver) RequestTrace() RequestTraceResolver { return &requestTraceResolver{r} }
+// Segment returns SegmentResolver implementation.
+func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
 type mutationResolver struct{ *Resolver }
-type requestTraceResolver struct{ *Resolver }
+type segmentResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *spanToolResultResolver) Output(ctx context.Context, obj *biz.SpanToolResult) (*string, error) {
+	panic(fmt.Errorf("not implemented: Output - output"))
+}
+func (r *Resolver) SpanToolResult() SpanToolResultResolver { return &spanToolResultResolver{r} }
+type spanToolResultResolver struct{ *Resolver }
+*/
