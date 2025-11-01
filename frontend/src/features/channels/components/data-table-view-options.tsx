@@ -23,17 +23,13 @@ export function DataTableViewOptions<TData>({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant='outline'
-          size='sm'
-          className='ml-auto hidden h-8 lg:flex'
-        >
+        <Button variant='outline' size='sm'>
           <MixerHorizontalIcon className='mr-2 h-4 w-4' />
-          {t('view')}
+          {t('common.view')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[150px]'>
-        <DropdownMenuLabel>{t('toggleColumns')}</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('common.toggleColumns')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()

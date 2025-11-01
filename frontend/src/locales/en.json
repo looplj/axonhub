@@ -388,11 +388,6 @@
       "title": "View",
       "toggleColumns": "Toggle columns"
     },
-    "sort": {
-      "ascending": "Ascending",
-      "descending": "Descending",
-      "hide": "Hide"
-    },
     "profiles": {
       "title": "API Key Profiles",
       "description": "Configure model mapping profiles for {{name}}. When an active profile has model mappings configured, the system will automatically map requested models to their target models during API requests.",
@@ -1167,11 +1162,6 @@
     "title": "Trace Management",
     "description": "View and manage AI request traces and execution flows",
     "refresh": "Refresh",
-    "sort": {
-      "ascending": "Ascending",
-      "descending": "Descending",
-      "hide": "Hide"
-    },
     "common": {
       "badges": {
         "request": "Request",
@@ -1532,14 +1522,13 @@
     "hasPrevious": "Has previous",
     "hasNext": "Has next"
   },
-  "loading": "Loading...",
-  "view": "View",
-  "toggleColumns": "Toggle columns",
   "common": {
     "selectedItems": "{{count}} selected",
     "noResultsFound": "No results found",
     "clearFilters": "Clear filters",
-    "loading": "Loading",
+    "loading": "Loading...",
+    "view": "View",
+    "toggleColumns": "Toggle columns",
     "noData": "No data available",
     "noResults": "No results.",
     "loadError": "Load failed:",
@@ -1548,6 +1537,11 @@
     "moveDown": "Move Down",
     "dragging": "Dragging",
     "unsavedChanges": "You have unsaved changes",
+    "sort": {
+      "ascending": "Ascending",
+      "descending": "Descending",
+      "hide": "Hide"
+    },
     "messages": {
       "errorMessage": "Error Message",
       "success": "Success",

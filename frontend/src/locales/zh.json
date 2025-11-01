@@ -87,10 +87,6 @@
       "connected": "已连接",
       "notConnected": "未连接"
     },
-    "sort": {
-      "ascending": "升序",
-      "descending": "降序"
-    },
     "status": {
       "connected": "已连接",
       "connect": "连接"
@@ -416,11 +412,6 @@
     "view": {
       "title": "视图",
       "toggleColumns": "切换列"
-    },
-    "sort": {
-      "ascending": "升序",
-      "descending": "降序",
-      "hide": "隐藏"
     },
     "profiles": {
       "title": "配置文件管理",
@@ -1200,11 +1191,6 @@
     "title": "追踪管理",
     "description": "查看和管理AI请求追踪和执行流程",
     "refresh": "刷新",
-    "sort": {
-      "ascending": "升序",
-      "descending": "降序",
-      "hide": "隐藏"
-    },
     "common": {
       "badges": {
         "request": "请求",
@@ -1565,14 +1551,13 @@
     "hasPrevious": "有上一页",
     "hasNext": "有下一页"
   },
-  "loading": "加载中...",
-  "view": "视图",
-  "toggleColumns": "切换列",
   "common": {
     "selectedItems": "已选择 {{count}} 项",
     "noResultsFound": "未找到结果",
     "clearFilters": "清除筛选",
-    "loading": "加载中",
+    "loading": "加载中...",
+    "view": "视图",
+    "toggleColumns": "切换列",
     "noData": "暂无数据",
     "noResults": "无结果。",
     "loadError": "加载失败:",
@@ -1581,6 +1566,11 @@
     "moveDown": "下移",
     "dragging": "拖拽中",
     "unsavedChanges": "您有未保存的更改",
+    "sort": {
+      "ascending": "升序",
+      "descending": "降序",
+      "hide": "隐藏"
+    },
     "messages": {
       "errorMessage": "错误信息",
       "success": "成功",
