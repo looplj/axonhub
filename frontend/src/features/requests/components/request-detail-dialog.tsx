@@ -65,7 +65,7 @@ export function RequestDetailDialog({
           <div className='flex h-64 items-center justify-center'>
             <div className='text-center'>
               <div className='mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900'></div>
-              <p className='text-muted-foreground text-sm'>{t('loading')}</p>
+              <p className='text-muted-foreground text-sm'>{t('common.loading')}</p>
             </div>
           </div>
         ) : request ? (
@@ -84,9 +84,9 @@ export function RequestDetailDialog({
                     <User className='text-muted-foreground h-4 w-4' />
                     <span className='text-sm font-medium'>{t('requests.dialogs.requestDetail.fields.userId')}</span>
                   </div>
-                  <p className='text-muted-foreground text-sm'>
+                  {/* <p className='text-muted-foreground text-sm'>
                     {request.user?.id || t('requests.columns.unknown')}
-                  </p>
+                  </p> */}
                 </div>
                 <div className='space-y-2'>
                   <div className='flex items-center gap-2'>

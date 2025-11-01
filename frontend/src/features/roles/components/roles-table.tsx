@@ -137,7 +137,7 @@ export function RolesTable({
             {loading ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className='h-24 text-center'>
-                  {t('loading')}
+                  {t('common.loading')}
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
