@@ -672,16 +672,17 @@ type ComplexityRoot struct {
 	}
 
 	Trace struct {
-		CreatedAt   func(childComplexity int) int
-		ID          func(childComplexity int) int
-		Project     func(childComplexity int) int
-		ProjectID   func(childComplexity int) int
-		Requests    func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
-		RootSegment func(childComplexity int) int
-		Thread      func(childComplexity int) int
-		ThreadID    func(childComplexity int) int
-		TraceID     func(childComplexity int) int
-		UpdatedAt   func(childComplexity int) int
+		CreatedAt      func(childComplexity int) int
+		ID             func(childComplexity int) int
+		Project        func(childComplexity int) int
+		ProjectID      func(childComplexity int) int
+		RawRootSegment func(childComplexity int) int
+		Requests       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
+		RootSegment    func(childComplexity int) int
+		Thread         func(childComplexity int) int
+		ThreadID       func(childComplexity int) int
+		TraceID        func(childComplexity int) int
+		UpdatedAt      func(childComplexity int) int
 	}
 
 	TraceConnection struct {
@@ -940,6 +941,7 @@ type TraceResolver interface {
 	ThreadID(ctx context.Context, obj *ent.Trace) (*objects.GUID, error)
 
 	RootSegment(ctx context.Context, obj *ent.Trace) (*biz.Segment, error)
+	RawRootSegment(ctx context.Context, obj *ent.Trace) (objects.JSONRawMessage, error)
 }
 type UsageLogResolver interface {
 	ID(ctx context.Context, obj *ent.UsageLog) (*objects.GUID, error)
@@ -3945,6 +3947,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Trace.ProjectID(childComplexity), true
+
+	case "Trace.rawRootSegment":
+		if e.complexity.Trace.RawRootSegment == nil {
+			break
+		}
+
+		return e.complexity.Trace.RawRootSegment(childComplexity), true
 
 	case "Trace.requests":
 		if e.complexity.Trace.Requests == nil {
@@ -18193,6 +18202,8 @@ func (ec *executionContext) fieldContext_Request_trace(_ context.Context, field 
 				return ec.fieldContext_Trace_requests(ctx, field)
 			case "rootSegment":
 				return ec.fieldContext_Trace_rootSegment(ctx, field)
+			case "rawRootSegment":
+				return ec.fieldContext_Trace_rawRootSegment(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trace", field.Name)
 		},
@@ -26128,6 +26139,47 @@ func (ec *executionContext) fieldContext_Trace_rootSegment(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Trace_rawRootSegment(ctx context.Context, field graphql.CollectedField, obj *ent.Trace) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Trace_rawRootSegment(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Trace().RawRootSegment(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(objects.JSONRawMessage)
+	fc.Result = res
+	return ec.marshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Trace_rawRootSegment(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Trace",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TraceConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.TraceConnection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TraceConnection_edges(ctx, field)
 	if err != nil {
@@ -26329,6 +26381,8 @@ func (ec *executionContext) fieldContext_TraceEdge_node(_ context.Context, field
 				return ec.fieldContext_Trace_requests(ctx, field)
 			case "rootSegment":
 				return ec.fieldContext_Trace_rootSegment(ctx, field)
+			case "rawRootSegment":
+				return ec.fieldContext_Trace_rawRootSegment(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trace", field.Name)
 		},
@@ -51583,6 +51637,39 @@ func (ec *executionContext) _Trace(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Trace_rootSegment(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "rawRootSegment":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Trace_rawRootSegment(ctx, field, obj)
 				return res
 			}
 

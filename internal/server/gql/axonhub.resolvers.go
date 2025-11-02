@@ -6,6 +6,7 @@ package gql
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -348,6 +349,19 @@ func (r *segmentResolver) ParentID(ctx context.Context, obj *biz.Segment) (*obje
 // RootSegment is the resolver for the rootSegment field.
 func (r *traceResolver) RootSegment(ctx context.Context, obj *ent.Trace) (*biz.Segment, error) {
 	return r.traceService.GetRootSegment(ctx, obj.ID)
+}
+
+// RawRootSegment is the resolver for the rawRootSegment field.
+func (r *traceResolver) RawRootSegment(ctx context.Context, obj *ent.Trace) (objects.JSONRawMessage, error) {
+	segment, err := r.traceService.GetRootSegment(ctx, obj.ID)
+	if err != nil {
+		return nil, err
+	}
+	data, err := json.Marshal(segment)
+	if err != nil {
+		return nil, err
+	}
+	return objects.JSONRawMessage(data), nil
 }
 
 // Mutation returns MutationResolver implementation.

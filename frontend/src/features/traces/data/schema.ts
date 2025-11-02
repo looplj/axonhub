@@ -56,7 +56,7 @@ export type TraceConnection = z.infer<typeof traceConnectionSchema>
 const spanSystemInstructionSchema = z
   .object({
     instruction: z.string().nullable().optional(),
-  })  
+  })
   .nullable()
   .optional()
 
@@ -152,8 +152,8 @@ export type RequestMetadata = z.infer<typeof requestMetadataSchema>
 
 export const segmentSchema: z.ZodType<any> = z.lazy(() =>
   z.object({
-    id: z.string(),
-    parentId: z.string().nullable().optional(),
+    id: z.any(),
+    parentId: z.any().nullable().optional(),
     model: z.string(),
     duration: z.number(),
     startTime: z.coerce.date(),
@@ -176,6 +176,29 @@ export const traceDetailSchema = z.object({
   thread: threadSchema,
   requests: traceRequestsSummarySchema,
   rootSegment: segmentSchema.nullable().optional(),
+  rawRootSegment: z.any().nullable().optional(),
 })
 
 export type TraceDetail = z.infer<typeof traceDetailSchema>
+
+// Helper function to parse rawRootSegment JSON string into Segment object
+export function parseRawRootSegment(rawRootSegment: any | null | undefined): Segment | null {
+  if (!rawRootSegment) {
+    return null
+  }
+  if (typeof rawRootSegment === 'string') {
+    try {
+      const parsed = JSON.parse(rawRootSegment)
+      return segmentSchema.parse(parsed)
+    } catch (error) {
+      console.error('Failed to parse rawRootSegment:', error)
+      return null
+    }
+  }
+
+  if (typeof rawRootSegment === 'object') {
+    return segmentSchema.parse(rawRootSegment)
+  }
+
+  throw new Error('Invalid rawRootSegment type')
+}
