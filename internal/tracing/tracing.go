@@ -10,8 +10,19 @@ import (
 )
 
 type Config struct {
+	// ThreadHeader is the header name for thread ID.
+	// Default to "AH-Thread-Id".
 	ThreadHeader string `conf:"thread_header" yaml:"thread_header" json:"thread_header"`
-	TraceHeader  string `conf:"trace_header" yaml:"trace_header" json:"trace_header"`
+
+	// TraceHeader is the header name for trace ID.
+	// Default to "AH-Trace-Id".
+	TraceHeader string `conf:"trace_header" yaml:"trace_header" json:"trace_header"`
+
+	// ExtraTraceHeaders is the extra header names for trace ID.
+	// It will use if primary trace header is not found in request headers.
+	// e.g. set it to []string{"Sentry-Trace"} to trace claude-code or any other product using sentry.
+	// Default to nil.
+	ExtraTraceHeaders []string `conf:"extra_trace_headers" yaml:"extra_trace_headers" json:"extra_trace_headers"`
 }
 
 // GenerateTraceID generate trace id, format as at-{{uuid}}.
