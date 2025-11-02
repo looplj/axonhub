@@ -180,6 +180,7 @@ function buildTraceWithRequestTracesQuery() {
           requests(where: { status: completed }) {
             totalCount
           }
+          rawRootSegment
           rootSegment {
             ...SegmentRecursive
           }

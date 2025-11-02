@@ -228,6 +228,7 @@ type GCS {
 
 extend type Trace {
   rootSegment: Segment
+  rawRootSegment: JSONRawMessage
 }
 
 type Segment {
