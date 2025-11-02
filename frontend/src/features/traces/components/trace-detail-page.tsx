@@ -50,7 +50,7 @@ export default function TraceDetailPage() {
     if (!selectedSpan?.value) return []
 
     const sections: { title: string; content: React.ReactNode }[] = []
-    const { userQuery: query, text, thinking, toolUse, toolResult, imageUrl } = selectedSpan.value
+    const { userQuery: query, text, thinking, toolUse, toolResult, imageUrl, systemInstruction } = selectedSpan.value
 
     if (query?.text) {
       sections.push({
@@ -145,6 +145,17 @@ export default function TraceDetailPage() {
             alt={t('traces.detail.imageAlt')}
             className='max-h-96 w-full rounded-lg border object-contain'
           />
+        ),
+      })
+    }
+
+    if (systemInstruction?.instruction) {
+      sections.push({
+        title: t('traces.detail.systemInstruction'),
+        content: (
+          <pre className='max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm'>
+            {systemInstruction.instruction}
+          </pre>
         ),
       })
     }

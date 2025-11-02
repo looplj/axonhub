@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Circle, Workflow, MessageSquare, Sparkles, Wrench, CheckCircle2, Image } from 'lucide-react'
+import { ChevronDown, ChevronRight, Circle, Workflow, MessageSquare, Sparkles, Wrench, CheckCircle2, Image, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -178,8 +178,16 @@ function SpanRow({ node, depth, totalDuration, onSelectSpan, selectedSpanId }: S
   const spanSource = node.source.type === 'span' ? node.source : null
   const isActive = spanSource ? selectedSpanId === spanSource.span.id : false
 
-  const leftOffset = totalDuration > 0 ? (node.startOffset / totalDuration) * 100 : 0
-  const width = totalDuration > 0 ? (node.duration / totalDuration) * 100 : 0
+  const leftOffsetRatio = totalDuration > 0 ? node.startOffset / totalDuration : 0
+  const widthRatio = totalDuration > 0 ? node.duration / totalDuration : 0
+
+  const leftOffset = Math.min(Math.max(leftOffsetRatio * 100, 0), 100)
+  const maxAvailableWidth = Math.max(100 - leftOffset, 0)
+
+  let width = Math.min(Math.max(widthRatio * 100, 0), maxAvailableWidth)
+  if (widthRatio > 0 && width < 0.5) {
+    width = Math.min(0.5, maxAvailableWidth)
+  }
   const iconColor = node.source.type === 'segment' ? 'text-primary' : 'text-muted-foreground'
   const spanDisplay = spanSource ? getSpanDisplayLabels(spanSource.span, t) : null
   const spanKindLabel = spanSource ? t(`traces.common.badges.${spanSource.spanKind}`) : null
@@ -203,6 +211,8 @@ function SpanRow({ node, depth, totalDuration, onSelectSpan, selectedSpanId }: S
       case 'user_image_url':
       case 'image_url':
         return Image
+      case 'system_instruction':
+        return Settings
       default:
         return Circle
     }
@@ -304,8 +314,8 @@ function SpanRow({ node, depth, totalDuration, onSelectSpan, selectedSpanId }: S
           <div
             className="absolute inset-y-0 rounded"
             style={{
-              left: `${Math.min(Math.max(leftOffset, 0), 100)}%`,
-              width: `${Math.max(Math.min(width, 100), 0.5)}%`,
+              left: `${leftOffset}%`,
+              width: `${width}%`,
               backgroundColor: node.color,
             }}
           />
@@ -330,26 +340,6 @@ function SpanRow({ node, depth, totalDuration, onSelectSpan, selectedSpanId }: S
   )
 }
 
-// Helper function to calculate total duration from all segments
-function calculateTotalDuration(segment: Segment): number {
-  const segStart = safeTime(segment.startTime)
-  const segEnd = safeTime(segment.endTime)
-  let total = 0
-  
-  if (segStart != null && segEnd != null) {
-    total = Math.max(segEnd - segStart, 0)
-  }
-  
-  // Add children durations
-  if (segment.children && segment.children.length > 0) {
-    for (const child of segment.children) {
-      total += calculateTotalDuration(child)
-    }
-  }
-  
-  return total
-}
-
 // Helper function to find the earliest start time across all segments
 function findEarliestStart(segment: Segment): number | null {
   const times: number[] = []
@@ -368,12 +358,31 @@ function findEarliestStart(segment: Segment): number | null {
   return times.length > 0 ? Math.min(...times) : null
 }
 
+// Helper function to find the latest end time across all segments
+function findLatestEnd(segment: Segment): number | null {
+  const times: number[] = []
+
+  const collectTimes = (seg: Segment) => {
+    const end = safeTime(seg.endTime)
+    if (end != null) {
+      times.push(end)
+    }
+    if (seg.children) {
+      seg.children.forEach(collectTimes)
+    }
+  }
+
+  collectTimes(segment)
+  return times.length > 0 ? Math.max(...times) : null
+}
+
 export function TraceTimeline({ trace, onSelectSpan, selectedSpanId }: TraceTimelineProps) {
   const { t } = useTranslation()
 
   const timelineData = useMemo(() => {
     const earliestStart = findEarliestStart(trace)
-    if (earliestStart == null) {
+    const latestEnd = findLatestEnd(trace)
+    if (earliestStart == null || latestEnd == null) {
       return null
     }
 
@@ -382,7 +391,7 @@ export function TraceTimeline({ trace, onSelectSpan, selectedSpanId }: TraceTime
       return null
     }
 
-    const totalDuration = calculateTotalDuration(trace)
+    const totalDuration = Math.max(latestEnd - earliestStart, rootNode.duration, 1)
 
     return {
       rootNode,

@@ -200,6 +200,9 @@ models:
   SpanToolResult:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SpanToolResult
+  SpanSystemInstruction:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SpanSystemInstruction
   SpanType:
     model:
       - string

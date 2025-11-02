@@ -1233,6 +1233,7 @@
       "error": "Error",
       "image": "Generated Image",
       "imageAlt": "Generated span image",
+      "systemInstruction": "System Instruction",
       "noSpanContent": "No additional content for this span.",
       "selectSpanHint": "Select a span from the timeline to inspect its detail.",
       "tokenSummary": {
@@ -1263,7 +1264,8 @@
         "chunking": "Chunking",
         "templating": "Templating",
         "llm": "LLM",
-        "imageUrl": "Image"
+        "imageUrl": "Image",
+        "systemInstruction": "System Instruction"
       },
       "totalDurationLabel": "Total Duration",
       "summary": {

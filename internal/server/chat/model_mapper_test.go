@@ -74,25 +74,6 @@ func TestModelMapper_MapModel(t *testing.T) {
 			expectedModel: "claude-3-opus",
 		},
 		{
-			name: "active profile with wildcard match",
-			apiKey: &ent.APIKey{
-				Name: "test-key",
-				Profiles: &objects.APIKeyProfiles{
-					ActiveProfile: "profile1",
-					Profiles: []objects.APIKeyProfile{
-						{
-							Name: "profile1",
-							ModelMappings: []objects.ModelMapping{
-								{From: "gpt-*", To: "claude-3-opus"},
-							},
-						},
-					},
-				},
-			},
-			originalModel: "gpt-4-turbo",
-			expectedModel: "claude-3-opus",
-		},
-		{
 			name: "active profile with regexp match",
 			apiKey: &ent.APIKey{
 				Name: "test-key",
@@ -110,6 +91,25 @@ func TestModelMapper_MapModel(t *testing.T) {
 			},
 			originalModel: "gpt-4-turbo",
 			expectedModel: "claude-3-opus",
+		},
+		{
+			name: "active profile with regexp match 2",
+			apiKey: &ent.APIKey{
+				Name: "test-key",
+				Profiles: &objects.APIKeyProfiles{
+					ActiveProfile: "profile1",
+					Profiles: []objects.APIKeyProfile{
+						{
+							Name: "profile1",
+							ModelMappings: []objects.ModelMapping{
+								{From: "claude.*-haiku.*", To: "deepseek-chat"},
+							},
+						},
+					},
+				},
+			},
+			originalModel: "claude-haiku-4-5-20251001",
+			expectedModel: "deepseek-chat",
 		},
 		{
 			name: "active profile with no matching mapping",
@@ -172,30 +172,6 @@ func TestModelMapper_MatchesMapping(t *testing.T) {
 			name:     "exact match",
 			pattern:  "gpt-4",
 			str:      "gpt-4",
-			expected: true,
-		},
-		{
-			name:     "simple wildcard prefix",
-			pattern:  "gpt-*",
-			str:      "gpt-4",
-			expected: true,
-		},
-		{
-			name:     "simple wildcard suffix",
-			pattern:  "*-turbo",
-			str:      "gpt-3.5-turbo",
-			expected: true,
-		},
-		{
-			name:     "wildcard in middle",
-			pattern:  "gpt-*-turbo",
-			str:      "gpt-3.5-turbo",
-			expected: true,
-		},
-		{
-			name:     "multiple wildcards",
-			pattern:  "*-*-turbo",
-			str:      "gpt-3.5-turbo",
 			expected: true,
 		},
 		{

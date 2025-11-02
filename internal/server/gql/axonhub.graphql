@@ -267,6 +267,7 @@ type SpanValue {
   imageUrl: SpanImageURL
   toolUse: SpanToolUse
   toolResult: SpanToolResult
+  systemInstruction: SpanSystemInstruction
 }
 
 type SpanUserQuery {
@@ -299,6 +300,10 @@ type SpanToolResult {
   toolCallID: String
   isError: Boolean
   text: String
+}
+
+type SpanSystemInstruction {
+  instruction: String
 }
 
 type Mutation {

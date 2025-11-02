@@ -139,10 +139,7 @@ func (m *ModelMapper) getOrCreatePattern(pattern string) *patternCache {
 		return cached
 	}
 
-	// Convert wildcard pattern to regex and compile
-	regexPattern := convertToRegex(pattern)
-
-	compiled, err := regexp.Compile("^" + regexPattern + "$")
+	compiled, err := regexp.Compile("^" + pattern + "$")
 	if err != nil {
 		// Compilation failed, mark as compile error and use exact match fallback
 		cached.compileErr = true
@@ -159,34 +156,6 @@ func (m *ModelMapper) getOrCreatePattern(pattern string) *patternCache {
 // containsRegexChars checks if pattern contains regex special characters.
 func containsRegexChars(pattern string) bool {
 	return strings.ContainsAny(pattern, "*?+[]{}()^$.|\\")
-}
-
-// convertToRegex converts wildcard patterns to regex patterns.
-func convertToRegex(pattern string) string {
-	// Escape regex special characters except * and .
-	// We need to handle * and . specially for wildcard matching
-	result := ""
-
-	for _, char := range pattern {
-		switch char {
-		case '*':
-			result += ".*"
-		case '.':
-			// In wildcard patterns, . should match any single character
-			result += "."
-		case '?':
-			result += "."
-		default:
-			// Escape other regex special characters
-			if strings.ContainsRune("^$+[]{}()|\\", char) {
-				result += "\\" + string(char)
-			} else {
-				result += string(char)
-			}
-		}
-	}
-
-	return result
 }
 
 // GetActiveProfile returns the active profile for an API key, if any.

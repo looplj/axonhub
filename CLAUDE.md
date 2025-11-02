@@ -27,6 +27,9 @@ golangci-lint run
 
 # Build the application
 go build cmd/axonhub/main.go
+
+# Use air for hot reload (development)
+air
 ```
 
 ### Frontend (React)
@@ -58,12 +61,29 @@ pnpm test:ui      # UI mode
 pnpm test:headed  # Headed mode
 ```
 
+### Make Commands
+```bash
+# Generate GraphQL and Ent code
+make generate
+
+# Build backend only
+make build-backend
+
+# Build frontend only
+make build-frontend
+
+# Build both frontend and backend
+make build
+
+# Cleanup test database
+make cleanup-db
+```
+
 ## Architecture Overview
 
 ### Backend Structure
 - **Server Layer** (`internal/server/`): HTTP server and route handling with Gin
 - **Business Logic** (`internal/server/biz/`): Core business logic and services
-- **Chat Processing** (`internal/server/chat/`): Dedicated chat handling with persistence
 - **API Layer** (`internal/server/api/`): REST and GraphQL API handlers
 - **Database** (`internal/ent/`): Ent ORM for database operations with SQLite
 - **LLM Integration** (`internal/llm/`): AI provider transformers and pipeline processing
@@ -72,7 +92,6 @@ pnpm test:headed  # Headed mode
 - **Auth & Scopes** (`internal/scopes/`): Permission system with role-based access control
 
 ### Frontend Structure
-- **React Router v7** with app directory structure
 - **TanStack Query** for data fetching and caching
 - **TanStack Table** for data tables with pagination/filtering
 - **TanStack Router** for file-based routing
@@ -119,7 +138,7 @@ pnpm test:headed  # Headed mode
 - Configuration loaded from `conf/conf.go`
 - Logging with structured JSON output using zap
 - FX dependency injection framework
-- Go version: 1.24.4
+- Go version: 1.25+
 - Frontend development server: port 5173
 - Backend API: port 8090
 
@@ -135,7 +154,6 @@ pnpm test:headed  # Headed mode
 - `cmd/axonhub/main.go`: Application entry point
 - `internal/server/server.go`: HTTP server configuration
 - `internal/llm/pipeline/`: Pipeline processing architecture
-- `internal/server/chat/`: Chat processing with persistence
 - `internal/ent/schema/`: Database schema definitions
 - `internal/pkg/`: Shared utilities and helpers
 - `frontend/src/app/`: React Router v7 app directory
@@ -149,11 +167,10 @@ pnpm test:headed  # Headed mode
 - **Integration**: Both layers tested together
 - **Code Quality**: golangci-lint for Go, ESLint for TypeScript
 
-
-### Key Features in Development
+## Key Features in Development
 - Enhanced transformer stream aggregation
 - Configurable persistence behavior
 - System options for controlling data storage
 - Improved error handling and recovery mechanisms
-- @internal/server/api/  Fix the stream not close when client closed
-- @internal/server/api/  Fix the stream not close when client closed
+- Stream closing when client disconnects
+- Real-time request tracing and monitoring

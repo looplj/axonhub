@@ -1262,6 +1262,7 @@
       "error": "错误",
       "image": "生成图像",
       "imageAlt": "追踪片段图像",
+      "systemInstruction": "系统指令",
       "noSpanContent": "该片段没有额外内容。",
       "selectSpanHint": "请从时间线选择片段查看详情。",
       "tokenSummary": {
@@ -1292,7 +1293,8 @@
         "chunking": "分块",
         "templating": "模板化",
         "llm": "大模型",
-        "imageUrl": "图像"
+        "imageUrl": "图像",
+        "systemInstruction": "系统指令"
       },
       "totalDurationLabel": "总持续时间",
       "summary": {
