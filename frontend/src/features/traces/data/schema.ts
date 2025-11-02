@@ -53,6 +53,13 @@ export const traceConnectionSchema = z.object({
 
 export type TraceConnection = z.infer<typeof traceConnectionSchema>
 
+const spanSystemInstructionSchema = z
+  .object({
+    instruction: z.string().nullable().optional(),
+  })  
+  .nullable()
+  .optional()
+
 const spanUserQuerySchema = z
   .object({
     text: z.string().nullable().optional(),
@@ -108,6 +115,7 @@ const spanToolResultSchema = z
 
 const spanValueSchema = z
   .object({
+    systemInstruction: spanSystemInstructionSchema,
     userQuery: spanUserQuerySchema,
     userImageUrl: spanUserImageURLSchema,
     text: spanTextSchema,

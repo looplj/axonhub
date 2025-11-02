@@ -101,6 +101,7 @@ type Segment struct {
 type Span struct {
 	ID string `json:"id"`
 	// Type of the span.
+	// "system_instruction": system instruction.
 	// "user_query": the query from user.
 	// "user_image_url": the image url from user.
 	// "text": llm responsed text.
@@ -115,13 +116,18 @@ type Span struct {
 }
 
 type SpanValue struct {
-	UserQuery    *SpanUserQuery    `json:"userQuery,omitempty"`
-	UserImageURL *SpanUserImageURL `json:"userImageUrl,omitempty"`
-	Text         *SpanText         `json:"text,omitempty"`
-	Thinking     *SpanThinking     `json:"thinking,omitempty"`
-	ImageURL     *SpanImageURL     `json:"imageUrl,omitempty"`
-	ToolUse      *SpanToolUse      `json:"toolUse,omitempty"`
-	ToolResult   *SpanToolResult   `json:"toolResult,omitempty"`
+	SystemInstruction *SpanSystemInstruction `json:"systemInstruction,omitempty"`
+	UserQuery         *SpanUserQuery         `json:"userQuery,omitempty"`
+	UserImageURL      *SpanUserImageURL      `json:"userImageUrl,omitempty"`
+	Text              *SpanText              `json:"text,omitempty"`
+	Thinking          *SpanThinking          `json:"thinking,omitempty"`
+	ImageURL          *SpanImageURL          `json:"imageUrl,omitempty"`
+	ToolUse           *SpanToolUse           `json:"toolUse,omitempty"`
+	ToolResult        *SpanToolResult        `json:"toolResult,omitempty"`
+}
+
+type SpanSystemInstruction struct {
+	Instruction string `json:"instruction,omitempty"`
 }
 
 type SpanUserQuery struct {
@@ -175,7 +181,7 @@ func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segmen
 	}
 
 	requests, err := client.Request.Query().
-		Where(request.TraceIDEQ(traceID)).
+		Where(request.TraceIDEQ(traceID), request.StatusEQ(request.StatusCompleted)).
 		Order(ent.Asc(request.FieldCreatedAt)).
 		All(ctx)
 	if err != nil {
@@ -339,6 +345,18 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 	// Handle text content
 	if msg.Content.Content != nil && *msg.Content.Content != "" {
 		switch msg.Role {
+		case "system":
+			spans = append(spans, Span{
+				ID:        fmt.Sprintf("%s-system_instruction", idPrefix),
+				Type:      "system_instruction",
+				StartTime: now,
+				EndTime:   now,
+				Value: &SpanValue{
+					SystemInstruction: &SpanSystemInstruction{
+						Instruction: *msg.Content.Content,
+					},
+				},
+			})
 		case "user":
 			spans = append(spans, Span{
 				ID:        fmt.Sprintf("%s-text", idPrefix),
@@ -380,12 +398,6 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 
 	// Handle multiple content parts
 	for i, part := range msg.Content.MultipleContent {
-		partSpan := Span{
-			ID:        fmt.Sprintf("%s-part-%d", idPrefix, i),
-			StartTime: now,
-			EndTime:   now,
-		}
-
 		switch part.Type {
 		case "text":
 			if part.Text == nil {
@@ -393,9 +405,21 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 			}
 
 			switch msg.Role {
+			case "system":
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-system_instruction-%d", idPrefix, i),
+					Type:      "system_instruction",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						SystemInstruction: &SpanSystemInstruction{
+							Instruction: *part.Text,
+						},
+					},
+				})
 			case "user":
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-text", idPrefix),
+					ID:        fmt.Sprintf("%s-text-%d", idPrefix, i),
 					Type:      "user_query",
 					StartTime: now,
 					EndTime:   now,
@@ -407,7 +431,7 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 				})
 			case "tool":
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-text", idPrefix),
+					ID:        fmt.Sprintf("%s-tool_result-%d", idPrefix, i),
 					Type:      "tool_result",
 					StartTime: now,
 					EndTime:   now,
@@ -419,7 +443,7 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 				})
 			default:
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-text", idPrefix),
+					ID:        fmt.Sprintf("%s-text-%d", idPrefix, i),
 					Type:      "text",
 					StartTime: now,
 					EndTime:   now,
@@ -438,7 +462,7 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 			switch msg.Role {
 			case "user":
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-image", idPrefix),
+					ID:        fmt.Sprintf("%s-image_url-%d", idPrefix, i),
 					Type:      "user_image_url",
 					StartTime: now,
 					EndTime:   now,
@@ -450,7 +474,7 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 				})
 			case "tool":
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-image", idPrefix),
+					ID:        fmt.Sprintf("%s-image_url-%d", idPrefix, i),
 					Type:      "tool_result",
 					StartTime: now,
 					EndTime:   now,
@@ -463,7 +487,7 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 				})
 			default:
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-image", idPrefix),
+					ID:        fmt.Sprintf("%s-image_url-%d", idPrefix, i),
 					Type:      "image_url",
 					StartTime: now,
 					EndTime:   now,
@@ -478,8 +502,6 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 		default:
 			// ignore for now.
 		}
-
-		spans = append(spans, partSpan)
 	}
 
 	// Handle tool calls

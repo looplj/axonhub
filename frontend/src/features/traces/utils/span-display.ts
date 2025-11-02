@@ -28,6 +28,8 @@ const spanTypeTranslationKeyMap: Record<string, string> = {
   chunking: 'chunking',
   templating: 'templating',
   llm: 'llm',
+  system_instruction: 'systemInstruction',
+  systeminstruction: 'systemInstruction',
 }
 
 function createFallbackLabel(type?: string | null): string {

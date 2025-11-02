@@ -550,6 +550,10 @@ type ComplexityRoot struct {
 		URL func(childComplexity int) int
 	}
 
+	SpanSystemInstruction struct {
+		Instruction func(childComplexity int) int
+	}
+
 	SpanText struct {
 		Text func(childComplexity int) int
 	}
@@ -579,13 +583,14 @@ type ComplexityRoot struct {
 	}
 
 	SpanValue struct {
-		ImageURL     func(childComplexity int) int
-		Text         func(childComplexity int) int
-		Thinking     func(childComplexity int) int
-		ToolResult   func(childComplexity int) int
-		ToolUse      func(childComplexity int) int
-		UserImageURL func(childComplexity int) int
-		UserQuery    func(childComplexity int) int
+		ImageURL          func(childComplexity int) int
+		SystemInstruction func(childComplexity int) int
+		Text              func(childComplexity int) int
+		Thinking          func(childComplexity int) int
+		ToolResult        func(childComplexity int) int
+		ToolUse           func(childComplexity int) int
+		UserImageURL      func(childComplexity int) int
+		UserQuery         func(childComplexity int) int
 	}
 
 	StoragePolicy struct {
@@ -3460,6 +3465,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SpanImageURL.URL(childComplexity), true
 
+	case "SpanSystemInstruction.instruction":
+		if e.complexity.SpanSystemInstruction.Instruction == nil {
+			break
+		}
+
+		return e.complexity.SpanSystemInstruction.Instruction(childComplexity), true
+
 	case "SpanText.text":
 		if e.complexity.SpanText.Text == nil {
 			break
@@ -3536,6 +3548,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SpanValue.ImageURL(childComplexity), true
+
+	case "SpanValue.systemInstruction":
+		if e.complexity.SpanValue.SystemInstruction == nil {
+			break
+		}
+
+		return e.complexity.SpanValue.SystemInstruction(childComplexity), true
 
 	case "SpanValue.text":
 		if e.complexity.SpanValue.Text == nil {
@@ -22634,6 +22653,8 @@ func (ec *executionContext) fieldContext_Span_value(_ context.Context, field gra
 				return ec.fieldContext_SpanValue_toolUse(ctx, field)
 			case "toolResult":
 				return ec.fieldContext_SpanValue_toolResult(ctx, field)
+			case "systemInstruction":
+				return ec.fieldContext_SpanValue_systemInstruction(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SpanValue", field.Name)
 		},
@@ -22672,6 +22693,47 @@ func (ec *executionContext) _SpanImageURL_url(ctx context.Context, field graphql
 func (ec *executionContext) fieldContext_SpanImageURL_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SpanImageURL",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanSystemInstruction_instruction(ctx context.Context, field graphql.CollectedField, obj *biz.SpanSystemInstruction) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanSystemInstruction_instruction(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Instruction, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanSystemInstruction_instruction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanSystemInstruction",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -23413,6 +23475,51 @@ func (ec *executionContext) fieldContext_SpanValue_toolResult(_ context.Context,
 				return ec.fieldContext_SpanToolResult_text(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SpanToolResult", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpanValue_systemInstruction(ctx context.Context, field graphql.CollectedField, obj *biz.SpanValue) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpanValue_systemInstruction(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SystemInstruction, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*biz.SpanSystemInstruction)
+	fc.Result = res
+	return ec.marshalOSpanSystemInstruction2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanSystemInstruction(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpanValue_systemInstruction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpanValue",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "instruction":
+				return ec.fieldContext_SpanSystemInstruction_instruction(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpanSystemInstruction", field.Name)
 		},
 	}
 	return fc, nil
@@ -50181,6 +50288,42 @@ func (ec *executionContext) _SpanImageURL(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var spanSystemInstructionImplementors = []string{"SpanSystemInstruction"}
+
+func (ec *executionContext) _SpanSystemInstruction(ctx context.Context, sel ast.SelectionSet, obj *biz.SpanSystemInstruction) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spanSystemInstructionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpanSystemInstruction")
+		case "instruction":
+			out.Values[i] = ec._SpanSystemInstruction_instruction(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var spanTextImplementors = []string{"SpanText"}
 
 func (ec *executionContext) _SpanText(ctx context.Context, sel ast.SelectionSet, obj *biz.SpanText) graphql.Marshaler {
@@ -50433,6 +50576,8 @@ func (ec *executionContext) _SpanValue(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._SpanValue_toolUse(ctx, field, obj)
 		case "toolResult":
 			out.Values[i] = ec._SpanValue_toolResult(ctx, field, obj)
+		case "systemInstruction":
+			out.Values[i] = ec._SpanValue_systemInstruction(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -57669,6 +57814,13 @@ func (ec *executionContext) marshalOSpanImageURL2ᚖgithubᚗcomᚋloopljᚋaxon
 		return graphql.Null
 	}
 	return ec._SpanImageURL(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSpanSystemInstruction2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanSystemInstruction(ctx context.Context, sel ast.SelectionSet, v *biz.SpanSystemInstruction) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SpanSystemInstruction(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOSpanText2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanText(ctx context.Context, sel ast.SelectionSet, v *biz.SpanText) graphql.Marshaler {

@@ -34,7 +34,7 @@ function buildTracesQuery() {
               id
               threadID
             }
-            requests {
+            requests(where: { status: completed }) {
               totalCount
             }
           }
@@ -70,7 +70,7 @@ function buildTraceDetailQuery() {
             id
             threadID
           }
-          requests {
+          requests(where: { status: completed }) {
             totalCount
           }
         }
@@ -83,6 +83,9 @@ function buildTraceDetailQuery() {
 function buildTraceWithRequestTracesQuery() {
   return `
     fragment SpanValue on SpanValue {
+      systemInstruction {
+        instruction
+      }
       userQuery {
         text
       }
@@ -174,7 +177,7 @@ function buildTraceWithRequestTracesQuery() {
             id
             threadID
           }
-          requests {
+          requests(where: { status: completed }) {
             totalCount
           }
           rootSegment {
