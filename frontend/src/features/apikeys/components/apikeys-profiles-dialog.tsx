@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { IconPlus, IconTrash, IconSettings } from '@tabler/icons-react'
@@ -48,18 +48,26 @@ export function ApiKeyProfilesDialog({
   const { t } = useTranslation()
   const { selectedApiKey } = useApiKeysContext()
 
-  const form = useForm<UpdateApiKeyProfilesInput>({
-    resolver: zodResolver(updateApiKeyProfilesInputSchemaFactory(t)),
-    defaultValues: {
-      activeProfile: '',
+  const defaultValues = useMemo(
+    () => ({
+      activeProfile: 'Default',
       profiles: [
         {
           name: 'Default',
           modelMappings: [],
         },
       ],
-    },
+    }),
+    []
+  )
+
+  const form = useForm<UpdateApiKeyProfilesInput>({
+    resolver: zodResolver(updateApiKeyProfilesInputSchemaFactory(t)),
+    defaultValues,
   })
+
+  const lastInitialDataRef = useRef<string | null>(null)
+  const defaultSerialized = useMemo(() => JSON.stringify(defaultValues), [defaultValues])
 
   const {
     fields: profileFields,
@@ -73,22 +81,31 @@ export function ApiKeyProfilesDialog({
   // Watch profile names to update activeProfile dropdown options
   const profileNames = form.watch('profiles')?.map((profile) => profile.name) || []
 
-  // Reset form when dialog opens/closes or initial data changes
+  // Reset form when dialog opens or when incoming data actually changes
   useEffect(() => {
-    if (open && initialData) {
-      form.reset(initialData)
-    } else if (open) {
-      form.reset({
-        activeProfile: 'Default',
-        profiles: [
-          {
-            name: 'Default',
-            modelMappings: [],
-          },
-        ],
-      })
+    if (!open) {
+      lastInitialDataRef.current = null
+      return
     }
-  }, [open, initialData, form])
+
+    if (loading) {
+      return
+    }
+
+    const serialized = initialData ? JSON.stringify(initialData) : defaultSerialized
+
+    if (lastInitialDataRef.current === serialized) {
+      return
+    }
+
+    if (initialData) {
+      form.reset(initialData)
+    } else {
+      form.reset(defaultValues)
+    }
+
+    lastInitialDataRef.current = serialized
+  }, [open, initialData, loading, form, defaultValues, defaultSerialized])
 
   const handleSubmit = (data: UpdateApiKeyProfilesInput) => {
     // Clear any previous form-level errors

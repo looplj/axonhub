@@ -174,3 +174,34 @@ make cleanup-db
 - Improved error handling and recovery mechanisms
 - Stream closing when client disconnects
 - Real-time request tracing and monitoring
+
+## WindSurf Rules
+
+### General Rules
+- All summary files should be stored in `.windsurf/summary` directory if available
+
+### Backend Development Rules
+- The server in development is managed by air - it will rebuild and start when code changes, so DO NOT restart manually
+- Use `make build-backend` to build the server to ensure successful builds
+- When changing any Ent schema or GraphQL schema, run `make generate` to regenerate models and resolvers
+- Use `make generate` command to generate GraphQL and Ent code (automatically enters gql directory and runs go generate)
+- DO NOT ADD ANY NEW METHOD/STRUCTURE/FUNCTION/VARIABLE IN *.resolvers.go files
+- Use `enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")` to create a new client for testing
+
+### Golang Development Rules
+- USE github.com/samber/lo package to handle collection, slice, map, ptr, etc.
+
+### Frontend Development Rules
+- DO NOT restart the development server - it's already started
+- Use pnpm as the package manager, run `pnpm dev` to start the development server
+- Use GraphQL input to filter data instead of filtering in the frontend
+- Search filters should use debounce to avoid too many requests
+- Add sidebar data and route when adding new feature pages
+- Use extractNumberID to extract int id from the GUID
+
+#### Frontend Testing
+- Use `my@example.com` as the email and `pwd123456` as the password for login when testing the frontend
+
+#### Frontend i18n Rules
+- MUST ADD i18n key in the locales/*.json file if creating a new key in the code
+- MUST KEEP THE KEY IN THE CODE AND JSON FILE THE SAME

@@ -222,11 +222,11 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     defaultModels: ['LongCat-Flash-Chat', 'LongCat-Flash-Thinking'],
   },
   minimax: {
-    baseURL: 'https://api.minimax.com/v1',
+    baseURL: 'https://api.minimaxi.com/v1',
     defaultModels: ['MiniMax-M2'],
   },
   minimax_anthropic: {
-    baseURL: 'https://api.minimax.com/anthropic',
+    baseURL: 'https://api.minimaxi.com/anthropic',
     defaultModels: ['MiniMax-M2'],
   },
 }

@@ -1,20 +1,10 @@
 'use client'
 
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-} from '@radix-ui/react-icons'
+import { ChevronLeftIcon, ChevronRightIcon, DoubleArrowLeftIcon } from '@radix-ui/react-icons'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 interface PageInfo {
   hasNextPage: boolean
@@ -31,6 +21,7 @@ interface ServerSidePaginationProps {
   selectedRows: number
   onNextPage: () => void
   onPreviousPage: () => void
+  onFirstPage?: () => void
   onPageSizeChange: (pageSize: number) => void
 }
 
@@ -42,20 +33,20 @@ export function ServerSidePagination({
   selectedRows,
   onNextPage,
   onPreviousPage,
+  onFirstPage,
   onPageSizeChange,
 }: ServerSidePaginationProps) {
   const { t } = useTranslation()
-  
+  const { resetCursor } = usePaginationSearch({
+    defaultPageSize: 20,
+  })
+
   return (
-    <div
-      className='flex items-center justify-between overflow-clip px-2'
-      style={{ overflowClipMargin: 1 }}
-    >
+    <div className='flex items-center justify-between overflow-clip px-2' style={{ overflowClipMargin: 1 }}>
       <div className='text-muted-foreground hidden flex-1 text-sm sm:block'>
-        {totalCount !== undefined 
+        {totalCount !== undefined
           ? t('pagination.selectedInfoWithTotal', { selectedRows, dataLength, totalCount })
-          : t('pagination.selectedInfo', { selectedRows, dataLength })
-        }
+          : t('pagination.selectedInfo', { selectedRows, dataLength })}
       </div>
       <div className='flex items-center sm:space-x-6 lg:space-x-8'>
         <div className='flex items-center space-x-2'>
@@ -93,7 +84,7 @@ export function ServerSidePagination({
           <Button
             variant='outline'
             className='hidden h-8 w-8 p-0 lg:flex'
-            onClick={onPreviousPage}
+            onClick={onFirstPage || resetCursor}
             disabled={!pageInfo?.hasPreviousPage}
           >
             <span className='sr-only'>{t('pagination.firstPage')}</span>
@@ -108,16 +99,12 @@ export function ServerSidePagination({
             <span className='sr-only'>{t('pagination.previousPage')}</span>
             <ChevronLeftIcon className='h-4 w-4' />
           </Button>
-          <Button
-            variant='outline'
-            className='h-8 w-8 p-0'
-            onClick={onNextPage}
-            disabled={!pageInfo?.hasNextPage}
-          >
+          <Button variant='outline' className='h-8 w-8 p-0' onClick={onNextPage} disabled={!pageInfo?.hasNextPage}>
             <span className='sr-only'>{t('pagination.nextPage')}</span>
             <ChevronRightIcon className='h-4 w-4' />
           </Button>
-          <Button
+          {/* NOT SUPPORTED */}
+          {/* <Button
             variant='outline'
             className='hidden h-8 w-8 p-0 lg:flex'
             onClick={onNextPage}
@@ -125,7 +112,7 @@ export function ServerSidePagination({
           >
             <span className='sr-only'>{t('pagination.lastPage')}</span>
             <DoubleArrowRightIcon className='h-4 w-4' />
-          </Button>
+          </Button> */}
         </div>
       </div>
     </div>

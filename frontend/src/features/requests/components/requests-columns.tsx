@@ -1,7 +1,6 @@
 'use client'
 
 import { format } from 'date-fns'
-import { useNavigate } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { zhCN, enUS } from 'date-fns/locale'
 import { Eye, MoreHorizontal, FileText } from 'lucide-react'
@@ -15,6 +14,7 @@ import { useRequestsContext } from '../context'
 import { Request } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { getStatusColor } from './help'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 // Removed unused statusColors - using getStatusColor helper instead
 
@@ -22,6 +22,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation()
   const locale = i18n.language === 'zh' ? zhCN : enUS
   const permissions = useRequestPermissions()
+  const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 })
 
   // Define all columns
   const columns: ColumnDef<Request>[] = [
@@ -150,10 +151,11 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       id: 'details',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.details')} />,
       cell: ({ row }) => {
-        const navigate = useNavigate()
-
         const handleViewDetails = () => {
-          navigate({ to: '/project/requests/$requestId', params: { requestId: row.original.id } })
+          navigateWithSearch({ 
+            to: '/project/requests/$requestId', 
+            params: { requestId: row.original.id } 
+          })
         }
 
         return (
