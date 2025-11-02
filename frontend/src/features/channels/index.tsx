@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { createColumns } from './components/channels-columns'
@@ -12,8 +13,9 @@ import { useChannels } from './data/channels'
 
 function ChannelsContent() {
   const { t } = useTranslation()
-  const [pageSize, setPageSize] = useState(20)
-  const [cursor, setCursor] = useState<string | undefined>(undefined)
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
+    defaultPageSize: 20,
+  })
   const [nameFilter, setNameFilter] = useState<string>('')
   const [typeFilter, setTypeFilter] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState<string[]>([])
@@ -40,8 +42,7 @@ function ChannelsContent() {
   })()
   
   const { data, isLoading: _isLoading, error: _error } = useChannels({
-    first: pageSize,
-    after: cursor,
+    ...paginationArgs,
     where: whereClause,
     orderBy: {
       field: 'CREATED_AT',
@@ -51,34 +52,33 @@ function ChannelsContent() {
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
-      setCursor(data.pageInfo.endCursor)
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
     }
   }
 
   const handlePreviousPage = () => {
-    if (data?.pageInfo?.hasPreviousPage && data?.pageInfo?.startCursor) {
-      setCursor(data.pageInfo.startCursor)
+    if (data?.pageInfo?.hasPreviousPage) {
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before')
     }
   }
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize)
-    setCursor(undefined) // Reset to first page
   }
 
   const handleNameFilterChange = (filter: string) => {
     setNameFilter(filter)
-    setCursor(undefined) // Reset to first page when filter changes
+    resetCursor()
   }
 
   const handleTypeFilterChange = (filters: string[]) => {
     setTypeFilter(filters)
-    setCursor(undefined) // Reset to first page when filter changes
+    resetCursor()
   }
 
   const handleStatusFilterChange = (filters: string[]) => {
     setStatusFilter(filters)
-    setCursor(undefined) // Reset to first page when filter changes
+    resetCursor()
   }
 
   const columns = createColumns(t)

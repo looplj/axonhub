@@ -12,10 +12,13 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Trace } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 export function useTracesColumns(): ColumnDef<Trace>[] {
   const { t, i18n } = useTranslation()
   const locale = i18n.language === 'zh' ? zhCN : enUS
+    const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 })
+  
 
   // Define all columns
   const columns: ColumnDef<Trace>[] = [
@@ -81,10 +84,8 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
       id: 'details',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.details')} />,
       cell: ({ row }) => {
-        const navigate = useNavigate()
-
         const handleViewDetails = () => {
-          navigate({ to: '/project/traces/$traceId', params: { traceId: row.original.id } })
+          navigateWithSearch({ to: '/project/traces/$traceId', params: { traceId: row.original.id } })
         }
 
         return (

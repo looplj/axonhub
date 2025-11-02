@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
 import { usePermissions } from '@/hooks/usePermissions'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProjectsDialogs } from './components/projects-action-dialog'
@@ -16,8 +17,9 @@ import { useProjects } from './data/projects'
 function ProjectsContent() {
   const { t } = useTranslation()
   const { projectPermissions } = usePermissions()
-  const [pageSize, setPageSize] = useState(20)
-  const [cursor, setCursor] = useState<string | undefined>(undefined)
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
+    defaultPageSize: 20,
+  })
 
   // Filter states - combined search for name or slug
   const [searchFilter, setSearchFilter] = useState<string>('')
@@ -44,31 +46,29 @@ function ProjectsContent() {
     isLoading,
     error: _error,
   } = useProjects({
-    first: pageSize,
-    after: cursor,
+    ...paginationArgs,
     where: whereClause,
   })
 
   // Reset cursor when filters change
   React.useEffect(() => {
-    setCursor(undefined)
-  }, [debouncedSearchFilter])
+    resetCursor()
+  }, [debouncedSearchFilter, resetCursor])
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
-      setCursor(data.pageInfo.endCursor)
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
     }
   }
 
   const handlePreviousPage = () => {
-    if (data?.pageInfo?.hasPreviousPage && data?.pageInfo?.startCursor) {
-      setCursor(data.pageInfo.startCursor)
+    if (data?.pageInfo?.hasPreviousPage) {
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before')
     }
   }
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize)
-    setCursor(undefined) // Reset to first page
   }
 
   return (
