@@ -9,17 +9,33 @@ import (
 	"github.com/looplj/axonhub/internal/tracing"
 )
 
+func getTraceIDFromHeader(c *gin.Context, config tracing.Config) string {
+	// Use the configured trace header name, or default to "AH-Trace-Id"
+	primaryTraceHeader := config.TraceHeader
+	if primaryTraceHeader == "" {
+		primaryTraceHeader = "AH-Trace-Id"
+	}
+
+	traceID := c.GetHeader(primaryTraceHeader)
+	if traceID != "" {
+		return traceID
+	}
+
+	for _, header := range config.ExtraTraceHeaders {
+		traceID = c.GetHeader(header)
+		if traceID != "" {
+			return traceID
+		}
+	}
+
+	return ""
+}
+
 // WithTrace is a middleware that extracts the X-Trace-ID header and
 // gets or creates the corresponding trace entity in the database.
 func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.HandlerFunc {
-	// Use the configured trace header name, or default to "AH-Trace-Id"
-	traceHeader := config.TraceHeader
-	if traceHeader == "" {
-		traceHeader = "AH-Trace-Id"
-	}
-
 	return func(c *gin.Context) {
-		traceID := c.GetHeader(traceHeader)
+		traceID := getTraceIDFromHeader(c, config)
 		if traceID == "" {
 			c.Next()
 			return
