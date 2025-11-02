@@ -222,7 +222,7 @@ export function ChannelsTable({
                   colSpan={columns.length}
                   className='h-24 text-center'
                 >
-                  {t('noData')}
+                  {t('common.noData')}
                 </TableCell>
               </TableRow>
             )}

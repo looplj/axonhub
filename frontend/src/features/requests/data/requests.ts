@@ -30,10 +30,12 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
     query GetRequests(
       $first: Int
       $after: Cursor
+      $last: Int
+      $before: Cursor
       $orderBy: RequestOrder
       $where: RequestWhereInput
     ) {
-      requests(first: $first, after: $after, orderBy: $orderBy, where: $where) {
+      requests(first: $first, after: $after, last: $last, before: $before, orderBy: $orderBy, where: $where) {
         edges {
           node {
             id
@@ -155,6 +157,8 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
 export function useRequests(variables?: {
   first?: number
   after?: string
+  last?: number
+  before?: string
   orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' }
   where?: {
     status?: string

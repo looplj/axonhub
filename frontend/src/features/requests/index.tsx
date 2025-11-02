@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -9,8 +10,9 @@ import { RequestsProvider } from './context'
 import { useRequests } from './data'
 
 function RequestsContent() {
-  const [pageSize, setPageSize] = useState(20)
-  const [cursor, setCursor] = useState<string | undefined>(undefined)
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
+    defaultPageSize: 20,
+  })
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
   const [channelFilter, setChannelFilter] = useState<string[]>([])
@@ -33,8 +35,7 @@ function RequestsContent() {
   })()
 
   const { data, isLoading, refetch } = useRequests({
-    first: pageSize,
-    after: cursor,
+    ...paginationArgs,
     where: whereClause,
     orderBy: {
       field: 'CREATED_AT',
@@ -47,35 +48,38 @@ function RequestsContent() {
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
-      setCursor(data.pageInfo.endCursor)
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
     }
   }
 
   const handlePreviousPage = () => {
-    if (data?.pageInfo?.hasPreviousPage && data?.pageInfo?.startCursor) {
-      setCursor(data.pageInfo.startCursor)
+    if (data?.pageInfo?.hasPreviousPage) {
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before')
     }
   }
 
-  const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize)
-    setCursor(undefined) // Reset to first page
-  }
+  const handleStatusFilterChange = useCallback(
+    (filters: string[]) => {
+      setStatusFilter(filters)
+      resetCursor()
+    },
+    [resetCursor]
+  )
 
-  const handleStatusFilterChange = (filters: string[]) => {
-    setStatusFilter(filters)
-    setCursor(undefined) // Reset to first page when filtering
-  }
+  const handleSourceFilterChange = useCallback(
+    (filters: string[]) => {
+      setSourceFilter(filters)
+    },
+    [resetCursor]
+  )
 
-  const handleSourceFilterChange = (filters: string[]) => {
-    setSourceFilter(filters)
-    setCursor(undefined) // Reset to first page when filtering
-  }
-
-  const handleChannelFilterChange = (filters: string[]) => {
-    setChannelFilter(filters)
-    setCursor(undefined) // Reset to first page when filtering
-  }
+  const handleChannelFilterChange = useCallback(
+    (filters: string[]) => {
+      setChannelFilter(filters)
+      resetCursor()
+    },
+    [resetCursor]
+  )
 
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
@@ -90,7 +94,7 @@ function RequestsContent() {
         channelFilter={channelFilter}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
-        onPageSizeChange={handlePageSizeChange}
+        onPageSizeChange={setPageSize}
         onStatusFilterChange={handleStatusFilterChange}
         onSourceFilterChange={handleSourceFilterChange}
         onChannelFilterChange={handleChannelFilterChange}
@@ -124,8 +128,7 @@ export default function RequestsManagement() {
 
   return (
     <RequestsProvider>
-      <Header fixed>
-      </Header>
+      <Header fixed></Header>
 
       <Main>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>

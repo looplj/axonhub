@@ -202,7 +202,7 @@ export function RequestsTable({
                   colSpan={requestsColumns.length}
                   className='h-24 text-center'
                 >
-                  {t('noData')}
+                  {t('common.noData')}
                 </TableCell>
               </TableRow>
             )}

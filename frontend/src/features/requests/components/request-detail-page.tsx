@@ -17,12 +17,14 @@ import { useRequest, useRequestExecutions } from '../data'
 import { useUsageLogs } from '../../usage-logs/data/usage-logs'
 import { getStatusColor } from './help'
 import { DashboardIcon } from '@radix-ui/react-icons'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 export default function RequestDetailPage() {
   const { t, i18n } = useTranslation()
   const { requestId } = useParams({ from: '/_authenticated/project/requests/$requestId' })
   const navigate = useNavigate()
   const locale = i18n.language === 'zh' ? zhCN : enUS
+  const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 })
 
   const { data: request, isLoading } = useRequest(requestId)
   const { data: executions } = useRequestExecutions(requestId, {
@@ -48,7 +50,11 @@ export default function RequestDetailPage() {
   }
 
   const handleBack = () => {
-    navigate({ to: '/project/requests' })
+    // 保持分页状态返回到请求列表页
+    navigate({ 
+      to: '/project/requests',
+      search: getSearchParams()
+    })
   }
 
   if (isLoading) {
