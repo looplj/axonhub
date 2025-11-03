@@ -1,6 +1,5 @@
-import React, { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDebounce } from '@/hooks/use-debounce'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -10,17 +9,14 @@ import { UsersPrimaryButtons } from './components/users-primary-buttons'
 import { UsersTable } from './components/users-table'
 import UsersProvider from './context/users-context'
 import { useUsers } from './data/users'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 function UsersContent() {
   const { t } = useTranslation()
   const { userPermissions, rolePermissions } = usePermissions()
-
-  // Filter states
-  const [nameFilter, setNameFilter] = useState<string>('')
-  const [statusFilter, setStatusFilter] = useState<string[]>([])
-  const [roleFilter, setRoleFilter] = useState<string[]>([])
-
-  const debouncedNameFilter = useDebounce(nameFilter, 300)
+  const { pageSize, setCursors, setPageSize, paginationArgs } = usePaginationSearch({
+    defaultPageSize: 20,
+  })
 
   // Memoize columns to prevent infinite re-renders
   const columns = useMemo(
@@ -28,52 +24,46 @@ function UsersContent() {
     [t, userPermissions.canWrite, rolePermissions.canRead]
   )
 
-  // Fetch all project users (no server-side filtering for project users)
-  const { data, isLoading, error: _error } = useUsers()
+  const { data, isLoading, error: _error } = useUsers({
+    ...paginationArgs,
+  })
 
-  // Apply client-side filtering
-  const filteredData = React.useMemo(() => {
-    if (!data?.edges) return []
+  const projectUsers = data?.edges?.map((edge) => edge.node) || []
+  const pageInfo = data?.pageInfo
 
-    let filtered = data.edges.map((edge) => edge.node)
-
-    // Filter by name (firstName or lastName)
-    if (debouncedNameFilter) {
-      const searchLower = debouncedNameFilter.toLowerCase()
-      filtered = filtered.filter((user) => {
-        const firstName = user.firstName?.toLowerCase() || ''
-        const lastName = user.lastName?.toLowerCase() || ''
-        const email = user.email?.toLowerCase() || ''
-        return firstName.includes(searchLower) || lastName.includes(searchLower) || email.includes(searchLower)
-      })
+  const handleNextPage = () => {
+    if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
     }
+  }
 
-    // Filter by status
-    if (statusFilter.length > 0) {
-      filtered = filtered.filter((user) => statusFilter.includes(user.status))
+  const handlePreviousPage = () => {
+    if (data?.pageInfo?.hasPreviousPage) {
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before')
     }
+  }
 
-    // Filter by role (if needed in the future)
-    if (roleFilter.length > 0) {
-      // Note: This would need to be implemented based on the actual user role relationship
-      // For now, we'll leave it as a placeholder
-    }
-
-    return filtered
-  }, [data, debouncedNameFilter, statusFilter, roleFilter])
+  const handlePageSizeChange = (nextPageSize: number) => {
+    setPageSize(nextPageSize)
+  }
 
   return (
     <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
       <UsersTable
-        data={filteredData}
+        data={projectUsers}
         columns={columns}
         loading={isLoading}
-        nameFilter={nameFilter}
-        statusFilter={statusFilter}
-        roleFilter={roleFilter}
-        onNameFilterChange={setNameFilter}
-        onStatusFilterChange={setStatusFilter}
-        onRoleFilterChange={setRoleFilter}
+        pageInfo={pageInfo}
+        pageSize={pageSize}
+        onNextPage={handleNextPage}
+        onPreviousPage={handlePreviousPage}
+        onPageSizeChange={handlePageSizeChange}
+        nameFilter={''}
+        statusFilter={[]}
+        roleFilter={[]}
+        onNameFilterChange={() => {}}
+        onStatusFilterChange={() => {}}
+        onRoleFilterChange={() => {}}
       />
     </div>
   )

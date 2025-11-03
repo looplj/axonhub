@@ -357,10 +357,12 @@ func (r *traceResolver) RawRootSegment(ctx context.Context, obj *ent.Trace) (obj
 	if err != nil {
 		return nil, err
 	}
+
 	data, err := json.Marshal(segment)
 	if err != nil {
 		return nil, err
 	}
+
 	return objects.JSONRawMessage(data), nil
 }
 
@@ -370,5 +372,7 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-type mutationResolver struct{ *Resolver }
-type segmentResolver struct{ *Resolver }
+type (
+	mutationResolver struct{ *Resolver }
+	segmentResolver  struct{ *Resolver }
+)

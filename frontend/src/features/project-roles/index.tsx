@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
 import { usePermissions } from '@/hooks/usePermissions'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { RolesDialogs } from './components/roles-action-dialog'
@@ -16,8 +17,9 @@ import { useRoles } from './data/roles'
 function RolesContent() {
   const { t } = useTranslation()
   const { rolePermissions } = usePermissions()
-  const [pageSize, setPageSize] = useState(20)
-  const [cursor, setCursor] = useState<string | undefined>(undefined)
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
+    defaultPageSize: 20,
+  })
 
   // Filter states - search by name
   const [searchFilter, setSearchFilter] = useState<string>('')
@@ -43,31 +45,29 @@ function RolesContent() {
   })()
 
   const { data, isLoading, error: _error } = useRoles({
-    first: pageSize,
-    after: cursor,
+    ...paginationArgs,
     where: whereClause,
   })
 
   // Reset cursor when filters change
   React.useEffect(() => {
-    setCursor(undefined)
-  }, [debouncedSearchFilter])
+    resetCursor()
+  }, [debouncedSearchFilter, resetCursor])
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
-      setCursor(data.pageInfo.endCursor)
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
     }
   }
 
   const handlePreviousPage = () => {
-    if (data?.pageInfo?.hasPreviousPage && data?.pageInfo?.startCursor) {
-      setCursor(data.pageInfo.startCursor)
+    if (data?.pageInfo?.hasPreviousPage) {
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before')
     }
   }
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize)
-    setCursor(undefined) // Reset to first page
   }
 
   return (

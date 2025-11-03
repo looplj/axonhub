@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { extractNumberID } from '@/lib/utils'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { useUsageLogs } from './data'
@@ -11,11 +10,13 @@ import {
 import { UsageLogsProvider, useUsageLogsContext } from './context'
 import { Button } from '@/components/ui/button'
 import { RefreshCw } from 'lucide-react'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 function UsageLogsContent() {
   const { t } = useTranslation()
-  const [pageSize, setPageSize] = useState(20)
-  const [cursor, setCursor] = useState<string | undefined>(undefined)
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
+    defaultPageSize: 20,
+  })
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
   const [channelFilter, setChannelFilter] = useState<string[]>([])
   
@@ -39,8 +40,7 @@ function UsageLogsContent() {
     isLoading, 
     error 
   } = useUsageLogs({
-    first: pageSize,
-    after: cursor,
+    ...paginationArgs,
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
     where: whereClause,
   })
@@ -50,29 +50,28 @@ function UsageLogsContent() {
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
-      setCursor(data.pageInfo.endCursor)
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
     }
   }
 
   const handlePreviousPage = () => {
-    if (data?.pageInfo?.hasPreviousPage && data?.pageInfo?.startCursor) {
-      setCursor(data.pageInfo.startCursor)
+    if (data?.pageInfo?.hasPreviousPage) {
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before')
     }
   }
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize)
-    setCursor(undefined) // Reset to first page
   }
 
   const handleSourceFilterChange = (filters: string[]) => {
     setSourceFilter(filters)
-    setCursor(undefined) // Reset to first page when filtering
+    resetCursor()
   }
 
   const handleChannelFilterChange = (filters: string[]) => {
     setChannelFilter(filters)
-    setCursor(undefined) // Reset to first page when filtering
+    resetCursor()
   }
 
   if (error) {

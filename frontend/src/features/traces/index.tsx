@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -7,17 +6,18 @@ import { Main } from '@/components/layout/main'
 import { TracesTable } from './components'
 import { TracesProvider } from './context'
 import { useTraces } from './data'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 function TracesContent() {
-  const [pageSize, setPageSize] = useState(20)
-  const [cursor, setCursor] = useState<string | undefined>(undefined)
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
+    defaultPageSize: 20,
+  })
 
   // Build where clause with filters
   const whereClause = undefined
 
   const { data, isLoading } = useTraces({
-    first: pageSize,
-    after: cursor,
+    ...paginationArgs,
     where: whereClause,
     orderBy: {
       field: 'CREATED_AT',
@@ -30,19 +30,19 @@ function TracesContent() {
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
-      setCursor(data.pageInfo.endCursor)
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
     }
   }
 
   const handlePreviousPage = () => {
-    if (data?.pageInfo?.hasPreviousPage && data?.pageInfo?.startCursor) {
-      setCursor(data.pageInfo.startCursor)
+    if (data?.pageInfo?.hasPreviousPage) {
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before')
     }
   }
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize)
-    setCursor(undefined) // Reset to first page
+    resetCursor()
   }
 
   return (

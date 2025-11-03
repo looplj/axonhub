@@ -5,6 +5,7 @@ import { zhCN, enUS } from 'date-fns/locale'
 import { ArrowLeft, FileText, Activity } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { extractNumberID } from '@/lib/utils'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -23,6 +24,7 @@ export default function TraceDetailPage() {
   const [selectedTrace, setSelectedTrace] = useState<Segment | null>(null)
   const [selectedSpan, setSelectedSpan] = useState<Span | null>(null)
   const [selectedSpanType, setSelectedSpanType] = useState<'request' | 'response' | null>(null)
+  const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 })
 
   const { data: trace, isLoading } = useTraceWithSegments(traceId)
 
@@ -65,7 +67,10 @@ export default function TraceDetailPage() {
   }
 
   const handleBack = () => {
-    navigate({ to: '/project/traces' })
+    navigate({
+      to: '/project/traces',
+      search: getSearchParams(),
+    })
   }
 
   if (isLoading) {

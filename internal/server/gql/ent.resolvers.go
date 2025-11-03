@@ -84,6 +84,10 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []*objects.GUID) ([]ent.N
 
 // APIKeys is the resolver for the apiKeys field.
 func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) (*ent.APIKeyConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	return r.client.APIKey.Query().Paginate(ctx, after, first, before, last,
 		ent.WithAPIKeyOrder(orderBy),
 		ent.WithAPIKeyFilter(where.Filter),
@@ -92,6 +96,10 @@ func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], 
 
 // Channels is the resolver for the channels field.
 func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) (*ent.ChannelConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	return r.client.Channel.Query().Paginate(ctx, after, first, before, last,
 		ent.WithChannelOrder(orderBy),
 		ent.WithChannelFilter(where.Filter),
@@ -100,6 +108,10 @@ func (r *queryResolver) Channels(ctx context.Context, after *entgql.Cursor[int],
 
 // DataStorages is the resolver for the dataStorages field.
 func (r *queryResolver) DataStorages(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.DataStorageOrder, where *ent.DataStorageWhereInput) (*ent.DataStorageConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	return r.client.DataStorage.Query().Paginate(ctx, after, first, before, last,
 		ent.WithDataStorageOrder(orderBy),
 		ent.WithDataStorageFilter(where.Filter),
@@ -108,6 +120,10 @@ func (r *queryResolver) DataStorages(ctx context.Context, after *entgql.Cursor[i
 
 // Projects is the resolver for the projects field.
 func (r *queryResolver) Projects(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ProjectOrder, where *ent.ProjectWhereInput) (*ent.ProjectConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	return r.client.Project.Query().Paginate(ctx, after, first, before, last,
 		ent.WithProjectOrder(orderBy),
 		ent.WithProjectFilter(where.Filter),
@@ -116,6 +132,10 @@ func (r *queryResolver) Projects(ctx context.Context, after *entgql.Cursor[int],
 
 // Requests is the resolver for the requests field.
 func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) (*ent.RequestConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	return r.client.Request.Query().Paginate(ctx, after, first, before, last,
 		ent.WithRequestOrder(orderBy),
 		ent.WithRequestFilter(where.Filter),
@@ -124,6 +144,10 @@ func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int],
 
 // Roles is the resolver for the roles field.
 func (r *queryResolver) Roles(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) (*ent.RoleConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	return r.client.Role.Query().Paginate(ctx, after, first, before, last,
 		ent.WithRoleOrder(orderBy),
 		ent.WithRoleFilter(where.Filter),
@@ -132,6 +156,10 @@ func (r *queryResolver) Roles(ctx context.Context, after *entgql.Cursor[int], fi
 
 // Systems is the resolver for the systems field.
 func (r *queryResolver) Systems(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) (*ent.SystemConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	return r.client.System.Query().Paginate(ctx, after, first, before, last,
 		ent.WithSystemOrder(orderBy),
 		ent.WithSystemFilter(where.Filter),
@@ -140,6 +168,10 @@ func (r *queryResolver) Systems(ctx context.Context, after *entgql.Cursor[int], 
 
 // Threads is the resolver for the threads field.
 func (r *queryResolver) Threads(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ThreadOrder, where *ent.ThreadWhereInput) (*ent.ThreadConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	return r.client.Thread.Query().Paginate(ctx, after, first, before, last,
 		ent.WithThreadOrder(orderBy),
 		ent.WithThreadFilter(where.Filter),
@@ -148,6 +180,10 @@ func (r *queryResolver) Threads(ctx context.Context, after *entgql.Cursor[int], 
 
 // Traces is the resolver for the traces field.
 func (r *queryResolver) Traces(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) (*ent.TraceConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	return r.client.Trace.Query().Paginate(ctx, after, first, before, last,
 		ent.WithTraceOrder(orderBy),
 		ent.WithTraceFilter(where.Filter),
@@ -156,6 +192,10 @@ func (r *queryResolver) Traces(ctx context.Context, after *entgql.Cursor[int], f
 
 // UsageLogs is the resolver for the usageLogs field.
 func (r *queryResolver) UsageLogs(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) (*ent.UsageLogConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	return r.client.UsageLog.Query().Paginate(ctx, after, first, before, last,
 		ent.WithUsageLogOrder(orderBy),
 		ent.WithUsageLogFilter(where.Filter),
@@ -164,6 +204,10 @@ func (r *queryResolver) UsageLogs(ctx context.Context, after *entgql.Cursor[int]
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
 	return r.client.User.Query().Paginate(ctx, after, first, before, last,
 		ent.WithUserOrder(orderBy),
 		ent.WithUserFilter(where.Filter),

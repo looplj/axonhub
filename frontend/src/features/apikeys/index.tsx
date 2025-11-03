@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { createColumns } from './components/apikeys-columns'
@@ -12,8 +13,9 @@ import { useApiKeys } from './data/apikeys'
 
 function ApiKeysContent() {
   const { t } = useTranslation()
-  const [pageSize, setPageSize] = useState(20)
-  const [cursor, setCursor] = useState<string | undefined>(undefined)
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
+    defaultPageSize: 20,
+  })
 
   // Filter states - following the same pattern as roles and users
   const [nameFilter, setNameFilter] = useState<string>('')
@@ -40,40 +42,38 @@ function ApiKeysContent() {
     return Object.keys(where).length > 0 ? where : undefined
   })()
 
-  const { data, isLoading, error } = useApiKeys({
-    first: pageSize,
-    after: cursor,
+  const { data, isLoading } = useApiKeys({
+    ...paginationArgs,
     where: whereClause,
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   })
 
   // Reset cursor when filters change
   React.useEffect(() => {
-    setCursor(undefined)
-  }, [debouncedNameFilter, statusFilter, userFilter])
+    resetCursor()
+  }, [debouncedNameFilter, statusFilter, userFilter, resetCursor])
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
-      setCursor(data.pageInfo.endCursor)
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
     }
   }
 
   const handlePreviousPage = () => {
-    if (data?.pageInfo?.hasPreviousPage && data?.pageInfo?.startCursor) {
-      setCursor(data.pageInfo.startCursor)
+    if (data?.pageInfo?.hasPreviousPage) {
+      setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before')
     }
   }
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize)
-    setCursor(undefined) // Reset to first page
   }
 
   const handleResetFilters = () => {
     setNameFilter('')
     setStatusFilter([])
     setUserFilter([])
-    setCursor(undefined) // Reset to first page
+    resetCursor()
   }
 
   return (
