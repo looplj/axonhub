@@ -1,0 +1,40 @@
+{
+  "id": "msg_bdrk_01DDaPSX8bJqM5dRkdv32TkC",
+  "object": "chat.completion",
+  "model": "claude-sonnet-4-20250514",
+  "created": 0,
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "I'll help you get the weather for San Francisco, CA. Let me first get the coordinates and determine the appropriate temperature unit for the US.",
+        "tool_calls": [
+          {
+            "id": "toolu_bdrk_01RjxXDSvxn69XRfWLjn6Sur",
+            "type": "function",
+            "function": {
+              "name": "get_coordinates",
+              "arguments": "{\n        \"location\": \"San Francisco, CA\"\n      }"
+            }
+          },
+          {
+            "id": "toolu_bdrk_01E6Gr52e4i9TLwsDn8Sgimg",
+            "type": "function",
+            "function": {
+              "name": "get_temperature_unit",
+              "arguments": "{\n        \"country\": \"United States\"\n      }"
+            }
+          }
+        ],
+        "reasoning_content": "The user is asking for the weather in San Francisco, CA. To get the weather, I need to:\n\n1. First get the coordinates (latitude and longitude) of San Francisco, CA using the get_coordinates function\n2. Then get the temperature unit for the US using get_temperature_unit function \n3. Finally use the get_weather function with the coordinates and appropriate unit\n\nLet me start with getting the coordinates and temperature unit."
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 587,
+    "completion_tokens": 226,
+    "total_tokens": 813
+  }
+}

@@ -1079,7 +1079,6 @@
   "requests": {
     "title": "请求日志",
     "description": "查看和管理 LLM 调用请求日志",
-    "refresh": "刷新",
     "columns": {
       "id": "ID",
       "modelId": "模型ID",
@@ -1305,7 +1304,6 @@
   "usageLogs": {
     "title": "用量日志",
     "description": "查看和分析AI模型使用情况和令牌消耗",
-    "refresh": "刷新",
     "columns": {
       "id": "ID",
       "user": "用户",

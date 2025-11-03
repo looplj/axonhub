@@ -396,9 +396,10 @@ func convertToChatCompletionResponse(anthropicResp *Message, platformType Platfo
 
 	// Convert content to message
 	var (
-		content   llm.MessageContent
-		toolCalls []llm.ToolCall
-		textParts []string
+		content      llm.MessageContent
+		thinkingText string
+		toolCalls    []llm.ToolCall
+		textParts    []string
 	)
 
 	for _, block := range anthropicResp.Content {
@@ -436,16 +437,7 @@ func convertToChatCompletionResponse(anthropicResp *Message, platformType Platfo
 				toolCalls = append(toolCalls, toolCall)
 			}
 		case "thinking":
-			if block.Thinking != "" {
-				// Add thinking content as a text part but don't include in textParts
-				// to preserve it as a separate content block
-				thinkingText := block.Thinking
-				content.MultipleContent = append(content.MultipleContent, llm.MessageContentPart{
-					Type:     "text",
-					Text:     &thinkingText,
-					ImageURL: &llm.ImageURL{},
-				})
-			}
+			thinkingText = block.Thinking
 		}
 	}
 
@@ -466,6 +458,10 @@ func convertToChatCompletionResponse(anthropicResp *Message, platformType Platfo
 		Role:      anthropicResp.Role,
 		Content:   content,
 		ToolCalls: toolCalls,
+	}
+
+	if thinkingText != "" {
+		message.ReasoningContent = &thinkingText
 	}
 
 	choice := llm.Choice{

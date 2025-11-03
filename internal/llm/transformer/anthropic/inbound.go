@@ -125,6 +125,19 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
+	if errors.Is(rawErr, transformer.ErrInvalidModel) {
+		return &httpclient.Error{
+			StatusCode: http.StatusUnprocessableEntity,
+			Status:     http.StatusText(http.StatusUnprocessableEntity),
+			Body: []byte(
+				fmt.Sprintf(
+					`{"message":"%s","type":"invalid_model_error"}`,
+					strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidModel.Error()+": "),
+				),
+			),
+		}
+	}
+
 	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
 		aErr := &AnthropicErr{
 			StatusCode: llmErr.StatusCode,

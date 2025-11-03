@@ -30,7 +30,7 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
               <p className='text-xs uppercase tracking-wide text-muted-foreground'>
                 {t('traces.detail.promptLabel')}
               </p>
-              <pre className='mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm'>
+              <pre className='mt-2 max-h-160 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm'>
                 {query.text}
               </pre>
             </div>
@@ -43,7 +43,7 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
       sections.push({
         title: t('traces.detail.textOutput'),
         content: (
-          <pre className='max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm'>
+          <pre className='max-h-160 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm'>
             {text.text}
           </pre>
         ),
@@ -54,7 +54,7 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
       sections.push({
         title: t('traces.detail.thinking'),
         content: (
-          <pre className='max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/30 p-3 text-sm italic'>
+          <pre className='max-h-160 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/30 p-3 text-sm italic'>
             {thinking.thinking}
           </pre>
         ),
@@ -133,7 +133,7 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
       sections.push({
         title: t('traces.detail.systemInstruction'),
         content: (
-          <pre className='max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm'>
+          <pre className='max-h-160 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm'>
             {systemInstruction.instruction}
           </pre>
         ),
