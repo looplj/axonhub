@@ -1554,6 +1554,7 @@
     "hasNext": "有下一页"
   },
   "common": {
+    "refresh": "刷新",
     "selectedItems": "已选择 {{count}} 项",
     "noResultsFound": "未找到结果",
     "clearFilters": "清除筛选",

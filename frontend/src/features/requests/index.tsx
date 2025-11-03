@@ -1,8 +1,6 @@
 import { useState, useCallback } from 'react'
-import { RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
-import { Button } from '@/components/ui/button'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { RequestsTable } from './components'
@@ -10,7 +8,7 @@ import { RequestsProvider } from './context'
 import { useRequests } from './data'
 
 function RequestsContent() {
-  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, cursorHistory } = usePaginationSearch({
     defaultPageSize: 20,
   })
   const [statusFilter, setStatusFilter] = useState<string[]>([])
@@ -46,6 +44,8 @@ function RequestsContent() {
   const requests = data?.edges?.map((edge) => edge.node) || []
   const pageInfo = data?.pageInfo
 
+  const isFirstPage = !paginationArgs.after && cursorHistory.length === 0
+
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
       setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
@@ -69,6 +69,7 @@ function RequestsContent() {
   const handleSourceFilterChange = useCallback(
     (filters: string[]) => {
       setSourceFilter(filters)
+      resetCursor()
     },
     [resetCursor]
   )
@@ -98,27 +99,9 @@ function RequestsContent() {
         onStatusFilterChange={handleStatusFilterChange}
         onSourceFilterChange={handleSourceFilterChange}
         onChannelFilterChange={handleChannelFilterChange}
+        onRefresh={refetch}
+        showRefresh={isFirstPage}
       />
-    </div>
-  )
-}
-
-function RequestsPrimaryButtons() {
-  const { t } = useTranslation()
-  const { refetch } = useRequests({
-    first: 20,
-    orderBy: {
-      field: 'CREATED_AT',
-      direction: 'DESC',
-    },
-  })
-
-  return (
-    <div className='flex items-center space-x-2'>
-      <Button variant='outline' size='sm' onClick={() => refetch()}>
-        <RefreshCw className='mr-2 h-4 w-4' />
-        {t('requests.refresh')}
-      </Button>
     </div>
   )
 }
@@ -128,7 +111,7 @@ export default function RequestsManagement() {
 
   return (
     <RequestsProvider>
-      <Header fixed></Header>
+      {/* <Header fixed></Header> */}
 
       <Main>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
@@ -136,7 +119,6 @@ export default function RequestsManagement() {
             <h2 className='text-2xl font-bold tracking-tight'>{t('requests.title')}</h2>
             <p className='text-muted-foreground'>{t('requests.description')}</p>
           </div>
-          <RequestsPrimaryButtons />
         </div>
         <RequestsContent />
       </Main>

@@ -1,6 +1,4 @@
-import { RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { TracesTable } from './components'
@@ -9,14 +7,14 @@ import { useTraces } from './data'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 function TracesContent() {
-  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, cursorHistory } = usePaginationSearch({
     defaultPageSize: 20,
   })
 
   // Build where clause with filters
   const whereClause = undefined
 
-  const { data, isLoading } = useTraces({
+  const { data, isLoading, refetch } = useTraces({
     ...paginationArgs,
     where: whereClause,
     orderBy: {
@@ -27,6 +25,7 @@ function TracesContent() {
 
   const traces = data?.edges?.map((edge) => edge.node) || []
   const pageInfo = data?.pageInfo
+  const isFirstPage = !paginationArgs.after && cursorHistory.length === 0
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -56,27 +55,9 @@ function TracesContent() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
+        onRefresh={refetch}
+        showRefresh={isFirstPage}
       />
-    </div>
-  )
-}
-
-function TracesPrimaryButtons() {
-  const { t } = useTranslation()
-  const { refetch } = useTraces({
-    first: 20,
-    orderBy: {
-      field: 'CREATED_AT',
-      direction: 'DESC',
-    },
-  })
-
-  return (
-    <div className='flex items-center space-x-2'>
-      <Button variant='outline' size='sm' onClick={() => refetch()}>
-        <RefreshCw className='mr-2 h-4 w-4' />
-        {t('traces.refresh')}
-      </Button>
     </div>
   )
 }
@@ -95,7 +76,6 @@ export default function TracesManagement() {
             <h2 className='text-2xl font-bold tracking-tight'>{t('traces.title')}</h2>
             <p className='text-muted-foreground'>{t('traces.description')}</p>
           </div>
-          <TracesPrimaryButtons />
         </div>
         <TracesContent />
       </Main>

@@ -48,6 +48,8 @@ interface UsageLogsTableProps {
   onPageSizeChange: (pageSize: number) => void
   onSourceFilterChange: (filters: string[]) => void
   onChannelFilterChange: (filters: string[]) => void
+  onRefresh: () => void
+  showRefresh: boolean
 }
 
 export function UsageLogsTable({
@@ -63,6 +65,8 @@ export function UsageLogsTable({
   onPageSizeChange,
   onSourceFilterChange,
   onChannelFilterChange,
+  onRefresh,
+  showRefresh,
 }: UsageLogsTableProps) {
   const { t } = useTranslation()
   const usageLogsColumns = useUsageLogsColumns()
@@ -117,7 +121,7 @@ export function UsageLogsTable({
 
   return (
     <div className='space-y-4'>
-      <DataTableToolbar table={table} />
+      <DataTableToolbar table={table} onRefresh={onRefresh} showRefresh={showRefresh} />
       <div className='rounded-md border'>
         <Table>
           <TableHeader>

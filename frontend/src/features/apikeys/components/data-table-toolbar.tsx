@@ -140,7 +140,7 @@ export function DataTableToolbar<TData>({ table, onResetFilters }: DataTableTool
           </Button>
         )}
       </div>
-      <DataTableViewOptions table={table} />
+      {/* <DataTableViewOptions table={table} /> */}
     </div>
   )
 }
