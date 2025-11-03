@@ -90,7 +90,7 @@ func TestMultipleToolsSequential(t *testing.T) {
 	t.Logf("Response message: %+v", message)
 
 	// Check for tool calls
-	if message.ToolCalls == nil || len(message.ToolCalls) == 0 {
+	if len(message.ToolCalls) == 0 {
 		t.Fatalf("Expected tool calls, but got none. Response: %s", message.Content)
 	}
 

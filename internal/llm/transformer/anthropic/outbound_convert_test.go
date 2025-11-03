@@ -41,6 +41,34 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 	require.Equal(t, int64(30), result.Usage.TotalTokens)
 }
 
+func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
+	const (
+		thinking = "Chain-of-thought reasoning"
+		answer   = "Here is the final answer."
+	)
+
+	anthropicResp := &Message{
+		ID:   "msg_thinking",
+		Type: "message",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{Type: "thinking", Thinking: thinking, Signature: "sig"},
+			{Type: "text", Text: answer},
+		},
+		Model: "claude-3-sonnet-20240229",
+	}
+
+	result := convertToChatCompletionResponse(anthropicResp, PlatformDirect)
+
+	require.NotNil(t, result)
+	require.Len(t, result.Choices, 1)
+	require.NotNil(t, result.Choices[0].Message.ReasoningContent)
+	require.Equal(t, thinking, *result.Choices[0].Message.ReasoningContent)
+	require.NotNil(t, result.Choices[0].Message.Content.Content)
+	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
+	require.Empty(t, result.Choices[0].Message.Content.MultipleContent)
+}
+
 func TestOutboundTransformer_ToolArgsRepair(t *testing.T) {
 	transformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
 

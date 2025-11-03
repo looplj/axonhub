@@ -44,6 +44,7 @@ interface TimelineNode {
 interface FlatSegment {
   segment: TimelineNode
   spans: TimelineNode[]
+  sequentialOffset: number // Offset in sequential layout
 }
 
 const segmentHueCache = new Map<string, number>()
@@ -127,7 +128,8 @@ function buildSegmentNode(trace: Segment, rootStart: number): TimelineNode | nul
   const traceEnd = safeTime(trace.endTime)
   if (traceStart == null || traceEnd == null) return null
 
-  const duration = Math.max(traceEnd - traceStart, 0)
+  // Use the duration field directly as it's already in milliseconds
+  const duration = trace.duration
   const node: TimelineNode = {
     id: trace.id,
     name: trace.model,
@@ -160,6 +162,7 @@ function buildSegmentNode(trace: Segment, rootStart: number): TimelineNode | nul
 
 function flattenSegments(node: TimelineNode, rootStart: number): FlatSegment[] {
   const result: FlatSegment[] = []
+  let cumulativeOffset = 0
   
   const collectSegments = (segment: Segment) => {
     const segmentNode = buildSegmentNode(segment, rootStart)
@@ -167,7 +170,10 @@ function flattenSegments(node: TimelineNode, rootStart: number): FlatSegment[] {
       result.push({
         segment: segmentNode,
         spans: segmentNode.children,
+        sequentialOffset: cumulativeOffset,
       })
+      // Accumulate duration for sequential layout
+      cumulativeOffset += segmentNode.duration
     }
     
     if (segment.children) {
@@ -186,17 +192,19 @@ interface SegmentRowProps {
   segment: TimelineNode
   spans: TimelineNode[]
   totalDuration: number
+  sequentialOffset: number
   selectedSpanId?: string
   onSelectSpan: (trace: Segment, span: Span, kind: SpanKind) => void
   defaultExpanded?: boolean
 }
 
-function SegmentRow({ segment, spans, totalDuration, onSelectSpan, selectedSpanId, defaultExpanded = true }: SegmentRowProps) {
+function SegmentRow({ segment, spans, totalDuration, sequentialOffset, onSelectSpan, selectedSpanId, defaultExpanded = true }: SegmentRowProps) {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const hasSpans = spans.length > 0
 
-  const leftOffsetRatio = totalDuration > 0 ? segment.startOffset / totalDuration : 0
+  // Use sequential offset for segment positioning
+  const leftOffsetRatio = totalDuration > 0 ? sequentialOffset / totalDuration : 0
   const widthRatio = totalDuration > 0 ? segment.duration / totalDuration : 0
 
   const leftOffset = Math.min(Math.max(leftOffsetRatio * 100, 0), 100)
@@ -281,6 +289,8 @@ function SegmentRow({ segment, spans, totalDuration, onSelectSpan, selectedSpanI
               key={span.id}
               span={span}
               totalDuration={totalDuration}
+              segmentSequentialOffset={sequentialOffset}
+              segmentDuration={segment.duration}
               onSelectSpan={onSelectSpan}
               selectedSpanId={selectedSpanId}
             />
@@ -294,18 +304,34 @@ function SegmentRow({ segment, spans, totalDuration, onSelectSpan, selectedSpanI
 interface SpanRowProps {
   span: TimelineNode
   totalDuration: number
+  segmentSequentialOffset: number
+  segmentDuration: number
   selectedSpanId?: string
   onSelectSpan: (trace: Segment, span: Span, kind: SpanKind) => void
 }
 
-function SpanRow({ span, totalDuration, onSelectSpan, selectedSpanId }: SpanRowProps) {
+function SpanRow({ span, totalDuration, segmentSequentialOffset, segmentDuration, onSelectSpan, selectedSpanId }: SpanRowProps) {
   const { t } = useTranslation()
   const spanSource = span.source.type === 'span' ? span.source : null
   const isActive = spanSource ? selectedSpanId === spanSource.span.id : false
 
   if (!spanSource) return null
 
-  const leftOffsetRatio = totalDuration > 0 ? span.startOffset / totalDuration : 0
+  // Position span within its segment's sequential range
+  // Get the segment's actual start time from the span's source
+  const segmentNode = spanSource.trace
+  const segmentStartTime = safeTime(segmentNode.startTime)
+  const spanStartTime = safeTime(spanSource.span.startTime)
+  
+  // Calculate span's offset within its segment (in milliseconds)
+  const spanOffsetWithinSegment = (segmentStartTime != null && spanStartTime != null) 
+    ? Math.max(spanStartTime - segmentStartTime, 0)
+    : 0
+  
+  // Position in the sequential timeline
+  const spanAbsoluteOffset = segmentSequentialOffset + spanOffsetWithinSegment
+  
+  const leftOffsetRatio = totalDuration > 0 ? spanAbsoluteOffset / totalDuration : 0
   const widthRatio = totalDuration > 0 ? span.duration / totalDuration : 0
 
   const leftOffset = Math.min(Math.max(leftOffsetRatio * 100, 0), 100)
@@ -455,7 +481,11 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     }
 
     const flatSegments = flattenSegments(rootNode, earliestStart)
-    const totalDuration = Math.max(latestEnd - earliestStart, rootNode.duration, 1)
+    // Total duration is the sum of all segment durations (sequential layout)
+    const totalDuration = Math.max(
+      flatSegments.reduce((sum, seg) => sum + seg.segment.duration, 0),
+      1
+    )
 
     // Count total items (segments + spans)
     const totalItems = flatSegments.reduce((acc, seg) => acc + 1 + seg.spans.length, 0)
@@ -503,6 +533,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
             segment={flatSegment.segment}
             spans={flatSegment.spans}
             totalDuration={totalDuration}
+            sequentialOffset={flatSegment.sequentialOffset}
             onSelectSpan={onSelectSpan}
             selectedSpanId={selectedSpanId}
             defaultExpanded={index < 10}

@@ -147,6 +147,12 @@ func (t *OutboundTransformer) TransformRequest(
 		return t.buildImageGenerationAPIRequest(ctx, chatReq)
 	}
 
+	for i, msg := range chatReq.Messages {
+		// Clear ReasoningContent, the OpenAI API doesn't support it.
+		msg.ReasoningContent = nil
+		chatReq.Messages[i] = msg
+	}
+
 	body, err := json.Marshal(chatReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform request: %w", err)

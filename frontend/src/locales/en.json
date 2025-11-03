@@ -1050,7 +1050,6 @@
   "requests": {
     "title": "Request Logs",
     "description": "View and manage LLM call request logs",
-    "refresh": "Refresh",
     "columns": {
       "id": "ID",
       "modelId": "Model ID",
@@ -1161,7 +1160,6 @@
   "traces": {
     "title": "Trace Management",
     "description": "View and manage AI request traces and execution flows",
-    "refresh": "Refresh",
     "common": {
       "badges": {
         "request": "Request",
@@ -1276,7 +1274,6 @@
   "usageLogs": {
     "title": "Usage Logs",
     "description": "View and analyze AI model usage and token consumption",
-    "refresh": "Refresh",
     "columns": {
       "id": "ID",
       "user": "User",

@@ -45,7 +45,7 @@ function TracesContent() {
   }
 
   return (
-    <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+    <div className='flex flex-1 flex-col overflow-hidden'>
       <TracesTable
         data={traces}
         loading={isLoading}
@@ -70,7 +70,7 @@ export default function TracesManagement() {
       <Header fixed>
       </Header>
 
-      <Main>
+      <Main fixed>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>{t('traces.title')}</h2>
