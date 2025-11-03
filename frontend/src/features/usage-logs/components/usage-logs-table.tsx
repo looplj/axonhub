@@ -120,9 +120,9 @@ export function UsageLogsTable({
   })
 
   return (
-    <div className='space-y-4'>
+    <div className='flex flex-1 flex-col overflow-hidden'>
       <DataTableToolbar table={table} onRefresh={onRefresh} showRefresh={showRefresh} />
-      <div className='rounded-md border'>
+      <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -190,16 +190,18 @@ export function UsageLogsTable({
           </TableBody>
         </Table>
       </div>
-      <ServerSidePagination
-        pageInfo={pageInfo}
-        pageSize={pageSize}
-        dataLength={data.length}
-        totalCount={totalCount}
-        selectedRows={table.getFilteredSelectedRowModel().rows.length}
-        onNextPage={onNextPage}
-        onPreviousPage={onPreviousPage}
-        onPageSizeChange={onPageSizeChange}
-      />
+      <div className='mt-4 flex-shrink-0'>
+        <ServerSidePagination
+          pageInfo={pageInfo}
+          pageSize={pageSize}
+          dataLength={data.length}
+          totalCount={totalCount}
+          selectedRows={table.getFilteredSelectedRowModel().rows.length}
+          onNextPage={onNextPage}
+          onPreviousPage={onPreviousPage}
+          onPageSizeChange={onPageSizeChange}
+        />
+      </div>
     </div>
   )
 }

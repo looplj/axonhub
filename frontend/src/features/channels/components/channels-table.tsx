@@ -160,9 +160,9 @@ export function ChannelsTable({
   })
 
   return (
-    <div className='space-y-4'>
+    <div className='flex flex-1 flex-col overflow-hidden'>
       <DataTableToolbar table={table} />
-      <div className='rounded-md border'>
+      <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table data-testid='channels-table'>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -229,16 +229,18 @@ export function ChannelsTable({
           </TableBody>
         </Table>
       </div>
-      <ServerSidePagination
-        pageInfo={pageInfo}
-        pageSize={pageSize}
-        dataLength={data.length}
-        totalCount={totalCount}
-        selectedRows={Object.keys(rowSelection).length}
-        onNextPage={onNextPage}
-        onPreviousPage={onPreviousPage}
-        onPageSizeChange={onPageSizeChange}
-      />
+      <div className='mt-4 flex-shrink-0'>
+        <ServerSidePagination
+          pageInfo={pageInfo}
+          pageSize={pageSize}
+          dataLength={data.length}
+          totalCount={totalCount}
+          selectedRows={Object.keys(rowSelection).length}
+          onNextPage={onNextPage}
+          onPreviousPage={onPreviousPage}
+          onPageSizeChange={onPageSizeChange}
+        />
+      </div>
     </div>
   )
 }

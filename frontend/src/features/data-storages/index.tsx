@@ -84,7 +84,7 @@ function DataStoragesContent() {
   const columns = createColumns(t)
 
   return (
-    <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+    <div className='flex flex-1 flex-col overflow-hidden'>
       <DataStoragesTable
         data={data?.edges?.map((edge) => edge.node) || []}
         columns={columns}
@@ -113,7 +113,7 @@ export default function DataStoragesManagement() {
       <Header fixed>
       </Header>
 
-      <Main>
+      <Main fixed>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>
