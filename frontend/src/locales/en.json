@@ -1525,6 +1525,7 @@
     "hasNext": "Has next"
   },
   "common": {
+    "refresh": "Refresh",
     "selectedItems": "{{count}} selected",
     "noResultsFound": "No results found",
     "clearFilters": "Clear filters",

@@ -42,6 +42,8 @@ interface TracesTableProps {
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
+  onRefresh: () => void
+  showRefresh: boolean
 }
 
 export function TracesTable({
@@ -53,6 +55,8 @@ export function TracesTable({
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
+  onRefresh,
+  showRefresh,
 }: TracesTableProps) {
   const { t } = useTranslation()
   const tracesColumns = useTracesColumns()
@@ -85,7 +89,7 @@ export function TracesTable({
 
   return (
     <div className='space-y-4'>
-      <DataTableToolbar table={table} />
+      <DataTableToolbar table={table} onRefresh={onRefresh} showRefresh={showRefresh} />
       <div className='rounded-md border'>
         <Table>
           <TableHeader>

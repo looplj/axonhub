@@ -48,6 +48,8 @@ interface RequestsTableProps {
   onStatusFilterChange: (filters: string[]) => void
   onSourceFilterChange: (filters: string[]) => void
   onChannelFilterChange: (filters: string[]) => void
+  onRefresh: () => void
+  showRefresh: boolean
 }
 
 export function RequestsTable({
@@ -65,6 +67,8 @@ export function RequestsTable({
   onStatusFilterChange,
   onSourceFilterChange,
   onChannelFilterChange,
+  onRefresh,
+  showRefresh,
 }: RequestsTableProps) {
   const { t } = useTranslation()
   const requestsColumns = useRequestsColumns()
@@ -141,7 +145,11 @@ export function RequestsTable({
 
   return (
     <div className='space-y-4'>
-      <DataTableToolbar table={table} />
+      <DataTableToolbar
+        table={table}
+        onRefresh={onRefresh}
+        showRefresh={showRefresh}
+      />
       <div className='rounded-md border'>
         <Table>
           <TableHeader>

@@ -8,13 +8,11 @@ import {
   UsageDetailDialog,
 } from './components'
 import { UsageLogsProvider, useUsageLogsContext } from './context'
-import { Button } from '@/components/ui/button'
-import { RefreshCw } from 'lucide-react'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 function UsageLogsContent() {
   const { t } = useTranslation()
-  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, cursorHistory } = usePaginationSearch({
     defaultPageSize: 20,
   })
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
@@ -38,7 +36,8 @@ function UsageLogsContent() {
   const { 
     data, 
     isLoading, 
-    error 
+    error,
+    refetch,
   } = useUsageLogs({
     ...paginationArgs,
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
@@ -47,6 +46,7 @@ function UsageLogsContent() {
 
   const usageLogs = data?.edges?.map(edge => edge.node) || []
   const pageInfo = data?.pageInfo
+  const isFirstPage = !paginationArgs.after && cursorHistory.length === 0
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -99,6 +99,8 @@ function UsageLogsContent() {
         onPageSizeChange={handlePageSizeChange}
         onSourceFilterChange={handleSourceFilterChange}
         onChannelFilterChange={handleChannelFilterChange}
+        onRefresh={refetch}
+        showRefresh={isFirstPage}
       />
     </div>
   )
@@ -123,30 +125,6 @@ function UsageLogsDialogs() {
   )
 }
 
-function UsageLogsPrimaryButtons() {
-  const { t } = useTranslation()
-  const { refetch } = useUsageLogs({
-    first: 20,
-    orderBy: {
-      field: 'CREATED_AT',
-      direction: 'DESC',
-    },
-  })
-
-  return (
-    <div className='flex items-center space-x-2'>
-      <Button
-        variant='outline'
-        size='sm'
-        onClick={() => refetch()}
-      >
-        <RefreshCw className='mr-2 h-4 w-4' />
-        {t('usageLogs.refresh')}
-      </Button>
-    </div>
-  )
-}
-
 export default function UsageLogsManagement() {
   const { t } = useTranslation()
   
@@ -163,7 +141,6 @@ export default function UsageLogsManagement() {
               {t('usageLogs.description')}
             </p>
           </div>
-          <UsageLogsPrimaryButtons />
         </div>
         <UsageLogsContent />
       </Main>
