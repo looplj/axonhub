@@ -115,9 +115,9 @@ export function ProjectsTable({
   })
 
   return (
-    <div className='space-y-4' data-testid='projects-table'>
+    <div className='flex flex-1 flex-col overflow-hidden' data-testid='projects-table'>
       <DataTableToolbar table={table} />
-      <div className='rounded-md border'>
+      <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -184,17 +184,19 @@ export function ProjectsTable({
           </TableBody>
         </Table>
       </div>
-      <ServerSidePagination
-        pageInfo={pageInfo}
-        pageSize={pageSize}
-        dataLength={data.length}
-        totalCount={totalCount}
-        selectedRows={Object.keys(rowSelection).length}
-        onNextPage={onNextPage}
-        onPreviousPage={onPreviousPage}
-        onPageSizeChange={onPageSizeChange}
-        data-testid='pagination'
-      />
+      <div className='mt-4 flex-shrink-0'>
+        <ServerSidePagination
+          pageInfo={pageInfo}
+          pageSize={pageSize}
+          dataLength={data.length}
+          totalCount={totalCount}
+          selectedRows={Object.keys(rowSelection).length}
+          onNextPage={onNextPage}
+          onPreviousPage={onPreviousPage}
+          onPageSizeChange={onPageSizeChange}
+          data-testid='pagination'
+        />
+      </div>
     </div>
   )
 }

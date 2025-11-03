@@ -48,7 +48,7 @@ function UsersContent() {
   }
 
   return (
-    <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+    <div className='flex flex-1 flex-col overflow-hidden'>
       <UsersTable
         data={projectUsers}
         columns={columns}
@@ -76,7 +76,7 @@ export default function UsersManagement() {
     <UsersProvider>
       <Header fixed>{/* <Search /> */}</Header>
 
-      <Main>
+      <Main fixed>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>{t('projectUsers.title')}</h2>
