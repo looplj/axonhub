@@ -1,0 +1,128 @@
+{
+  "model": "claude-3-7-sonnet-20250219",
+  "max_tokens": 2048,
+  "thinking": {
+    "type": "enabled",
+    "budget_tokens": 15000
+  },
+  "metadata": {
+    "user_id": "user-123"
+  },
+  "system": "You are a helpful assistant that uses tooling and reasoning before responding.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Check the weather for San Francisco and remind me what units we use."
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "I should gather weather data and the preferred unit before answering."
+        },
+        {
+          "type": "text",
+          "text": "Calling the weather and unit tools now."
+        },
+        {
+          "type": "tool_use",
+          "id": "call_weather",
+          "name": "get_weather",
+          "input": {
+            "location": "San Francisco",
+            "unit": "celsius"
+          }
+        },
+        {
+          "type": "tool_use",
+          "id": "call_unit",
+          "name": "get_temperature_unit",
+          "input": {
+            "country": "US"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "call_weather",
+          "content": [
+            {
+              "type": "text",
+              "text": "Weather: light rain, 18C."
+            }
+          ],
+          "cache_control": {
+            "type": "ephemeral",
+            "ttl": "5m"
+          }
+        },
+        {
+          "type": "tool_result",
+          "tool_use_id": "call_unit",
+          "content": "Preferred unit: Fahrenheit."
+        },
+        {
+          "type": "text",
+          "text": "Please summarize the plan."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "Now I can provide the summary with the gathered details."
+        },
+        {
+          "type": "text",
+          "text": "Expect light rain around 18C (65F). Remember to bring an umbrella."
+        }
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "get_weather",
+      "description": "Retrieve current weather for a given location.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "celsius",
+              "fahrenheit"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "get_temperature_unit",
+      "description": "Determine the preferred temperature unit for a country.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string"
+          }
+        }
+      },
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "stop_sequences": [
+    "\n\nUser:"
+  ]
+}

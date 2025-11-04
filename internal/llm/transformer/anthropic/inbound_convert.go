@@ -75,8 +75,20 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			hasContent = true
 		} else if len(msg.Content.MultipleContent) > 0 {
 			contentParts := make([]llm.MessageContentPart, 0, len(msg.Content.MultipleContent))
+
+			var (
+				reasoningContent      string
+				hasReasoningInContent bool
+			)
+
 			for _, block := range msg.Content.MultipleContent {
 				switch block.Type {
+				case "thinking":
+					// Keep thinking content in MultipleContent to preserve order
+					if block.Thinking != "" {
+						reasoningContent = block.Thinking
+						hasReasoningInContent = true
+					}
 				case "text":
 					contentParts = append(contentParts, llm.MessageContentPart{
 						Type:         "text",
@@ -172,6 +184,11 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 					MultipleContent: contentParts,
 				}
 				hasContent = true
+			}
+
+			// Assign reasoning content if present and not in MultipleContent
+			if reasoningContent != "" && hasReasoningInContent {
+				chatMsg.ReasoningContent = &reasoningContent
 			}
 		}
 

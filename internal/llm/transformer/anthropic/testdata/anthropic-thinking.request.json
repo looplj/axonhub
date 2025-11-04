@@ -1,0 +1,62 @@
+{
+  "model": "claude-3-7-sonnet-20250219",
+  "max_tokens": 4096,
+  "thinking": {
+    "type": "enabled",
+    "budget_tokens": 15000
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is 25 * 47? Please show your reasoning."
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "Let me calculate 25 * 47 step by step:\n25 * 47 = 25 * (40 + 7)\n= 25 * 40 + 25 * 7\n= 1000 + 175\n= 1175"
+        },
+        {
+          "type": "text",
+          "text": "The answer is 1175.\n\nI calculated this by breaking down 47 into 40 + 7, then:\n- 25 × 40 = 1000\n- 25 × 7 = 175\n- 1000 + 175 = 1175"
+        },
+        {
+          "type": "tool_use",
+          "id": "call_function_6916702296_1",
+          "name": "Bash",
+          "input": {
+            "command": "find . -type f -name \"*.go\" | head -20",
+            "description": "查看Go文件列表"
+          }
+        },
+        {
+          "type": "tool_use",
+          "id": "call_function_6916702296_2",
+          "name": "Bash",
+          "input": {
+            "command": "find ./frontend -name \"*.ts\" -o -name \"*.tsx\" | head -20",
+            "description": "查看TypeScript文件列表"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": "Now multiply that result by 3"
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "I need to multiply 1175 by 3:\n1175 * 3 = (1000 + 175) * 3\n= 1000 * 3 + 175 * 3\n= 3000 + 525\n= 3525"
+        },
+        {
+          "type": "text",
+          "text": "1175 × 3 = 3525"
+        }
+      ]
+    }
+  ]
+}

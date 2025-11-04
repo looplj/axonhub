@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -210,6 +209,14 @@ func TestTransformRequest_Integration(t *testing.T) {
 			name:        "claude cache control",
 			requestFile: `anthropic-cache-control-inbound.request.json`,
 		},
+		{
+			name:        "claude thinking",
+			requestFile: `anthropic-thinking.request.json`,
+		},
+		{
+			name:        "tool result with reasoning",
+			requestFile: `anthropic-tool-result-mixed.request.json`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -245,8 +252,30 @@ func TestTransformRequest_Integration(t *testing.T) {
 			err = json.Unmarshal(outboundReq.Body, &gotReq)
 			require.NoError(t, err)
 
-			if !cmp.Equal(wantReq, gotReq, cmpopts.IgnoreFields(MessageContentBlock{})) {
-				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq, cmpopts.IgnoreFields(MessageContentBlock{})))
+			// Custom comparator for json.RawMessage that compares semantic equality
+			jsonRawMessageComparer := cmp.Comparer(func(x, y json.RawMessage) bool {
+				if len(x) == 0 && len(y) == 0 {
+					return true
+				}
+
+				if len(x) == 0 || len(y) == 0 {
+					return false
+				}
+
+				var xVal, yVal interface{}
+				if err := json.Unmarshal(x, &xVal); err != nil {
+					return false
+				}
+
+				if err := json.Unmarshal(y, &yVal); err != nil {
+					return false
+				}
+
+				return cmp.Equal(xVal, yVal)
+			})
+
+			if !cmp.Equal(wantReq, gotReq, jsonRawMessageComparer) {
+				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq, jsonRawMessageComparer))
 			}
 		})
 	}

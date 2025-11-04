@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xfile"
 )
 
 func setupTestTraceService(t *testing.T, client *ent.Client) (*TraceService, *ent.Client) {
@@ -750,7 +752,7 @@ func TestTraceService_GetRequestTrace_integration(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	client := enttest.NewEntClient(t, "sqlite3", "file:/Users/September_1/Projects/AI/axonhub/axonhub.db?_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", filepath.Join(xfile.ProjectDir(), "axonhub.db"))
 
 	traceService, client := setupTestTraceService(t, client)
 	defer client.Close()
