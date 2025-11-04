@@ -1,12 +1,26 @@
-"use client"
+'use client'
 
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Circle, Workflow, MessageSquare, Sparkles, Wrench, CheckCircle2, Image, Settings } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
+import {
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  Workflow,
+  MessageSquare,
+  Sparkles,
+  Wrench,
+  CheckCircle2,
+  Image,
+  Settings,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  ExternalLink,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-
+import { buildGUID, cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
-
+import { Button } from '@/components/ui/button'
 import type { Segment, RequestMetadata, Span } from '../data/schema'
 import { getSpanDisplayLabels, normalizeSpanType } from '../utils/span-display'
 
@@ -92,12 +106,7 @@ function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`
 }
 
-function buildSpanNode(
-  trace: Segment,
-  span: Span,
-  spanKind: SpanKind,
-  rootStart: number
-): TimelineNode | null {
+function buildSpanNode(trace: Segment, span: Span, spanKind: SpanKind, rootStart: number): TimelineNode | null {
   const spanStart = safeTime(span.startTime)
   const spanEnd = safeTime(span.endTime)
   if (spanStart == null || spanEnd == null) return null
@@ -146,9 +155,7 @@ function buildSegmentNode(trace: Segment, rootStart: number): TimelineNode | nul
   }
 
   const spanNodes = [
-    ...(trace.requestSpans || [])
-      .map((span: Span) => buildSpanNode(trace, span, 'request', rootStart))
-      .filter(Boolean),
+    ...(trace.requestSpans || []).map((span: Span) => buildSpanNode(trace, span, 'request', rootStart)).filter(Boolean),
     ...(trace.responseSpans || [])
       .map((span: Span) => buildSpanNode(trace, span, 'response', rootStart))
       .filter(Boolean),
@@ -163,7 +170,7 @@ function buildSegmentNode(trace: Segment, rootStart: number): TimelineNode | nul
 function flattenSegments(node: TimelineNode, rootStart: number): FlatSegment[] {
   const result: FlatSegment[] = []
   let cumulativeOffset = 0
-  
+
   const collectSegments = (segment: Segment) => {
     const segmentNode = buildSegmentNode(segment, rootStart)
     if (segmentNode) {
@@ -175,16 +182,16 @@ function flattenSegments(node: TimelineNode, rootStart: number): FlatSegment[] {
       // Accumulate duration for sequential layout
       cumulativeOffset += segmentNode.duration
     }
-    
+
     if (segment.children) {
       segment.children.forEach(collectSegments)
     }
   }
-  
+
   if (node.source.type === 'segment') {
     collectSegments(node.source.trace)
   }
-  
+
   return result
 }
 
@@ -196,12 +203,34 @@ interface SegmentRowProps {
   selectedSpanId?: string
   onSelectSpan: (trace: Segment, span: Span, kind: SpanKind) => void
   defaultExpanded?: boolean
+  isExpanded: boolean
+  onToggleExpand: () => void
 }
 
-function SegmentRow({ segment, spans, totalDuration, sequentialOffset, onSelectSpan, selectedSpanId, defaultExpanded = true }: SegmentRowProps) {
+function SegmentRow({
+  segment,
+  spans,
+  totalDuration,
+  sequentialOffset,
+  onSelectSpan,
+  selectedSpanId,
+  isExpanded,
+  onToggleExpand,
+}: SegmentRowProps) {
   const { t } = useTranslation()
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  const navigate = useNavigate()
   const hasSpans = spans.length > 0
+
+  const handleViewRequest = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (segment.source.type === 'segment') {
+      const requestId = segment.source.trace.id
+      navigate({
+        to: '/project/requests/$requestId',
+        params: { requestId: buildGUID('Request', requestId) },
+      })
+    }
+  }
 
   // Use sequential offset for segment positioning
   const leftOffsetRatio = totalDuration > 0 ? sequentialOffset / totalDuration : 0
@@ -218,15 +247,13 @@ function SegmentRow({ segment, spans, totalDuration, sequentialOffset, onSelectS
   return (
     <>
       {/* Segment Row - no indentation */}
-      <div className="border-b border-border/40">
-        <div
-          className="flex items-center gap-3 py-2.5 px-3 transition-colors cursor-default"
-        >
+      <div className='border-border/40 border-b'>
+        <div className='flex cursor-default items-center gap-3 px-3 py-2.5 transition-colors'>
           <button
             onClick={(event) => {
               event.stopPropagation()
               if (hasSpans) {
-                setIsExpanded((prev) => !prev)
+                onToggleExpand()
               }
             }}
             className={cn(
@@ -241,36 +268,36 @@ function SegmentRow({ segment, spans, totalDuration, sequentialOffset, onSelectS
                 : undefined
             }
           >
-            {hasSpans && (isExpanded ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            ))}
+            {hasSpans && (isExpanded ? <ChevronDown className='h-3 w-3' /> : <ChevronRight className='h-3 w-3' />)}
           </button>
 
-          <div className="flex-shrink-0 text-muted-foreground">
-            <Workflow className="h-4 w-4 text-primary" />
+          <div className='text-muted-foreground flex-shrink-0'>
+            <Workflow className='text-primary h-4 w-4' />
           </div>
 
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <Badge variant="secondary" className="text-xs font-medium">
+          <div className='flex min-w-0 flex-1 items-center gap-3'>
+            <div className='flex min-w-0 flex-1 items-center gap-2'>
+              <Badge variant='secondary' className='text-xs font-medium'>
                 {segment.name}
               </Badge>
-              <span className="text-xs text-muted-foreground">{formatDuration(segment.duration)}</span>
+              <span className='text-muted-foreground text-xs'>{formatDuration(segment.duration)}</span>
               {segment.metadata?.totalTokens && (
-                <span className="text-xs text-muted-foreground">
+                <span className='text-muted-foreground text-xs'>
                   {t('traces.timeline.summary.tokenCount', {
                     value: segment.metadata.totalTokens.toLocaleString(),
                   })}
                 </span>
               )}
+              <Button variant='ghost' size='sm' className='h-6 px-2 text-xs' onClick={handleViewRequest}>
+                <ExternalLink className='mr-1 h-3 w-3' />
+                {t('traces.timeline.viewRequest')}
+              </Button>
             </div>
           </div>
 
-          <div className="relative h-5 min-w-[180px] w-[180px] rounded bg-muted/30">
+          <div className='bg-muted/30 relative h-5 w-[180px] min-w-[180px] rounded'>
             <div
-              className="absolute inset-y-0 rounded"
+              className='absolute inset-y-0 rounded'
               style={{
                 left: `${leftOffset}%`,
                 width: `${width}%`,
@@ -310,7 +337,14 @@ interface SpanRowProps {
   onSelectSpan: (trace: Segment, span: Span, kind: SpanKind) => void
 }
 
-function SpanRow({ span, totalDuration, segmentSequentialOffset, segmentDuration, onSelectSpan, selectedSpanId }: SpanRowProps) {
+function SpanRow({
+  span,
+  totalDuration,
+  segmentSequentialOffset,
+  segmentDuration,
+  onSelectSpan,
+  selectedSpanId,
+}: SpanRowProps) {
   const { t } = useTranslation()
   const spanSource = span.source.type === 'span' ? span.source : null
   const isActive = spanSource ? selectedSpanId === spanSource.span.id : false
@@ -322,15 +356,14 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, segmentDuration
   const segmentNode = spanSource.trace
   const segmentStartTime = safeTime(segmentNode.startTime)
   const spanStartTime = safeTime(spanSource.span.startTime)
-  
+
   // Calculate span's offset within its segment (in milliseconds)
-  const spanOffsetWithinSegment = (segmentStartTime != null && spanStartTime != null) 
-    ? Math.max(spanStartTime - segmentStartTime, 0)
-    : 0
-  
+  const spanOffsetWithinSegment =
+    segmentStartTime != null && spanStartTime != null ? Math.max(spanStartTime - segmentStartTime, 0) : 0
+
   // Position in the sequential timeline
   const spanAbsoluteOffset = segmentSequentialOffset + spanOffsetWithinSegment
-  
+
   const leftOffsetRatio = totalDuration > 0 ? spanAbsoluteOffset / totalDuration : 0
   const widthRatio = totalDuration > 0 ? span.duration / totalDuration : 0
 
@@ -374,10 +407,10 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, segmentDuration
   const SpanIcon = getSpanIcon()
 
   return (
-    <div className="border-b border-border/40">
+    <div className='border-border/40 border-b'>
       <div
         className={cn(
-          'flex items-center gap-3 py-2.5 px-3 transition-colors hover:bg-accent/30 cursor-pointer',
+          'hover:bg-accent/30 flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors',
           isActive && 'bg-accent/40'
         )}
         style={{ paddingLeft: '48px' }}
@@ -385,38 +418,34 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, segmentDuration
           onSelectSpan(spanSource.trace, spanSource.span, spanSource.spanKind)
         }}
       >
-        <div className="flex h-4 w-4" />
+        <div className='flex h-4 w-4' />
 
-        <div className="flex-shrink-0 text-muted-foreground">
-          <SpanIcon className="h-4 w-4 text-muted-foreground" />
+        <div className='text-muted-foreground flex-shrink-0'>
+          <SpanIcon className='text-muted-foreground h-4 w-4' />
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="flex min-w-0 flex-col gap-1 flex-1">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className="truncate text-sm font-medium">
-                {spanDisplay?.primary ?? span.name}
-              </span>
+        <div className='flex min-w-0 flex-1 items-center gap-3'>
+          <div className='flex min-w-0 flex-1 flex-col gap-1'>
+            <div className='flex min-w-0 flex-wrap items-center gap-2'>
+              <span className='truncate text-sm font-medium'>{spanDisplay?.primary ?? span.name}</span>
               {spanKindLabel && (
-                <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                <Badge variant='secondary' className='text-[10px] tracking-wide uppercase'>
                   {spanKindLabel}
                 </Badge>
               )}
               {spanDisplay?.secondary && (
-                <span className="truncate text-xs text-muted-foreground">
-                  {spanDisplay.secondary}
-                </span>
+                <span className='text-muted-foreground truncate text-xs'>{spanDisplay.secondary}</span>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <div className='text-muted-foreground flex flex-wrap items-center gap-2 text-xs'>
               <span>{formatDuration(span.duration)}</span>
             </div>
           </div>
         </div>
 
-        <div className="relative h-5 min-w-[180px] w-[180px] rounded bg-muted/30">
+        <div className='bg-muted/30 relative h-5 w-[180px] min-w-[180px] rounded'>
           <div
-            className="absolute inset-y-0 rounded"
+            className='absolute inset-y-0 rounded'
             style={{
               left: `${leftOffset}%`,
               width: `${width}%`,
@@ -432,7 +461,7 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, segmentDuration
 // Helper function to find the earliest start time across all segments
 function findEarliestStart(segment: Segment): number | null {
   const times: number[] = []
-  
+
   const collectTimes = (seg: Segment) => {
     const start = safeTime(seg.startTime)
     if (start != null) {
@@ -442,7 +471,7 @@ function findEarliestStart(segment: Segment): number | null {
       seg.children.forEach(collectTimes)
     }
   }
-  
+
   collectTimes(segment)
   return times.length > 0 ? Math.min(...times) : null
 }
@@ -467,6 +496,8 @@ function findLatestEnd(segment: Segment): number | null {
 
 export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: TraceTimelineProps) {
   const { t } = useTranslation()
+  const [expandedSegments, setExpandedSegments] = useState<Set<string>>(new Set())
+  const [allExpanded, setAllExpanded] = useState(true)
 
   const timelineData = useMemo(() => {
     const earliestStart = findEarliestStart(trace)
@@ -490,6 +521,15 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     // Count total items (segments + spans)
     const totalItems = flatSegments.reduce((acc, seg) => acc + 1 + seg.spans.length, 0)
 
+    // Initialize expanded segments for first 10 items
+    const initialExpanded = new Set<string>()
+    flatSegments.slice(0, 10).forEach((seg) => {
+      if (seg.spans.length > 0) {
+        initialExpanded.add(seg.segment.id)
+      }
+    })
+    setExpandedSegments(initialExpanded)
+
     return {
       flatSegments,
       totalDuration: Math.max(totalDuration, 1),
@@ -497,9 +537,38 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     }
   }, [trace])
 
+  const handleToggleAll = () => {
+    if (!timelineData) return
+
+    if (allExpanded) {
+      // Collapse all
+      setExpandedSegments(new Set())
+      setAllExpanded(false)
+    } else {
+      // Expand all
+      const allSegmentIds = new Set(
+        timelineData.flatSegments.filter((seg) => seg.spans.length > 0).map((seg) => seg.segment.id)
+      )
+      setExpandedSegments(allSegmentIds)
+      setAllExpanded(true)
+    }
+  }
+
+  const handleToggleSegment = (segmentId: string) => {
+    setExpandedSegments((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(segmentId)) {
+        newSet.delete(segmentId)
+      } else {
+        newSet.add(segmentId)
+      }
+      return newSet
+    })
+  }
+
   if (!timelineData) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+      <div className='text-muted-foreground flex h-full items-center justify-center text-sm'>
         {t('traces.timeline.emptyDescription')}
       </div>
     )
@@ -508,26 +577,39 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
   const { flatSegments, totalDuration, totalItems } = timelineData
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="border-b border-border/60 pb-4 mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">{t('traces.timeline.title')}</h2>
-          <div className="text-sm text-muted-foreground">
-            {t('traces.timeline.itemsCount', { count: totalItems })}
+    <div className='flex h-full flex-col'>
+      <div className='border-border/60 mb-4 border-b pb-4'>
+        <div className='mb-3 flex items-center justify-between'>
+          <h2 className='text-lg font-semibold'>{t('traces.timeline.title')}</h2>
+          <div className='flex items-center gap-3'>
+            <div className='text-muted-foreground text-sm'>
+              {t('traces.timeline.itemsCount', { count: totalItems })}
+            </div>
+            <Button variant='outline' size='sm' onClick={handleToggleAll} className='h-8'>
+              {allExpanded ? (
+                <>
+                  <ChevronsDownUp className='mr-2 h-4 w-4' />
+                  {t('traces.timeline.collapseAll')}
+                </>
+              ) : (
+                <>
+                  <ChevronsUpDown className='mr-2 h-4 w-4' />
+                  {t('traces.timeline.expandAll')}
+                </>
+              )}
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">
-            {t('traces.timeline.totalDurationLabel')}
-          </span>
-          <span className="text-sm font-medium">{formatDuration(totalDuration)}</span>
-          <div className="flex-1 h-6 rounded bg-muted/30 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/60 to-primary/80 rounded" />
+        <div className='flex items-center gap-3'>
+          <span className='text-muted-foreground text-sm'>{t('traces.timeline.totalDurationLabel')}</span>
+          <span className='text-sm font-medium'>{formatDuration(totalDuration)}</span>
+          <div className='bg-muted/30 relative h-6 flex-1 overflow-hidden rounded'>
+            <div className='from-primary/60 to-primary/80 absolute inset-0 rounded bg-gradient-to-r' />
           </div>
         </div>
       </div>
-      <div className="flex-1 overflow-auto border border-border/40 rounded-lg bg-card/50">
-        {flatSegments.map((flatSegment, index) => (
+      <div className='border-border/40 bg-card/50 flex-1 overflow-auto rounded-lg border'>
+        {flatSegments.map((flatSegment) => (
           <SegmentRow
             key={flatSegment.segment.id}
             segment={flatSegment.segment}
@@ -536,7 +618,8 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
             sequentialOffset={flatSegment.sequentialOffset}
             onSelectSpan={onSelectSpan}
             selectedSpanId={selectedSpanId}
-            defaultExpanded={index < 10}
+            isExpanded={expandedSegments.has(flatSegment.segment.id)}
+            onToggleExpand={() => handleToggleSegment(flatSegment.segment.id)}
           />
         ))}
       </div>

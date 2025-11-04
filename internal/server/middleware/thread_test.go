@@ -7,12 +7,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/tracing"
 )
@@ -23,7 +25,20 @@ func setupTestThreadMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.Thr
 	gin.SetMode(gin.TestMode)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-	threadService := biz.NewThreadService()
+
+	systemService := biz.NewSystemService(biz.SystemServiceParams{
+		CacheConfig: xcache.Config{},
+	})
+	dataStorageService := biz.NewDataStorageService(biz.DataStorageServiceParams{
+		Client:        client,
+		SystemService: systemService,
+		CacheConfig:   xcache.Config{},
+		Executor:      executors.NewPoolScheduleExecutor(),
+	})
+	usageLogService := biz.NewUsageLogService(systemService)
+	traceService := biz.NewTraceService(biz.NewRequestService(systemService, usageLogService, dataStorageService))
+
+	threadService := biz.NewThreadService(traceService)
 
 	router := gin.New()
 

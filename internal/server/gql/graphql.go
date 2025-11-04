@@ -45,6 +45,7 @@ type Dependencies struct {
 	DataStorageService *biz.DataStorageService
 	RoleService        *biz.RoleService
 	TraceService       *biz.TraceService
+	ThreadService      *biz.ThreadService
 }
 
 type GraphqlHandler struct {
@@ -66,6 +67,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.DataStorageService,
 			deps.RoleService,
 			deps.TraceService,
+			deps.ThreadService,
 		),
 	)
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -82,8 +83,8 @@ func (s *TraceService) GetTraceByID(ctx context.Context, traceID string, project
 	return trace, nil
 }
 
-// GetFirstTraceForThread retrieves the first trace for a thread by thread ID.
-func (s *TraceService) GetFirstTraceForThread(ctx context.Context, threadID int) (*ent.Trace, error) {
+// GetThreadFirstTrace retrieves the first trace for a thread by thread ID.
+func (s *TraceService) GetThreadFirstTrace(ctx context.Context, threadID int) (*ent.Trace, error) {
 	client := ent.FromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
@@ -104,6 +105,36 @@ func (s *TraceService) GetFirstTraceForThread(ctx context.Context, threadID int)
 	return trace, nil
 }
 
+func (s *TraceService) GetFirstSegment(ctx context.Context, traceID int) (*Segment, error) {
+	return s.requestService.GetTraceFirstSegment(ctx, traceID)
+}
+
+func (s *TraceService) GetFirstUserQuery(ctx context.Context, traceID int) (*string, error) {
+	segment, err := s.GetFirstSegment(ctx, traceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if segment == nil {
+		return nil, nil
+	}
+
+	return segment.FirstUserQuery(), nil
+}
+
+func (s *TraceService) GetFirstText(ctx context.Context, traceID int) (*string, error) {
+	segment, err := s.GetFirstSegment(ctx, traceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if segment == nil {
+		return nil, nil
+	}
+
+	return segment.FirstText(), nil
+}
+
 // Segment represents a segment in a trace.
 // A trace contains multiple segments, and each segment contains multiple spans.
 type Segment struct {
@@ -119,26 +150,48 @@ type Segment struct {
 	Duration      int64            `json:"duration"` // Duration in milliseconds
 }
 
-func (s *Segment) FirstUserQuery() string {
+func (s *Segment) FirstUserQuery() *string {
 	if s == nil {
-		return ""
+		return nil
 	}
 
 	// Search in request spans first
 	for _, span := range s.RequestSpans {
 		if span.Type == "user_query" && span.Value != nil && span.Value.UserQuery != nil {
-			return span.Value.UserQuery.Text
+			return lo.ToPtr(span.Value.UserQuery.Text)
 		}
 	}
 
 	// If not found in current segment, search in children
 	for _, child := range s.Children {
-		if query := child.FirstUserQuery(); query != "" {
+		if query := child.FirstUserQuery(); query != nil {
 			return query
 		}
 	}
 
-	return ""
+	return nil
+}
+
+func (s *Segment) FirstText() *string {
+	if s == nil {
+		return nil
+	}
+
+	// Search in request spans first
+	for _, span := range s.ResponseSpans {
+		if span.Type == "text" && span.Value != nil && span.Value.Text != nil {
+			return lo.ToPtr(span.Value.Text.Text)
+		}
+	}
+
+	// If not found in current segment, search in children
+	for _, child := range s.Children {
+		if text := child.FirstText(); text != nil {
+			return text
+		}
+	}
+
+	return nil
 }
 
 // Span represents a trace span with timing and metadata information.
@@ -262,7 +315,7 @@ func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segmen
 	var originSegmentSpans [][]Span
 
 	for i, req := range requests {
-		segments[i], err = s.requestToSegment(ctx, req)
+		segments[i], err = requestToSegment(ctx, req)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build segment: %w", err)
 		}
@@ -287,8 +340,36 @@ func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segmen
 	return segments[0], nil
 }
 
+// FirstUserQuery is the resolver for the firstUserQuery field.
+func (s *TraceService) FirstUserQuery(ctx context.Context, id int) (*string, error) {
+	segment, err := s.GetFirstSegment(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if segment == nil {
+		return nil, nil
+	}
+
+	return segment.FirstUserQuery(), nil
+}
+
+// FirstText is the resolver for the firstText field.
+func (s *TraceService) FirstText(ctx context.Context, id int) (*string, error) {
+	segment, err := s.GetFirstSegment(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if segment == nil {
+		return nil, nil
+	}
+
+	return segment.FirstText(), nil
+}
+
 // requestToSegment converts a request entity to a Segment.
-func (s *TraceService) requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
+func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 	segment := &Segment{
 		ID:        req.ID,
 		Model:     req.ModelID,
@@ -310,7 +391,7 @@ func (s *TraceService) requestToSegment(ctx context.Context, req *ent.Request) (
 			},
 		}
 
-		inbound, err := s.getInboundTransformer(llm.APIFormat(req.Format))
+		inbound, err := getInboundTransformer(llm.APIFormat(req.Format))
 		if err != nil {
 			return nil, fmt.Errorf("failed to get inbound transformer: %w", err)
 		}
@@ -320,11 +401,11 @@ func (s *TraceService) requestToSegment(ctx context.Context, req *ent.Request) (
 			return nil, fmt.Errorf("failed to transform request body: %w", err)
 		}
 
-		requestSpans = append(requestSpans, s.extractSpansFromMessages(llmReq.Messages, "request")...)
+		requestSpans = append(requestSpans, extractSpansFromMessages(llmReq.Messages, "request")...)
 	}
 
 	if len(req.ResponseBody) > 0 {
-		outbound, err := s.getOutboundTransformer(llm.APIFormat(req.Format))
+		outbound, err := getOutboundTransformer(llm.APIFormat(req.Format))
 		if err != nil {
 			return nil, fmt.Errorf("failed to get outbound transformer: %w", err)
 		}
@@ -342,9 +423,9 @@ func (s *TraceService) requestToSegment(ctx context.Context, req *ent.Request) (
 			return nil, fmt.Errorf("failed to transform response body: %w", err)
 		}
 
-		segment.Metadata = s.extractMetadataFromResponse(unifiedResp)
+		segment.Metadata = extractMetadataFromResponse(unifiedResp)
 		if len(unifiedResp.Choices) > 0 && unifiedResp.Choices[0].Message != nil {
-			responseSpans = append(responseSpans, s.extractSpansFromMessage(unifiedResp.Choices[0].Message, "response")...)
+			responseSpans = append(responseSpans, extractSpansFromMessage(unifiedResp.Choices[0].Message, "response")...)
 		}
 	}
 
@@ -354,11 +435,11 @@ func (s *TraceService) requestToSegment(ctx context.Context, req *ent.Request) (
 	return segment, nil
 }
 
-func (s *TraceService) extractSpansFromMessages(messages []llm.Message, idPrefix string) []Span {
+func extractSpansFromMessages(messages []llm.Message, idPrefix string) []Span {
 	var spans []Span
 
 	for i, msg := range messages {
-		msgSpans := s.extractSpansFromMessage(&msg, fmt.Sprintf("%s-%d", idPrefix, i))
+		msgSpans := extractSpansFromMessage(&msg, fmt.Sprintf("%s-%d", idPrefix, i))
 		spans = append(spans, msgSpans...)
 	}
 
@@ -366,7 +447,7 @@ func (s *TraceService) extractSpansFromMessages(messages []llm.Message, idPrefix
 }
 
 // extractSpansFromMessage converts a single message to spans.
-func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
+func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 	var spans []Span
 
 	now := time.Now()
@@ -571,7 +652,7 @@ func (s *TraceService) extractSpansFromMessage(msg *llm.Message, idPrefix string
 }
 
 // getInboundTransformer returns the appropriate inbound transformer based on format.
-func (s *TraceService) getInboundTransformer(format llm.APIFormat) (transformer.Inbound, error) {
+func getInboundTransformer(format llm.APIFormat) (transformer.Inbound, error) {
 	//nolint:exhaustive // TODO: add more formats.
 	switch format {
 	case llm.APIFormatOpenAIChatCompletion:
@@ -583,7 +664,7 @@ func (s *TraceService) getInboundTransformer(format llm.APIFormat) (transformer.
 	}
 }
 
-func (s *TraceService) getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) {
+func getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) {
 	//nolint:exhaustive // TODO: add more formats.
 	switch format {
 	case llm.APIFormatOpenAIChatCompletion:
@@ -608,7 +689,7 @@ func (s *TraceService) getOutboundTransformer(format llm.APIFormat) (transformer
 }
 
 // extractMetadataFromResponse extracts metadata from the unified response.
-func (s *TraceService) extractMetadataFromResponse(resp *llm.Response) *RequestMetadata {
+func extractMetadataFromResponse(resp *llm.Response) *RequestMetadata {
 	if resp == nil || resp.Usage == nil {
 		return nil
 	}

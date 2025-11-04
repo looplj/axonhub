@@ -1186,7 +1186,9 @@
       "updatedAt": "Updated At",
       "traceCount": "Trace Count",
       "tracesTitle": "Traces",
-      "tracesSubtitle": "Review recent traces and executions for this thread"
+      "tracesSubtitle": "Review recent traces and executions for this thread",
+      "noTraces": "No traces found",
+      "traces": "traces"
     },
     "errors": {
       "fetchList": "Failed to fetch thread list",
@@ -1305,7 +1307,10 @@
       "totalDurationLabel": "Total Duration",
       "summary": {
         "tokenCount": "{{value}} tokens"
-      }
+      },
+      "collapseAll": "Collapse All",
+      "expandAll": "Expand All",
+      "viewRequest": "View Request"
     }
   },
   "usageLogs": {
@@ -1570,6 +1575,10 @@
     "noResults": "No results.",
     "loadError": "Load failed:",
     "back": "Back",
+    "showing": "Showing",
+    "of": "of",
+    "previous": "Previous",
+    "next": "Next",
     "moveUp": "Move Up",
     "moveDown": "Move Down",
     "dragging": "Dragging",

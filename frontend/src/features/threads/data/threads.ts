@@ -98,6 +98,8 @@ function buildThreadDetailQuery() {
                 requests(where: { status: completed }) {
                   totalCount
                 }
+                firstUserQuery
+                firstText
               }
               cursor
             }

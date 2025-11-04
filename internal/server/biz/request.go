@@ -912,3 +912,51 @@ func (s *RequestService) getDataStorage(ctx context.Context, dataStorageID int) 
 
 	return dataStorage, nil
 }
+
+func (s *RequestService) GetTraceFirstRequest(ctx context.Context, traceID int) (*ent.Request, error) {
+	client := ent.FromContext(ctx)
+	if client == nil {
+		return nil, fmt.Errorf("ent client not found in context")
+	}
+
+	request, err := client.Request.Query().
+		Where(request.TraceIDEQ(traceID), request.StatusEQ(request.StatusCompleted)).
+		Order(ent.Asc(request.FieldCreatedAt)).
+		First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to get first request for trace: %w", err)
+	}
+
+	return request, nil
+}
+
+func (s *RequestService) GetTraceFirstSegment(ctx context.Context, traceID int) (*Segment, error) {
+	request, err := s.GetTraceFirstRequest(ctx, traceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if request == nil {
+		return nil, nil
+	}
+
+	body, err := s.LoadRequestBody(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	request.RequestBody = body
+
+	body, err = s.LoadResponseBody(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	request.ResponseBody = body
+
+	return requestToSegment(ctx, request)
+}

@@ -15,6 +15,7 @@ import {
   IconDatabase,
   IconTrack,
   IconTractor,
+  IconNeedleThread,
 } from '@tabler/icons-react'
 import { Command } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -22,6 +23,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useRoutePermissions } from '@/hooks/useRoutePermissions'
 import { useMe } from '@/features/auth/data/auth'
 import { type SidebarData, type NavGroup, type NavLink } from './components/layout/types'
+import { ThreadIcon, TraceIcon } from './icons'
 
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
@@ -115,7 +117,7 @@ export function useSidebarData(): SidebarData {
         {
           title: t('sidebar.items.traces'),
           url: '/project/traces',
-          icon: IconTractor,
+          icon: TraceIcon,
         } as NavLink,
         {
           title: t('sidebar.items.requests'),
@@ -125,7 +127,7 @@ export function useSidebarData(): SidebarData {
         {
           title: t('sidebar.items.threads'),
           url: '/project/threads',
-          icon: IconActivity,
+          icon: ThreadIcon,
         } as NavLink,
         {
           title: t('sidebar.items.usageLogs'),

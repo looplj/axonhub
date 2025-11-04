@@ -9,10 +9,14 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 )
 
-type ThreadService struct{}
+type ThreadService struct {
+	traceService *TraceService
+}
 
-func NewThreadService() *ThreadService {
-	return &ThreadService{}
+func NewThreadService(traceService *TraceService) *ThreadService {
+	return &ThreadService{
+		traceService: traceService,
+	}
 }
 
 // GetOrCreateThread retrieves an existing thread by thread_id and project_id,
@@ -72,4 +76,32 @@ func (s *ThreadService) GetThreadByID(ctx context.Context, threadID string, proj
 	}
 
 	return thread, nil
+}
+
+// FirstUserQuery is the resolver for the firstUserQuery field.
+func (s *ThreadService) FirstUserQuery(ctx context.Context, id int) (*string, error) {
+	trace, err := s.traceService.GetThreadFirstTrace(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if trace == nil {
+		return nil, nil
+	}
+
+	return s.traceService.GetFirstUserQuery(ctx, trace.ID)
+}
+
+// FirstText is the resolver for the firstText field.
+func (s *ThreadService) FirstText(ctx context.Context, id int) (*string, error) {
+	trace, err := s.traceService.GetThreadFirstTrace(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if trace == nil {
+		return nil, nil
+	}
+
+	return s.traceService.GetFirstText(ctx, trace.ID)
 }

@@ -1,19 +1,20 @@
-import { useMemo } from 'react'
-import { useParams, useNavigate } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
+import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
+import { useParams, useNavigate } from '@tanstack/react-router'
 import { zhCN, enUS } from 'date-fns/locale'
 import { ArrowLeft, Activity } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { extractNumberID } from '@/lib/utils'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { Card, CardContent } from '@/components/ui/card'
-import { usePaginationSearch } from '@/hooks/use-pagination-search'
-import { useThreadDetail } from '../data/threads'
 import type { Trace } from '@/features/traces/data/schema'
-import { TracesTable } from '@/features/traces/components'
-import { extractNumberID } from '@/lib/utils'
+import { useThreadDetail } from '../data/threads'
+import { TraceCard } from './trace-card'
+import { TraceDrawer } from './trace-drawer'
 
 const THREAD_CURSOR_OPTIONS = {
   startCursorKey: 'threadTracesStart',
@@ -30,16 +31,13 @@ export default function ThreadDetailPage() {
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const locale = i18n.language === 'zh' ? zhCN : enUS
+  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
-  const { getSearchParams: getListSearchParams } = usePaginationSearch({ defaultPageSize: 20 })
-  const {
-    pageSize,
-    setCursors,
-    setPageSize,
-    resetCursor,
-    paginationArgs,
-    cursorHistory,
-  } = usePaginationSearch({ defaultPageSize: 20, ...THREAD_CURSOR_OPTIONS })
+  const { pageSize, setCursors, paginationArgs, getSearchParams } = usePaginationSearch({
+    defaultPageSize: 20,
+    ...THREAD_CURSOR_OPTIONS,
+  })
 
   const tracesFirst = paginationArgs.first ?? pageSize
   const tracesAfter = paginationArgs.after
@@ -62,7 +60,6 @@ export default function ThreadDetailPage() {
 
   const pageInfo = thread?.tracesConnection?.pageInfo
   const totalCount = thread?.tracesConnection?.totalCount
-  const isFirstPage = !tracesAfter && cursorHistory.length === 0
 
   const handleNextPage = () => {
     if (pageInfo?.hasNextPage && pageInfo.endCursor) {
@@ -76,13 +73,13 @@ export default function ThreadDetailPage() {
     }
   }
 
-  const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize)
-    resetCursor()
+  const handleBack = () => {
+    navigate({ to: '/project/threads' as any, search: getSearchParams() as any })
   }
 
-  const handleBack = () => {
-    navigate({ to: '/project/threads' as any, search: getListSearchParams() as any })
+  const handleViewTrace = (traceId: string) => {
+    setSelectedTraceId(traceId)
+    setIsDrawerOpen(true)
   }
 
   if (isLoading) {
@@ -155,7 +152,7 @@ export default function ThreadDetailPage() {
 
       <Main className='flex-1 overflow-hidden'>
         <div className='flex flex-col gap-4 p-6'>
-          <Card className='border-0 shadow-sm'>
+          {/* <Card className='border-0 shadow-sm'>
             <CardContent className='grid gap-4 p-6 md:grid-cols-3'>
               <div>
                 <p className='text-muted-foreground text-sm'>{t('threads.detail.project')}</p>
@@ -174,30 +171,71 @@ export default function ThreadDetailPage() {
                 <p className='font-medium'>{thread.tracesSummary?.totalCount ?? 0}</p>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
-          <div className='flex flex-col gap-4'>
-            <div>
-              <h2 className='text-xl font-semibold'>{t('threads.detail.tracesTitle')}</h2>
-              <p className='text-muted-foreground text-sm'>
-                {t('threads.detail.tracesSubtitle')}
-              </p>
+          <div className='flex flex-col gap-6'>
+            <div className='flex items-center justify-between'>
+              <div>
+                <h2 className='text-xl font-semibold'>{t('threads.detail.tracesTitle')}</h2>
+                <p className='text-muted-foreground text-sm'>{t('threads.detail.tracesSubtitle')}</p>
+              </div>
+              <div className='flex items-center gap-2'>
+                <Button variant='outline' size='sm' onClick={() => refetch()} disabled={isLoading}>
+                  {t('common.refresh')}
+                </Button>
+              </div>
             </div>
-            <TracesTable
-              data={traces}
-              loading={isLoading}
-              pageInfo={pageInfo}
-              pageSize={pageSize}
-              totalCount={totalCount}
-              onNextPage={handleNextPage}
-              onPreviousPage={handlePreviousPage}
-              onPageSizeChange={handlePageSizeChange}
-              onRefresh={refetch}
-              showRefresh={isFirstPage}
-            />
+
+            {/* Traces as Cards */}
+            <div className='space-y-4'>
+              {traces.length > 0 ? (
+                traces.map((trace, index) => (
+                  <div key={trace.id}>
+                    <TraceCard trace={trace} onViewTrace={handleViewTrace} />
+                    {index < traces.length - 1 && <Separator className='mt-4' />}
+                  </div>
+                ))
+              ) : (
+                <Card className='border-0 shadow-sm'>
+                  <CardContent className='py-16'>
+                    <div className='flex h-full items-center justify-center'>
+                      <div className='space-y-4 text-center'>
+                        <Activity className='text-muted-foreground mx-auto h-16 w-16' />
+                        <p className='text-muted-foreground text-lg'>{t('threads.detail.noTraces')}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Pagination */}
+            {totalCount && totalCount > 0 && (
+              <div className='flex items-center justify-between'>
+                <div className='text-muted-foreground text-sm'>
+                  {t('common.showing')} {traces.length} {t('common.of')} {totalCount} {t('threads.detail.traces')}
+                </div>
+                <div className='flex items-center gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={handlePreviousPage}
+                    disabled={!pageInfo?.hasPreviousPage}
+                  >
+                    {t('common.previous')}
+                  </Button>
+                  <Button variant='outline' size='sm' onClick={handleNextPage} disabled={!pageInfo?.hasNextPage}>
+                    {t('common.next')}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Main>
+
+      {/* Trace Detail Drawer */}
+      <TraceDrawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} traceId={selectedTraceId} />
     </div>
   )
 }
