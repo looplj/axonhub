@@ -16,6 +16,7 @@
       "system": "系统",
       "requests": "请求",
       "traces": "追踪",
+      "threads": "线程",
       "usageLogs": "用量日志",
       "apiKeys": "API 密钥",
       "playground": "测试场",
@@ -1184,6 +1185,42 @@
         "title": "执行列表",
         "noExecutions": "暂无执行记录"
       }
+    }
+  },
+  "threads": {
+    "title": "线程管理",
+    "description": "查看和管理 AI 会话线程及相关追踪",
+    "filters": {
+      "filterThreadId": "按线程 ID 筛选..."
+    },
+    "columns": {
+      "id": "ID",
+      "threadId": "线程 ID",
+      "project": "项目",
+      "unknownProject": "未知项目",
+      "traceCount": "追踪数量",
+      "firstUserQuery": "用户查询",
+      "createdAt": "创建时间",
+      "details": "详情"
+    },
+    "actions": {
+      "viewDetails": "查看详情"
+    },
+    "detail": {
+      "title": "线程详情",
+      "notFound": "未找到线程",
+      "project": "项目",
+      "unknownProject": "未知项目",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间",
+      "traceCount": "追踪数量",
+      "tracesTitle": "追踪列表",
+      "tracesSubtitle": "查看该线程的最新追踪与执行记录"
+    },
+    "errors": {
+      "fetchList": "获取线程列表失败",
+      "fetchDetail": "获取线程详情失败",
+      "notFound": "未找到线程"
     }
   },
   "traces": {

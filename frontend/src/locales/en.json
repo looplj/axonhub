@@ -16,6 +16,7 @@
       "system": "System",
       "requests": "Requests",
       "traces": "Traces",
+      "threads": "Threads",
       "usageLogs": "Usage Logs",
       "apiKeys": "API Keys",
       "playground": "Playground",
@@ -1155,6 +1156,42 @@
         "title": "Execution List",
         "noExecutions": "No execution records"
       }
+    }
+  },
+  "threads": {
+    "title": "Thread Management",
+    "description": "View and manage AI conversation threads and related traces",
+    "filters": {
+      "filterThreadId": "Filter by thread ID..."
+    },
+    "columns": {
+      "id": "ID",
+      "threadId": "Thread ID",
+      "project": "Project",
+      "unknownProject": "Unknown Project",
+      "traceCount": "Trace Count",
+      "firstUserQuery": "User Query",
+      "createdAt": "Created At",
+      "details": "Details"
+    },
+    "actions": {
+      "viewDetails": "View Details"
+    },
+    "detail": {
+      "title": "Thread Details",
+      "notFound": "Thread not found",
+      "project": "Project",
+      "unknownProject": "Unknown Project",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "traceCount": "Trace Count",
+      "tracesTitle": "Traces",
+      "tracesSubtitle": "Review recent traces and executions for this thread"
+    },
+    "errors": {
+      "fetchList": "Failed to fetch thread list",
+      "fetchDetail": "Failed to fetch thread details",
+      "notFound": "Thread not found"
     }
   },
   "traces": {

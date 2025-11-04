@@ -632,13 +632,14 @@ type ComplexityRoot struct {
 	}
 
 	Thread struct {
-		CreatedAt func(childComplexity int) int
-		ID        func(childComplexity int) int
-		Project   func(childComplexity int) int
-		ProjectID func(childComplexity int) int
-		ThreadID  func(childComplexity int) int
-		Traces    func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) int
-		UpdatedAt func(childComplexity int) int
+		CreatedAt      func(childComplexity int) int
+		FirstUserQuery func(childComplexity int) int
+		ID             func(childComplexity int) int
+		Project        func(childComplexity int) int
+		ProjectID      func(childComplexity int) int
+		ThreadID       func(childComplexity int) int
+		Traces         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) int
+		UpdatedAt      func(childComplexity int) int
 	}
 
 	ThreadConnection struct {
@@ -932,6 +933,8 @@ type ThreadResolver interface {
 	ID(ctx context.Context, obj *ent.Thread) (*objects.GUID, error)
 
 	ProjectID(ctx context.Context, obj *ent.Thread) (*objects.GUID, error)
+
+	FirstUserQuery(ctx context.Context, obj *ent.Thread) (*string, error)
 }
 type TraceResolver interface {
 	ID(ctx context.Context, obj *ent.Trace) (*objects.GUID, error)
@@ -3746,6 +3749,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Thread.CreatedAt(childComplexity), true
+
+	case "Thread.firstUserQuery":
+		if e.complexity.Thread.FirstUserQuery == nil {
+			break
+		}
+
+		return e.complexity.Thread.FirstUserQuery(childComplexity), true
 
 	case "Thread.id":
 		if e.complexity.Thread.ID == nil {
@@ -24801,6 +24811,47 @@ func (ec *executionContext) fieldContext_Thread_traces(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Thread_firstUserQuery(ctx context.Context, field graphql.CollectedField, obj *ent.Thread) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Thread_firstUserQuery(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Thread().FirstUserQuery(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Thread_firstUserQuery(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Thread",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ThreadConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.ThreadConnection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ThreadConnection_edges(ctx, field)
 	if err != nil {
@@ -24996,6 +25047,8 @@ func (ec *executionContext) fieldContext_ThreadEdge_node(_ context.Context, fiel
 				return ec.fieldContext_Thread_project(ctx, field)
 			case "traces":
 				return ec.fieldContext_Thread_traces(ctx, field)
+			case "firstUserQuery":
+				return ec.fieldContext_Thread_firstUserQuery(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Thread", field.Name)
 		},
@@ -26006,6 +26059,8 @@ func (ec *executionContext) fieldContext_Trace_thread(_ context.Context, field g
 				return ec.fieldContext_Thread_project(ctx, field)
 			case "traces":
 				return ec.fieldContext_Thread_traces(ctx, field)
+			case "firstUserQuery":
+				return ec.fieldContext_Thread_firstUserQuery(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Thread", field.Name)
 		},
@@ -51125,6 +51180,39 @@ func (ec *executionContext) _Thread(ctx context.Context, sel ast.SelectionSet, o
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "firstUserQuery":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Thread_firstUserQuery(ctx, field, obj)
 				return res
 			}
 

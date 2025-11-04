@@ -231,6 +231,10 @@ extend type Trace {
   rawRootSegment: JSONRawMessage
 }
 
+extend type Thread {
+  firstUserQuery: String @goField(forceResolver: true)
+}
+
 type Segment {
   id: ID!
   parentId: ID
