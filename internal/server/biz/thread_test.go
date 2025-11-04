@@ -5,18 +5,34 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
 func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
 	t.Helper()
 
+	systemService := NewSystemService(SystemServiceParams{
+		CacheConfig: xcache.Config{},
+	})
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-	threadService := NewThreadService()
+	threadService := NewThreadService(NewTraceService(NewRequestService(
+		systemService,
+		NewUsageLogService(systemService),
+		NewDataStorageService(
+			DataStorageServiceParams{
+				SystemService: systemService,
+				CacheConfig:   xcache.Config{},
+				Executor:      executors.NewPoolScheduleExecutor(),
+				Client:        client,
+			},
+		),
+	)))
 
 	return threadService, client
 }
@@ -139,7 +155,7 @@ func TestThreadService_GetThreadByID(t *testing.T) {
 }
 
 func TestThreadService_GetOrCreateThread_NoClient(t *testing.T) {
-	threadService := NewThreadService()
+	threadService, _ := setupTestThreadService(t)
 	ctx := context.Background()
 
 	// Test without ent client in context

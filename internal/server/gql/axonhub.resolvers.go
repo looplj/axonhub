@@ -348,29 +348,7 @@ func (r *segmentResolver) ParentID(ctx context.Context, obj *biz.Segment) (*obje
 
 // FirstUserQuery is the resolver for the firstUserQuery field.
 func (r *threadResolver) FirstUserQuery(ctx context.Context, obj *ent.Thread) (*string, error) {
-	trace, err := r.traceService.GetFirstTraceForThread(ctx, obj.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	if trace == nil {
-		return nil, nil
-	}
-
-	segment, err := r.traceService.GetRootSegment(ctx, trace.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	if segment == nil {
-		return nil, nil
-	}
-
-	if query := segment.FirstUserQuery(); query != "" {
-		return &query, nil
-	}
-
-	return nil, nil
+	return r.threadService.FirstUserQuery(ctx, obj.ID)
 }
 
 // RootSegment is the resolver for the rootSegment field.
@@ -393,13 +371,33 @@ func (r *traceResolver) RawRootSegment(ctx context.Context, obj *ent.Trace) (obj
 	return objects.JSONRawMessage(data), nil
 }
 
+// FirstUserQuery is the resolver for the firstUserQuery field.
+func (r *traceResolver) FirstUserQuery(ctx context.Context, obj *ent.Trace) (*string, error) {
+	return r.traceService.FirstUserQuery(ctx, obj.ID)
+}
+
+// FirstText is the resolver for the firstText field.
+func (r *traceResolver) FirstText(ctx context.Context, obj *ent.Trace) (*string, error) {
+	return r.traceService.FirstText(ctx, obj.ID)
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-type (
-	mutationResolver struct{ *Resolver }
-	segmentResolver  struct{ *Resolver }
-)
+type mutationResolver struct{ *Resolver }
+type segmentResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *threadResolver) FirstText(ctx context.Context, obj *ent.Thread) (*string, error) {
+	return r.threadService.FirstText(ctx, obj.ID)
+}
+*/

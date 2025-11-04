@@ -31,6 +31,8 @@ export const traceSchema = z.object({
   project: projectSchema,
   thread: threadSchema,
   requests: traceRequestsSummarySchema,
+  firstUserQuery: z.string().nullable().optional(),
+  firstText: z.string().nullable().optional(),
 })
 
 export type Trace = z.infer<typeof traceSchema>

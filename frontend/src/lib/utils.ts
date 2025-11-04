@@ -9,3 +9,8 @@ export const extractNumberID = (id: string) => {
   const lastSlashIndex = id.lastIndexOf('/')
   return id.slice(lastSlashIndex + 1)
 }
+
+
+export const buildGUID = (type: string, id: string) => {
+  return `gid://axonhub/${type}/${id}`
+}

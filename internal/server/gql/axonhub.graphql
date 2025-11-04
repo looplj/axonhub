@@ -229,6 +229,8 @@ type GCS {
 extend type Trace {
   rootSegment: Segment
   rawRootSegment: JSONRawMessage
+  firstUserQuery: String @goField(forceResolver: true)
+  firstText: String @goField(forceResolver: true)
 }
 
 extend type Thread {

@@ -1215,7 +1215,9 @@
       "updatedAt": "更新时间",
       "traceCount": "追踪数量",
       "tracesTitle": "追踪列表",
-      "tracesSubtitle": "查看该线程的最新追踪与执行记录"
+      "tracesSubtitle": "查看该线程的最新追踪与执行记录",
+      "noTraces": "暂无追踪记录",
+      "traces": "条追踪"
     },
     "errors": {
       "fetchList": "获取线程列表失败",
@@ -1335,7 +1337,10 @@
       "totalDurationLabel": "总持续时间",
       "summary": {
         "tokenCount": "令牌数：{{value}}"
-      }
+      },
+      "collapseAll": "全部收起",
+      "expandAll": "全部展开",
+      "viewRequest": "查看请求"
     }
   },
   "usageLogs": {
@@ -1600,6 +1605,10 @@
     "noResults": "无结果。",
     "loadError": "加载失败:",
     "back": "返回",
+    "showing": "显示",
+    "of": "共",
+    "previous": "上一页",
+    "next": "下一页",
     "moveUp": "上移",
     "moveDown": "下移",
     "dragging": "拖拽中",
