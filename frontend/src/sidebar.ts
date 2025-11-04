@@ -123,6 +123,11 @@ export function useSidebarData(): SidebarData {
           icon: IconActivity,
         } as NavLink,
         {
+          title: t('sidebar.items.threads'),
+          url: '/project/threads',
+          icon: IconActivity,
+        } as NavLink,
+        {
           title: t('sidebar.items.usageLogs'),
           url: '/project/usage-logs',
           icon: IconActivityHeartbeat,

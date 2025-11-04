@@ -1,23 +1,23 @@
 import { format } from 'date-fns'
+import { DashboardIcon } from '@radix-ui/react-icons'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { zhCN, enUS } from 'date-fns/locale'
 import { Copy, Clock, Key, Database, ArrowLeft, FileText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { extractNumberID } from '@/lib/utils'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { JsonViewer } from '@/components/json-tree-view'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { JsonViewer } from '@/components/json-tree-view'
-import { useRequest, useRequestExecutions } from '../data'
 import { useUsageLogs } from '../../usage-logs/data/usage-logs'
+import { useRequest, useRequestExecutions } from '../data'
 import { getStatusColor } from './help'
-import { DashboardIcon } from '@radix-ui/react-icons'
-import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 export default function RequestDetailPage() {
   const { t, i18n } = useTranslation()
@@ -28,11 +28,13 @@ export default function RequestDetailPage() {
 
   const { data: request, isLoading } = useRequest(requestId)
   const { data: executions } = useRequestExecutions(requestId, {
-    orderBy: { field: 'CREATED_AT', direction: 'DESC' }
+    first: 10,
+    orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   })
   const { data: usageLogs } = useUsageLogs({
+    first: 1,
     where: { requestID: requestId },
-    orderBy: { field: 'CREATED_AT', direction: 'DESC' }
+    orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   })
 
   const copyToClipboard = (text: string) => {
@@ -51,17 +53,16 @@ export default function RequestDetailPage() {
 
   const handleBack = () => {
     // 保持分页状态返回到请求列表页
-    navigate({ 
+    navigate({
       to: '/project/requests',
-      search: getSearchParams()
+      search: getSearchParams(),
     })
   }
 
   if (isLoading) {
     return (
       <div className='flex h-screen flex-col'>
-        <Header className='border-b'>
-        </Header>
+        <Header className='border-b'></Header>
         <Main className='flex-1'>
           <div className='flex h-full items-center justify-center'>
             <div className='space-y-4 text-center'>
@@ -77,8 +78,7 @@ export default function RequestDetailPage() {
   if (!request) {
     return (
       <div className='flex h-screen flex-col'>
-        <Header className='border-b'>
-        </Header>
+        <Header className='border-b'></Header>
         <Main className='flex-1'>
           <div className='flex h-full items-center justify-center'>
             <div className='space-y-6 text-center'>
@@ -116,7 +116,7 @@ export default function RequestDetailPage() {
               <h1 className='text-lg leading-none font-semibold'>
                 {t('requests.detail.title')} #{extractNumberID(request.id) || request.id}
               </h1>
-              <div className='flex items-center gap-2 mt-1'>
+              <div className='mt-1 flex items-center gap-2'>
                 <p className='text-muted-foreground text-sm'>{request.modelID || t('requests.columns.unknown')}</p>
                 <span className='text-muted-foreground text-xs'>•</span>
                 <p className='text-muted-foreground text-xs'>
@@ -181,82 +181,79 @@ export default function RequestDetailPage() {
           </Card>
 
           {/* Usage Card */}
-          {usageLogs && usageLogs.edges.length > 0 && (() => {
-            const usage = usageLogs.edges[0].node
-            const cachedTokens = usage.promptCachedTokens || 0
-            const hasCache = cachedTokens > 0
-            const cacheHitRate = hasCache ? ((cachedTokens / usage.promptTokens) * 100).toFixed(1) : 0
-            
-            return (
-              <Card className='border-0 shadow-sm'>
-                <CardHeader className='pb-4'>
-                  <CardTitle className='flex items-center justify-between'>
-                    <div className='flex items-center gap-3'>
-                      <div className='bg-primary/10 flex h-10 w-10 items-center justify-center rounded-lg'>
-                        <Database className='text-primary h-5 w-5' />
-                      </div>
-                      <span className='text-xl'>{t('requests.detail.tabs.usage')}</span>
-                    </div>
-                    <Badge className='bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' variant='secondary'>
-                      {t(`usageLogs.source.${usage.source}`)}
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className='grid grid-cols-2 gap-4 sm:grid-cols-4'>
-                    <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
-                      <span className='text-sm font-medium text-muted-foreground'>
-                        {t('usageLogs.columns.inputLabel')}
-                      </span>
-                      <p className='text-2xl'>
-                        {usage.promptTokens.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
-                      <span className='text-sm font-medium text-muted-foreground'>
-                        {t('usageLogs.columns.outputLabel')}
-                      </span>
-                      <p className='text-2xl'>
-                        {usage.completionTokens.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
-                      <span className='text-sm font-medium text-muted-foreground'>
-                        {t('usageLogs.columns.totalTokens')}
-                      </span>
-                      <p className='text-2xl'>
-                        {usage.totalTokens.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
-                      <span className='text-sm font-medium text-muted-foreground'>
-                        {t('usageLogs.columns.cacheTokens')}
-                      </span>
-                      <div className='space-y-1'>
-                        <div className='flex items-center gap-1'>
-                          <span className={`text-xs font-medium ${
-                            hasCache 
-                              ? 'text-green-600 dark:text-green-400' 
-                              : 'text-muted-foreground'
-                          }`}>
-                            {hasCache ? '✓' : '—'}
-                          </span>
-                          <span className='text-2xl'>
-                            {cachedTokens.toLocaleString()}
-                          </span>
+          {usageLogs &&
+            usageLogs.edges.length > 0 &&
+            (() => {
+              const usage = usageLogs.edges[0].node
+              const cachedTokens = usage.promptCachedTokens || 0
+              const hasCache = cachedTokens > 0
+              const cacheHitRate = hasCache ? ((cachedTokens / usage.promptTokens) * 100).toFixed(1) : 0
+
+              return (
+                <Card className='border-0 shadow-sm'>
+                  <CardHeader className='pb-4'>
+                    <CardTitle className='flex items-center justify-between'>
+                      <div className='flex items-center gap-3'>
+                        <div className='bg-primary/10 flex h-10 w-10 items-center justify-center rounded-lg'>
+                          <Database className='text-primary h-5 w-5' />
                         </div>
-                        {hasCache && (
-                          <div className='text-xs text-muted-foreground'>
-                            {t('usageLogs.columns.cacheHitRate', { rate: cacheHitRate })}
+                        <span className='text-xl'>{t('requests.detail.tabs.usage')}</span>
+                      </div>
+                      <Badge
+                        className='bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+                        variant='secondary'
+                      >
+                        {t(`usageLogs.source.${usage.source}`)}
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='grid grid-cols-2 gap-4 sm:grid-cols-4'>
+                      <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
+                        <span className='text-muted-foreground text-sm font-medium'>
+                          {t('usageLogs.columns.inputLabel')}
+                        </span>
+                        <p className='text-2xl'>{usage.promptTokens.toLocaleString()}</p>
+                      </div>
+                      <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
+                        <span className='text-muted-foreground text-sm font-medium'>
+                          {t('usageLogs.columns.outputLabel')}
+                        </span>
+                        <p className='text-2xl'>{usage.completionTokens.toLocaleString()}</p>
+                      </div>
+                      <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
+                        <span className='text-muted-foreground text-sm font-medium'>
+                          {t('usageLogs.columns.totalTokens')}
+                        </span>
+                        <p className='text-2xl'>{usage.totalTokens.toLocaleString()}</p>
+                      </div>
+                      <div className='bg-muted/30 space-y-3 rounded-lg border p-4'>
+                        <span className='text-muted-foreground text-sm font-medium'>
+                          {t('usageLogs.columns.cacheTokens')}
+                        </span>
+                        <div className='space-y-1'>
+                          <div className='flex items-center gap-1'>
+                            <span
+                              className={`text-xs font-medium ${
+                                hasCache ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                              }`}
+                            >
+                              {hasCache ? '✓' : '—'}
+                            </span>
+                            <span className='text-2xl'>{cachedTokens.toLocaleString()}</span>
                           </div>
-                        )}
+                          {hasCache && (
+                            <div className='text-muted-foreground text-xs'>
+                              {t('usageLogs.columns.cacheHitRate', { rate: cacheHitRate })}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })()}
+                  </CardContent>
+                </Card>
+              )
+            })()}
 
           {/* Request and Response Tabs */}
           <Card className='border-0 shadow-sm'>
@@ -302,13 +299,8 @@ export default function RequestDetailPage() {
                         {t('requests.dialogs.jsonViewer.copy')}
                       </Button>
                     </div>
-                    <div className='bg-muted/20 h-[500px] w-full rounded-lg border overflow-auto p-4'>
-                      <JsonViewer 
-                        data={request.requestBody} 
-                        rootName="" 
-                        defaultExpanded={true}
-                        className="text-sm"
-                      />
+                    <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
+                      <JsonViewer data={request.requestBody} rootName='' defaultExpanded={true} className='text-sm' />
                     </div>
                   </div>
                 </TabsContent>
@@ -332,12 +324,12 @@ export default function RequestDetailPage() {
                       </Button>
                     </div>
                     {request.responseBody ? (
-                      <div className='bg-muted/20 h-[500px] w-full rounded-lg border overflow-auto p-4'>
-                        <JsonViewer 
-                          data={request.responseBody} 
-                          rootName="" 
+                      <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
+                        <JsonViewer
+                          data={request.responseBody}
+                          rootName=''
                           defaultExpanded={true}
-                          className="text-sm"
+                          className='text-sm'
                         />
                       </div>
                     ) : (
@@ -426,12 +418,12 @@ export default function RequestDetailPage() {
                                       {t('requests.dialogs.jsonViewer.copy')}
                                     </Button>
                                   </div>
-                                  <div className='bg-background h-64 w-full rounded-lg border overflow-auto p-3'>
-                                    <JsonViewer 
-                                      data={execution.requestBody} 
-                                      rootName="" 
+                                  <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
+                                    <JsonViewer
+                                      data={execution.requestBody}
+                                      rootName=''
                                       defaultExpanded={false}
-                                      className="text-xs"
+                                      className='text-xs'
                                     />
                                   </div>
                                 </div>
@@ -454,12 +446,12 @@ export default function RequestDetailPage() {
                                       {t('requests.dialogs.jsonViewer.copy')}
                                     </Button>
                                   </div>
-                                  <div className='bg-background h-64 w-full rounded-lg border overflow-auto p-3'>
-                                    <JsonViewer 
-                                      data={execution.responseBody} 
-                                      rootName="" 
+                                  <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
+                                    <JsonViewer
+                                      data={execution.responseBody}
+                                      rootName=''
                                       defaultExpanded={false}
-                                      className="text-xs"
+                                      className='text-xs'
                                     />
                                   </div>
                                 </div>

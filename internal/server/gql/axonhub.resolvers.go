@@ -346,6 +346,33 @@ func (r *segmentResolver) ParentID(ctx context.Context, obj *biz.Segment) (*obje
 	return &objects.GUID{Type: ent.TypeRequest, ID: *obj.ParentID}, nil
 }
 
+// FirstUserQuery is the resolver for the firstUserQuery field.
+func (r *threadResolver) FirstUserQuery(ctx context.Context, obj *ent.Thread) (*string, error) {
+	trace, err := r.traceService.GetFirstTraceForThread(ctx, obj.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if trace == nil {
+		return nil, nil
+	}
+
+	segment, err := r.traceService.GetRootSegment(ctx, trace.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if segment == nil {
+		return nil, nil
+	}
+
+	if query := segment.FirstUserQuery(); query != "" {
+		return &query, nil
+	}
+
+	return nil, nil
+}
+
 // RootSegment is the resolver for the rootSegment field.
 func (r *traceResolver) RootSegment(ctx context.Context, obj *ent.Trace) (*biz.Segment, error) {
 	return r.traceService.GetRootSegment(ctx, obj.ID)

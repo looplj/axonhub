@@ -40,11 +40,13 @@ import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_auth
 import { Route as AuthenticatedProjectUsersIndexRouteImport } from './routes/_authenticated/project/users/index'
 import { Route as AuthenticatedProjectUsageLogsIndexRouteImport } from './routes/_authenticated/project/usage-logs/index'
 import { Route as AuthenticatedProjectTracesIndexRouteImport } from './routes/_authenticated/project/traces/index'
+import { Route as AuthenticatedProjectThreadsIndexRouteImport } from './routes/_authenticated/project/threads/index'
 import { Route as AuthenticatedProjectRolesIndexRouteImport } from './routes/_authenticated/project/roles/index'
 import { Route as AuthenticatedProjectRequestsIndexRouteImport } from './routes/_authenticated/project/requests/index'
 import { Route as AuthenticatedProjectPlaygroundIndexRouteImport } from './routes/_authenticated/project/playground/index'
 import { Route as AuthenticatedProjectApiKeysIndexRouteImport } from './routes/_authenticated/project/api-keys/index'
 import { Route as AuthenticatedProjectTracesTraceIdRouteImport } from './routes/_authenticated/project/traces/$traceId'
+import { Route as AuthenticatedProjectThreadsThreadIdRouteImport } from './routes/_authenticated/project/threads/$threadId'
 import { Route as AuthenticatedProjectRequestsRequestIdRouteImport } from './routes/_authenticated/project/requests/$requestId'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -217,6 +219,12 @@ const AuthenticatedProjectTracesIndexRoute =
     path: '/project/traces/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedProjectThreadsIndexRoute =
+  AuthenticatedProjectThreadsIndexRouteImport.update({
+    id: '/project/threads/',
+    path: '/project/threads/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProjectRolesIndexRoute =
   AuthenticatedProjectRolesIndexRouteImport.update({
     id: '/project/roles/',
@@ -245,6 +253,12 @@ const AuthenticatedProjectTracesTraceIdRoute =
   AuthenticatedProjectTracesTraceIdRouteImport.update({
     id: '/project/traces/$traceId',
     path: '/project/traces/$traceId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedProjectThreadsThreadIdRoute =
+  AuthenticatedProjectThreadsThreadIdRouteImport.update({
+    id: '/project/threads/$threadId',
+    path: '/project/threads/$threadId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedProjectRequestsRequestIdRoute =
@@ -283,11 +297,13 @@ export interface FileRoutesByFullPath {
   '/system': typeof AuthenticatedSystemIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
   '/project/requests/$requestId': typeof AuthenticatedProjectRequestsRequestIdRoute
+  '/project/threads/$threadId': typeof AuthenticatedProjectThreadsThreadIdRoute
   '/project/traces/$traceId': typeof AuthenticatedProjectTracesTraceIdRoute
   '/project/api-keys': typeof AuthenticatedProjectApiKeysIndexRoute
   '/project/playground': typeof AuthenticatedProjectPlaygroundIndexRoute
   '/project/requests': typeof AuthenticatedProjectRequestsIndexRoute
   '/project/roles': typeof AuthenticatedProjectRolesIndexRoute
+  '/project/threads': typeof AuthenticatedProjectThreadsIndexRoute
   '/project/traces': typeof AuthenticatedProjectTracesIndexRoute
   '/project/usage-logs': typeof AuthenticatedProjectUsageLogsIndexRoute
   '/project/users': typeof AuthenticatedProjectUsersIndexRoute
@@ -320,11 +336,13 @@ export interface FileRoutesByTo {
   '/system': typeof AuthenticatedSystemIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
   '/project/requests/$requestId': typeof AuthenticatedProjectRequestsRequestIdRoute
+  '/project/threads/$threadId': typeof AuthenticatedProjectThreadsThreadIdRoute
   '/project/traces/$traceId': typeof AuthenticatedProjectTracesTraceIdRoute
   '/project/api-keys': typeof AuthenticatedProjectApiKeysIndexRoute
   '/project/playground': typeof AuthenticatedProjectPlaygroundIndexRoute
   '/project/requests': typeof AuthenticatedProjectRequestsIndexRoute
   '/project/roles': typeof AuthenticatedProjectRolesIndexRoute
+  '/project/threads': typeof AuthenticatedProjectThreadsIndexRoute
   '/project/traces': typeof AuthenticatedProjectTracesIndexRoute
   '/project/usage-logs': typeof AuthenticatedProjectUsageLogsIndexRoute
   '/project/users': typeof AuthenticatedProjectUsersIndexRoute
@@ -360,11 +378,13 @@ export interface FileRoutesById {
   '/_authenticated/system/': typeof AuthenticatedSystemIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
   '/_authenticated/project/requests/$requestId': typeof AuthenticatedProjectRequestsRequestIdRoute
+  '/_authenticated/project/threads/$threadId': typeof AuthenticatedProjectThreadsThreadIdRoute
   '/_authenticated/project/traces/$traceId': typeof AuthenticatedProjectTracesTraceIdRoute
   '/_authenticated/project/api-keys/': typeof AuthenticatedProjectApiKeysIndexRoute
   '/_authenticated/project/playground/': typeof AuthenticatedProjectPlaygroundIndexRoute
   '/_authenticated/project/requests/': typeof AuthenticatedProjectRequestsIndexRoute
   '/_authenticated/project/roles/': typeof AuthenticatedProjectRolesIndexRoute
+  '/_authenticated/project/threads/': typeof AuthenticatedProjectThreadsIndexRoute
   '/_authenticated/project/traces/': typeof AuthenticatedProjectTracesIndexRoute
   '/_authenticated/project/usage-logs/': typeof AuthenticatedProjectUsageLogsIndexRoute
   '/_authenticated/project/users/': typeof AuthenticatedProjectUsersIndexRoute
@@ -400,11 +420,13 @@ export interface FileRouteTypes {
     | '/system'
     | '/users'
     | '/project/requests/$requestId'
+    | '/project/threads/$threadId'
     | '/project/traces/$traceId'
     | '/project/api-keys'
     | '/project/playground'
     | '/project/requests'
     | '/project/roles'
+    | '/project/threads'
     | '/project/traces'
     | '/project/usage-logs'
     | '/project/users'
@@ -437,11 +459,13 @@ export interface FileRouteTypes {
     | '/system'
     | '/users'
     | '/project/requests/$requestId'
+    | '/project/threads/$threadId'
     | '/project/traces/$traceId'
     | '/project/api-keys'
     | '/project/playground'
     | '/project/requests'
     | '/project/roles'
+    | '/project/threads'
     | '/project/traces'
     | '/project/usage-logs'
     | '/project/users'
@@ -476,11 +500,13 @@ export interface FileRouteTypes {
     | '/_authenticated/system/'
     | '/_authenticated/users/'
     | '/_authenticated/project/requests/$requestId'
+    | '/_authenticated/project/threads/$threadId'
     | '/_authenticated/project/traces/$traceId'
     | '/_authenticated/project/api-keys/'
     | '/_authenticated/project/playground/'
     | '/_authenticated/project/requests/'
     | '/_authenticated/project/roles/'
+    | '/_authenticated/project/threads/'
     | '/_authenticated/project/traces/'
     | '/_authenticated/project/usage-logs/'
     | '/_authenticated/project/users/'
@@ -718,6 +744,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjectTracesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/project/threads/': {
+      id: '/_authenticated/project/threads/'
+      path: '/project/threads'
+      fullPath: '/project/threads'
+      preLoaderRoute: typeof AuthenticatedProjectThreadsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/project/roles/': {
       id: '/_authenticated/project/roles/'
       path: '/project/roles'
@@ -751,6 +784,13 @@ declare module '@tanstack/react-router' {
       path: '/project/traces/$traceId'
       fullPath: '/project/traces/$traceId'
       preLoaderRoute: typeof AuthenticatedProjectTracesTraceIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/project/threads/$threadId': {
+      id: '/_authenticated/project/threads/$threadId'
+      path: '/project/threads/$threadId'
+      fullPath: '/project/threads/$threadId'
+      preLoaderRoute: typeof AuthenticatedProjectThreadsThreadIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/project/requests/$requestId': {
@@ -801,11 +841,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSystemIndexRoute: typeof AuthenticatedSystemIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
   AuthenticatedProjectRequestsRequestIdRoute: typeof AuthenticatedProjectRequestsRequestIdRoute
+  AuthenticatedProjectThreadsThreadIdRoute: typeof AuthenticatedProjectThreadsThreadIdRoute
   AuthenticatedProjectTracesTraceIdRoute: typeof AuthenticatedProjectTracesTraceIdRoute
   AuthenticatedProjectApiKeysIndexRoute: typeof AuthenticatedProjectApiKeysIndexRoute
   AuthenticatedProjectPlaygroundIndexRoute: typeof AuthenticatedProjectPlaygroundIndexRoute
   AuthenticatedProjectRequestsIndexRoute: typeof AuthenticatedProjectRequestsIndexRoute
   AuthenticatedProjectRolesIndexRoute: typeof AuthenticatedProjectRolesIndexRoute
+  AuthenticatedProjectThreadsIndexRoute: typeof AuthenticatedProjectThreadsIndexRoute
   AuthenticatedProjectTracesIndexRoute: typeof AuthenticatedProjectTracesIndexRoute
   AuthenticatedProjectUsageLogsIndexRoute: typeof AuthenticatedProjectUsageLogsIndexRoute
   AuthenticatedProjectUsersIndexRoute: typeof AuthenticatedProjectUsersIndexRoute
@@ -827,6 +869,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
   AuthenticatedProjectRequestsRequestIdRoute:
     AuthenticatedProjectRequestsRequestIdRoute,
+  AuthenticatedProjectThreadsThreadIdRoute:
+    AuthenticatedProjectThreadsThreadIdRoute,
   AuthenticatedProjectTracesTraceIdRoute:
     AuthenticatedProjectTracesTraceIdRoute,
   AuthenticatedProjectApiKeysIndexRoute: AuthenticatedProjectApiKeysIndexRoute,
@@ -835,6 +879,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProjectRequestsIndexRoute:
     AuthenticatedProjectRequestsIndexRoute,
   AuthenticatedProjectRolesIndexRoute: AuthenticatedProjectRolesIndexRoute,
+  AuthenticatedProjectThreadsIndexRoute: AuthenticatedProjectThreadsIndexRoute,
   AuthenticatedProjectTracesIndexRoute: AuthenticatedProjectTracesIndexRoute,
   AuthenticatedProjectUsageLogsIndexRoute:
     AuthenticatedProjectUsageLogsIndexRoute,

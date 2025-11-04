@@ -82,6 +82,28 @@ func (s *TraceService) GetTraceByID(ctx context.Context, traceID string, project
 	return trace, nil
 }
 
+// GetFirstTraceForThread retrieves the first trace for a thread by thread ID.
+func (s *TraceService) GetFirstTraceForThread(ctx context.Context, threadID int) (*ent.Trace, error) {
+	client := ent.FromContext(ctx)
+	if client == nil {
+		return nil, fmt.Errorf("ent client not found in context")
+	}
+
+	trace, err := client.Trace.Query().
+		Where(trace.ThreadIDEQ(threadID)).
+		Order(ent.Asc(trace.FieldCreatedAt)).
+		First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to get first trace for thread: %w", err)
+	}
+
+	return trace, nil
+}
+
 // Segment represents a segment in a trace.
 // A trace contains multiple segments, and each segment contains multiple spans.
 type Segment struct {
@@ -95,6 +117,28 @@ type Segment struct {
 	StartTime     time.Time        `json:"startTime"`
 	EndTime       time.Time        `json:"endTime"`
 	Duration      int64            `json:"duration"` // Duration in milliseconds
+}
+
+func (s *Segment) FirstUserQuery() string {
+	if s == nil {
+		return ""
+	}
+
+	// Search in request spans first
+	for _, span := range s.RequestSpans {
+		if span.Type == "user_query" && span.Value != nil && span.Value.UserQuery != nil {
+			return span.Value.UserQuery.Text
+		}
+	}
+
+	// If not found in current segment, search in children
+	for _, child := range s.Children {
+		if query := child.FirstUserQuery(); query != "" {
+			return query
+		}
+	}
+
+	return ""
 }
 
 // Span represents a trace span with timing and metadata information.

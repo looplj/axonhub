@@ -1,6 +1,10 @@
 package gql
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/samber/lo"
+)
 
 func TestValidatePaginationArgs(t *testing.T) {
 	cases := []struct {
@@ -15,31 +19,31 @@ func TestValidatePaginationArgs(t *testing.T) {
 		},
 		{
 			name:      "first zero",
-			first:     ptr(0),
+			first:     lo.ToPtr(0),
 			expectErr: "first must be greater than 0",
 		},
 		{
 			name:      "first too large",
-			first:     ptr(1001),
+			first:     lo.ToPtr(1001),
 			expectErr: "first cannot exceed 1000",
 		},
 		{
 			name:      "last zero",
-			last:      ptr(0),
+			last:      lo.ToPtr(0),
 			expectErr: "last must be greater than 0",
 		},
 		{
 			name:      "last too large",
-			last:      ptr(1001),
+			last:      lo.ToPtr(1001),
 			expectErr: "last cannot exceed 1000",
 		},
 		{
 			name:  "valid first",
-			first: ptr(10),
+			first: lo.ToPtr(10),
 		},
 		{
 			name: "valid last",
-			last: ptr(5),
+			last: lo.ToPtr(5),
 		},
 	}
 
@@ -75,77 +79,77 @@ func TestQueryResolversRequirePagination(t *testing.T) {
 		{
 			name: "APIKeys",
 			fn: func() error {
-				_, err := r.APIKeys(nil, nil, nil, nil, nil, nil, nil)
+				_, err := r.APIKeys(t.Context(), nil, nil, nil, nil, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "Channels",
 			fn: func() error {
-				_, err := r.Channels(nil, nil, nil, nil, nil, nil, nil)
+				_, err := r.Channels(t.Context(), nil, nil, nil, nil, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "DataStorages",
 			fn: func() error {
-				_, err := r.DataStorages(nil, nil, nil, nil, nil, nil, nil)
+				_, err := r.DataStorages(t.Context(), nil, nil, nil, nil, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "Projects",
 			fn: func() error {
-				_, err := r.Projects(nil, nil, nil, nil, nil, nil, nil)
+				_, err := r.Projects(t.Context(), nil, nil, nil, nil, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "Requests",
 			fn: func() error {
-				_, err := r.Requests(nil, nil, nil, nil, nil, nil, nil)
+				_, err := r.Requests(t.Context(), nil, nil, nil, nil, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "Roles",
 			fn: func() error {
-				_, err := r.Roles(nil, nil, nil, nil, nil, nil, nil)
+				_, err := r.Roles(t.Context(), nil, nil, nil, nil, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "Systems",
 			fn: func() error {
-				_, err := r.Systems(nil, nil, nil, nil, nil, nil, nil)
+				_, err := r.Systems(t.Context(), nil, nil, nil, nil, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "Threads",
 			fn: func() error {
-				_, err := r.Threads(nil, nil, nil, nil, nil, nil, nil)
+				_, err := r.Threads(t.Context(), nil, nil, nil, nil, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "Traces",
 			fn: func() error {
-				_, err := r.Traces(nil, nil, nil, nil, nil, nil, nil)
+				_, err := r.Traces(t.Context(), nil, nil, nil, nil, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "UsageLogs",
 			fn: func() error {
-				_, err := r.UsageLogs(nil, nil, nil, nil, nil, nil, nil)
+				_, err := r.UsageLogs(t.Context(), nil, nil, nil, nil, nil, nil)
 				return err
 			},
 		},
 		{
 			name: "Users",
 			fn: func() error {
-				_, err := r.Users(nil, nil, nil, nil, nil, nil, nil)
+				_, err := r.Users(t.Context(), nil, nil, nil, nil, nil, nil)
 				return err
 			},
 		},
@@ -163,8 +167,4 @@ func TestQueryResolversRequirePagination(t *testing.T) {
 			}
 		})
 	}
-}
-
-func ptr(v int) *int {
-	return &v
 }

@@ -1,0 +1,203 @@
+import { useMemo } from 'react'
+import { useParams, useNavigate } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+import { format } from 'date-fns'
+import { zhCN, enUS } from 'date-fns/locale'
+import { ArrowLeft, Activity } from 'lucide-react'
+import { Header } from '@/components/layout/header'
+import { Main } from '@/components/layout/main'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Card, CardContent } from '@/components/ui/card'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
+import { useThreadDetail } from '../data/threads'
+import type { Trace } from '@/features/traces/data/schema'
+import { TracesTable } from '@/features/traces/components'
+import { extractNumberID } from '@/lib/utils'
+
+const THREAD_CURSOR_OPTIONS = {
+  startCursorKey: 'threadTracesStart',
+  endCursorKey: 'threadTracesEnd',
+  pageSizeKey: 'threadTracesPageSize',
+  directionKey: 'threadTracesDirection',
+  cursorHistoryKey: 'threadTracesHistory',
+} as const
+
+export default function ThreadDetailPage() {
+  const { threadId } = useParams({ from: '/_authenticated/project/threads/$threadId' as any }) as {
+    threadId: string
+  }
+  const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'zh' ? zhCN : enUS
+
+  const { getSearchParams: getListSearchParams } = usePaginationSearch({ defaultPageSize: 20 })
+  const {
+    pageSize,
+    setCursors,
+    setPageSize,
+    resetCursor,
+    paginationArgs,
+    cursorHistory,
+  } = usePaginationSearch({ defaultPageSize: 20, ...THREAD_CURSOR_OPTIONS })
+
+  const tracesFirst = paginationArgs.first ?? pageSize
+  const tracesAfter = paginationArgs.after
+
+  const {
+    data: thread,
+    isLoading,
+    refetch,
+  } = useThreadDetail({
+    id: threadId,
+    tracesFirst,
+    tracesAfter,
+    traceOrderBy: { field: 'CREATED_AT', direction: 'DESC' },
+  })
+
+  const traces: Trace[] = useMemo(() => {
+    if (!thread?.tracesConnection) return []
+    return thread.tracesConnection.edges.map(({ node }) => node)
+  }, [thread?.tracesConnection])
+
+  const pageInfo = thread?.tracesConnection?.pageInfo
+  const totalCount = thread?.tracesConnection?.totalCount
+  const isFirstPage = !tracesAfter && cursorHistory.length === 0
+
+  const handleNextPage = () => {
+    if (pageInfo?.hasNextPage && pageInfo.endCursor) {
+      setCursors(pageInfo.startCursor ?? undefined, pageInfo.endCursor ?? undefined, 'after')
+    }
+  }
+
+  const handlePreviousPage = () => {
+    if (pageInfo?.hasPreviousPage) {
+      setCursors(pageInfo.startCursor ?? undefined, pageInfo.endCursor ?? undefined, 'before')
+    }
+  }
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize)
+    resetCursor()
+  }
+
+  const handleBack = () => {
+    navigate({ to: '/project/threads' as any, search: getListSearchParams() as any })
+  }
+
+  if (isLoading) {
+    return (
+      <div className='flex h-screen flex-col'>
+        <Header className='border-b'></Header>
+        <Main className='flex-1'>
+          <div className='flex h-full items-center justify-center'>
+            <div className='space-y-4 text-center'>
+              <div className='border-primary mx-auto h-12 w-12 animate-spin rounded-full border-b-2'></div>
+              <p className='text-muted-foreground text-lg'>{t('common.loading')}</p>
+            </div>
+          </div>
+        </Main>
+      </div>
+    )
+  }
+
+  if (!thread) {
+    return (
+      <div className='flex h-screen flex-col'>
+        <Header className='border-b'></Header>
+        <Main className='flex-1'>
+          <div className='flex h-full items-center justify-center'>
+            <div className='space-y-6 text-center'>
+              <div className='space-y-2'>
+                <Activity className='text-muted-foreground mx-auto h-16 w-16' />
+                <p className='text-muted-foreground text-xl font-medium'>{t('threads.detail.notFound')}</p>
+              </div>
+              <Button onClick={handleBack} size='lg'>
+                <ArrowLeft className='mr-2 h-4 w-4' />
+                {t('common.back')}
+              </Button>
+            </div>
+          </div>
+        </Main>
+      </div>
+    )
+  }
+
+  const createdAtLabel = format(thread.createdAt, 'yyyy-MM-dd HH:mm:ss', { locale })
+  const updatedAtLabel = format(thread.updatedAt, 'yyyy-MM-dd HH:mm:ss', { locale })
+
+  return (
+    <div className='flex h-screen flex-col'>
+      <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'>
+        <div className='flex items-center space-x-4'>
+          <Button variant='ghost' size='sm' onClick={handleBack} className='hover:bg-accent'>
+            <ArrowLeft className='mr-2 h-4 w-4' />
+            {t('common.back')}
+          </Button>
+          <Separator orientation='vertical' className='h-6' />
+          <div className='flex items-center space-x-3'>
+            <div className='bg-primary/10 flex h-8 w-8 items-center justify-center rounded-lg'>
+              <Activity className='text-primary h-4 w-4' />
+            </div>
+            <div>
+              <h1 className='text-lg leading-none font-semibold'>
+                {t('threads.detail.title')} #{extractNumberID(thread.id) || thread.threadID}
+              </h1>
+              <div className='mt-1 flex items-center gap-2'>
+                <p className='text-muted-foreground text-sm'>{thread.threadID}</p>
+                <span className='text-muted-foreground text-xs'>•</span>
+                <p className='text-muted-foreground text-xs'>{createdAtLabel}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Header>
+
+      <Main className='flex-1 overflow-hidden'>
+        <div className='flex flex-col gap-4 p-6'>
+          <Card className='border-0 shadow-sm'>
+            <CardContent className='grid gap-4 p-6 md:grid-cols-3'>
+              <div>
+                <p className='text-muted-foreground text-sm'>{t('threads.detail.project')}</p>
+                <p className='font-medium'>{thread.project?.name || t('threads.detail.unknownProject')}</p>
+              </div>
+              <div>
+                <p className='text-muted-foreground text-sm'>{t('threads.detail.createdAt')}</p>
+                <p className='font-medium'>{createdAtLabel}</p>
+              </div>
+              <div>
+                <p className='text-muted-foreground text-sm'>{t('threads.detail.updatedAt')}</p>
+                <p className='font-medium'>{updatedAtLabel}</p>
+              </div>
+              <div>
+                <p className='text-muted-foreground text-sm'>{t('threads.detail.traceCount')}</p>
+                <p className='font-medium'>{thread.tracesSummary?.totalCount ?? 0}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className='flex flex-col gap-4'>
+            <div>
+              <h2 className='text-xl font-semibold'>{t('threads.detail.tracesTitle')}</h2>
+              <p className='text-muted-foreground text-sm'>
+                {t('threads.detail.tracesSubtitle')}
+              </p>
+            </div>
+            <TracesTable
+              data={traces}
+              loading={isLoading}
+              pageInfo={pageInfo}
+              pageSize={pageSize}
+              totalCount={totalCount}
+              onNextPage={handleNextPage}
+              onPreviousPage={handlePreviousPage}
+              onPageSizeChange={handlePageSizeChange}
+              onRefresh={refetch}
+              showRefresh={isFirstPage}
+            />
+          </div>
+        </div>
+      </Main>
+    </div>
+  )
+}
