@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { format } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 import { Activity } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -178,32 +179,54 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
               {selectedTrace.model}
             </Badge>
           </div>
-          <div className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
-            {selectedSpan.startTime && selectedSpan.endTime && (
-              <span>
-                {((new Date(selectedSpan.endTime).getTime() - new Date(selectedSpan.startTime).getTime()) / 1000).toFixed(3)}s
-              </span>
-            )}
-            {selectedTrace.metadata?.inputTokens && (
-              <>
-                <span>•</span>
+          <div className='space-y-1'>
+            <div className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
+              {selectedSpan.startTime && selectedSpan.endTime && (
+                <span>
+                  {((new Date(selectedSpan.endTime).getTime() - new Date(selectedSpan.startTime).getTime()) / 1000).toFixed(3)}s
+                </span>
+              )}
+              {selectedTrace.startTime && selectedTrace.endTime && (
+                <>
+                  <span>•</span>
+                  <span>
+                    {t('traces.detail.segmentTime', {
+                      start: format(new Date(selectedTrace.startTime), 'HH:mm:ss.SSS'),
+                      end: format(new Date(selectedTrace.endTime), 'HH:mm:ss.SSS'),
+                    })}
+                  </span>
+                </>
+              )}
+            </div>
+            <div className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
+              {selectedTrace.metadata?.inputTokens && (
                 <span>
                   {t('traces.detail.tokenSummary.input', {
                     value: selectedTrace.metadata.inputTokens.toLocaleString(),
                   })}
                 </span>
-              </>
-            )}
-            {selectedTrace.metadata?.outputTokens && (
-              <>
-                <span>•</span>
-                <span>
-                  {t('traces.detail.tokenSummary.output', {
-                    value: selectedTrace.metadata.outputTokens.toLocaleString(),
-                  })}
-                </span>
-              </>
-            )}
+              )}
+              {selectedTrace.metadata?.outputTokens && (
+                <>
+                  <span>•</span>
+                  <span>
+                    {t('traces.detail.tokenSummary.output', {
+                      value: selectedTrace.metadata.outputTokens.toLocaleString(),
+                    })}
+                  </span>
+                </>
+              )}
+              {selectedTrace.metadata?.cachedTokens && selectedTrace.metadata.cachedTokens > 0 && (
+                <>
+                  <span>•</span>
+                  <span>
+                    {t('traces.detail.tokenSummary.cached', {
+                      value: selectedTrace.metadata.cachedTokens.toLocaleString(),
+                    })}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

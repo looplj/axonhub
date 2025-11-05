@@ -6,6 +6,7 @@ import { zhCN, enUS } from 'date-fns/locale'
 import { Eye, MoreHorizontal, FileText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { extractNumberID } from '@/lib/utils'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -14,7 +15,6 @@ import { useRequestsContext } from '../context'
 import { Request } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { getStatusColor } from './help'
-import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 // Removed unused statusColors - using getStatusColor helper instead
 
@@ -152,9 +152,9 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.details')} />,
       cell: ({ row }) => {
         const handleViewDetails = () => {
-          navigateWithSearch({ 
-            to: '/project/requests/$requestId', 
-            params: { requestId: row.original.id } 
+          navigateWithSearch({
+            to: '/project/requests/$requestId',
+            params: { requestId: row.original.id },
           })
         }
 
@@ -174,51 +174,6 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>
       },
     },
-    {
-      id: 'actions',
-      cell: ({ row }) => {
-        const request = row.original
-        const { setCurrentRequest, setCurrentExecution, setExecutionDetailOpen, setExecutionsDrawerOpen } =
-          useRequestsContext()
-
-        const handleViewDetails = () => {
-          setCurrentRequest(request)
-
-          // 获取 executions
-          const executions = request.executions?.edges?.map((edge) => edge.node) || []
-
-          if (executions.length === 1) {
-            // 如果只有一个 execution，直接打开详情弹窗
-            setCurrentExecution(executions[0])
-            setExecutionDetailOpen(true)
-          } else if (executions.length > 1) {
-            // 如果有多个 executions，打开抽屉
-            setExecutionsDrawerOpen(true)
-          } else {
-            // 如果没有 executions，可以显示一个提示或者什么都不做
-            console.log('No executions found for this request')
-          }
-        }
-
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant='ghost' className='h-8 w-8 p-0'>
-                <span className='sr-only'>{t('requests.actions.openMenu')}</span>
-                <MoreHorizontal className='h-4 w-4' />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align='end'>
-              <DropdownMenuItem onClick={handleViewDetails}>
-                <Eye className='mr-2 h-4 w-4' />
-                {t('requests.actions.viewDetails')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )
-      },
-    },
   ]
-
   return columns
 }

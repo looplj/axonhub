@@ -1211,6 +1211,7 @@
       "traceId": "Trace ID",
       "project": "Project",
       "thread": "Thread",
+      "userQuery": "User Query",
       "requestCount": "Request Count",
       "details": "Details",
       "createdAt": "Created At",
@@ -1219,7 +1220,7 @@
       "selectAll": "Select all",
       "selectRow": "Select row",
       "unknown": "Unknown",
-      "noThread": "No Thread"
+      "noThread": "-"
     },
     "actions": {
       "viewDetails": "View Details",
@@ -1275,8 +1276,10 @@
       "selectSpanHint": "Select a span from the timeline to inspect its detail.",
       "tokenSummary": {
         "input": "Input Tokens: {{value}}",
-        "output": "Output Tokens: {{value}}"
-      }
+        "output": "Output Tokens: {{value}}",
+        "cached": "Cached Tokens: {{value}}"
+      },
+      "segmentTime": "Segment: {{start}} - {{end}}"
     },
     "timeline": {
       "title": "Timeline",

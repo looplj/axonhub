@@ -225,10 +225,8 @@ function SegmentRow({
     e.stopPropagation()
     if (segment.source.type === 'segment') {
       const requestId = segment.source.trace.id
-      navigate({
-        to: '/project/requests/$requestId',
-        params: { requestId: buildGUID('Request', requestId) },
-      })
+      const url = `/project/requests/${encodeURIComponent(buildGUID('Request', requestId))}`
+      window.open(url, '_blank', 'noopener,noreferrer')
     }
   }
 
@@ -288,9 +286,8 @@ function SegmentRow({
                   })}
                 </span>
               )}
-              <Button variant='ghost' size='sm' className='h-6 px-2 text-xs' onClick={handleViewRequest}>
-                <ExternalLink className='mr-1 h-3 w-3' />
-                {t('traces.timeline.viewRequest')}
+              <Button variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={handleViewRequest}>
+                <ExternalLink className='h-3 w-3' />
               </Button>
             </div>
           </div>
@@ -585,18 +582,8 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
             <div className='text-muted-foreground text-sm'>
               {t('traces.timeline.itemsCount', { count: totalItems })}
             </div>
-            <Button variant='outline' size='sm' onClick={handleToggleAll} className='h-8'>
-              {allExpanded ? (
-                <>
-                  <ChevronsDownUp className='mr-2 h-4 w-4' />
-                  {t('traces.timeline.collapseAll')}
-                </>
-              ) : (
-                <>
-                  <ChevronsUpDown className='mr-2 h-4 w-4' />
-                  {t('traces.timeline.expandAll')}
-                </>
-              )}
+            <Button variant='outline' size='sm' onClick={handleToggleAll} className='h-8 w-8 p-0' title={allExpanded ? t('traces.timeline.collapseAll') : t('traces.timeline.expandAll')}>
+              {allExpanded ? <ChevronsDownUp className='h-4 w-4' /> : <ChevronsUpDown className='h-4 w-4' />}
             </Button>
           </div>
         </div>

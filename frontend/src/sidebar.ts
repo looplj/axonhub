@@ -1,5 +1,4 @@
 import {
-  IconBrowserCheck,
   IconChecklist,
   IconLayoutDashboard,
   IconPackages,
@@ -9,13 +8,12 @@ import {
   IconShield,
   IconSettings,
   IconKey,
-  IconSausage,
   IconActivity,
   IconActivityHeartbeat,
   IconDatabase,
-  IconTrack,
-  IconTractor,
-  IconNeedleThread,
+  IconAB2,
+  IconBaselineDensityMedium,
+  IconAi,
 } from '@tabler/icons-react'
 import { Command } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -23,7 +21,6 @@ import { useAuthStore } from '@/stores/authStore'
 import { useRoutePermissions } from '@/hooks/useRoutePermissions'
 import { useMe } from '@/features/auth/data/auth'
 import { type SidebarData, type NavGroup, type NavLink } from './components/layout/types'
-import { ThreadIcon, TraceIcon } from './icons'
 
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
@@ -81,7 +78,7 @@ export function useSidebarData(): SidebarData {
         {
           title: t('sidebar.items.channels'),
           url: '/channels',
-          icon: IconChecklist,
+          icon: IconAi,
         } as NavLink,
         {
           title: t('sidebar.items.dataStorages'),
@@ -115,19 +112,19 @@ export function useSidebarData(): SidebarData {
       title: t('sidebar.groups.project'),
       items: [
         {
-          title: t('sidebar.items.traces'),
-          url: '/project/traces',
-          icon: TraceIcon,
-        } as NavLink,
-        {
           title: t('sidebar.items.requests'),
           url: '/project/requests',
           icon: IconActivity,
         } as NavLink,
         {
+          title: t('sidebar.items.traces'),
+          url: '/project/traces',
+          icon: IconAB2,
+        } as NavLink,
+        {
           title: t('sidebar.items.threads'),
           url: '/project/threads',
-          icon: ThreadIcon,
+          icon: IconBaselineDensityMedium,
         } as NavLink,
         {
           title: t('sidebar.items.usageLogs'),

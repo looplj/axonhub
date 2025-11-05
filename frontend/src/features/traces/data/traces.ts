@@ -24,12 +24,9 @@ function buildTracesQuery() {
           node {
             id
             traceID
+            firstUserQuery
             createdAt
             updatedAt
-            project {
-              id
-              name
-            }
             thread {
               id
               threadID
