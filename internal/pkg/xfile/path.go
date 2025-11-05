@@ -3,6 +3,7 @@ package xfile
 import (
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 func CurDir() string {
@@ -21,4 +22,9 @@ func CallerDir() string {
 	}
 
 	return filepath.Dir(file)
+}
+
+func ProjectDir() string {
+	dir := CurDir()
+	return strings.TrimSuffix(dir, "/internal/pkg/xfile")
 }

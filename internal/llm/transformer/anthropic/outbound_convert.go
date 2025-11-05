@@ -207,25 +207,47 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 		}
 
 		if len(msg.ToolCalls) > 0 {
-			var contextBlock *MessageContentBlock
+			var preBlocks []MessageContentBlock
+
+			if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
+				preBlocks = append(preBlocks, MessageContentBlock{
+					Type:     "thinking",
+					Thinking: *msg.ReasoningContent,
+				})
+			}
+
 			if msg.Content.Content != nil && *msg.Content.Content != "" {
-				contextBlock = &MessageContentBlock{
+				preBlocks = append(preBlocks, MessageContentBlock{
 					Type:         "text",
 					Text:         *msg.Content.Content,
 					CacheControl: convertCacheControlToAnthropic(msg.CacheControl),
-				}
+				})
 			}
 
 			content, existMultipleParts := convertMultiplePartContent(msg)
 
 			switch {
-			case existMultipleParts && contextBlock != nil:
-				content.MultipleContent = append([]MessageContentBlock{*contextBlock}, content.MultipleContent...)
+			case existMultipleParts && len(preBlocks) > 0:
+				content.MultipleContent = append(preBlocks, content.MultipleContent...)
 			case existMultipleParts:
-				// Do nothing, will assign it later.
-			case contextBlock != nil:
-				content = MessageContent{
-					Content: &contextBlock.Text,
+				// Do nothing, reuse the content directly.
+			case len(preBlocks) > 0:
+				// If only has one block, we need to use single Content format.
+				if len(preBlocks) == 1 {
+					if preBlocks[0].Type == "text" {
+						content = MessageContent{
+							Content: &preBlocks[0].Text,
+						}
+					} else {
+						// This should not happen, but just in case.
+						content = MessageContent{
+							Content: &preBlocks[0].Thinking,
+						}
+					}
+				} else {
+					content = MessageContent{
+						MultipleContent: preBlocks,
+					}
 				}
 			default:
 				continue
@@ -235,16 +257,28 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 			messages = append(messages, anthropicMsg)
 		} else {
 			if msg.Content.Content != nil {
-				// If message has cache control, we need to use MultipleContent format
-				if msg.CacheControl != nil {
+				// If message has cache control or reasoning content, we need to use MultipleContent format
+				if msg.CacheControl != nil || msg.ReasoningContent != nil {
+					contentBlocks := make([]MessageContentBlock, 0, 2)
+
+					// Add reasoning content (thinking) first if present
+					// This matches Anthropic's expected format where thinking comes before text
+					if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
+						contentBlocks = append(contentBlocks, MessageContentBlock{
+							Type:     "thinking",
+							Thinking: *msg.ReasoningContent,
+						})
+					}
+
+					// Add text content
+					contentBlocks = append(contentBlocks, MessageContentBlock{
+						Type:         "text",
+						Text:         *msg.Content.Content,
+						CacheControl: convertCacheControlToAnthropic(msg.CacheControl),
+					})
+
 					anthropicMsg.Content = MessageContent{
-						MultipleContent: []MessageContentBlock{
-							{
-								Type:         "text",
-								Text:         *msg.Content.Content,
-								CacheControl: convertCacheControlToAnthropic(msg.CacheControl),
-							},
-						},
+						MultipleContent: contentBlocks,
 					}
 				} else {
 					anthropicMsg.Content = MessageContent{
@@ -306,6 +340,8 @@ func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 
 func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 	blocks := make([]MessageContentBlock, 0, len(msg.Content.MultipleContent))
+
+	// Process content parts in order to preserve original sequence
 	for _, part := range msg.Content.MultipleContent {
 		switch part.Type {
 		case "text":

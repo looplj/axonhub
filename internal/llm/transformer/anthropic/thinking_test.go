@@ -6,9 +6,39 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
+
+func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
+	const (
+		thinking = "Chain-of-thought reasoning"
+		answer   = "Here is the final answer."
+	)
+
+	anthropicResp := &Message{
+		ID:   "msg_thinking",
+		Type: "message",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{Type: "thinking", Thinking: thinking, Signature: "sig"},
+			{Type: "text", Text: answer},
+		},
+		Model: "claude-3-sonnet-20240229",
+	}
+
+	result := convertToChatCompletionResponse(anthropicResp, PlatformDirect)
+
+	require.NotNil(t, result)
+	require.Len(t, result.Choices, 1)
+	require.NotNil(t, result.Choices[0].Message.ReasoningContent)
+	require.Equal(t, thinking, *result.Choices[0].Message.ReasoningContent)
+	require.NotNil(t, result.Choices[0].Message.Content.Content)
+	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
+	require.Empty(t, result.Choices[0].Message.Content.MultipleContent)
+}
 
 func TestReasoningEffortToThinking(t *testing.T) {
 	tests := []struct {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/llm"
@@ -39,34 +40,6 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 	require.Equal(t, int64(10), result.Usage.PromptTokens)
 	require.Equal(t, int64(20), result.Usage.CompletionTokens)
 	require.Equal(t, int64(30), result.Usage.TotalTokens)
-}
-
-func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
-	const (
-		thinking = "Chain-of-thought reasoning"
-		answer   = "Here is the final answer."
-	)
-
-	anthropicResp := &Message{
-		ID:   "msg_thinking",
-		Type: "message",
-		Role: "assistant",
-		Content: []MessageContentBlock{
-			{Type: "thinking", Thinking: thinking, Signature: "sig"},
-			{Type: "text", Text: answer},
-		},
-		Model: "claude-3-sonnet-20240229",
-	}
-
-	result := convertToChatCompletionResponse(anthropicResp, PlatformDirect)
-
-	require.NotNil(t, result)
-	require.Len(t, result.Choices, 1)
-	require.NotNil(t, result.Choices[0].Message.ReasoningContent)
-	require.Equal(t, thinking, *result.Choices[0].Message.ReasoningContent)
-	require.NotNil(t, result.Choices[0].Message.Content.Content)
-	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
-	require.Empty(t, result.Choices[0].Message.Content.MultipleContent)
 }
 
 func TestOutboundTransformer_ToolArgsRepair(t *testing.T) {
@@ -279,7 +252,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 					{
 						Type:  "tool_use",
 						ID:    "tool_123",
-						Name:  func() *string { s := "calculator"; return &s }(),
+						Name:  lo.ToPtr("calculator"),
 						Input: json.RawMessage(`{"expression": "2+2"}`),
 					},
 				},
@@ -329,7 +302,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 						Role:       "assistant",
 						Content:    []MessageContentBlock{{Type: "text", Text: "Test"}},
 						Model:      "claude-3-sonnet-20240229",
-						StopReason: func() *string { s := anthropicReason; return &s }(),
+						StopReason: lo.ToPtr(anthropicReason),
 					}
 
 					result := convertToChatCompletionResponse(msg, PlatformDirect)
@@ -466,12 +439,12 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 			name: "simple request",
 			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
-				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				MaxTokens: lo.ToPtr(int64(1024)),
 				Messages: []llm.Message{
 					{
 						Role: "user",
 						Content: llm.MessageContent{
-							Content: func() *string { s := "Hello!"; return &s }(),
+							Content: lo.ToPtr("Hello!"),
 						},
 					},
 				},
@@ -483,7 +456,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 					{
 						Role: "user",
 						Content: MessageContent{
-							Content: func() *string { s := "Hello!"; return &s }(),
+							Content: lo.ToPtr("Hello!"),
 						},
 					},
 				},
@@ -493,18 +466,18 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 			name: "request with system message",
 			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
-				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				MaxTokens: lo.ToPtr(int64(1024)),
 				Messages: []llm.Message{
 					{
 						Role: "system",
 						Content: llm.MessageContent{
-							Content: func() *string { s := "You are helpful."; return &s }(),
+							Content: lo.ToPtr("You are helpful."),
 						},
 					},
 					{
 						Role: "user",
 						Content: llm.MessageContent{
-							Content: func() *string { s := "Hello!"; return &s }(),
+							Content: lo.ToPtr("Hello!"),
 						},
 					},
 				},
@@ -513,13 +486,13 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: 1024,
 				System: &SystemPrompt{
-					Prompt: func() *string { s := "You are helpful."; return &s }(),
+					Prompt: lo.ToPtr("You are helpful."),
 				},
 				Messages: []MessageParam{
 					{
 						Role: "user",
 						Content: MessageContent{
-							Content: func() *string { s := "Hello!"; return &s }(),
+							Content: lo.ToPtr("Hello!"),
 						},
 					},
 				},
@@ -529,7 +502,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 			name: "request with image content",
 			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
-				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				MaxTokens: lo.ToPtr(int64(1024)),
 				Messages: []llm.Message{
 					{
 						Role: "user",
@@ -537,7 +510,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 							MultipleContent: []llm.MessageContentPart{
 								{
 									Type: "text",
-									Text: func() *string { s := "What's in this image?"; return &s }(),
+									Text: lo.ToPtr("What's in this image?"),
 								},
 								{
 									Type: "image_url",
@@ -580,7 +553,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 			name: "request with multiple images and text",
 			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
-				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				MaxTokens: lo.ToPtr(int64(1024)),
 				Messages: []llm.Message{
 					{
 						Role: "user",
@@ -588,7 +561,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 							MultipleContent: []llm.MessageContentPart{
 								{
 									Type: "text",
-									Text: func() *string { s := "Compare these two images:"; return &s }(),
+									Text: lo.ToPtr("Compare these two images:"),
 								},
 								{
 									Type: "image_url",
@@ -598,7 +571,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 								},
 								{
 									Type: "text",
-									Text: func() *string { s := "and"; return &s }(),
+									Text: lo.ToPtr("and"),
 								},
 								{
 									Type: "image_url",
@@ -608,7 +581,7 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 								},
 								{
 									Type: "text",
-									Text: func() *string { s := "What are the differences?"; return &s }(),
+									Text: lo.ToPtr("What are the differences?"),
 								},
 							},
 						},
@@ -650,6 +623,173 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 								{
 									Type: "text",
 									Text: "What are the differences?",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "request with reasoning content (simple content)",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(1024)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("What is 2+2?"),
+						},
+					},
+					{
+						Role: "assistant",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("The answer is 4."),
+						},
+						ReasoningContent: lo.ToPtr("Let me calculate: 2 + 2 = 4"),
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				Messages: []MessageParam{
+					{
+						Role: "user",
+						Content: MessageContent{
+							Content: lo.ToPtr("What is 2+2?"),
+						},
+					},
+					{
+						Role: "assistant",
+						Content: MessageContent{
+							MultipleContent: []MessageContentBlock{
+								{
+									Type:     "thinking",
+									Thinking: "Let me calculate: 2 + 2 = 4",
+								},
+								{
+									Type: "text",
+									Text: "The answer is 4.",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "request with reasoning content (multiple content)",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(1024)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Solve this problem"),
+						},
+					},
+					{
+						Role: "assistant",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{
+									Type: "text",
+									Text: lo.ToPtr("Here is the solution."),
+								},
+							},
+						},
+						ReasoningContent: lo.ToPtr("First, I need to analyze the problem..."),
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				Messages: []MessageParam{
+					{
+						Role: "user",
+						Content: MessageContent{
+							Content: lo.ToPtr("Solve this problem"),
+						},
+					},
+					{
+						Role: "assistant",
+						Content: MessageContent{
+							MultipleContent: []MessageContentBlock{
+								{
+									Type:     "thinking",
+									Thinking: "First, I need to analyze the problem...",
+								},
+								{
+									Type: "text",
+									Text: "Here is the solution.",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "request with reasoning content and tool calls",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(1024)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Calculate 5 * 10"),
+						},
+					},
+					{
+						Role: "assistant",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("I'll use the calculator."),
+						},
+						ReasoningContent: lo.ToPtr("I need to use the calculator tool for this."),
+						ToolCalls: []llm.ToolCall{
+							{
+								ID:   "call_123",
+								Type: "function",
+								Function: llm.FunctionCall{
+									Name:      "calculator",
+									Arguments: `{"expression":"5*10"}`,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				Messages: []MessageParam{
+					{
+						Role: "user",
+						Content: MessageContent{
+							Content: lo.ToPtr("Calculate 5 * 10"),
+						},
+					},
+					{
+						Role: "assistant",
+						Content: MessageContent{
+							MultipleContent: []MessageContentBlock{
+								{
+									Type: "text",
+									Text: "I'll use the calculator.",
+								},
+								{
+									Type:     "thinking",
+									Thinking: "I need to use the calculator tool for this.",
+								},
+								{
+									Type: "tool_use",
+									ID:   "call_123",
+									Name: lo.ToPtr("calculator"),
 								},
 							},
 						},
