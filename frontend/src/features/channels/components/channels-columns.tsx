@@ -351,10 +351,17 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     },
     {
       id: 'actions',
+      header: () => null,
       cell: DataTableRowActions,
       meta: {
-        className: 'w-8',
+        // Fix the sticky name column caused layout issues.
+        className: cn(
+          'sticky right-0 z-10 w-[56px] min-w-[56px] pr-3 pl-0',
+          'bg-background transition-colors duration-200 group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted'
+        ),
       },
+      enableSorting: false,
+      enableHiding: false,
     },
   ]
 }

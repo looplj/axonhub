@@ -1241,7 +1241,8 @@
       "traceId": "追踪ID",
       "project": "项目",
       "thread": "线程",
-      "requestCount": "请求数量",
+      "userQuery": "用户提问",
+      "requestCount": "请求次数",
       "details": "详情",
       "createdAt": "创建时间",
       "updatedAt": "更新时间",
@@ -1249,7 +1250,7 @@
       "selectAll": "选择全部",
       "selectRow": "选择行",
       "unknown": "未知",
-      "noThread": "无线程"
+      "noThread": "-"
     },
     "actions": {
       "viewDetails": "查看详情",
@@ -1305,8 +1306,10 @@
       "selectSpanHint": "请从时间线选择片段查看详情。",
       "tokenSummary": {
         "input": "输入令牌：{{value}}",
-        "output": "输出令牌：{{value}}"
-      }
+        "output": "输出令牌：{{value}}",
+        "cached": "缓存令牌：{{value}}"
+      },
+      "segmentTime": "片段：{{start}} - {{end}}"
     },
     "timeline": {
       "title": "时间线",

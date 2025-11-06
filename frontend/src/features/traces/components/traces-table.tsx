@@ -92,7 +92,7 @@ export function TracesTable({
       <DataTableToolbar table={table} onRefresh={onRefresh} showRefresh={showRefresh} />
       <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table>
-          <TableHeader>
+          <TableHeader className='sticky top-0 z-10 bg-background'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row'>
                 {headerGroup.headers.map((header) => {

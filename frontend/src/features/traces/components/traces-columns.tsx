@@ -1,24 +1,21 @@
 'use client'
 
 import { format } from 'date-fns'
-import { useNavigate } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { zhCN, enUS } from 'date-fns/locale'
-import { Eye, MoreHorizontal, FileText } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { extractNumberID } from '@/lib/utils'
+import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Trace } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
-import { usePaginationSearch } from '@/hooks/use-pagination-search'
 
 export function useTracesColumns(): ColumnDef<Trace>[] {
   const { t, i18n } = useTranslation()
   const locale = i18n.language === 'zh' ? zhCN : enUS
-    const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 })
-  
+  const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 })
 
   // Define all columns
   const columns: ColumnDef<Trace>[] = [
@@ -28,6 +25,29 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
       cell: ({ row }) => <div className='font-mono text-xs'>#{extractNumberID(row.getValue('id'))}</div>,
       enableSorting: true,
       enableHiding: false,
+    },
+
+    // {
+    //   id: 'project',
+    //   header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.project')} />,
+    //   enableSorting: false,
+    //   cell: ({ row }) => {
+    //     const project = row.original.project
+    //     return <div className='font-mono text-xs'>{project?.name || t('traces.columns.unknown')}</div>
+    //   },
+    // },
+    {
+      accessorKey: 'firstUserQuery',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.userQuery')} />,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const query = row.getValue('firstUserQuery') as string | null | undefined
+        return (
+          <div className='max-w-64 truncate text-xs' title={query || ''}>
+            {query || '-'}
+          </div>
+        )
+      },
     },
     {
       accessorKey: 'traceID',
@@ -42,15 +62,6 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
         )
       },
     },
-    // {
-    //   id: 'project',
-    //   header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.project')} />,
-    //   enableSorting: false,
-    //   cell: ({ row }) => {
-    //     const project = row.original.project
-    //     return <div className='font-mono text-xs'>{project?.name || t('traces.columns.unknown')}</div>
-    //   },
-    // },
     {
       id: 'thread',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.thread')} />,
@@ -60,10 +71,22 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
         if (!thread) {
           return <div className='text-muted-foreground font-mono text-xs'>{t('traces.columns.noThread')}</div>
         }
+
+        const handleNavigate = () => {
+          navigateWithSearch({
+            to: '/project/threads/$threadId',
+            params: { threadId: thread.id },
+          })
+        }
         return (
-          <div className='max-w-64 truncate font-mono text-xs' title={thread.threadID || thread.id}>
-            {thread.threadID || thread.id}
-          </div>
+          <Button
+            variant='link'
+            size='sm'
+            onClick={handleNavigate}
+            className='hover:text-primary h-auto p-0 font-mono text-xs'
+          >
+            #{extractNumberID(thread.id)}
+          </Button>
         )
       },
     },
