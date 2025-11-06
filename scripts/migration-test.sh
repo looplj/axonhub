@@ -40,6 +40,13 @@ POSTGRES_DATABASE="axonhub_e2e"
 POSTGRES_USER="axonhub"
 POSTGRES_PASSWORD="axonhub_test"
 
+# System initialization defaults (override via AXONHUB_INIT_* env vars)
+INIT_OWNER_EMAIL="${AXONHUB_INIT_OWNER_EMAIL:-owner@example.com}"
+INIT_OWNER_PASSWORD="${AXONHUB_INIT_OWNER_PASSWORD:-InitPassword123!}"
+INIT_OWNER_FIRST_NAME="${AXONHUB_INIT_OWNER_FIRST_NAME:-System}"
+INIT_OWNER_LAST_NAME="${AXONHUB_INIT_OWNER_LAST_NAME:-Owner}"
+INIT_BRAND_NAME="${AXONHUB_INIT_BRAND_NAME:-AxonHub Migration Test}"
+
 # GitHub repository
 REPO="looplj/axonhub"
 GITHUB_API="https://api.github.com/repos/${REPO}"
@@ -79,6 +86,8 @@ Options:
   --db-type TYPE   Database type: sqlite, mysql, postgres (default: sqlite)
   --skip-download  Skip downloading binary if cached version exists
   --skip-e2e       Skip running e2e tests after migration
+  --skip-init-system
+                   Skip system initialization step (reuse existing database state)
   --keep-artifacts Keep work directory after test completion
   --keep-db        Keep database container after test completion
   -h, --help       Show this help and exit
@@ -441,19 +450,24 @@ initialize_database() {
     local version=$2
     
     print_info "Initializing database with version ${version}..." >&2
+    print_info "Binary path: $binary_path" >&2
+    print_info "Database type: $DB_TYPE" >&2
     
     # Remove old SQLite database file if using SQLite
     if [[ "$DB_TYPE" == "sqlite" ]]; then
+        print_info "Removing old SQLite database file: $DB_FILE" >&2
         rm -f "$DB_FILE"
     fi
     
     local db_dsn
     db_dsn=$(get_db_dsn)
+    print_info "Database DSN: $db_dsn" >&2
     
     local db_dialect
     db_dialect=$(get_db_dialect)
     
     # Start server to initialize database
+    print_info "Starting server for initialization (PID will be captured)..." >&2
     AXONHUB_SERVER_PORT=$E2E_PORT \
     AXONHUB_DB_DIALECT="$db_dialect" \
     AXONHUB_DB_DSN="$db_dsn" \
@@ -461,26 +475,42 @@ initialize_database() {
     AXONHUB_LOG_FILE_PATH="$LOG_FILE" \
     AXONHUB_LOG_LEVEL="info" \
     "$binary_path" > /dev/null 2>&1 &
-    
+
     local pid=$!
-    
-    # Wait for server to be ready
-    print_info "Waiting for server to initialize..." >&2
-    for i in {1..30}; do
-        if curl -s "http://localhost:$E2E_PORT/health" > /dev/null 2>&1 || \
-           curl -s "http://localhost:$E2E_PORT/" > /dev/null 2>&1; then
-            print_success "Database initialized with version ${version}" >&2
-            kill "$pid" 2>/dev/null || true
-            wait "$pid" 2>/dev/null || true
-            return 0
+    print_info "Server started with PID: $pid" >&2
+
+    local init_status=0
+
+    if ! wait_for_server_ready "$E2E_PORT" 60; then
+        print_error "Server failed to become ready" >&2
+        kill "$pid" 2>/dev/null || true
+        wait "$pid" 2>/dev/null || true
+        print_error "Failed to start server for database initialization" >&2
+        exit 1
+    fi
+
+    if [[ "$SKIP_INIT_SYSTEM" == "true" ]]; then
+        print_warning "Skipping system initialization (--skip-init-system specified)" >&2
+    else
+        if ! initialize_system_via_api; then
+            init_status=1
         fi
-        sleep 1
-    done
-    
+    fi
+
+    print_info "Stopping server (PID: $pid)..." >&2
     kill "$pid" 2>/dev/null || true
     wait "$pid" 2>/dev/null || true
-    print_error "Failed to initialize database" >&2
-    exit 1
+
+    if [[ $init_status -ne 0 ]]; then
+        print_error "Database initialization failed" >&2
+        exit 1
+    fi
+
+    if [[ "$SKIP_INIT_SYSTEM" == "true" ]]; then
+        print_success "Database prepared with existing state (initialization skipped)" >&2
+    else
+        print_success "Database initialized with version ${version}" >&2
+    fi
 }
 
 run_migration() {
@@ -488,14 +518,18 @@ run_migration() {
     local version=$2
     
     print_info "Running migration with version ${version}..." >&2
+    print_info "Binary path: $binary_path" >&2
+    print_info "Database type: $DB_TYPE" >&2
     
     local db_dsn
     db_dsn=$(get_db_dsn)
+    print_info "Database DSN: $db_dsn" >&2
     
     local db_dialect
     db_dialect=$(get_db_dialect)
     
     # Run migration by starting and stopping the server
+    print_info "Starting server for migration (PID will be captured)..." >&2
     AXONHUB_SERVER_PORT=$E2E_PORT \
     AXONHUB_DB_DIALECT="$db_dialect" \
     AXONHUB_DB_DSN="$db_dsn" \
@@ -505,24 +539,131 @@ run_migration() {
     "$binary_path" > /dev/null 2>&1 &
     
     local pid=$!
+    print_info "Server started with PID: $pid" >&2
     
     # Wait for server to be ready
     print_info "Waiting for migration to complete..." >&2
-    for i in {1..30}; do
-        if curl -s "http://localhost:$E2E_PORT/health" > /dev/null 2>&1 || \
-           curl -s "http://localhost:$E2E_PORT/" > /dev/null 2>&1; then
-            print_success "Migration completed successfully" >&2
-            kill "$pid" 2>/dev/null || true
-            wait "$pid" 2>/dev/null || true
-            return 0
+    if wait_for_server_ready "$E2E_PORT" 60; then
+        # Check if the server process is still running after becoming ready
+        if ! kill -0 "$pid" 2>/dev/null; then
+            # Server process has already exited, check its exit status
+            local exit_status=0
+            wait "$pid" 2>/dev/null || exit_status=$?
+            print_error "Server process exited unexpectedly with status: $exit_status" >&2
+            print_error "Check log file for details: $LOG_FILE" >&2
+            exit 1
         fi
-        sleep 1
-    done
-    
+        
+        # Give the server a bit more time to ensure migration completes and server stays stable
+        print_info "Server is ready, verifying stability..." >&2
+        sleep 3
+        
+        # Check again if server is still running
+        if ! kill -0 "$pid" 2>/dev/null; then
+            local exit_status=0
+            wait "$pid" 2>/dev/null || exit_status=$?
+            print_error "Server process crashed after startup with status: $exit_status" >&2
+            print_error "Check log file for details: $LOG_FILE" >&2
+            exit 1
+        fi
+        
+        print_success "Migration completed successfully" >&2
+        print_info "Stopping server (PID: $pid)..." >&2
+        kill "$pid" 2>/dev/null || true
+        wait "$pid" 2>/dev/null || true
+        return 0
+    fi
+
+    print_error "Server failed to become ready, stopping..." >&2
     kill "$pid" 2>/dev/null || true
     wait "$pid" 2>/dev/null || true
     print_error "Migration failed or timed out" >&2
     exit 1
+}
+
+wait_for_server_ready() {
+    local port=$1
+    local max_attempts=${2:-60}
+
+    print_info "Waiting for server to be ready on port ${port}..." >&2
+
+    for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+        if curl -s "http://localhost:${port}/health" > /dev/null 2>&1 || \
+           curl -s "http://localhost:${port}/" > /dev/null 2>&1; then
+            return 0
+        fi
+
+        sleep 1
+    done
+
+    return 1
+}
+
+initialize_system_via_api() {
+    local url="http://localhost:${E2E_PORT}/admin/system/initialize"
+    local response_file="${WORK_DIR}/initialize-response.json"
+    local payload
+
+    payload=$(cat <<EOF
+{
+  "ownerEmail": "${INIT_OWNER_EMAIL}",
+  "ownerPassword": "${INIT_OWNER_PASSWORD}",
+  "ownerFirstName": "${INIT_OWNER_FIRST_NAME}",
+  "ownerLastName": "${INIT_OWNER_LAST_NAME}",
+  "brandName": "${INIT_BRAND_NAME}"
+}
+EOF
+    )
+
+    print_info "Initializing system via API (${url})..." >&2
+
+    for attempt in {1..5}; do
+        local tmp_file="${response_file}.tmp"
+        local status
+
+        status=$(curl -sS -o "$tmp_file" -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d "$payload" \
+            "$url" || echo "000")
+        status=$(echo "$status" | tr -d '\n\r')
+
+        if [[ -f "$tmp_file" ]]; then
+            mv "$tmp_file" "$response_file"
+        fi
+
+        case "$status" in
+            200)
+                print_success "System initialized successfully via API" >&2
+                return 0
+                ;;
+            400)
+                if [[ -f "$response_file" ]] && grep -qi "already initialized" "$response_file"; then
+                    print_warning "System initialization API returned already initialized" >&2
+                    return 0
+                fi
+                ;;
+        esac
+
+        if [[ "$status" == "000" ]]; then
+            print_warning "Initialization attempt ${attempt} failed: unable to reach server" >&2
+        else
+            local body=""
+            if [[ -f "$response_file" ]]; then
+                body=$(cat "$response_file")
+            fi
+            print_warning "Initialization attempt ${attempt} failed (status: ${status}): ${body}" >&2
+        fi
+
+        sleep 2
+    done
+
+    print_error "System initialization via API failed after multiple attempts" >&2
+    if [[ -f "$response_file" ]]; then
+        print_error "Last response: $(cat "$response_file")" >&2
+    fi
+
+    return 1
 }
 
 generate_migration_plan() {
@@ -605,14 +746,23 @@ execute_migration_plan() {
         # Execute step 1: Initialize
         local step1_binary
         step1_binary=$(jq -r '.steps[0].binary' "$PLAN_FILE")
-        print_step "Step 1: Initialize database with $from_tag ($from_version)" >&2
-        initialize_database "$step1_binary" "$from_version"
+        if [[ "$SKIP_INIT_SYSTEM" == "true" ]]; then
+            print_step "Step 2.1: Initialize database with $from_tag ($from_version) [skipped]" >&2
+            print_warning "System initialization skipped by option" >&2
+        else
+            print_step "Step 2.1: Initialize database with $from_tag ($from_version)" >&2
+            print_info "Using binary: $step1_binary" >&2
+            initialize_database "$step1_binary" "$from_version"
+            print_success "Step 2.1 completed" >&2
+        fi
         
         # Execute step 2: Migrate
         local step2_binary
         step2_binary=$(jq -r '.steps[1].binary' "$PLAN_FILE")
-        print_step "Step 2: Migrate to current ($to_version)" >&2
+        print_step "Step 2.2: Migrate to current ($to_version)" >&2
+        print_info "Using binary: $step2_binary" >&2
         run_migration "$step2_binary" "$to_version"
+        print_success "Step 2.2 completed" >&2
     else
         # Fallback without jq
         from_tag=$(grep '"from_tag"' "$PLAN_FILE" | sed -E 's/.*"from_tag"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
@@ -623,11 +773,20 @@ execute_migration_plan() {
         local step1_binary=$(grep -A 5 '"step": 1' "$PLAN_FILE" | grep '"binary"' | sed -E 's/.*"binary"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
         local step2_binary=$(grep -A 5 '"step": 2' "$PLAN_FILE" | grep '"binary"' | sed -E 's/.*"binary"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
         
-        print_step "Step 1: Initialize database with $from_tag ($from_version)" >&2
-        initialize_database "$step1_binary" "$from_version"
-        
-        print_step "Step 2: Migrate to current ($to_version)" >&2
+        if [[ "$SKIP_INIT_SYSTEM" == "true" ]]; then
+            print_step "Step 2.1: Initialize database with $from_tag ($from_version) [skipped]" >&2
+            print_warning "System initialization skipped by option" >&2
+        else
+            print_step "Step 2.1: Initialize database with $from_tag ($from_version)" >&2
+            print_info "Using binary: $step1_binary" >&2
+            initialize_database "$step1_binary" "$from_version"
+            print_success "Step 2.1 completed" >&2
+        fi
+
+        print_step "Step 2.2: Migrate to current ($to_version)" >&2
+        print_info "Using binary: $step2_binary" >&2
         run_migration "$step2_binary" "$to_version"
+        print_success "Step 2.2 completed" >&2
     fi
     
     print_success "Migration plan executed successfully" >&2
@@ -696,6 +855,7 @@ main() {
     local from_tag=""
     SKIP_DOWNLOAD="false"
     SKIP_E2E="false"
+    SKIP_INIT_SYSTEM="false"
     KEEP_ARTIFACTS="false"
     KEEP_DB="false"
     
@@ -716,6 +876,10 @@ main() {
                 ;;
             --skip-e2e)
                 SKIP_E2E="true"
+                shift
+                ;;
+            --skip-init-system)
+                SKIP_INIT_SYSTEM="true"
                 shift
                 ;;
             --keep-artifacts)

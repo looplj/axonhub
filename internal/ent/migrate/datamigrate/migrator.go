@@ -5,6 +5,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -87,6 +88,7 @@ func (m *Migrator) shouldRunMigration(ctx context.Context, migrationVersion stri
 // Run executes all registered migrations in order, checking versions before each migration.
 func (m *Migrator) Run(ctx context.Context) error {
 	ctx = ent.NewContext(ctx, m.client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	inited, err := m.systemService.IsInitialized(ctx)
 	if err != nil {
@@ -125,6 +127,8 @@ func (m *Migrator) Run(ctx context.Context) error {
 		if err := m.systemService.SetVersion(ctx, build.Version); err != nil {
 			return err
 		}
+
+		log.Info(ctx, "set system version", log.String("version", build.Version))
 	}
 
 	return nil
