@@ -21,6 +21,7 @@ require (
 	entgo.io/contrib v0.6.1-0.20250319063240-8a7f182943cb
 	entgo.io/ent v0.14.5
 	github.com/99designs/gqlgen v0.17.76
+	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/andreazorzetto/yh v0.4.0
 	github.com/aws/aws-sdk-go-v2 v1.39.4
