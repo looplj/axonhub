@@ -111,6 +111,18 @@ func (ts *OutboundPersistentStream) Close() error {
 	// Stream completed successfully - perform final persistence
 	log.Debug(ctx, "Stream completed successfully, performing final persistence")
 
+	ts.persistResponseChunks(ctx)
+
+	return ts.stream.Close()
+}
+
+func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
+	defer func() {
+		if cause := recover(); cause != nil {
+			log.Warn(ctx, "Failed to persist outbound response chunks", log.Any("cause", cause))
+		}
+	}()
+
 	// Update request execution with aggregated chunks
 	if ts.requestExec != nil {
 		// Use context without cancellation to ensure persistence even if client canceled
@@ -119,7 +131,7 @@ func (ts *OutboundPersistentStream) Close() error {
 		responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
 		if err != nil {
 			log.Warn(persistCtx, "Failed to aggregate chunks using transformer", log.Cause(err))
-			return ts.stream.Close()
+			return
 		}
 
 		err = ts.RequestService.UpdateRequestExecutionCompleted(
@@ -144,8 +156,6 @@ func (ts *OutboundPersistentStream) Close() error {
 			}
 		}
 	}
-
-	return ts.stream.Close()
 }
 
 // PersistentOutboundTransformer wraps an outbound transformer with enhanced capabilities.

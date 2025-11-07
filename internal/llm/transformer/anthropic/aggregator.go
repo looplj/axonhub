@@ -133,7 +133,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				}
 			}
 		case "content_block_stop":
-			if event.Index != nil {
+			if event.Index != nil && int(*event.Index) < len(contentBlocks) {
 				index := int(*event.Index)
 
 				block := contentBlocks[index]
