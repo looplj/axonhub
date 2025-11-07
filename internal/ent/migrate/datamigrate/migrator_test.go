@@ -88,6 +88,45 @@ func TestMigrator_Run_WithInitializedSystem(t *testing.T) {
 	assert.Equal(t, 1, mock.migrateCalls)
 }
 
+func TestMigrator_Run_WithEmptyVersionValue(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Manually create an initialized system with an empty version value
+	_, err := client.System.Create().
+		SetKey(biz.SystemKeyInitialized).
+		SetValue("true").
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.System.Create().
+		SetKey(biz.SystemKeyVersion).
+		SetValue("").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create migrator with mock migration
+	migrator := datamigrate.NewMigratorWithoutRegistrations(client)
+	mock := &mockMigrator{version: "v0.3.0"}
+	migrator.Register(mock)
+
+	// Run migration
+	err = migrator.Run(ctx)
+	require.NoError(t, err)
+
+	// Verify migration was executed and version upgraded
+	assert.Equal(t, 1, mock.migrateCalls)
+
+	systemService := biz.NewSystemService(biz.SystemServiceParams{})
+	version, err := systemService.Version(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, build.Version, version)
+}
+
 func TestMigrator_Run_SkipNewerVersion(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
