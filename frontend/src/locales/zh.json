@@ -884,6 +884,7 @@
       "gcs": "GCS"
     },
     "primary": "主存储",
+    "default": "默认",
     "actions": {
       "edit": "编辑",
       "delete": "删除"
@@ -901,7 +902,9 @@
       "deleteSuccess": "数据存储删除成功",
       "deleteError": "删除数据存储失败",
       "statusUpdateSuccess": "数据存储状态已更新为 {{status}}",
-      "statusUpdateError": "更新状态失败"
+      "statusUpdateError": "更新状态失败",
+      "archiveSuccess": "数据存储已成功归档",
+      "archiveError": "归档数据存储失败"
     },
     "dialogs": {
       "create": {
@@ -943,6 +946,24 @@
           "label": "目录路径",
           "placeholder": "/var/axonhub/data",
           "description": "文件系统存储的目录路径"
+        },
+        "s3AccessKey": {
+          "label": "Access Key",
+          "placeholder": "输入 S3 access key",
+          "editPlaceholder": "留空表示不更新",
+          "description": "S3 access key 用于身份验证"
+        },
+        "s3SecretKey": {
+          "label": "Secret Key",
+          "placeholder": "输入 S3 secret key",
+          "editPlaceholder": "留空表示不更新",
+          "description": "S3 secret key 用于身份验证"
+        },
+        "gcsCredential": {
+          "label": "Service Account JSON",
+          "placeholder": "输入 GCS service account JSON",
+          "editPlaceholder": "留空表示不更新",
+          "description": "GCP service account JSON 凭证"
         }
       },
       "buttons": {
@@ -958,8 +979,9 @@
       "s3BucketRequired": "Bucket 名称不能为空",
       "s3AccessKeyRequired": "Access Key 不能为空",
       "s3SecretKeyRequired": "Secret Key 不能为空",
-      "gcsBucketRequired": "Bucket 名称不能为空",
-      "gcsCredentialRequired": "Service Account JSON 不能为空"
+      "gcsBucketRequired": "GCS 存储桶名称不能为空",
+      "gcsCredentialRequired": "GCS 服务账号 JSON 不能为空",
+      "gcsCredentialInvalid": "GCS 凭证必须是有效的 JSON 对象"
     },
     "fields": {
       "name": "名称",
@@ -968,7 +990,7 @@
       "directory": "目录路径",
       "s3BucketName": "Bucket 名称",
       "s3Endpoint": "Endpoint (可选)",
-      "s3Region": "Region (可选)",
+      "s3Region": "Region",
       "s3AccessKey": "Access Key",
       "s3SecretKey": "Secret Key",
       "gcsBucketName": "Bucket 名称",

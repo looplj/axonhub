@@ -195,15 +195,15 @@ input DataStorageSettingsInput {
 
 input S3Input {
   bucketName: String!
-  endpoint: String!
-  region: String!
-  accessKey: String!
-  secretKey: String!
+  endpoint: String
+  region: String
+  accessKey: String
+  secretKey: String
 }
 
 input GCSInput {
   bucketName: String!
-  credential: String!
+  credential: String
 }
 
 type DataStorageSettings {
@@ -217,13 +217,10 @@ type S3 {
   bucketName: String!
   endpoint: String!
   region: String!
-  accessKey: String!
-  secretKey: String!
 }
 
 type GCS {
   bucketName: String!
-  credential: String!
 }
 
 extend type Trace {

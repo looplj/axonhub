@@ -855,6 +855,7 @@
       "gcs": "GCS"
     },
     "primary": "Primary",
+    "default": "Default",
     "actions": {
       "edit": "Edit",
       "delete": "Delete"
@@ -872,7 +873,9 @@
       "deleteSuccess": "Data storage deleted successfully",
       "deleteError": "Failed to delete data storage",
       "statusUpdateSuccess": "Data storage status updated to {{status}}",
-      "statusUpdateError": "Failed to update status"
+      "statusUpdateError": "Failed to update status",
+      "archiveSuccess": "Data storage archived successfully",
+      "archiveError": "Failed to archive data storage"
     },
     "dialogs": {
       "create": {
@@ -914,6 +917,24 @@
           "label": "Directory Path",
           "placeholder": "/var/axonhub/data",
           "description": "Directory path for file system storage"
+        },
+        "s3AccessKey": {
+          "label": "Access Key",
+          "placeholder": "Enter S3 access key",
+          "editPlaceholder": "Leave empty to keep current value",
+          "description": "S3 access key for authentication"
+        },
+        "s3SecretKey": {
+          "label": "Secret Key",
+          "placeholder": "Enter S3 secret key",
+          "editPlaceholder": "Leave empty to keep current value",
+          "description": "S3 secret key for authentication"
+        },
+        "gcsCredential": {
+          "label": "Service Account JSON",
+          "placeholder": "Enter GCS service account JSON",
+          "editPlaceholder": "Leave empty to keep current value",
+          "description": "GCP service account JSON credentials"
         }
       },
       "buttons": {
@@ -930,7 +951,8 @@
       "s3AccessKeyRequired": "S3 access key is required",
       "s3SecretKeyRequired": "S3 secret key is required",
       "gcsBucketRequired": "GCS bucket name is required",
-      "gcsCredentialRequired": "GCS service account JSON is required"
+      "gcsCredentialRequired": "GCS service account JSON is required",
+      "gcsCredentialInvalid": "GCS credential must be a valid JSON object"
     },
     "fields": {
       "name": "Name",
@@ -939,7 +961,7 @@
       "directory": "Directory Path",
       "s3BucketName": "Bucket Name",
       "s3Endpoint": "Endpoint (optional)",
-      "s3Region": "Region (optional)",
+      "s3Region": "Region",
       "s3AccessKey": "Access Key",
       "s3SecretKey": "Secret Key",
       "gcsBucketName": "Bucket Name",

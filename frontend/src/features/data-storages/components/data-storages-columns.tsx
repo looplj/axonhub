@@ -4,12 +4,23 @@ import { Badge } from '@/components/ui/badge'
 import { DataStorageActions } from './data-storage-actions'
 import { TFunction } from 'i18next'
 
-export const createColumns = (t: TFunction): ColumnDef<DataStorage>[] => [
+export const createColumns = (t: TFunction, defaultDataStorageID?: string | null): ColumnDef<DataStorage>[] => [
   {
     accessorKey: 'name',
     header: t('dataStorages.columns.name'),
     cell: ({ row }) => {
-      return <span className='font-medium'>{row.getValue('name')}</span>
+      const isDefault = defaultDataStorageID === row.original.id
+
+      return (
+        <div className='flex items-center gap-2'>
+          <span className='font-medium'>{row.getValue('name')}</span>
+          {isDefault && (
+            <Badge variant='outline' className='text-xs font-normal'>
+              {t('dataStorages.default')}
+            </Badge>
+          )}
+        </div>
+      )
     },
   },
   {
@@ -105,6 +116,8 @@ export const createColumns = (t: TFunction): ColumnDef<DataStorage>[] => [
   {
     id: 'actions',
     header: t('dataStorages.columns.actions'),
-    cell: ({ row }) => <DataStorageActions dataStorage={row.original} />,
+    cell: ({ row }) => (
+      <DataStorageActions dataStorage={row.original} defaultDataStorageID={defaultDataStorageID} />
+    ),
   },
 ]

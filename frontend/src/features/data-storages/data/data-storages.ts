@@ -1,8 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { graphqlRequest } from '@/gql/graphql'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useErrorHandler } from '@/hooks/use-error-handler'
-import i18n from '@/lib/i18n'
+import {
+  dataStorageSchema,
+  dataStoragesConnectionSchema,
+  createDataStorageInputSchema,
+  updateDataStorageInputSchema,
+  dataStorageWithCredentialsSchema,
+  type DataStorage,
+  type DataStoragesConnection,
+  type CreateDataStorageInput,
+  type UpdateDataStorageInput,
+} from './schema'
+
+export type { DataStorage, DataStoragesConnection, CreateDataStorageInput, UpdateDataStorageInput }
 
 // GraphQL queries and mutations
 const DATA_STORAGES_QUERY = `
@@ -32,12 +45,9 @@ const DATA_STORAGES_QUERY = `
               bucketName
               endpoint
               region
-              accessKey
-              secretKey
             }
             gcs {
               bucketName
-              credential
             }
           }
           createdAt
@@ -70,12 +80,9 @@ const CREATE_DATA_STORAGE_MUTATION = `
           bucketName
           endpoint
           region
-          accessKey
-          secretKey
         }
         gcs {
           bucketName
-          credential
         }
       }
       createdAt
@@ -99,12 +106,9 @@ const UPDATE_DATA_STORAGE_MUTATION = `
           bucketName
           endpoint
           region
-          accessKey
-          secretKey
         }
         gcs {
           bucketName
-          credential
         }
       }
       createdAt
@@ -113,137 +117,111 @@ const UPDATE_DATA_STORAGE_MUTATION = `
   }
 `
 
-// Types
-export interface S3Settings {
-  bucketName: string
-  endpoint: string
-  region: string
-  accessKey: string
-  secretKey: string
-}
-
-export interface GCSSettings {
-  bucketName: string
-  credential: string
-}
-
-export interface DataStorageSettings {
-  directory?: string
-  s3?: S3Settings
-  gcs?: GCSSettings
-}
-
-export interface DataStorage {
-  id: string
-  name: string
-  description: string
-  type: 'database' | 'fs' | 's3' | 'gcs'
-  primary: boolean
-  status: 'active' | 'archived'
-  settings: DataStorageSettings
-  createdAt: string
-  updatedAt: string
-}
-
-export interface DataStorageEdge {
-  node: DataStorage
-}
-
-export interface PageInfo {
-  hasNextPage: boolean
-  hasPreviousPage: boolean
-  startCursor?: string
-  endCursor?: string
-}
-
-export interface DataStoragesData {
-  edges: DataStorageEdge[]
-  pageInfo: PageInfo
-  totalCount: number
-}
-
-export interface DataStoragesQueryVariables {
-  first?: number
-  after?: string
-  where?: Record<string, any>
-  orderBy?: {
-    field: string
-    direction: 'ASC' | 'DESC'
+const UPDATE_DATA_STORAGE_STATUS_MUTATION = `
+  mutation UpdateDataStorageStatus($id: ID!, $input: UpdateDataStorageInput!) {
+    updateDataStorage(id: $id, input: $input) {
+      id
+      status
+      updatedAt
+    }
   }
-}
-
-export interface CreateDataStorageInput {
-  name: string
-  description?: string
-  type: 'database' | 'fs' | 's3' | 'gcs'
-  settings: DataStorageSettings
-}
-
-export interface UpdateDataStorageInput {
-  name?: string
-  description?: string
-  settings?: DataStorageSettings
-}
+`
 
 // Hooks
-export function useDataStorages(variables?: DataStoragesQueryVariables) {
+export function useDataStorages(variables?: Record<string, any>) {
+  const { t } = useTranslation()
   const { handleError } = useErrorHandler()
 
   return useQuery({
     queryKey: ['dataStorages', variables],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ dataStorages: DataStoragesData }>(
-          DATA_STORAGES_QUERY,
-          variables
-        )
-        return data.dataStorages
+        const data = await graphqlRequest<{ dataStorages: DataStoragesConnection }>(DATA_STORAGES_QUERY, variables)
+        return dataStoragesConnectionSchema.parse(data.dataStorages)
       } catch (error) {
-        handleError(error, '获取数据存储列表')
+        handleError(error, t('dataStorages.errors.fetchData'))
         throw error
       }
     },
   })
 }
 
+export function useArchiveDataStorage() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await graphqlRequest<{ updateDataStorage: Pick<DataStorage, 'id' | 'status'> }>(
+        UPDATE_DATA_STORAGE_STATUS_MUTATION,
+        {
+          id,
+          input: {
+            status: 'archived',
+          },
+        }
+      )
+
+      return dataStorageSchema.pick({ id: true, status: true }).parse(data.updateDataStorage)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dataStorages'] })
+      toast.success(t('dataStorages.messages.archiveSuccess'))
+    },
+    onError: (error: any) => {
+      toast.error(t('dataStorages.messages.archiveError'))
+      console.error('Archive data storage error:', error)
+    },
+  })
+}
+
 export function useCreateDataStorage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (input: CreateDataStorageInput) => {
-      const data = await graphqlRequest<{ createDataStorage: DataStorage }>(
-        CREATE_DATA_STORAGE_MUTATION,
-        { input }
-      )
-      return data.createDataStorage
+      // Validate input
+      const validatedInput = createDataStorageInputSchema.parse(input)
+      const data = await graphqlRequest<{ createDataStorage: DataStorage }>(CREATE_DATA_STORAGE_MUTATION, {
+        input: validatedInput,
+      })
+      // Validate response data
+      return dataStorageSchema.parse(data.createDataStorage)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dataStorages'] })
-      toast.success(i18n.t('common.success.created'))
+      toast.success(t('common.messages.success'))
     },
-    onError: () => {
-      toast.error(i18n.t('common.errors.createFailed'))
+    onError: (error: any) => {
+      toast.error(t('dataStorages.errors.createError'))
+      console.error('Create data storage error:', error)
     },
   })
 }
 
 export function useUpdateDataStorage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateDataStorageInput }) => {
-      const data = await graphqlRequest<{ updateDataStorage: DataStorage }>(
-        UPDATE_DATA_STORAGE_MUTATION,
-        { id, input }
-      )
-      return data.updateDataStorage
+      // Validate input
+      const validatedInput = updateDataStorageInputSchema.parse(input)
+      const data = await graphqlRequest<{ updateDataStorage: DataStorage }>(UPDATE_DATA_STORAGE_MUTATION, {
+        id,
+        input: validatedInput,
+      })
+      // Use schema that includes credentials since this is for update
+      return dataStorageWithCredentialsSchema.parse(data.updateDataStorage)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dataStorages'] })
-      toast.success(i18n.t('common.success.updated'))
+      toast.success(t('common.messages.success'))
     },
-    onError: () => {
-      toast.error(i18n.t('common.errors.updateFailed'))
+    onError: (error: any) => {
+      toast.error(t('dataStorages.errors.updateError'))
+      console.error('Update data storage error:', error)
     },
   })
 }
