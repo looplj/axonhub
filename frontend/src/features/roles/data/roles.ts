@@ -179,6 +179,31 @@ export function useDeleteRole() {
         throw error
       }
     },
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['roles'] })
+
+      const previousQueries = queryClient.getQueriesData<RoleConnection>({ queryKey: ['roles'] })
+
+      previousQueries.forEach(([key, data]) => {
+        if (!data) return
+
+        const filteredEdges = data.edges.filter((edge) => edge.node.id !== id)
+        if (filteredEdges.length === data.edges.length) return
+
+        queryClient.setQueryData<RoleConnection>(key, {
+          ...data,
+          edges: filteredEdges,
+          totalCount: Math.max(0, data.totalCount - 1),
+        })
+      })
+
+      return { previousQueries }
+    },
+    onError: (_error, _id, context) => {
+      context?.previousQueries.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data)
+      })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] })
       toast.success(i18n.t('common.success.roleDeleted'))
