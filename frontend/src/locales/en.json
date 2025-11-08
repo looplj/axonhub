@@ -1340,6 +1340,7 @@
       },
       "totalDurationLabel": "Total Duration",
       "summary": {
+        "duration": "Duration {{value}}",
         "tokenCount": "{{value}} tokens"
       },
       "collapseAll": "Collapse All",

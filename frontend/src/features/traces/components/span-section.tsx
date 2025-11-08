@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { JsonViewer } from '@/components/json-tree-view'
 import type { Segment, Span } from '../data/schema'
 import { getSpanDisplayLabels, getLocalizedSpanType } from '../utils/span-display'
+import { formatNumber } from '@/utils/format-number'
 
 interface SpanSectionProps {
   selectedTrace: Segment | null
@@ -202,7 +203,7 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
               {selectedTrace.metadata?.inputTokens && (
                 <span>
                   {t('traces.detail.tokenSummary.input', {
-                    value: selectedTrace.metadata.inputTokens.toLocaleString(),
+                    value: formatNumber(selectedTrace.metadata.inputTokens),
                   })}
                 </span>
               )}
@@ -211,7 +212,7 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
                   <span>•</span>
                   <span>
                     {t('traces.detail.tokenSummary.output', {
-                      value: selectedTrace.metadata.outputTokens.toLocaleString(),
+                      value: formatNumber(selectedTrace.metadata.outputTokens),
                     })}
                   </span>
                 </>
@@ -221,7 +222,7 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
                   <span>•</span>
                   <span>
                     {t('traces.detail.tokenSummary.cached', {
-                      value: selectedTrace.metadata.cachedTokens.toLocaleString(),
+                      value: formatNumber(selectedTrace.metadata.cachedTokens),
                     })}
                   </span>
                 </>
