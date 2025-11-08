@@ -196,7 +196,32 @@ func TestChannelService_CreateChannel(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "fail to create channel with duplicate name",
+			input: &ent.CreateChannelInput{
+				Type:    channel.TypeOpenai,
+				Name:    "Duplicate Channel Name",
+				BaseURL: lo.ToPtr("https://api.openai.com/v1"),
+				Credentials: &objects.ChannelCredentials{
+					APIKey: "test-api-key",
+				},
+				SupportedModels:  []string{"gpt-4"},
+				DefaultTestModel: "gpt-4",
+			},
+			wantErr: true,
+		},
 	}
+
+	// Create a channel first to test duplicate name case
+	_, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Duplicate Channel Name").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(&objects.ChannelCredentials{APIKey: "existing-key"}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		Save(ctx)
+	require.NoError(t, err)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -226,14 +251,25 @@ func TestChannelService_UpdateChannel(t *testing.T) {
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	// Create a test channel first
-	ch, err := client.Channel.Create().
+	// Create test channels first
+	ch1, err := client.Channel.Create().
 		SetType(channel.TypeOpenai).
 		SetName("Original Name").
 		SetBaseURL("https://api.openai.com/v1").
 		SetCredentials(&objects.ChannelCredentials{APIKey: "original-key"}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create second channel to test duplicate name validation
+	_, err = client.Channel.Create().
+		SetType(channel.TypeAnthropic).
+		SetName("Second Channel").
+		SetBaseURL("https://api.anthropic.com").
+		SetCredentials(&objects.ChannelCredentials{APIKey: "second-key"}).
+		SetSupportedModels([]string{"claude-3-opus-20240229"}).
+		SetDefaultTestModel("claude-3-opus-20240229").
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -246,7 +282,7 @@ func TestChannelService_UpdateChannel(t *testing.T) {
 	}{
 		{
 			name: "update name and base URL",
-			id:   ch.ID,
+			id:   ch1.ID,
 			input: &ent.UpdateChannelInput{
 				Name:    lo.ToPtr("Updated Name"),
 				BaseURL: lo.ToPtr("https://api.openai.com/v2"),
@@ -259,7 +295,7 @@ func TestChannelService_UpdateChannel(t *testing.T) {
 		},
 		{
 			name: "update supported models",
-			id:   ch.ID,
+			id:   ch1.ID,
 			input: &ent.UpdateChannelInput{
 				SupportedModels: []string{"gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"},
 			},
@@ -270,7 +306,7 @@ func TestChannelService_UpdateChannel(t *testing.T) {
 		},
 		{
 			name: "update credentials",
-			id:   ch.ID,
+			id:   ch1.ID,
 			input: &ent.UpdateChannelInput{
 				Credentials: &objects.ChannelCredentials{
 					APIKey: "new-api-key",
@@ -279,6 +315,27 @@ func TestChannelService_UpdateChannel(t *testing.T) {
 			wantErr: false,
 			verify: func(t *testing.T, result *ent.Channel) {
 				require.Equal(t, "new-api-key", result.Credentials.APIKey)
+			},
+		},
+		{
+			name: "fail to update channel with duplicate name from other channel",
+			id:   ch1.ID,
+			input: &ent.UpdateChannelInput{
+				Name: lo.ToPtr("Second Channel"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "update channel keeping same name",
+			id:   ch1.ID,
+			input: &ent.UpdateChannelInput{
+				Name:    lo.ToPtr("Original Name"),
+				BaseURL: lo.ToPtr("https://api.openai.com/v3"),
+			},
+			wantErr: false,
+			verify: func(t *testing.T, result *ent.Channel) {
+				require.Equal(t, "Original Name", result.Name)
+				require.Equal(t, "https://api.openai.com/v3", result.BaseURL)
 			},
 		},
 		{

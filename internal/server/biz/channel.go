@@ -342,7 +342,8 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 	case channel.TypeOpenai,
 		channel.TypeDeepseek, channel.TypeMoonshot, channel.TypeLongcat, channel.TypeMinimax,
 		channel.TypeGeminiOpenai,
-		channel.TypePpio, channel.TypeSiliconflow, channel.TypeVolcengine:
+		channel.TypePpio, channel.TypeSiliconflow, channel.TypeVolcengine,
+		channel.TypeVercel, channel.TypeAihubmix:
 		transformer, err := openai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -479,6 +480,18 @@ func (svc *ChannelService) ListAllModels(ctx context.Context) []objects.Model {
 
 // CreateChannel creates a new channel with the provided input.
 func (svc *ChannelService) CreateChannel(ctx context.Context, input *ent.CreateChannelInput) (*ent.Channel, error) {
+	// Check if a channel with the same name already exists
+	existing, err := svc.Ent.Channel.Query().
+		Where(channel.Name(input.Name)).
+		First(ctx)
+	if err != nil && !ent.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to check channel name: %w", err)
+	}
+
+	if existing != nil {
+		return nil, fmt.Errorf("channel with name '%s' already exists", input.Name)
+	}
+
 	channel, err := svc.Ent.Channel.Create().
 		SetType(input.Type).
 		SetNillableBaseURL(input.BaseURL).
@@ -497,6 +510,23 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input *ent.CreateC
 
 // UpdateChannel updates an existing channel with the provided input.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
+	// Check if name is being updated and if it conflicts with existing channels
+	if input.Name != nil {
+		existing, err := svc.Ent.Channel.Query().
+			Where(
+				channel.Name(*input.Name),
+				channel.IDNEQ(id),
+			).
+			First(ctx)
+		if err != nil && !ent.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to check channel name: %w", err)
+		}
+
+		if existing != nil {
+			return nil, fmt.Errorf("channel with name '%s' already exists", *input.Name)
+		}
+	}
+
 	mut := svc.Ent.Channel.UpdateOneID(id).
 		SetNillableBaseURL(input.BaseURL).
 		SetNillableName(input.Name).

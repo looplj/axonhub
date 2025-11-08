@@ -19,6 +19,22 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     baseURL: 'https://api.openai.com/v1',
     defaultModels: ['gpt-3.5-turbo', 'gpt-4.5', 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
   },
+  deepseek: {
+    baseURL: 'https://api.deepseek.com/v1',
+    defaultModels: ['deepseek-chat', 'deepseek-reasoner'],
+  },
+  deepseek_anthropic: {
+    baseURL: 'https://api.deepseek.com/anthropic',
+    defaultModels: ['deepseek-chat', 'deepseek-reasoner'],
+  },
+  minimax: {
+    baseURL: 'https://api.minimaxi.com/v1',
+    defaultModels: ['MiniMax-M2'],
+  },
+  minimax_anthropic: {
+    baseURL: 'https://api.minimaxi.com/anthropic',
+    defaultModels: ['MiniMax-M2'],
+  },
   anthropic: {
     baseURL: 'https://api.anthropic.com/v1',
     defaultModels: [
@@ -31,33 +47,9 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'claude-3-5-haiku-latest',
     ],
   },
-  anthropic_aws: {
-    baseURL: 'https://bedrock-runtime.us-east-1.amazonaws.com',
-    defaultModels: [
-      'anthropic.claude-opus-4-1-20250805-v1:0',
-      'anthropic.claude-opus-4-20250514-v1:0',
-      'anthropic.claude-sonnet-4-20250514-v1:0',
-      'anthropic.claude-3-7-sonnet-20250219-v1:0',
-      'anthropic.claude-3-5-haiku-20241022-v1:0',
-    ],
-  },
-  anthropic_gcp: {
-    baseURL: 'https://us-east5-aiplatform.googleapis.com',
-    defaultModels: [
-      'claude-opus-4-1@20250805',
-      'claude-opus-4@20250514',
-      'claude-sonnet-4@20250514',
-      'claude-3-7-sonnet@20250219',
-      'claude-3-5-haiku@20241022',
-    ],
-  },
   gemini_openai: {
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
     defaultModels: ['gemini-2.5-pro', 'gemini-2.5-flash'],
-  },
-  deepseek: {
-    baseURL: 'https://api.deepseek.com/v1',
-    defaultModels: ['deepseek-chat', 'deepseek-reasoner'],
   },
   doubao: {
     baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
@@ -65,6 +57,10 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   },
   moonshot: {
     baseURL: 'https://api.moonshot.cn/v1',
+    defaultModels: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
+  },
+  moonshot_anthropic: {
+    baseURL: 'https://api.moonshot.cn/anthropic',
     defaultModels: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
   },
   zhipu: {
@@ -75,14 +71,6 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     baseURL: 'https://api.z.ai/api/paas/v4',
     defaultModels: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
   },
-  deepseek_anthropic: {
-    baseURL: 'https://api.deepseek.com/anthropic',
-    defaultModels: ['deepseek-chat', 'deepseek-reasoner'],
-  },
-  moonshot_anthropic: {
-    baseURL: 'https://api.moonshot.cn/anthropic',
-    defaultModels: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
-  },
   zhipu_anthropic: {
     baseURL: 'https://open.bigmodel.cn/api/anthropic',
     defaultModels: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
@@ -90,6 +78,22 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   zai_anthropic: {
     baseURL: 'https://api.z.ai/api/anthropic',
     defaultModels: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+  },
+  vercel: {
+    baseURL: 'https://ai-gateway.vercel.sh/v1',
+    defaultModels: [
+      'deepseek/deepseek-v3.2-exp-thinking',
+      'deepseek/deepseek-v3.2-exp',
+      'moonshotai/kimi-k2-thinking',
+      'moonshotai/kimi-k2',
+      'zai/glm-4.6',
+      'anthropic/claude-sonnet-4.5',
+      'google/gemini-2.5-flash',
+      'google/gemini-2.5-pro',
+      'openai/gpt-4o',
+      'openai/gpt-4o-mini',
+      'openai/gpt-5',
+    ],
   },
   openrouter: {
     baseURL: 'https://openrouter.ai/api/v1',
@@ -140,6 +144,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'grok-4-fast-reasoning',
       'grok-4-fast-non-reasoning',
     ],
+  },
+  longcat: {
+    baseURL: 'https://api.longcat.chat/openai/v1',
+    defaultModels: ['LongCat-Flash-Chat', 'LongCat-Flash-Thinking'],
+  },
+  longcat_anthropic: {
+    baseURL: 'https://api.longcat.chat/anthropic',
+    defaultModels: ['LongCat-Flash-Chat', 'LongCat-Flash-Thinking'],
   },
   ppio: {
     baseURL: 'https://api.ppinfra.com/openai/v1',
@@ -213,21 +225,46 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     baseURL: 'https://api.openai.com/v1',
     defaultModels: ['gpt-3.5-turbo', 'gpt-4.5', 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
   },
-  longcat: {
-    baseURL: 'https://api.longcat.chat/openai/v1',
-    defaultModels: ['LongCat-Flash-Chat', 'LongCat-Flash-Thinking'],
+  aihubmix: {
+    baseURL: 'https://aihubmix.com/v1',
+    defaultModels: [
+      'DeepSeek-V3.2-Exp',
+      'DeepSeek-V3.2-Exp-Think',
+      'DeepSeek-V3.1-Terminus',
+      // Google
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
+      // Anthropic
+      'claude-sonnet-4-5',
+      // OpenAI
+      'gpt-4o',
+      'gpt-5',
+      // Moonshot
+      'Kimi-K2-0905',
+      // Zai/GLM
+      'glm-4.6',
+      'glm-4.5',
+    ],
   },
-  longcat_anthropic: {
-    baseURL: 'https://api.longcat.chat/anthropic',
-    defaultModels: ['LongCat-Flash-Chat', 'LongCat-Flash-Thinking'],
+  anthropic_aws: {
+    baseURL: 'https://bedrock-runtime.us-east-1.amazonaws.com',
+    defaultModels: [
+      'anthropic.claude-opus-4-1-20250805-v1:0',
+      'anthropic.claude-opus-4-20250514-v1:0',
+      'anthropic.claude-sonnet-4-20250514-v1:0',
+      'anthropic.claude-3-7-sonnet-20250219-v1:0',
+      'anthropic.claude-3-5-haiku-20241022-v1:0',
+    ],
   },
-  minimax: {
-    baseURL: 'https://api.minimaxi.com/v1',
-    defaultModels: ['MiniMax-M2'],
-  },
-  minimax_anthropic: {
-    baseURL: 'https://api.minimaxi.com/anthropic',
-    defaultModels: ['MiniMax-M2'],
+  anthropic_gcp: {
+    baseURL: 'https://us-east5-aiplatform.googleapis.com',
+    defaultModels: [
+      'claude-opus-4-1@20250805',
+      'claude-opus-4@20250514',
+      'claude-sonnet-4@20250514',
+      'claude-3-7-sonnet@20250219',
+      'claude-3-5-haiku@20241022',
+    ],
   },
 }
 

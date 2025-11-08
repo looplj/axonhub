@@ -132,6 +132,7 @@ type Type string
 // Type values.
 const (
 	TypeOpenai            Type = "openai"
+	TypeVercel            Type = "vercel"
 	TypeAnthropic         Type = "anthropic"
 	TypeAnthropicAWS      Type = "anthropic_aws"
 	TypeAnthropicGcp      Type = "anthropic_gcp"
@@ -156,6 +157,7 @@ const (
 	TypeLongcatAnthropic  Type = "longcat_anthropic"
 	TypeMinimax           Type = "minimax"
 	TypeMinimaxAnthropic  Type = "minimax_anthropic"
+	TypeAihubmix          Type = "aihubmix"
 )
 
 func (_type Type) String() string {
@@ -165,7 +167,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeOpenai, TypeAnthropic, TypeAnthropicAWS, TypeAnthropicGcp, TypeGeminiOpenai, TypeDeepseek, TypeDeepseekAnthropic, TypeDoubao, TypeMoonshot, TypeMoonshotAnthropic, TypeZhipu, TypeZai, TypeZhipuAnthropic, TypeZaiAnthropic, TypeAnthropicFake, TypeOpenaiFake, TypeOpenrouter, TypeXai, TypePpio, TypeSiliconflow, TypeVolcengine, TypeLongcat, TypeLongcatAnthropic, TypeMinimax, TypeMinimaxAnthropic:
+	case TypeOpenai, TypeVercel, TypeAnthropic, TypeAnthropicAWS, TypeAnthropicGcp, TypeGeminiOpenai, TypeDeepseek, TypeDeepseekAnthropic, TypeDoubao, TypeMoonshot, TypeMoonshotAnthropic, TypeZhipu, TypeZai, TypeZhipuAnthropic, TypeZaiAnthropic, TypeAnthropicFake, TypeOpenaiFake, TypeOpenrouter, TypeXai, TypePpio, TypeSiliconflow, TypeVolcengine, TypeLongcat, TypeLongcatAnthropic, TypeMinimax, TypeMinimaxAnthropic, TypeAihubmix:
 		return nil
 	default:
 		return fmt.Errorf("channel: invalid enum value for type field: %q", _type)
