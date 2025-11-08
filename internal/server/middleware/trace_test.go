@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/tracing"
@@ -43,7 +46,242 @@ func setupTestTraceMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.Trac
 	return router, client, traceService
 }
 
+func TestWithTrace_ClaudeCodeDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		TraceHeader:            "AH-Trace-Id",
+		ClaudeCodeTraceEnabled: false,
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx = ent.NewContext(ctx, client)
+
+	// Create a test project
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	var (
+		traceHeader  string
+		capturedBody []byte
+		expectedBody []byte
+	)
+
+	router.POST("/anthropic/v1/messages", func(c *gin.Context) {
+		traceHeader = c.GetHeader(config.TraceHeader)
+
+		genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+		require.NoError(t, err)
+
+		capturedBody = genericReq.Body
+
+		var payload struct {
+			Metadata struct {
+				UserID string `json:"user_id"`
+			} `json:"metadata"`
+		}
+		require.NoError(t, json.Unmarshal(capturedBody, &payload))
+		c.Status(http.StatusOK)
+	})
+
+	payload := map[string]any{
+		"metadata": map[string]any{
+			"user_id": "user_123",
+		},
+	}
+	body, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	expectedBody = body
+
+	req := httptest.NewRequest(http.MethodPost, "/anthropic/v1/messages", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Empty(t, traceHeader)
+	require.JSONEq(t, string(expectedBody), string(capturedBody))
+}
+
+func TestWithTrace_ClaudeCodeSetsTraceHeader(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	traceHeaderName := "X-Trace-Id"
+	config := tracing.Config{
+		TraceHeader:            traceHeaderName,
+		ClaudeCodeTraceEnabled: true,
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx = ent.NewContext(ctx, client)
+
+	// Create a test project
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	var (
+		capturedUserID string
+		capturedBody   []byte
+		expectedBody   []byte
+	)
+
+	router.POST("/anthropic/v1/messages", func(c *gin.Context) {
+		genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+		require.NoError(t, err)
+
+		capturedBody = genericReq.Body
+
+		var payload struct {
+			Metadata struct {
+				UserID string `json:"user_id"`
+			} `json:"metadata"`
+		}
+		require.NoError(t, json.Unmarshal(capturedBody, &payload))
+		capturedUserID = payload.Metadata.UserID
+
+		trace, ok := contexts.GetTrace(c.Request.Context())
+		require.True(t, ok)
+		require.Equal(t, "xxx", trace.TraceID)
+
+		c.Status(http.StatusOK)
+	})
+
+	userID := "user_xxx_account__session_xxx"
+
+	requestPayload := map[string]any{
+		"metadata": map[string]any{
+			"user_id": userID,
+		},
+	}
+	body, err := json.Marshal(requestPayload)
+	require.NoError(t, err)
+
+	expectedBody = body
+
+	req := httptest.NewRequest(http.MethodPost, "/anthropic/v1/messages", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, userID, capturedUserID)
+	require.JSONEq(t, string(expectedBody), string(capturedBody))
+}
+
+func TestWithTrace_ClaudeCodePreservesExistingTraceHeader(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		TraceHeader:            "AH-Trace-Id",
+		ClaudeCodeTraceEnabled: true,
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx = ent.NewContext(ctx, client)
+
+	// Create a test project
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	const existingTraceID = "existing-trace"
+
+	var (
+		capturedTraceID string
+		capturedUserID  string
+		capturedBody    []byte
+		expectedBody    []byte
+	)
+
+	router.POST("/anthropic/v1/messages", func(c *gin.Context) {
+		capturedTraceID = c.GetHeader(config.TraceHeader)
+
+		genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+		require.NoError(t, err)
+
+		capturedBody = genericReq.Body
+
+		var payload struct {
+			Metadata struct {
+				UserID string `json:"user_id"`
+			} `json:"metadata"`
+		}
+		require.NoError(t, json.Unmarshal(capturedBody, &payload))
+		capturedUserID = payload.Metadata.UserID
+
+		c.Status(http.StatusOK)
+	})
+
+	body, err := json.Marshal(map[string]any{
+		"metadata": map[string]any{
+			"user_id": "user_123",
+		},
+	})
+	require.NoError(t, err)
+
+	expectedBody = body
+
+	req := httptest.NewRequest(http.MethodPost, "/anthropic/v1/messages", bytes.NewReader(body))
+	req.Header.Set("Ah-Trace-Id", existingTraceID)
+
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, existingTraceID, capturedTraceID)
+	require.Equal(t, "user_123", capturedUserID)
+	require.JSONEq(t, string(expectedBody), string(capturedBody))
+}
+
 func TestWithTraceID_Success(t *testing.T) {
+	config := tracing.Config{}
+
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
@@ -65,7 +303,7 @@ func TestWithTraceID_Success(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.Use(WithTrace(tracing.Config{}, traceService))
+	router.Use(WithTrace(config, traceService))
 	router.GET("/test", func(c *gin.Context) {
 		trace, ok := contexts.GetTrace(c.Request.Context())
 		if !ok {
@@ -93,6 +331,8 @@ func TestWithTraceID_Success(t *testing.T) {
 }
 
 func TestWithTraceID_WithThread(t *testing.T) {
+	config := tracing.Config{}
+
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
@@ -122,7 +362,7 @@ func TestWithTraceID_WithThread(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.Use(WithTrace(tracing.Config{}, traceService))
+	router.Use(WithTrace(config, traceService))
 	router.GET("/test", func(c *gin.Context) {
 		trace, ok := contexts.GetTrace(c.Request.Context())
 		if !ok {
@@ -151,10 +391,12 @@ func TestWithTraceID_WithThread(t *testing.T) {
 }
 
 func TestWithTraceID_NoHeader(t *testing.T) {
+	config := tracing.Config{}
+
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	router.Use(WithTrace(tracing.Config{}, traceService))
+	router.Use(WithTrace(config, traceService))
 	router.GET("/test", func(c *gin.Context) {
 		_, ok := contexts.GetTrace(c.Request.Context())
 		c.JSON(200, gin.H{"has_trace": ok})
@@ -170,6 +412,8 @@ func TestWithTraceID_NoHeader(t *testing.T) {
 }
 
 func TestWithTraceID_NoProjectID(t *testing.T) {
+	config := tracing.Config{}
+
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
@@ -177,7 +421,7 @@ func TestWithTraceID_NoProjectID(t *testing.T) {
 		c.Request = c.Request.WithContext(ent.NewContext(c.Request.Context(), client))
 		c.Next()
 	})
-	router.Use(WithTrace(tracing.Config{}, traceService))
+	router.Use(WithTrace(config, traceService))
 	router.GET("/test", func(c *gin.Context) {
 		_, ok := contexts.GetTrace(c.Request.Context())
 		c.JSON(200, gin.H{"has_trace": ok})

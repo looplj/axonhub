@@ -1,6 +1,13 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -9,14 +16,16 @@ import (
 	"github.com/looplj/axonhub/internal/tracing"
 )
 
-func getTraceIDFromHeader(c *gin.Context, config tracing.Config) string {
-	// Use the configured trace header name, or default to "AH-Trace-Id"
-	primaryTraceHeader := config.TraceHeader
-	if primaryTraceHeader == "" {
-		primaryTraceHeader = "AH-Trace-Id"
+func traceHeaderName(config tracing.Config) string {
+	if config.TraceHeader != "" {
+		return config.TraceHeader
 	}
 
-	traceID := c.GetHeader(primaryTraceHeader)
+	return "AH-Trace-Id"
+}
+
+func getTraceIDFromHeader(c *gin.Context, config tracing.Config) string {
+	traceID := c.GetHeader(traceHeaderName(config))
 	if traceID != "" {
 		return traceID
 	}
@@ -36,6 +45,16 @@ func getTraceIDFromHeader(c *gin.Context, config tracing.Config) string {
 func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		traceID := getTraceIDFromHeader(c, config)
+		if traceID == "" && config.ClaudeCodeTraceEnabled {
+			var err error
+
+			traceID, err = tryExtractTraceIDFromClaudeCodeRequest(c, config)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+		}
+
 		if traceID == "" {
 			c.Next()
 			return
@@ -73,4 +92,63 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 
 		c.Next()
 	}
+}
+
+type claudeCodePayload struct {
+	Metadata struct {
+		UserID string `json:"user_id"`
+	} `json:"metadata"`
+}
+
+func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Config) (string, error) {
+	if c.Request.Method != http.MethodPost || !strings.HasSuffix(c.Request.URL.Path, "/anthropic/v1/messages") {
+		return "", nil
+	}
+
+	if traceID := getTraceIDFromHeader(c, config); traceID != "" {
+		return traceID, nil
+	}
+
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read request body: %w", err)
+	}
+
+	// Restore the body for downstream handlers regardless of parsing outcome.
+	c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+	if len(bodyBytes) == 0 {
+		return "", nil
+	}
+
+	var payload claudeCodePayload
+	if err := json.Unmarshal(bodyBytes, &payload); err != nil {
+		return "", fmt.Errorf("failed to parse claude code payload: %w", err)
+	}
+
+	userID := payload.Metadata.UserID
+	if userID == "" {
+		return "", nil
+	}
+
+	traceID := extractClaudeTraceID(userID)
+	if traceID == "" {
+		return "", nil
+	}
+
+	log.Debug(c.Request.Context(), "Extracted trace ID from claude code payload", log.String("trace_id", traceID))
+
+	return traceID, nil
+}
+
+func extractClaudeTraceID(userID string) string {
+	traceID := userID
+	if idx := strings.LastIndex(traceID, "__"); idx >= 0 && idx+2 < len(traceID) {
+		traceID = traceID[idx+2:]
+	}
+
+	if idx := strings.LastIndex(traceID, "_"); idx >= 0 && idx+1 < len(traceID) {
+		traceID = traceID[idx+1:]
+	}
+
+	return strings.TrimSpace(traceID)
 }

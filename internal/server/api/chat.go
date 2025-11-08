@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 
@@ -31,6 +32,11 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 		httpErr := handlers.ChatCompletionProcessor.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
 
+		return
+	}
+
+	if len(genericReq.Body) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Request body is empty"})
 		return
 	}
 

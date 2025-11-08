@@ -23,6 +23,10 @@ type Config struct {
 	// e.g. set it to []string{"Sentry-Trace"} to trace claude-code or any other product using sentry.
 	// Default to nil.
 	ExtraTraceHeaders []string `conf:"extra_trace_headers" yaml:"extra_trace_headers" json:"extra_trace_headers"`
+
+	// ClaudeCodeTraceEnabled enables extracting trace IDs from Claude Code request metadata.
+	// Default to false.
+	ClaudeCodeTraceEnabled bool `conf:"claude_code_trace_enabled" yaml:"claude_code_trace_enabled" json:"claude_code_trace_enabled"`
 }
 
 // GenerateTraceID generate trace id, format as at-{{uuid}}.
