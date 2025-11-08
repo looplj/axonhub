@@ -580,6 +580,7 @@
       "zai": "Zai",
       "zhipu_anthropic": "Zhipu (Anthropic)",
       "zai_anthropic": "Zai (Anthropic)",
+      "vercel": "Vercel",
       "xai": "xAI",
       "ppio": "PPIO",
       "siliconflow": "SiliconFlow",
@@ -589,7 +590,8 @@
       "longcat": "LongCat",
       "longcat_anthropic": "LongCat (Anthropic)",
       "minimax": "Minimax",
-      "minimax_anthropic": "Minimax (Anthropic)"
+      "minimax_anthropic": "Minimax (Anthropic)",
+      "aihubmix": "AiHubMix"
     },
     "actions": {
       "test": "Test",

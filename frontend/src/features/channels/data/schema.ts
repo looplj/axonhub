@@ -12,6 +12,7 @@ export const channelTypeSchema = z.enum([
   'moonshot',
   'zhipu',
   'zai',
+  'vercel',
   'anthropic_fake',
   'openai_fake',
   'deepseek_anthropic',
@@ -27,6 +28,7 @@ export const channelTypeSchema = z.enum([
   'longcat_anthropic',
   'minimax',
   'minimax_anthropic',
+  'aihubmix',
 ])
 export type ChannelType = z.infer<typeof channelTypeSchema>
 

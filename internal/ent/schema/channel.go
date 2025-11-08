@@ -37,6 +37,7 @@ func (Channel) Fields() []ent.Field {
 		field.Enum("type").
 			Values(
 				"openai",
+				"vercel",
 				"anthropic",
 				"anthropic_aws",
 				"anthropic_gcp",
@@ -61,6 +62,7 @@ func (Channel) Fields() []ent.Field {
 				"longcat_anthropic",
 				"minimax",
 				"minimax_anthropic",
+				"aihubmix",
 			).
 			Immutable(),
 		field.String("base_url").Optional(),

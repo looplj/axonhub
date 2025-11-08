@@ -17,6 +17,7 @@ import {
   ZAI,
   LongCat,
   Minimax,
+  Vercel,
 } from '@lobehub/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
@@ -90,6 +91,11 @@ const getChannelTypeConfig = (
     label: t('channels.types.zai'),
     color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
     icon: ZAI,
+  },
+  vercel: {
+    label: t('channels.types.vercel'),
+    color: 'bg-teal-100 text-teal-800 border-teal-200',
+    icon: Vercel,
   },
   deepseek_anthropic: {
     label: t('channels.types.deepseek_anthropic'),
@@ -165,6 +171,11 @@ const getChannelTypeConfig = (
     label: t('channels.types.minimax_anthropic'),
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: Minimax,
+  },
+  aihubmix: {
+    label: t('channels.types.aihubmix'),
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: OpenAI,
   },
 })
 

@@ -408,6 +408,7 @@ ChannelType is enum for the field type
 """
 enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel.Type") {
   openai
+  vercel
   anthropic
   anthropic_aws
   anthropic_gcp
@@ -432,6 +433,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   longcat_anthropic
   minimax
   minimax_anthropic
+  aihubmix
 }
 """
 ChannelWhereInput is used for filtering Channel objects.
