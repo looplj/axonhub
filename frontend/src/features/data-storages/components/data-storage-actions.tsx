@@ -1,6 +1,6 @@
 'use client'
 
-import { MoreHorizontal, Pencil } from 'lucide-react'
+import { Archive, MoreHorizontal, Pencil } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,15 +14,26 @@ import { useDataStoragesContext } from '../context/data-storages-context'
 
 interface DataStorageActionsProps {
   dataStorage: DataStorage
+  defaultDataStorageID?: string | null
 }
 
-export function DataStorageActions({ dataStorage }: DataStorageActionsProps) {
+export function DataStorageActions({ dataStorage, defaultDataStorageID }: DataStorageActionsProps) {
   const { t } = useTranslation()
-  const { setEditingDataStorage, setIsEditDialogOpen } = useDataStoragesContext()
+  const {
+    setEditingDataStorage,
+    setIsEditDialogOpen,
+    setArchiveDataStorage,
+    setIsArchiveDialogOpen,
+  } = useDataStoragesContext()
 
   const handleEdit = () => {
     setEditingDataStorage(dataStorage)
     setIsEditDialogOpen(true)
+  }
+
+  const handleArchive = () => {
+    setArchiveDataStorage(dataStorage)
+    setIsArchiveDialogOpen(true)
   }
 
   // Primary data storage cannot be edited
@@ -43,6 +54,12 @@ export function DataStorageActions({ dataStorage }: DataStorageActionsProps) {
           <Pencil className='mr-2 h-4 w-4' />
           {t('common.buttons.edit')}
         </DropdownMenuItem>
+        {dataStorage.status !== 'archived' && dataStorage.id !== defaultDataStorageID && (
+          <DropdownMenuItem onClick={handleArchive}>
+            <Archive className='mr-2 h-4 w-4' />
+            {t('common.buttons.archive')}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

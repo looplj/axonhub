@@ -10,6 +10,7 @@ import { DataStoragesPrimaryButtons } from './components/data-storages-primary-b
 import { DataStoragesTable } from './components/data-storages-table'
 import DataStoragesProvider from './context/data-storages-context'
 import { useDataStorages } from './data/data-storages'
+import { useDefaultDataStorageID } from '@/features/system/data/system'
 
 function DataStoragesContent() {
   const { t } = useTranslation()
@@ -40,6 +41,8 @@ function DataStoragesContent() {
     }
     return Object.keys(where).length > 0 ? where : undefined
   })()
+
+  const { data: defaultDataStorageID } = useDefaultDataStorageID()
 
   const { data } = useDataStorages({
     ...paginationArgs,
@@ -81,7 +84,7 @@ function DataStoragesContent() {
     resetCursor()
   }
 
-  const columns = createColumns(t)
+  const columns = createColumns(t, defaultDataStorageID ?? undefined)
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>

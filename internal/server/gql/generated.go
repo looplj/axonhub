@@ -242,7 +242,6 @@ type ComplexityRoot struct {
 
 	GCS struct {
 		BucketName func(childComplexity int) int
-		Credential func(childComplexity int) int
 	}
 
 	HourlyRequestStats struct {
@@ -507,11 +506,9 @@ type ComplexityRoot struct {
 	}
 
 	S3 struct {
-		AccessKey  func(childComplexity int) int
 		BucketName func(childComplexity int) int
 		Endpoint   func(childComplexity int) int
 		Region     func(childComplexity int) int
-		SecretKey  func(childComplexity int) int
 	}
 
 	ScopeInfo struct {
@@ -1703,13 +1700,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GCS.BucketName(childComplexity), true
-
-	case "GCS.credential":
-		if e.complexity.GCS.Credential == nil {
-			break
-		}
-
-		return e.complexity.GCS.Credential(childComplexity), true
 
 	case "HourlyRequestStats.count":
 		if e.complexity.HourlyRequestStats.Count == nil {
@@ -3292,13 +3282,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RoleInfo.Name(childComplexity), true
 
-	case "S3.accessKey":
-		if e.complexity.S3.AccessKey == nil {
-			break
-		}
-
-		return e.complexity.S3.AccessKey(childComplexity), true
-
 	case "S3.bucketName":
 		if e.complexity.S3.BucketName == nil {
 			break
@@ -3319,13 +3302,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.S3.Region(childComplexity), true
-
-	case "S3.secretKey":
-		if e.complexity.S3.SecretKey == nil {
-			break
-		}
-
-		return e.complexity.S3.SecretKey(childComplexity), true
 
 	case "ScopeInfo.description":
 		if e.complexity.ScopeInfo.Description == nil {
@@ -10882,10 +10858,6 @@ func (ec *executionContext) fieldContext_DataStorageSettings_s3(_ context.Contex
 				return ec.fieldContext_S3_endpoint(ctx, field)
 			case "region":
 				return ec.fieldContext_S3_region(ctx, field)
-			case "accessKey":
-				return ec.fieldContext_S3_accessKey(ctx, field)
-			case "secretKey":
-				return ec.fieldContext_S3_secretKey(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type S3", field.Name)
 		},
@@ -10931,8 +10903,6 @@ func (ec *executionContext) fieldContext_DataStorageSettings_gcs(_ context.Conte
 			switch field.Name {
 			case "bucketName":
 				return ec.fieldContext_GCS_bucketName(ctx, field)
-			case "credential":
-				return ec.fieldContext_GCS_credential(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GCS", field.Name)
 		},
@@ -11193,50 +11163,6 @@ func (ec *executionContext) _GCS_bucketName(ctx context.Context, field graphql.C
 }
 
 func (ec *executionContext) fieldContext_GCS_bucketName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GCS",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GCS_credential(ctx context.Context, field graphql.CollectedField, obj *objects.GCS) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GCS_credential(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Credential, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GCS_credential(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "GCS",
 		Field:      field,
@@ -21631,94 +21557,6 @@ func (ec *executionContext) _S3_region(ctx context.Context, field graphql.Collec
 }
 
 func (ec *executionContext) fieldContext_S3_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "S3",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _S3_accessKey(ctx context.Context, field graphql.CollectedField, obj *objects.S3) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_S3_accessKey(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.AccessKey, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_S3_accessKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "S3",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _S3_secretKey(ctx context.Context, field graphql.CollectedField, obj *objects.S3) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_S3_secretKey(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.SecretKey, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_S3_secretKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "S3",
 		Field:      field,
@@ -35886,7 +35724,7 @@ func (ec *executionContext) unmarshalInputGCSInput(ctx context.Context, obj any)
 			it.BucketName = data
 		case "credential":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("credential"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -39234,28 +39072,28 @@ func (ec *executionContext) unmarshalInputS3Input(ctx context.Context, obj any) 
 			it.BucketName = data
 		case "endpoint":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endpoint"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Endpoint = data
 		case "region":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("region"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Region = data
 		case "accessKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accessKey"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.AccessKey = data
 		case "secretKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secretKey"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -46588,11 +46426,6 @@ func (ec *executionContext) _GCS(ctx context.Context, sel ast.SelectionSet, obj 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "credential":
-			out.Values[i] = ec._GCS_credential(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -50153,16 +49986,6 @@ func (ec *executionContext) _S3(ctx context.Context, sel ast.SelectionSet, obj *
 			}
 		case "region":
 			out.Values[i] = ec._S3_region(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "accessKey":
-			out.Values[i] = ec._S3_accessKey(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "secretKey":
-			out.Values[i] = ec._S3_secretKey(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

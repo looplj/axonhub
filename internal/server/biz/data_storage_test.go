@@ -154,39 +154,206 @@ func TestDataStorageService_CreateDataStorage(t *testing.T) {
 }
 
 func TestDataStorageService_UpdateDataStorage(t *testing.T) {
-	client, service, ctx := setupDataStorageTest(t)
-	defer client.Close()
+	t.Run("updates basic fields and invalidates caches", func(t *testing.T) {
+		client, service, ctx := setupDataStorageTest(t)
+		defer client.Close()
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+		ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	// Create initial primary data storage.
-	original := createTestDataStorage(t, client, ctx, "update-storage", true, datastorage.TypeDatabase)
+		original := createTestDataStorage(t, client, ctx, "update-storage", true, datastorage.TypeDatabase)
 
-	// Prime caches for ID and primary lookups.
-	_, err := service.GetDataStorageByID(ctx, original.ID)
-	require.NoError(t, err)
-	_, err = service.GetPrimaryDataStorage(ctx)
-	require.NoError(t, err)
+		_, err := service.GetDataStorageByID(ctx, original.ID)
+		require.NoError(t, err)
+		_, err = service.GetPrimaryDataStorage(ctx)
+		require.NoError(t, err)
 
-	newName := "updated-storage"
-	status := datastorage.StatusActive
-	updateInput := ent.UpdateDataStorageInput{
-		Name:   &newName,
-		Status: &status,
-	}
+		newName := "updated-storage"
+		status := datastorage.StatusActive
+		updateInput := ent.UpdateDataStorageInput{
+			Name:   &newName,
+			Status: &status,
+		}
 
-	updated, err := service.UpdateDataStorage(ctx, original.ID, &updateInput)
-	require.NoError(t, err)
-	require.NotNil(t, updated)
-	require.Equal(t, newName, updated.Name)
-	require.True(t, updated.Primary)
-	require.Equal(t, status, updated.Status)
+		updated, err := service.UpdateDataStorage(ctx, original.ID, &updateInput)
+		require.NoError(t, err)
+		require.NotNil(t, updated)
+		require.Equal(t, newName, updated.Name)
+		require.True(t, updated.Primary)
+		require.Equal(t, status, updated.Status)
+		require.NotNil(t, updated.Settings)
 
-	// Cache entries should be invalidated.
-	_, err = service.Cache.Get(ctx, fmt.Sprintf("datastorage:%d", original.ID))
-	require.Error(t, err)
-	_, err = service.Cache.Get(ctx, "datastorage:primary")
-	require.Error(t, err)
+		_, err = service.Cache.Get(ctx, fmt.Sprintf("datastorage:%d", original.ID))
+		require.Error(t, err)
+		_, err = service.Cache.Get(ctx, "datastorage:primary")
+		require.Error(t, err)
+	})
+
+	t.Run("preserves existing credentials when not provided", func(t *testing.T) {
+		client, service, ctx := setupDataStorageTest(t)
+		defer client.Close()
+
+		ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+		existingDirectory := "/existing/path"
+		existingDSN := "existing-dsn"
+		existingAccess := "existing-access"
+		existingSecret := "existing-secret"
+		existingGCSCredential := "existing-gcs-cred"
+
+		existingSettings := &objects.DataStorageSettings{
+			Directory: stringPtr(existingDirectory),
+			DSN:       stringPtr(existingDSN),
+			S3: &objects.S3{
+				BucketName: "existing-bucket",
+				Endpoint:   "existing-endpoint",
+				Region:     "existing-region",
+				AccessKey:  existingAccess,
+				SecretKey:  existingSecret,
+			},
+			GCS: &objects.GCS{
+				BucketName: "existing-gcs-bucket",
+				Credential: existingGCSCredential,
+			},
+		}
+
+		ctxWithDecision := privacy.DecisionContext(ctx, privacy.Allow)
+		original, err := client.DataStorage.Create().
+			SetName("storage-with-creds").
+			SetDescription("Data storage with credentials").
+			SetPrimary(false).
+			SetType(datastorage.TypeS3).
+			SetSettings(existingSettings).
+			SetStatus(datastorage.StatusActive).
+			Save(ctxWithDecision)
+		require.NoError(t, err)
+
+		updateInput := ent.UpdateDataStorageInput{
+			Settings: &objects.DataStorageSettings{
+				S3: &objects.S3{
+					BucketName: "updated-bucket",
+					Endpoint:   "",
+					Region:     "updated-region",
+					AccessKey:  "",
+					SecretKey:  "",
+				},
+				GCS: &objects.GCS{
+					BucketName: "updated-gcs-bucket",
+					Credential: "",
+				},
+			},
+		}
+
+		updated, err := service.UpdateDataStorage(ctx, original.ID, &updateInput)
+		require.NoError(t, err)
+		require.NotNil(t, updated)
+		require.NotNil(t, updated.Settings)
+
+		require.NotNil(t, updated.Settings.Directory)
+		assert.Equal(t, existingDirectory, *updated.Settings.Directory)
+		require.NotNil(t, updated.Settings.DSN)
+		assert.Equal(t, existingDSN, *updated.Settings.DSN)
+
+		require.NotNil(t, updated.Settings.S3)
+		assert.Equal(t, "updated-bucket", updated.Settings.S3.BucketName)
+		assert.Equal(t, "", updated.Settings.S3.Endpoint)
+		assert.Equal(t, "updated-region", updated.Settings.S3.Region)
+		assert.Equal(t, existingAccess, updated.Settings.S3.AccessKey)
+		assert.Equal(t, existingSecret, updated.Settings.S3.SecretKey)
+
+		require.NotNil(t, updated.Settings.GCS)
+		assert.Equal(t, "updated-gcs-bucket", updated.Settings.GCS.BucketName)
+		assert.Equal(t, existingGCSCredential, updated.Settings.GCS.Credential)
+	})
+
+	t.Run("overrides credentials when provided", func(t *testing.T) {
+		client, service, ctx := setupDataStorageTest(t)
+		defer client.Close()
+
+		ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+		existingSettings := &objects.DataStorageSettings{
+			Directory: stringPtr("/existing/path"),
+			DSN:       stringPtr("existing-dsn"),
+			S3: &objects.S3{
+				BucketName: "existing-bucket",
+				Endpoint:   "existing-endpoint",
+				Region:     "existing-region",
+				AccessKey:  "old-access",
+				SecretKey:  "old-secret",
+			},
+			GCS: &objects.GCS{
+				BucketName: "existing-gcs-bucket",
+				Credential: "old-gcs-cred",
+			},
+		}
+
+		ctxWithDecision := privacy.DecisionContext(ctx, privacy.Allow)
+		original, err := client.DataStorage.Create().
+			SetName("storage-with-creds").
+			SetDescription("Data storage with credentials").
+			SetPrimary(false).
+			SetType(datastorage.TypeS3).
+			SetSettings(existingSettings).
+			SetStatus(datastorage.StatusActive).
+			Save(ctxWithDecision)
+		require.NoError(t, err)
+
+		updateInput := ent.UpdateDataStorageInput{
+			Settings: &objects.DataStorageSettings{
+				Directory: stringPtr("/new/path"),
+				DSN:       stringPtr("new-dsn"),
+				S3: &objects.S3{
+					BucketName: "new-bucket",
+					Endpoint:   "new-endpoint",
+					Region:     "new-region",
+					AccessKey:  "new-access",
+					SecretKey:  "new-secret",
+				},
+				GCS: &objects.GCS{
+					BucketName: "new-gcs-bucket",
+					Credential: "new-gcs-cred",
+				},
+			},
+		}
+
+		updated, err := service.UpdateDataStorage(ctx, original.ID, &updateInput)
+		require.NoError(t, err)
+		require.NotNil(t, updated)
+		require.NotNil(t, updated.Settings)
+
+		require.NotNil(t, updated.Settings.Directory)
+		assert.Equal(t, "/new/path", *updated.Settings.Directory)
+		require.NotNil(t, updated.Settings.DSN)
+		assert.Equal(t, "new-dsn", *updated.Settings.DSN)
+
+		require.NotNil(t, updated.Settings.S3)
+		assert.Equal(t, "new-bucket", updated.Settings.S3.BucketName)
+		assert.Equal(t, "new-endpoint", updated.Settings.S3.Endpoint)
+		assert.Equal(t, "new-region", updated.Settings.S3.Region)
+		assert.Equal(t, "new-access", updated.Settings.S3.AccessKey)
+		assert.Equal(t, "new-secret", updated.Settings.S3.SecretKey)
+
+		require.NotNil(t, updated.Settings.GCS)
+		assert.Equal(t, "new-gcs-bucket", updated.Settings.GCS.BucketName)
+		assert.Equal(t, "new-gcs-cred", updated.Settings.GCS.Credential)
+	})
+
+	t.Run("returns error when data storage is missing", func(t *testing.T) {
+		client, service, ctx := setupDataStorageTest(t)
+		defer client.Close()
+
+		ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+		cacheKey := "datastorage:999"
+		require.NoError(t, service.Cache.Set(ctx, cacheKey, ent.DataStorage{ID: 999}))
+
+		_, err := service.UpdateDataStorage(ctx, 999, &ent.UpdateDataStorageInput{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get data storage")
+
+		_, err = service.Cache.Get(ctx, cacheKey)
+		require.NoError(t, err)
+	})
 }
 
 func TestDataStorageService_GetDataStorageByID(t *testing.T) {

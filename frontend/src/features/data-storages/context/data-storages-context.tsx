@@ -8,8 +8,12 @@ interface DataStoragesContextType {
   setIsCreateDialogOpen: (open: boolean) => void
   isEditDialogOpen: boolean
   setIsEditDialogOpen: (open: boolean) => void
+  isArchiveDialogOpen: boolean
+  setIsArchiveDialogOpen: (open: boolean) => void
   editingDataStorage: DataStorage | null
   setEditingDataStorage: (dataStorage: DataStorage | null) => void
+  archiveDataStorage: DataStorage | null
+  setArchiveDataStorage: (dataStorage: DataStorage | null) => void
 }
 
 const DataStoragesContext = createContext<DataStoragesContextType | undefined>(
@@ -35,7 +39,9 @@ export default function DataStoragesProvider({
 }: DataStoragesProviderProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
   const [editingDataStorage, setEditingDataStorage] = useState<DataStorage | null>(null)
+  const [archiveDataStorage, setArchiveDataStorage] = useState<DataStorage | null>(null)
 
   return (
     <DataStoragesContext.Provider
@@ -44,8 +50,12 @@ export default function DataStoragesProvider({
         setIsCreateDialogOpen,
         isEditDialogOpen,
         setIsEditDialogOpen,
+        isArchiveDialogOpen,
+        setIsArchiveDialogOpen,
         editingDataStorage,
         setEditingDataStorage,
+        archiveDataStorage,
+        setArchiveDataStorage,
       }}
     >
       {children}
