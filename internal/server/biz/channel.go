@@ -564,6 +564,47 @@ func (svc *ChannelService) UpdateChannelStatus(ctx context.Context, id int, stat
 	return channel, nil
 }
 
+// BulkArchiveChannels updates the status of multiple channels to archived.
+func (svc *ChannelService) BulkArchiveChannels(ctx context.Context, ids []int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	client := ent.FromContext(ctx)
+	if client == nil {
+		client = svc.Ent
+	}
+
+	// Verify all channels exist
+	count, err := client.Channel.Query().
+		Where(channel.IDIn(ids...)).
+		Count(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	if count != len(ids) {
+		return fmt.Errorf("expected to find %d channels, but found %d", len(ids), count)
+	}
+
+	// Update status to archived
+	if _, err = client.Channel.Update().
+		Where(channel.IDIn(ids...)).
+		SetStatus(channel.StatusArchived).
+		Save(ctx); err != nil {
+		return fmt.Errorf("failed to archive channels: %w", err)
+	}
+
+	// Reload enabled channels to refresh in-memory cache
+	go func() {
+		if reloadErr := svc.loadChannels(context.Background()); reloadErr != nil {
+			log.Error(context.Background(), "failed to reload channels after bulk archive", log.Cause(reloadErr))
+		}
+	}()
+
+	return nil
+}
+
 // BulkImportChannelItem represents a single channel to be imported.
 type BulkImportChannelItem struct {
 	Type             string

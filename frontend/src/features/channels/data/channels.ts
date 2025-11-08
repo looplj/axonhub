@@ -46,7 +46,6 @@ const CHANNELS_QUERY = `
             }
           }
           orderingWeight
-
         }
         cursor
       }
@@ -114,6 +113,12 @@ const UPDATE_CHANNEL_STATUS_MUTATION = `
       id
       status
     }
+  }
+`
+
+const BULK_ARCHIVE_CHANNELS_MUTATION = `
+  mutation BulkArchiveChannels($ids: [ID!]!) {
+    bulkArchiveChannels(ids: $ids)
   }
 `
 
@@ -337,6 +342,28 @@ export function useUpdateChannelStatus() {
       const errorKey =
         variables.status === 'archived' ? 'channels.messages.archiveError' : 'channels.messages.statusUpdateError'
       toast.error(t(errorKey, { error: error.message }))
+    },
+  })
+}
+
+export function useBulkArchiveChannels() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const data = await graphqlRequest<{ bulkArchiveChannels: boolean }>(
+        BULK_ARCHIVE_CHANNELS_MUTATION,
+        { ids }
+      )
+      return data.bulkArchiveChannels
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] })
+      toast.success(t('channels.messages.bulkArchiveSuccess', { count: variables.length }))
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.bulkArchiveError', { error: error.message }))
     },
   })
 }

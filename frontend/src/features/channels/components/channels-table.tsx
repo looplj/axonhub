@@ -3,6 +3,7 @@ import {
   ColumnDef,
   ColumnFiltersState,
   RowData,
+  RowSelectionState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -14,15 +15,9 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ServerSidePagination } from '@/components/server-side-pagination'
+import { useChannels } from '../context/channels-context'
 import { Channel, ChannelConnection } from '../data/schema'
 import { DataTableToolbar } from './data-table-toolbar'
 
@@ -69,7 +64,8 @@ export function ChannelsTable({
   onStatusFilterChange,
 }: DataTableProps) {
   const { t } = useTranslation()
-  const [rowSelection, setRowSelection] = useState({})
+  const { setSelectedChannels, setResetRowSelection } = useChannels()
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
@@ -93,44 +89,30 @@ export function ChannelsTable({
 
   // Handle column filter changes and sync with server
   const handleColumnFiltersChange = (
-    updater:
-      | ColumnFiltersState
-      | ((prev: ColumnFiltersState) => ColumnFiltersState)
+    updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)
   ) => {
-    const newFilters =
-      typeof updater === 'function' ? updater(columnFilters) : updater
+    const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
     setColumnFilters(newFilters)
 
     // Extract filter values
-    const nameFilterValue = newFilters.find((filter) => filter.id === 'name')
-      ?.value as string
-    const typeFilterValue = newFilters.find((filter) => filter.id === 'type')
-      ?.value as string[]
-    const statusFilterValue = newFilters.find(
-      (filter) => filter.id === 'status'
-    )?.value as string[]
+    const nameFilterValue = newFilters.find((filter) => filter.id === 'name')?.value as string
+    const typeFilterValue = newFilters.find((filter) => filter.id === 'type')?.value as string[]
+    const statusFilterValue = newFilters.find((filter) => filter.id === 'status')?.value as string[]
 
     // Update server filters only if changed
     const newNameFilter = nameFilterValue || ''
     const newTypeFilter = Array.isArray(typeFilterValue) ? typeFilterValue : []
-    const newStatusFilter = Array.isArray(statusFilterValue)
-      ? statusFilterValue
-      : []
+    const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : []
 
     if (newNameFilter !== nameFilter) {
       onNameFilterChange(newNameFilter)
     }
 
-    if (
-      JSON.stringify(newTypeFilter.sort()) !== JSON.stringify(typeFilter.sort())
-    ) {
+    if (JSON.stringify(newTypeFilter.sort()) !== JSON.stringify(typeFilter.sort())) {
       onTypeFilterChange(newTypeFilter)
     }
 
-    if (
-      JSON.stringify(newStatusFilter.sort()) !==
-      JSON.stringify(statusFilter.sort())
-    ) {
+    if (JSON.stringify(newStatusFilter.sort()) !== JSON.stringify(statusFilter.sort())) {
       onStatusFilterChange(newStatusFilter)
     }
   }
@@ -145,6 +127,7 @@ export function ChannelsTable({
       columnFilters,
     },
     enableRowSelection: true,
+    getRowId: (row) => row.id,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: handleColumnFiltersChange,
@@ -159,12 +142,24 @@ export function ChannelsTable({
     manualFiltering: true, // Enable manual filtering for server-side filtering
   })
 
+  useEffect(() => {
+    setResetRowSelection(() => () => {
+      setRowSelection({})
+      table.resetRowSelection()
+    })
+  }, [setResetRowSelection, table])
+
+  useEffect(() => {
+    const selected = table.getFilteredSelectedRowModel().rows.map((row) => row.original as Channel)
+    setSelectedChannels(selected)
+  }, [rowSelection, table, setSelectedChannels])
+
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <DataTableToolbar table={table} />
       <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table data-testid='channels-table'>
-          <TableHeader className='sticky top-0 z-10 bg-background'>
+          <TableHeader className='bg-background sticky top-0 z-10'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row'>
                 {headerGroup.headers.map((header) => {
@@ -174,12 +169,7 @@ export function ChannelsTable({
                       colSpan={header.colSpan}
                       className={header.column.columnDef.meta?.className ?? ''}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   )
                 })}
@@ -189,39 +179,23 @@ export function ChannelsTable({
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className='h-24 text-center'
-                >
+                <TableCell colSpan={columns.length} className='h-24 text-center'>
                   {t('common.loading')}
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                  className='group/row'
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row'>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={cell.column.columnDef.meta?.className ?? ''}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                    <TableCell key={cell.id} className={cell.column.columnDef.meta?.className ?? ''}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className='h-24 text-center'
-                >
+                <TableCell colSpan={columns.length} className='h-24 text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>

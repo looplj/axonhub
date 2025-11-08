@@ -1,10 +1,12 @@
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { Table } from '@tanstack/react-table'
+import { IconArchive } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTableViewOptions } from './data-table-view-options'
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
+import { useChannels } from '../context/channels-context'
 import { ChannelType } from '../data/schema'
 
 interface DataTableToolbarProps<TData> {
@@ -15,7 +17,9 @@ export function DataTableToolbar<TData>({
   table,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
+  const { setOpen } = useChannels()
   const isFiltered = table.getState().columnFilters.length > 0
+  const selectedRows = table.getFilteredSelectedRowModel().rows
 
   const channelTypes = [
     {
@@ -124,6 +128,17 @@ export function DataTableToolbar<TData>({
           >
             {t('common.filters.reset')}
             <Cross2Icon className='ml-2 h-4 w-4' />
+          </Button>
+        )}
+        {selectedRows.length > 0 && (
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => setOpen('bulkArchive')}
+            className='h-8 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
+          >
+            <IconArchive className='mr-2 h-4 w-4' />
+            {t('common.buttons.archive')} ({selectedRows.length})
           </Button>
         )}
       </div>

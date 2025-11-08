@@ -637,14 +637,16 @@
       "archiveSuccess": "渠道归档成功",
       "archiveError": "归档失败：{{error}}",
       "statusUpdateError": "状态更新失败：{{error}}",
-      "testSuccess": "渠道测试成功（延迟 {{latency}}秒）",
+      "testSuccess": "渠道测试成功（耗时 {{latency}} 秒）",
       "testError": "渠道测试失败：{{error}}",
       "testUnknownError": "发生未知测试错误",
-      "bulkImportSuccess": "成功导入 {{created}} 个渠道",
-      "bulkImportPartialError": "导入 {{created}} 个渠道成功，{{failed}} 个失败",
+      "bulkImportSuccess": "成功导入 {{created}} 条渠道",
+      "bulkImportPartialError": "成功导入 {{created}} 条渠道，{{failed}} 条失败",
       "bulkImportError": "批量导入失败：{{error}}",
-      "orderingUpdateSuccess": "成功更新了 {{updated}} 个渠道的排序",
+      "orderingUpdateSuccess": "成功更新 {{updated}} 条渠道的排序",
       "orderingUpdateError": "更新渠道排序失败：{{error}}",
+      "bulkArchiveSuccess": "已成功归档 {{count}} 条渠道",
+      "bulkArchiveError": "归档渠道失败：{{error}}",
       "pendingMappingWarning": "有未添加的映射，请在保存前添加。",
       "duplicateMappingWarning": "检测到重复的映射，请在保存前删除重复的映射。",
       "fetchModelsSuccess": "成功获取 {{count}} 个模型",
@@ -838,6 +840,11 @@
         "saveButton": "保存排序",
         "orderingWeight": "优先级",
         "noChannels": "没有可用于排序的渠道"
+      },
+      "bulkArchive": {
+        "title": "批量归档渠道",
+        "description": "确定要归档已选中的 {{count}} 条渠道吗？归档后的渠道默认在列表中隐藏。",
+        "warning": "该操作会将所有选中的渠道从常规视图中隐藏。您仍然可以通过筛选“已归档”状态重新查看。"
       }
     },
     "validation": {

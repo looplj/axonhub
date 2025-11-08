@@ -314,6 +314,7 @@ type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
   updateChannelStatus(id: ID!, status: ChannelStatus!): Channel!
+  bulkArchiveChannels(ids: [ID!]!): Boolean!
   testChannel(input: TestChannelInput!): TestChannelPayload!
   bulkImportChannels(input: BulkImportChannelsInput!): BulkImportChannelsResult!
   bulkUpdateChannelOrdering(input: BulkUpdateChannelOrderingInput!): BulkUpdateChannelOrderingResult!

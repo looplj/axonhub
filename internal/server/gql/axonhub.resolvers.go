@@ -36,6 +36,17 @@ func (r *mutationResolver) UpdateChannelStatus(ctx context.Context, id objects.G
 	return r.channelService.UpdateChannelStatus(ctx, id.ID, status)
 }
 
+// BulkArchiveChannels is the resolver for the bulkArchiveChannels field.
+func (r *mutationResolver) BulkArchiveChannels(ctx context.Context, ids []*objects.GUID) (bool, error) {
+	channelIDs := objects.IntGuids(ids)
+
+	if err := r.channelService.BulkArchiveChannels(ctx, channelIDs); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // TestChannel is the resolver for the testChannel field.
 func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInput) (*TestChannelPayload, error) {
 	// Set test source context for test channel requests
