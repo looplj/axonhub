@@ -10,13 +10,15 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { LanguageModelUsage } from "ai";
 import { type ComponentProps, createContext, useContext } from "react";
-import { estimateCost, type ModelId } from "tokenlens";
+import { getUsage } from "tokenlens";
 
 const PERCENT_MAX = 100;
 const ICON_RADIUS = 10;
 const ICON_VIEWBOX = 24;
 const ICON_CENTER = 12;
 const ICON_STROKE_WIDTH = 2;
+
+type ModelId = string;
 
 type ContextSchema = {
   usedTokens: number;
@@ -130,18 +132,18 @@ export const ContextContent = ({
   ...props
 }: ContextContentProps) => (
   <HoverCardContent
-    className={cn("min-w-[240px] divide-y overflow-hidden p-0", className)}
+    className={cn("min-w-60 divide-y overflow-hidden p-0", className)}
     {...props}
   />
 );
 
-export type ContextContentHeader = ComponentProps<"div">;
+export type ContextContentHeaderProps = ComponentProps<"div">;
 
 export const ContextContentHeader = ({
   children,
   className,
   ...props
-}: ContextContentHeader) => {
+}: ContextContentHeaderProps) => {
   const { usedTokens, maxTokens } = useContextValue();
   const usedPercent = usedTokens / maxTokens;
   const displayPct = new Intl.NumberFormat("en-US", {
@@ -174,34 +176,34 @@ export const ContextContentHeader = ({
   );
 };
 
-export type ContextContentBody = ComponentProps<"div">;
+export type ContextContentBodyProps = ComponentProps<"div">;
 
 export const ContextContentBody = ({
   children,
   className,
   ...props
-}: ContextContentBody) => (
+}: ContextContentBodyProps) => (
   <div className={cn("w-full p-3", className)} {...props}>
     {children}
   </div>
 );
 
-export type ContextContentFooter = ComponentProps<"div">;
+export type ContextContentFooterProps = ComponentProps<"div">;
 
 export const ContextContentFooter = ({
   children,
   className,
   ...props
-}: ContextContentFooter) => {
+}: ContextContentFooterProps) => {
   const { modelId, usage } = useContextValue();
   const costUSD = modelId
-    ? estimateCost({
+    ? getUsage({
         modelId,
         usage: {
           input: usage?.inputTokens ?? 0,
           output: usage?.outputTokens ?? 0,
         },
-      }).totalUSD
+      }).costUSD?.totalUSD
     : undefined;
   const totalCost = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -245,10 +247,10 @@ export const ContextInputUsage = ({
   }
 
   const inputCost = modelId
-    ? estimateCost({
+    ? getUsage({
         modelId,
         usage: { input: inputTokens, output: 0 },
-      }).totalUSD
+      }).costUSD?.totalUSD
     : undefined;
   const inputCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -285,10 +287,10 @@ export const ContextOutputUsage = ({
   }
 
   const outputCost = modelId
-    ? estimateCost({
+    ? getUsage({
         modelId,
         usage: { input: 0, output: outputTokens },
-      }).totalUSD
+      }).costUSD?.totalUSD
     : undefined;
   const outputCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -325,10 +327,10 @@ export const ContextReasoningUsage = ({
   }
 
   const reasoningCost = modelId
-    ? estimateCost({
+    ? getUsage({
         modelId,
         usage: { reasoningTokens },
-      }).totalUSD
+      }).costUSD?.totalUSD
     : undefined;
   const reasoningCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -365,10 +367,10 @@ export const ContextCacheUsage = ({
   }
 
   const cacheCost = modelId
-    ? estimateCost({
+    ? getUsage({
         modelId,
         usage: { cacheReads: cacheTokens, input: 0, output: 0 },
-      }).totalUSD
+      }).costUSD?.totalUSD
     : undefined;
   const cacheCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
