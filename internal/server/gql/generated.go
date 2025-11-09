@@ -174,7 +174,8 @@ type ComplexityRoot struct {
 	}
 
 	ChannelSettings struct {
-		ModelMappings func(childComplexity int) int
+		ModelMappings      func(childComplexity int) int
+		OverrideParameters func(childComplexity int) int
 	}
 
 	CleanupOption struct {
@@ -1433,6 +1434,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.ModelMappings(childComplexity), true
+
+	case "ChannelSettings.overrideParameters":
+		if e.complexity.ChannelSettings.OverrideParameters == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.OverrideParameters(childComplexity), true
 
 	case "CleanupOption.cleanupDays":
 		if e.complexity.CleanupOption.CleanupDays == nil {
@@ -8794,6 +8802,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 			switch field.Name {
 			case "modelMappings":
 				return ec.fieldContext_ChannelSettings_modelMappings(ctx, field)
+			case "overrideParameters":
+				return ec.fieldContext_ChannelSettings_overrideParameters(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelSettings", field.Name)
 		},
@@ -9477,6 +9487,47 @@ func (ec *executionContext) fieldContext_ChannelSettings_modelMappings(_ context
 				return ec.fieldContext_ModelMapping_to(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelMapping", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_overrideParameters(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelSettings_overrideParameters(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OverrideParameters, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_overrideParameters(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -33438,7 +33489,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"modelMappings"}
+	fieldsInOrder := [...]string{"modelMappings", "overrideParameters"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -33452,6 +33503,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.ModelMappings = data
+		case "overrideParameters":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideParameters"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OverrideParameters = data
 		}
 	}
 
@@ -45912,6 +45970,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ChannelSettings")
 		case "modelMappings":
 			out.Values[i] = ec._ChannelSettings_modelMappings(ctx, field, obj)
+		case "overrideParameters":
+			out.Values[i] = ec._ChannelSettings_overrideParameters(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

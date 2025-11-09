@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -32,6 +33,9 @@ type Channel struct {
 
 	// Outbound is the outbound transformer for the channel.
 	Outbound transformer.Outbound
+
+	// cachedOverrideParams stores the parsed override parameters to avoid repeated JSON parsing
+	cachedOverrideParams map[string]any
 }
 
 func (c Channel) IsModelSupported(model string) bool {
@@ -68,6 +72,35 @@ func (c Channel) ChooseModel(model string) (string, error) {
 	}
 
 	return "", fmt.Errorf("model %s not supported in channel %s", model, c.Name)
+}
+
+// GetOverrideParameters returns the cached override parameters for the channel.
+// If the parameters haven't been parsed yet, it parses and caches them.
+func (c *Channel) GetOverrideParameters() map[string]any {
+	if c.cachedOverrideParams != nil {
+		return c.cachedOverrideParams
+	}
+
+	if c.Settings == nil || c.Settings.OverrideParameters == "" {
+		c.cachedOverrideParams = make(map[string]any)
+		return c.cachedOverrideParams
+	}
+
+	var overrideParams map[string]any
+	if err := json.Unmarshal([]byte(c.Settings.OverrideParameters), &overrideParams); err != nil {
+		// If parsing fails, return empty map and log the error
+		log.Warn(context.Background(), "failed to parse override parameters",
+			log.String("channel", c.Name),
+			log.Cause(err),
+		)
+		c.cachedOverrideParams = make(map[string]any)
+
+		return c.cachedOverrideParams
+	}
+
+	c.cachedOverrideParams = overrideParams
+
+	return c.cachedOverrideParams
 }
 
 type ChannelServiceParams struct {
@@ -157,7 +190,13 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 			continue
 		}
 
-		log.Debug(ctx, "created outbound transformer", log.String("channel", c.Name), log.String("type", c.Type.String()))
+		// Preload override parameters
+		overrideParams := channel.GetOverrideParameters()
+		log.Debug(ctx, "created outbound transformer",
+			log.String("channel", c.Name),
+			log.String("type", c.Type.String()),
+			log.Any("override_params", overrideParams),
+		)
 
 		channels = append(channels, channel)
 	}
@@ -344,7 +383,11 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		channel.TypeGeminiOpenai,
 		channel.TypePpio, channel.TypeSiliconflow, channel.TypeVolcengine,
 		channel.TypeVercel, channel.TypeAihubmix:
-		transformer, err := openai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
+		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
+			Type:    openai.PlatformOpenAI,
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 		}
@@ -510,6 +553,8 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input *ent.CreateC
 
 // UpdateChannel updates an existing channel with the provided input.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
+	log.Debug(ctx, "UpdateChannel", log.Int("id", id), log.Any("input", input))
+
 	// Check if name is being updated and if it conflicts with existing channels
 	if input.Name != nil {
 		existing, err := svc.Ent.Channel.Query().

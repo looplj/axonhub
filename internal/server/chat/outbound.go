@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/tidwall/sjson"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
@@ -206,6 +208,27 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	channelRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {
 		return nil, err
+	}
+
+	// Apply override parameters if configured
+	overrideParams := p.state.CurrentChannel.GetOverrideParameters()
+	if len(overrideParams) > 0 {
+		// Apply each override parameter using sjson
+		body := channelRequest.Body
+		for key, value := range overrideParams {
+			body, err = sjson.SetBytes(body, key, value)
+			if err != nil {
+				log.Warn(ctx, "failed to apply override parameter",
+					log.String("channel", p.state.CurrentChannel.Name),
+					log.String("key", key),
+					log.Cause(err),
+				)
+
+				continue
+			}
+		}
+
+		channelRequest.Body = body
 	}
 
 	if p.state.RequestExec == nil {

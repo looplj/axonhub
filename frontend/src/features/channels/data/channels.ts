@@ -44,6 +44,7 @@ const CHANNELS_QUERY = `
               from
               to
             }
+            overrideParameters
           }
           orderingWeight
         }
@@ -78,6 +79,7 @@ const CREATE_CHANNEL_MUTATION = `
           from
           to
         }
+        overrideParameters
       }
       orderingWeight
     }
@@ -101,6 +103,7 @@ const UPDATE_CHANNEL_MUTATION = `
           from
           to
         }
+        overrideParameters
       }
       orderingWeight
     }
@@ -155,6 +158,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             from
             to
           }
+          overrideParameters
         }
       }
     }
