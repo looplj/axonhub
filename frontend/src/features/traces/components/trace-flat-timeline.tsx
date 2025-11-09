@@ -504,21 +504,19 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
 
     let tokenSum = 0
     let cachedTokenSum = 0
-    let hasTokenData = false
 
     for (const seg of flatSegments) {
       const segmentTokens = seg.segment.metadata?.totalTokens
       const segmentCachedTokens = seg.segment.metadata?.cachedTokens
       if (typeof segmentTokens === 'number') {
         tokenSum += segmentTokens
-        hasTokenData = true
       }
       if (typeof segmentCachedTokens === 'number') {
         cachedTokenSum += segmentCachedTokens
       }
     }
 
-    const totalTokens = hasTokenData ? tokenSum : null
+    const totalTokens = tokenSum > 0 ? tokenSum : null
     const totalCachedTokens = cachedTokenSum > 0 ? cachedTokenSum : null
 
     // Initialize expanded segments for first 10 items

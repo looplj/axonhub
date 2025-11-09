@@ -707,7 +707,6 @@ type ComplexityRoot struct {
 		CompletionRejectedPredictionTokens func(childComplexity int) int
 		CompletionTokens                   func(childComplexity int) int
 		CreatedAt                          func(childComplexity int) int
-		DeletedAt                          func(childComplexity int) int
 		Format                             func(childComplexity int) int
 		ID                                 func(childComplexity int) int
 		ModelID                            func(childComplexity int) int
@@ -4118,13 +4117,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UsageLog.CreatedAt(childComplexity), true
-
-	case "UsageLog.deletedAt":
-		if e.complexity.UsageLog.DeletedAt == nil {
-			break
-		}
-
-		return e.complexity.UsageLog.DeletedAt(childComplexity), true
 
 	case "UsageLog.format":
 		if e.complexity.UsageLog.Format == nil {
@@ -26698,50 +26690,6 @@ func (ec *executionContext) fieldContext_UsageLog_updatedAt(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _UsageLog_deletedAt(ctx context.Context, field graphql.CollectedField, obj *ent.UsageLog) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_UsageLog_deletedAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DeletedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_UsageLog_deletedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UsageLog",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _UsageLog_requestID(ctx context.Context, field graphql.CollectedField, obj *ent.UsageLog) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UsageLog_requestID(ctx, field)
 	if err != nil {
@@ -27811,8 +27759,6 @@ func (ec *executionContext) fieldContext_UsageLogEdge_node(_ context.Context, fi
 				return ec.fieldContext_UsageLog_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_UsageLog_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_UsageLog_deletedAt(ctx, field)
 			case "requestID":
 				return ec.fieldContext_UsageLog_requestID(ctx, field)
 			case "projectID":
@@ -41967,7 +41913,7 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "promptTokens", "promptTokensNEQ", "promptTokensIn", "promptTokensNotIn", "promptTokensGT", "promptTokensGTE", "promptTokensLT", "promptTokensLTE", "completionTokens", "completionTokensNEQ", "completionTokensIn", "completionTokensNotIn", "completionTokensGT", "completionTokensGTE", "completionTokensLT", "completionTokensLTE", "totalTokens", "totalTokensNEQ", "totalTokensIn", "totalTokensNotIn", "totalTokensGT", "totalTokensGTE", "totalTokensLT", "totalTokensLTE", "promptAudioTokens", "promptAudioTokensNEQ", "promptAudioTokensIn", "promptAudioTokensNotIn", "promptAudioTokensGT", "promptAudioTokensGTE", "promptAudioTokensLT", "promptAudioTokensLTE", "promptAudioTokensIsNil", "promptAudioTokensNotNil", "promptCachedTokens", "promptCachedTokensNEQ", "promptCachedTokensIn", "promptCachedTokensNotIn", "promptCachedTokensGT", "promptCachedTokensGTE", "promptCachedTokensLT", "promptCachedTokensLTE", "promptCachedTokensIsNil", "promptCachedTokensNotNil", "completionAudioTokens", "completionAudioTokensNEQ", "completionAudioTokensIn", "completionAudioTokensNotIn", "completionAudioTokensGT", "completionAudioTokensGTE", "completionAudioTokensLT", "completionAudioTokensLTE", "completionAudioTokensIsNil", "completionAudioTokensNotNil", "completionReasoningTokens", "completionReasoningTokensNEQ", "completionReasoningTokensIn", "completionReasoningTokensNotIn", "completionReasoningTokensGT", "completionReasoningTokensGTE", "completionReasoningTokensLT", "completionReasoningTokensLTE", "completionReasoningTokensIsNil", "completionReasoningTokensNotNil", "completionAcceptedPredictionTokens", "completionAcceptedPredictionTokensNEQ", "completionAcceptedPredictionTokensIn", "completionAcceptedPredictionTokensNotIn", "completionAcceptedPredictionTokensGT", "completionAcceptedPredictionTokensGTE", "completionAcceptedPredictionTokensLT", "completionAcceptedPredictionTokensLTE", "completionAcceptedPredictionTokensIsNil", "completionAcceptedPredictionTokensNotNil", "completionRejectedPredictionTokens", "completionRejectedPredictionTokensNEQ", "completionRejectedPredictionTokensIn", "completionRejectedPredictionTokensNotIn", "completionRejectedPredictionTokensGT", "completionRejectedPredictionTokensGTE", "completionRejectedPredictionTokensLT", "completionRejectedPredictionTokensLTE", "completionRejectedPredictionTokensIsNil", "completionRejectedPredictionTokensNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "hasRequest", "hasRequestWith", "hasProject", "hasProjectWith", "hasChannel", "hasChannelWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "promptTokens", "promptTokensNEQ", "promptTokensIn", "promptTokensNotIn", "promptTokensGT", "promptTokensGTE", "promptTokensLT", "promptTokensLTE", "completionTokens", "completionTokensNEQ", "completionTokensIn", "completionTokensNotIn", "completionTokensGT", "completionTokensGTE", "completionTokensLT", "completionTokensLTE", "totalTokens", "totalTokensNEQ", "totalTokensIn", "totalTokensNotIn", "totalTokensGT", "totalTokensGTE", "totalTokensLT", "totalTokensLTE", "promptAudioTokens", "promptAudioTokensNEQ", "promptAudioTokensIn", "promptAudioTokensNotIn", "promptAudioTokensGT", "promptAudioTokensGTE", "promptAudioTokensLT", "promptAudioTokensLTE", "promptAudioTokensIsNil", "promptAudioTokensNotNil", "promptCachedTokens", "promptCachedTokensNEQ", "promptCachedTokensIn", "promptCachedTokensNotIn", "promptCachedTokensGT", "promptCachedTokensGTE", "promptCachedTokensLT", "promptCachedTokensLTE", "promptCachedTokensIsNil", "promptCachedTokensNotNil", "completionAudioTokens", "completionAudioTokensNEQ", "completionAudioTokensIn", "completionAudioTokensNotIn", "completionAudioTokensGT", "completionAudioTokensGTE", "completionAudioTokensLT", "completionAudioTokensLTE", "completionAudioTokensIsNil", "completionAudioTokensNotNil", "completionReasoningTokens", "completionReasoningTokensNEQ", "completionReasoningTokensIn", "completionReasoningTokensNotIn", "completionReasoningTokensGT", "completionReasoningTokensGTE", "completionReasoningTokensLT", "completionReasoningTokensLTE", "completionReasoningTokensIsNil", "completionReasoningTokensNotNil", "completionAcceptedPredictionTokens", "completionAcceptedPredictionTokensNEQ", "completionAcceptedPredictionTokensIn", "completionAcceptedPredictionTokensNotIn", "completionAcceptedPredictionTokensGT", "completionAcceptedPredictionTokensGTE", "completionAcceptedPredictionTokensLT", "completionAcceptedPredictionTokensLTE", "completionAcceptedPredictionTokensIsNil", "completionAcceptedPredictionTokensNotNil", "completionRejectedPredictionTokens", "completionRejectedPredictionTokensNEQ", "completionRejectedPredictionTokensIn", "completionRejectedPredictionTokensNotIn", "completionRejectedPredictionTokensGT", "completionRejectedPredictionTokensGTE", "completionRejectedPredictionTokensLT", "completionRejectedPredictionTokensLTE", "completionRejectedPredictionTokensIsNil", "completionRejectedPredictionTokensNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "hasRequest", "hasRequestWith", "hasProject", "hasProjectWith", "hasChannel", "hasChannelWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -42195,62 +42141,6 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 				return it, err
 			}
 			it.UpdatedAtLTE = data
-		case "deletedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAt"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAt = data
-		case "deletedAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNEQ = data
-		case "deletedAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtIn = data
-		case "deletedAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtNotIn = data
-		case "deletedAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGT = data
-		case "deletedAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtGTE = data
-		case "deletedAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLT = data
-		case "deletedAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletedAtLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DeletedAtLTE = data
 		case "requestID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestID"))
 			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -52089,11 +51979,6 @@ func (ec *executionContext) _UsageLog(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "updatedAt":
 			out.Values[i] = ec._UsageLog_updatedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "deletedAt":
-			out.Values[i] = ec._UsageLog_deletedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

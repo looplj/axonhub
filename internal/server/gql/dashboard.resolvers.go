@@ -7,6 +7,7 @@ package gql
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"entgo.io/ent/dialect"
@@ -146,6 +147,14 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestSt
 		return []*RequestStatsByChannel{}, nil
 	}
 
+	// Order by request count and keep only top 10
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Count > results[j].Count
+	})
+	if len(results) > 10 {
+		results = results[:10]
+	}
+
 	// Get only the channels we need
 	channelIDs := lo.Map(results, func(item channelStats, _ int) int {
 		return item.ChannelID
@@ -196,6 +205,14 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStat
 		Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get requests by model: %w", err)
+	}
+
+	// Order by request count and keep only top 10
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Count > results[j].Count
+	})
+	if len(results) > 10 {
+		results = results[:10]
 	}
 
 	stats := lo.Map(results, func(item modelStats, _ int) *RequestStatsByModel {

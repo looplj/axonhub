@@ -24,8 +24,6 @@ type UsageLog struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt int `json:"deleted_at,omitempty"`
 	// Related request ID
 	RequestID int `json:"request_id,omitempty"`
 	// Project ID, default to 1 for backward compatibility
@@ -115,7 +113,7 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case usagelog.FieldID, usagelog.FieldDeletedAt, usagelog.FieldRequestID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
+		case usagelog.FieldID, usagelog.FieldRequestID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
 			values[i] = new(sql.NullInt64)
 		case usagelog.FieldModelID, usagelog.FieldSource, usagelog.FieldFormat:
 			values[i] = new(sql.NullString)
@@ -153,12 +151,6 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
-			}
-		case usagelog.FieldDeletedAt:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
-			} else if value.Valid {
-				_m.DeletedAt = int(value.Int64)
 			}
 		case usagelog.FieldRequestID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -306,9 +298,6 @@ func (_m *UsageLog) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("request_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RequestID))

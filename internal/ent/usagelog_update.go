@@ -36,27 +36,6 @@ func (_u *UsageLogUpdate) SetUpdatedAt(v time.Time) *UsageLogUpdate {
 	return _u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *UsageLogUpdate) SetDeletedAt(v int) *UsageLogUpdate {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *UsageLogUpdate) SetNillableDeletedAt(v *int) *UsageLogUpdate {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *UsageLogUpdate) AddDeletedAt(v int) *UsageLogUpdate {
-	_u.mutation.AddDeletedAt(v)
-	return _u
-}
-
 // SetChannelID sets the "channel_id" field.
 func (_u *UsageLogUpdate) SetChannelID(v int) *UsageLogUpdate {
 	_u.mutation.SetChannelID(v)
@@ -392,12 +371,6 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(usagelog.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(usagelog.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(usagelog.FieldDeletedAt, field.TypeInt, value)
-	}
 	if value, ok := _u.mutation.PromptTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptTokens, field.TypeInt64, value)
 	}
@@ -524,27 +497,6 @@ type UsageLogUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *UsageLogUpdateOne) SetUpdatedAt(v time.Time) *UsageLogUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *UsageLogUpdateOne) SetDeletedAt(v int) *UsageLogUpdateOne {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *UsageLogUpdateOne) SetNillableDeletedAt(v *int) *UsageLogUpdateOne {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *UsageLogUpdateOne) AddDeletedAt(v int) *UsageLogUpdateOne {
-	_u.mutation.AddDeletedAt(v)
 	return _u
 }
 
@@ -912,12 +864,6 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(usagelog.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(usagelog.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(usagelog.FieldDeletedAt, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.PromptTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptTokens, field.TypeInt64, value)

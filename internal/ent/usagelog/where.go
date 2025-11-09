@@ -65,11 +65,6 @@ func UpdatedAt(v time.Time) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
-// DeletedAt applies equality check predicate on the "deleted_at" field. It's identical to DeletedAtEQ.
-func DeletedAt(v int) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldEQ(FieldDeletedAt, v))
-}
-
 // RequestID applies equality check predicate on the "request_id" field. It's identical to RequestIDEQ.
 func RequestID(v int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldRequestID, v))
@@ -218,46 +213,6 @@ func UpdatedAtLT(v time.Time) predicate.UsageLog {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldLTE(FieldUpdatedAt, v))
-}
-
-// DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
-func DeletedAtEQ(v int) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldEQ(FieldDeletedAt, v))
-}
-
-// DeletedAtNEQ applies the NEQ predicate on the "deleted_at" field.
-func DeletedAtNEQ(v int) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldNEQ(FieldDeletedAt, v))
-}
-
-// DeletedAtIn applies the In predicate on the "deleted_at" field.
-func DeletedAtIn(vs ...int) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldIn(FieldDeletedAt, vs...))
-}
-
-// DeletedAtNotIn applies the NotIn predicate on the "deleted_at" field.
-func DeletedAtNotIn(vs ...int) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldNotIn(FieldDeletedAt, vs...))
-}
-
-// DeletedAtGT applies the GT predicate on the "deleted_at" field.
-func DeletedAtGT(v int) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldGT(FieldDeletedAt, v))
-}
-
-// DeletedAtGTE applies the GTE predicate on the "deleted_at" field.
-func DeletedAtGTE(v int) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldGTE(FieldDeletedAt, v))
-}
-
-// DeletedAtLT applies the LT predicate on the "deleted_at" field.
-func DeletedAtLT(v int) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldLT(FieldDeletedAt, v))
-}
-
-// DeletedAtLTE applies the LTE predicate on the "deleted_at" field.
-func DeletedAtLTE(v int) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldLTE(FieldDeletedAt, v))
 }
 
 // RequestIDEQ applies the EQ predicate on the "request_id" field.

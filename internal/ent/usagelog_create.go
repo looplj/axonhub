@@ -53,20 +53,6 @@ func (_c *UsageLogCreate) SetNillableUpdatedAt(v *time.Time) *UsageLogCreate {
 	return _c
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (_c *UsageLogCreate) SetDeletedAt(v int) *UsageLogCreate {
-	_c.mutation.SetDeletedAt(v)
-	return _c
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_c *UsageLogCreate) SetNillableDeletedAt(v *int) *UsageLogCreate {
-	if v != nil {
-		_c.SetDeletedAt(*v)
-	}
-	return _c
-}
-
 // SetRequestID sets the "request_id" field.
 func (_c *UsageLogCreate) SetRequestID(v int) *UsageLogCreate {
 	_c.mutation.SetRequestID(v)
@@ -327,10 +313,6 @@ func (_c *UsageLogCreate) defaults() error {
 		v := usagelog.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		v := usagelog.DefaultDeletedAt
-		_c.mutation.SetDeletedAt(v)
-	}
 	if _, ok := _c.mutation.ProjectID(); !ok {
 		v := usagelog.DefaultProjectID
 		_c.mutation.SetProjectID(v)
@@ -389,9 +371,6 @@ func (_c *UsageLogCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "UsageLog.updated_at"`)}
-	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "UsageLog.deleted_at"`)}
 	}
 	if _, ok := _c.mutation.RequestID(); !ok {
 		return &ValidationError{Name: "request_id", err: errors.New(`ent: missing required field "UsageLog.request_id"`)}
@@ -462,10 +441,6 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(usagelog.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
-	}
-	if value, ok := _c.mutation.DeletedAt(); ok {
-		_spec.SetField(usagelog.FieldDeletedAt, field.TypeInt, value)
-		_node.DeletedAt = value
 	}
 	if value, ok := _c.mutation.ModelID(); ok {
 		_spec.SetField(usagelog.FieldModelID, field.TypeString, value)
@@ -627,24 +602,6 @@ func (u *UsageLogUpsert) SetUpdatedAt(v time.Time) *UsageLogUpsert {
 // UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
 func (u *UsageLogUpsert) UpdateUpdatedAt() *UsageLogUpsert {
 	u.SetExcluded(usagelog.FieldUpdatedAt)
-	return u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *UsageLogUpsert) SetDeletedAt(v int) *UsageLogUpsert {
-	u.Set(usagelog.FieldDeletedAt, v)
-	return u
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *UsageLogUpsert) UpdateDeletedAt() *UsageLogUpsert {
-	u.SetExcluded(usagelog.FieldDeletedAt)
-	return u
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *UsageLogUpsert) AddDeletedAt(v int) *UsageLogUpsert {
-	u.Add(usagelog.FieldDeletedAt, v)
 	return u
 }
 
@@ -935,27 +892,6 @@ func (u *UsageLogUpsertOne) SetUpdatedAt(v time.Time) *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) UpdateUpdatedAt() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *UsageLogUpsertOne) SetDeletedAt(v int) *UsageLogUpsertOne {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *UsageLogUpsertOne) AddDeletedAt(v int) *UsageLogUpsertOne {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *UsageLogUpsertOne) UpdateDeletedAt() *UsageLogUpsertOne {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateDeletedAt()
 	})
 }
 
@@ -1448,27 +1384,6 @@ func (u *UsageLogUpsertBulk) SetUpdatedAt(v time.Time) *UsageLogUpsertBulk {
 func (u *UsageLogUpsertBulk) UpdateUpdatedAt() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.UpdateUpdatedAt()
-	})
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (u *UsageLogUpsertBulk) SetDeletedAt(v int) *UsageLogUpsertBulk {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *UsageLogUpsertBulk) AddDeletedAt(v int) *UsageLogUpsertBulk {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *UsageLogUpsertBulk) UpdateDeletedAt() *UsageLogUpsertBulk {
-	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateDeletedAt()
 	})
 }
 

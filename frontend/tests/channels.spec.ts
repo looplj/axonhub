@@ -202,8 +202,8 @@ test.describe('Admin Channels Management', () => {
     // Wait for dialog to close before proceeding
     await expect(enableDialog).not.toBeVisible({ timeout: 10000 })
 
-    // Wait for table to update
-    await page.waitForTimeout(1000)
+    // Wait for table to refetch channels after enabling
+    await waitForGraphQLOperation(page, 'GetChannels')
 
     // Clear the Archived filter to see enabled channels
     await statusFilterButton.click()
@@ -216,12 +216,12 @@ test.describe('Admin Channels Management', () => {
     await expect(archivedFilterToUncheck).toBeVisible({ timeout: 5000 })
     await archivedFilterToUncheck.click()
 
-    // Wait for filter to apply
-    await page.waitForTimeout(1000)
+    // Wait for table to refetch channels after clearing the filter
+    await waitForGraphQLOperation(page, 'GetChannels')
 
     // Now verify the enabled channel appears
     const enabledChannelRow = channelsTable.locator('tbody tr').filter({ hasText: updatedName })
-    await expect(enabledChannelRow).toBeVisible()
+    await expect(enabledChannelRow).toBeVisible({ timeout: 10000 })
     await expect(enabledChannelRow).toContainText(/Enabled|启用/i)
   })
 

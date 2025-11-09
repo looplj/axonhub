@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { formatNumber } from '@/utils/format-number'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
@@ -54,9 +55,7 @@ export default function DashboardPage() {
 
   return (
     <div className='flex-1 space-y-4 p-8 pt-6'>
-      <Header>
-        {/* <TopNav links={topNav} /> */}
-      </Header>
+      <Header>{/* <TopNav links={topNav} /> */}</Header>
       <Tabs defaultValue='overview' className='space-y-4'>
         <TabsContent value='overview' className='space-y-4'>
           <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-3'>
@@ -82,7 +81,7 @@ export default function DashboardPage() {
                 <div className='space-y-4'>
                   <div className='flex gap-4'>
                     <div className='flex-1'>
-                      <div className='text-2xl font-bold'>{stats?.totalUsers || 0}</div>
+                      <div className='text-2xl font-bold'>{formatNumber(stats?.totalUsers || 0)}</div>
                       <p className='text-muted-foreground text-xs'>{t('dashboard.stats.totalUsersInSystem')}</p>
                     </div>
 
@@ -90,7 +89,7 @@ export default function DashboardPage() {
                     <div className='border-border border-l'></div>
 
                     <div className='flex-1'>
-                      <div className='text-2xl font-bold'>{stats?.totalRequests || 0}</div>
+                      <div className='text-2xl font-bold'>{formatNumber(stats?.totalRequests || 0)}</div>
                       <p className='text-muted-foreground text-xs'>{t('dashboard.stats.allTimeRequests')}</p>
                     </div>
                   </div>
@@ -100,7 +99,7 @@ export default function DashboardPage() {
 
                   <div className='flex gap-4'>
                     <div className='flex-1'>
-                      <div className='text-2xl font-bold'>{stats?.failedRequests || 0}</div>
+                      <div className='text-2xl font-bold'>{formatNumber(stats?.failedRequests || 0)}</div>
                       <p className='text-muted-foreground text-xs'>{t('dashboard.stats.failedRequests')}</p>
                     </div>
 
@@ -141,15 +140,15 @@ export default function DashboardPage() {
                 <div className='space-y-3'>
                   <div className='flex justify-between text-sm'>
                     <span>{t('dashboard.stats.thisMonth')}:</span>
-                    <span className='font-semibold'>{stats?.requestStats?.requestsThisMonth || 0}</span>
+                    <span className='font-semibold'>{formatNumber(stats?.requestStats?.requestsThisMonth || 0)}</span>
                   </div>
                   <div className='flex justify-between text-sm'>
                     <span>{t('dashboard.stats.thisWeek')}:</span>
-                    <span className='font-semibold'>{stats?.requestStats?.requestsThisWeek || 0}</span>
+                    <span className='font-semibold'>{formatNumber(stats?.requestStats?.requestsThisWeek || 0)}</span>
                   </div>
                   <div className='flex justify-between text-sm'>
                     <span>{t('dashboard.stats.today')}:</span>
-                    <span className='font-semibold'>{stats?.requestStats?.requestsToday || 0}</span>
+                    <span className='font-semibold'>{formatNumber(stats?.requestStats?.requestsToday || 0)}</span>
                   </div>
                 </div>
               </CardContent>

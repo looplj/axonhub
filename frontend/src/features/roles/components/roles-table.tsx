@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -11,7 +11,7 @@ import {
   getFacetedUniqueValues,
   useReactTable,
 } from '@tanstack/react-table'
-import { t } from 'i18next'
+import { useTranslation } from 'react-i18next'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ServerSidePagination } from '@/components/server-side-pagination'
 import { useRolesContext } from '../context/roles-context'
@@ -52,16 +52,12 @@ export function RolesTable({
   searchFilter,
   onSearchFilterChange,
 }: DataTableProps) {
+  const { t } = useTranslation()
   const { setResetRowSelection } = useRolesContext()
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
-
-  // 注册重置选择的方法到 context
-  React.useEffect(() => {
-    setResetRowSelection(() => () => setRowSelection({}))
-  }, [setRowSelection])
 
   // Sync server state to local column filters (for UI display)
   React.useEffect(() => {
@@ -111,52 +107,76 @@ export function RolesTable({
     getRowId: (row) => row.id, // 使用Role的ID作为行ID
   })
 
+  // 注册重置选择的方法到 context
+  useEffect(() => {
+    setResetRowSelection(() => () => {
+      setRowSelection({})
+      table.resetRowSelection()
+    })
+  }, [setResetRowSelection, table])
+
+  const filteredSelectedRows = useMemo(() => table.getFilteredSelectedRowModel().rows, [table, rowSelection, data])
+  const selectedRoles = useMemo(() => filteredSelectedRows.map((row) => row.original as Role), [filteredSelectedRows])
+  const selectedCount = selectedRoles.length
+  const isFiltered = columnFilters.length > 0
+
+  useEffect(() => {
+    if (selectedCount === 0) {
+      table.resetRowSelection()
+    }
+  }, [selectedCount, table])
+
   return (
     <div className='flex flex-1 flex-col overflow-hidden' data-testid='roles-table'>
-      <DataTableToolbar table={table} />
+      <DataTableToolbar
+        table={table}
+        isFiltered={isFiltered}
+        selectedCount={selectedCount}
+        selectedRoles={selectedRoles}
+      />
       <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table>
-          <TableHeader className='sticky top-0 z-10 bg-background'>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className='group/row'>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead
-                        key={header.id}
-                        colSpan={header.colSpan}
-                        className={header.column.columnDef.meta?.className ?? ''}
-                      >
-                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
+          <TableHeader className='bg-background sticky top-0 z-10'>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className='group/row'>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className={header.column.columnDef.meta?.className ?? ''}
+                    >
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  )
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
           <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={columns.length} className='h-24 text-center'>
-                      {t('common.loading')}
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className='h-24 text-center'>
+                  {t('common.loading')}
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row'>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className={cell.column.columnDef.meta?.className ?? ''}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
-                  </TableRow>
-                ) : table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row'>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className={cell.column.columnDef.meta?.className ?? ''}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={columns.length} className='h-24 text-center'>
-                      {t('common.noData')}
-                    </TableCell>
-                  </TableRow>
-                )}
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className='h-24 text-center'>
+                  {t('common.noData')}
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
@@ -166,7 +186,7 @@ export function RolesTable({
           pageSize={pageSize}
           dataLength={data.length}
           totalCount={totalCount}
-          selectedRows={Object.keys(rowSelection).length}
+          selectedRows={selectedCount}
           onNextPage={onNextPage}
           onPreviousPage={onPreviousPage}
           onPageSizeChange={onPageSizeChange}

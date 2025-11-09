@@ -10749,8 +10749,6 @@ type UsageLogMutation struct {
 	id                                       *int
 	created_at                               *time.Time
 	updated_at                               *time.Time
-	deleted_at                               *int
-	adddeleted_at                            *int
 	model_id                                 *string
 	prompt_tokens                            *int64
 	addprompt_tokens                         *int64
@@ -10952,62 +10950,6 @@ func (m *UsageLogMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err e
 // ResetUpdatedAt resets all changes to the "updated_at" field.
 func (m *UsageLogMutation) ResetUpdatedAt() {
 	m.updated_at = nil
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (m *UsageLogMutation) SetDeletedAt(i int) {
-	m.deleted_at = &i
-	m.adddeleted_at = nil
-}
-
-// DeletedAt returns the value of the "deleted_at" field in the mutation.
-func (m *UsageLogMutation) DeletedAt() (r int, exists bool) {
-	v := m.deleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldDeletedAt returns the old "deleted_at" field's value of the UsageLog entity.
-// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UsageLogMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
-	}
-	return oldValue.DeletedAt, nil
-}
-
-// AddDeletedAt adds i to the "deleted_at" field.
-func (m *UsageLogMutation) AddDeletedAt(i int) {
-	if m.adddeleted_at != nil {
-		*m.adddeleted_at += i
-	} else {
-		m.adddeleted_at = &i
-	}
-}
-
-// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
-func (m *UsageLogMutation) AddedDeletedAt() (r int, exists bool) {
-	v := m.adddeleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetDeletedAt resets all changes to the "deleted_at" field.
-func (m *UsageLogMutation) ResetDeletedAt() {
-	m.deleted_at = nil
-	m.adddeleted_at = nil
 }
 
 // SetRequestID sets the "request_id" field.
@@ -11942,15 +11884,12 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 18)
+	fields := make([]string, 0, 17)
 	if m.created_at != nil {
 		fields = append(fields, usagelog.FieldCreatedAt)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, usagelog.FieldUpdatedAt)
-	}
-	if m.deleted_at != nil {
-		fields = append(fields, usagelog.FieldDeletedAt)
 	}
 	if m.request != nil {
 		fields = append(fields, usagelog.FieldRequestID)
@@ -12009,8 +11948,6 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case usagelog.FieldUpdatedAt:
 		return m.UpdatedAt()
-	case usagelog.FieldDeletedAt:
-		return m.DeletedAt()
 	case usagelog.FieldRequestID:
 		return m.RequestID()
 	case usagelog.FieldProjectID:
@@ -12054,8 +11991,6 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldCreatedAt(ctx)
 	case usagelog.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
-	case usagelog.FieldDeletedAt:
-		return m.OldDeletedAt(ctx)
 	case usagelog.FieldRequestID:
 		return m.OldRequestID(ctx)
 	case usagelog.FieldProjectID:
@@ -12108,13 +12043,6 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
-		return nil
-	case usagelog.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetDeletedAt(v)
 		return nil
 	case usagelog.FieldRequestID:
 		v, ok := value.(int)
@@ -12229,9 +12157,6 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *UsageLogMutation) AddedFields() []string {
 	var fields []string
-	if m.adddeleted_at != nil {
-		fields = append(fields, usagelog.FieldDeletedAt)
-	}
 	if m.addprompt_tokens != nil {
 		fields = append(fields, usagelog.FieldPromptTokens)
 	}
@@ -12267,8 +12192,6 @@ func (m *UsageLogMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *UsageLogMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case usagelog.FieldDeletedAt:
-		return m.AddedDeletedAt()
 	case usagelog.FieldPromptTokens:
 		return m.AddedPromptTokens()
 	case usagelog.FieldCompletionTokens:
@@ -12296,13 +12219,6 @@ func (m *UsageLogMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *UsageLogMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case usagelog.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddDeletedAt(v)
-		return nil
 	case usagelog.FieldPromptTokens:
 		v, ok := value.(int64)
 		if !ok {
@@ -12443,9 +12359,6 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldUpdatedAt:
 		m.ResetUpdatedAt()
-		return nil
-	case usagelog.FieldDeletedAt:
-		m.ResetDeletedAt()
 		return nil
 	case usagelog.FieldRequestID:
 		m.ResetRequestID()

@@ -2,6 +2,7 @@
 
 import { useTranslation } from 'react-i18next'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts'
+import { formatNumber } from '@/utils/format-number'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDailyRequestStats } from '../data/dashboard'
 
@@ -32,7 +33,7 @@ export function DailyRequestStats() {
         month: 'short',
         day: 'numeric',
       }),
-      total: stat.count,
+      total: formatNumber(stat.count),
     })) || []
 
   return (
