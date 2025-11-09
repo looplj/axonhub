@@ -30,28 +30,31 @@ type Config struct {
 
 // Worker handles garbage collection and cleanup operations.
 type Worker struct {
-	SystemService *biz.SystemService
-	Executor      executors.ScheduledExecutor
-	Ent           *ent.Client
-	Config        Config
-	CancelFunc    context.CancelFunc
+	SystemService      *biz.SystemService
+	DataStorageService *biz.DataStorageService
+	Executor           executors.ScheduledExecutor
+	Ent                *ent.Client
+	Config             Config
+	CancelFunc         context.CancelFunc
 }
 
 type Params struct {
 	fx.In
 
-	Config        Config
-	SystemService *biz.SystemService
-	Client        *ent.Client
+	Config             Config
+	SystemService      *biz.SystemService
+	DataStorageService *biz.DataStorageService
+	Client             *ent.Client
 }
 
 // NewWorker creates a new GCService with daily cleanup scheduling.
 func NewWorker(params Params) *Worker {
 	return &Worker{
-		SystemService: params.SystemService,
-		Executor:      executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1)),
-		Ent:           params.Client,
-		Config:        params.Config,
+		SystemService:      params.SystemService,
+		DataStorageService: params.DataStorageService,
+		Executor:           executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1)),
+		Ent:                params.Client,
+		Config:             params.Config,
 	}
 }
 
@@ -204,24 +207,9 @@ func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
 
-	// Delete requests in batches
-	reqResult, err := w.deleteInBatches(ctx, func() (int, error) {
-		return w.Ent.Request.Delete().Where(request.CreatedAtLT(cutoffTime)).Exec(ctx)
-	})
+	execResult, err := w.cleanupOldRequestExecutions(ctx, cutoffTime)
 	if err != nil {
-		return fmt.Errorf("failed to delete old requests: %w", err)
-	}
-
-	log.Debug(ctx, "Deleted old requests",
-		log.Int("deleted_requests_count", reqResult),
-		log.Time("cutoff_time", cutoffTime))
-
-	// Delete request executions in batches
-	execResult, err := w.deleteInBatches(ctx, func() (int, error) {
-		return w.Ent.RequestExecution.Delete().Where(requestexecution.CreatedAtLT(cutoffTime)).Exec(ctx)
-	})
-	if err != nil {
-		return fmt.Errorf("failed to delete old request executions: %w", err)
+		return fmt.Errorf("failed to cleanup request executions: %w", err)
 	}
 
 	log.Debug(ctx, "Deleted old request executions",
@@ -229,7 +217,183 @@ func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int) error {
 		log.Time("cutoff_time", cutoffTime),
 	)
 
+	reqResult, err := w.cleanupOldRequestsRecords(ctx, cutoffTime)
+	if err != nil {
+		return fmt.Errorf("failed to cleanup requests: %w", err)
+	}
+
+	log.Debug(ctx, "Deleted old requests",
+		log.Int("deleted_requests_count", reqResult),
+		log.Time("cutoff_time", cutoffTime))
+
 	return nil
+}
+
+func (w *Worker) cleanupOldRequestExecutions(ctx context.Context, cutoffTime time.Time) (int, error) {
+	batchSize := w.getBatchSize()
+	totalDeleted := 0
+	cache := make(map[int]*ent.DataStorage)
+
+	for {
+		executions, err := w.Ent.RequestExecution.Query().
+			Where(requestexecution.CreatedAtLT(cutoffTime)).
+			Order(ent.Asc(requestexecution.FieldID)).
+			Limit(batchSize).
+			All(ctx)
+		if err != nil {
+			return totalDeleted, fmt.Errorf("failed to query old request executions: %w", err)
+		}
+
+		if len(executions) == 0 {
+			break
+		}
+
+		ids := make([]int, len(executions))
+
+		for i, exec := range executions {
+			ids[i] = exec.ID
+			w.cleanupExecutionExternalStorage(ctx, exec, cache)
+		}
+
+		if _, err := w.Ent.RequestExecution.Delete().
+			Where(requestexecution.IDIn(ids...)).
+			Exec(ctx); err != nil {
+			return totalDeleted, fmt.Errorf("failed to delete request executions batch: %w", err)
+		}
+
+		log.Debug(ctx, "Deleted old request executions batch",
+			log.Int("deleted_executions_count", len(ids)),
+			log.Time("cutoff_time", cutoffTime),
+		)
+
+		totalDeleted += len(ids)
+	}
+
+	return totalDeleted, nil
+}
+
+func (w *Worker) cleanupOldRequestsRecords(ctx context.Context, cutoffTime time.Time) (int, error) {
+	batchSize := w.getBatchSize()
+	totalDeleted := 0
+	cache := make(map[int]*ent.DataStorage)
+
+	for {
+		reqs, err := w.Ent.Request.Query().
+			Where(request.CreatedAtLT(cutoffTime)).
+			Order(ent.Asc(request.FieldID)).
+			Limit(batchSize).
+			All(ctx)
+		if err != nil {
+			return totalDeleted, fmt.Errorf("failed to query old requests: %w", err)
+		}
+
+		if len(reqs) == 0 {
+			break
+		}
+
+		ids := make([]int, len(reqs))
+		for i, req := range reqs {
+			ids[i] = req.ID
+			w.cleanupRequestExternalStorage(ctx, req, cache)
+		}
+
+		if _, err := w.Ent.Request.Delete().
+			Where(request.IDIn(ids...)).
+			Exec(ctx); err != nil {
+			return totalDeleted, fmt.Errorf("failed to delete requests batch: %w", err)
+		}
+
+		totalDeleted += len(ids)
+	}
+
+	return totalDeleted, nil
+}
+
+func (w *Worker) cleanupExecutionExternalStorage(ctx context.Context, exec *ent.RequestExecution, cache map[int]*ent.DataStorage) {
+	if exec == nil || exec.DataStorageID == 0 || w.DataStorageService == nil {
+		return
+	}
+
+	ds, err := w.getDataStorageCached(ctx, exec.DataStorageID, cache)
+	if err != nil {
+		log.Warn(ctx, "Failed to load data storage for execution cleanup",
+			log.Cause(err),
+			log.Int("execution_id", exec.ID),
+		)
+
+		return
+	}
+
+	if ds == nil || ds.Primary {
+		return
+	}
+
+	keys := []string{
+		biz.GenerateExecutionRequestBodyKey(exec.ProjectID, exec.RequestID, exec.ID),
+		biz.GenerateExecutionResponseBodyKey(exec.ProjectID, exec.RequestID, exec.ID),
+		biz.GenerateExecutionResponseChunksKey(exec.ProjectID, exec.RequestID, exec.ID),
+	}
+
+	for _, key := range keys {
+		if err := w.DataStorageService.DeleteData(ctx, ds, key); err != nil {
+			log.Warn(ctx, "Failed to delete execution external data",
+				log.Cause(err),
+				log.Int("execution_id", exec.ID),
+				log.String("key", key),
+			)
+		}
+	}
+}
+
+func (w *Worker) cleanupRequestExternalStorage(ctx context.Context, req *ent.Request, cache map[int]*ent.DataStorage) {
+	if req == nil || req.DataStorageID == 0 || w.DataStorageService == nil {
+		return
+	}
+
+	ds, err := w.getDataStorageCached(ctx, req.DataStorageID, cache)
+	if err != nil {
+		log.Warn(ctx, "Failed to load data storage for request cleanup",
+			log.Cause(err),
+			log.Int("request_id", req.ID),
+		)
+
+		return
+	}
+
+	if ds == nil || ds.Primary {
+		return
+	}
+
+	keys := []string{
+		biz.GenerateRequestBodyKey(req.ProjectID, req.ID),
+		biz.GenerateResponseBodyKey(req.ProjectID, req.ID),
+		biz.GenerateResponseChunksKey(req.ProjectID, req.ID),
+	}
+
+	for _, key := range keys {
+		if err := w.DataStorageService.DeleteData(ctx, ds, key); err != nil {
+			log.Warn(ctx, "Failed to delete request external data",
+				log.Cause(err),
+				log.Int("request_id", req.ID),
+				log.String("key", key),
+			)
+		}
+	}
+}
+
+func (w *Worker) getDataStorageCached(ctx context.Context, id int, cache map[int]*ent.DataStorage) (*ent.DataStorage, error) {
+	if ds, ok := cache[id]; ok {
+		return ds, nil
+	}
+
+	ds, err := w.DataStorageService.GetDataStorageByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	cache[id] = ds
+
+	return ds, nil
 }
 
 // cleanupUsageLogs deletes usage logs older than the specified number of days.

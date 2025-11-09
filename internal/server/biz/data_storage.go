@@ -2,7 +2,9 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -470,6 +472,34 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 		return key, nil
 	default:
 		return "", fmt.Errorf("unsupported storage type: %s", ds.Type)
+	}
+}
+
+// DeleteData removes data stored under the provided key for the given data storage.
+// It is a no-op for database storage because the data is kept in the database itself.
+func (s *DataStorageService) DeleteData(ctx context.Context, ds *ent.DataStorage, key string) error {
+	log.Debug(ctx, "Deleting data", log.String("key", key))
+
+	switch ds.Type {
+	case datastorage.TypeDatabase:
+		return nil
+	case datastorage.TypeFs, datastorage.TypeS3, datastorage.TypeGcs:
+		fs, err := s.GetFileSystem(ctx, ds)
+		if err != nil {
+			return fmt.Errorf("failed to get file system: %w", err)
+		}
+
+		if err := fs.Remove(key); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil
+			}
+
+			return fmt.Errorf("failed to remove file: %w, key: %s", err, key)
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("unsupported storage type: %s", ds.Type)
 	}
 }
 
