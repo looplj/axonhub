@@ -11,7 +11,7 @@ import {
   getFacetedUniqueValues,
   useReactTable,
 } from '@tanstack/react-table'
-import { t } from 'i18next'
+import { useTranslation } from 'react-i18next'
 import {
   Table,
   TableBody,
@@ -58,6 +58,7 @@ export function RolesTable({
   searchFilter,
   onSearchFilterChange,
 }: DataTableProps) {
+  const { t } = useTranslation()
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])

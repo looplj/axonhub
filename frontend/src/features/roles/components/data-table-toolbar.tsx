@@ -9,18 +9,26 @@ import { Role } from '../data/schema'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
+  isFiltered?: boolean
+  selectedCount?: number
+  selectedRoles?: Role[]
 }
 
 export function DataTableToolbar<TData>({
   table,
+  isFiltered: externalIsFiltered,
+  selectedCount: externalSelectedCount,
+  selectedRoles,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const { setDeletingRoles } = useRolesContext()
-  const isFiltered = table.getState().columnFilters.length > 0
+  const tableState = table.getState()
   const selectedRows = table.getFilteredSelectedRowModel().rows
+  const selectedCount = externalSelectedCount ?? selectedRows.length
+  const isFiltered = externalIsFiltered ?? tableState.columnFilters.length > 0
 
   const handleBulkDelete = () => {
-    const roles = selectedRows.map((row) => row.original as Role)
+    const roles = selectedRoles ?? selectedRows.map((row) => row.original as Role)
     setDeletingRoles(roles)
   }
 
@@ -35,7 +43,7 @@ export function DataTableToolbar<TData>({
           }
           className='h-8 w-[150px] lg:w-[300px]'
         />
-        {selectedRows.length > 0 && (
+        {selectedCount > 0 && (
           <Button
             variant='destructive'
             size='sm'
@@ -43,7 +51,7 @@ export function DataTableToolbar<TData>({
             className='h-8'
           >
             <Trash2 className='mr-2 h-4 w-4' />
-            {t('common.buttons.delete')} ({selectedRows.length})
+            {t('common.buttons.delete')} ({selectedCount})
           </Button>
         )}
         {isFiltered && (

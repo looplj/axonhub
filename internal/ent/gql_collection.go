@@ -3375,11 +3375,6 @@ func (_q *UsageLogQuery) collectField(ctx context.Context, oneNode bool, opCtx *
 				selectedFields = append(selectedFields, usagelog.FieldUpdatedAt)
 				fieldSeen[usagelog.FieldUpdatedAt] = struct{}{}
 			}
-		case "deletedAt":
-			if _, ok := fieldSeen[usagelog.FieldDeletedAt]; !ok {
-				selectedFields = append(selectedFields, usagelog.FieldDeletedAt)
-				fieldSeen[usagelog.FieldDeletedAt] = struct{}{}
-			}
 		case "requestID":
 			if _, ok := fieldSeen[usagelog.FieldRequestID]; !ok {
 				selectedFields = append(selectedFields, usagelog.FieldRequestID)

@@ -4675,16 +4675,6 @@ type UsageLogWhereInput struct {
 	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
-	// "deleted_at" field predicates.
-	DeletedAt      *int  `json:"deletedAt,omitempty"`
-	DeletedAtNEQ   *int  `json:"deletedAtNEQ,omitempty"`
-	DeletedAtIn    []int `json:"deletedAtIn,omitempty"`
-	DeletedAtNotIn []int `json:"deletedAtNotIn,omitempty"`
-	DeletedAtGT    *int  `json:"deletedAtGT,omitempty"`
-	DeletedAtGTE   *int  `json:"deletedAtGTE,omitempty"`
-	DeletedAtLT    *int  `json:"deletedAtLT,omitempty"`
-	DeletedAtLTE   *int  `json:"deletedAtLTE,omitempty"`
-
 	// "request_id" field predicates.
 	RequestID      *int  `json:"requestID,omitempty"`
 	RequestIDNEQ   *int  `json:"requestIDNEQ,omitempty"`
@@ -4998,30 +4988,6 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if i.UpdatedAtLTE != nil {
 		predicates = append(predicates, usagelog.UpdatedAtLTE(*i.UpdatedAtLTE))
-	}
-	if i.DeletedAt != nil {
-		predicates = append(predicates, usagelog.DeletedAtEQ(*i.DeletedAt))
-	}
-	if i.DeletedAtNEQ != nil {
-		predicates = append(predicates, usagelog.DeletedAtNEQ(*i.DeletedAtNEQ))
-	}
-	if len(i.DeletedAtIn) > 0 {
-		predicates = append(predicates, usagelog.DeletedAtIn(i.DeletedAtIn...))
-	}
-	if len(i.DeletedAtNotIn) > 0 {
-		predicates = append(predicates, usagelog.DeletedAtNotIn(i.DeletedAtNotIn...))
-	}
-	if i.DeletedAtGT != nil {
-		predicates = append(predicates, usagelog.DeletedAtGT(*i.DeletedAtGT))
-	}
-	if i.DeletedAtGTE != nil {
-		predicates = append(predicates, usagelog.DeletedAtGTE(*i.DeletedAtGTE))
-	}
-	if i.DeletedAtLT != nil {
-		predicates = append(predicates, usagelog.DeletedAtLT(*i.DeletedAtLT))
-	}
-	if i.DeletedAtLTE != nil {
-		predicates = append(predicates, usagelog.DeletedAtLTE(*i.DeletedAtLTE))
 	}
 	if i.RequestID != nil {
 		predicates = append(predicates, usagelog.RequestIDEQ(*i.RequestID))

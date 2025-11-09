@@ -420,7 +420,6 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "prompt_tokens", Type: field.TypeInt64, Default: 0},
 		{Name: "completion_tokens", Type: field.TypeInt64, Default: 0},
@@ -445,19 +444,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "usage_logs_channels_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[16]},
+				Columns:    []*schema.Column{UsageLogsColumns[15]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "usage_logs_projects_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[17]},
+				Columns:    []*schema.Column{UsageLogsColumns[16]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "usage_logs_requests_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[18]},
+				Columns:    []*schema.Column{UsageLogsColumns[17]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -466,17 +465,17 @@ var (
 			{
 				Name:    "usage_logs_by_request_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[18]},
+				Columns: []*schema.Column{UsageLogsColumns[17]},
 			},
 			{
 				Name:    "usage_logs_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[17]},
+				Columns: []*schema.Column{UsageLogsColumns[16]},
 			},
 			{
 				Name:    "usage_logs_by_channel_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[16]},
+				Columns: []*schema.Column{UsageLogsColumns[15]},
 			},
 			{
 				Name:    "usage_logs_by_created_at",
@@ -486,17 +485,17 @@ var (
 			{
 				Name:    "usage_logs_by_model_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[4]},
+				Columns: []*schema.Column{UsageLogsColumns[3]},
 			},
 			{
 				Name:    "usage_logs_by_project_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[17], UsageLogsColumns[1]},
+				Columns: []*schema.Column{UsageLogsColumns[16], UsageLogsColumns[1]},
 			},
 			{
 				Name:    "usage_logs_by_channel_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[16], UsageLogsColumns[1]},
+				Columns: []*schema.Column{UsageLogsColumns[15], UsageLogsColumns[1]},
 			},
 		},
 	}

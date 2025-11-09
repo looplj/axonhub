@@ -1212,7 +1212,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "UsageLog",
-		Fields: make([]*Field, 18),
+		Fields: make([]*Field, 17),
 		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
@@ -1232,18 +1232,10 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "updated_at",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.DeletedAt); err != nil {
-		return nil, err
-	}
-	node.Fields[2] = &Field{
-		Type:  "int",
-		Name:  "deleted_at",
-		Value: string(buf),
-	}
 	if buf, err = json.Marshal(_m.RequestID); err != nil {
 		return nil, err
 	}
-	node.Fields[3] = &Field{
+	node.Fields[2] = &Field{
 		Type:  "int",
 		Name:  "request_id",
 		Value: string(buf),
@@ -1251,7 +1243,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.ProjectID); err != nil {
 		return nil, err
 	}
-	node.Fields[4] = &Field{
+	node.Fields[3] = &Field{
 		Type:  "int",
 		Name:  "project_id",
 		Value: string(buf),
@@ -1259,7 +1251,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.ChannelID); err != nil {
 		return nil, err
 	}
-	node.Fields[5] = &Field{
+	node.Fields[4] = &Field{
 		Type:  "int",
 		Name:  "channel_id",
 		Value: string(buf),
@@ -1267,7 +1259,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.ModelID); err != nil {
 		return nil, err
 	}
-	node.Fields[6] = &Field{
+	node.Fields[5] = &Field{
 		Type:  "string",
 		Name:  "model_id",
 		Value: string(buf),
@@ -1275,7 +1267,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.PromptTokens); err != nil {
 		return nil, err
 	}
-	node.Fields[7] = &Field{
+	node.Fields[6] = &Field{
 		Type:  "int64",
 		Name:  "prompt_tokens",
 		Value: string(buf),
@@ -1283,7 +1275,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.CompletionTokens); err != nil {
 		return nil, err
 	}
-	node.Fields[8] = &Field{
+	node.Fields[7] = &Field{
 		Type:  "int64",
 		Name:  "completion_tokens",
 		Value: string(buf),
@@ -1291,7 +1283,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.TotalTokens); err != nil {
 		return nil, err
 	}
-	node.Fields[9] = &Field{
+	node.Fields[8] = &Field{
 		Type:  "int64",
 		Name:  "total_tokens",
 		Value: string(buf),
@@ -1299,7 +1291,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.PromptAudioTokens); err != nil {
 		return nil, err
 	}
-	node.Fields[10] = &Field{
+	node.Fields[9] = &Field{
 		Type:  "int64",
 		Name:  "prompt_audio_tokens",
 		Value: string(buf),
@@ -1307,7 +1299,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.PromptCachedTokens); err != nil {
 		return nil, err
 	}
-	node.Fields[11] = &Field{
+	node.Fields[10] = &Field{
 		Type:  "int64",
 		Name:  "prompt_cached_tokens",
 		Value: string(buf),
@@ -1315,7 +1307,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.CompletionAudioTokens); err != nil {
 		return nil, err
 	}
-	node.Fields[12] = &Field{
+	node.Fields[11] = &Field{
 		Type:  "int64",
 		Name:  "completion_audio_tokens",
 		Value: string(buf),
@@ -1323,7 +1315,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.CompletionReasoningTokens); err != nil {
 		return nil, err
 	}
-	node.Fields[13] = &Field{
+	node.Fields[12] = &Field{
 		Type:  "int64",
 		Name:  "completion_reasoning_tokens",
 		Value: string(buf),
@@ -1331,7 +1323,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.CompletionAcceptedPredictionTokens); err != nil {
 		return nil, err
 	}
-	node.Fields[14] = &Field{
+	node.Fields[13] = &Field{
 		Type:  "int64",
 		Name:  "completion_accepted_prediction_tokens",
 		Value: string(buf),
@@ -1339,7 +1331,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.CompletionRejectedPredictionTokens); err != nil {
 		return nil, err
 	}
-	node.Fields[15] = &Field{
+	node.Fields[14] = &Field{
 		Type:  "int64",
 		Name:  "completion_rejected_prediction_tokens",
 		Value: string(buf),
@@ -1347,7 +1339,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Source); err != nil {
 		return nil, err
 	}
-	node.Fields[16] = &Field{
+	node.Fields[15] = &Field{
 		Type:  "usagelog.Source",
 		Name:  "source",
 		Value: string(buf),
@@ -1355,7 +1347,7 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Format); err != nil {
 		return nil, err
 	}
-	node.Fields[17] = &Field{
+	node.Fields[16] = &Field{
 		Type:  "string",
 		Name:  "format",
 		Value: string(buf),

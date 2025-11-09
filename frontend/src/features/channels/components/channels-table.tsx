@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -142,6 +142,13 @@ export function ChannelsTable({
     manualFiltering: true, // Enable manual filtering for server-side filtering
   })
 
+  const filteredSelectedRows = useMemo(
+    () => table.getFilteredSelectedRowModel().rows,
+    [table, rowSelection, data]
+  )
+  const selectedCount = filteredSelectedRows.length
+  const isFiltered = columnFilters.length > 0
+
   useEffect(() => {
     setResetRowSelection(() => () => {
       setRowSelection({})
@@ -150,13 +157,19 @@ export function ChannelsTable({
   }, [setResetRowSelection, table])
 
   useEffect(() => {
-    const selected = table.getFilteredSelectedRowModel().rows.map((row) => row.original as Channel)
+    const selected = filteredSelectedRows.map((row) => row.original as Channel)
     setSelectedChannels(selected)
-  }, [rowSelection, table, setSelectedChannels])
+  }, [filteredSelectedRows, setSelectedChannels])
+
+  useEffect(() => {
+    if (selectedCount === 0) {
+      setSelectedChannels([])
+    }
+  }, [selectedCount, setSelectedChannels])
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <DataTableToolbar table={table} />
+      <DataTableToolbar table={table} isFiltered={isFiltered} selectedCount={selectedCount} />
       <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table data-testid='channels-table'>
           <TableHeader className='bg-background sticky top-0 z-10'>
@@ -209,7 +222,7 @@ export function ChannelsTable({
           pageSize={pageSize}
           dataLength={data.length}
           totalCount={totalCount}
-          selectedRows={Object.keys(rowSelection).length}
+          selectedRows={selectedCount}
           onNextPage={onNextPage}
           onPreviousPage={onPreviousPage}
           onPageSizeChange={onPageSizeChange}

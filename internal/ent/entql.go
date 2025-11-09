@@ -259,7 +259,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		Fields: map[string]*sqlgraph.FieldSpec{
 			usagelog.FieldCreatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldCreatedAt},
 			usagelog.FieldUpdatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldUpdatedAt},
-			usagelog.FieldDeletedAt:                          {Type: field.TypeInt, Column: usagelog.FieldDeletedAt},
 			usagelog.FieldRequestID:                          {Type: field.TypeInt, Column: usagelog.FieldRequestID},
 			usagelog.FieldProjectID:                          {Type: field.TypeInt, Column: usagelog.FieldProjectID},
 			usagelog.FieldChannelID:                          {Type: field.TypeInt, Column: usagelog.FieldChannelID},
@@ -2265,11 +2264,6 @@ func (f *UsageLogFilter) WhereCreatedAt(p entql.TimeP) {
 // WhereUpdatedAt applies the entql time.Time predicate on the updated_at field.
 func (f *UsageLogFilter) WhereUpdatedAt(p entql.TimeP) {
 	f.Where(p.Field(usagelog.FieldUpdatedAt))
-}
-
-// WhereDeletedAt applies the entql int predicate on the deleted_at field.
-func (f *UsageLogFilter) WhereDeletedAt(p entql.IntP) {
-	f.Where(p.Field(usagelog.FieldDeletedAt))
 }
 
 // WhereRequestID applies the entql int predicate on the request_id field.

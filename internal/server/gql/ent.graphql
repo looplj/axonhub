@@ -3447,7 +3447,6 @@ type UsageLog implements Node {
   id: ID!
   createdAt: Time!
   updatedAt: Time!
-  deletedAt: Int!
   """
   Related request ID
   """
@@ -3611,17 +3610,6 @@ input UsageLogWhereInput {
   updatedAtGTE: Time
   updatedAtLT: Time
   updatedAtLTE: Time
-  """
-  deleted_at field predicates
-  """
-  deletedAt: Int
-  deletedAtNEQ: Int
-  deletedAtIn: [Int!]
-  deletedAtNotIn: [Int!]
-  deletedAtGT: Int
-  deletedAtGTE: Int
-  deletedAtLT: Int
-  deletedAtLTE: Int
   """
   request_id field predicates
   """

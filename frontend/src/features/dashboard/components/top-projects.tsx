@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useTopProjects } from '../data/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FolderIcon } from 'lucide-react'
+import { formatNumber } from '@/utils/format-number'
 
 export function TopProjects() {
   const { t } = useTranslation()
@@ -54,7 +55,7 @@ export function TopProjects() {
             </p>
           </div>
           <div className="ml-auto font-medium">
-            {project.requestCount} {t('dashboard.stats.requests')}
+            {formatNumber(project.requestCount)} {t('dashboard.stats.requests')}
           </div>
         </div>
       ))}

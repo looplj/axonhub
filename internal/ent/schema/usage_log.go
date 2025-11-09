@@ -8,7 +8,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 
-	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -19,7 +18,6 @@ type UsageLog struct {
 func (UsageLog) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
-		schematype.SoftDeleteMixin{},
 	}
 }
 

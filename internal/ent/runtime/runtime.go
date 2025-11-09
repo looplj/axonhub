@@ -394,15 +394,8 @@ func init() {
 			return next.Mutate(ctx, m)
 		})
 	}
-	usagelogMixinHooks1 := usagelogMixin[1].Hooks()
-
-	usagelog.Hooks[1] = usagelogMixinHooks1[0]
-	usagelogMixinInters1 := usagelogMixin[1].Interceptors()
-	usagelog.Interceptors[0] = usagelogMixinInters1[0]
 	usagelogMixinFields0 := usagelogMixin[0].Fields()
 	_ = usagelogMixinFields0
-	usagelogMixinFields1 := usagelogMixin[1].Fields()
-	_ = usagelogMixinFields1
 	usagelogFields := schema.UsageLog{}.Fields()
 	_ = usagelogFields
 	// usagelogDescCreatedAt is the schema descriptor for created_at field.
@@ -415,10 +408,6 @@ func init() {
 	usagelog.DefaultUpdatedAt = usagelogDescUpdatedAt.Default.(func() time.Time)
 	// usagelog.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	usagelog.UpdateDefaultUpdatedAt = usagelogDescUpdatedAt.UpdateDefault.(func() time.Time)
-	// usagelogDescDeletedAt is the schema descriptor for deleted_at field.
-	usagelogDescDeletedAt := usagelogMixinFields1[0].Descriptor()
-	// usagelog.DefaultDeletedAt holds the default value on creation for the deleted_at field.
-	usagelog.DefaultDeletedAt = usagelogDescDeletedAt.Default.(int)
 	// usagelogDescProjectID is the schema descriptor for project_id field.
 	usagelogDescProjectID := usagelogFields[1].Descriptor()
 	// usagelog.DefaultProjectID holds the default value on creation for the project_id field.

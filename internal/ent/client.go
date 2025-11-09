@@ -2368,8 +2368,7 @@ func (c *UsageLogClient) Hooks() []Hook {
 
 // Interceptors returns the client interceptors.
 func (c *UsageLogClient) Interceptors() []Interceptor {
-	inters := c.inters.UsageLog
-	return append(inters[:len(inters):len(inters)], usagelog.Interceptors[:]...)
+	return c.inters.UsageLog
 }
 
 func (c *UsageLogClient) mutate(ctx context.Context, m *UsageLogMutation) (Value, error) {

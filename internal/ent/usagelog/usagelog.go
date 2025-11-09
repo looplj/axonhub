@@ -22,8 +22,6 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
-	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
-	FieldDeletedAt = "deleted_at"
 	// FieldRequestID holds the string denoting the request_id field in the database.
 	FieldRequestID = "request_id"
 	// FieldProjectID holds the string denoting the project_id field in the database.
@@ -90,7 +88,6 @@ var Columns = []string{
 	FieldID,
 	FieldCreatedAt,
 	FieldUpdatedAt,
-	FieldDeletedAt,
 	FieldRequestID,
 	FieldProjectID,
 	FieldChannelID,
@@ -124,17 +121,14 @@ func ValidColumn(column string) bool {
 //
 //	import _ "github.com/looplj/axonhub/internal/ent/runtime"
 var (
-	Hooks        [2]ent.Hook
-	Interceptors [1]ent.Interceptor
-	Policy       ent.Policy
+	Hooks  [1]ent.Hook
+	Policy ent.Policy
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
-	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
-	DefaultDeletedAt int
 	// DefaultProjectID holds the default value on creation for the "project_id" field.
 	DefaultProjectID int
 	// DefaultPromptTokens holds the default value on creation for the "prompt_tokens" field.
@@ -202,11 +196,6 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByUpdatedAt orders the results by the updated_at field.
 func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
-}
-
-// ByDeletedAt orders the results by the deleted_at field.
-func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
 }
 
 // ByRequestID orders the results by the request_id field.

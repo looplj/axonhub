@@ -400,24 +400,3 @@ func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *channelSettingsResolver) OverrideParameters(ctx context.Context, obj *objects.ChannelSettings) (objects.JSONRawMessage, error) {
-	panic(fmt.Errorf("not implemented: OverrideParameters - overrideParameters"))
-}
-func (r *channelSettingsInputResolver) OverrideParameters(ctx context.Context, obj *objects.ChannelSettings, data objects.JSONRawMessage) error {
-	panic(fmt.Errorf("not implemented: OverrideParameters - overrideParameters"))
-}
-func (r *Resolver) ChannelSettings() ChannelSettingsResolver { return &channelSettingsResolver{r} }
-func (r *Resolver) ChannelSettingsInput() ChannelSettingsInputResolver {
-	return &channelSettingsInputResolver{r}
-}
-type channelSettingsResolver struct{ *Resolver }
-type channelSettingsInputResolver struct{ *Resolver }
-*/

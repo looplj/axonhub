@@ -11,15 +11,22 @@ import { ChannelType } from '../data/schema'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
+  isFiltered?: boolean
+  selectedCount?: number
 }
 
 export function DataTableToolbar<TData>({
   table,
+  isFiltered: externalIsFiltered,
+  selectedCount: externalSelectedCount,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const { setOpen } = useChannels()
-  const isFiltered = table.getState().columnFilters.length > 0
+  const tableState = table.getState()
   const selectedRows = table.getFilteredSelectedRowModel().rows
+  const selectedCount = externalSelectedCount ?? selectedRows.length
+  const isFiltered = externalIsFiltered ?? tableState.columnFilters.length > 0
+  const hasSelectedRows = selectedCount > 0
 
   const channelTypes = [
     {
@@ -130,7 +137,7 @@ export function DataTableToolbar<TData>({
             <Cross2Icon className='ml-2 h-4 w-4' />
           </Button>
         )}
-        {selectedRows.length > 0 && (
+        {hasSelectedRows && (
           <Button
             variant='outline'
             size='sm'
@@ -138,7 +145,7 @@ export function DataTableToolbar<TData>({
             className='h-8 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
           >
             <IconArchive className='mr-2 h-4 w-4' />
-            {t('common.buttons.archive')} ({selectedRows.length})
+            {t('common.buttons.archive')} ({selectedCount})
           </Button>
         )}
       </div>
