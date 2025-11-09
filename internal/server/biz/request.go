@@ -44,33 +44,33 @@ func (s *RequestService) shouldUseExternalStorage(_ context.Context, ds *ent.Dat
 	return !ds.Primary
 }
 
-// generateRequestBodyKey generates the storage key for request body.
-func (s *RequestService) generateRequestBodyKey(projectID, requestID int) string {
+// GenerateRequestBodyKey generates the storage key for request body.
+func GenerateRequestBodyKey(projectID, requestID int) string {
 	return fmt.Sprintf("/%d/requests/%d/request_body.json", projectID, requestID)
 }
 
-// generateResponseBodyKey generates the storage key for response body.
-func (s *RequestService) generateResponseBodyKey(projectID, requestID int) string {
+// GenerateResponseBodyKey generates the storage key for response body.
+func GenerateResponseBodyKey(projectID, requestID int) string {
 	return fmt.Sprintf("/%d/requests/%d/response_body.json", projectID, requestID)
 }
 
-// generateResponseChunksKey generates the storage key for response chunks.
-func (s *RequestService) generateResponseChunksKey(projectID, requestID int) string {
+// GenerateResponseChunksKey generates the storage key for response chunks.
+func GenerateResponseChunksKey(projectID, requestID int) string {
 	return fmt.Sprintf("/%d/requests/%d/response_chunks.json", projectID, requestID)
 }
 
-// generateExecutionRequestBodyKey generates the storage key for execution request body.
-func (s *RequestService) generateExecutionRequestBodyKey(projectID, requestID, executionID int) string {
+// GenerateExecutionRequestBodyKey generates the storage key for execution request body.
+func GenerateExecutionRequestBodyKey(projectID, requestID, executionID int) string {
 	return fmt.Sprintf("/%d/requests/%d/executions/%d/request_body.json", projectID, requestID, executionID)
 }
 
-// generateExecutionResponseBodyKey generates the storage key for execution response body.
-func (s *RequestService) generateExecutionResponseBodyKey(projectID, requestID, executionID int) string {
+// GenerateExecutionResponseBodyKey generates the storage key for execution response body.
+func GenerateExecutionResponseBodyKey(projectID, requestID, executionID int) string {
 	return fmt.Sprintf("/%d/requests/%d/executions/%d/response_body.json", projectID, requestID, executionID)
 }
 
-// generateExecutionResponseChunksKey generates the storage key for execution response chunks.
-func (s *RequestService) generateExecutionResponseChunksKey(projectID, requestID, executionID int) string {
+// GenerateExecutionResponseChunksKey generates the storage key for execution response chunks.
+func GenerateExecutionResponseChunksKey(projectID, requestID, executionID int) string {
 	return fmt.Sprintf("/%d/requests/%d/executions/%d/response_chunks.json", projectID, requestID, executionID)
 }
 
@@ -158,7 +158,7 @@ func (s *RequestService) CreateRequest(
 
 	// Save request body to external storage if needed
 	if useExternalStorage {
-		key := s.generateRequestBodyKey(projectID, req.ID)
+		key := GenerateRequestBodyKey(projectID, req.ID)
 
 		_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, requestBodyBytes)
 		if err != nil {
@@ -250,7 +250,7 @@ func (s *RequestService) CreateRequestExecution(
 
 	// Save request body to external storage if needed
 	if useExternalStorage {
-		key := s.generateExecutionRequestBodyKey(request.ProjectID, request.ID, execution.ID)
+		key := GenerateExecutionRequestBodyKey(request.ProjectID, request.ID, execution.ID)
 
 		_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, requestBodyBytes)
 		if err != nil {
@@ -309,7 +309,7 @@ func (s *RequestService) UpdateRequestCompleted(
 		// Check if we should use external storage
 		if s.shouldUseExternalStorage(ctx, dataStorage) {
 			// Save to external storage
-			key := s.generateResponseBodyKey(req.ProjectID, requestID)
+			key := GenerateResponseBodyKey(req.ProjectID, requestID)
 
 			_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
 			if err != nil {
@@ -377,7 +377,7 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 		// Check if we should use external storage
 		if s.shouldUseExternalStorage(ctx, dataStorage) {
 			// Save to external storage
-			key := s.generateExecutionResponseBodyKey(execution.ProjectID, execution.RequestID, executionID)
+			key := GenerateExecutionResponseBodyKey(execution.ProjectID, execution.RequestID, executionID)
 
 			_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
 			if err != nil {
@@ -509,7 +509,7 @@ func (s *RequestService) AppendRequestExecutionChunk(
 	if s.shouldUseExternalStorage(ctx, dataStorage) {
 		// For external storage, we need to read existing chunks, append, and save back
 		// This is not ideal for streaming, but maintains consistency
-		key := s.generateExecutionResponseChunksKey(execution.ProjectID, execution.RequestID, executionID)
+		key := GenerateExecutionResponseChunksKey(execution.ProjectID, execution.RequestID, executionID)
 
 		// Read existing chunks
 		var existingChunks []objects.JSONRawMessage
@@ -601,7 +601,7 @@ func (s *RequestService) AppendRequestChunk(
 	// Check if we should use external storage
 	if s.shouldUseExternalStorage(ctx, dataStorage) {
 		// For external storage, we need to read existing chunks, append, and save back
-		key := s.generateResponseChunksKey(req.ProjectID, requestID)
+		key := GenerateResponseChunksKey(req.ProjectID, requestID)
 
 		// Read existing chunks
 		var existingChunks []objects.JSONRawMessage
@@ -709,7 +709,7 @@ func (s *RequestService) LoadRequestBody(ctx context.Context, req *ent.Request) 
 		return req.RequestBody, nil
 	}
 
-	key := s.generateRequestBodyKey(req.ProjectID, req.ID)
+	key := GenerateRequestBodyKey(req.ProjectID, req.ID)
 
 	data, err := s.DataStorageService.LoadData(ctx, dataStorage, key)
 	if err != nil {
@@ -736,7 +736,7 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 		return req.ResponseBody, nil
 	}
 
-	key := s.generateResponseBodyKey(req.ProjectID, req.ID)
+	key := GenerateResponseBodyKey(req.ProjectID, req.ID)
 
 	data, err := s.DataStorageService.LoadData(ctx, dataStorage, key)
 	if err != nil {
@@ -768,7 +768,7 @@ func (s *RequestService) LoadResponseChunks(ctx context.Context, req *ent.Reques
 		return req.ResponseChunks, nil
 	}
 
-	key := s.generateResponseChunksKey(req.ProjectID, req.ID)
+	key := GenerateResponseChunksKey(req.ProjectID, req.ID)
 
 	data, err := s.DataStorageService.LoadData(ctx, dataStorage, key)
 	if err != nil {
@@ -810,7 +810,7 @@ func (s *RequestService) LoadRequestExecutionRequestBody(ctx context.Context, ex
 		return exec.RequestBody, nil
 	}
 
-	key := s.generateExecutionRequestBodyKey(exec.ProjectID, exec.RequestID, exec.ID)
+	key := GenerateExecutionRequestBodyKey(exec.ProjectID, exec.RequestID, exec.ID)
 
 	data, err := s.DataStorageService.LoadData(ctx, dataStorage, key)
 	if err != nil {
@@ -842,7 +842,7 @@ func (s *RequestService) LoadRequestExecutionResponseBody(ctx context.Context, e
 		return exec.ResponseBody, nil
 	}
 
-	key := s.generateExecutionResponseBodyKey(exec.ProjectID, exec.RequestID, exec.ID)
+	key := GenerateExecutionResponseBodyKey(exec.ProjectID, exec.RequestID, exec.ID)
 
 	data, err := s.DataStorageService.LoadData(ctx, dataStorage, key)
 	if err != nil {
@@ -874,7 +874,7 @@ func (s *RequestService) LoadRequestExecutionResponseChunks(ctx context.Context,
 		return exec.ResponseChunks, nil
 	}
 
-	key := s.generateExecutionResponseChunksKey(exec.ProjectID, exec.RequestID, exec.ID)
+	key := GenerateExecutionResponseChunksKey(exec.ProjectID, exec.RequestID, exec.ID)
 
 	data, err := s.DataStorageService.LoadData(ctx, dataStorage, key)
 	if err != nil {

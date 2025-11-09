@@ -12,6 +12,8 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -20,7 +22,6 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
-	"github.com/samber/lo"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -151,6 +152,7 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestSt
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Count > results[j].Count
 	})
+
 	if len(results) > 10 {
 		results = results[:10]
 	}
@@ -211,6 +213,7 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStat
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Count > results[j].Count
 	})
+
 	if len(results) > 10 {
 		results = results[:10]
 	}
