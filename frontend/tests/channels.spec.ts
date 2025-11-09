@@ -558,4 +558,287 @@ test.describe('Admin Channels Management', () => {
       await page.keyboard.press('Escape')
     }
   })
+
+  test('can configure override parameters in channel settings', async ({ page }) => {
+    // Wait for table to load
+    await page.waitForTimeout(2000)
+
+    // Find the first channel row
+    const channelsTable = page.locator('[data-testid="channels-table"]')
+    const firstRow = channelsTable.locator('tbody tr').first()
+    const rowCount = await channelsTable.locator('tbody tr').count()
+
+    if (rowCount === 0) {
+      test.skip()
+      return
+    }
+
+    await expect(firstRow).toBeVisible()
+
+    // Click actions menu
+    const actionsTrigger = firstRow.locator('[data-testid="row-actions"]')
+
+    // Check if actions button exists (user may not have permission)
+    const actionsCount = await actionsTrigger.count()
+    if (actionsCount === 0) {
+      test.skip()
+      return
+    }
+
+    await actionsTrigger.click()
+
+    const menu = page.getByRole('menu')
+    await expect(menu).toBeVisible()
+
+    // Look for settings option
+    const settingsOption = menu.getByRole('menuitem', { name: /设置|Settings/i })
+    const settingsCount = await settingsOption.count()
+
+    if (settingsCount === 0) {
+      test.skip()
+      return
+    }
+
+    await settingsOption.focus()
+    await page.keyboard.press('Enter')
+
+    // Verify settings dialog opens
+    const settingsDialog = page.getByRole('dialog')
+    await expect(settingsDialog).toBeVisible()
+    await expect(settingsDialog).toContainText(/设置|Settings/i)
+
+    // Look for override parameters section
+    const overrideSection = settingsDialog.getByRole('heading', { name: /Override Parameters|覆盖参数/i })
+    const overrideSectionCount = await overrideSection.count()
+
+    if (overrideSectionCount === 0) {
+      test.skip()
+      return
+    }
+
+    // Find the textarea for override parameters
+    const overrideTextarea = settingsDialog.locator('textarea').filter({
+      hasText: '{"temperature": 0.7,"max_tokens": 8192}'
+    }).or(settingsDialog.locator('textarea').first())
+
+    // Enter valid JSON
+    const validJson = '{"temperature": 0.8, "max_tokens": 4096}'
+    await overrideTextarea.fill(validJson)
+
+    // Verify no validation error appears
+    const errorMessage = settingsDialog.locator('.text-destructive').filter({ hasText: /Must be valid JSON|必须是有效的 JSON/i })
+    await expect(errorMessage).not.toBeVisible()
+
+    // Save the settings
+    const saveButton = settingsDialog.getByRole('button', { name: /保存|Save/i })
+    await Promise.all([
+      waitForGraphQLOperation(page, 'UpdateChannel'),
+      saveButton.click(),
+    ])
+
+    // Wait for dialog to close
+    await expect(settingsDialog).not.toBeVisible({ timeout: 10000 })
+
+    // Re-open settings to verify the value was saved
+    await actionsTrigger.click()
+    await settingsOption.focus()
+    await page.keyboard.press('Enter')
+
+    const reopenedDialog = page.getByRole('dialog')
+    await expect(reopenedDialog).toBeVisible()
+
+    // Verify the textarea still contains the saved value
+    const reopenedTextarea = reopenedDialog.locator('textarea')
+    await expect(reopenedTextarea).toHaveValue(validJson)
+
+    // Close the dialog
+    const cancelButton = reopenedDialog.getByRole('button', { name: /取消|Cancel/i })
+    await cancelButton.click()
+    await expect(reopenedDialog).not.toBeVisible()
+  })
+
+  test('validates JSON format in override parameters', async ({ page }) => {
+    // Wait for table to load
+    await page.waitForTimeout(2000)
+
+    // Find the first channel row
+    const channelsTable = page.locator('[data-testid="channels-table"]')
+    const firstRow = channelsTable.locator('tbody tr').first()
+    const rowCount = await channelsTable.locator('tbody tr').count()
+
+    if (rowCount === 0) {
+      test.skip()
+      return
+    }
+
+    await expect(firstRow).toBeVisible()
+
+    // Click actions menu
+    const actionsTrigger = firstRow.locator('[data-testid="row-actions"]')
+
+    // Check if actions button exists (user may not have permission)
+    const actionsCount = await actionsTrigger.count()
+    if (actionsCount === 0) {
+      test.skip()
+      return
+    }
+
+    await actionsTrigger.click()
+
+    const menu = page.getByRole('menu')
+    await expect(menu).toBeVisible()
+
+    // Look for settings option
+    const settingsOption = menu.getByRole('menuitem', { name: /设置|Settings/i })
+    const settingsCount = await settingsOption.count()
+
+    if (settingsCount === 0) {
+      test.skip()
+      return
+    }
+
+    await settingsOption.focus()
+    await page.keyboard.press('Enter')
+
+    // Verify settings dialog opens
+    const settingsDialog = page.getByRole('dialog')
+    await expect(settingsDialog).toBeVisible()
+    await expect(settingsDialog).toContainText(/设置|Settings/i)
+
+    // Look for override parameters section
+    const overrideSection = settingsDialog.getByRole('heading', { name: /Override Parameters|覆盖参数/i })
+    const overrideSectionCount = await overrideSection.count()
+
+    if (overrideSectionCount === 0) {
+      test.skip()
+      return
+    }
+
+    // Find the textarea for override parameters
+    const overrideTextarea = settingsDialog.locator('textarea')
+
+    // Enter invalid JSON
+    const invalidJson = '{"temperature": 0.8, "max_tokens": invalid}'
+    await overrideTextarea.fill(invalidJson)
+
+    // Verify validation error appears
+    const errorMessage = settingsDialog.locator('.text-destructive').filter({ hasText: /Must be valid JSON|必须是有效的 JSON/i })
+    await expect(errorMessage).toBeVisible()
+
+    // Enter valid JSON to clear the error
+    const validJson = '{"temperature": 0.8, "max_tokens": 4096}'
+    await overrideTextarea.fill(validJson)
+
+    // Verify validation error disappears
+    await expect(errorMessage).not.toBeVisible()
+
+    // Close the dialog without saving
+    const cancelButton = settingsDialog.getByRole('button', { name: /取消|Cancel/i })
+    await cancelButton.click()
+    await expect(settingsDialog).not.toBeVisible()
+  })
+
+  test('can configure model mappings in channel settings', async ({ page }) => {
+    // Wait for table to load
+    await page.waitForTimeout(2000)
+
+    // Find the first channel row
+    const channelsTable = page.locator('[data-testid="channels-table"]')
+    const firstRow = channelsTable.locator('tbody tr').first()
+    const rowCount = await channelsTable.locator('tbody tr').count()
+
+    if (rowCount === 0) {
+      test.skip()
+      return
+    }
+
+    await expect(firstRow).toBeVisible()
+
+    // Click actions menu
+    const actionsTrigger = firstRow.locator('[data-testid="row-actions"]')
+
+    // Check if actions button exists (user may not have permission)
+    const actionsCount = await actionsTrigger.count()
+    if (actionsCount === 0) {
+      test.skip()
+      return
+    }
+
+    await actionsTrigger.click()
+
+    const menu = page.getByRole('menu')
+    await expect(menu).toBeVisible()
+
+    // Look for settings option
+    const settingsOption = menu.getByRole('menuitem', { name: /设置|Settings/i })
+    const settingsCount = await settingsOption.count()
+
+    if (settingsCount === 0) {
+      test.skip()
+      return
+    }
+
+    await settingsOption.focus()
+    await page.keyboard.press('Enter')
+
+    // Verify settings dialog opens
+    const settingsDialog = page.getByRole('dialog')
+    await expect(settingsDialog).toBeVisible()
+    await expect(settingsDialog).toContainText(/设置|Settings/i)
+
+    // Look for model mapping section
+    const mappingSection = settingsDialog.getByRole('heading', { name: /Model Mapping|模型映射/i })
+    const mappingSectionCount = await mappingSection.count()
+
+    if (mappingSectionCount === 0) {
+      test.skip()
+      return
+    }
+
+    // Add a model mapping
+    const originalInput = settingsDialog.getByPlaceholder(/Original Model Name|原模型名称/i)
+    const targetSelect = settingsDialog.getByPlaceholder(/Target Model Name|目标模型名称/i).or(settingsDialog.locator('[role="combobox"]').last())
+
+    // Fill original model name
+    await originalInput.fill('gpt-4')
+    await page.waitForTimeout(300)
+
+    // Select target model (first available option)
+    await targetSelect.click()
+    const firstOption = page.getByRole('option').first()
+    await firstOption.click()
+
+    // Click add button
+    const addButton = settingsDialog.getByRole('button', { name: /Plus/i }).or(settingsDialog.locator('button').filter({ has: page.locator('svg') }).first())
+    await addButton.click()
+
+    // Verify mapping appears
+    await expect(settingsDialog).toContainText('gpt-4')
+
+    // Save the settings
+    const saveButton = settingsDialog.getByRole('button', { name: /保存|Save/i })
+    await Promise.all([
+      waitForGraphQLOperation(page, 'UpdateChannel'),
+      saveButton.click(),
+    ])
+
+    // Wait for dialog to close
+    await expect(settingsDialog).not.toBeVisible({ timeout: 10000 })
+
+    // Re-open settings to verify the mapping was saved
+    await actionsTrigger.click()
+    await settingsOption.focus()
+    await page.keyboard.press('Enter')
+
+    const reopenedDialog = page.getByRole('dialog')
+    await expect(reopenedDialog).toBeVisible()
+
+    // Verify the mapping still exists
+    await expect(reopenedDialog).toContainText('gpt-4')
+
+    // Close the dialog
+    const cancelButton = reopenedDialog.getByRole('button', { name: /取消|Cancel/i })
+    await cancelButton.click()
+    await expect(reopenedDialog).not.toBeVisible()
+  })
 })

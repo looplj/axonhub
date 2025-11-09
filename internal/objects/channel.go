@@ -9,7 +9,12 @@ type ModelMapping struct {
 }
 
 type ChannelSettings struct {
+	// ModelMappings sets the channel allow map the other not allowed models to the provider.
 	ModelMappings []ModelMapping `json:"modelMappings"`
+
+	// OverrideParameters sets the channel override the request parameters.
+	// e.g. {"max_tokens": 100}, {"temperature": 0.7}
+	OverrideParameters string `json:"overrideParameters"`
 }
 
 type ChannelCredentials struct {

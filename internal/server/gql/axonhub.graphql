@@ -1,3 +1,6 @@
+scalar JSONRawMessage
+scalar JSONRawMessageInput
+
 type ModelMapping {
   from: String!
   to: String!
@@ -5,6 +8,7 @@ type ModelMapping {
 
 type ChannelSettings {
   modelMappings: [ModelMapping!]
+  overrideParameters: String
 }
 
 input ModelMappingInput {
@@ -14,6 +18,7 @@ input ModelMappingInput {
 
 input ChannelSettingsInput {
   modelMappings: [ModelMappingInput!]
+  overrideParameters: String
 }
 
 type ChannelCredentials {
@@ -52,8 +57,6 @@ input GCPCredentialInput {
   jsonData: String!
 }
 
-scalar JSONRawMessage
-scalar JSONRawMessageInput
 
 input SignInInput {
   email: String!

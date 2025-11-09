@@ -802,6 +802,10 @@
           "originalModel": "Original Model Name",
           "targetModel": "Target Model Name",
           "noMappings": "No model mapping configuration"
+        },
+        "overrideParameters": {
+          "title": "Override Parameters",
+          "description": "Configure additional parameters to override user request parameters"
         }
       },
       "bulkOrdering": {
@@ -832,7 +836,8 @@
       "gcpRegionRequired": "GCP Region is required",
       "gcpProjectIdRequired": "GCP Project ID is required",
       "gcpJsonDataRequired": "GCP Service Account JSON is required",
-      "atLeastOneChannel": "At least one channel is required"
+      "atLeastOneChannel": "At least one channel is required",
+      "overrideParametersInvalidJson": "Must be valid JSON"
     }
   },
   "dataStorages": {

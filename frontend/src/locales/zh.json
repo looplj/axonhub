@@ -831,6 +831,10 @@
           "originalModel": "原模型名称",
           "targetModel": "目标模型名称",
           "noMappings": "暂无模型映射配置"
+        },
+        "overrideParameters": {
+          "title": "覆盖参数",
+          "description": "配置额外参数以覆盖用户请求参数"
         }
       },
       "bulkOrdering": {
@@ -861,7 +865,8 @@
       "gcpRegionRequired": "GCP Region 不能为空",
       "gcpProjectIdRequired": "GCP Project ID 不能为空",
       "gcpJsonDataRequired": "GCP Service Account JSON 不能为空",
-      "atLeastOneChannel": "至少需要一个 channel"
+      "atLeastOneChannel": "至少需要一个 channel",
+      "overrideParametersInvalidJson": "必须是有效的 JSON"
     }
   },
   "dataStorages": {

@@ -56,6 +56,20 @@ const createChannelSettingsFormSchema = (supportedModels: string[]) =>
           message: 'Target model must be in supported models',
         }
       ),
+    overrideParameters: z.string().optional().refine(
+      (val) => {
+        if (!val || val.trim() === '') return true
+        try {
+          JSON.parse(val)
+          return true
+        } catch {
+          return false
+        }
+      },
+      {
+        message: 'channels.validation.overrideParametersInvalidJson',
+      }
+    ),
   })
 
 export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props) {
@@ -63,6 +77,9 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
   const updateChannel = useUpdateChannel()
   const [modelMappings, setModelMappings] = useState<ModelMapping[]>(currentRow.settings?.modelMappings || [])
   const [newMapping, setNewMapping] = useState({ from: '', to: '' })
+  const [overrideParametersText, setOverrideParametersText] = useState<string>(
+    currentRow.settings?.overrideParameters || ''
+  )
 
   const channelSettingsFormSchema = createChannelSettingsFormSchema(currentRow.supportedModels)
 
@@ -70,6 +87,7 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
     resolver: zodResolver(channelSettingsFormSchema),
     defaultValues: {
       modelMappings: currentRow.settings?.modelMappings || [],
+      overrideParameters: currentRow.settings?.overrideParameters || '',
     },
   })
 
@@ -81,11 +99,18 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
     }
 
     try {
+      // Parse overrideParameters if provided
+      let overrideParameters: string | undefined
+      if (values.overrideParameters && values.overrideParameters.trim()) {
+        overrideParameters = values.overrideParameters
+      }
+
       await updateChannel.mutateAsync({
         id: currentRow.id,
         input: {
           settings: {
             modelMappings: values.modelMappings,
+            overrideParameters,
           },
         },
       })
@@ -128,6 +153,7 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
         if (!state) {
           setModelMappings(currentRow.settings?.modelMappings || [])
           setNewMapping({ from: '', to: '' })
+          setOverrideParametersText(currentRow.settings?.overrideParameters || '')
         }
         onOpenChange(state)
       }}
@@ -139,7 +165,7 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
         </DialogHeader>
 
         <div className='space-y-6'>
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className='text-lg'>{t('channels.dialogs.settings.basicInfo.title')}</CardTitle>
               <CardDescription>{t('channels.dialogs.settings.basicInfo.description')}</CardDescription>
@@ -174,7 +200,7 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           <Card>
             <CardHeader>
@@ -246,6 +272,29 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
                       </Button>
                     </div>
                   ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className='text-lg'>{t('channels.dialogs.settings.overrideParameters.title')}</CardTitle>
+              <CardDescription>{t('channels.dialogs.settings.overrideParameters.description')}</CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div>
+                <textarea
+                  className='font-mono text-sm w-full min-h-[200px] rounded-md border border-input bg-background px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+                  placeholder={t('{"temperature": 0.7,"max_tokens": 8192}')}
+                  value={overrideParametersText}
+                  onChange={(e) => {
+                    setOverrideParametersText(e.target.value)
+                    form.setValue('overrideParameters', e.target.value)
+                  }}
+                />
+                {form.formState.errors.overrideParameters?.message && (
+                  <p className='text-destructive text-sm mt-2'>{form.formState.errors.overrideParameters.message.toString()}</p>
                 )}
               </div>
             </CardContent>
