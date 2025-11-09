@@ -1,5 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { BarChart4 } from 'lucide-react'
+
+import { formatNumber } from '@/utils/format-number'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTokenStats } from '../data/dashboard'
 
@@ -35,35 +38,13 @@ export function TokenStatsCard() {
     )
   }
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000000) {
-      return (num / 1000000000).toFixed(1) + 'B'
-    }
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + 'M'
-    }
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1) + 'K'
-    }
-    return num.toString()
-  }
-
   return (
     <Card>
       <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
         <CardTitle className='text-sm font-medium'>{t('dashboard.cards.tokensByTime')}</CardTitle>
-        <svg
-          xmlns='http://www.w3.org/2000/svg'
-          viewBox='0 0 24 24'
-          fill='none'
-          stroke='currentColor'
-          strokeLinecap='round'
-          strokeLinejoin='round'
-          strokeWidth='2'
-          className='text-muted-foreground h-4 w-4'
-        >
-          <path d='M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' />
-        </svg>
+        <div className='bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full dark:bg-primary/20'>
+          <BarChart4 className='h-4 w-4' />
+        </div>
       </CardHeader>
       <CardContent>
         <div className='space-y-3'>

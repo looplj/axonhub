@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import {
   ChevronDown,
   ChevronRight,
@@ -14,13 +13,14 @@ import {
   Image,
   Settings,
   ChevronsDownUp,
-  ChevronsUpDown,
   ExternalLink,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { buildGUID, cn } from '@/lib/utils'
+import { formatNumber } from '@/utils/format-number'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { formatDuration } from '../../../utils/format-duration'
 import type { Segment, RequestMetadata, Span } from '../data/schema'
 import { getSpanDisplayLabels, normalizeSpanType } from '../utils/span-display'
 
@@ -97,13 +97,6 @@ function safeTime(value?: Date | string | null) {
   const date = value instanceof Date ? value : new Date(value)
   const time = date.getTime()
   return Number.isFinite(time) ? time : null
-}
-
-function formatDuration(ms: number): string {
-  if (!Number.isFinite(ms) || ms <= 0) return '0ms'
-  if (ms < 1) return `${ms.toFixed(3)}ms`
-  if (ms < 1000) return `${ms.toFixed(0)}ms`
-  return `${(ms / 1000).toFixed(1)}s`
 }
 
 function buildSpanNode(trace: Segment, span: Span, spanKind: SpanKind, rootStart: number): TimelineNode | null {
@@ -218,7 +211,6 @@ function SegmentRow({
   onToggleExpand,
 }: SegmentRowProps) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const hasSpans = spans.length > 0
 
   const handleViewRequest = (e: React.MouseEvent) => {
@@ -278,14 +270,21 @@ function SegmentRow({
               <Badge variant='secondary' className='text-xs font-medium'>
                 {segment.name}
               </Badge>
-              <span className='text-muted-foreground text-xs'>{formatDuration(segment.duration)}</span>
-              {segment.metadata?.totalTokens && (
-                <span className='text-muted-foreground text-xs'>
-                  {t('traces.timeline.summary.tokenCount', {
-                    value: segment.metadata.totalTokens.toLocaleString(),
-                  })}
+              <span className='text-muted-foreground text-[11px]'>
+                {t('traces.timeline.summary.duration', {
+                  value: formatDuration(segment.duration),
+                })}
+              </span>
+              {/* {segment.metadata?.totalTokens != null && (
+                <span className='text-muted-foreground text-[11px]'>
+                  {formatNumber(segment.metadata.totalTokens)} tokens
                 </span>
               )}
+              {segment.metadata?.cachedTokens != null && segment.metadata.cachedTokens > 0 && (
+                <span className='text-muted-foreground text-[11px]'>
+                  ({formatNumber(segment.metadata.cachedTokens)} cached)
+                </span>
+              )} */}
               <Button variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={handleViewRequest}>
                 <ExternalLink className='h-3 w-3' />
               </Button>
@@ -314,7 +313,6 @@ function SegmentRow({
               span={span}
               totalDuration={totalDuration}
               segmentSequentialOffset={sequentialOffset}
-              segmentDuration={segment.duration}
               onSelectSpan={onSelectSpan}
               selectedSpanId={selectedSpanId}
             />
@@ -329,19 +327,11 @@ interface SpanRowProps {
   span: TimelineNode
   totalDuration: number
   segmentSequentialOffset: number
-  segmentDuration: number
   selectedSpanId?: string
   onSelectSpan: (trace: Segment, span: Span, kind: SpanKind) => void
 }
 
-function SpanRow({
-  span,
-  totalDuration,
-  segmentSequentialOffset,
-  segmentDuration,
-  onSelectSpan,
-  selectedSpanId,
-}: SpanRowProps) {
+function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, selectedSpanId }: SpanRowProps) {
   const { t } = useTranslation()
   const spanSource = span.source.type === 'span' ? span.source : null
   const isActive = spanSource ? selectedSpanId === spanSource.span.id : false
@@ -421,23 +411,17 @@ function SpanRow({
           <SpanIcon className='text-muted-foreground h-4 w-4' />
         </div>
 
-        <div className='flex min-w-0 flex-1 items-center gap-3'>
-          <div className='flex min-w-0 flex-1 flex-col gap-1'>
-            <div className='flex min-w-0 flex-wrap items-center gap-2'>
-              <span className='truncate text-sm font-medium'>{spanDisplay?.primary ?? span.name}</span>
-              {spanKindLabel && (
-                <Badge variant='secondary' className='text-[10px] tracking-wide uppercase'>
-                  {spanKindLabel}
-                </Badge>
-              )}
-              {spanDisplay?.secondary && (
-                <span className='text-muted-foreground truncate text-xs'>{spanDisplay.secondary}</span>
-              )}
-            </div>
-            <div className='text-muted-foreground flex flex-wrap items-center gap-2 text-xs'>
-              <span>{formatDuration(span.duration)}</span>
-            </div>
-          </div>
+        <div className='flex min-w-0 flex-1 items-center gap-2'>
+          <span className='truncate text-sm font-medium'>{spanDisplay?.primary ?? span.name}</span>
+          {spanKindLabel && (
+            <Badge variant='secondary' className='text-[10px] tracking-wide uppercase'>
+              {spanKindLabel}
+            </Badge>
+          )}
+          {spanDisplay?.secondary && (
+            <span className='text-muted-foreground truncate text-xs'>{spanDisplay.secondary}</span>
+          )}
+          <span className='text-muted-foreground text-[11px]'>{formatDuration(span.duration)}</span>
         </div>
 
         <div className='bg-muted/30 relative h-5 w-[180px] min-w-[180px] rounded'>
@@ -518,6 +502,25 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     // Count total items (segments + spans)
     const totalItems = flatSegments.reduce((acc, seg) => acc + 1 + seg.spans.length, 0)
 
+    let tokenSum = 0
+    let cachedTokenSum = 0
+    let hasTokenData = false
+
+    for (const seg of flatSegments) {
+      const segmentTokens = seg.segment.metadata?.totalTokens
+      const segmentCachedTokens = seg.segment.metadata?.cachedTokens
+      if (typeof segmentTokens === 'number') {
+        tokenSum += segmentTokens
+        hasTokenData = true
+      }
+      if (typeof segmentCachedTokens === 'number') {
+        cachedTokenSum += segmentCachedTokens
+      }
+    }
+
+    const totalTokens = hasTokenData ? tokenSum : null
+    const totalCachedTokens = cachedTokenSum > 0 ? cachedTokenSum : null
+
     // Initialize expanded segments for first 10 items
     const initialExpanded = new Set<string>()
     flatSegments.slice(0, 10).forEach((seg) => {
@@ -531,6 +534,8 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
       flatSegments,
       totalDuration: Math.max(totalDuration, 1),
       totalItems,
+      totalTokens,
+      totalCachedTokens,
     }
   }, [trace])
 
@@ -571,27 +576,47 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     )
   }
 
-  const { flatSegments, totalDuration, totalItems } = timelineData
+  const { flatSegments, totalDuration, totalItems, totalTokens, totalCachedTokens } = timelineData
 
   return (
     <div className='flex h-full flex-col'>
       <div className='border-border/60 mb-4 border-b pb-4'>
-        <div className='mb-3 flex items-center justify-between'>
-          <h2 className='text-lg font-semibold'>{t('traces.timeline.title')}</h2>
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-3'>
+            <h2 className='text-lg font-semibold'>{t('traces.timeline.title')}</h2>
+            {/* <span className='text-muted-foreground text-sm'>{formatDuration(totalDuration)}</span> */}
+            <span className='text-muted-foreground text-sm'>
+              {t('traces.timeline.summary.duration', {
+                value: formatDuration(totalDuration),
+              })}
+            </span>
+            {totalTokens != null && (
+              <span className='text-muted-foreground text-sm'>
+                {t('traces.timeline.summary.tokenCount', {
+                  value: formatNumber(totalTokens),
+                })}
+              </span>
+            )}
+            {totalCachedTokens != null && (
+              <span className='text-muted-foreground text-sm'>({formatNumber(totalCachedTokens)} cached)</span>
+            )}
+          </div>
           <div className='flex items-center gap-3'>
             <div className='text-muted-foreground text-sm'>
               {t('traces.timeline.itemsCount', { count: totalItems })}
             </div>
-            <Button variant='outline' size='sm' onClick={handleToggleAll} className='h-8 w-8 p-0' title={allExpanded ? t('traces.timeline.collapseAll') : t('traces.timeline.expandAll')}>
-              {allExpanded ? <ChevronsDownUp className='h-4 w-4' /> : <ChevronsUpDown className='h-4 w-4' />}
+            <Button
+              type='button'
+              variant='ghost'
+              size='sm'
+              onClick={handleToggleAll}
+              className='bg-primary/10 hover:bg-primary/20 h-8 w-8 rounded-lg p-0'
+              title={allExpanded ? t('traces.timeline.collapseAll') : t('traces.timeline.expandAll')}
+            >
+              <ChevronsDownUp
+                className={cn('text-primary h-4 w-4 transition-transform', !allExpanded && 'rotate-180')}
+              />
             </Button>
-          </div>
-        </div>
-        <div className='flex items-center gap-3'>
-          <span className='text-muted-foreground text-sm'>{t('traces.timeline.totalDurationLabel')}</span>
-          <span className='text-sm font-medium'>{formatDuration(totalDuration)}</span>
-          <div className='bg-muted/30 relative h-6 flex-1 overflow-hidden rounded'>
-            <div className='from-primary/60 to-primary/80 absolute inset-0 rounded bg-gradient-to-r' />
           </div>
         </div>
       </div>

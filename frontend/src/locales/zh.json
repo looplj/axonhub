@@ -1370,6 +1370,7 @@
       },
       "totalDurationLabel": "总持续时间",
       "summary": {
+        "duration": "持续时间 {{value}}",
         "tokenCount": "令牌数：{{value}}"
       },
       "collapseAll": "全部收起",

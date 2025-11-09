@@ -6,9 +6,11 @@ import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { formatNumber } from '@/utils/format-number'
 
 import type { Segment, RequestMetadata, Span } from '../data/schema'
 import { getSpanDisplayLabels, normalizeSpanType } from '../utils/span-display'
+import { formatDuration } from '../../../utils/format-duration'
 
 type SpanKind = 'request' | 'response'
 
@@ -79,12 +81,6 @@ function safeTime(value?: Date | string | null) {
   return Number.isFinite(time) ? time : null
 }
 
-function formatDuration(ms: number): string {
-  if (!Number.isFinite(ms) || ms <= 0) return '0ms'
-  if (ms < 1) return `${ms.toFixed(3)}ms`
-  if (ms < 1000) return `${ms.toFixed(0)}ms`
-  return `${(ms / 1000).toFixed(1)}s`
-}
 
 function countNodes(node: TimelineNode): number {
   return 1 + node.children.reduce((acc, child) => acc + countNodes(child), 0)
@@ -276,36 +272,35 @@ function SpanRow({ node, depth, totalDuration, onSelectSpan, selectedSpanId }: S
                 <Badge variant="secondary" className="text-xs font-medium">
                   {node.name}
                 </Badge>
-                <span className="text-xs text-muted-foreground">{formatDuration(node.duration)}</span>
-                {node.metadata?.totalTokens && (
-                  <span className="text-xs text-muted-foreground">
-                    {t('traces.timeline.summary.tokenCount', {
-                      value: node.metadata.totalTokens.toLocaleString(),
-                    })}
+                <span className="text-[11px] text-muted-foreground">{formatDuration(node.duration)}</span>
+                {node.metadata?.totalTokens != null && (
+                  <span className="text-[11px] text-muted-foreground">
+                    {formatNumber(node.metadata.totalTokens)} tokens
+                  </span>
+                )}
+                {node.metadata?.cachedTokens != null && node.metadata.cachedTokens > 0 && (
+                  <span className="text-[11px] text-muted-foreground">
+                    ({formatNumber(node.metadata.cachedTokens)} cached)
                   </span>
                 )}
               </>
             ) : (
-              <div className="flex min-w-0 flex-col gap-1">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="truncate text-sm font-medium">
-                    {spanDisplay?.primary ?? node.name}
+              <>
+                <span className="truncate text-sm font-medium">
+                  {spanDisplay?.primary ?? node.name}
+                </span>
+                {spanKindLabel && (
+                  <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                    {spanKindLabel}
+                  </Badge>
+                )}
+                {spanDisplay?.secondary && (
+                  <span className="truncate text-xs text-muted-foreground">
+                    {spanDisplay.secondary}
                   </span>
-                  {spanKindLabel && (
-                    <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
-                      {spanKindLabel}
-                    </Badge>
-                  )}
-                  {spanDisplay?.secondary && (
-                    <span className="truncate text-xs text-muted-foreground">
-                      {spanDisplay.secondary}
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>{formatDuration(node.duration)}</span>
-                </div>
-              </div>
+                )}
+                <span className="text-[11px] text-muted-foreground">{formatDuration(node.duration)}</span>
+              </>
             )}
           </div>
         </div>
@@ -393,9 +388,31 @@ export function TraceTimeline({ trace, onSelectSpan, selectedSpanId }: TraceTime
 
     const totalDuration = Math.max(latestEnd - earliestStart, rootNode.duration, 1)
 
+    const collectTokens = (node: TimelineNode): { total: number; cached: number } => {
+      const selfTokens = node.source.type === 'segment' && node.metadata?.totalTokens != null ? node.metadata.totalTokens : 0
+      const selfCachedTokens = node.source.type === 'segment' && node.metadata?.cachedTokens != null ? node.metadata.cachedTokens : 0
+      const childTokens = node.children.reduce(
+        (acc, child) => {
+          const childResult = collectTokens(child)
+          return { total: acc.total + childResult.total, cached: acc.cached + childResult.cached }
+        },
+        { total: 0, cached: 0 }
+      )
+      return {
+        total: selfTokens + childTokens.total,
+        cached: selfCachedTokens + childTokens.cached,
+      }
+    }
+
+    const tokenData = collectTokens(rootNode)
+    const totalTokens = tokenData.total > 0 ? tokenData.total : null
+    const totalCachedTokens = tokenData.cached > 0 ? tokenData.cached : null
+
     return {
       rootNode,
       totalDuration: Math.max(totalDuration, 1),
+      totalTokens,
+      totalCachedTokens,
     }
   }, [trace])
 
@@ -407,25 +424,29 @@ export function TraceTimeline({ trace, onSelectSpan, selectedSpanId }: TraceTime
     )
   }
 
-  const { rootNode, totalDuration } = timelineData
+  const { rootNode, totalDuration, totalTokens, totalCachedTokens } = timelineData
   const totalItems = countNodes(rootNode)
 
   return (
     <div className="h-full flex flex-col">
       <div className="border-b border-border/60 pb-4 mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">{t('traces.timeline.title')}</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">{t('traces.timeline.title')}</h2>
+            <span className="text-sm text-muted-foreground">{formatDuration(totalDuration)}</span>
+            {totalTokens != null && (
+              <span className="text-sm text-muted-foreground">
+                {formatNumber(totalTokens)} tokens
+              </span>
+            )}
+            {totalCachedTokens != null && (
+              <span className="text-sm text-muted-foreground">
+                ({formatNumber(totalCachedTokens)} cached)
+              </span>
+            )}
+          </div>
           <div className="text-sm text-muted-foreground">
             {t('traces.timeline.itemsCount', { count: totalItems })}
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">
-            {t('traces.timeline.totalDurationLabel')}
-          </span>
-          <span className="text-sm font-medium">{formatDuration(totalDuration)}</span>
-          <div className="flex-1 h-6 rounded bg-muted/30 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/60 to-primary/80 rounded" />
           </div>
         </div>
       </div>
