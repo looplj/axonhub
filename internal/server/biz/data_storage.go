@@ -453,6 +453,8 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 		}
 
 		if ds.Type == datastorage.TypeFs {
+			key = filepath.FromSlash(key)
+
 			err = fs.MkdirAll(filepath.Dir(key), 0o777)
 			if err != nil {
 				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
@@ -489,6 +491,10 @@ func (s *DataStorageService) DeleteData(ctx context.Context, ds *ent.DataStorage
 			return fmt.Errorf("failed to get file system: %w", err)
 		}
 
+		if ds.Type == datastorage.TypeFs {
+			key = filepath.FromSlash(key)
+		}
+
 		if err := fs.Remove(key); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				return nil
@@ -516,6 +522,10 @@ func (s *DataStorageService) LoadData(ctx context.Context, ds *ent.DataStorage, 
 		fs, err := s.GetFileSystem(ctx, ds)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get file system: %w", err)
+		}
+
+		if ds.Type == datastorage.TypeFs {
+			key = filepath.FromSlash(key)
 		}
 
 		data, err := afero.ReadFile(fs, key)

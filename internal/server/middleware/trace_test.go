@@ -46,6 +46,37 @@ func setupTestTraceMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.Trac
 	return router, client, traceService
 }
 
+func TestExtractClaudeTraceID(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name     string
+		userID   string
+		expected string
+	}{
+		{
+			name:     "valid claude user id",
+			userID:   "user_20836b5653ed68aa981604f502c0a491397f6053826a93c953423632578d38ad_account__session_f25958b8-e75c-455d-8b40-f006d87cc2a4",
+			expected: "f25958b8-e75c-455d-8b40-f006d87cc2a4",
+		},
+		{
+			name:     "invalid format missing sections",
+			userID:   "user_123_account__session_456",
+			expected: "",
+		},
+		{
+			name:     "empty user id",
+			userID:   "",
+			expected: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		result := extractClaudeTraceID(tc.userID)
+		require.Equal(t, tc.expected, result, tc.name)
+	}
+}
+
 func TestWithTrace_ClaudeCodeDisabled(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -156,6 +187,9 @@ func TestWithTrace_ClaudeCodeSetsTraceHeader(t *testing.T) {
 		expectedBody   []byte
 	)
 
+	userID := "user_20836b5653ed68aa981604f502c0a491397f6053826a93c953423632578d38ad_account__session_f25958b8-e75c-455d-8b40-f006d87cc2a4"
+	expectedTraceID := "f25958b8-e75c-455d-8b40-f006d87cc2a4"
+
 	router.POST("/anthropic/v1/messages", func(c *gin.Context) {
 		genericReq, err := httpclient.ReadHTTPRequest(c.Request)
 		require.NoError(t, err)
@@ -172,12 +206,10 @@ func TestWithTrace_ClaudeCodeSetsTraceHeader(t *testing.T) {
 
 		trace, ok := contexts.GetTrace(c.Request.Context())
 		require.True(t, ok)
-		require.Equal(t, "xxx", trace.TraceID)
+		require.Equal(t, expectedTraceID, trace.TraceID)
 
 		c.Status(http.StatusOK)
 	})
-
-	userID := "user_xxx_account__session_xxx"
 
 	requestPayload := map[string]any{
 		"metadata": map[string]any{
