@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -140,7 +141,13 @@ func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Confi
 	return traceID, nil
 }
 
+var claudeUserIDPattern = regexp.MustCompile(`(?i)^user_[0-9a-f]{64}_account__session_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
 func extractClaudeTraceID(userID string) string {
+	if !claudeUserIDPattern.MatchString(userID) {
+		return ""
+	}
+
 	traceID := userID
 	if idx := strings.LastIndex(traceID, "__"); idx >= 0 && idx+2 < len(traceID) {
 		traceID = traceID[idx+2:]
