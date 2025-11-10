@@ -59,6 +59,15 @@ func GenerateResponseChunksKey(projectID, requestID int) string {
 	return fmt.Sprintf("/%d/requests/%d/response_chunks.json", projectID, requestID)
 }
 
+// GenerateRequestDirKey generates the storage key for request.
+func GenerateRequestDirKey(projectID, requestID int) string {
+	return fmt.Sprintf("/%d/requests/%d", projectID, requestID)
+}
+
+func GenerateRequestExecutionsDirKey(projectID, requestID int) string {
+	return fmt.Sprintf("/%d/requests/%d/executions", projectID, requestID)
+}
+
 // GenerateExecutionRequestBodyKey generates the storage key for execution request body.
 func GenerateExecutionRequestBodyKey(projectID, requestID, executionID int) string {
 	return fmt.Sprintf("/%d/requests/%d/executions/%d/request_body.json", projectID, requestID, executionID)
@@ -72,6 +81,11 @@ func GenerateExecutionResponseBodyKey(projectID, requestID, executionID int) str
 // GenerateExecutionResponseChunksKey generates the storage key for execution response chunks.
 func GenerateExecutionResponseChunksKey(projectID, requestID, executionID int) string {
 	return fmt.Sprintf("/%d/requests/%d/executions/%d/response_chunks.json", projectID, requestID, executionID)
+}
+
+// GenerateExecutionRequestDirKey generates the storage key for execution request.
+func GenerateExecutionRequestDirKey(projectID, requestID, executionID int) string {
+	return fmt.Sprintf("/%d/requests/%d/executions/%d", projectID, requestID, executionID)
 }
 
 // CreateRequest creates a new request record.
