@@ -9,7 +9,7 @@
 AxonHub implements a sophisticated bidirectional data transformation pipeline that ensures seamless communication between clients and AI providers:
 
 <div align="center">
-  <img src="docs/transformation-flow.svg" alt="AxonHub Transformation Flow" width="900"/>
+  <img src="docs/architecture/transformation-flow.svg" alt="AxonHub Transformation Flow" width="900"/>
 </div>
 
 #### Pipeline Components

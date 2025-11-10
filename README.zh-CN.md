@@ -28,15 +28,11 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
   <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
 </div>
 
-### 解决的核心问题
+### 核心特性 Core Features
 
-| 问题 Problem | AxonHub 解决方案 Solution |
-|-------------|-------------------------|
-| **供应商锁定** Vendor Lock-in | 🔄 统一 API 接口，API 格式转换，随时切换提供商 |
-| **可扩展性** Extensibility | 灵活的 transformer 架构，支持多种转换器 |
-| **服务中断** Service Outages | ⚡ 自动故障转移，多渠道冗余 |
-| **权限管理** Permission Management | 📊 完善的用户权限管理 |
-| **开发复杂性** Development Complexity | 🛠️ 单一 SDK，统一接口标准 |
+1. [**统一 API** Unified API](docs/unified-api.md)：兼容 OpenAI 与 Anthropic 的接口，配合转换管线实现模型互换与映射，无需改动现有代码。
+2. [**追踪 / 线程** Tracing / Threads](docs/traces.md)：线程级追踪实时记录完整调用链路，提升可观测性与问题定位效率。
+3. [**细粒度权限** Fine-grained Permission](docs/fine-grained-permission.md)：基于 RBAC 的权限策略，帮助团队精细管理访问控制、配额与数据隔离。
 
 ---
 
@@ -61,7 +57,7 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
 
 ---
 
-## ⭐ 核心特性 | Core Features
+## ⭐ 特性 | Features
 
 ### 📸 截图 | Screenshots
 
@@ -84,11 +80,11 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
       渠道管理
     </td>
     <td align="center">
-      <a href="docs/screenshots/axonhub-users.png">
-        <img src="docs/screenshots/axonhub-users.png" alt="用户管理" width="250"/>
+      <a href="docs/screenshots/axonhub-trace.png">
+        <img src="docs/screenshots/axonhub-trace.png" alt="追踪查看" width="250"/>
       </a>
       <br/>
-      用户管理
+      追踪查看
     </td>
   </tr>
   <tr>
@@ -118,11 +114,11 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
 
 ---
 
-### 🚀 支持的功能 | Supported Features
+### 🚀 API 类型 | API Types
 
-| 功能 | 状态 | 描述 | 文档 |
+| API 类型 | 状态 | 描述 | 文档 |
 |---------|--------|-------------|--------|
-| **文本生成（Chat Completion）** | ✅ Done | 对话交互接口 | [Chat Completions](docs/chat-completions.md) |
+| **文本生成（Text Generation）** | ✅ Done | 对话交互接口 | [Unified API](docs/unified-api.md) |
 | **图片生成（Image Generation）** | ⚠️ Partial | 图片生成 | [Image Generations](docs/image-generations.md) |
 | **重排序（Rerank）** | 📝 Todo | 结果排序 | - |
 | **实时对话（Realtime）** | 📝 Todo | 实时对话功能 | - |
@@ -139,6 +135,16 @@ AxonHub 是一个 All-in-one AI 开发平台，提供统一的 API 网关、项�
 | **流式处理** | 原生 SSE 支持，实时响应 | 用户体验提升 60% |
 
 ---
+
+### 🧵 线程与追踪 | Threads & Tracing
+
+AxonHub 可以在不改动现有 OpenAI 兼容客户端的前提下，为每一次请求建立线程级追踪：
+
+- 需要显式传入 `AH-Trace-Id` 请求头才能将多次请求串联到同一追踪；若缺失该请求头，AxonHub 会记录单次调用但无法自动关联相关请求
+- 将追踪与线程关联，串联整段会话的上下文
+- 捕获模型元数据、请求/响应片段以及耗时信息，便于快速定位问题
+
+了解更多工作原理与使用方式，请参阅 [Tracing Guide](docs/traces.md)。
 
 ### 🔧 接口格式支持 | API Format Support
 
@@ -335,6 +341,44 @@ supported_models: ["gpt-5", "gpt-4o"]
 
 测试成功后，点击启用按钮，启用该渠道。
 
+#### 2.3 模型映射 | Model Mappings
+
+当请求中的模型名称与上游提供商支持的名称不一致时，可以通过模型映射在网关侧自动重写模型。
+
+- 将不支持或旧版本的模型 ID 映射到可用的替代模型
+- 为多渠道场景设置回退逻辑（不同渠道对应不同提供商）
+
+```yaml
+# 示例：将产品自定义别名映射到上游模型
+settings:
+  modelMappings:
+    - from: "gpt-4o-mini"
+      to: "gpt-4o"
+    - from: "claude-3-sonnet"
+      to: "claude-3.5-sonnet"
+```
+
+> 注意：AxonHub 仅接受映射到 `supported_models` 中已声明的模型。
+
+#### 2.4 请求参数覆盖 | Override Parameters
+
+请求参数覆盖允许为渠道强制设置默认参数，无论上游请求携带了什么内容。配置时提供一个 JSON 对象，系统会在转发请求前自动合并。
+
+- 支持顶层字段（如 `temperature`、`max_tokens`、`top_p`）
+- 支持使用点分写法的嵌套字段（如 `response_format.type`）
+- 若 JSON 无法解析，系统会记录告警日志并保持原始请求不变
+
+```yaml
+# 示例：强制输出确定性的 JSON 结构
+settings:
+  overrideParameters: |
+    {
+      "temperature": 0.3,
+      "max_tokens": 1024,
+      "response_format.type": "json_object"
+    }
+```
+
 
 ### 3. 添加用户 | Add Users
 
@@ -344,79 +388,9 @@ supported_models: ["gpt-5", "gpt-4o"]
 
 ### 4. Claude Code/Codex 使用 | Claude Code Integration
 
-#### 4.1 Claude Code 使用 | Claude Code Integration
+关于如何在 Claude Code 与 Claude Codex 中配置与 AxonHub 的集成、排查常见问题以及结合模型配置文件工作流的最佳实践，请参阅专门的 [Claude Code & Codex 集成指南](docs/claude-code-integration.md)。
 
-在 Claude Code 中使用 AxonHub：
-
-```bash
-# 设置 Claude Code 使用 AxonHub
-export ANTHROPIC_API_KEY="your-axonhub-api-key"
-export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
-```
-
-
-#### 4.2 Codex 使用 | Codex Integration
-
-配置 Codex 的 model provider 在 ${HOME}/.codex/config.toml
-
-```toml
-model = "gpt-5"
-model_provider = "axonhub-chat-completions"
-
-[model_providers.axonhub-chat-completions]
-# Name of the provider that will be displayed in the Codex UI.
-name = "AxonHub using Chat Completions"
-# The path `/chat/completions` will be amended to this URL to make the POST
-# request for the chat completions.
-base_url = "http://127.0.0.1:8090/v1"
-# If `env_key` is set, identifies an environment variable that must be set when
-# using Codex with this provider. The value of the environment variable must be
-# non-empty and will be used in the `Bearer TOKEN` HTTP header for the POST request.
-env_key = "AXONHUB_API_KEY"
-# Valid values for wire_api are "chat" and "responses". Defaults to "chat" if omitted.
-wire_api = "chat"
-# If necessary, extra query params that need to be added to the URL.
-# See the Azure example below.
-query_params = {}
-```
-
-
-
-#### 4.3 模型配置文件功能 | Model Profiles Feature
-
-<table>
-  <tr align="center">
-    <td align="center">
-      <a href="docs/screenshots/axonhub-profiles.png">
-        <img src="docs/screenshots/axonhub-profiles.png" alt="Profiles Configuration Interface" width="250"/>
-      </a>
-    </td>
-  </tr>
-</table>
-
-AxonHub 引入了强大的模型配置文件功能，允许您为 API 密钥配置多个模型映射配置文件。此功能特别适用于以下场景：
-
-- **快速模型切换**：无需更改 API 密钥配置即可在不同模型间切换
-- **成本优化**：自动将昂贵的模型请求映射到更具成本效益的替代方案
-- **模型回退**：在某些模型不可用时配置回退映射
-
-#### 4.4 配置文件工作原理 | How Profiles Work
-
-当活动配置文件配置了模型映射时，系统将在 API 请求期间自动将请求的模型映射到目标模型。例如：
-
-- 请求 `claude-sonnet-20241022` → 实际使用 `deepseek-v3.1`（模型映射）
-- 使用正则表达式模式一次匹配多个模型
-
-#### 4.5 Claude Code/Codex + 配置文件工作流 | Claude Code + Profiles Workflow
-
-使用配置文件功能，您只需配置一次 Claude Code：
-
-1. **在 AxonHub 管理界面中配置您的 API 密钥配置文件**
-2. **为不同用例设置不同的供应商** (zhipu, deepseek, moonshot, etc.)
-3. **根据需要切换活动配置文件**，无需更改 Claude Code 配置
-4. **Claude Code 自动使用**活跃配置文件中的供应商
-
-这消除了在开发环境中不断切换 API 密钥或模型名称的需要。
+该文档提供了环境变量示例、Codex 配置模板、模型配置文件说明以及工作流示例，帮助您快速完成接入。
 
 ---
 
@@ -467,9 +441,9 @@ const completion = await openai.chat.completions.create({
 - 🔧 [99designs/gqlgen](https://github.com/99designs/gqlgen) - GraphQL 代码生成
 - 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTP 框架
 - 🗄️ [ent/ent](https://github.com/ent/ent) - ORM 框架
+- 🔧 [air-verse/air](https://github.com/air-verse/air) - 自动重载 Go 服务
 - ☁️ [render](https://render.com) - 免费云部署平台，用于部署 demo
 - 🗄️ [tidbcloud](https://www.pingcap.com/tidb-cloud/) - Serverless 数据库平台，用于部署 demo
-- 🔧 [air](https://github.com/air-verse/air) - 自动重载 Go 服务
 
 ---
 

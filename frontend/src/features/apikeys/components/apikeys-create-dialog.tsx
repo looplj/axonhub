@@ -57,7 +57,7 @@ export function ApiKeysCreateDialog() {
 
   return (
     <Dialog open={isDialogOpen.create} onOpenChange={handleClose}>
-      <DialogContent className='sm:max-w-[425px]'>
+      <DialogContent className='flex max-h-[90vh] flex-col sm:max-w-[425px]'>
         <DialogHeader>
           <DialogTitle>{t('apikeys.dialogs.create.title')}</DialogTitle>
           <DialogDescription>
@@ -79,18 +79,20 @@ export function ApiKeysCreateDialog() {
                 </FormItem>
               )}
             />
-            <DialogFooter>
-              <Button
-                type='button'
-                variant='outline'
-                onClick={handleClose}
-                disabled={isSubmitting}
-              >
-                {t('common.buttons.cancel')}
-              </Button>
-              <Button type='submit' disabled={isSubmitting}>
-                {isSubmitting ? t('common.buttons.creating') : t('common.buttons.create')}
-              </Button>
+            <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end'>
+              <div className='flex w-full gap-2 sm:w-auto'>
+                <Button
+                  type='button'
+                  variant='outline'
+                  onClick={handleClose}
+                  disabled={isSubmitting}
+                >
+                  {t('common.buttons.cancel')}
+                </Button>
+                <Button type='submit' disabled={isSubmitting}>
+                  {isSubmitting ? t('common.buttons.creating') : t('common.buttons.create')}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>

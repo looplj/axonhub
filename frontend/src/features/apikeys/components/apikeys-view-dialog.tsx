@@ -31,7 +31,7 @@ export function ApiKeysViewDialog() {
 
   return (
     <Dialog open={isDialogOpen.view} onOpenChange={() => closeDialog()}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{t('apikeys.dialogs.view.title')}</DialogTitle>
           <DialogDescription>

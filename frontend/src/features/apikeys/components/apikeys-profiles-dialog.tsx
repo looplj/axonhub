@@ -137,8 +137,8 @@ export function ApiKeyProfilesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-h-[90vh] sm:max-w-4xl'>
-        <DialogHeader className='text-left'>
+      <DialogContent className='flex max-h-[90vh] flex-col sm:max-w-4xl'>
+        <DialogHeader className='text-left shrink-0'>
           <DialogTitle className='flex items-center gap-2'>
             <IconSettings className='h-5 w-5' />
             {t('apikeys.profiles.title')}
@@ -149,9 +149,10 @@ export function ApiKeyProfilesDialog({
             })}
           </DialogDescription>
         </DialogHeader>
-        <div className='flex h-[36rem] flex-col'>
+
+        <div className='flex flex-1 flex-col min-h-0'>
           {/* Fixed Add Profile Section at Top */}
-          <div className='bg-background border-b p-4'>
+          <div className='bg-background border-b p-4 shrink-0'>
             <Form {...form}>
               <form id='apikey-profiles-form' onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6'>
                 <div className='flex items-center justify-between'>
@@ -172,9 +173,9 @@ export function ApiKeyProfilesDialog({
           </div>
 
           {/* Scrollable Profiles Section */}
-          <div className='-mr-4 flex-1 overflow-y-auto py-1 pr-4'>
+          <div className='flex-1 overflow-y-auto py-1'>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6'>
+              <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6 px-4'>
                 <div className='space-y-4'>
                   <div className='space-y-4'>
                     {profileFields.map((profile, profileIndex) => (
@@ -194,7 +195,7 @@ export function ApiKeyProfilesDialog({
           </div>
 
           {/* Fixed Active Profile Section at Bottom */}
-          <div className='bg-background border-t p-4'>
+          <div className='bg-background border-t p-4 shrink-0'>
             <Form {...form}>
               <Separator className='mb-4' />
               <FormField
@@ -231,7 +232,7 @@ export function ApiKeyProfilesDialog({
           </div>
         </div>
 
-        <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center'>
+        <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end'>
           {/* Display form-level validation errors */}
           {/* {(form.formState.errors.profiles ||
             Object.keys(form.formState.errors).some((key) => key.startsWith('profiles.'))) && (
@@ -239,7 +240,7 @@ export function ApiKeyProfilesDialog({
               {form.formState.errors.profiles?.message || t('apikeys.validation.duplicateProfileName')}
             </div>
           )} */}
-          <div className='flex gap-2 sm:ml-auto'>
+          <div className='flex w-full gap-2 sm:w-auto'>
             <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={loading}>
               {t('common.buttons.cancel')}
             </Button>

@@ -28,15 +28,11 @@ AxonHub is an all-in-one AI development platform that provides unified API gatew
   <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
 </div>
 
-### Core Problems Solved
+### Core Features
 
-| Problem                    | AxonHub Solution                                                          |
-| -------------------------- | ------------------------------------------------------------------------- |
-| **Vendor Lock-in**         | 🔄 Unified API interface, API format conversion, switch providers anytime |
-| **Extensibility**          | Flexible transformer architecture, supports multiple transformers         |
-| **Service Outages**        | ⚡ Automatic failover, multi-channel redundancy                           |
-| **Permission Management**  | 📊 Comprehensive user permission management                               |
-| **Development Complexity** | 🛠️ Single SDK, unified interface standard                                 |
+1. [**Unified API**](docs/api-reference/unified-api.md): OpenAI- and Anthropic-compatible interface with automatic API translation lets you use one API format to access any supported model provider.
+2. [**Tracing / Threads**](docs/guides/tracing.md): Thread-aware tracing captures full request timelines for deep observability and faster debugging.
+3. [**Fine-grained Permission**](docs/guides/permissions.md): RBAC-based policies help teams govern access, usage, and data segregation precisely.
 
 ---
 
@@ -62,7 +58,7 @@ Try AxonHub live at our [demo instance](https://axonhub.onrender.com)!
 
 ---
 
-## ⭐ Core Features
+## ⭐ Features
 
 ### 📸 Screenshots
 
@@ -85,11 +81,11 @@ Here are some screenshots of AxonHub in action:
       Channel Management
     </td>
     <td align="center">
-      <a href="docs/screenshots/axonhub-users.png">
-        <img src="docs/screenshots/axonhub-users.png" alt="User Management" width="250"/>
+      <a href="docs/screenshots/axonhub-trace.png">
+        <img src="docs/screenshots/axonhub-trace.png" alt="Trace Viewer" width="250"/>
       </a>
       <br/>
-      User Management
+      Trace Viewer
     </td>
   </tr>
   <tr>
@@ -119,12 +115,12 @@ Here are some screenshots of AxonHub in action:
 
 ---
 
-### 🚀 Supported Features
+### 🚀 API Types
 
-| Feature              | Status     | Description                    | Document                                     |
+| API Type             | Status     | Description                    | Document                                     |
 | -------------------- | ---------- | ------------------------------ | -------------------------------------------- |
-| **Chat Completion**  | ✅ Done    | Conversational interface       | [Chat Completions](docs/chat-completions.md) |
-| **Image Generation** | ⚠️ Partial | Image generation               | [Image Generations](docs/image-generations.md) |
+| **Text Generation**  | ✅ Done    | Conversational interface       | [Unified API](docs/api-reference/unified-api.md) |
+| **Image Generation** | ⚠️ Partial | Image generation               | [Image Generation](docs/api-reference/image-generation.md) |
 | **Rerank**           | 📝 Todo    | Results ranking                | -                                            |
 | **Embedding**        | 📝 Todo    | Vector embedding generation    | -                                            |
 | **Realtime**         | 📝 Todo    | Live conversation capabilities | -                                            |
@@ -141,14 +137,26 @@ Here are some screenshots of AxonHub in action:
 
 ---
 
+### 🧵 Threads & Tracing
+
+AxonHub records every request as part of a thread-aware trace without requiring you to adopt any vendor-specific SDK. Bring your existing OpenAI-compatible client, and AxonHub will:
+
+- Require incoming `AH-Trace-Id` headers to stitch multiple requests into the same trace. If the header is omitted, AxonHub will still record the request but cannot automatically link it to related activity.
+- Link traces to threads so you can follow the entire conversation journey end to end
+- Capture model metadata, prompt / response spans, and timing information for fast root-cause analysis
+
+Learn more about how tracing works and how to integrate it in the [Tracing Guide](docs/guides/tracing.md).
+
 ### 🔧 API Format Support
 
 | Format                      | Status     | Compatibility       | Modalities      |
 | --------------------------- | ---------- | ------------------- | --------------- |
 | **OpenAI Chat Completions** | ✅ Done    | Fully compatible    | Text, Image     |
-| **Anthropic**               | ✅ Done    | Fully supported     | Text            |
+| **Anthropic Messages**      | ✅ Done    | Fully supported     | Text            |
 | **AI SDK**                  | ⚠️ Partial | Partially supported | Text            |
 | **Gemini**                  | 🔄 Todo    | -    | - |
+
+**Key Feature**: Use OpenAI API to call Anthropic models, or Anthropic API to call OpenAI models - AxonHub handles automatic API translation!
 
 ---
 
@@ -266,7 +274,7 @@ AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbclou
 AXONHUB_LOG_LEVEL=info
 ```
 
-For detailed configuration instructions, please refer to [configuration documentation](config.example.yml).
+For detailed configuration instructions, please refer to [configuration documentation](docs/deployment/configuration.md).
 
 #### Docker Compose Deployment
 
@@ -318,6 +326,15 @@ axonhub config check
 
 ## 📖 Usage Guide
 
+### Unified API Overview
+
+AxonHub provides a unified API gateway that supports both OpenAI Chat Completions and Anthropic Messages APIs. This means you can:
+
+- **Use OpenAI API to call Anthropic models** - Keep using your OpenAI SDK while accessing Claude models
+- **Use Anthropic API to call OpenAI models** - Use Anthropic's native API format with GPT models
+- **Automatic API translation** - AxonHub handles format conversion automatically
+- **Zero code changes** - Your existing OpenAI or Anthropic client code continues to work
+
 ### 1. Initial Setup
 
 1. **Access Management Interface**
@@ -357,6 +374,44 @@ Click the test button. If the test is successful, the configuration is correct.
 
 After successful testing, click the enable button to activate the channel.
 
+#### 2.3 Model Mappings
+
+Use model mappings when the requested model name differs from the upstream provider's supported names. AxonHub transparently rewrites the request model before it leaves the gateway.
+
+- Map unsupported or legacy model IDs to the closest available alternative
+- Implement failover by configuring multiple channels with different providers
+
+```yaml
+# Example: map product-specific aliases to upstream models
+settings:
+  modelMappings:
+    - from: "gpt-4o-mini"
+      to: "gpt-4o"
+    - from: "claude-3-sonnet"
+      to: "claude-3.5-sonnet"
+```
+
+> AxonHub only accepts mappings where the `to` model is already declared in `supported_models`.
+
+#### 2.4 Override Parameters
+
+Override parameters let you enforce channel-specific defaults regardless of incoming request payloads. Provide a JSON object that will be merged into every outbound request.
+
+- Supports top-level settings (for example `temperature`, `max_tokens`, `top_p`)
+- Supports dot-notation keys for nested fields such as `response_format.type`
+- Invalid JSON logs a warning and falls back to the original payload
+
+```yaml
+# Example: enforce deterministic JSON responses
+settings:
+  overrideParameters: |
+    {
+      "temperature": 0.3,
+      "max_tokens": 1024,
+      "response_format.type": "json_object"
+    }
+```
+
 ### 3. Add Users
 
 1. Create user accounts
@@ -365,82 +420,13 @@ After successful testing, click the enable button to activate the channel.
 
 ### 4. Claude Code/Codex Integration
 
-#### 4.1 Using AxonHub in Claude Code:
-
-```bash
-# Set Claude Code to use AxonHub
-export ANTHROPIC_API_KEY="your-axonhub-api-key"
-export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
-```
-
-#### 4.2 Using AxonHub in Codex:
-
-configure the model provider in the codex config file: ${HOME}/.codex/config.toml
-
-```toml
-model = "gpt-5"
-model_provider = "axonhub-chat-completions"
-
-[model_providers.axonhub-chat-completions]
-# Name of the provider that will be displayed in the Codex UI.
-name = "AxonHub using Chat Completions"
-# The path `/chat/completions` will be amended to this URL to make the POST
-# request for the chat completions.
-base_url = "http://127.0.0.1:8090/v1"
-# If `env_key` is set, identifies an environment variable that must be set when
-# using Codex with this provider. The value of the environment variable must be
-# non-empty and will be used in the `Bearer TOKEN` HTTP header for the POST request.
-env_key = "AXONHUB_API_KEY"
-# Valid values for wire_api are "chat" and "responses". Defaults to "chat" if omitted.
-wire_api = "chat"
-# If necessary, extra query params that need to be added to the URL.
-# See the Azure example below.
-query_params = {}
-```
-
-#### 4.3. Model Profiles Feature
-
-<table>
-  <tr align="center">
-    <td align="center">
-      <a href="docs/screenshots/axonhub-profiles.png">
-        <img src="docs/screenshots/axonhub-profiles.png" alt="System Dashboard" width="250"/>
-      </a>
-      <br/>
-      Model Profiles
-    </td>
-  </tr>
-</table>
-
-AxonHub introduces a powerful model profiles feature that allows you to configure multiple model mapping profiles for your API keys. This feature is particularly useful for scenarios where you need to:
-
-- **Quick Model Switching**: Switch between different models without changing your API key configuration
-- **Cost Optimization**: Map expensive model requests to more cost-effective alternatives automatically
-- **Model Fallback**: Configure fallback mappings when certain models are unavailable
-
-#### 4.4 How Profiles Work
-
-When an active profile has model mappings configured, the system will automatically map requested models to their target models during API requests. For example:
-
-- Request `claude-sonnet-20241022` → Actually use `deepseek-v3.1` (model mapping)
-- Use regex patterns to match multiple models at once
-
-#### 4.5 Claude Code/Codex + Profiles Workflow
-
-With the profiles feature, you only need to configure Claude Code once:
-
-1. **Configure your API key profiles** in the AxonHub management interface
-2. **Set up model mappings** for different providers (zhipu, deepseek, moonshot, etc.)
-3. **Switch active profiles** as needed without changing Claude Code configuration
-4. **Claude Code automatically uses** the model mappings from your active profile
-
-It eliminates the need to switch API keys or model names in development environments.
+See the dedicated [Claude Code & Codex Integration Guide](docs/guides/claude-code-integration.md) for detailed setup steps, troubleshooting, and tips on combining these tools with AxonHub model profiles. 
 
 ---
 
 ### 5. SDK Usage
 
-#### Python SDK
+#### Python SDK - OpenAI API Format
 
 ```python
 from openai import OpenAI
@@ -450,11 +436,65 @@ client = OpenAI(
     base_url="http://localhost:8090/v1"
 )
 
+# Call OpenAI model
 response = client.chat.completions.create(
     model="gpt-4o",
     messages=[{"role": "user", "content": "Hello!"}]
 )
 print(response.choices[0].message.content)
+
+# Call Anthropic model using OpenAI API
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet",
+    messages=[{"role": "user", "content": "Hello, Claude!"}]
+)
+print(response.choices[0].message.content)
+```
+
+#### Python SDK - Anthropic API Format
+
+```python
+import requests
+
+# Call Anthropic model
+response = requests.post(
+    "http://localhost:8090/anthropic/v1/messages",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": "your-axonhub-api-key"
+    },
+    json={
+        "model": "claude-3-5-sonnet",
+        "max_tokens": 512,
+        "messages": [
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": "Hello, Claude!"}]
+            }
+        ]
+    }
+)
+print(response.json()["content"][0]["text"])
+
+# Call OpenAI model using Anthropic API
+response = requests.post(
+    "http://localhost:8090/anthropic/v1/messages",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": "your-axonhub-api-key"
+    },
+    json={
+        "model": "gpt-4o",
+        "max_tokens": 512,
+        "messages": [
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": "Hello, GPT!"}]
+            }
+        ]
+    }
+)
+print(response.json()["content"][0]["text"])
 ```
 
 #### Node.js SDK
@@ -486,9 +526,9 @@ For detailed development instructions, architecture design, and contribution gui
 - 🔧 [99designs/gqlgen](https://github.com/99designs/gqlgen) - GraphQL code generation
 - 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTP framework
 - 🗄️ [ent/ent](https://github.com/ent/ent) - ORM framework
+- 🔧 [air-verse/air](https://github.com/air-verse/air) - Auto reload Go service
 - ☁️ [Render](https://render.com) - Free cloud deployment platform for hosting our demo
 - 🗃️ [TiDB Cloud](https://www.pingcap.com/tidb-cloud/) - Serverless database platform for demo deployment
-- 🔧 [air](https://github.com/air-verse/air) - Auto reload Go service
 
 ---
 

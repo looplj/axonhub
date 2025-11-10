@@ -105,6 +105,18 @@ func (ts *InboundPersistentStream) Close() error {
 	// Stream completed successfully - perform final persistence
 	log.Debug(ctx, "Stream completed successfully, performing final persistence")
 
+	ts.persistResponseChunks(ctx)
+
+	return ts.stream.Close()
+}
+
+func (ts *InboundPersistentStream) persistResponseChunks(ctx context.Context) {
+	defer func() {
+		if cause := recover(); cause != nil {
+			log.Warn(ctx, "Failed to persist inbound response chunks", log.Any("cause", cause))
+		}
+	}()
+
 	// Update main request with aggregated response
 	// Use context without cancellation to ensure persistence even if client canceled
 	if ts.request != nil {
@@ -122,8 +134,6 @@ func (ts *InboundPersistentStream) Close() error {
 			log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
 		}
 	}
-
-	return ts.stream.Close()
 }
 
 // PersistentInboundTransformer wraps an inbound transformer with enhanced capabilities.

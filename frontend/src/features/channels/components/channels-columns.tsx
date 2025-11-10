@@ -94,7 +94,7 @@ const getChannelTypeConfig = (
   },
   vercel: {
     label: t('channels.types.vercel'),
-    color: 'bg-teal-100 text-teal-800 border-teal-200',
+    color: 'bg-black-100 text-black-800 border-black-200',
     icon: Vercel,
   },
   deepseek_anthropic: {
@@ -119,62 +119,62 @@ const getChannelTypeConfig = (
   },
   openrouter: {
     label: t('channels.types.openrouter'),
-    color: 'bg-teal-100 text-teal-800 border-teal-200',
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: OpenRouter,
   },
   anthropic_fake: {
     label: t('channels.types.anthropic_fake'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
     icon: Anthropic,
   },
   openai_fake: {
     label: t('channels.types.openai_fake'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-green-100 text-green-800 border-green-200',
     icon: OpenAI,
   },
   xai: {
     label: t('channels.types.xai'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-black-100 text-black-800 border-black-200',
     icon: XAI,
   },
   ppio: {
     label: t('channels.types.ppio'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: PPIO,
   },
   siliconflow: {
     label: t('channels.types.siliconflow'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
     icon: SiliconCloud,
   },
   volcengine: {
     label: t('channels.types.volcengine'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: Volcengine,
   },
   longcat: {
     label: t('channels.types.longcat'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-green-100 text-green-800 border-green-200',
     icon: LongCat,
   },
   longcat_anthropic: {
     label: t('channels.types.longcat_anthropic'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-green-100 text-green-800 border-green-200',
     icon: LongCat,
   },
   minimax: {
     label: t('channels.types.minimax'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-red-100 text-red-800 border-red-200',
     icon: Minimax,
   },
   minimax_anthropic: {
     label: t('channels.types.minimax_anthropic'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-red-100 text-red-800 border-red-200',
     icon: Minimax,
   },
   aihubmix: {
     label: t('channels.types.aihubmix'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: OpenAI,
   },
 })

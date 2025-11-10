@@ -1,14 +1,16 @@
-### Image Generation
+# Image Generation API
 
-AxonHub supports image generation via the chat completions API. Like the [OpenRouter](https://openrouter.ai/docs/features/multimodal/image-generation).
+## Overview
 
-For now, the streaming is not supported for image generation.
+AxonHub supports image generation via the chat completions API, similar to [OpenRouter's multimodal capabilities](https://openrouter.ai/docs/features/multimodal/image-generation).
 
-#### API Usage
+**Note**: Streaming is not currently supported for image generation.
+
+## API Usage
 
 To generate images, send a request to the `/api/v1/chat/completions` endpoint with the `modalities` parameter set to include both `"image"` and `"text"`.
 
-##### Example
+### Example
 
 ```python
 import requests
@@ -113,7 +115,7 @@ Alternatively, you can generate images by using the `image_generation` tool in y
 
 To use custom image tools, include an `image_generation` tool in the `tools` array of your request:
 
-##### Example
+### Example
 
 ```python
 import requests
@@ -218,7 +220,7 @@ The `image_generation` tool supports the following parameters:
 | `size` | string | Image size: "256x256", "512x512", or "1024x1024" | "1024x1024" |
 | `watermark` | boolean | Whether to add watermark | depends on the model |
 
-### 🤖 Supported Providers
+## Supported Providers
 
 | Provider             | Status  | Supported Models                                              | Notes                 |
 | -------------------- | ------- | ------------------------------------------------------------- | --------------------- |
@@ -227,4 +229,8 @@ The `image_generation` tool supports the following parameters:
 | **OpenRouter**       | ✅ Done | gpt-image-1,gemini-2.5-flash-image-preview(nana banana), etc. | No streaming support  |
 | **Gemini**           | 📝 Todo | -                                                             | Not implemented       |
 
----
+## Related Resources
+
+- [Chat Completions API](chat-completions.md)
+- [Anthropic Messages API](anthropic-messages.md)
+- [Claude Code Integration](../guides/claude-code-integration.md)

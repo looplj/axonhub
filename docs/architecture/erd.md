@@ -1,5 +1,9 @@
 # AxonHub Entity Relationship Diagram (ERD)
 
+## Overview
+
+AxonHub implements a multi-level permission management architecture supporting both Global and Project levels. The system uses RBAC (Role-Based Access Control) model to manage user permissions, enabling fine-grained resource access control.
+
 ## 概述
 
 AxonHub 采用多层级的权限管理架构，支持 Global（全局）和 Project（项目）两个层级。系统通过 RBAC（基于角色的访问控制）模型管理用户权限，实现细粒度的资源访问控制。
@@ -779,3 +783,10 @@ AxonHub 的数据模型设计遵循以下原则：
 7. **数据安全**：敏感字段标记、软删除机制保障数据安全
 
 该设计为 AxonHub 提供了灵活、安全、高效的数据管理能力，支持请求追踪、链路分析和可观测性需求。
+
+## Related Resources
+
+- [Transformation Flow Architecture](transformation-flow.md)
+- [Fine-grained Permission Guide](../guides/permissions.md)
+- [Tracing Guide](../guides/tracing.md)
+- [Chat Completions API](../api-reference/chat-completions.md)

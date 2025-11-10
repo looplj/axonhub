@@ -28,9 +28,10 @@ export const apiKeySchema = z.object({
             })
           ),
         })
-      ),
+      ).nullable(),
     })
-    .optional(),
+    .optional()
+    .nullable(),
 })
 export type ApiKey = z.infer<typeof apiKeySchema>
 
