@@ -332,6 +332,7 @@ func (w *Worker) cleanupExecutionExternalStorage(ctx context.Context, exec *ent.
 		biz.GenerateExecutionRequestBodyKey(exec.ProjectID, exec.RequestID, exec.ID),
 		biz.GenerateExecutionResponseBodyKey(exec.ProjectID, exec.RequestID, exec.ID),
 		biz.GenerateExecutionResponseChunksKey(exec.ProjectID, exec.RequestID, exec.ID),
+		biz.GenerateExecutionRequestDirKey(exec.ProjectID, exec.RequestID, exec.ID),
 	}
 
 	for _, key := range keys {
@@ -368,6 +369,8 @@ func (w *Worker) cleanupRequestExternalStorage(ctx context.Context, req *ent.Req
 		biz.GenerateRequestBodyKey(req.ProjectID, req.ID),
 		biz.GenerateResponseBodyKey(req.ProjectID, req.ID),
 		biz.GenerateResponseChunksKey(req.ProjectID, req.ID),
+		biz.GenerateRequestExecutionsDirKey(req.ProjectID, req.ID),
+		biz.GenerateRequestDirKey(req.ProjectID, req.ID),
 	}
 
 	for _, key := range keys {
