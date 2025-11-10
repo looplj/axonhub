@@ -1,4 +1,4 @@
-version: '0.1'
+version: "0.4.1"
 
 services:
   # PostgreSQL 数据库
@@ -24,7 +24,7 @@ services:
 
   # AxonHub 主服务
   axonhub:
-    build: .
+    image: looplj/axonhub:latest
     container_name: axonhub-app
     environment:
       AXONHUB_DB_DIALECT: postgres
@@ -44,7 +44,15 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8090/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
