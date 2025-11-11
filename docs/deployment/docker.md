@@ -347,5 +347,5 @@ axonhub:
 ## Next Steps
 
 - [Configuration Guide](configuration.md)
-- [API Reference](../api-reference/chat-completions.md)
+- [API Reference](../api-reference/unified-api.md)
 - [Architecture Documentation](../architecture/erd.md)

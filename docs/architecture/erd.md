@@ -789,4 +789,4 @@ AxonHub 的数据模型设计遵循以下原则：
 - [Transformation Flow Architecture](transformation-flow.md)
 - [Fine-grained Permission Guide](../guides/permissions.md)
 - [Tracing Guide](../guides/tracing.md)
-- [Chat Completions API](../api-reference/chat-completions.md)
+- [Chat Completions API](../api-reference/unified-api.md#openai-chat-completions-api)

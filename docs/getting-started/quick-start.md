@@ -361,7 +361,7 @@ log:
 
 ### Integration Guides
 - [Claude Code Integration](../guides/claude-code-integration.md)
-- [API Reference](../api-reference/chat-completions.md)
+- [API Reference](../api-reference/unified-api.md)
 - [Deployment Guide](../deployment/configuration.md)
 
 ## Troubleshooting
