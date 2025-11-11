@@ -231,6 +231,6 @@ The `image_generation` tool supports the following parameters:
 
 ## Related Resources
 
-- [Chat Completions API](chat-completions.md)
-- [Anthropic Messages API](anthropic-messages.md)
+- [Chat Completions API](unified-api.md#openai-chat-completions-api)
+- [Anthropic Messages API](unified-api.md#anthropic-messages-api)
 - [Claude Code Integration](../guides/claude-code-integration.md)

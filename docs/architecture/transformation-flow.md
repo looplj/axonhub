@@ -343,6 +343,6 @@ Failover handling implements circuit breakers to prevent cascading failures when
 ## Related Documentation
 
 - [Entity Relationship Diagram](erd.md)
-- [API Reference](../api-reference/chat-completions.md)
+- [API Reference](../api-reference/unified-api.md)
 - [Deployment Guide](../deployment/configuration.md)
 - [Tracing Guide](../guides/tracing.md)

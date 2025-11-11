@@ -58,8 +58,8 @@ AxonHub model profiles remap incoming model names to provider-specific equivalen
 <table>
   <tr align="center">
     <td align="center">
-      <a href="./screenshots/axonhub-profiles.png">
-        <img src="./screenshots/axonhub-profiles.png" alt="Model Profiles" width="250"/>
+      <a href="../screenshots/axonhub-profiles.png">
+        <img src="../screenshots/axonhub-profiles.png" alt="Model Profiles" width="250"/>
       </a>
       <br/>
       Model Profiles
@@ -77,7 +77,7 @@ AxonHub model profiles remap incoming model names to provider-specific equivalen
 
 ### Related Documentation
 - [Tracing Guide](tracing.md)
-- [Chat Completions](../api-reference/chat-completions.md)
+- [Chat Completions](../api-reference/unified-api.md#openai-chat-completions-api)
 - README sections on [Usage Guide](../README.md#-usage-guide)
 
 ---
@@ -138,8 +138,8 @@ AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型
 <table>
   <tr align="center">
     <td align="center">
-      <a href="docs/screenshots/axonhub-profiles.png">
-        <img src="docs/screenshots/axonhub-profiles.png" alt="System Dashboard" width="250"/>
+      <a href="../screenshots/axonhub-profiles.png">
+        <img src="../screenshots/axonhub-profiles.png" alt="Model Profiles" width="250"/>
       </a>
       <br/>
       Model Profiles
@@ -157,5 +157,5 @@ AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型
 
 ### 相关文档
 - [追踪指南](tracing.md)
-- [Chat Completions 文档](../api-reference/chat-completions.md)
+- [Chat Completions 文档](../api-reference/unified-api.md#openai-chat-completions-api)
 - README 中的 [使用指南](../README.md#-usage-guide)

@@ -275,4 +275,4 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
 - [Entity Relationship Diagram](../architecture/erd.md)
 - [Fine-grained Permission Guide](permissions.md)
 - [Claude Code Integration Guide](claude-code-integration.md)
-- [Chat Completions API](../api-reference/chat-completions.md)
+- [Chat Completions API](../api-reference/unified-api.md#openai-chat-completions-api)

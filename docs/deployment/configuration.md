@@ -413,4 +413,4 @@ This command will validate your configuration file and report any errors.
 
 - [Docker Deployment](docker.md)
 - [Quick Start Guide](../getting-started/quick-start.md)
-- [API Reference](../api-reference/chat-completions.md)
+- [API Reference](../api-reference/unified-api.md)
