@@ -45,6 +45,7 @@ export type ModelMapping = z.infer<typeof modelMappingSchema>
 
 // Channel Settings
 export const channelSettingsSchema = z.object({
+  extraModelPrefix: z.string().optional(),
   modelMappings: z.array(modelMappingSchema),
   overrideParameters: z.string().optional(),
 })

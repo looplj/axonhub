@@ -30,6 +30,7 @@ interface Props {
 // 扩展 schema 以包含模型映射的校验规则
 const createChannelSettingsFormSchema = (supportedModels: string[]) =>
   z.object({
+    extraModelPrefix: z.string().optional(),
     modelMappings: z
       .array(
         z.object({
@@ -86,6 +87,7 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
   const form = useForm<z.infer<typeof channelSettingsFormSchema>>({
     resolver: zodResolver(channelSettingsFormSchema),
     defaultValues: {
+      extraModelPrefix: currentRow.settings?.extraModelPrefix || '',
       modelMappings: currentRow.settings?.modelMappings || [],
       overrideParameters: currentRow.settings?.overrideParameters || '',
     },
@@ -109,6 +111,7 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
         id: currentRow.id,
         input: {
           settings: {
+            extraModelPrefix: values.extraModelPrefix,
             modelMappings: values.modelMappings,
             overrideParameters,
           },
@@ -201,6 +204,23 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
               </div>
             </CardContent>
           </Card> */}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className='text-lg'>{t('channels.dialogs.settings.extraModelPrefix.title')}</CardTitle>
+              <CardDescription>{t('channels.dialogs.settings.extraModelPrefix.description')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Input
+                placeholder={t('channels.dialogs.settings.extraModelPrefix.placeholder')}
+                value={form.watch('extraModelPrefix') || ''}
+                onChange={(e) => form.setValue('extraModelPrefix', e.target.value)}
+              />
+              {form.formState.errors.extraModelPrefix?.message && (
+                <p className='text-destructive text-sm mt-2'>{form.formState.errors.extraModelPrefix.message.toString()}</p>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

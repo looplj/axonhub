@@ -487,7 +487,7 @@ test.describe('Admin Channels Management', () => {
     }
   })
 
-  test('can open channel settings dialog', async ({ page }) => {
+  test('can open model mapping dialog', async ({ page }) => {
     // Wait for table to load
     await page.waitForTimeout(2000)
 
@@ -518,18 +518,64 @@ test.describe('Admin Channels Management', () => {
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
 
-    // Look for settings option
-    const settingsOption = menu.getByRole('menuitem', { name: /设置|Settings/i })
-    const settingsCount = await settingsOption.count()
+    // Look for model mapping option
+    const modelMappingOption = menu.getByRole('menuitem', { name: /模型映射|Model Mapping/i })
+    const modelMappingCount = await modelMappingOption.count()
 
-    if (settingsCount > 0) {
-      await settingsOption.focus()
+    if (modelMappingCount > 0) {
+      await modelMappingOption.focus()
       await page.keyboard.press('Enter')
 
-      // Verify settings dialog opens
-      const settingsDialog = page.getByRole('dialog')
-      await expect(settingsDialog).toBeVisible()
-      await expect(settingsDialog).toContainText(/设置|Settings/i)
+      // Verify model mapping dialog opens
+      const modelMappingDialog = page.getByRole('dialog')
+      await expect(modelMappingDialog).toBeVisible()
+      await expect(modelMappingDialog).toContainText(/模型映射|Model Mapping/i)
+    }
+  })
+
+  test('can open override parameters dialog', async ({ page }) => {
+    // Wait for table to load
+    await page.waitForTimeout(2000)
+
+    // Find the first channel row
+    const channelsTable = page.locator('[data-testid="channels-table"]')
+    const firstRow = channelsTable.locator('tbody tr').first()
+    const rowCount = await channelsTable.locator('tbody tr').count()
+
+    if (rowCount === 0) {
+      test.skip()
+      return
+    }
+
+    await expect(firstRow).toBeVisible()
+
+    // Click actions menu
+    const actionsTrigger = firstRow.locator('[data-testid="row-actions"]')
+
+    // Check if actions button exists (user may not have permission)
+    const actionsCount = await actionsTrigger.count()
+    if (actionsCount === 0) {
+      test.skip()
+      return
+    }
+
+    await actionsTrigger.click()
+
+    const menu = page.getByRole('menu')
+    await expect(menu).toBeVisible()
+
+    // Look for override parameters option
+    const overrideParametersOption = menu.getByRole('menuitem', { name: /覆盖参数|Override Parameters/i })
+    const overrideParametersCount = await overrideParametersOption.count()
+
+    if (overrideParametersCount > 0) {
+      await overrideParametersOption.focus()
+      await page.keyboard.press('Enter')
+
+      // Verify override parameters dialog opens
+      const overrideParametersDialog = page.getByRole('dialog')
+      await expect(overrideParametersDialog).toBeVisible()
+      await expect(overrideParametersDialog).toContainText(/覆盖参数|Override Parameters/i)
     }
   })
 
@@ -559,7 +605,7 @@ test.describe('Admin Channels Management', () => {
     }
   })
 
-  test('can configure override parameters in channel settings', async ({ page }) => {
+  test('can configure override parameters in override parameters dialog', async ({ page }) => {
     // Wait for table to load
     await page.waitForTimeout(2000)
 
@@ -590,22 +636,22 @@ test.describe('Admin Channels Management', () => {
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
 
-    // Look for settings option
-    const settingsOption = menu.getByRole('menuitem', { name: /设置|Settings/i })
-    const settingsCount = await settingsOption.count()
+    // Look for override parameters option
+    const overrideParametersOption = menu.getByRole('menuitem', { name: /覆盖参数|Override Parameters/i })
+    const overrideParametersCount = await overrideParametersOption.count()
 
-    if (settingsCount === 0) {
+    if (overrideParametersCount === 0) {
       test.skip()
       return
     }
 
-    await settingsOption.focus()
+    await overrideParametersOption.focus()
     await page.keyboard.press('Enter')
 
-    // Verify settings dialog opens
+    // Verify override parameters dialog opens
     const settingsDialog = page.getByRole('dialog')
     await expect(settingsDialog).toBeVisible()
-    await expect(settingsDialog).toContainText(/设置|Settings/i)
+    await expect(settingsDialog).toContainText(/覆盖参数|Override Parameters/i)
 
     // Look for override parameters section
     const overrideSection = settingsDialog.getByRole('heading', { name: /Override Parameters|覆盖参数/i })
@@ -639,9 +685,9 @@ test.describe('Admin Channels Management', () => {
     // Wait for dialog to close
     await expect(settingsDialog).not.toBeVisible({ timeout: 10000 })
 
-    // Re-open settings to verify the value was saved
+    // Re-open override parameters dialog to verify the value was saved
     await actionsTrigger.click()
-    await settingsOption.focus()
+    await overrideParametersOption.focus()
     await page.keyboard.press('Enter')
 
     const reopenedDialog = page.getByRole('dialog')
@@ -688,22 +734,22 @@ test.describe('Admin Channels Management', () => {
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
 
-    // Look for settings option
-    const settingsOption = menu.getByRole('menuitem', { name: /设置|Settings/i })
-    const settingsCount = await settingsOption.count()
+    // Look for override parameters option
+    const overrideParametersOption = menu.getByRole('menuitem', { name: /覆盖参数|Override Parameters/i })
+    const overrideParametersCount = await overrideParametersOption.count()
 
-    if (settingsCount === 0) {
+    if (overrideParametersCount === 0) {
       test.skip()
       return
     }
 
-    await settingsOption.focus()
+    await overrideParametersOption.focus()
     await page.keyboard.press('Enter')
 
-    // Verify settings dialog opens
+    // Verify override parameters dialog opens
     const settingsDialog = page.getByRole('dialog')
     await expect(settingsDialog).toBeVisible()
-    await expect(settingsDialog).toContainText(/设置|Settings/i)
+    await expect(settingsDialog).toContainText(/覆盖参数|Override Parameters/i)
 
     // Look for override parameters section
     const overrideSection = settingsDialog.getByRole('heading', { name: /Override Parameters|覆盖参数/i })
@@ -721,13 +767,24 @@ test.describe('Admin Channels Management', () => {
     const invalidJson = '{"temperature": 0.8, "max_tokens": invalid}'
     await overrideTextarea.fill(invalidJson)
 
+    // Try to save to trigger validation
+    const saveButton = settingsDialog.getByRole('button', { name: /保存|Save/i })
+    await saveButton.click()
+
+    // Wait a moment for validation to run
+    await page.waitForTimeout(500)
+
     // Verify validation error appears
-    const errorMessage = settingsDialog.locator('.text-destructive').filter({ hasText: /Must be valid JSON|必须是有效的 JSON/i })
+    const errorMessage = settingsDialog.locator('.text-destructive')
     await expect(errorMessage).toBeVisible()
+    await expect(errorMessage).toContainText(/必须是有效的 JSON|Must be valid JSON/i)
 
     // Enter valid JSON to clear the error
     const validJson = '{"temperature": 0.8, "max_tokens": 4096}'
     await overrideTextarea.fill(validJson)
+
+    // Wait for validation to clear
+    await page.waitForTimeout(500)
 
     // Verify validation error disappears
     await expect(errorMessage).not.toBeVisible()
@@ -738,7 +795,7 @@ test.describe('Admin Channels Management', () => {
     await expect(settingsDialog).not.toBeVisible()
   })
 
-  test('can configure model mappings in channel settings', async ({ page }) => {
+  test('can configure model mappings in model mapping dialog', async ({ page }) => {
     // Wait for table to load
     await page.waitForTimeout(2000)
 
@@ -769,22 +826,22 @@ test.describe('Admin Channels Management', () => {
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
 
-    // Look for settings option
-    const settingsOption = menu.getByRole('menuitem', { name: /设置|Settings/i })
-    const settingsCount = await settingsOption.count()
+    // Look for model mapping option
+    const modelMappingOption = menu.getByRole('menuitem', { name: /模型映射|Model Mapping/i })
+    const modelMappingCount = await modelMappingOption.count()
 
-    if (settingsCount === 0) {
+    if (modelMappingCount === 0) {
       test.skip()
       return
     }
 
-    await settingsOption.focus()
+    await modelMappingOption.focus()
     await page.keyboard.press('Enter')
 
-    // Verify settings dialog opens
+    // Verify model mapping dialog opens
     const settingsDialog = page.getByRole('dialog')
     await expect(settingsDialog).toBeVisible()
-    await expect(settingsDialog).toContainText(/设置|Settings/i)
+    await expect(settingsDialog).toContainText(/模型映射|Model Mapping/i)
 
     // Look for model mapping section
     const mappingSection = settingsDialog.getByRole('heading', { name: /Model Mapping|模型映射/i })
@@ -797,23 +854,33 @@ test.describe('Admin Channels Management', () => {
 
     // Add a model mapping
     const originalInput = settingsDialog.getByPlaceholder(/Original Model Name|原模型名称/i)
-    const targetSelect = settingsDialog.getByPlaceholder(/Target Model Name|目标模型名称/i).or(settingsDialog.locator('[role="combobox"]').last())
-
+    
     // Fill original model name
     await originalInput.fill('gpt-4')
-    await page.waitForTimeout(300)
+    await page.waitForTimeout(500)
 
-    // Select target model (first available option)
-    await targetSelect.click()
+    // Find and click the target model select (it's a Select component)
+    const targetSelectTrigger = settingsDialog.locator('[role="combobox"]').last()
+    await targetSelectTrigger.click()
+    
+    // Wait for dropdown to open
+    await page.waitForTimeout(500)
+    
+    // Select first available option
     const firstOption = page.getByRole('option').first()
     await firstOption.click()
+    await page.waitForTimeout(500)
 
     // Click add button
-    const addButton = settingsDialog.getByRole('button', { name: /Plus/i }).or(settingsDialog.locator('button').filter({ has: page.locator('svg') }).first())
+    const addButton = settingsDialog.getByTestId('add-model-mapping-button')
     await addButton.click()
+    
+    // Wait for the mapping to be added
+    await page.waitForTimeout(1000)
 
-    // Verify mapping appears
-    await expect(settingsDialog).toContainText('gpt-4')
+    // Verify mapping appears in the list - look for the text in a border container
+    const mappingContainer = settingsDialog.locator('.rounded-lg.border').filter({ hasText: 'gpt-4' })
+    await expect(mappingContainer).toBeVisible()
 
     // Save the settings
     const saveButton = settingsDialog.getByRole('button', { name: /保存|Save/i })
@@ -825,9 +892,9 @@ test.describe('Admin Channels Management', () => {
     // Wait for dialog to close
     await expect(settingsDialog).not.toBeVisible({ timeout: 10000 })
 
-    // Re-open settings to verify the mapping was saved
+    // Re-open model mapping dialog to verify the mapping was saved
     await actionsTrigger.click()
-    await settingsOption.focus()
+    await modelMappingOption.focus()
     await page.keyboard.press('Enter')
 
     const reopenedDialog = page.getByRole('dialog')

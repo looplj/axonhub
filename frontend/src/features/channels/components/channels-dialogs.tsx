@@ -1,6 +1,8 @@
 import { useChannels } from '../context/channels-context'
 import { ChannelsActionDialog } from './channels-action-dialog'
 import { ChannelsSettingsDialog } from './channels-settings-dialog'
+import { ChannelsModelMappingDialog } from './channels-model-mapping-dialog'
+import { ChannelsOverrideParametersDialog } from './channels-override-parameters-dialog'
 import { ChannelsStatusDialog } from './channels-status-dialog'
 import { ChannelsArchiveDialog } from './channels-archive-dialog'
 import { ChannelsTestDialog } from './channels-test-dialog'
@@ -56,11 +58,35 @@ export function ChannelsDialogs() {
             currentRow={currentRow}
           /> */}
 
-          <ChannelsSettingsDialog
+          {/* <ChannelsSettingsDialog
             key={`channel-settings-${currentRow.id}`}
             open={open === 'settings'}
             onOpenChange={() => {
               setOpen('settings')
+              setTimeout(() => {
+                setCurrentRow(null)
+              }, 500)
+            }}
+            currentRow={currentRow}
+          /> */}
+
+          <ChannelsModelMappingDialog
+            key={`channel-model-mapping-${currentRow.id}`}
+            open={open === 'modelMapping'}
+            onOpenChange={() => {
+              setOpen('modelMapping')
+              setTimeout(() => {
+                setCurrentRow(null)
+              }, 500)
+            }}
+            currentRow={currentRow}
+          />
+
+          <ChannelsOverrideParametersDialog
+            key={`channel-override-parameters-${currentRow.id}`}
+            open={open === 'overrideParameters'}
+            onOpenChange={() => {
+              setOpen('overrideParameters')
               setTimeout(() => {
                 setCurrentRow(null)
               }, 500)
