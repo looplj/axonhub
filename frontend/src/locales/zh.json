@@ -393,7 +393,7 @@
       "userIdRequired": "用户ID不能为空",
       "keyRequired": "API Key不能为空",
       "profileNameRequired": "配置名称不能为空",
-      "sourceModelRequired": "原模型不能为空",
+      "sourceModelRequired": "请求中的模型不能为空",
       "targetModelRequired": "目标模型不能为空",
       "activeProfileRequired": "生效配置不能为空",
       "atLeastOneProfile": "至少需要一个配置",
@@ -423,7 +423,7 @@
       "addMapping": "新增映射",
       "noMappings": "暂无模型映射",
       "profileName": "配置名称",
-      "sourceModel": "原模型",
+      "sourceModel": "请求中的模型",
       "targetModel": "目标模型",
       "activeProfile": "生效配置",
       "searchModels": "搜索模型",
@@ -651,6 +651,10 @@
       "bulkDisableError": "禁用渠道失败：{{error}}",
       "bulkEnableSuccess": "已成功启用 {{count}} 条渠道",
       "bulkEnableError": "启用渠道失败：{{error}}",
+      "deleteSuccess": "已成功删除渠道",
+      "deleteError": "删除渠道失败：{{error}}",
+      "bulkDeleteSuccess": "已成功删除 {{count}} 条渠道",
+      "bulkDeleteError": "删除渠道失败：{{error}}",
       "pendingMappingWarning": "有未添加的映射，请在保存前添加。",
       "duplicateMappingWarning": "检测到重复的映射，请在保存前删除重复的映射。",
       "fetchModelsSuccess": "成功获取 {{count}} 个模型",
@@ -837,7 +841,7 @@
         "modelMapping": {
           "title": "模型映射",
           "description": "配置模型名称映射，将请求中的模型名称映射到实际的模型名称",
-          "originalModel": "原模型名称",
+          "originalModel": "请求中的模型",
           "targetModel": "目标模型名称",
           "noMappings": "暂无模型映射配置"
         },
@@ -868,6 +872,12 @@
         "title": "批量启用渠道",
         "description": "确定要启用所选 {{count}} 条渠道吗？启用后渠道将可以处理请求。",
         "warning": "此操作会使所有选中的渠道可用。请确保渠道已正确配置。"
+      },
+      "bulkDelete": {
+        "title": "批量删除渠道",
+        "description": "确定要删除所选 {{count}} 条渠道吗？",
+        "warning": "警告：此操作无法撤销",
+        "warningDetail": "这将永久删除所有选中的渠道及其相关数据。删除后无法恢复。"
       }
     },
     "validation": {

@@ -73,7 +73,7 @@ export function ExecutionsDrawer({
                         <span>{t('requests.dialogs.executionDetail.channel')}:</span>
                         <span className='font-mono'>
                           {permissions.canViewChannels 
-                            ? (execution.channel?.name || t('requests.columns.unknown'))
+                            ? (execution.channel?.name || '-')
                             : '-'
                           }
                         </span>

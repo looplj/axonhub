@@ -68,7 +68,7 @@ export function ExecutionDetailDialog({
                   <span className='text-sm font-medium'>{t('requests.dialogs.executionDetail.channel')}:</span>
                    <p className='text-muted-foreground text-sm'>
                   {permissions.canViewChannels 
-                    ? (execution.channel?.name || t('requests.dialogs.executionDetail.unknown'))
+                    ? (execution.channel?.name || '-')
                     : '-'
                   }
                 </p>

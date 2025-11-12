@@ -729,6 +729,34 @@ func (svc *ChannelService) BulkEnableChannels(ctx context.Context, ids []int) er
 	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusEnabled, "enable")
 }
 
+// DeleteChannel deletes a channel by ID.
+func (svc *ChannelService) DeleteChannel(ctx context.Context, id int) error {
+	if err := svc.Ent.Channel.DeleteOneID(id).Exec(ctx); err != nil {
+		return fmt.Errorf("failed to delete channel: %w", err)
+	}
+
+	svc.asyncReloadChannels()
+
+	return nil
+}
+
+// BulkDeleteChannels deletes multiple channels by their IDs.
+func (svc *ChannelService) BulkDeleteChannels(ctx context.Context, ids []int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	deleted, err := svc.Ent.Channel.Delete().Where(channel.IDIn(ids...)).Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to bulk delete channels: %w", err)
+	}
+
+	log.Info(ctx, "bulk deleted channels", log.Int("count", deleted))
+	svc.asyncReloadChannels()
+
+	return nil
+}
+
 // BulkImportChannelItem represents a single channel to be imported.
 type BulkImportChannelItem struct {
 	Type             string

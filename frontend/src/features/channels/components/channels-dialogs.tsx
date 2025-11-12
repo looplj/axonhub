@@ -5,12 +5,14 @@ import { ChannelsModelMappingDialog } from './channels-model-mapping-dialog'
 import { ChannelsOverrideParametersDialog } from './channels-override-parameters-dialog'
 import { ChannelsStatusDialog } from './channels-status-dialog'
 import { ChannelsArchiveDialog } from './channels-archive-dialog'
+import { ChannelsDeleteDialog } from './channels-delete-dialog'
 import { ChannelsTestDialog } from './channels-test-dialog'
 import { ChannelsBulkImportDialog } from './channels-bulk-import-dialog'
 import { ChannelsBulkOrderingDialog } from './channels-bulk-ordering-dialog'
 import { ChannelsBulkArchiveDialog } from './channels-bulk-archive-dialog'
 import { ChannelsBulkDisableDialog } from './channels-bulk-disable-dialog'
 import { ChannelsBulkEnableDialog } from './channels-bulk-enable-dialog'
+import { ChannelsBulkDeleteDialog } from './channels-bulk-delete-dialog'
 
 export function ChannelsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = useChannels()
@@ -27,6 +29,8 @@ export function ChannelsDialogs() {
       <ChannelsBulkDisableDialog />
 
       <ChannelsBulkEnableDialog />
+
+      <ChannelsBulkDeleteDialog />
 
       <ChannelsBulkImportDialog
         isOpen={open === 'bulkImport'}
@@ -52,17 +56,19 @@ export function ChannelsDialogs() {
             currentRow={currentRow}
           />
 
-          {/* <ChannelsDeleteDialog
+          <ChannelsDeleteDialog
             key={`channel-delete-${currentRow.id}`}
             open={open === 'delete'}
-            onOpenChange={() => {
-              setOpen('delete')
-              setTimeout(() => {
-                setCurrentRow(null)
-              }, 500)
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                setOpen(null)
+                setTimeout(() => {
+                  setCurrentRow(null)
+                }, 500)
+              }
             }}
             currentRow={currentRow}
-          /> */}
+          />
 
           {/* <ChannelsSettingsDialog
             key={`channel-settings-${currentRow.id}`}

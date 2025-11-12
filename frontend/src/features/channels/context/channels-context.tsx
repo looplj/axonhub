@@ -17,6 +17,7 @@ type ChannelsDialogType =
   | 'bulkArchive'
   | 'bulkDisable'
   | 'bulkEnable'
+  | 'bulkDelete'
 
 interface ChannelsContextType {
   open: ChannelsDialogType | null

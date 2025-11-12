@@ -1,6 +1,7 @@
 package gql
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -143,4 +144,21 @@ func validatePaginationArgs(first, last *int) error {
 	}
 
 	return nil
+}
+
+func getNilableChannel(ctx context.Context, client *ent.Client, channelID int) (*ent.Channel, error) {
+	if channelID == 0 {
+		return nil, nil
+	}
+
+	ch, err := client.Channel.Query().Where(channel.ID(channelID)).First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to load channel: %w", err)
+	}
+
+	return ch, nil
 }

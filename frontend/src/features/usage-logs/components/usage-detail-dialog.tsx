@@ -93,13 +93,13 @@ export function UsageDetailDialog({
                   </p>
                 </div>
 
-                {permissions.canViewChannels && usageLog.channel && (
+                {permissions.canViewChannels && (
                   <div className='space-y-2'>
                     <div className='flex items-center gap-2'>
                       <span className='text-sm font-medium'>{t('usageLogs.dialogs.usageDetail.fields.channelId')}</span>
                     </div>
                     <p className='text-muted-foreground text-sm'>
-                      {usageLog.channel.name || t('usageLogs.columns.unknown')}
+                      {usageLog.channel?.name || '-'}
                     </p>
                   </div>
                 )}

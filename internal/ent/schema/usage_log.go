@@ -86,6 +86,9 @@ func (UsageLog) Edges() []ent.Edge {
 		edge.From("channel", Channel.Type).
 			Ref("usage_logs").
 			Field("channel_id").
+			Annotations(
+				entgql.Directives(forceResolver()),
+			).
 			Unique(),
 	}
 }

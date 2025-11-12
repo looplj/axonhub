@@ -50,7 +50,7 @@ export function ChannelsDeleteDialog({ open, onOpenChange, currentRow }: Props) 
         </span>
       }
       desc={
-        <>
+        <div className='space-y-4'>
           <Alert variant='destructive'>
             <IconAlertTriangle className='h-4 w-4' />
             <AlertTitle>警告</AlertTitle>
@@ -69,7 +69,7 @@ export function ChannelsDeleteDialog({ open, onOpenChange, currentRow }: Props) 
               onChange={(e) => setValue(e.target.value)}
             />
           </div>
-        </>
+        </div>
       }
       confirmText={deleteChannel.isPending ? '删除中...' : '删除 Channel'}
     />

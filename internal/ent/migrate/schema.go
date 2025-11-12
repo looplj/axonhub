@@ -84,7 +84,7 @@ var (
 			{
 				Name:    "channels_by_name",
 				Unique:  true,
-				Columns: []*schema.Column{ChannelsColumns[6]},
+				Columns: []*schema.Column{ChannelsColumns[6], ChannelsColumns[3]},
 			},
 		},
 	}
@@ -241,7 +241,7 @@ var (
 		{Name: "response_chunks", Type: field.TypeJSON, Nullable: true},
 		{Name: "error_message", Type: field.TypeString, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed", "canceled"}},
-		{Name: "channel_id", Type: field.TypeInt},
+		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
 		{Name: "data_storage_id", Type: field.TypeInt, Nullable: true},
 		{Name: "request_id", Type: field.TypeInt},
 	}
@@ -255,7 +255,7 @@ var (
 				Symbol:     "request_executions_channels_executions",
 				Columns:    []*schema.Column{RequestExecutionsColumns[12]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
-				OnDelete:   schema.NoAction,
+				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "request_executions_data_storages_executions",

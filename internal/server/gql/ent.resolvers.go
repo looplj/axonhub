@@ -311,6 +311,11 @@ func (r *requestResolver) ChannelID(ctx context.Context, obj *ent.Request) (*obj
 	}, nil
 }
 
+// Channel is the resolver for the channel field.
+func (r *requestResolver) Channel(ctx context.Context, obj *ent.Request) (*ent.Channel, error) {
+	return getNilableChannel(ctx, r.client, obj.ChannelID)
+}
+
 // ID is the resolver for the id field.
 func (r *requestExecutionResolver) ID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error) {
 	return &objects.GUID{
@@ -383,6 +388,11 @@ func (r *requestExecutionResolver) ResponseChunks(ctx context.Context, obj *ent.
 	}
 
 	return value, nil
+}
+
+// Channel is the resolver for the channel field.
+func (r *requestExecutionResolver) Channel(ctx context.Context, obj *ent.RequestExecution) (*ent.Channel, error) {
+	return getNilableChannel(ctx, r.client, obj.ChannelID)
 }
 
 // ID is the resolver for the id field.
@@ -489,6 +499,11 @@ func (r *usageLogResolver) ChannelID(ctx context.Context, obj *ent.UsageLog) (*o
 		Type: ent.TypeChannel,
 		ID:   obj.ChannelID,
 	}, nil
+}
+
+// Channel is the resolver for the channel field.
+func (r *usageLogResolver) Channel(ctx context.Context, obj *ent.UsageLog) (*ent.Channel, error) {
+	return getNilableChannel(ctx, r.client, obj.ChannelID)
 }
 
 // ID is the resolver for the id field.
