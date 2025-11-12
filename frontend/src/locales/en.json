@@ -796,6 +796,11 @@
           "title": "Basic Information",
           "description": "Basic configuration information for the Channel"
         },
+        "extraModelPrefix": {
+          "title": "Extra Model Prefix",
+          "description": "Configure an extra model prefix to allow accessing this channel with prefixed model names. For example: with prefix 'deepseek', both 'deepseek/deepseek-chat' and 'deepseek-chat' can access this channel",
+          "placeholder": "e.g., deepseek"
+        },
         "modelMapping": {
           "title": "Model Mapping",
           "description": "Configure model name mapping to map model names in requests to actual model names",

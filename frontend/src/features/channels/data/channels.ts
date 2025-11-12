@@ -40,6 +40,7 @@ const CHANNELS_QUERY = `
           supportedModels
           defaultTestModel
           settings {
+            extraModelPrefix
             modelMappings {
               from
               to
@@ -75,6 +76,7 @@ const CREATE_CHANNEL_MUTATION = `
       supportedModels
       defaultTestModel
       settings {
+        extraModelPrefix
         modelMappings {
           from
           to
@@ -99,6 +101,7 @@ const UPDATE_CHANNEL_MUTATION = `
       supportedModels
       defaultTestModel
       settings {
+        extraModelPrefix
         modelMappings {
           from
           to
@@ -154,6 +157,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         supportedModels
         defaultTestModel
         settings {
+          extraModelPrefix
           modelMappings {
             from
             to
@@ -182,6 +186,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
         defaultTestModel
         orderingWeight
         settings {
+          extraModelPrefix
           modelMappings {
             from
             to

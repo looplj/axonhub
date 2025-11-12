@@ -7,6 +7,8 @@ type ChannelsDialogType =
   | 'edit'
   | 'delete'
   | 'settings'
+  | 'modelMapping'
+  | 'overrideParameters'
   | 'status'
   | 'test'
   | 'bulkImport'

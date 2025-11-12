@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/samber/lo"
@@ -38,6 +39,24 @@ type Channel struct {
 	cachedOverrideParams map[string]any
 }
 
+func (c Channel) resolvePrefixedModel(model string) (string, bool) {
+	if c.Settings == nil || c.Settings.ExtraModelPrefix == "" {
+		return "", false
+	}
+
+	prefix := c.Settings.ExtraModelPrefix + "/"
+	if !strings.HasPrefix(model, prefix) {
+		return "", false
+	}
+
+	modelWithoutPrefix := model[len(prefix):]
+	if !slices.Contains(c.SupportedModels, modelWithoutPrefix) {
+		return "", false
+	}
+
+	return modelWithoutPrefix, true
+}
+
 func (c Channel) IsModelSupported(model string) bool {
 	if slices.Contains(c.SupportedModels, model) {
 		return true
@@ -45,6 +64,10 @@ func (c Channel) IsModelSupported(model string) bool {
 
 	if c.Settings == nil {
 		return false
+	}
+
+	if _, ok := c.resolvePrefixedModel(model); ok {
+		return true
 	}
 
 	for _, mapping := range c.Settings.ModelMappings {
@@ -63,6 +86,10 @@ func (c Channel) ChooseModel(model string) (string, error) {
 
 	if c.Settings == nil {
 		return "", fmt.Errorf("model %s not supported in channel %s", model, c.Name)
+	}
+
+	if resolved, ok := c.resolvePrefixedModel(model); ok {
+		return resolved, nil
 	}
 
 	for _, mapping := range c.Settings.ModelMappings {
@@ -509,6 +536,24 @@ func (svc *ChannelService) ListAllModels(ctx context.Context) []objects.Model {
 					modelSet[mapping.From] = objects.Model{
 						ID:          mapping.From,
 						DisplayName: mapping.From,
+						CreatedAt:   ch.CreatedAt,
+						Created:     ch.CreatedAt.Unix(),
+						OwnedBy:     ch.Channel.Type.String(),
+					}
+				}
+			}
+
+			// Add models with extra prefix
+			if ch.Settings.ExtraModelPrefix != "" {
+				for _, model := range ch.SupportedModels {
+					prefixedModel := ch.Settings.ExtraModelPrefix + "/" + model
+					if _, ok := modelSet[prefixedModel]; ok {
+						continue
+					}
+
+					modelSet[prefixedModel] = objects.Model{
+						ID:          prefixedModel,
+						DisplayName: prefixedModel,
 						CreatedAt:   ch.CreatedAt,
 						Created:     ch.CreatedAt.Unix(),
 						OwnedBy:     ch.Channel.Type.String(),

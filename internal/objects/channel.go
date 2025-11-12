@@ -9,6 +9,14 @@ type ModelMapping struct {
 }
 
 type ChannelSettings struct {
+	// ExtraModelPrefix sets the channel accept the model with the extra prefix.
+	// e.g. a channel
+	// supported_modles is ["deepseek-chat", "deepseek-reasoner"]
+	// extraModelPrefix is "deepseek"
+	// then the model "deepseek-chat", "deepseek-reasoner", "deepseek/deepseek-chat", "deepseek/deepseek-reasoner"  will be accepted.
+	// And if other channel support "deepseek/deepseek-chat", "deepseek/deepseek-reasoner" modles, the two channels can accept the request both.
+	ExtraModelPrefix string `json:"extraModelPrefix"`
+
 	// ModelMappings sets the channel allow map the other not allowed models to the provider.
 	ModelMappings []ModelMapping `json:"modelMappings"`
 

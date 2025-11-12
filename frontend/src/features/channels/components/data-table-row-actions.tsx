@@ -1,6 +1,14 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { Row } from '@tanstack/react-table'
-import { IconEdit, IconToggleLeft, IconToggleRight, IconSettings, IconArchive } from '@tabler/icons-react'
+import {
+  IconEdit,
+  IconToggleLeft,
+  IconToggleRight,
+  IconSettings,
+  IconArchive,
+  IconRoute,
+  IconAdjustments,
+} from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Button } from '@/components/ui/button'
@@ -50,16 +58,29 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           </DropdownMenuItem>
         )}
 
-        {/* Settings - requires read permission (view only) */}
+        {/* Model Mapping - requires write permission */}
         {channelPermissions.canWrite && (
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(row.original)
-              setOpen('settings')
+              setOpen('modelMapping')
             }}
           >
-            <IconSettings size={16} className='mr-2' />
-            {t('channels.actions.settings')}
+            <IconRoute size={16} className='mr-2' />
+            {t('channels.dialogs.settings.modelMapping.title')}
+          </DropdownMenuItem>
+        )}
+
+        {/* Override Parameters - requires write permission */}
+        {channelPermissions.canWrite && (
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(row.original)
+              setOpen('overrideParameters')
+            }}
+          >
+            <IconAdjustments size={16} className='mr-2' />
+            {t('channels.dialogs.settings.overrideParameters.title')}
           </DropdownMenuItem>
         )}
 
