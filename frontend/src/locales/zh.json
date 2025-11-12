@@ -647,6 +647,10 @@
       "orderingUpdateError": "更新渠道排序失败：{{error}}",
       "bulkArchiveSuccess": "已成功归档 {{count}} 条渠道",
       "bulkArchiveError": "归档渠道失败：{{error}}",
+      "bulkDisableSuccess": "已成功禁用 {{count}} 条渠道",
+      "bulkDisableError": "禁用渠道失败：{{error}}",
+      "bulkEnableSuccess": "已成功启用 {{count}} 条渠道",
+      "bulkEnableError": "启用渠道失败：{{error}}",
       "pendingMappingWarning": "有未添加的映射，请在保存前添加。",
       "duplicateMappingWarning": "检测到重复的映射，请在保存前删除重复的映射。",
       "fetchModelsSuccess": "成功获取 {{count}} 个模型",
@@ -852,8 +856,18 @@
       },
       "bulkArchive": {
         "title": "批量归档渠道",
-        "description": "确定要归档已选中的 {{count}} 条渠道吗？归档后的渠道默认在列表中隐藏。",
-        "warning": "该操作会将所有选中的渠道从常规视图中隐藏。您仍然可以通过筛选“已归档”状态重新查看。"
+        "description": "确定要归档所选 {{count}} 条渠道吗？归档的渠道默认不会出现在列表中。",
+        "warning": "此操作会将所有选中的渠道从常规视图中隐藏。你仍然可以通过筛选归档状态来查看它们。"
+      },
+      "bulkDisable": {
+        "title": "批量禁用渠道",
+        "description": "确定要禁用所选 {{count}} 条渠道吗？禁用后渠道将无法处理请求，直至重新启用。",
+        "warning": "此操作会使所有选中的渠道暂时不可用。如需使用，请在渠道列表中重新启用。"
+      },
+      "bulkEnable": {
+        "title": "批量启用渠道",
+        "description": "确定要启用所选 {{count}} 条渠道吗？启用后渠道将可以处理请求。",
+        "warning": "此操作会使所有选中的渠道可用。请确保渠道已正确配置。"
       }
     },
     "validation": {

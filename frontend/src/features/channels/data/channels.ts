@@ -128,6 +128,18 @@ const BULK_ARCHIVE_CHANNELS_MUTATION = `
   }
 `
 
+const BULK_DISABLE_CHANNELS_MUTATION = `
+  mutation BulkDisableChannels($ids: [ID!]!) {
+    bulkDisableChannels(ids: $ids)
+  }
+`
+
+const BULK_ENABLE_CHANNELS_MUTATION = `
+  mutation BulkEnableChannels($ids: [ID!]!) {
+    bulkEnableChannels(ids: $ids)
+  }
+`
+
 const TEST_CHANNEL_MUTATION = `
   mutation TestChannel($input: TestChannelInput!) {
     testChannel(input: $input) {
@@ -373,6 +385,50 @@ export function useBulkArchiveChannels() {
     },
     onError: (error) => {
       toast.error(t('channels.messages.bulkArchiveError', { error: error.message }))
+    },
+  })
+}
+
+export function useBulkDisableChannels() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const data = await graphqlRequest<{ bulkDisableChannels: boolean }>(
+        BULK_DISABLE_CHANNELS_MUTATION,
+        { ids }
+      )
+      return data.bulkDisableChannels
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] })
+      toast.success(t('channels.messages.bulkDisableSuccess', { count: variables.length }))
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.bulkDisableError', { error: error.message }))
+    },
+  })
+}
+
+export function useBulkEnableChannels() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const data = await graphqlRequest<{ bulkEnableChannels: boolean }>(
+        BULK_ENABLE_CHANNELS_MUTATION,
+        { ids }
+      )
+      return data.bulkEnableChannels
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] })
+      toast.success(t('channels.messages.bulkEnableSuccess', { count: variables.length }))
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.bulkEnableError', { error: error.message }))
     },
   })
 }

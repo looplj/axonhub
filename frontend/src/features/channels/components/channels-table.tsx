@@ -150,11 +150,11 @@ export function ChannelsTable({
   const isFiltered = columnFilters.length > 0
 
   useEffect(() => {
-    setResetRowSelection(() => () => {
+    const resetFn = () => {
       setRowSelection({})
-      table.resetRowSelection()
-    })
-  }, [setResetRowSelection, table])
+    }
+    setResetRowSelection(resetFn)
+  }, [setResetRowSelection])
 
   useEffect(() => {
     const selected = filteredSelectedRows.map((row) => row.original as Channel)
@@ -166,6 +166,20 @@ export function ChannelsTable({
       setSelectedChannels([])
     }
   }, [selectedCount, setSelectedChannels])
+
+  // Clear rowSelection when data changes and selected rows no longer exist
+  useEffect(() => {
+    if (Object.keys(rowSelection).length > 0 && data.length > 0) {
+      const dataIds = new Set(data.map((channel) => channel.id))
+      const selectedIds = Object.keys(rowSelection)
+      const anySelectedIdMissing = selectedIds.some((id) => !dataIds.has(id))
+      
+      if (anySelectedIdMissing) {
+        // Some selected rows no longer exist in the new data, clear selection
+        setRowSelection({})
+      }
+    }
+  }, [data, rowSelection])
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>

@@ -492,12 +492,7 @@ func (svc *ChannelService) BulkUpdateChannelOrdering(ctx context.Context, update
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// Reload channels to ensure the in-memory cache reflects the new ordering
-	go func() {
-		if reloadErr := svc.loadChannels(context.Background()); reloadErr != nil {
-			log.Error(context.Background(), "failed to reload channels after ordering update", log.Cause(reloadErr))
-		}
-	}()
+	svc.asyncReloadChannels()
 
 	return updatedChannels, nil
 }
@@ -593,6 +588,8 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input *ent.CreateC
 		return nil, fmt.Errorf("failed to create channel: %w", err)
 	}
 
+	svc.asyncReloadChannels()
+
 	return channel, nil
 }
 
@@ -639,6 +636,8 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		return nil, fmt.Errorf("failed to update channel: %w", err)
 	}
 
+	svc.asyncReloadChannels()
+
 	return channel, nil
 }
 
@@ -651,11 +650,12 @@ func (svc *ChannelService) UpdateChannelStatus(ctx context.Context, id int, stat
 		return nil, fmt.Errorf("failed to update channel status: %w", err)
 	}
 
+	svc.asyncReloadChannels()
+
 	return channel, nil
 }
 
-// BulkArchiveChannels updates the status of multiple channels to archived.
-func (svc *ChannelService) BulkArchiveChannels(ctx context.Context, ids []int) error {
+func (svc *ChannelService) bulkUpdateChannelStatus(ctx context.Context, ids []int, status channel.Status, action string) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -677,22 +677,56 @@ func (svc *ChannelService) BulkArchiveChannels(ctx context.Context, ids []int) e
 		return fmt.Errorf("expected to find %d channels, but found %d", len(ids), count)
 	}
 
-	// Update status to archived
+	// Update status
 	if _, err = client.Channel.Update().
 		Where(channel.IDIn(ids...)).
-		SetStatus(channel.StatusArchived).
+		SetStatus(status).
 		Save(ctx); err != nil {
-		return fmt.Errorf("failed to archive channels: %w", err)
+		return fmt.Errorf("failed to %s channels: %w", action, err)
 	}
 
-	// Reload enabled channels to refresh in-memory cache
-	go func() {
-		if reloadErr := svc.loadChannels(context.Background()); reloadErr != nil {
-			log.Error(context.Background(), "failed to reload channels after bulk archive", log.Cause(reloadErr))
-		}
-	}()
+	svc.asyncReloadChannels()
 
 	return nil
+}
+
+// For test, disable async reload.
+var asyncReloadDisabled = false
+
+func (svc *ChannelService) asyncReloadChannels() {
+	if asyncReloadDisabled {
+		return
+	}
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error(context.Background(), "panic in async reload channels", log.Any("panic", r))
+			}
+		}()
+
+		reloadCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if reloadErr := svc.loadChannels(reloadCtx); reloadErr != nil {
+			log.Error(reloadCtx, "failed to reload channels after bulk update", log.Cause(reloadErr))
+		}
+	}()
+}
+
+// BulkArchiveChannels updates the status of multiple channels to archived.
+func (svc *ChannelService) BulkArchiveChannels(ctx context.Context, ids []int) error {
+	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusArchived, "archive")
+}
+
+// BulkDisableChannels updates the status of multiple channels to disabled.
+func (svc *ChannelService) BulkDisableChannels(ctx context.Context, ids []int) error {
+	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusDisabled, "disable")
+}
+
+// BulkEnableChannels updates the status of multiple channels to enabled.
+func (svc *ChannelService) BulkEnableChannels(ctx context.Context, ids []int) error {
+	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusEnabled, "enable")
 }
 
 // BulkImportChannelItem represents a single channel to be imported.
@@ -776,14 +810,17 @@ func (svc *ChannelService) BulkImportChannels(ctx context.Context, items []BulkI
 	}
 
 	success := failed == 0
-
-	return &BulkImportChannelsResult{
+	result := &BulkImportChannelsResult{
 		Success:  success,
 		Created:  created,
 		Failed:   failed,
 		Errors:   errors,
 		Channels: createdChannels,
-	}, nil
+	}
+
+	svc.asyncReloadChannels()
+
+	return result, nil
 }
 
 // TestChannelResult represents the result of a channel test.
