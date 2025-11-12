@@ -104,7 +104,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
               const channel = row.original.channel
 
               if (!channel) {
-                return <div className='text-muted-foreground font-mono text-xs'>{t('requests.columns.unknown')}</div>
+                return <div className='text-muted-foreground font-mono text-xs'>-</div>
               }
 
               return <div className='font-mono text-xs'>{channel.name}</div>

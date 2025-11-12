@@ -140,6 +140,18 @@ const BULK_ENABLE_CHANNELS_MUTATION = `
   }
 `
 
+const DELETE_CHANNEL_MUTATION = `
+  mutation DeleteChannel($id: ID!) {
+    deleteChannel(id: $id)
+  }
+`
+
+const BULK_DELETE_CHANNELS_MUTATION = `
+  mutation BulkDeleteChannels($ids: [ID!]!) {
+    bulkDeleteChannels(ids: $ids)
+  }
+`
+
 const TEST_CHANNEL_MUTATION = `
   mutation TestChannel($input: TestChannelInput!) {
     testChannel(input: $input) {
@@ -429,6 +441,47 @@ export function useBulkEnableChannels() {
     },
     onError: (error) => {
       toast.error(t('channels.messages.bulkEnableError', { error: error.message }))
+    },
+  })
+}
+
+export function useDeleteChannel() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await graphqlRequest<{ deleteChannel: boolean }>(DELETE_CHANNEL_MUTATION, { id })
+      return data.deleteChannel
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] })
+      toast.success(t('channels.messages.deleteSuccess'))
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.deleteError', { error: error.message }))
+    },
+  })
+}
+
+export function useBulkDeleteChannels() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const data = await graphqlRequest<{ bulkDeleteChannels: boolean }>(
+        BULK_DELETE_CHANNELS_MUTATION,
+        { ids }
+      )
+      return data.bulkDeleteChannels
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] })
+      toast.success(t('channels.messages.bulkDeleteSuccess', { count: variables.length }))
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.bulkDeleteError', { error: error.message }))
     },
   })
 }

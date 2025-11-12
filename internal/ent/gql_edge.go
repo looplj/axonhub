@@ -413,7 +413,7 @@ func (_m *RequestExecution) Channel(ctx context.Context) (*Channel, error) {
 	if IsNotLoaded(err) {
 		result, err = _m.QueryChannel().Only(ctx)
 	}
-	return result, err
+	return result, MaskNotFound(err)
 }
 
 func (_m *RequestExecution) DataStorage(ctx context.Context) (*DataStorage, error) {

@@ -370,7 +370,7 @@
       "userIdRequired": "User ID is required",
       "keyRequired": "API Key is required",
       "profileNameRequired": "Profile name is required",
-      "sourceModelRequired": "Source model is required",
+      "sourceModelRequired": "Model in request is required",
       "targetModelRequired": "Target model is required",
       "activeProfileRequired": "Active profile is required",
       "atLeastOneProfile": "At least one profile is required",
@@ -398,7 +398,7 @@
       "addMapping": "Add Mapping",
       "noMappings": "No model mappings configured",
       "profileName": "Profile Name",
-      "sourceModel": "Source Model",
+      "sourceModel": "Model in Request",
       "targetModel": "Target Model",
       "activeProfile": "Active Profile",
       "searchModels": "Search Model",
@@ -629,6 +629,10 @@
       "bulkDisableError": "Failed to disable channels: {{error}}",
       "bulkEnableSuccess": "Successfully enabled {{count}} channels",
       "bulkEnableError": "Failed to enable channels: {{error}}",
+      "deleteSuccess": "Successfully deleted channel",
+      "deleteError": "Failed to delete channel: {{error}}",
+      "bulkDeleteSuccess": "Successfully deleted {{count}} channels",
+      "bulkDeleteError": "Failed to delete channels: {{error}}",
       "pendingMappingWarning": "There are pending model mappings, please add them before saving.",
       "duplicateMappingWarning": "Duplicate model mapping detected. Please remove the duplicate mapping before saving.",
       "fetchModelsSuccess": "Successfully fetched {{count}} models",
@@ -808,7 +812,7 @@
         "modelMapping": {
           "title": "Model Mapping",
           "description": "Configure model name mapping to map model names in requests to actual model names",
-          "originalModel": "Original Model Name",
+          "originalModel": "Model in Request",
           "targetModel": "Target Model Name",
           "noMappings": "No model mapping configuration"
         },
@@ -839,6 +843,12 @@
         "title": "Bulk Enable Channels",
         "description": "Are you sure you want to enable {{count}} selected channels? Enabled channels will be available to process requests.",
         "warning": "This action will make all selected channels available for use. Make sure the channels are properly configured."
+      },
+      "bulkDelete": {
+        "title": "Bulk Delete Channels",
+        "description": "Are you sure you want to delete {{count}} selected channels?",
+        "warning": "Warning: This action cannot be undone",
+        "warningDetail": "This will permanently delete all selected channels and their related data. This cannot be recovered."
       }
     },
     "validation": {

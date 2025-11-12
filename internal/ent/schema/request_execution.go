@@ -34,7 +34,7 @@ func (RequestExecution) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("project_id").Immutable().Default(1),
 		field.Int("request_id").Immutable(),
-		field.Int("channel_id").Immutable(),
+		field.Int("channel_id").Immutable().Optional(),
 		field.Int("data_storage_id").
 			Optional().
 			Immutable().
@@ -76,7 +76,9 @@ func (RequestExecution) Edges() []ent.Edge {
 		edge.From("channel", Channel.Type).
 			Field("channel_id").
 			Ref("executions").
-			Required().
+			Annotations(
+				entgql.Directives(forceResolver()),
+			).
 			Immutable().
 			Unique(),
 		edge.From("data_storage", DataStorage.Type).

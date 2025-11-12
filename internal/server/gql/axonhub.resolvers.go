@@ -36,6 +36,15 @@ func (r *mutationResolver) UpdateChannelStatus(ctx context.Context, id objects.G
 	return r.channelService.UpdateChannelStatus(ctx, id.ID, status)
 }
 
+// DeleteChannel is the resolver for the deleteChannel field.
+func (r *mutationResolver) DeleteChannel(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.channelService.DeleteChannel(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // BulkArchiveChannels is the resolver for the bulkArchiveChannels field.
 func (r *mutationResolver) BulkArchiveChannels(ctx context.Context, ids []*objects.GUID) (bool, error) {
 	channelIDs := objects.IntGuids(ids)
@@ -63,6 +72,17 @@ func (r *mutationResolver) BulkEnableChannels(ctx context.Context, ids []*object
 	channelIDs := objects.IntGuids(ids)
 
 	if err := r.channelService.BulkEnableChannels(ctx, channelIDs); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// BulkDeleteChannels is the resolver for the bulkDeleteChannels field.
+func (r *mutationResolver) BulkDeleteChannels(ctx context.Context, ids []*objects.GUID) (bool, error) {
+	channelIDs := objects.IntGuids(ids)
+
+	if err := r.channelService.BulkDeleteChannels(ctx, channelIDs); err != nil {
 		return false, err
 	}
 

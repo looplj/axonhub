@@ -265,6 +265,16 @@ func ChannelIDNotIn(vs ...int) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldNotIn(FieldChannelID, vs...))
 }
 
+// ChannelIDIsNil applies the IsNil predicate on the "channel_id" field.
+func ChannelIDIsNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIsNull(FieldChannelID))
+}
+
+// ChannelIDNotNil applies the NotNil predicate on the "channel_id" field.
+func ChannelIDNotNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotNull(FieldChannelID))
+}
+
 // DataStorageIDEQ applies the EQ predicate on the "data_storage_id" field.
 func DataStorageIDEQ(v int) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldDataStorageID, v))

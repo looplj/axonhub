@@ -8,6 +8,7 @@ import {
   IconArchive,
   IconRoute,
   IconAdjustments,
+  IconTrash,
 } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -116,6 +117,20 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           >
             <IconArchive size={16} className='mr-2' />
             {t('common.buttons.archive')}
+          </DropdownMenuItem>
+        )}
+
+        {/* Delete - requires write permission */}
+        {channelPermissions.canWrite && (
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(row.original)
+              setOpen('delete')
+            }}
+            className='text-red-500!'
+          >
+            <IconTrash size={16} className='mr-2' />
+            {t('common.buttons.delete')}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

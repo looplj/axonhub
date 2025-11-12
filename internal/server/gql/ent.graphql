@@ -1973,7 +1973,7 @@ type Request implements Node {
     """
     where: RequestExecutionWhereInput
   ): RequestExecutionConnection!
-  channel: Channel
+  channel: Channel @goField(forceResolver: true)
   usageLogs(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -2042,7 +2042,7 @@ type RequestExecution implements Node {
   updatedAt: Time!
   projectID: Int!
   requestID: ID!
-  channelID: ID!
+  channelID: ID
   """
   Data Storage ID that this request belongs to
   """
@@ -2056,7 +2056,7 @@ type RequestExecution implements Node {
   errorMessage: String
   status: RequestExecutionStatus!
   request: Request!
-  channel: Channel!
+  channel: Channel @goField(forceResolver: true)
   dataStorage: DataStorage
 }
 """
@@ -2185,6 +2185,8 @@ input RequestExecutionWhereInput {
   channelIDNEQ: ID
   channelIDIn: [ID!]
   channelIDNotIn: [ID!]
+  channelIDIsNil: Boolean
+  channelIDNotNil: Boolean
   """
   data_storage_id field predicates
   """
@@ -3509,7 +3511,7 @@ type UsageLog implements Node {
   format: String!
   request: Request!
   project: Project!
-  channel: Channel
+  channel: Channel @goField(forceResolver: true)
 }
 """
 A connection to a list of items.

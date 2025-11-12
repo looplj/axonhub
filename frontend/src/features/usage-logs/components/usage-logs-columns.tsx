@@ -74,7 +74,7 @@ export function useUsageLogsColumns(): ColumnDef<UsageLog>[] {
             header: ({ column }) => <DataTableColumnHeader column={column} title={t('usageLogs.columns.channel')} />,
             cell: ({ row }) => {
               const channel = row.original.channel
-              return <div className='text-sm'>{channel?.name || t('usageLogs.columns.unknown')}</div>
+              return <div className='text-sm'>{channel?.name || '-'}</div>
             },
             enableSorting: false,
             filterFn: (row, _id, value) => {

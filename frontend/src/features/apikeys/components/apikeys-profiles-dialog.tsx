@@ -18,7 +18,6 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { AutoComplete } from '@/components/auto-complete'
 import { useApiKeysContext } from '../context/apikeys-context'
 import {
@@ -197,7 +196,6 @@ export function ApiKeyProfilesDialog({
           {/* Fixed Active Profile Section at Bottom */}
           <div className='bg-background border-t p-4 shrink-0'>
             <Form {...form}>
-              <Separator className='mb-4' />
               <FormField
                 control={form.control}
                 name='activeProfile'

@@ -6783,9 +6783,22 @@ func (m *RequestExecutionMutation) OldChannelID(ctx context.Context) (v int, err
 	return oldValue.ChannelID, nil
 }
 
+// ClearChannelID clears the value of the "channel_id" field.
+func (m *RequestExecutionMutation) ClearChannelID() {
+	m.channel = nil
+	m.clearedFields[requestexecution.FieldChannelID] = struct{}{}
+}
+
+// ChannelIDCleared returns if the "channel_id" field was cleared in this mutation.
+func (m *RequestExecutionMutation) ChannelIDCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldChannelID]
+	return ok
+}
+
 // ResetChannelID resets all changes to the "channel_id" field.
 func (m *RequestExecutionMutation) ResetChannelID() {
 	m.channel = nil
+	delete(m.clearedFields, requestexecution.FieldChannelID)
 }
 
 // SetDataStorageID sets the "data_storage_id" field.
@@ -7259,7 +7272,7 @@ func (m *RequestExecutionMutation) ClearChannel() {
 
 // ChannelCleared reports if the "channel" edge to the Channel entity was cleared.
 func (m *RequestExecutionMutation) ChannelCleared() bool {
-	return m.clearedchannel
+	return m.ChannelIDCleared() || m.clearedchannel
 }
 
 // ChannelIDs returns the "channel" edge IDs in the mutation.
@@ -7607,6 +7620,9 @@ func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error 
 // mutation.
 func (m *RequestExecutionMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(requestexecution.FieldChannelID) {
+		fields = append(fields, requestexecution.FieldChannelID)
+	}
 	if m.FieldCleared(requestexecution.FieldDataStorageID) {
 		fields = append(fields, requestexecution.FieldDataStorageID)
 	}
@@ -7636,6 +7652,9 @@ func (m *RequestExecutionMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *RequestExecutionMutation) ClearField(name string) error {
 	switch name {
+	case requestexecution.FieldChannelID:
+		m.ClearChannelID()
+		return nil
 	case requestexecution.FieldDataStorageID:
 		m.ClearDataStorageID()
 		return nil
