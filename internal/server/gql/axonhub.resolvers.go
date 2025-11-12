@@ -47,6 +47,28 @@ func (r *mutationResolver) BulkArchiveChannels(ctx context.Context, ids []*objec
 	return true, nil
 }
 
+// BulkDisableChannels is the resolver for the bulkDisableChannels field.
+func (r *mutationResolver) BulkDisableChannels(ctx context.Context, ids []*objects.GUID) (bool, error) {
+	channelIDs := objects.IntGuids(ids)
+
+	if err := r.channelService.BulkDisableChannels(ctx, channelIDs); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// BulkEnableChannels is the resolver for the bulkEnableChannels field.
+func (r *mutationResolver) BulkEnableChannels(ctx context.Context, ids []*objects.GUID) (bool, error) {
+	channelIDs := objects.IntGuids(ids)
+
+	if err := r.channelService.BulkEnableChannels(ctx, channelIDs); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // TestChannel is the resolver for the testChannel field.
 func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInput) (*TestChannelPayload, error) {
 	// Set test source context for test channel requests

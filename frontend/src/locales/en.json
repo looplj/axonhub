@@ -625,6 +625,10 @@
       "orderingUpdateError": "Failed to update channel ordering: {{error}}",
       "bulkArchiveSuccess": "Successfully archived {{count}} channels",
       "bulkArchiveError": "Failed to archive channels: {{error}}",
+      "bulkDisableSuccess": "Successfully disabled {{count}} channels",
+      "bulkDisableError": "Failed to disable channels: {{error}}",
+      "bulkEnableSuccess": "Successfully enabled {{count}} channels",
+      "bulkEnableError": "Failed to enable channels: {{error}}",
       "pendingMappingWarning": "There are pending model mappings, please add them before saving.",
       "duplicateMappingWarning": "Duplicate model mapping detected. Please remove the duplicate mapping before saving.",
       "fetchModelsSuccess": "Successfully fetched {{count}} models",
@@ -825,6 +829,16 @@
         "title": "Bulk Archive Channels",
         "description": "Are you sure you want to archive {{count}} selected channels? Archived channels are hidden from the default list.",
         "warning": "This action will hide all selected channels from regular views. You can still find them by filtering by archived status."
+      },
+      "bulkDisable": {
+        "title": "Bulk Disable Channels",
+        "description": "Are you sure you want to disable {{count}} selected channels? Disabled channels won't process requests until re-enabled.",
+        "warning": "This action will make all selected channels unavailable. Enable them again from the channel list when needed."
+      },
+      "bulkEnable": {
+        "title": "Bulk Enable Channels",
+        "description": "Are you sure you want to enable {{count}} selected channels? Enabled channels will be available to process requests.",
+        "warning": "This action will make all selected channels available for use. Make sure the channels are properly configured."
       }
     },
     "validation": {

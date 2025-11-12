@@ -9,6 +9,8 @@ import { ChannelsTestDialog } from './channels-test-dialog'
 import { ChannelsBulkImportDialog } from './channels-bulk-import-dialog'
 import { ChannelsBulkOrderingDialog } from './channels-bulk-ordering-dialog'
 import { ChannelsBulkArchiveDialog } from './channels-bulk-archive-dialog'
+import { ChannelsBulkDisableDialog } from './channels-bulk-disable-dialog'
+import { ChannelsBulkEnableDialog } from './channels-bulk-enable-dialog'
 
 export function ChannelsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow } = useChannels()
@@ -21,6 +23,10 @@ export function ChannelsDialogs() {
       />
 
       <ChannelsBulkArchiveDialog />
+
+      <ChannelsBulkDisableDialog />
+
+      <ChannelsBulkEnableDialog />
 
       <ChannelsBulkImportDialog
         isOpen={open === 'bulkImport'}
