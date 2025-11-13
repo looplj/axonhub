@@ -10,9 +10,8 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/decorator"
-	"github.com/looplj/axonhub/internal/llm/decorator/stream"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
+	"github.com/looplj/axonhub/internal/llm/pipeline/stream"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -39,7 +38,7 @@ func NewTestChannelProcessor(
 			Inbound:         openai.NewInboundTransformer(),
 			RequestService:  requestService,
 			PipelineFactory: pipeline.NewFactory(httpClient),
-			Decorators: []decorator.Decorator{
+			Middlewares: []pipeline.Middleware{
 				stream.EnsureUsage(),
 			},
 			SystemService: systemService,

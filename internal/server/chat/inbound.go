@@ -170,6 +170,19 @@ func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, req
 		}
 	}
 
+	// Save the model for later use, e.g. retry from next channels, should use the original model to choose channel model.
+	// This should be done after the api key level model mapping.
+	// This should be done before the request is created.
+	// The outbound transformer will restore the original model if it was mapped.
+	if p.state.OriginalModel == "" {
+		p.state.OriginalModel = llmRequest.Model
+	} else {
+		// Restore original model if it was mapped
+		// This should not happen, the inbound should not be called twice.
+		// Just in case, restore the original model.
+		llmRequest.Model = p.state.OriginalModel
+	}
+
 	if p.state.Request == nil {
 		request, err := p.state.RequestService.CreateRequest(
 			ctx,

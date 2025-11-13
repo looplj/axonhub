@@ -2,10 +2,10 @@ package pipeline
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/looplj/axonhub/internal/llm"
-	"github.com/looplj/axonhub/internal/llm/decorator"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -56,9 +56,9 @@ func WithSameChannelRetry(maxSameChannelRetries int) Option {
 }
 
 // WithDecorators configures decorators for the pipeline.
-func WithDecorators(decorators ...decorator.Decorator) Option {
+func WithDecorators(decorators ...Middleware) Option {
 	return func(p *pipeline) {
-		p.decorators = append(p.decorators, decorators...)
+		p.middlewares = append(p.middlewares, decorators...)
 	}
 }
 
@@ -99,7 +99,7 @@ type pipeline struct {
 	Executor              Executor
 	Inbound               transformer.Inbound
 	Outbound              transformer.Outbound
-	decorators            []decorator.Decorator
+	middlewares           []Middleware
 	maxRetries            int
 	maxSameChannelRetries int
 	retryDelay            time.Duration
@@ -116,9 +116,30 @@ type Result struct {
 	EventStream streams.Stream[*httpclient.StreamEvent]
 }
 
+func (p *pipeline) applyBeforeRequestMiddlewares(ctx context.Context, request *llm.Request) (*llm.Request, error) {
+	var err error
+
+	if len(p.middlewares) > 0 {
+		for _, dec := range p.middlewares {
+			request, err = dec.BeforeRequest(ctx, request)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return request, nil
+}
+
 func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*Result, error) {
-	// Transform httpclient.Request to llm.Request using inbound transformer
+	// Step 1: Transform httpclient.Request to llm.Request using inbound transformer
 	llmRequest, err := p.Inbound.TransformRequest(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 2: Apply before request middlewares
+	llmRequest, err = p.applyBeforeRequestMiddlewares(ctx, llmRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +151,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 	maxAttempts := p.maxRetries + 1 // maxRetries + initial attempt
 	sameChannelAttempts := 0
 
+	// Step 3: Process the request
 	for attempt := range maxAttempts {
 		if attempt > 0 {
 			log.Debug(ctx, "retrying pipeline process", log.Any("attempt", attempt))
@@ -206,15 +228,29 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 }
 
 func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*Result, error) {
+	httpReq, err := p.Outbound.TransformRequest(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to transform request: %w", err)
+	}
+
+	if request.RawRequest != nil && len(request.RawRequest.Headers) > 0 {
+		httpReq.Headers = httpclient.MergeHTTPHeaders(httpReq.Headers, request.RawRequest.Headers)
+	}
+
+	executor := p.Executor
+	if c, ok := p.Outbound.(ChannelCustomizedExecutor); ok {
+		executor = c.CustomizeExecutor(executor)
+	}
+
 	var result *Result
 	if request.Stream != nil && *request.Stream {
 		result = &Result{
 			Stream: true,
 		}
 
-		stream, err := p.stream(ctx, request)
+		stream, err := p.stream(ctx, executor, httpReq)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to stream request: %w", err)
 		}
 
 		result.EventStream = stream
@@ -223,7 +259,7 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 			Stream: false,
 		}
 
-		response, err := p.notStream(ctx, request)
+		response, err := p.notStream(ctx, executor, httpReq)
 		if err != nil {
 			return nil, err
 		}

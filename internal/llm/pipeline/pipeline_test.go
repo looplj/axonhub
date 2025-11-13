@@ -259,7 +259,7 @@ func TestWithDecorators(t *testing.T) {
 	option(p)
 
 	// The decorators slice should be initialized (even if empty)
-	require.Len(t, p.decorators, 0)
+	require.Len(t, p.middlewares, 0)
 }
 
 func TestFactory_NewFactory(t *testing.T) {

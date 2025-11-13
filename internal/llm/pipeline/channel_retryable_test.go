@@ -253,7 +253,7 @@ func TestChannelRetryableWrapper_PrepareForRetry(t *testing.T) {
 	wrapper := NewChannelRetryableWrapper(underlying, 3)
 
 	initialRetries := wrapper.currentRetries
-	err := wrapper.PrepareForRetry(nil)
+	err := wrapper.PrepareForRetry(context.Background())
 
 	require.NoError(t, err)
 	require.Equal(t, initialRetries+1, wrapper.currentRetries)

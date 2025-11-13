@@ -281,3 +281,158 @@ func TestOverrideParametersEmptySettings(t *testing.T) {
 	temperature := gjson.Get(bodyStr, "temperature")
 	assert.Equal(t, 0.5, temperature.Float())
 }
+
+func TestPersistentOutboundTransformer_TransformRequest_OriginalModelRestoration(t *testing.T) {
+	tests := []struct {
+		name               string
+		originalModel      string
+		inputModel         string
+		expectedFinalModel string
+	}{
+		{
+			name:               "no original model - should use input model",
+			originalModel:      "",
+			inputModel:         "gpt-4",
+			expectedFinalModel: "gpt-4",
+		},
+		{
+			name:               "has original model - should restore original",
+			originalModel:      "gpt-3.5-turbo",
+			inputModel:         "mapped-gpt-4",
+			expectedFinalModel: "gpt-3.5-turbo",
+		},
+		{
+			name:               "original and input are same - should remain unchanged",
+			originalModel:      "gpt-4",
+			inputModel:         "gpt-4",
+			expectedFinalModel: "gpt-4",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup
+			ctx := context.Background()
+
+			channel := &biz.Channel{
+				Channel: &ent.Channel{
+					ID:              1,
+					Name:            "test-channel",
+					SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"},
+					Settings:        nil,
+				},
+				Outbound: &mockTransformer{},
+			}
+
+			processor := &PersistentOutboundTransformer{
+				wrapped: &mockTransformer{},
+				state: &PersistenceState{
+					OriginalModel:  tt.originalModel,
+					CurrentChannel: channel,
+					Channels:       []*biz.Channel{channel},
+					ChannelIndex:   0,
+					RequestExec:    &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+				},
+			}
+
+			text := "Hello"
+			llmRequest := &llm.Request{
+				Model: tt.inputModel,
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: &text,
+						},
+					},
+				},
+			}
+
+			// Execute
+			channelRequest, err := processor.TransformRequest(ctx, llmRequest)
+
+			// Assert
+			require.NoError(t, err)
+			require.NotNil(t, channelRequest)
+
+			// Verify model restoration in the request body
+			bodyStr := string(channelRequest.Body)
+			model := gjson.Get(bodyStr, "model")
+			assert.Equal(t, tt.expectedFinalModel, model.String())
+
+			// Also verify the llmRequest was modified
+			assert.Equal(t, tt.expectedFinalModel, llmRequest.Model)
+		})
+	}
+}
+
+func TestPersistentOutboundTransformer_TransformRequest_WithChannelSelection(t *testing.T) {
+	// Setup
+	ctx := context.Background()
+
+	// Mock channel selector
+	mockSelector := &mockChannelSelector{
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
+			return []*biz.Channel{
+				{
+					Channel: &ent.Channel{
+						ID:              1,
+						Name:            "test-channel",
+						SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"}, // Add gpt-3.5-turbo
+						Settings:        nil,
+					},
+					Outbound: &mockTransformer{},
+				},
+			}, nil
+		},
+	}
+
+	processor := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			OriginalModel:   "gpt-3.5-turbo",
+			ChannelSelector: mockSelector,
+			RequestExec:     &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+		},
+	}
+
+	text := "Hello"
+	llmRequest := &llm.Request{
+		Model: "mapped-gpt-4", // This was mapped by inbound transformer
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: &text,
+				},
+			},
+		},
+	}
+
+	// Execute
+	channelRequest, err := processor.TransformRequest(ctx, llmRequest)
+
+	// Assert
+	require.NoError(t, err)
+	require.NotNil(t, channelRequest)
+
+	// Verify original model was restored
+	assert.Equal(t, "gpt-3.5-turbo", llmRequest.Model)
+
+	// Verify channel was selected
+	assert.Len(t, processor.state.Channels, 1)
+	assert.Equal(t, processor.state.CurrentChannel, processor.state.Channels[0])
+}
+
+// mockChannelSelector for testing.
+type mockChannelSelector struct {
+	selectFunc func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error)
+}
+
+func (m *mockChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
+	if m.selectFunc != nil {
+		return m.selectFunc(ctx, req)
+	}
+
+	return []*biz.Channel{}, nil
+}

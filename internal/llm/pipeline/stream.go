@@ -11,43 +11,13 @@ import (
 )
 
 // Process executes the streaming LLM pipeline
-// Steps: apply decorators -> outbound transform -> HTTP stream -> outbound stream transform -> inbound stream transform.
+// Steps: outbound transform -> HTTP stream -> outbound stream transform -> inbound stream transform.
 func (p *pipeline) stream(
 	ctx context.Context,
-	request *llm.Request,
+	executor Executor,
+	request *httpclient.Request,
 ) (streams.Stream[*httpclient.StreamEvent], error) {
-	// Step 1: Apply decorators to the request
-	if len(p.decorators) > 0 {
-		for _, dec := range p.decorators {
-			var err error
-
-			request, err = dec.DecorateRequest(ctx, request)
-			if err != nil {
-				log.Error(ctx, "Failed to apply decorator", log.Cause(err))
-				return nil, err
-			}
-		}
-	}
-
-	// Step 2: Transform to provider-specific HTTP request using outbound transformer
-	httpReq, err := p.Outbound.TransformRequest(ctx, request)
-	if err != nil {
-		log.Error(ctx, "Failed to transform streaming request", log.Cause(err))
-		return nil, err
-	}
-
-	// Step 2.1: Merge headers from raw request if available
-	if request.RawRequest != nil && len(request.RawRequest.Headers) > 0 {
-		httpReq.Headers = httpclient.MergeHTTPHeaders(httpReq.Headers, request.RawRequest.Headers)
-	}
-
-	executor := p.Executor
-	if c, ok := p.Outbound.(ChannelCustomizedExecutor); ok {
-		executor = c.CustomizeExecutor(executor)
-	}
-
-	// Step 3: Execute streaming HTTP request
-	outboundStream, err := executor.DoStream(ctx, httpReq)
+	outboundStream, err := executor.DoStream(ctx, request)
 	if err != nil {
 		if httpErr, ok := xerrors.As[*httpclient.Error](err); ok {
 			return nil, p.Outbound.TransformError(ctx, httpErr)
@@ -57,8 +27,7 @@ func (p *pipeline) stream(
 	}
 
 	if log.DebugEnabled(ctx) {
-		outboundStream = streams.Map(
-			outboundStream,
+		outboundStream = streams.Map(outboundStream,
 			func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
 				log.Debug(ctx, "Outbound stream event", log.Any("event", event))
 				return event

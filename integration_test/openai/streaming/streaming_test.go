@@ -135,7 +135,7 @@ func TestStreamingWithTools(t *testing.T) {
 			openai.UserMessage(question),
 		},
 		Tools: []openai.ChatCompletionToolUnionParam{calculatorTool, weatherTool},
-		Model: openai.ChatModelGPT4o,
+		Model: helper.GetModel(),
 	}
 
 	// Make streaming API call
@@ -216,7 +216,7 @@ func TestStreamingLongResponse(t *testing.T) {
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(question),
 		},
-		Model:               openai.ChatModelGPT4o,
+		Model:               helper.GetModel(),
 		MaxCompletionTokens: openai.Int(1000),  // Allow longer response
 		Temperature:         openai.Float(0.7), // More creative
 	}
@@ -287,7 +287,7 @@ func TestStreamingErrorHandling(t *testing.T) {
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(question),
 		},
-		Model:               openai.ChatModelGPT4o,
+		Model:               helper.GetModel(),
 		MaxCompletionTokens: openai.Int(-1), // Invalid negative value
 	}
 
