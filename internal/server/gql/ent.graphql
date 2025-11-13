@@ -434,6 +434,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   minimax
   minimax_anthropic
   aihubmix
+  burncloud
 }
 """
 ChannelWhereInput is used for filtering Channel objects.

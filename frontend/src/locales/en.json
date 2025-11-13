@@ -591,7 +591,8 @@
       "longcat_anthropic": "LongCat (Anthropic)",
       "minimax": "Minimax",
       "minimax_anthropic": "Minimax (Anthropic)",
-      "aihubmix": "AiHubMix"
+      "aihubmix": "AiHubMix",
+      "burncloud": "BurnCloud"
     },
     "actions": {
       "test": "Test",

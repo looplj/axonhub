@@ -63,6 +63,7 @@ func (Channel) Fields() []ent.Field {
 				"minimax",
 				"minimax_anthropic",
 				"aihubmix",
+				"burncloud",
 			).
 			Immutable(),
 		field.String("base_url").Optional(),
