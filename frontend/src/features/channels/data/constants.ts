@@ -1,4 +1,5 @@
 import { ChannelType } from './schema'
+import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models'
 
 /**
  * Channel configuration interface
@@ -245,6 +246,10 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'glm-4.6',
       'glm-4.5',
     ],
+  },
+  burncloud: {
+    baseURL: 'https://ai.burncloud.com/v1',
+    defaultModels: BURNCLOUD_DEFAULT_MODELS,
   },
   anthropic_aws: {
     baseURL: 'https://bedrock-runtime.us-east-1.amazonaws.com',

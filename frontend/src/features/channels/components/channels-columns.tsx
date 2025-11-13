@@ -17,6 +17,7 @@ import {
   ZAI,
   LongCat,
   Minimax,
+  BurnCloud,
   Vercel,
 } from '@lobehub/icons'
 import { useTranslation } from 'react-i18next'
@@ -176,6 +177,11 @@ const getChannelTypeConfig = (
     label: t('channels.types.aihubmix'),
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: OpenAI,
+  },
+  burncloud: {
+    label: t('channels.types.burncloud'),
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: BurnCloud,
   },
 })
 
