@@ -5,9 +5,8 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/internal/contexts"
-	"github.com/looplj/axonhub/internal/llm/decorator"
-	"github.com/looplj/axonhub/internal/llm/decorator/stream"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
+	"github.com/looplj/axonhub/internal/llm/pipeline/stream"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -44,7 +43,7 @@ func NewChatCompletionProcessorWithSelector(
 		Inbound:         inbound,
 		RequestService:  requestService,
 		SystemService:   systemService,
-		Decorators: []decorator.Decorator{
+		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
 		ModelMapper:     NewModelMapper(),
@@ -57,7 +56,7 @@ type ChatCompletionProcessor struct {
 	Inbound         transformer.Inbound
 	RequestService  *biz.RequestService
 	SystemService   *biz.SystemService
-	Decorators      []decorator.Decorator
+	Middlewares     []pipeline.Middleware
 	PipelineFactory *pipeline.Factory
 	ModelMapper     *ModelMapper
 }
@@ -102,7 +101,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		))
 	}
 
-	pipelineOpts = append(pipelineOpts, pipeline.WithDecorators(processor.Decorators...))
+	pipelineOpts = append(pipelineOpts, pipeline.WithDecorators(processor.Middlewares...))
 
 	pipe := processor.PipelineFactory.Pipeline(
 		inbound,

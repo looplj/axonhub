@@ -17,7 +17,9 @@ type PersistenceState struct {
 	RequestService  *biz.RequestService
 	UsageLogService *biz.UsageLogService
 	ChannelSelector ChannelSelector
-	ModelMapper     *ModelMapper
+
+	ModelMapper   *ModelMapper
+	OriginalModel string
 
 	Request     *ent.Request
 	RequestExec *ent.RequestExecution

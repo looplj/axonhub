@@ -174,6 +174,11 @@ func (p *PersistentOutboundTransformer) TransformError(ctx context.Context, rawE
 }
 
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
+	// Restore original model if it was mapped.
+	if p.state.OriginalModel != "" {
+		llmRequest.Model = p.state.OriginalModel
+	}
+
 	if len(p.state.Channels) == 0 {
 		channels, err := p.state.ChannelSelector.Select(ctx, llmRequest)
 		if err != nil {

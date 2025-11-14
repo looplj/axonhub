@@ -316,7 +316,7 @@ formatters:
       max-len: 180
       # Length of a tabulation.
       # Default: 4
-      tab-len: 8
+      tab-len: 4
       # Shorten single-line comments.
       # Default: false
       shorten-comments: true
@@ -343,7 +343,7 @@ formatters:
     # - `disable`: disable the generated files exclusion.
     #
     # Default: lax
-    generated: strict
+    generated: lax
     # Which file paths to exclude.
     # This option is ignored when using `--stdin` as the path is unknown.
     # Default: []
