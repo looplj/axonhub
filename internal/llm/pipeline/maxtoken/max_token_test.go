@@ -21,7 +21,7 @@ func TestEnsureMaxTokens(t *testing.T) {
 		// MaxTokens is nil initially
 	}
 
-	result, err := decorator.BeforeRequest(context.Background(), req)
+	result, err := decorator.OnLlmRequest(context.Background(), req)
 	assert.NoError(t, err)
 	assert.Equal(t, &defaultValue, result.MaxTokens)
 }
@@ -39,7 +39,7 @@ func TestEnsureMaxTokens_ExistingValue(t *testing.T) {
 		MaxTokens: &existingValue, // Already has a value
 	}
 
-	result, err := decorator.BeforeRequest(context.Background(), req)
+	result, err := decorator.OnLlmRequest(context.Background(), req)
 	assert.NoError(t, err)
 	assert.Equal(t, &existingValue, result.MaxTokens) // Should remain unchanged
 	assert.NotEqual(t, &defaultValue, result.MaxTokens)

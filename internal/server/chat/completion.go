@@ -101,7 +101,17 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		))
 	}
 
-	pipelineOpts = append(pipelineOpts, pipeline.WithDecorators(processor.Middlewares...))
+	// Add global middlewares
+	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(processor.Middlewares...))
+
+	// Add override parameters middleware
+	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(
+		applyOverrideParameters(outbound),
+
+		// The request execution middleware must be the final middleware
+		// to ensure that the request execution is created with the correct request bodys.
+		createRequestExecution(outbound),
+	))
 
 	pipe := processor.PipelineFactory.Pipeline(
 		inbound,

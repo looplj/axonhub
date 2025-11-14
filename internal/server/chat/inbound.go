@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/ent"
@@ -156,6 +157,10 @@ func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, req
 		return nil, err
 	}
 
+	if llmRequest.Model == "" {
+		return nil, fmt.Errorf("%w: request model is empty", biz.ErrInvalidModel)
+	}
+
 	// Apply model mapping from API key profiles if active profile exists
 	if p.state.APIKey != nil {
 		originalModel := llmRequest.Model
@@ -163,7 +168,7 @@ func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, req
 
 		if mappedModel != originalModel {
 			llmRequest.Model = mappedModel
-			log.Debug(ctx, "Applied model mapping from API key profile",
+			log.Debug(ctx, "applied model mapping from API key profile",
 				log.String("api_key_name", p.state.APIKey.Name),
 				log.String("original_model", originalModel),
 				log.String("mapped_model", mappedModel))

@@ -55,8 +55,8 @@ func WithSameChannelRetry(maxSameChannelRetries int) Option {
 	}
 }
 
-// WithDecorators configures decorators for the pipeline.
-func WithDecorators(decorators ...Middleware) Option {
+// WithMiddlewares configures decorators for the pipeline.
+func WithMiddlewares(decorators ...Middleware) Option {
 	return func(p *pipeline) {
 		p.middlewares = append(p.middlewares, decorators...)
 	}
@@ -121,7 +121,22 @@ func (p *pipeline) applyBeforeRequestMiddlewares(ctx context.Context, request *l
 
 	if len(p.middlewares) > 0 {
 		for _, dec := range p.middlewares {
-			request, err = dec.BeforeRequest(ctx, request)
+			request, err = dec.OnLlmRequest(ctx, request)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return request, nil
+}
+
+func (p *pipeline) applyRawRequestMiddlewares(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+	var err error
+
+	if len(p.middlewares) > 0 {
+		for _, dec := range p.middlewares {
+			request, err = dec.OnRawRequest(ctx, request)
 			if err != nil {
 				return nil, err
 			}
@@ -235,6 +250,12 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 
 	if request.RawRequest != nil && len(request.RawRequest.Headers) > 0 {
 		httpReq.Headers = httpclient.MergeHTTPHeaders(httpReq.Headers, request.RawRequest.Headers)
+	}
+
+	// Apply raw request middlewares
+	httpReq, err = p.applyRawRequestMiddlewares(ctx, httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply raw request middlewares: %w", err)
 	}
 
 	executor := p.Executor

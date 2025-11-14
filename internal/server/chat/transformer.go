@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -20,6 +21,7 @@ type PersistenceState struct {
 
 	ModelMapper   *ModelMapper
 	OriginalModel string
+	LlmRequest    *llm.Request
 
 	Request     *ent.Request
 	RequestExec *ent.RequestExecution

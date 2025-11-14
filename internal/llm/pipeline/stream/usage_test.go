@@ -20,7 +20,7 @@ func TestEnsureUsage_StreamEnabled(t *testing.T) {
 	}
 
 	// Apply decorator
-	result, err := decorator.BeforeRequest(context.Background(), req)
+	result, err := decorator.OnLlmRequest(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result.StreamOptions)
@@ -40,7 +40,7 @@ func TestEnsureUsage_StreamEnabledWithExistingOptions(t *testing.T) {
 	}
 
 	// Apply decorator
-	result, err := decorator.BeforeRequest(context.Background(), req)
+	result, err := decorator.OnLlmRequest(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result.StreamOptions)
@@ -60,7 +60,7 @@ func TestEnsureUsage_StreamDisabled(t *testing.T) {
 	}
 
 	// Apply decorator
-	result, err := decorator.BeforeRequest(context.Background(), req)
+	result, err := decorator.OnLlmRequest(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result.StreamOptions)
@@ -79,7 +79,7 @@ func TestEnsureUsage_StreamNil(t *testing.T) {
 	}
 
 	// Apply decorator
-	result, err := decorator.BeforeRequest(context.Background(), req)
+	result, err := decorator.OnLlmRequest(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result.StreamOptions)
