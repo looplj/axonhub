@@ -10,7 +10,7 @@ import (
 // EnsureMaxTokens creates a decorator that ensures requests have a max tokens value
 // by setting it to the provided default when not already specified.
 func EnsureMaxTokens(defaultValue int64) pipeline.Middleware {
-	return pipeline.BeforeRequest("max-tokens", func(ctx context.Context, request *llm.Request) (*llm.Request, error) {
+	return pipeline.OnLlmRequest("max-tokens", func(ctx context.Context, request *llm.Request) (*llm.Request, error) {
 		if request.MaxTokens == nil {
 			request.MaxTokens = &defaultValue
 		}

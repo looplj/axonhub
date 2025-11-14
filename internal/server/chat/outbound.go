@@ -173,6 +173,78 @@ func (p *PersistentOutboundTransformer) TransformError(ctx context.Context, rawE
 	return p.wrapped.TransformError(ctx, rawErr)
 }
 
+// applyOverrideParameters creates a middleware that applies channel override parameters.
+func applyOverrideParameters(outbound *PersistentOutboundTransformer) pipeline.Middleware {
+	return pipeline.OnRawRequest("override-parameters", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+		channel := outbound.GetCurrentChannel()
+		if channel == nil {
+			return request, nil
+		}
+
+		overrideParams := channel.GetOverrideParameters()
+		if len(overrideParams) == 0 {
+			return request, nil
+		}
+
+		// Apply each override parameter using sjson
+		body := request.Body
+		for key, value := range overrideParams {
+			newBody, err := sjson.SetBytes(body, key, value)
+			if err != nil {
+				log.Warn(ctx, "failed to apply override parameter",
+					log.String("channel", channel.Name),
+					log.String("key", key),
+					log.Cause(err),
+				)
+
+				continue
+			}
+
+			body = newBody
+		}
+
+		request.Body = body
+
+		return request, nil
+	})
+}
+
+// createRequestExecution ensures a request execution exists and attaches its ID header.
+func createRequestExecution(outbound *PersistentOutboundTransformer) pipeline.Middleware {
+	return pipeline.OnRawRequest("create-request-execution", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+		state := outbound.state
+		if state == nil || state.RequestExec != nil {
+			return request, nil
+		}
+
+		channel := outbound.GetCurrentChannel()
+		if channel == nil {
+			return request, nil
+		}
+
+		llmRequest := state.LlmRequest
+		if llmRequest == nil {
+			return request, nil
+		}
+
+		requestExec, err := state.RequestService.CreateRequestExecution(
+			ctx,
+			channel,
+			llmRequest.Model,
+			state.Request,
+			*request,
+			outbound.APIFormat(),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		state.RequestExec = requestExec
+
+		return request, nil
+	})
+}
+
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
 	// Restore original model if it was mapped.
 	if p.state.OriginalModel != "" {
@@ -205,9 +277,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	p.state.CurrentChannel = p.state.Channels[p.state.ChannelIndex]
 	p.wrapped = p.state.CurrentChannel.Outbound
 
-	log.Debug(
-		ctx,
-		"using channel",
+	log.Debug(ctx, "using channel",
 		log.Any("channel", p.state.CurrentChannel.Name),
 		log.Any("model", llmRequest.Model),
 	)
@@ -225,42 +295,8 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		return nil, err
 	}
 
-	// Apply override parameters if configured
-	overrideParams := p.state.CurrentChannel.GetOverrideParameters()
-	if len(overrideParams) > 0 {
-		// Apply each override parameter using sjson
-		body := channelRequest.Body
-		for key, value := range overrideParams {
-			body, err = sjson.SetBytes(body, key, value)
-			if err != nil {
-				log.Warn(ctx, "failed to apply override parameter",
-					log.String("channel", p.state.CurrentChannel.Name),
-					log.String("key", key),
-					log.Cause(err),
-				)
-
-				continue
-			}
-		}
-
-		channelRequest.Body = body
-	}
-
-	if p.state.RequestExec == nil {
-		requestExec, err := p.state.RequestService.CreateRequestExecution(
-			ctx,
-			p.state.CurrentChannel,
-			model,
-			p.state.Request,
-			*channelRequest,
-			p.APIFormat(),
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		p.state.RequestExec = requestExec
-	}
+	// cache inbound request for middleware use
+	p.state.LlmRequest = llmRequest
 
 	// Update request with channel ID after channel selection
 	if p.state.Request != nil && p.state.Request.ChannelID == 0 {
@@ -361,6 +397,11 @@ func (p *PersistentOutboundTransformer) GetCurrentChannelOutbound() transformer.
 	}
 
 	return nil
+}
+
+// GetCurrentChannel returns the current channel.
+func (p *PersistentOutboundTransformer) GetCurrentChannel() *biz.Channel {
+	return p.state.CurrentChannel
 }
 
 // HasMoreChannels returns true if there are more channels available for retry.

@@ -255,7 +255,7 @@ func TestWithDecorators(t *testing.T) {
 
 	// This would require actual decorator implementations
 	// For now, just test that the option function works
-	option := WithDecorators()
+	option := WithMiddlewares()
 	option(p)
 
 	// The decorators slice should be initialized (even if empty)
