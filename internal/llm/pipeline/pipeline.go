@@ -40,18 +40,12 @@ type ChannelCustomizedExecutor interface {
 // Option defines a pipeline configuration option.
 type Option func(*pipeline)
 
-// WithRetry configures retry behavior for the pipeline.
-func WithRetry(maxRetries int, retryDelay time.Duration) Option {
+// WithRetry configures both cross-channel and same-channel retry behavior for the pipeline.
+func WithRetry(maxRetries, maxSameChannelRetries int, retryDelay time.Duration) Option {
 	return func(p *pipeline) {
 		p.maxRetries = maxRetries
-		p.retryDelay = retryDelay
-	}
-}
-
-// WithSameChannelRetry configures same-channel retry behavior for the pipeline.
-func WithSameChannelRetry(maxSameChannelRetries int) Option {
-	return func(p *pipeline) {
 		p.maxSameChannelRetries = maxSameChannelRetries
+		p.retryDelay = retryDelay
 	}
 }
 

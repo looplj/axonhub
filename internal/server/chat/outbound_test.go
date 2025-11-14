@@ -203,29 +203,24 @@ func TestPersistentOutboundTransformer_TransformRequest_WithChannelSelection(t *
 	// Setup
 	ctx := context.Background()
 
-	// Mock channel selector
-	mockSelector := &mockChannelSelector{
-		selectFunc: func(ctx context.Context, req *llm.Request) ([]*biz.Channel, error) {
-			return []*biz.Channel{
-				{
-					Channel: &ent.Channel{
-						ID:              1,
-						Name:            "test-channel",
-						SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"}, // Add gpt-3.5-turbo
-						Settings:        nil,
-					},
-					Outbound: &mockTransformer{},
-				},
-			}, nil
+	// Pre-populate channels (now done by inbound transformer)
+	testChannel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:              1,
+			Name:            "test-channel",
+			SupportedModels: []string{"gpt-4", "gpt-3.5-turbo"}, // Add gpt-3.5-turbo
+			Settings:        nil,
 		},
+		Outbound: &mockTransformer{},
 	}
 
 	processor := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{},
 		state: &PersistenceState{
-			OriginalModel:   "gpt-3.5-turbo",
-			ChannelSelector: mockSelector,
-			RequestExec:     &ent.RequestExecution{ID: 1}, // Dummy to skip creation
+			OriginalModel: "gpt-3.5-turbo",
+			Channels:      []*biz.Channel{testChannel}, // Pre-populated by inbound
+			ChannelIndex:  0,
+			RequestExec:   &ent.RequestExecution{ID: 1}, // Dummy to skip creation
 		},
 	}
 
@@ -252,9 +247,8 @@ func TestPersistentOutboundTransformer_TransformRequest_WithChannelSelection(t *
 	// Verify original model was restored
 	assert.Equal(t, "gpt-3.5-turbo", llmRequest.Model)
 
-	// Verify channel was selected
-	assert.Len(t, processor.state.Channels, 1)
-	assert.Equal(t, processor.state.CurrentChannel, processor.state.Channels[0])
+	// Verify channel was used
+	assert.Equal(t, testChannel, processor.state.CurrentChannel)
 }
 
 // mockChannelSelector for testing.

@@ -4,32 +4,10 @@ import (
 	"context"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
-
-// PersistenceState holds shared state with channel management and retry capabilities.
-type PersistenceState struct {
-	APIKey *ent.APIKey
-	User   *ent.User
-
-	RequestService  *biz.RequestService
-	UsageLogService *biz.UsageLogService
-	ChannelSelector ChannelSelector
-
-	ModelMapper   *ModelMapper
-	OriginalModel string
-	LlmRequest    *llm.Request
-
-	Request     *ent.Request
-	RequestExec *ent.RequestExecution
-
-	Channels       []*biz.Channel
-	CurrentChannel *biz.Channel
-	ChannelIndex   int
-}
 
 var (
 	_ transformer.Inbound  = &PersistentInboundTransformer{}

@@ -234,20 +234,12 @@ func TestPipeline_GetMaxSameChannelRetries(t *testing.T) {
 func TestWithRetry(t *testing.T) {
 	p := &pipeline{}
 
-	option := WithRetry(5, 100*time.Millisecond)
+	option := WithRetry(5, 3, 100*time.Millisecond)
 	option(p)
 
 	require.Equal(t, 5, p.maxRetries)
-	require.Equal(t, 100*time.Millisecond, p.retryDelay)
-}
-
-func TestWithSameChannelRetry(t *testing.T) {
-	p := &pipeline{}
-
-	option := WithSameChannelRetry(3)
-	option(p)
-
 	require.Equal(t, 3, p.maxSameChannelRetries)
+	require.Equal(t, 100*time.Millisecond, p.retryDelay)
 }
 
 func TestWithDecorators(t *testing.T) {

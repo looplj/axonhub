@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
+	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -92,26 +93,32 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 	if retryPolicy.Enabled {
 		pipelineOpts = append(pipelineOpts, pipeline.WithRetry(
 			retryPolicy.MaxChannelRetries,
-			time.Duration(retryPolicy.RetryDelayMs)*time.Millisecond,
-		))
-
-		// Add same-channel retry configuration
-		pipelineOpts = append(pipelineOpts, pipeline.WithSameChannelRetry(
 			retryPolicy.MaxSingleChannelRetries,
+			time.Duration(retryPolicy.RetryDelayMs)*time.Millisecond,
 		))
 	}
 
+	var middlewares []pipeline.Middleware
+
 	// Add global middlewares
-	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(processor.Middlewares...))
+	middlewares = append(middlewares, processor.Middlewares...)
 
-	// Add override parameters middleware
-	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(
+	// Add inbound middlewares (executed after inbound.TransformRequest)
+	middlewares = append(middlewares,
+		applyApiKeyModelMapping(inbound),
+		selectChannels(inbound),
+		createRequest(inbound),
+	)
+
+	// Add outbound middlewares (executed after outbound.TransformRequest)
+	middlewares = append(middlewares,
 		applyOverrideParameters(outbound),
-
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
 		createRequestExecution(outbound),
-	))
+	)
+
+	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(middlewares...))
 
 	pipe := processor.PipelineFactory.Pipeline(
 		inbound,
@@ -121,21 +128,20 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 
 	result, err := pipe.Process(ctx, request)
 	if err != nil {
-		log.Error(ctx, "Pipeline processing failed", log.Cause(err))
-
 		// Update request status to failed when all retries are exhausted
 		if outbound != nil {
-			persistCtx := context.WithoutCancel(ctx)
+			persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*10)
+			defer cancel()
 
 			// Update the last request execution status based on error if it exists
 			// This ensures that when retry fails completely, the last execution is properly marked
 			if outbound.GetRequestExecution() != nil {
-				if execUpdateErr := processor.RequestService.UpdateRequestExecutionStatusFromError(
+				if updateErr := processor.RequestService.UpdateRequestExecutionStatusFromError(
 					persistCtx,
 					outbound.GetRequestExecution().ID,
 					err,
-				); execUpdateErr != nil {
-					log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(execUpdateErr))
+				); updateErr != nil {
+					log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(updateErr))
 				}
 			}
 
