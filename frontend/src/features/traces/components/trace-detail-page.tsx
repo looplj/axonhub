@@ -28,23 +28,11 @@ export default function TraceDetailPage() {
 
   const { data: trace, isLoading } = useTraceWithSegments(traceId)
 
-  // Parse rawRootSegment or fallback to rootSegment
-  // 使用 rawRootSegment（完整的 JSON）或回退到旧的 rootSegment 实现
+  // Parse rawRootSegment JSON once per trace
+  // 仅解析 rawRootSegment（完整 JSON）
   const effectiveRootSegment = useMemo(() => {
-    if (!trace) return null
-
-    // Try to use rawRootSegment first (new implementation)
-    // 优先使用 rawRootSegment（新实现）
-    if (trace.rawRootSegment) {
-      const parsed = parseRawRootSegment(trace.rawRootSegment)
-      if (parsed) {
-        return parsed
-      }
-    }
-
-    // Fallback to old rootSegment implementation
-    // 回退到旧的 rootSegment 实现
-    return trace.rootSegment || null
+    if (!trace?.rawRootSegment) return null
+    return parseRawRootSegment(trace.rawRootSegment)
   }, [trace])
 
   // Auto-select first span when trace loads
