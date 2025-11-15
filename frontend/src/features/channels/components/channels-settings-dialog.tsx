@@ -299,8 +299,12 @@ export function ChannelsSettingsDialog({ open, onOpenChange, currentRow }: Props
 
           <Card>
             <CardHeader>
-              <CardTitle className='text-lg'>{t('channels.dialogs.settings.overrideParameters.title')}</CardTitle>
-              <CardDescription>{t('channels.dialogs.settings.overrideParameters.description')}</CardDescription>
+              <CardTitle className='text-lg'>
+                {t('channels.dialogs.settings.overrides.parameters.title')}
+              </CardTitle>
+              <CardDescription>
+                {t('channels.dialogs.settings.overrides.parameters.description')}
+              </CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div>

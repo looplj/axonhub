@@ -17,7 +17,8 @@ type ChannelSettings struct {
 	// And if other channel support "deepseek/deepseek-chat", "deepseek/deepseek-reasoner" modles, the two channels can accept the request both.
 	ExtraModelPrefix string `json:"extraModelPrefix"`
 
-	// ModelMappings sets the channel allow map the other not allowed models to the provider.
+	// ModelMappings add model alias for the model in the channels.
+	// e.g. {"from": "deepseek-chat", "to": "deepseek/deepseek-chat"} will add a alias "deepseek-chat" for "deepseek/deepseek-chat".
 	ModelMappings []ModelMapping `json:"modelMappings"`
 
 	// OverrideParameters sets the channel override the request parameters.

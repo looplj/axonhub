@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/tidwall/sjson"
 
@@ -189,7 +190,17 @@ func applyOverrideParameters(outbound *PersistentOutboundTransformer) pipeline.M
 
 		// Apply each override parameter using sjson
 		body := request.Body
+
 		for key, value := range overrideParams {
+			if strings.EqualFold(key, "stream") {
+				log.Warn(ctx, "stream override parameter ignored",
+					log.String("channel", channel.Name),
+					log.Int("channel_id", channel.ID),
+				)
+
+				continue
+			}
+
 			newBody, err := sjson.SetBytes(body, key, value)
 			if err != nil {
 				log.Warn(ctx, "failed to apply override parameter",

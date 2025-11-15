@@ -253,7 +253,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
             variant="outline"
             onClick={() => onOpenChange(false)}
           >
-            {t('channels.dialogs.test.cancelButton')}
+            {t('common.buttons.cancel')}
           </Button>
           <Button
             onClick={handleTestSelected}

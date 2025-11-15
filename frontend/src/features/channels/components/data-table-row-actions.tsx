@@ -4,7 +4,6 @@ import {
   IconEdit,
   IconToggleLeft,
   IconToggleRight,
-  IconSettings,
   IconArchive,
   IconRoute,
   IconAdjustments,
@@ -72,7 +71,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           </DropdownMenuItem>
         )}
 
-        {/* Override Parameters - requires write permission */}
+        {/* Overrides - requires write permission */}
         {channelPermissions.canWrite && (
           <DropdownMenuItem
             onClick={() => {
@@ -81,7 +80,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             }}
           >
             <IconAdjustments size={16} className='mr-2' />
-            {t('channels.dialogs.settings.overrideParameters.title')}
+            {t('channels.dialogs.settings.overrides.action')}
           </DropdownMenuItem>
         )}
 

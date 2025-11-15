@@ -282,7 +282,9 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
                 <div className='text-muted-foreground flex items-center gap-4 text-sm'>
                   <span>{t('channels.dialogs.bulkOrdering.dragHint')}</span>
                   <Badge variant='secondary' className='font-mono'>
-                    {orderedChannels.length} {orderedChannels.length === 1 ? 'channel' : 'channels'}
+                    {t('channels.dialogs.bulkOrdering.channelCount', {
+                      count: orderedChannels.length,
+                    })}
                   </Badge>
                   {hasChanges && (
                     <Badge
@@ -330,7 +332,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
             </div>
             <div className='flex items-center gap-2'>
               <Button variant='outline' onClick={handleCancel}>
-                {t('channels.dialogs.bulkOrdering.cancel')}
+                {t('common.buttons.cancel')}
               </Button>
               <Button
                 onClick={handleSave}
@@ -340,7 +342,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
                 {bulkUpdateMutation.isPending ? (
                   <div className='flex items-center gap-2'>
                     <div className='h-4 w-4 animate-spin rounded-full border-b-2 border-white'></div>
-                    {t('channels.dialogs.bulkOrdering.saving')}
+                    {t('common.buttons.saving')}
                   </div>
                 ) : (
                   t('channels.dialogs.bulkOrdering.saveButton')

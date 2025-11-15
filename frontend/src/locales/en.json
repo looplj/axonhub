@@ -398,7 +398,7 @@
       "addMapping": "Add Mapping",
       "noMappings": "No model mappings configured",
       "profileName": "Profile Name",
-      "sourceModel": "Model in Request",
+      "sourceModel": "Model in request (Supports regular expressions)",
       "targetModel": "Target Model",
       "activeProfile": "Active Profile",
       "searchModels": "Search Model",
@@ -656,7 +656,6 @@
         "modelNameColumn": "Model Name",
         "statusColumn": "Status",
         "testAllButton": "Test {{count}} models",
-        "cancelButton": "Cancel",
         "testModel": "Test",
         "testingModel": "Testing...",
         "testSuccess": "✅ Success",
@@ -670,6 +669,7 @@
         "supportedModelsNote": "Use | to separate multiple models",
         "requiredFieldsNote": "Note: baseURL and apiKey are required fields",
         "supportedTypes": "Supported types: openai, anthropic, anthropic_aws, anthropic_gcp, gemini_openai, deepseek, doubao, moonshot, zhipu, zai, deepseek_anthropic, moonshot_anthropic, zhipu_anthropic, zai_anthropic, openrouter, xai",
+        "loadingChannelNames": "Loading existing channel names...",
         "inputLabel": "Import Data",
         "inputPlaceholder": "Enter channel data to import, one per line...",
         "previewButton": "Preview Import Data",
@@ -695,6 +695,11 @@
           "apiKey": "API Key",
           "supportedModels": "Supported Models",
           "defaultTestModel": "Default Test Model"
+        },
+        "status": {
+          "blocked": "Import blocked",
+          "ready": "Ready to import",
+          "blockedHint": "Import blocked - fix errors first"
         }
       },
       "fields": {
@@ -703,9 +708,17 @@
           "placeholder": "My Channel",
           "description": "Set an easily recognizable name for this channel"
         },
+        "apiFormat": {
+          "label": "API Format",
+          "formats": {
+            "openaiChatCompletions": "OpenAI / chat completions",
+            "anthropicMessages": "Anthropic / messages"
+          }
+        },
         "type": {
           "label": "Channel Type",
-          "description": "Select the AI model provider type"
+          "description": "Select the AI model provider type",
+          "helper": "Channel types are OpenAI-compatible by default; types containing \"Anthropic\" follow the Anthropic-compatible format."
         },
         "baseURL": {
           "label": "Base URL",
@@ -811,21 +824,28 @@
           "placeholder": "e.g., deepseek"
         },
         "modelMapping": {
-          "title": "Model Mapping",
-          "description": "Configure model name mapping to map model names in requests to actual model names",
-          "originalModel": "Model in Request",
-          "targetModel": "Target Model Name",
-          "noMappings": "No model mapping configuration"
+          "action": "Model Alias",
+          "title": "Model Alias",
+          "description": "Use aliases to expose channel-supported models under alternative names without transforming the request model. For example: register 'gpt-4' as an alias of 'gpt-4-turbo', and both names will be handled by this channel",
+          "originalModel": "Alias Name",
+          "targetModel": "Channel-Supported Model",
+          "noMappings": "No model alias configuration"
         },
-        "overrideParameters": {
-          "title": "Override Parameters",
-          "description": "Configure additional parameters to override user request parameters"
+        "overrides": {
+          "action": "Overrides",
+          "title": "Override Settings",
+          "parameters": {
+            "title": "Override Parameters",
+            "description": "Provide JSON-formatted overrides to customize the request parameters sent through this channel"
+          }
         }
       },
       "bulkOrdering": {
         "title": "Bulk Channel Ordering",
         "description": "Drag and drop to reorder channels. Higher priority channels will be displayed first.",
         "dragHint": "Drag channels to reorder them",
+        "channelCount": "{{count}} channel",
+        "channelCount_plural": "{{count}} channels",
         "saveButton": "Save Order",
         "orderingWeight": "Priority",
         "noChannels": "No channels available for ordering"
@@ -867,7 +887,8 @@
       "gcpProjectIdRequired": "GCP Project ID is required",
       "gcpJsonDataRequired": "GCP Service Account JSON is required",
       "atLeastOneChannel": "At least one channel is required",
-      "overrideParametersInvalidJson": "Must be valid JSON"
+      "overrideParametersInvalidJson": "Must be valid JSON",
+      "overrideParametersStreamNotAllowed": "Stream cannot be overridden"
     }
   },
   "dataStorages": {
