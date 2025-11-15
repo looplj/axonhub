@@ -3,7 +3,7 @@ package chat
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -20,8 +20,12 @@ import (
 )
 
 // TestChannelProcessor handles channel testing functionality.
+// It is stateless and can be reused across multiple test requests.
 type TestChannelProcessor struct {
-	*ChatCompletionProcessor
+	channelService *biz.ChannelService
+	requestService *biz.RequestService
+	systemService  *biz.SystemService
+	httpClient     *httpclient.HttpClient
 }
 
 // NewTestChannelProcessor creates a new TestChannelProcessor.
@@ -30,19 +34,12 @@ func NewTestChannelProcessor(
 	requestService *biz.RequestService,
 	systemService *biz.SystemService,
 	httpClient *httpclient.HttpClient,
-	channelID objects.GUID,
 ) *TestChannelProcessor {
 	return &TestChannelProcessor{
-		ChatCompletionProcessor: &ChatCompletionProcessor{
-			ChannelSelector: NewSpecifiedChannelSelector(channelService, channelID),
-			Inbound:         openai.NewInboundTransformer(),
-			RequestService:  requestService,
-			PipelineFactory: pipeline.NewFactory(httpClient),
-			Middlewares: []pipeline.Middleware{
-				stream.EnsureUsage(),
-			},
-			SystemService: systemService,
-		},
+		channelService: channelService,
+		requestService: requestService,
+		systemService:  systemService,
+		httpClient:     httpClient,
 	}
 }
 
@@ -65,17 +62,31 @@ func (processor *TestChannelProcessor) TestChannel(
 	ctx context.Context,
 	channelID objects.GUID,
 	modelID *string,
+	proxyConfig *objects.ProxyConfig,
 ) (*TestChannelResult, error) {
+	// Create ChatCompletionProcessor for this test request
+	chatProcessor := &ChatCompletionProcessor{
+		ChannelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
+		Inbound:         openai.NewInboundTransformer(),
+		RequestService:  processor.requestService,
+		PipelineFactory: pipeline.NewFactory(processor.httpClient),
+		Middlewares: []pipeline.Middleware{
+			stream.EnsureUsage(),
+		},
+		SystemService: processor.systemService,
+		Proxy:         proxyConfig,
+	}
+
 	// Create a simple test request
 	testModel := lo.FromPtr(modelID)
 	if testModel == "" {
-		channels, err := processor.ChannelSelector.Select(ctx, &llm.Request{})
+		channels, err := chatProcessor.ChannelSelector.Select(ctx, &llm.Request{})
 		if err != nil {
 			return nil, err
 		}
 
 		if len(channels) == 0 {
-			return nil, errors.New("no channels available")
+			return nil, fmt.Errorf("%w: no channels available", biz.ErrInvalidModel)
 		}
 
 		testModel = channels[0].DefaultTestModel
@@ -91,9 +102,8 @@ func (processor *TestChannelProcessor) TestChannel(
 				},
 			},
 		},
-		MaxTokens:   lo.ToPtr(int64(64)),
-		Temperature: lo.ToPtr(0.1),
-		Stream:      lo.ToPtr(false),
+		MaxTokens: lo.ToPtr(int64(256)),
+		Stream:    lo.ToPtr(false),
 	}
 
 	body, err := json.Marshal(llmRequest)
@@ -103,8 +113,7 @@ func (processor *TestChannelProcessor) TestChannel(
 
 	// Measure latency
 	startTime := time.Now()
-
-	rawResponse, err := processor.Process(ctx, &httpclient.Request{
+	rawResponse, err := chatProcessor.Process(ctx, &httpclient.Request{
 		Headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},

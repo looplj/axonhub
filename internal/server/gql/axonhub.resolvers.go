@@ -18,7 +18,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/looplj/axonhub/internal/server/chat"
 )
 
 // CreateChannel is the resolver for the createChannel field.
@@ -94,9 +93,7 @@ func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInp
 	// Set test source context for test channel requests
 	ctx = contexts.WithSource(ctx, request.SourceTest)
 
-	processor := chat.NewTestChannelProcessor(r.channelService, r.requestService, r.systemService, r.httpClient, input.ChannelID)
-
-	result, err := processor.TestChannel(ctx, input.ChannelID, input.ModelID)
+	result, err := r.testChannelProcessor.TestChannel(ctx, input.ChannelID, input.ModelID, input.Proxy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to test channel: %w", err)
 	}

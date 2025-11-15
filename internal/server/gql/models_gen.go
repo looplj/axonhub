@@ -154,8 +154,9 @@ type SystemStatus struct {
 }
 
 type TestChannelInput struct {
-	ChannelID objects.GUID `json:"channelID"`
-	ModelID   *string      `json:"modelID,omitempty"`
+	ChannelID objects.GUID         `json:"channelID"`
+	ModelID   *string              `json:"modelID,omitempty"`
+	Proxy     *objects.ProxyConfig `json:"proxy,omitempty"`
 }
 
 type TestChannelPayload struct {

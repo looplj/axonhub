@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/llm/transformer/doubao"
@@ -26,6 +27,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer/zai"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
@@ -35,8 +37,11 @@ type Channel struct {
 	// Outbound is the outbound transformer for the channel.
 	Outbound transformer.Outbound
 
-	// cachedOverrideParams stores the parsed override parameters to avoid repeated JSON parsing
-	cachedOverrideParams map[string]any
+	// HTTPClient is the custom HTTP client for this channel with proxy support
+	HTTPClient *httpclient.HttpClient
+
+	// CachedOverrideParams stores the parsed override parameters to avoid repeated JSON parsing
+	CachedOverrideParams map[string]any
 }
 
 func (c Channel) resolvePrefixedModel(model string) (string, bool) {
@@ -79,6 +84,17 @@ func (c Channel) IsModelSupported(model string) bool {
 	return false
 }
 
+// CustomizeExecutor implements pipeline.ChannelCustomizedExecutor interface
+// This allows the channel to provide a custom HTTP client with proxy support.
+func (c *Channel) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
+	if c.HTTPClient != nil {
+		// Return the HTTP client as the executor for this channel
+		return c.HTTPClient
+	}
+	// Fall back to the default executor if no custom HTTP client is configured
+	return executor
+}
+
 func (c Channel) ChooseModel(model string) (string, error) {
 	if slices.Contains(c.SupportedModels, model) {
 		return model, nil
@@ -104,13 +120,13 @@ func (c Channel) ChooseModel(model string) (string, error) {
 // GetOverrideParameters returns the cached override parameters for the channel.
 // If the parameters haven't been parsed yet, it parses and caches them.
 func (c *Channel) GetOverrideParameters() map[string]any {
-	if c.cachedOverrideParams != nil {
-		return c.cachedOverrideParams
+	if c.CachedOverrideParams != nil {
+		return c.CachedOverrideParams
 	}
 
 	if c.Settings == nil || c.Settings.OverrideParameters == "" {
-		c.cachedOverrideParams = make(map[string]any)
-		return c.cachedOverrideParams
+		c.CachedOverrideParams = make(map[string]any)
+		return c.CachedOverrideParams
 	}
 
 	var overrideParams map[string]any
@@ -120,14 +136,14 @@ func (c *Channel) GetOverrideParameters() map[string]any {
 			log.String("channel", c.Name),
 			log.Cause(err),
 		)
-		c.cachedOverrideParams = make(map[string]any)
+		c.CachedOverrideParams = make(map[string]any)
 
-		return c.cachedOverrideParams
+		return c.CachedOverrideParams
 	}
 
-	c.cachedOverrideParams = overrideParams
+	c.CachedOverrideParams = overrideParams
 
-	return c.cachedOverrideParams
+	return c.CachedOverrideParams
 }
 
 type ChannelServiceParams struct {
@@ -235,7 +251,22 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	return nil
 }
 
+// getProxyConfig extracts proxy configuration from channel settings
+// Returns nil if no proxy configuration is set (backward compatibility).
+func getProxyConfig(channelSettings *objects.ChannelSettings) *objects.ProxyConfig {
+	if channelSettings == nil || channelSettings.Proxy == nil {
+		// Backward compatibility: default to environment proxy type
+		return &objects.ProxyConfig{
+			Type: objects.ProxyTypeEnvironment,
+		}
+	}
+
+	return channelSettings.Proxy
+}
+
 func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
+	httpClient := httpclient.NewHttpClientWithProxy(getProxyConfig(c.Settings))
+
 	//nolint:exhaustive // TODO SUPPORT more providers.
 	switch c.Type {
 	case channel.TypeDoubao:
@@ -248,8 +279,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	case channel.TypeOpenrouter:
 		transformer, err := openrouter.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
@@ -258,8 +290,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	case channel.TypeZai, channel.TypeZhipu:
 		transformer, err := zai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
@@ -268,8 +301,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	case channel.TypeXai:
 		transformer, err := xai.NewOutboundTransformer(c.BaseURL, c.Credentials.APIKey)
@@ -278,8 +312,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	case channel.TypeAnthropic, channel.TypeLongcatAnthropic, channel.TypeMinimaxAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
@@ -292,8 +327,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	case channel.TypeDeepseekAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
@@ -306,8 +342,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	case channel.TypeMoonshotAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
@@ -320,8 +357,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	case channel.TypeZhipuAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
@@ -334,8 +372,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	case channel.TypeZaiAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
@@ -348,8 +387,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 
 	case channel.TypeAnthropicAWS:
@@ -366,8 +406,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	case channel.TypeAnthropicGcp:
 		// For anthropic_vertex, we need to create a VertexTransformer with GCP credentials
@@ -387,8 +428,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	case channel.TypeAnthropicFake:
 		// For anthropic_fake, we use the fake transformer for testing
@@ -420,8 +462,9 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		}
 
 		return &Channel{
-			Channel:  c,
-			Outbound: transformer,
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	default:
 		return nil, errors.New("unknown channel type")

@@ -3,6 +3,7 @@ package chat
 import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -17,7 +18,9 @@ type PersistenceState struct {
 	ChannelSelector ChannelSelector
 
 	// Request state
-	ModelMapper   *ModelMapper
+	ModelMapper *ModelMapper
+	// Proxy config, will be used to override channel's default proxy config.
+	Proxy         *objects.ProxyConfig
 	OriginalModel string
 	RawRequest    *httpclient.Request
 	LlmRequest    *llm.Request

@@ -8,6 +8,7 @@ import {
   IconRoute,
   IconAdjustments,
   IconTrash,
+  IconNetwork,
 } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -81,6 +82,19 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           >
             <IconAdjustments size={16} className='mr-2' />
             {t('channels.dialogs.settings.overrides.action')}
+          </DropdownMenuItem>
+        )}
+
+        {/* Proxy - requires write permission */}
+        {channelPermissions.canWrite && (
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(row.original)
+              setOpen('proxy')
+            }}
+          >
+            <IconNetwork size={16} className='mr-2' />
+            {t('channels.dialogs.proxy.action')}
           </DropdownMenuItem>
         )}
 

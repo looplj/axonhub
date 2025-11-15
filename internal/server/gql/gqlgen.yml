@@ -71,6 +71,15 @@ models:
   ModelMappingInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelMapping
+  ProxyType:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ProxyType
+  ProxyConfig:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ProxyConfig
+  ProxyConfigInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ProxyConfig
   ChannelSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings

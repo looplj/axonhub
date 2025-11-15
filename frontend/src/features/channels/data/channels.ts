@@ -46,6 +46,12 @@ const CHANNELS_QUERY = `
               to
             }
             overrideParameters
+            proxy {
+              type
+              url
+              username
+              password
+            }
           }
           orderingWeight
         }
@@ -82,6 +88,12 @@ const CREATE_CHANNEL_MUTATION = `
           to
         }
         overrideParameters
+        proxy {
+          type
+          url
+          username
+          password
+        }
       }
       orderingWeight
     }
@@ -107,6 +119,12 @@ const UPDATE_CHANNEL_MUTATION = `
           to
         }
         overrideParameters
+        proxy {
+          type
+          url
+          username
+          password
+        }
       }
       orderingWeight
     }
@@ -490,7 +508,15 @@ export function useTestChannel() {
   const { t } = useTranslation()
 
   return useMutation({
-    mutationFn: async ({ channelID, modelID }: { channelID: string; modelID?: string }) => {
+    mutationFn: async ({ 
+      channelID, 
+      modelID, 
+      proxy 
+    }: { 
+      channelID: string
+      modelID?: string
+      proxy?: { type: string; url?: string; username?: string; password?: string }
+    }) => {
       const data = await graphqlRequest<{
         testChannel: {
           latency: number
@@ -498,7 +524,7 @@ export function useTestChannel() {
           message?: string | null
           error?: string | null
         }
-      }>(TEST_CHANNEL_MUTATION, { input: { channelID, modelID } })
+      }>(TEST_CHANNEL_MUTATION, { input: { channelID, modelID, proxy } })
       return data.testChannel
     },
     onSuccess: (data) => {

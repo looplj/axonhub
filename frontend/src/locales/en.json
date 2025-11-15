@@ -840,6 +840,45 @@
           }
         }
       },
+      "proxy": {
+        "action": "Proxy",
+        "title": "Proxy Configuration",
+        "description": "Configure proxy settings for {{name}}.",
+        "config": {
+          "title": "Proxy Settings",
+          "description": "Configure how this channel connects through a proxy server"
+        },
+        "fields": {
+          "type": {
+            "label": "Proxy Type",
+            "placeholder": "Select proxy type"
+          },
+          "url": {
+            "label": "Proxy URL",
+            "placeholder": "http://proxy.example.com:8080"
+          },
+          "username": {
+            "label": "Username (Optional)",
+            "placeholder": "Enter proxy username"
+          },
+          "password": {
+            "label": "Password (Optional)",
+            "placeholder": "Enter proxy password"
+          }
+        },
+        "types": {
+          "disabled": "Disabled - No proxy",
+          "environment": "Environment - Use system proxy settings",
+          "url": "Custom URL - Use specified proxy"
+        },
+        "environmentHint": "The channel will use proxy settings from environment variables (HTTP_PROXY, HTTPS_PROXY, NO_PROXY)",
+        "disabledHint": "The channel will connect directly without using any proxy",
+        "test": "Test Connection",
+        "testing": "Testing...",
+        "testSuccess": "✅ Connection successful",
+        "testFailed": "❌ Connection failed",
+        "latency": "Latency"
+      },
       "bulkOrdering": {
         "title": "Bulk Channel Ordering",
         "description": "Drag and drop to reorder channels. Higher priority channels will be displayed first.",
