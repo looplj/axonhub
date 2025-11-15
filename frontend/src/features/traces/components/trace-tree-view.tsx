@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Segment, Span } from '../data/schema'
 import { cn } from '@/lib/utils'
+import { getSpanIcon } from './constant'
+import { normalizeSpanType } from '../utils/span-display'
 
 interface TraceTreeViewProps {
   trace: Segment
@@ -26,25 +28,8 @@ function SpanItem({
   isActive?: boolean
 }) {
   const { t } = useTranslation()
-  const getSpanIcon = () => {
-    switch (span.type) {
-      case 'user_query':
-        return '🔍'
-      case 'text':
-        return '📝'
-      case 'thinking':
-        return '💭'
-      case 'tool_use':
-        return '🔧'
-      case 'tool_result':
-        return '✅'
-      case 'user_image_url':
-      case 'image_url':
-        return '🖼️'
-      default:
-        return '•'
-    }
-  }
+  const normalizedSpanType = normalizeSpanType(span.type)
+  const SpanIcon = getSpanIcon(normalizedSpanType)
 
   const duration = span.startTime && span.endTime
     ? `${((new Date(span.endTime).getTime() - new Date(span.startTime).getTime()) / 1000).toFixed(3)}s`
@@ -65,7 +50,7 @@ function SpanItem({
     >
       <div className='flex items-center justify-between gap-4'>
         <div className='flex items-center gap-2 min-w-0'>
-          <span className='text-lg'>{getSpanIcon()}</span>
+          <SpanIcon className='h-4 w-4 text-muted-foreground' />
           <span className='truncate text-sm font-medium'>{span.type}</span>
           <Badge variant='secondary' className='text-xs capitalize'>
             {t(`traces.common.badges.${type}`)}

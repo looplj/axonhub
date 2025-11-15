@@ -599,6 +599,7 @@
       "gemini_openai": "Gemini (OpenAI)",
       "deepseek": "DeepSeek",
       "doubao": "Doubao",
+      "doubao_anthropic": "Doubao (Anthropic)",
       "moonshot": "Moonshot",
       "openrouter": "OpenRouter",
       "deepseek_anthropic": "DeepSeek (Anthropic)",
@@ -1448,6 +1449,7 @@
       "spanTypes": {
         "default": "片段",
         "userQuery": "用户查询",
+        "userImageUrl": "用户图片",
         "text": "文本",
         "thinking": "思考",
         "toolUse": "工具调用",

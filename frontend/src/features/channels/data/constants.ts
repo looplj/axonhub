@@ -1,5 +1,25 @@
 import { ApiFormat, ChannelType } from './schema'
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models'
+import type { ComponentType } from 'react'
+import {
+  OpenAI,
+  Anthropic,
+  Google,
+  DeepSeek,
+  Doubao,
+  Moonshot,
+  Zhipu,
+  OpenRouter,
+  XAI,
+  Volcengine,
+  SiliconCloud,
+  PPIO,
+  ZAI,
+  LongCat,
+  Minimax,
+  BurnCloud,
+  Vercel,
+} from '@lobehub/icons'
 
 const OPENAI_API_FORMAT: ApiFormat = 'openai/chat_completions'
 const ANTHROPIC_API_FORMAT: ApiFormat = 'anthropic/messages'
@@ -8,13 +28,22 @@ const ANTHROPIC_API_FORMAT: ApiFormat = 'anthropic/messages'
  * Channel configuration interface
  */
 export interface ChannelConfig {
+  channelType: ChannelType
+
   /** Default base URL for the channel type */
   baseURL: string
+
   /** Default models available for quick selection */
   defaultModels: string[]
 
   /** API protocol format used when calling this channel */
   apiFormat: ApiFormat
+
+  /** Badge color classes for the channel type */
+  color: string
+
+  /** Icon component for the channel type */
+  icon: ComponentType<{ size?: number; className?: string }>
 }
 
 /**
@@ -23,31 +52,47 @@ export interface ChannelConfig {
  */
 export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   openai: {
+    channelType: 'openai',
     baseURL: 'https://api.openai.com/v1',
     defaultModels: ['gpt-3.5-turbo', 'gpt-4.5', 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-white-100 text-white-800 border-white-200',
+    icon: OpenAI,
   },
   deepseek: {
+    channelType: 'deepseek',
     baseURL: 'https://api.deepseek.com/v1',
     defaultModels: ['deepseek-chat', 'deepseek-reasoner'],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: DeepSeek,
   },
   deepseek_anthropic: {
+    channelType: 'deepseek_anthropic',
     baseURL: 'https://api.deepseek.com/anthropic',
     defaultModels: ['deepseek-chat', 'deepseek-reasoner'],
     apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: DeepSeek,
   },
   minimax: {
+    channelType: 'minimax',
     baseURL: 'https://api.minimaxi.com/v1',
     defaultModels: ['MiniMax-M2'],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-red-100 text-red-800 border-red-200',
+    icon: Minimax,
   },
   minimax_anthropic: {
+    channelType: 'minimax_anthropic',
     baseURL: 'https://api.minimaxi.com/anthropic',
     defaultModels: ['MiniMax-M2'],
     apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-red-100 text-red-800 border-red-200',
+    icon: Minimax,
   },
   anthropic: {
+    channelType: 'anthropic',
     baseURL: 'https://api.anthropic.com/v1',
     defaultModels: [
       'claude-opus-4-1',
@@ -59,48 +104,83 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'claude-3-5-haiku-latest',
     ],
     apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: Anthropic,
   },
   gemini_openai: {
+    channelType: 'gemini_openai',
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
     defaultModels: ['gemini-2.5-pro', 'gemini-2.5-flash'],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    icon: Google,
   },
   doubao: {
+    channelType: 'doubao',
     baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
     defaultModels: ['doubao-seed-1.6', 'doubao-seed-1.6-flash'],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: Doubao,
+  },
+  doubao_anthropic: {
+    channelType: 'doubao_anthropic',
+    baseURL: 'https://ark.cn-beijing.volces.com/api/compatible',
+    defaultModels: ['doubao-seed-code-preview-251028'],
+    apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: Doubao,
   },
   moonshot: {
+    channelType: 'moonshot',
     baseURL: 'https://api.moonshot.cn/v1',
     defaultModels: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-black-100 text-black-800 border-black-200',
+    icon: Moonshot,
   },
   moonshot_anthropic: {
+    channelType: 'moonshot_anthropic',
     baseURL: 'https://api.moonshot.cn/anthropic',
     defaultModels: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
     apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-black-100 text-black-800 border-black-200',
+    icon: Moonshot,
   },
   zhipu: {
+    channelType: 'zhipu',
     baseURL: 'https://open.bigmodel.cn/api/paas/v4',
     defaultModels: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: Zhipu,
   },
   zai: {
+    channelType: 'zai',
     baseURL: 'https://api.z.ai/api/paas/v4',
     defaultModels: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    icon: ZAI,
   },
   zhipu_anthropic: {
+    channelType: 'zhipu_anthropic',
     baseURL: 'https://open.bigmodel.cn/api/anthropic',
     defaultModels: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
     apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: Zhipu,
   },
   zai_anthropic: {
+    channelType: 'zai_anthropic',
     baseURL: 'https://api.z.ai/api/anthropic',
     defaultModels: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
     apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    icon: ZAI,
   },
   vercel: {
+    channelType: 'vercel',
     baseURL: 'https://ai-gateway.vercel.sh/v1',
     defaultModels: [
       'deepseek/deepseek-v3.2-exp-thinking',
@@ -116,8 +196,11 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'openai/gpt-5',
     ],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-black-100 text-black-800 border-black-200',
+    icon: Vercel,
   },
   openrouter: {
+    channelType: 'openrouter',
     baseURL: 'https://openrouter.ai/api/v1',
     defaultModels: [
       // DeepSeek
@@ -156,8 +239,11 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'x-ai/grok-code-fast-1',
     ],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: OpenRouter,
   },
   xai: {
+    channelType: 'xai',
     baseURL: 'https://api.x.ai/v1',
     defaultModels: [
       'grok-4',
@@ -168,18 +254,27 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'grok-4-fast-non-reasoning',
     ],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-black-100 text-black-800 border-black-200',
+    icon: XAI,
   },
   longcat: {
+    channelType: 'longcat',
     baseURL: 'https://api.longcat.chat/openai/v1',
     defaultModels: ['LongCat-Flash-Chat', 'LongCat-Flash-Thinking'],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    icon: LongCat,
   },
   longcat_anthropic: {
+    channelType: 'longcat_anthropic',
     baseURL: 'https://api.longcat.chat/anthropic',
     defaultModels: ['LongCat-Flash-Chat', 'LongCat-Flash-Thinking'],
     apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    icon: LongCat,
   },
   ppio: {
+    channelType: 'ppio',
     baseURL: 'https://api.ppinfra.com/openai/v1',
     defaultModels: [
       // DeepSeek
@@ -200,8 +295,11 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'moonshotai/kimi-k2-0905',
     ],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: PPIO,
   },
   siliconflow: {
+    channelType: 'siliconflow',
     baseURL: 'https://api.siliconflow.cn/v1',
     defaultModels: [
       // DeepSeek
@@ -219,8 +317,11 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'Qwen/Qwen3-235B-A22B',
     ],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: SiliconCloud,
   },
   volcengine: {
+    channelType: 'volcengine',
     baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
     defaultModels: [
       // DeepSeek
@@ -237,9 +338,12 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'kimi-k2-250905',
     ],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: Volcengine,
   },
   // Fake types for testing (not available for creation)
   anthropic_fake: {
+    channelType: 'anthropic_fake',
     baseURL: 'https://api.anthropic.com/v1',
     defaultModels: [
       'claude-opus-4-1',
@@ -250,13 +354,19 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'claude-3-5-haiku-latest',
     ],
     apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: Anthropic,
   },
   openai_fake: {
+    channelType: 'openai_fake',
     baseURL: 'https://api.openai.com/v1',
     defaultModels: ['gpt-3.5-turbo', 'gpt-4.5', 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    icon: OpenAI,
   },
   aihubmix: {
+    channelType: 'aihubmix',
     baseURL: 'https://aihubmix.com/v1',
     defaultModels: [
       'DeepSeek-V3.2-Exp',
@@ -277,13 +387,19 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'glm-4.5',
     ],
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: OpenAI,
   },
   burncloud: {
+    channelType: 'burncloud',
     baseURL: 'https://ai.burncloud.com/v1',
     defaultModels: BURNCLOUD_DEFAULT_MODELS,
     apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: BurnCloud,
   },
   anthropic_aws: {
+    channelType: 'anthropic_aws',
     baseURL: 'https://bedrock-runtime.us-east-1.amazonaws.com',
     defaultModels: [
       'anthropic.claude-opus-4-1-20250805-v1:0',
@@ -293,8 +409,11 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'anthropic.claude-3-5-haiku-20241022-v1:0',
     ],
     apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: Anthropic,
   },
   anthropic_gcp: {
+    channelType: 'anthropic_gcp',
     baseURL: 'https://us-east5-aiplatform.googleapis.com',
     defaultModels: [
       'claude-opus-4-1@20250805',
@@ -304,6 +423,8 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'claude-3-5-haiku@20241022',
     ],
     apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: Anthropic,
   },
 }
 

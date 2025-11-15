@@ -442,7 +442,5 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-type (
-	mutationResolver struct{ *Resolver }
-	segmentResolver  struct{ *Resolver }
-)
+type mutationResolver struct{ *Resolver }
+type segmentResolver struct{ *Resolver }

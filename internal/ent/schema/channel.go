@@ -45,6 +45,7 @@ func (Channel) Fields() []ent.Field {
 				"deepseek",
 				"deepseek_anthropic",
 				"doubao",
+				"doubao_anthropic",
 				"moonshot",
 				"moonshot_anthropic",
 				"zhipu",
