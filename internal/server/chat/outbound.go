@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/tidwall/sjson"
 
@@ -246,36 +247,23 @@ func createRequestExecution(outbound *PersistentOutboundTransformer) pipeline.Mi
 }
 
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
-	// Restore original model if it was mapped.
-	if p.state.OriginalModel != "" {
-		llmRequest.Model = p.state.OriginalModel
-	}
-
+	// Channels should already be selected by inbound transformer
 	if len(p.state.Channels) == 0 {
-		channels, err := p.state.ChannelSelector.Select(ctx, llmRequest)
-		if err != nil {
-			return nil, err
-		}
-
-		log.Debug(ctx, "selected channels",
-			log.Any("channels", channels),
-			log.Any("model", llmRequest.Model),
-		)
-
-		if len(channels) == 0 {
-			return nil, biz.ErrInvalidModel
-		}
-
-		p.state.Channels = channels
+		return nil, errors.New("no channels available: channels should be selected by inbound transformer")
 	}
 
 	// Select current channel for this attempt
 	if p.state.ChannelIndex >= len(p.state.Channels) {
-		return nil, errors.New("all channels exhausted")
+		return nil, fmt.Errorf("%w: all channels exhausted", biz.ErrInternal)
 	}
 
 	p.state.CurrentChannel = p.state.Channels[p.state.ChannelIndex]
 	p.wrapped = p.state.CurrentChannel.Outbound
+
+	// Restore original model if it was mapped.
+	if p.state.OriginalModel != "" {
+		llmRequest.Model = p.state.OriginalModel
+	}
 
 	log.Debug(ctx, "using channel",
 		log.Any("channel", p.state.CurrentChannel.Name),
@@ -294,9 +282,6 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	if err != nil {
 		return nil, err
 	}
-
-	// cache inbound request for middleware use
-	p.state.LlmRequest = llmRequest
 
 	// Update request with channel ID after channel selection
 	if p.state.Request != nil && p.state.Request.ChannelID == 0 {

@@ -7,6 +7,7 @@ import (
 	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/llm"
+	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -157,51 +158,9 @@ func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, req
 		return nil, err
 	}
 
-	if llmRequest.Model == "" {
-		return nil, fmt.Errorf("%w: request model is empty", biz.ErrInvalidModel)
-	}
-
-	// Apply model mapping from API key profiles if active profile exists
-	if p.state.APIKey != nil {
-		originalModel := llmRequest.Model
-		mappedModel := p.state.ModelMapper.MapModel(ctx, p.state.APIKey, originalModel)
-
-		if mappedModel != originalModel {
-			llmRequest.Model = mappedModel
-			log.Debug(ctx, "applied model mapping from API key profile",
-				log.String("api_key_name", p.state.APIKey.Name),
-				log.String("original_model", originalModel),
-				log.String("mapped_model", mappedModel))
-		}
-	}
-
-	// Save the model for later use, e.g. retry from next channels, should use the original model to choose channel model.
-	// This should be done after the api key level model mapping.
-	// This should be done before the request is created.
-	// The outbound transformer will restore the original model if it was mapped.
-	if p.state.OriginalModel == "" {
-		p.state.OriginalModel = llmRequest.Model
-	} else {
-		// Restore original model if it was mapped
-		// This should not happen, the inbound should not be called twice.
-		// Just in case, restore the original model.
-		llmRequest.Model = p.state.OriginalModel
-	}
-
-	if p.state.Request == nil {
-		request, err := p.state.RequestService.CreateRequest(
-			ctx,
-			llmRequest,
-			request,
-			p.APIFormat(),
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		p.state.Request = request
-	}
-
+	llmRequest.RawRequest = request
+	p.state.RawRequest = request
+	p.state.LlmRequest = llmRequest
 	return llmRequest, nil
 }
 
@@ -244,4 +203,99 @@ func (p *PersistentInboundTransformer) TransformStream(ctx context.Context, stre
 
 func (p *PersistentInboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
 	return p.wrapped.AggregateStreamChunks(ctx, chunks)
+}
+
+// applyApiKeyModelMapping creates a middleware that applies model mapping from API key profiles.
+// This is the first step in the inbound pipeline.
+func applyApiKeyModelMapping(inbound *PersistentInboundTransformer) pipeline.Middleware {
+	return pipeline.OnLlmRequest("apply-model-mapping", func(ctx context.Context, llmRequest *llm.Request) (*llm.Request, error) {
+		if llmRequest.Model == "" {
+			return nil, fmt.Errorf("%w: request model is empty", biz.ErrInvalidModel)
+		}
+
+		// Apply model mapping from API key profiles if active profile exists
+		if inbound.state.APIKey == nil {
+			return llmRequest, nil
+		}
+
+		originalModel := llmRequest.Model
+		mappedModel := inbound.state.ModelMapper.MapModel(ctx, inbound.state.APIKey, originalModel)
+
+		if mappedModel != originalModel {
+			llmRequest.Model = mappedModel
+			log.Debug(ctx, "applied model mapping from API key profile",
+				log.String("api_key_name", inbound.state.APIKey.Name),
+				log.String("original_model", originalModel),
+				log.String("mapped_model", mappedModel))
+		}
+
+		// Save the model for later use, e.g. retry from next channels, should use the original model to choose channel model.
+		// This should be done after the api key level model mapping.
+		// This should be done before the request is created.
+		// The outbound transformer will restore the original model if it was mapped.
+		if inbound.state.OriginalModel == "" {
+			inbound.state.OriginalModel = llmRequest.Model
+		} else {
+			// Restore original model if it was mapped
+			// This should not happen, the inbound should not be called twice.
+			// Just in case, restore the original model.
+			llmRequest.Model = inbound.state.OriginalModel
+		}
+
+		return llmRequest, nil
+	})
+}
+
+// selectChannels creates a middleware that selects available channels for the model.
+// This is the second step in the inbound pipeline, moved from outbound transformer.
+// If no valid channels are found, it returns ErrInvalidModel to fail fast.
+func selectChannels(inbound *PersistentInboundTransformer) pipeline.Middleware {
+	return pipeline.OnLlmRequest("select-channels", func(ctx context.Context, llmRequest *llm.Request) (*llm.Request, error) {
+		// Only select channels once
+		if len(inbound.state.Channels) > 0 {
+			return llmRequest, nil
+		}
+
+		channels, err := inbound.state.ChannelSelector.Select(ctx, llmRequest)
+		if err != nil {
+			return nil, err
+		}
+
+		log.Debug(ctx, "selected channels",
+			log.Any("channels", channels),
+			log.Any("model", llmRequest.Model),
+		)
+
+		if len(channels) == 0 {
+			return nil, fmt.Errorf("%w: no valid channels found for model %s", biz.ErrInvalidModel, llmRequest.Model)
+		}
+
+		inbound.state.Channels = channels
+
+		return llmRequest, nil
+	})
+}
+
+// createRequest creates a middleware that creates the request entity in the database.
+// This is the third step in the inbound pipeline.
+func createRequest(inbound *PersistentInboundTransformer) pipeline.Middleware {
+	return pipeline.OnLlmRequest("create-request", func(ctx context.Context, llmRequest *llm.Request) (*llm.Request, error) {
+		if inbound.state.Request != nil {
+			return llmRequest, nil
+		}
+
+		request, err := inbound.state.RequestService.CreateRequest(
+			ctx,
+			llmRequest,
+			inbound.state.RawRequest,
+			inbound.APIFormat(),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		inbound.state.Request = request
+
+		return llmRequest, nil
+	})
 }
