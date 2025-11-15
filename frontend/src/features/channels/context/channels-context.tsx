@@ -9,6 +9,7 @@ type ChannelsDialogType =
   | 'settings'
   | 'modelMapping'
   | 'overrideParameters'
+  | 'proxy'
   | 'status'
   | 'test'
   | 'bulkImport'

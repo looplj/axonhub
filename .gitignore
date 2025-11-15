@@ -108,6 +108,7 @@ package-lock.json
 
 .kiro
 .windsurf
+openspec
 .cursor
 .vercel
 .tanstack

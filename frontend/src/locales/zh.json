@@ -868,6 +868,45 @@
           }
         }
       },
+      "proxy": {
+        "action": "代理配置",
+        "title": "代理配置",
+        "description": "配置 {{name}} 的代理设置。",
+        "config": {
+          "title": "代理设置",
+          "description": "配置此渠道如何通过代理服务器连接"
+        },
+        "fields": {
+          "type": {
+            "label": "代理类型",
+            "placeholder": "选择代理类型"
+          },
+          "url": {
+            "label": "代理 URL",
+            "placeholder": "http://proxy.example.com:8080"
+          },
+          "username": {
+            "label": "用户名（可选）",
+            "placeholder": "输入代理用户名"
+          },
+          "password": {
+            "label": "密码（可选）",
+            "placeholder": "输入代理密码"
+          }
+        },
+        "types": {
+          "disabled": "禁用 - 不使用代理",
+          "environment": "环境变量 - 使用系统代理设置",
+          "url": "自定义 URL - 使用指定代理"
+        },
+        "environmentHint": "渠道将使用环境变量中的代理设置（HTTP_PROXY、HTTPS_PROXY、NO_PROXY）",
+        "disabledHint": "渠道将直接连接，不使用任何代理",
+        "test": "测试连接",
+        "testing": "测试中...",
+        "testSuccess": "✅ 连接成功",
+        "testFailed": "❌ 连接失败",
+        "latency": "延迟"
+      },
       "bulkOrdering": {
         "title": "批量渠道排序",
         "description": "拖拽重新排列渠道。优先级高的渠道将优先显示。",

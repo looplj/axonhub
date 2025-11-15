@@ -483,9 +483,19 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 // The customized executor will be used to execute the request.
 // e.g. the aws bedrock process need a custom executor to handle the request.
 func (p *PersistentOutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
-	if customExecutor, ok := p.state.CurrentChannel.Outbound.(pipeline.ChannelCustomizedExecutor); ok {
-		return customExecutor.CustomizeExecutor(executor)
+	// Start with the default executor, then layer customizations.
+	customizedExecutor := executor
+	// 1. Apply proxy settings. Test proxy override takes precedence over channel settings.
+	if p.state.Proxy != nil {
+		customizedExecutor = httpclient.NewHttpClientWithProxy(p.state.Proxy)
+	} else if p.state.CurrentChannel.HTTPClient != nil {
+		// Use the channel's own HTTP client, which is pre-configured with its proxy settings.
+		customizedExecutor = p.state.CurrentChannel.HTTPClient
+	}
+	// 2. Allow the specific outbound transformer (e.g., for AWS signing) to further customize the client.
+	if custom, ok := p.state.CurrentChannel.Outbound.(pipeline.ChannelCustomizedExecutor); ok {
+		return custom.CustomizeExecutor(customizedExecutor)
 	}
 
-	return executor
+	return customizedExecutor
 }

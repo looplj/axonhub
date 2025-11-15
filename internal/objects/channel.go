@@ -1,5 +1,20 @@
 package objects
 
+type ProxyType string
+
+const (
+	ProxyTypeDisabled    ProxyType = "disabled"    // Do not use proxy
+	ProxyTypeEnvironment ProxyType = "environment" // Use environment variables (HTTP_PROXY, etc.)
+	ProxyTypeURL         ProxyType = "url"         // Use configured URL
+)
+
+type ProxyConfig struct {
+	Type     ProxyType `json:"type"`          // disabled, environment, or url
+	URL      string    `json:"url,omitempty"` // e.g., "http://proxy.example.com:8080"
+	Username string    `json:"username,omitempty"`
+	Password string    `json:"password,omitempty"`
+}
+
 type ModelMapping struct {
 	// From is the model name in the request.
 	From string `json:"from"`
@@ -24,6 +39,9 @@ type ChannelSettings struct {
 	// OverrideParameters sets the channel override the request parameters.
 	// e.g. {"max_tokens": 100}, {"temperature": 0.7}
 	OverrideParameters string `json:"overrideParameters"`
+
+	// Proxy configuration for the channel. If not set, defaults to environment proxy type.
+	Proxy *ProxyConfig `json:"proxy,omitempty"`
 }
 
 type ChannelCredentials struct {

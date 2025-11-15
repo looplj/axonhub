@@ -5,7 +5,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/llm/transformer"
-	"github.com/looplj/axonhub/internal/pkg/httpclient"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -23,8 +23,8 @@ func NewPersistentTransformers(
 	requestService *biz.RequestService,
 	apiKey *ent.APIKey,
 	user *ent.User,
-	httpRequest *httpclient.Request,
 	modelMapper *ModelMapper,
+	proxy *objects.ProxyConfig,
 ) (*PersistentInboundTransformer, *PersistentOutboundTransformer) {
 	return NewPersistentTransformersWithSelector(
 		ctx,
@@ -32,8 +32,8 @@ func NewPersistentTransformers(
 		requestService,
 		apiKey,
 		user,
-		httpRequest,
 		modelMapper,
+		proxy,
 		NewDefaultChannelSelector(channelService),
 	)
 }
@@ -45,17 +45,18 @@ func NewPersistentTransformersWithSelector(
 	requestService *biz.RequestService,
 	apiKey *ent.APIKey,
 	user *ent.User,
-	httpRequest *httpclient.Request,
 	modelMapper *ModelMapper,
+	proxy *objects.ProxyConfig,
 	channelSelector ChannelSelector,
 ) (*PersistentInboundTransformer, *PersistentOutboundTransformer) {
 	state := &PersistenceState{
-		RequestService:  requestService,
-		ChannelSelector: channelSelector,
 		APIKey:          apiKey,
 		User:            user,
+		RequestService:  requestService,
+		ChannelSelector: channelSelector,
 		ChannelIndex:    0,
 		ModelMapper:     modelMapper,
+		Proxy:           proxy,
 	}
 
 	return &PersistentInboundTransformer{

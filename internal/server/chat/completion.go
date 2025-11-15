@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/pipeline/stream"
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
@@ -60,6 +61,10 @@ type ChatCompletionProcessor struct {
 	Middlewares     []pipeline.Middleware
 	PipelineFactory *pipeline.Factory
 	ModelMapper     *ModelMapper
+
+	// Proxy is the proxy configuration for testing
+	// If set, it will override the channel's default proxy configuration
+	Proxy *objects.ProxyConfig
 }
 
 type ChatCompletionResult struct {
@@ -79,8 +84,8 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		processor.RequestService,
 		apiKey,
 		user,
-		request,
 		processor.ModelMapper,
+		processor.Proxy,
 		processor.ChannelSelector,
 	)
 

@@ -3,17 +3,93 @@ package httpclient
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
+	"time"
 
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 )
 
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
-	client *http.Client
+	client      *http.Client
+	proxyConfig *objects.ProxyConfig
+}
+
+// NewHttpClientWithProxy creates a new HTTP client with proxy configuration.
+func NewHttpClientWithProxy(proxyConfig *objects.ProxyConfig) *HttpClient {
+	transport := &http.Transport{
+		Proxy: getProxyFunc(proxyConfig),
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	return &HttpClient{
+		client: &http.Client{
+			Transport: transport,
+		},
+		proxyConfig: proxyConfig,
+	}
+}
+
+// getProxyFunc returns a proxy function based on the proxy configuration.
+func getProxyFunc(config *objects.ProxyConfig) func(*http.Request) (*url.URL, error) {
+	// Handle nil config (backward compatibility) - default to environment
+	if config == nil {
+		return http.ProxyFromEnvironment
+	}
+
+	switch config.Type {
+	case objects.ProxyTypeDisabled:
+		// No proxy - direct connection
+		return func(*http.Request) (*url.URL, error) {
+			return nil, nil
+		}
+
+	case objects.ProxyTypeEnvironment:
+		// Use environment variables (HTTP_PROXY, HTTPS_PROXY, NO_PROXY)
+		return http.ProxyFromEnvironment
+
+	case objects.ProxyTypeURL:
+		// Use configured URL with optional authentication
+		if config.URL == "" {
+			return func(*http.Request) (*url.URL, error) {
+				return nil, errors.New("proxy URL is required when type is 'url'")
+			}
+		}
+
+		proxyURL, err := url.Parse(config.URL)
+		if err != nil {
+			return func(_ *http.Request) (*url.URL, error) {
+				return nil, fmt.Errorf("invalid proxy URL: %w", err)
+			}
+		}
+
+		if config.Username != "" && config.Password != "" {
+			proxyURL.User = url.UserPassword(config.Username, config.Password)
+		}
+
+		log.Debug(context.Background(), "use custom proxy", log.Any("proxy_url", proxyURL.Redacted()))
+
+		return http.ProxyURL(proxyURL)
+
+	default:
+		// Unknown type - fall back to environment
+		return http.ProxyFromEnvironment
+	}
 }
 
 // NewHttpClient creates a new HTTP client.
@@ -32,7 +108,7 @@ func NewHttpClientWithClient(client *http.Client) *HttpClient {
 
 // Do executes the HTTP request.
 func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, error) {
-	log.Debug(ctx, "execute http request", log.Any("request", request))
+	log.Debug(ctx, "execute http request", log.Any("request", request), log.Any("proxy", hc.proxyConfig))
 
 	rawReq, err := hc.buildHttpRequest(ctx, request)
 	if err != nil {

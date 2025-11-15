@@ -6,10 +6,31 @@ type ModelMapping {
   to: String!
 }
 
+enum ProxyType {
+  DISABLED
+  ENVIRONMENT
+  URL
+}
+
+type ProxyConfig {
+  type: ProxyType!
+  url: String
+  username: String
+  password: String
+}
+
+input ProxyConfigInput {
+  type: ProxyType!
+  url: String
+  username: String
+  password: String
+}
+
 type ChannelSettings {
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
   overrideParameters: String
+  proxy: ProxyConfig
 }
 
 input ModelMappingInput {
@@ -21,6 +42,7 @@ input ChannelSettingsInput {
   extraModelPrefix: String
   modelMappings: [ModelMappingInput!]
   overrideParameters: String
+  proxy: ProxyConfigInput
 }
 
 type ChannelCredentials {
@@ -74,6 +96,7 @@ type SignInPayload {
 input TestChannelInput {
   channelID: ID!
   modelID: String
+  proxy: ProxyConfigInput
 }
 
 type TestChannelPayload {
