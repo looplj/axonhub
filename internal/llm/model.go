@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -479,7 +481,32 @@ type ResponseError struct {
 }
 
 func (e ResponseError) Error() string {
-	return fmt.Sprintf("error: %s, code: %s, type: %s, param: %s, request_id: %s", e.Detail.Message, e.Detail.Code, e.Detail.Type, e.Detail.Param, e.Detail.RequestID)
+	sb := strings.Builder{}
+	if e.StatusCode != 0 {
+		sb.WriteString(fmt.Sprintf("Request failed: %s, ", http.StatusText(e.StatusCode)))
+	}
+
+	if e.Detail.Message != "" {
+		sb.WriteString("error: ")
+		sb.WriteString(e.Detail.Message)
+	}
+
+	if e.Detail.Code != "" {
+		sb.WriteString(", code: ")
+		sb.WriteString(e.Detail.Code)
+	}
+
+	if e.Detail.Type != "" {
+		sb.WriteString(", type: ")
+		sb.WriteString(e.Detail.Type)
+	}
+
+	if e.Detail.RequestID != "" {
+		sb.WriteString(", request_id: ")
+		sb.WriteString(e.Detail.RequestID)
+	}
+
+	return sb.String()
 }
 
 // ErrorDetail represents error details.

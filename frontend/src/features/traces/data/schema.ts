@@ -1,13 +1,5 @@
 import { z } from 'zod'
 
-const projectSchema = z
-  .object({
-    id: z.string(),
-    name: z.string().nullable().optional(),
-  })
-  .nullable()
-  .optional()
-
 const threadSchema = z
   .object({
     id: z.string(),
@@ -175,7 +167,6 @@ export const traceDetailSchema = z.object({
   updatedAt: z.coerce.date(),
   thread: threadSchema,
   requests: traceRequestsSummarySchema,
-  rootSegment: segmentSchema.nullable().optional(),
   rawRootSegment: z.any().nullable().optional(),
 })
 

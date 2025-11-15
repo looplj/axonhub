@@ -78,88 +78,7 @@ function buildTraceDetailQuery() {
 
 // GraphQL query for trace with request traces
 function buildTraceWithRequestTracesQuery() {
-  return `
-    fragment SpanValue on SpanValue {
-      systemInstruction {
-        instruction
-      }
-      userQuery {
-        text
-      }
-      userImageUrl {
-        url
-      }
-      text {
-        text
-      }
-      thinking {
-        thinking
-      }
-      imageUrl {
-        url
-      }
-      toolUse {
-        id
-        name
-        arguments
-      }
-      toolResult {
-        toolCallID
-        isError
-        text
-      }
-    }
-
-    fragment SpanFields on Span {
-      id
-      type
-      startTime
-      endTime
-      value {
-        ...SpanValue
-      }
-    }
-
-    fragment SegmentFields on Segment {
-      id
-      parentId
-      model
-      duration
-      startTime
-      endTime
-      metadata {
-        itemCount
-        inputTokens
-        outputTokens
-        totalTokens
-        cachedTokens
-      }
-      requestSpans {
-        ...SpanFields
-      }
-      responseSpans {
-        ...SpanFields
-      }
-    }
-
-    fragment SegmentRecursive on Segment {
-      ...SegmentFields
-      children {
-        ...SegmentFields
-        children {
-          ...SegmentFields
-          children {
-            ...SegmentFields
-            children {
-              ...SegmentFields
-              # Support up to 5 levels of nesting
-            }
-          }
-        }
-      }
-    }
-
-    query GetTraceWithSegments($id: ID!) {
+  return `query GetTraceWithSegments($id: ID!) {
       node(id: $id) {
         ... on Trace {
           id
@@ -178,9 +97,6 @@ function buildTraceWithRequestTracesQuery() {
             totalCount
           }
           rawRootSegment
-          rootSegment {
-            ...SegmentRecursive
-          }
         }
       }
     }

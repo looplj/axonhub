@@ -22,20 +22,10 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
 
   const { data: trace, isLoading } = useTraceWithSegments(traceId || '')
 
-  // Parse rawRootSegment or fallback to rootSegment
+  // Parse rawRootSegment JSON once per trace
   const effectiveRootSegment = useMemo(() => {
-    if (!trace) return null
-
-    // Try to use rawRootSegment first (new implementation)
-    if (trace.rawRootSegment) {
-      const parsed = parseRawRootSegment(trace.rawRootSegment)
-      if (parsed) {
-        return parsed
-      }
-    }
-
-    // Fallback to old rootSegment implementation
-    return trace.rootSegment || null
+    if (!trace?.rawRootSegment) return null
+    return parseRawRootSegment(trace.rawRootSegment)
   }, [trace])
 
   // Auto-select first span when trace loads

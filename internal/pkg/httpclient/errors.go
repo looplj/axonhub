@@ -1,8 +1,15 @@
 package httpclient
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 )
+
+func IsNotFoundErr(err error) bool {
+	var e *Error
+	return errors.As(err, &e) && e.StatusCode == http.StatusNotFound
+}
 
 type Error struct {
 	Method     string `json:"method"`

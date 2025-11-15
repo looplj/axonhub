@@ -80,3 +80,43 @@ func TestMessageContent_MarshalJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestResponseError_Error(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		e    ResponseError
+		want string
+	}{
+		{
+			name: "with request id",
+			e: ResponseError{
+				StatusCode: 400,
+				Detail: ErrorDetail{
+					Message:   "test1",
+					Code:      "test1",
+					Type:      "test1",
+					RequestID: "test1",
+				},
+			},
+			want: "Request failed: Bad Request, error: test1, code: test1, type: test1, request_id: test1",
+		},
+		{
+			name: "without request id",
+			e: ResponseError{
+				StatusCode: 400,
+				Detail: ErrorDetail{
+					Message: "test1",
+					Code:    "test1",
+					Type:    "test1",
+				},
+			},
+			want: "Request failed: Bad Request, error: test1, code: test1, type: test1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.e.Error()
+			require.Equal(t, tt.want, got)
+		})
+	}
+}

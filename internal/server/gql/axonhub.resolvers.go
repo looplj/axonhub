@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -95,6 +96,10 @@ func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInp
 
 	result, err := r.testChannelProcessor.TestChannel(ctx, input.ChannelID, input.ModelID, input.Proxy)
 	if err != nil {
+		if httpclient.IsNotFoundErr(err) {
+			return nil, fmt.Errorf("URL not found, please check if the URL is correct and try again")
+		}
+
 		return nil, fmt.Errorf("failed to test channel: %w", err)
 	}
 
@@ -437,5 +442,7 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-type mutationResolver struct{ *Resolver }
-type segmentResolver struct{ *Resolver }
+type (
+	mutationResolver struct{ *Resolver }
+	segmentResolver  struct{ *Resolver }
+)
