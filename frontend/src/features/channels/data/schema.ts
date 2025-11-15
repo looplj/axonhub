@@ -1,5 +1,9 @@
 import { z } from 'zod'
 
+const apiFormatSchema = z.enum(['openai/chat_completions', 'anthropic/messages'])
+
+export type ApiFormat = z.infer<typeof apiFormatSchema>
+
 // Channel Types
 export const channelTypeSchema = z.enum([
   'openai',
@@ -155,10 +159,7 @@ export const updateChannelInputSchema = z
     type: channelTypeSchema.optional(),
     baseURL: z.string().url('Please enter a valid URL').optional(),
     name: z.string().min(1, 'Name is required').optional(),
-    supportedModels: z
-      .array(z.string())
-      .min(1, 'At least one supported model is required')
-      .optional(),
+    supportedModels: z.array(z.string()).min(1, 'At least one supported model is required').optional(),
     defaultTestModel: z.string().min(1, 'Please select a default test model').optional(),
     settings: channelSettingsSchema.optional(),
     credentials: z
@@ -267,9 +268,7 @@ export type BulkImportChannelItem = z.infer<typeof bulkImportChannelItemSchema>
 export const bulkImportChannelsInputSchema = z.object({
   channels: z.array(bulkImportChannelItemSchema).min(1, 'At least one channel is required'),
 })
-export type BulkImportChannelsInput = z.infer<
-  typeof bulkImportChannelsInputSchema
->
+export type BulkImportChannelsInput = z.infer<typeof bulkImportChannelsInputSchema>
 
 export const bulkImportChannelsResultSchema = z.object({
   success: z.boolean(),
@@ -278,9 +277,7 @@ export const bulkImportChannelsResultSchema = z.object({
   errors: z.array(z.string()).optional().nullable(),
   channels: z.array(channelSchema).nullable(),
 })
-export type BulkImportChannelsResult = z.infer<
-  typeof bulkImportChannelsResultSchema
->
+export type BulkImportChannelsResult = z.infer<typeof bulkImportChannelsResultSchema>
 
 // Raw text input for bulk import
 export const bulkImportTextSchema = z.object({
@@ -307,25 +304,23 @@ export const channelOrderingConnectionSchema = z.object({
   ),
   totalCount: z.number(),
 })
-export type ChannelOrderingConnection = z.infer<
-  typeof channelOrderingConnectionSchema
->
+export type ChannelOrderingConnection = z.infer<typeof channelOrderingConnectionSchema>
 
 export const bulkUpdateChannelOrderingInputSchema = z.object({
-  channels: z.array(z.object({
-    id: z.string(),
-    orderingWeight: z.number(),
-  })).min(1, 'At least one channel is required'),
+  channels: z
+    .array(
+      z.object({
+        id: z.string(),
+        orderingWeight: z.number(),
+      })
+    )
+    .min(1, 'At least one channel is required'),
 })
-export type BulkUpdateChannelOrderingInput = z.infer<
-  typeof bulkUpdateChannelOrderingInputSchema
->
+export type BulkUpdateChannelOrderingInput = z.infer<typeof bulkUpdateChannelOrderingInputSchema>
 
 export const bulkUpdateChannelOrderingResultSchema = z.object({
   success: z.boolean(),
   updated: z.number(),
   channels: z.array(channelSchema),
 })
-export type BulkUpdateChannelOrderingResult = z.infer<
-  typeof bulkUpdateChannelOrderingResultSchema
->
+export type BulkUpdateChannelOrderingResult = z.infer<typeof bulkUpdateChannelOrderingResultSchema>

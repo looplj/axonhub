@@ -423,7 +423,7 @@
       "addMapping": "新增映射",
       "noMappings": "暂无模型映射",
       "profileName": "配置名称",
-      "sourceModel": "请求中的模型",
+      "sourceModel": "请求中的模型 (支持正则表达式)",
       "targetModel": "目标模型",
       "activeProfile": "生效配置",
       "searchModels": "搜索模型",
@@ -683,7 +683,6 @@
         "modelNameColumn": "模型名称",
         "statusColumn": "状态",
         "testAllButton": "批量测试{{count}}个模型",
-        "cancelButton": "取消",
         "testModel": "测试",
         "testingModel": "测试中...",
         "testSuccess": "✅ 成功",
@@ -698,6 +697,7 @@
         "supportedModelsNote": "使用 | 分隔多个模型",
         "requiredFieldsNote": "注意：baseURL 和 apiKey 为必填字段",
         "supportedTypes": "支持的类型：openai, anthropic, anthropic_aws, anthropic_gcp, gemini_openai, deepseek, doubao, moonshot, zhipu, zai, deepseek_anthropic, moonshot_anthropic, zhipu_anthropic, zai_anthropic, openrouter, xai",
+        "loadingChannelNames": "正在加载已有渠道名称...",
         "inputLabel": "导入数据",
         "inputPlaceholder": "请输入要导入的渠道数据，每行一个...",
         "previewButton": "预览导入数据",
@@ -706,7 +706,6 @@
         "errors": "{{count}} 个错误",
         "validChannels": "有效的渠道",
         "importButton": "导入 {{count}} 个渠道",
-        "cancel": "取消",
         "importing": "导入中...",
         "formatTitle": "格式说明",
         "formatNote": "使用 | 分隔多个模型",
@@ -724,6 +723,11 @@
           "apiKey": "API Key",
           "supportedModels": "支持的模型",
           "defaultTestModel": "默认测试模型"
+        },
+        "status": {
+          "blocked": "禁止导入",
+          "ready": "可以导入",
+          "blockedHint": "导入已被阻止 - 请先修复错误"
         }
       },
       "fields": {
@@ -732,9 +736,17 @@
           "placeholder": "我的渠道",
           "description": "为此渠道设置一个易于识别的名称"
         },
+        "apiFormat": {
+          "label": "API 格式",
+          "formats": {
+            "openaiChatCompletions": "OpenAI / chat completions",
+            "anthropicMessages": "Anthropic / messages"
+          }
+        },
         "type": {
           "label": "渠道类型",
-          "description": "选择 AI 模型提供商类型"
+          "description": "选择 AI 模型提供商类型",
+          "helper": "渠道类型默认是 OpenAI 兼容格式，包含 “Anthropic” 的类型为 Anthropic 兼容格式。"
         },
         "baseURL": {
           "label": "Base URL",
@@ -840,21 +852,28 @@
           "placeholder": "例如: deepseek"
         },
         "modelMapping": {
-          "title": "模型映射",
-          "description": "配置模型名称映射，将请求中的模型名称映射到实际的模型名称",
-          "originalModel": "请求中的模型",
-          "targetModel": "目标模型名称",
-          "noMappings": "暂无模型映射配置"
+          "action": "模型别名",
+          "title": "模型别名",
+          "description": "使用别名暴露渠道支持的模型，而不改变请求中的模型名称。例如将 'gpt-4' 设为 'gpt-4-turbo' 的别名，两者都由该渠道处理",
+          "originalModel": "别名",
+          "targetModel": "渠道支持的模型",
+          "noMappings": "暂无模型别名配置"
         },
-        "overrideParameters": {
-          "title": "覆盖参数",
-          "description": "配置额外参数以覆盖用户请求参数"
+        "overrides": {
+          "action": "覆盖设置",
+          "title": "覆盖配置",
+          "parameters": {
+            "title": "覆盖参数",
+            "description": "填写 JSON 格式的覆盖参数以定制通过该渠道发送的请求参数"
+          }
         }
       },
       "bulkOrdering": {
         "title": "批量渠道排序",
         "description": "拖拽重新排列渠道。优先级高的渠道将优先显示。",
         "dragHint": "拖拽渠道重新排序",
+        "channelCount": "{{count}} 条渠道",
+        "channelCount_plural": "{{count}} 条渠道",
         "saveButton": "保存排序",
         "orderingWeight": "优先级",
         "noChannels": "没有可用于排序的渠道"
@@ -896,7 +915,8 @@
       "gcpProjectIdRequired": "GCP Project ID 不能为空",
       "gcpJsonDataRequired": "GCP Service Account JSON 不能为空",
       "atLeastOneChannel": "至少需要一个 channel",
-      "overrideParametersInvalidJson": "必须是有效的 JSON"
+      "overrideParametersInvalidJson": "必须是有效的 JSON",
+      "overrideParametersStreamNotAllowed": "stream 参数不允许覆盖"
     }
   },
   "dataStorages": {

@@ -143,7 +143,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
         <DialogHeader>
           <DialogTitle>{t('channels.dialogs.settings.modelMapping.title')}</DialogTitle>
-          <DialogDescription>{t('channels.dialogs.settings.description', { name: currentRow.name })}</DialogDescription>
+          {/* <DialogDescription>{t('channels.dialogs.settings.modelMapping.description', { name: currentRow.name })}</DialogDescription> */}
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)}>

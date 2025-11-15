@@ -1,20 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
 import { useUpdateChannel } from '../data/channels'
 import { Channel } from '../data/schema'
 
@@ -25,20 +18,38 @@ interface Props {
 }
 
 const overrideParametersFormSchema = z.object({
-  overrideParameters: z.string().optional().refine(
-    (val) => {
-      if (!val || val.trim() === '') return true
+  overrideParameters: z
+    .string()
+    .optional()
+    .superRefine((val, ctx) => {
+      if (!val || val.trim() === '') return
+
+      let parsed: unknown
       try {
-        JSON.parse(val)
-        return true
+        parsed = JSON.parse(val)
       } catch {
-        return false
+        ctx.addIssue({
+          code: 'custom',
+          message: 'channels.validation.overrideParametersInvalidJson',
+        })
+        return
       }
-    },
-    {
-      message: 'channels.validation.overrideParametersInvalidJson',
-    }
-  ),
+
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'channels.validation.overrideParametersInvalidJson',
+        })
+        return
+      }
+
+      if (Object.prototype.hasOwnProperty.call(parsed, 'stream')) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'channels.validation.overrideParametersStreamNotAllowed',
+        })
+      }
+    }),
 })
 
 export function ChannelsOverrideParametersDialog({ open, onOpenChange, currentRow }: Props) {
@@ -91,16 +102,16 @@ export function ChannelsOverrideParametersDialog({ open, onOpenChange, currentRo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
         <DialogHeader>
-          <DialogTitle>{t('channels.dialogs.settings.overrideParameters.title')}</DialogTitle>
-          <DialogDescription>{t('channels.dialogs.settings.description', { name: currentRow.name })}</DialogDescription>
+          <DialogTitle>{t('channels.dialogs.settings.overrides.title')}</DialogTitle>
+          {/* <DialogDescription>{t('channels.dialogs.settings.description', { name: currentRow.name })}</DialogDescription> */}
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className='space-y-6'>
             <Card>
               <CardHeader>
-                <CardTitle className='text-lg'>{t('channels.dialogs.settings.overrideParameters.title')}</CardTitle>
-                <CardDescription>{t('channels.dialogs.settings.overrideParameters.description')}</CardDescription>
+                <CardTitle className='text-lg'>{t('channels.dialogs.settings.overrides.parameters.title')}</CardTitle>
+                <CardDescription>{t('channels.dialogs.settings.overrides.parameters.description')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Textarea
@@ -114,7 +125,7 @@ export function ChannelsOverrideParametersDialog({ open, onOpenChange, currentRo
                       shouldDirty: true,
                     })
                   }}
-                  className='font-mono min-h-[200px]'
+                  className='min-h-[200px] font-mono'
                 />
                 {form.formState.errors.overrideParameters?.message && (
                   <p className='text-destructive mt-2 text-sm'>

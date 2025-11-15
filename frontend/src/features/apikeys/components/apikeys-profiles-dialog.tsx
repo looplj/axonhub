@@ -7,24 +7,13 @@ import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutoComplete } from '@/components/auto-complete'
 import { useApiKeysContext } from '../context/apikeys-context'
-import {
-  updateApiKeyProfilesInputSchemaFactory,
-  type UpdateApiKeyProfilesInput,
-  type ApiKeyProfile,
-} from '../data/schema'
+import { updateApiKeyProfilesInputSchemaFactory, type UpdateApiKeyProfilesInput, type ApiKeyProfile } from '../data/schema'
 
 interface ApiKeyProfilesDialogProps {
   open: boolean
@@ -37,25 +26,14 @@ interface ApiKeyProfilesDialogProps {
   }
 }
 
-export function ApiKeyProfilesDialog({
-  open,
-  onOpenChange,
-  onSubmit,
-  loading = false,
-  initialData,
-}: ApiKeyProfilesDialogProps) {
+export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = false, initialData }: ApiKeyProfilesDialogProps) {
   const { t } = useTranslation()
   const { selectedApiKey } = useApiKeysContext()
 
   const defaultValues = useMemo(
     () => ({
-      activeProfile: 'Default',
-      profiles: [
-        {
-          name: 'Default',
-          modelMappings: [],
-        },
-      ],
+      activeProfile: '',
+      profiles: [],
     }),
     []
   )
@@ -66,7 +44,21 @@ export function ApiKeyProfilesDialog({
   })
 
   const lastInitialDataRef = useRef<string | null>(null)
-  const defaultSerialized = useMemo(() => JSON.stringify(defaultValues), [defaultValues])
+  const normalizedInitialData = useMemo(() => {
+    if (initialData?.profiles?.length) {
+      const fallbackActiveProfile = initialData.activeProfile?.trim()
+        ? initialData.activeProfile
+        : initialData.profiles[0]?.name || defaultValues.activeProfile
+
+      return {
+        activeProfile: fallbackActiveProfile,
+        profiles: initialData.profiles,
+      }
+    }
+
+    return defaultValues
+  }, [initialData, defaultValues])
+  const normalizedSerialized = useMemo(() => JSON.stringify(normalizedInitialData), [normalizedInitialData])
 
   const {
     fields: profileFields,
@@ -78,7 +70,25 @@ export function ApiKeyProfilesDialog({
   })
 
   // Watch profile names to update activeProfile dropdown options
-  const profileNames = form.watch('profiles')?.map((profile) => profile.name) || []
+  const watchedProfiles = form.watch('profiles') || []
+  const profileNames = watchedProfiles.map((profile) => profile.name || '')
+
+  useEffect(() => {
+    const nonEmptyProfiles = watchedProfiles.filter((profile) => profile?.name?.trim())
+    const currentActiveProfile = form.getValues('activeProfile') || ''
+
+    if (nonEmptyProfiles.length === 0) {
+      if (currentActiveProfile !== '') {
+        form.setValue('activeProfile', '')
+      }
+      return
+    }
+
+    const activeMatchesExisting = nonEmptyProfiles.some((profile) => profile.name === currentActiveProfile)
+    if (!activeMatchesExisting) {
+      form.setValue('activeProfile', nonEmptyProfiles[0].name)
+    }
+  }, [watchedProfiles, form])
 
   // Reset form when dialog opens or when incoming data actually changes
   useEffect(() => {
@@ -91,53 +101,52 @@ export function ApiKeyProfilesDialog({
       return
     }
 
-    const serialized = initialData ? JSON.stringify(initialData) : defaultSerialized
-
-    if (lastInitialDataRef.current === serialized) {
+    if (lastInitialDataRef.current === normalizedSerialized) {
       return
     }
 
-    if (initialData) {
-      form.reset(initialData)
-    } else {
-      form.reset(defaultValues)
-    }
+    form.reset(normalizedInitialData)
+    lastInitialDataRef.current = normalizedSerialized
+  }, [open, loading, form, normalizedInitialData, normalizedSerialized])
 
-    lastInitialDataRef.current = serialized
-  }, [open, initialData, loading, form, defaultValues, defaultSerialized])
+  const handleSubmit = useCallback(
+    (data: UpdateApiKeyProfilesInput) => {
+      // Clear any previous form-level errors
+      form.clearErrors('profiles')
+      onSubmit(data)
+    },
+    [form, onSubmit]
+  )
 
-  const handleSubmit = (data: UpdateApiKeyProfilesInput) => {
-    // Clear any previous form-level errors
-    form.clearErrors('profiles')
-    onSubmit(data)
-  }
-
-  const addProfile = () => {
+  const addProfile = useCallback(() => {
     appendProfile({
       name: `Profile ${profileFields.length + 1}`,
       modelMappings: [],
     })
-  }
+  }, [appendProfile, profileFields])
 
-  const removeProfileHandler = (index: number) => {
-    if (profileFields.length > 1) {
-      removeProfile(index)
-      // If we're removing the active profile, set active to the first remaining profile
-      const currentActiveProfile = form.getValues('activeProfile')
-      const removedProfile = profileFields[index]
-      if (currentActiveProfile === removedProfile.name) {
-        const remainingProfiles = profileFields.filter((_, i) => i !== index)
-        if (remainingProfiles.length > 0) {
-          form.setValue('activeProfile', remainingProfiles[0].name)
+  const removeProfileHandler = useCallback(
+    (index: number) => {
+      if (profileFields.length > 1) {
+        removeProfile(index)
+        // If we're removing the active profile, set active to the first remaining profile
+        const currentActiveProfile = form.getValues('activeProfile')
+        const removedProfile = profileFields[index]
+        if (currentActiveProfile === removedProfile.name) {
+          const remainingProfiles = profileFields.filter((_, i) => i !== index)
+          if (remainingProfiles.length > 0) {
+            form.setValue('activeProfile', remainingProfiles[0].name)
+          }
         }
       }
-    }
-  }
+    },
+    [form, profileFields, removeProfile]
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='flex max-h-[90vh] flex-col sm:max-w-4xl'>
-        <DialogHeader className='text-left shrink-0'>
+        <DialogHeader className='shrink-0 text-left'>
           <DialogTitle className='flex items-center gap-2'>
             <IconSettings className='h-5 w-5' />
             {t('apikeys.profiles.title')}
@@ -149,20 +158,14 @@ export function ApiKeyProfilesDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className='flex flex-1 flex-col min-h-0'>
+        <div className='flex min-h-0 flex-1 flex-col'>
           {/* Fixed Add Profile Section at Top */}
-          <div className='bg-background border-b p-4 shrink-0'>
+          <div className='bg-background shrink-0 border-b p-4'>
             <Form {...form}>
               <form id='apikey-profiles-form' onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6'>
                 <div className='flex items-center justify-between'>
                   <h3 className='text-lg font-medium'>{t('apikeys.profiles.profilesTitle')}</h3>
-                  <Button
-                    type='button'
-                    variant='outline'
-                    size='sm'
-                    onClick={addProfile}
-                    className='flex items-center gap-2'
-                  >
+                  <Button type='button' variant='outline' size='sm' onClick={addProfile} className='flex items-center gap-2'>
                     <IconPlus className='h-4 w-4' />
                     {t('apikeys.profiles.addProfile')}
                   </Button>
@@ -194,16 +197,14 @@ export function ApiKeyProfilesDialog({
           </div>
 
           {/* Fixed Active Profile Section at Bottom */}
-          <div className='bg-background border-t p-4 shrink-0'>
+          <div className='bg-background shrink-0 border-t p-4'>
             <Form {...form}>
               <FormField
                 control={form.control}
                 name='activeProfile'
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
-                    <FormLabel className='col-span-2 pt-2 text-right font-medium'>
-                      {t('apikeys.profiles.activeProfile')}
-                    </FormLabel>
+                    <FormLabel className='col-span-2 pt-2 text-right font-medium'>{t('apikeys.profiles.activeProfile')}</FormLabel>
                     <FormControl className='col-span-6'>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger>
@@ -352,13 +353,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCard
             />
           </CardTitle>
           {canRemove && (
-            <Button
-              type='button'
-              variant='ghost'
-              size='sm'
-              onClick={onRemove}
-              className='text-destructive hover:text-destructive'
-            >
+            <Button type='button' variant='ghost' size='sm' onClick={onRemove} className='text-destructive hover:text-destructive'>
               <IconTrash className='h-4 w-4' />
             </Button>
           )}
@@ -373,9 +368,7 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCard
           </Button>
         </div>
 
-        {mappingFields.length === 0 && (
-          <p className='text-muted-foreground py-4 text-center text-sm'>{t('apikeys.profiles.noMappings')}</p>
-        )}
+        {mappingFields.length === 0 && <p className='text-muted-foreground py-4 text-center text-sm'>{t('apikeys.profiles.noMappings')}</p>}
 
         <div className='space-y-3'>
           {mappingFields.map((mapping, mappingIndex) => (
@@ -408,6 +401,20 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
   const [fromSearch, setFromSearch] = useState('')
   const [toSearch, setToSearch] = useState('')
 
+  const fromFieldName = `profiles.${profileIndex}.modelMappings.${mappingIndex}.from` as const
+  const toFieldName = `profiles.${profileIndex}.modelMappings.${mappingIndex}.to` as const
+
+  const fromValue = form.watch(fromFieldName)
+  const toValue = form.watch(toFieldName)
+
+  useEffect(() => {
+    form.trigger(fromFieldName)
+  }, [form, fromFieldName, fromValue])
+
+  useEffect(() => {
+    form.trigger(toFieldName)
+  }, [form, toFieldName, toValue])
+
   // Filter models based on search
   const filteredFromModels = availableModels
     .filter((model) => model.toLowerCase().includes(fromSearch.toLowerCase()))
@@ -421,7 +428,7 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
     <div className='flex items-start gap-3'>
       <FormField
         control={form.control}
-        name={`profiles.${profileIndex}.modelMappings.${mappingIndex}.from`}
+        name={fromFieldName}
         render={({ field }) => (
           <FormItem className='flex-1'>
             <FormControl>
@@ -438,14 +445,15 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                 emptyMessage={t('apikeys.profiles.noModelsFound')}
               />
             </FormControl>
-            <div className='text-muted-foreground mt-1 text-xs'>{t('apikeys.profiles.regexSupported')}</div>
+            {/* <div className='text-muted-foreground mt-1 text-xs'>{t('apikeys.profiles.regexSupported')}</div> */}
+            <FormMessage />
           </FormItem>
         )}
       />
       <span className='text-muted-foreground'>→</span>
       <FormField
         control={form.control}
-        name={`profiles.${profileIndex}.modelMappings.${mappingIndex}.to`}
+        name={toFieldName}
         render={({ field }) => (
           <FormItem className='flex-1'>
             <FormControl>
@@ -462,16 +470,11 @@ function MappingRow({ profileIndex, mappingIndex, form, onRemove, availableModel
                 emptyMessage={t('apikeys.profiles.noModelsFound')}
               />
             </FormControl>
+            <FormMessage />
           </FormItem>
         )}
       />
-      <Button
-        type='button'
-        variant='ghost'
-        size='sm'
-        onClick={onRemove}
-        className='text-destructive hover:text-destructive'
-      >
+      <Button type='button' variant='ghost' size='sm' onClick={onRemove} className='text-destructive hover:text-destructive'>
         <IconTrash className='h-4 w-4' />
       </Button>
     </div>

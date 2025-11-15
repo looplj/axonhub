@@ -146,18 +146,23 @@ test.describe('Admin API Keys Management', () => {
     const profilesDialog = page.getByRole('dialog').filter({ hasText: /配置|Profiles/i })
     await expect(profilesDialog).toBeVisible()
 
-    // Rename the default profile to "production" to set the baseline duplicate
-    const firstProfileInput = profilesDialog.locator('input[placeholder*="配置名称"], input[placeholder*="Profile"]').first()
+    const profileInputSelector = 'input[placeholder*="配置名称"], input[placeholder*="Profile"]'
+    const addProfileButton = profilesDialog.getByRole('button', { name: /添加配置|Add Profile|新建/i })
+    await expect(addProfileButton).toBeVisible()
+
+    // Add first profile card (UI starts empty)
+    await addProfileButton.click()
+    const profileInputs = profilesDialog.locator(profileInputSelector)
+    await expect(profileInputs).toHaveCount(1)
+
+    // Rename the first profile to "production" to set the baseline duplicate
+    const firstProfileInput = profileInputs.first()
     await expect(firstProfileInput).toBeVisible()
     await firstProfileInput.clear()
     await firstProfileInput.fill('production')
 
-    // Add a second profile
-    const addProfileButton = profilesDialog.getByRole('button', { name: /添加配置|Add Profile|新建/i })
+    // Add a second profile for duplicate validation
     await addProfileButton.click()
-
-    // Find the second profile input
-    const profileInputs = profilesDialog.locator('input[placeholder*="配置名称"], input[placeholder*="Profile"]')
     await expect(profileInputs).toHaveCount(2)
     const secondProfileInput = profileInputs.nth(1)
 
@@ -241,11 +246,21 @@ test.describe('Admin API Keys Management', () => {
     const profilesDialog = page.getByRole('dialog').filter({ hasText: /配置|Profiles/i })
     await expect(profilesDialog).toBeVisible()
     
-    // Add second profile
+    const profileInputSelector = 'input[placeholder*="配置名称"], input[placeholder*="Profile"]'
     const addProfileButton = profilesDialog.getByRole('button', { name: /添加配置|Add Profile|新建/i })
+    await expect(addProfileButton).toBeVisible()
+
+    // Add first profile and set its name to "Default" for baseline comparison
     await addProfileButton.click()
-    
-    const profileInputs = profilesDialog.locator('input[placeholder*="配置名称"], input[placeholder*="Profile"]')
+    const profileInputs = profilesDialog.locator(profileInputSelector)
+    const firstProfileInput = profileInputs.first()
+    await expect(firstProfileInput).toBeVisible()
+    await firstProfileInput.clear()
+    await firstProfileInput.fill('Default')
+
+    // Add the second profile that will trigger duplicate validation
+    await addProfileButton.click()
+    await expect(profileInputs).toHaveCount(2)
     const secondProfileInput = profileInputs.nth(1)
     
     // Type "default" (different case) - should still show error

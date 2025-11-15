@@ -269,6 +269,7 @@ func TestOverrideParametersMiddleware(t *testing.T) {
 		name               string
 		overrideParameters map[string]any
 		expectedValues     map[string]any
+		unexpectedKeys     []string
 	}{
 		{
 			name: "override temperature",
@@ -301,6 +302,17 @@ func TestOverrideParametersMiddleware(t *testing.T) {
 			expectedValues: map[string]any{
 				"response_format.type": "json_object",
 			},
+		},
+		{
+			name: "stream override ignored",
+			overrideParameters: map[string]any{
+				"stream":      true,
+				"temperature": 0.8,
+			},
+			expectedValues: map[string]any{
+				"temperature": 0.8,
+			},
+			unexpectedKeys: []string{"stream"},
 		},
 		{
 			name:               "no override parameters",
@@ -385,6 +397,11 @@ func TestOverrideParametersMiddleware(t *testing.T) {
 				default:
 					assert.Equal(t, v, result.Value(), "key %s should have value %v", key, v)
 				}
+			}
+
+			for _, key := range tt.unexpectedKeys {
+				result := gjson.Get(bodyStr, key)
+				assert.False(t, result.Exists(), "key %s should not exist", key)
 			}
 		})
 	}

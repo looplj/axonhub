@@ -1,5 +1,8 @@
-import { ChannelType } from './schema'
+import { ApiFormat, ChannelType } from './schema'
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models'
+
+const OPENAI_API_FORMAT: ApiFormat = 'openai/chat_completions'
+const ANTHROPIC_API_FORMAT: ApiFormat = 'anthropic/messages'
 
 /**
  * Channel configuration interface
@@ -9,6 +12,9 @@ export interface ChannelConfig {
   baseURL: string
   /** Default models available for quick selection */
   defaultModels: string[]
+
+  /** API protocol format used when calling this channel */
+  apiFormat: ApiFormat
 }
 
 /**
@@ -19,22 +25,27 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   openai: {
     baseURL: 'https://api.openai.com/v1',
     defaultModels: ['gpt-3.5-turbo', 'gpt-4.5', 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
+    apiFormat: OPENAI_API_FORMAT,
   },
   deepseek: {
     baseURL: 'https://api.deepseek.com/v1',
     defaultModels: ['deepseek-chat', 'deepseek-reasoner'],
+    apiFormat: OPENAI_API_FORMAT,
   },
   deepseek_anthropic: {
     baseURL: 'https://api.deepseek.com/anthropic',
     defaultModels: ['deepseek-chat', 'deepseek-reasoner'],
+    apiFormat: ANTHROPIC_API_FORMAT,
   },
   minimax: {
     baseURL: 'https://api.minimaxi.com/v1',
     defaultModels: ['MiniMax-M2'],
+    apiFormat: OPENAI_API_FORMAT,
   },
   minimax_anthropic: {
     baseURL: 'https://api.minimaxi.com/anthropic',
     defaultModels: ['MiniMax-M2'],
+    apiFormat: ANTHROPIC_API_FORMAT,
   },
   anthropic: {
     baseURL: 'https://api.anthropic.com/v1',
@@ -47,38 +58,47 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'claude-3-7-sonnet-latest',
       'claude-3-5-haiku-latest',
     ],
+    apiFormat: ANTHROPIC_API_FORMAT,
   },
   gemini_openai: {
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
     defaultModels: ['gemini-2.5-pro', 'gemini-2.5-flash'],
+    apiFormat: OPENAI_API_FORMAT,
   },
   doubao: {
     baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
     defaultModels: ['doubao-seed-1.6', 'doubao-seed-1.6-flash'],
+    apiFormat: OPENAI_API_FORMAT,
   },
   moonshot: {
     baseURL: 'https://api.moonshot.cn/v1',
     defaultModels: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
+    apiFormat: OPENAI_API_FORMAT,
   },
   moonshot_anthropic: {
     baseURL: 'https://api.moonshot.cn/anthropic',
     defaultModels: ['kimi-k2-0711-preview', 'kimi-k2-0905-preview', 'kimi-k2-turbo-preview'],
+    apiFormat: ANTHROPIC_API_FORMAT,
   },
   zhipu: {
     baseURL: 'https://open.bigmodel.cn/api/paas/v4',
     defaultModels: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+    apiFormat: OPENAI_API_FORMAT,
   },
   zai: {
     baseURL: 'https://api.z.ai/api/paas/v4',
     defaultModels: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+    apiFormat: OPENAI_API_FORMAT,
   },
   zhipu_anthropic: {
     baseURL: 'https://open.bigmodel.cn/api/anthropic',
     defaultModels: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+    apiFormat: ANTHROPIC_API_FORMAT,
   },
   zai_anthropic: {
     baseURL: 'https://api.z.ai/api/anthropic',
     defaultModels: ['glm-4.6', 'glm-4.5', 'glm-4.5-air', 'glm-4.5-x', 'glm-4.5v'],
+    apiFormat: ANTHROPIC_API_FORMAT,
   },
   vercel: {
     baseURL: 'https://ai-gateway.vercel.sh/v1',
@@ -95,6 +115,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'openai/gpt-4o-mini',
       'openai/gpt-5',
     ],
+    apiFormat: OPENAI_API_FORMAT,
   },
   openrouter: {
     baseURL: 'https://openrouter.ai/api/v1',
@@ -134,6 +155,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'x-ai/grok-4-fast',
       'x-ai/grok-code-fast-1',
     ],
+    apiFormat: OPENAI_API_FORMAT,
   },
   xai: {
     baseURL: 'https://api.x.ai/v1',
@@ -145,14 +167,17 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'grok-4-fast-reasoning',
       'grok-4-fast-non-reasoning',
     ],
+    apiFormat: OPENAI_API_FORMAT,
   },
   longcat: {
     baseURL: 'https://api.longcat.chat/openai/v1',
     defaultModels: ['LongCat-Flash-Chat', 'LongCat-Flash-Thinking'],
+    apiFormat: OPENAI_API_FORMAT,
   },
   longcat_anthropic: {
     baseURL: 'https://api.longcat.chat/anthropic',
     defaultModels: ['LongCat-Flash-Chat', 'LongCat-Flash-Thinking'],
+    apiFormat: ANTHROPIC_API_FORMAT,
   },
   ppio: {
     baseURL: 'https://api.ppinfra.com/openai/v1',
@@ -174,6 +199,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       // Moonshot
       'moonshotai/kimi-k2-0905',
     ],
+    apiFormat: OPENAI_API_FORMAT,
   },
   siliconflow: {
     baseURL: 'https://api.siliconflow.cn/v1',
@@ -192,6 +218,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'Qwen/Qwen3-235B-A22B-Instruct-2507',
       'Qwen/Qwen3-235B-A22B',
     ],
+    apiFormat: OPENAI_API_FORMAT,
   },
   volcengine: {
     baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
@@ -209,6 +236,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       // Moonshot
       'kimi-k2-250905',
     ],
+    apiFormat: OPENAI_API_FORMAT,
   },
   // Fake types for testing (not available for creation)
   anthropic_fake: {
@@ -221,10 +249,12 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'claude-3-7-sonnet-latest',
       'claude-3-5-haiku-latest',
     ],
+    apiFormat: ANTHROPIC_API_FORMAT,
   },
   openai_fake: {
     baseURL: 'https://api.openai.com/v1',
     defaultModels: ['gpt-3.5-turbo', 'gpt-4.5', 'gpt-4.1', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-5'],
+    apiFormat: OPENAI_API_FORMAT,
   },
   aihubmix: {
     baseURL: 'https://aihubmix.com/v1',
@@ -246,10 +276,12 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'glm-4.6',
       'glm-4.5',
     ],
+    apiFormat: OPENAI_API_FORMAT,
   },
   burncloud: {
     baseURL: 'https://ai.burncloud.com/v1',
     defaultModels: BURNCLOUD_DEFAULT_MODELS,
+    apiFormat: OPENAI_API_FORMAT,
   },
   anthropic_aws: {
     baseURL: 'https://bedrock-runtime.us-east-1.amazonaws.com',
@@ -260,6 +292,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'anthropic.claude-3-7-sonnet-20250219-v1:0',
       'anthropic.claude-3-5-haiku-20241022-v1:0',
     ],
+    apiFormat: ANTHROPIC_API_FORMAT,
   },
   anthropic_gcp: {
     baseURL: 'https://us-east5-aiplatform.googleapis.com',
@@ -270,6 +303,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'claude-3-7-sonnet@20250219',
       'claude-3-5-haiku@20241022',
     ],
+    apiFormat: ANTHROPIC_API_FORMAT,
   },
 }
 

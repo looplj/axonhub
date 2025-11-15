@@ -25,7 +25,7 @@ import { SelectDropdown } from '@/components/select-dropdown'
 import { useCreateChannel, useUpdateChannel, useFetchModels } from '../data/channels'
 import { getDefaultBaseURL, getDefaultModels } from '../data/constants'
 import { CHANNEL_CONFIGS } from '../data/constants'
-import { Channel, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
+import { Channel, ChannelType, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
 
 interface Props {
   currentRow?: Channel
@@ -104,6 +104,10 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
             defaultTestModel: '',
           },
   })
+
+  const selectedType = form.watch('type') as ChannelType | undefined
+  const selectedChannelConfig = selectedType ? CHANNEL_CONFIGS[selectedType] : undefined
+  const selectedApiFormat = selectedChannelConfig?.apiFormat
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -255,7 +259,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 control={form.control}
                 name='type'
                 disabled={isEdit}
-                render={({ field, fieldState }) => (
+                render={({ field }) => (
                   <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
                     <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                       {t('channels.dialogs.fields.type.label')}
@@ -280,6 +284,14 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                         disabled={isEdit}
                       />
                     </FormControl>
+                    {selectedApiFormat && (
+                      <p className='text-muted-foreground col-span-6 col-start-3 mt-2 flex items-center gap-2 text-xs'>
+                        <span className='text-foreground font-medium'>
+                          {t('channels.dialogs.fields.apiFormat.label')}
+                        </span>
+                        <Badge variant='outline'>{selectedApiFormat}</Badge>
+                      </p>
+                    )}
                     <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
                       <FormMessage />
                     </div>
@@ -335,7 +347,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 )}
               />
 
-              {form.watch('type') !== 'anthropic_aws' && form.watch('type') !== 'anthropic_gcp' && (
+              {selectedType !== 'anthropic_aws' && selectedType !== 'anthropic_gcp' && (
                 <FormField
                   control={form.control}
                   name='credentials.apiKey'
@@ -366,7 +378,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 />
               )}
 
-              {form.watch('type') === 'anthropic_aws' && (
+              {selectedType === 'anthropic_aws' && (
                 <>
                   <FormField
                     control={form.control}
@@ -444,7 +456,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 </>
               )}
 
-              {form.watch('type') === 'anthropic_gcp' && (
+              {selectedType === 'anthropic_gcp' && (
                 <>
                   <FormField
                     control={form.control}
@@ -664,7 +676,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
               <FormField
                 control={form.control}
                 name='defaultTestModel'
-                render={({ field, fieldState }) => (
+                render={({ field }) => (
                   <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
                     <FormLabel className='col-span-2 pt-2 text-right font-medium'>
                       {t('channels.dialogs.fields.defaultTestModel.label')}
