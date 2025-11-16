@@ -244,6 +244,7 @@ type Channel implements Node {
   name: String!
   status: ChannelStatus!
   supportedModels: [String!]!
+  tags: [String!]
   defaultTestModel: String!
   settings: ChannelSettings
   """
@@ -599,6 +600,7 @@ input CreateChannelInput {
   status: ChannelStatus
   credentials: ChannelCredentialsInput
   supportedModels: [String!]!
+  tags: [String!]
   defaultTestModel: String!
   settings: ChannelSettingsInput
   """
@@ -3250,6 +3252,9 @@ input UpdateChannelInput {
   credentials: ChannelCredentialsInput
   supportedModels: [String!]
   appendSupportedModels: [String!]
+  tags: [String!]
+  appendTags: [String!]
+  clearTags: Boolean
   defaultTestModel: String
   settings: ChannelSettingsInput
   clearSettings: Boolean

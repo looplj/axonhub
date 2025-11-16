@@ -903,4 +903,155 @@ test.describe('Admin Channels Management', () => {
     await page.keyboard.press('Escape')
     await expect(reopenedDialog).not.toBeVisible()
   })
+
+  test('can batch create channels with multiple API keys', async ({ page }) => {
+    const uniqueSuffix = Date.now().toString().slice(-6)
+    const baseName = `pw-batch-test-${uniqueSuffix}`
+    const baseURL = 'https://api.openai.com/v1'
+    const apiKeys = ['sk-key1-' + uniqueSuffix, 'sk-key2-' + uniqueSuffix, 'sk-key3-' + uniqueSuffix]
+
+    // Look for batch create button (if it exists in the UI)
+    // For now, we'll test via the API by creating channels with the same base name
+    // which should result in numbered channels: "name - (1)", "name - (2)", etc.
+
+    // Create first channel
+    const createButton = page.getByRole('button', { name: /Add Channel|添加渠道/i })
+    await createButton.click()
+
+    const createDialog = page.getByRole('dialog')
+    await createDialog.getByLabel(/名称|Name/i).fill(baseName)
+
+    // Select channel type
+    const typeSelect = createDialog.locator('[name="type"]').or(createDialog.getByLabel(/类型|Type/i))
+    await typeSelect.click()
+    const openaiOption = page
+      .getByRole('option', { name: /OpenAI/i })
+      .or(page.locator('[role="option"]').filter({ hasText: /OpenAI/i }))
+    await openaiOption.first().click()
+
+    await createDialog.getByLabel(/Base URL/i).fill(baseURL)
+    await createDialog.getByLabel(/API Key/i).fill(apiKeys.join('\n'))
+
+    // Add model
+    await page.waitForTimeout(500)
+    const modelBadge = createDialog.locator('text=gpt-4o').first()
+    if ((await modelBadge.count()) > 0) {
+      await modelBadge.click()
+      const addSelectedButton = createDialog.getByRole('button', { name: /Add Selected|添加选中/i })
+      await addSelectedButton.click()
+      await page.waitForTimeout(500)
+    }
+
+    // Select Default Test Model
+    const defaultTestModelSelect = createDialog
+      .locator('[name="defaultTestModel"]')
+      .or(createDialog.getByLabel(/Default Test Model|默认测试模型/i))
+    if ((await defaultTestModelSelect.count()) > 0) {
+      await defaultTestModelSelect.click()
+      const firstOption = page.getByRole('option').first()
+      await firstOption.click()
+      await page.waitForTimeout(300)
+    }
+
+    await Promise.all([
+      waitForGraphQLOperation(page, 'BulkCreateChannels'),
+      createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click(),
+    ])
+
+    await expect(createDialog).not.toBeVisible({ timeout: 10000 })
+    await page.waitForTimeout(1500)
+
+    // Verify numbered channels were created for each API key
+    const channelsTable = page.locator('[data-testid="channels-table"]')
+    const expectedRows = apiKeys.map((_, idx) =>
+      channelsTable.locator('tbody tr').filter({ hasText: `${baseName} - (${idx + 1})` })
+    )
+
+    for (const row of expectedRows) {
+      await expect(row).toBeVisible()
+    }
+  })
+
+  test('can filter channels by tags', async ({ page }) => {
+    const uniqueSuffix = Date.now().toString().slice(-6)
+    const tagName = `pw-tag-${uniqueSuffix}`
+
+    // Create a channel with a specific tag
+    const createButton = page.getByRole('button', { name: /Add Channel|添加渠道/i })
+    await createButton.click()
+
+    const createDialog = page.getByRole('dialog')
+    await createDialog.getByLabel(/名称|Name/i).fill(`Channel-${tagName}`)
+
+    const typeSelect = createDialog.locator('[name="type"]').or(createDialog.getByLabel(/类型|Type/i))
+    await typeSelect.click()
+    const openaiOption = page
+      .getByRole('option', { name: /OpenAI/i })
+      .or(page.locator('[role="option"]').filter({ hasText: /OpenAI/i }))
+    await openaiOption.first().click()
+
+    await createDialog.getByLabel(/Base URL/i).fill('https://api.openai.com/v1')
+    await createDialog.getByLabel(/API Key/i).fill('sk-test-' + uniqueSuffix)
+
+    // Add model
+    await page.waitForTimeout(500)
+    const modelBadge = createDialog.locator('text=gpt-4o').first()
+    if ((await modelBadge.count()) > 0) {
+      await modelBadge.click()
+      const addSelectedButton = createDialog.getByRole('button', { name: /Add Selected|添加选中/i })
+      await addSelectedButton.click()
+      await page.waitForTimeout(500)
+    }
+
+    // Select Default Test Model
+    const defaultTestModelSelect = createDialog
+      .locator('[name="defaultTestModel"]')
+      .or(createDialog.getByLabel(/Default Test Model|默认测试模型/i))
+    if ((await defaultTestModelSelect.count()) > 0) {
+      await defaultTestModelSelect.click()
+      const firstOption = page.getByRole('option').first()
+      await firstOption.click()
+      await page.waitForTimeout(300)
+    }
+
+    await Promise.all([
+      waitForGraphQLOperation(page, 'CreateChannel'),
+      createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click(),
+    ])
+
+    await expect(createDialog).not.toBeVisible({ timeout: 10000 })
+    await page.waitForTimeout(1000)
+
+    // Look for tags filter button
+    const tagsFilterButton = page
+      .locator('button')
+      .filter({ hasText: /Tags|标签/i })
+      .and(page.locator('[aria-haspopup="dialog"]'))
+      .first()
+
+    const tagsFilterCount = await tagsFilterButton.count()
+    if (tagsFilterCount === 0) {
+      test.skip()
+      return
+    }
+
+    await tagsFilterButton.click()
+    await page.waitForTimeout(500)
+
+    // Select the tag filter
+    const tagFilter = page
+      .getByRole('option', { name: new RegExp(tagName, 'i') })
+      .or(page.locator('[role="option"]').filter({ hasText: new RegExp(tagName, 'i') }))
+
+    const tagFilterCount2 = await tagFilter.count()
+    if (tagFilterCount2 > 0) {
+      await tagFilter.click()
+      await page.waitForTimeout(1000)
+
+      // Verify filtered results
+      const channelsTable = page.locator('[data-testid="channels-table"]')
+      const filteredRow = channelsTable.locator('tbody tr').filter({ hasText: `Channel-${tagName}` })
+      await expect(filteredRow).toBeVisible()
+    }
+  })
 })

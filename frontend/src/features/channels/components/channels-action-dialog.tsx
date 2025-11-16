@@ -9,20 +9,13 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
 import { SelectDropdown } from '@/components/select-dropdown'
-import { useCreateChannel, useUpdateChannel, useFetchModels } from '../data/channels'
+import { useCreateChannel, useUpdateChannel, useFetchModels, useBulkCreateChannels } from '../data/channels'
 import { getDefaultBaseURL, getDefaultModels } from '../data/constants'
 import { CHANNEL_CONFIGS } from '../data/constants'
 import { Channel, ChannelType, createChannelInputSchema, updateChannelInputSchema } from '../data/schema'
@@ -37,6 +30,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
   const { t } = useTranslation()
   const isEdit = !!currentRow
   const createChannel = useCreateChannel()
+  const bulkCreateChannels = useBulkCreateChannels()
   const updateChannel = useUpdateChannel()
   const fetchModels = useFetchModels()
   const [supportedModels, setSupportedModels] = useState<string[]>(currentRow?.supportedModels || [])
@@ -147,7 +141,28 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
           input: updateInput,
         })
       } else {
-        await createChannel.mutateAsync(dataWithModels as any)
+        // For create mode, check if multiple API keys are provided
+        const apiKeys =
+          values.credentials?.apiKey
+            ?.split('\n')
+            .map((key) => key.trim())
+            .filter((key) => key.length > 0) || []
+
+        if (apiKeys.length > 1) {
+          // Bulk create: use bulk mutation
+          await bulkCreateChannels.mutateAsync({
+            type: values.type as string,
+            name: values.name as string,
+            baseURL: values.baseURL,
+            apiKeys: apiKeys,
+            supportedModels: supportedModels,
+            defaultTestModel: values.defaultTestModel as string,
+            settings: values.settings,
+          })
+        } else {
+          // Single create: use existing mutation
+          await createChannel.mutateAsync(dataWithModels as any)
+        }
       }
 
       form.reset()
@@ -261,9 +276,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 disabled={isEdit}
                 render={({ field }) => (
                   <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
-                    <FormLabel className='col-span-2 pt-2 text-right font-medium'>
-                      {t('channels.dialogs.fields.type.label')}
-                    </FormLabel>
+                    <FormLabel className='col-span-2 pt-2 text-right font-medium'>{t('channels.dialogs.fields.type.label')}</FormLabel>
                     <FormControl>
                       <SelectDropdown
                         defaultValue={field.value}
@@ -286,9 +299,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     </FormControl>
                     {selectedApiFormat && (
                       <p className='text-muted-foreground col-span-6 col-start-3 mt-2 flex items-center gap-2 text-xs'>
-                        <span className='text-foreground font-medium'>
-                          {t('channels.dialogs.fields.apiFormat.label')}
-                        </span>
+                        <span className='text-foreground font-medium'>{t('channels.dialogs.fields.apiFormat.label')}</span>
                         <Badge variant='outline'>{selectedApiFormat}</Badge>
                       </p>
                     )}
@@ -304,9 +315,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 name='name'
                 render={({ field, fieldState }) => (
                   <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
-                    <FormLabel className='col-span-2 pt-2 text-right font-medium'>
-                      {t('channels.dialogs.fields.name.label')}
-                    </FormLabel>
+                    <FormLabel className='col-span-2 pt-2 text-right font-medium'>{t('channels.dialogs.fields.name.label')}</FormLabel>
                     <FormControl>
                       <Input
                         placeholder={t('channels.dialogs.fields.name.placeholder')}
@@ -328,9 +337,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                 name='baseURL'
                 render={({ field, fieldState }) => (
                   <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
-                    <FormLabel className='col-span-2 pt-2 text-right font-medium'>
-                      {t('channels.dialogs.fields.baseURL.label')}
-                    </FormLabel>
+                    <FormLabel className='col-span-2 pt-2 text-right font-medium'>{t('channels.dialogs.fields.baseURL.label')}</FormLabel>
                     <FormControl>
                       <Input
                         placeholder={t('channels.dialogs.fields.baseURL.placeholder')}
@@ -353,23 +360,32 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                   name='credentials.apiKey'
                   render={({ field, fieldState }) => (
                     <FormItem className='grid grid-cols-8 items-start space-y-0 gap-x-6 gap-y-1'>
-                      <FormLabel className='col-span-2 pt-2 text-right font-medium'>
-                        {t('channels.dialogs.fields.apiKey.label')}
-                      </FormLabel>
+                      <FormLabel className='col-span-2 pt-2 text-right font-medium'>{t('channels.dialogs.fields.apiKey.label')}</FormLabel>
                       <FormControl>
-                        <Input
-                          type='password'
-                          placeholder={
-                            isEdit
-                              ? t('channels.dialogs.fields.apiKey.editPlaceholder')
-                              : t('channels.dialogs.fields.apiKey.placeholder')
-                          }
-                          className='col-span-6'
-                          autoComplete='off'
-                          aria-invalid={!!fieldState.error}
-                          {...field}
-                        />
+                        {isEdit ? (
+                          <Input
+                            type='password'
+                            placeholder={t('channels.dialogs.fields.apiKey.editPlaceholder')}
+                            className='col-span-6'
+                            autoComplete='off'
+                            aria-invalid={!!fieldState.error}
+                            {...field}
+                          />
+                        ) : (
+                          <Textarea
+                            placeholder={t('channels.dialogs.fields.apiKey.placeholder')}
+                            className='col-span-6 min-h-[80px] resize-y font-mono text-sm'
+                            autoComplete='off'
+                            aria-invalid={!!fieldState.error}
+                            {...field}
+                          />
+                        )}
                       </FormControl>
+                      {!isEdit && (
+                        <p className='text-muted-foreground col-span-6 col-start-3 text-xs'>
+                          {t('channels.dialogs.fields.apiKey.multiLineHint')}
+                        </p>
+                      )}
                       <div className='col-span-6 col-start-3 min-h-[1.25rem]'>
                         <FormMessage />
                       </div>
@@ -572,11 +588,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     {supportedModels.map((model) => (
                       <Badge key={model} variant='secondary' className='text-xs'>
                         {model}
-                        <button
-                          type='button'
-                          onClick={() => removeModel(model)}
-                          className='hover:text-destructive ml-1'
-                        >
+                        <button type='button' onClick={() => removeModel(model)} className='hover:text-destructive ml-1'>
                           <X size={12} />
                         </button>
                       </Badge>
@@ -592,18 +604,12 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                   {/* Quick add models section */}
                   {(() => {
                     const currentType = form.watch('type')
-                    const quickModels = useFetchedModels
-                      ? fetchedModels
-                      : currentType
-                        ? getDefaultModels(currentType)
-                        : []
+                    const quickModels = useFetchedModels ? fetchedModels : currentType ? getDefaultModels(currentType) : []
                     return quickModels && quickModels.length > 0 && !useFetchedModels
                   })() && (
                     <div className='pt-3'>
                       <div className='mb-2 flex items-center justify-between'>
-                        <span className='text-sm font-medium'>
-                          {t('channels.dialogs.fields.supportedModels.defaultModelsLabel')}
-                        </span>
+                        <span className='text-sm font-medium'>{t('channels.dialogs.fields.supportedModels.defaultModelsLabel')}</span>
                         <Button
                           type='button'
                           onClick={addSelectedDefaultModels}
@@ -637,9 +643,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                   {useFetchedModels && fetchedModels.length > 0 && fetchedModels.length <= 20 && (
                     <div className='pt-3'>
                       <div className='mb-2 flex items-center justify-between'>
-                        <span className='text-sm font-medium'>
-                          {t('channels.dialogs.fields.supportedModels.fetchedModelsLabel')}
-                        </span>
+                        <span className='text-sm font-medium'>{t('channels.dialogs.fields.supportedModels.fetchedModelsLabel')}</span>
                         <Button
                           type='button'
                           onClick={addSelectedDefaultModels}
@@ -666,9 +670,7 @@ export function ChannelsActionDialog({ currentRow, open, onOpenChange }: Props) 
                     </div>
                   )}
                   {supportedModels.length === 0 && (
-                    <p className='text-muted-foreground text-sm'>
-                      {t('channels.dialogs.fields.supportedModels.required')}
-                    </p>
+                    <p className='text-muted-foreground text-sm'>{t('channels.dialogs.fields.supportedModels.required')}</p>
                   )}
                 </div>
               </div>

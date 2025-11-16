@@ -38,6 +38,7 @@ interface DataTableProps {
   nameFilter: string
   typeFilter: string[]
   statusFilter: string[]
+  tagFilter: string
   selectedTypeTab?: string
   onNextPage: () => void
   onPreviousPage: () => void
@@ -45,6 +46,7 @@ interface DataTableProps {
   onNameFilterChange: (filter: string) => void
   onTypeFilterChange: (filters: string[]) => void
   onStatusFilterChange: (filters: string[]) => void
+  onTagFilterChange: (filter: string) => void
 }
 
 export function ChannelsTable({
@@ -57,6 +59,7 @@ export function ChannelsTable({
   nameFilter,
   typeFilter,
   statusFilter,
+  tagFilter,
   selectedTypeTab = 'all',
   onNextPage,
   onPreviousPage,
@@ -64,11 +67,14 @@ export function ChannelsTable({
   onNameFilterChange,
   onTypeFilterChange,
   onStatusFilterChange,
+  onTagFilterChange,
 }: DataTableProps) {
   const { t } = useTranslation()
   const { setSelectedChannels, setResetRowSelection } = useChannels()
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    tags: false, // Hide tags column by default but keep it for filtering
+  })
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
 
@@ -85,9 +91,12 @@ export function ChannelsTable({
     if (statusFilter.length > 0) {
       newColumnFilters.push({ id: 'status', value: statusFilter })
     }
+    if (tagFilter) {
+      newColumnFilters.push({ id: 'tags', value: tagFilter })
+    }
 
     setColumnFilters(newColumnFilters)
-  }, [nameFilter, typeFilter, statusFilter])
+  }, [nameFilter, typeFilter, statusFilter, tagFilter])
 
   // Handle column filter changes and sync with server
   const handleColumnFiltersChange = (
@@ -100,11 +109,13 @@ export function ChannelsTable({
     const nameFilterValue = newFilters.find((filter) => filter.id === 'name')?.value as string
     const typeFilterValue = newFilters.find((filter) => filter.id === 'type')?.value as string[]
     const statusFilterValue = newFilters.find((filter) => filter.id === 'status')?.value as string[]
+    const tagFilterValue = newFilters.find((filter) => filter.id === 'tags')?.value as string
 
     // Update server filters only if changed
     const newNameFilter = nameFilterValue || ''
     const newTypeFilter = Array.isArray(typeFilterValue) ? typeFilterValue : []
     const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : []
+    const newTagFilter = tagFilterValue || ''
 
     if (newNameFilter !== nameFilter) {
       onNameFilterChange(newNameFilter)
@@ -116,6 +127,10 @@ export function ChannelsTable({
 
     if (JSON.stringify(newStatusFilter.sort()) !== JSON.stringify(statusFilter.sort())) {
       onStatusFilterChange(newStatusFilter)
+    }
+
+    if (newTagFilter !== tagFilter) {
+      onTagFilterChange(newTagFilter)
     }
   }
 

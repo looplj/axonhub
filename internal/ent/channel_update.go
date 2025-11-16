@@ -127,6 +127,24 @@ func (_u *ChannelUpdate) AppendSupportedModels(v []string) *ChannelUpdate {
 	return _u
 }
 
+// SetTags sets the "tags" field.
+func (_u *ChannelUpdate) SetTags(v []string) *ChannelUpdate {
+	_u.mutation.SetTags(v)
+	return _u
+}
+
+// AppendTags appends value to the "tags" field.
+func (_u *ChannelUpdate) AppendTags(v []string) *ChannelUpdate {
+	_u.mutation.AppendTags(v)
+	return _u
+}
+
+// ClearTags clears the value of the "tags" field.
+func (_u *ChannelUpdate) ClearTags() *ChannelUpdate {
+	_u.mutation.ClearTags()
+	return _u
+}
+
 // SetDefaultTestModel sets the "default_test_model" field.
 func (_u *ChannelUpdate) SetDefaultTestModel(v string) *ChannelUpdate {
 	_u.mutation.SetDefaultTestModel(v)
@@ -388,6 +406,17 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, channel.FieldSupportedModels, value)
 		})
+	}
+	if value, ok := _u.mutation.Tags(); ok {
+		_spec.SetField(channel.FieldTags, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedTags(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, channel.FieldTags, value)
+		})
+	}
+	if _u.mutation.TagsCleared() {
+		_spec.ClearField(channel.FieldTags, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.DefaultTestModel(); ok {
 		_spec.SetField(channel.FieldDefaultTestModel, field.TypeString, value)
@@ -651,6 +680,24 @@ func (_u *ChannelUpdateOne) SetSupportedModels(v []string) *ChannelUpdateOne {
 // AppendSupportedModels appends value to the "supported_models" field.
 func (_u *ChannelUpdateOne) AppendSupportedModels(v []string) *ChannelUpdateOne {
 	_u.mutation.AppendSupportedModels(v)
+	return _u
+}
+
+// SetTags sets the "tags" field.
+func (_u *ChannelUpdateOne) SetTags(v []string) *ChannelUpdateOne {
+	_u.mutation.SetTags(v)
+	return _u
+}
+
+// AppendTags appends value to the "tags" field.
+func (_u *ChannelUpdateOne) AppendTags(v []string) *ChannelUpdateOne {
+	_u.mutation.AppendTags(v)
+	return _u
+}
+
+// ClearTags clears the value of the "tags" field.
+func (_u *ChannelUpdateOne) ClearTags() *ChannelUpdateOne {
+	_u.mutation.ClearTags()
 	return _u
 }
 
@@ -945,6 +992,17 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, channel.FieldSupportedModels, value)
 		})
+	}
+	if value, ok := _u.mutation.Tags(); ok {
+		_spec.SetField(channel.FieldTags, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedTags(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, channel.FieldTags, value)
+		})
+	}
+	if _u.mutation.TagsCleared() {
+		_spec.ClearField(channel.FieldTags, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.DefaultTestModel(); ok {
 		_spec.SetField(channel.FieldDefaultTestModel, field.TypeString, value)

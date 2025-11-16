@@ -151,6 +151,37 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableHiding: false,
     },
     {
+      accessorKey: 'tags',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} />,
+      cell: ({ row }) => {
+        const tags = (row.getValue('tags') as string[]) || []
+        if (tags.length === 0) {
+          return <span className='text-muted-foreground text-xs'>-</span>
+        }
+        return (
+          <div className='flex max-w-48 flex-wrap gap-1'>
+            {tags.slice(0, 2).map((tag) => (
+              <Badge key={tag} variant='outline' className='text-xs'>
+                {tag}
+              </Badge>
+            ))}
+            {tags.length > 2 && (
+              <Badge variant='outline' className='text-xs'>
+                +{tags.length - 2}
+              </Badge>
+            )}
+          </div>
+        )
+      },
+      filterFn: (row, id, value) => {
+        const tags = (row.getValue(id) as string[]) || []
+        // Single select: value is a string, not an array
+        return tags.includes(value as string)
+      },
+      enableSorting: false,
+      enableHiding: true,
+    },
+    {
       accessorKey: 'baseURL',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.baseURL')} />,
       cell: ({ row }) => <LongText className='text-muted-foreground max-w-48'>{row.getValue('baseURL')}</LongText>,

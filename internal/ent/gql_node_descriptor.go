@@ -170,7 +170,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Channel",
-		Fields: make([]*Field, 12),
+		Fields: make([]*Field, 13),
 		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
@@ -246,10 +246,18 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "supported_models",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.DefaultTestModel); err != nil {
+	if buf, err = json.Marshal(_m.Tags); err != nil {
 		return nil, err
 	}
 	node.Fields[9] = &Field{
+		Type:  "[]string",
+		Name:  "tags",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.DefaultTestModel); err != nil {
+		return nil, err
+	}
+	node.Fields[10] = &Field{
 		Type:  "string",
 		Name:  "default_test_model",
 		Value: string(buf),
@@ -257,7 +265,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Settings); err != nil {
 		return nil, err
 	}
-	node.Fields[10] = &Field{
+	node.Fields[11] = &Field{
 		Type:  "*objects.ChannelSettings",
 		Name:  "settings",
 		Value: string(buf),
@@ -265,7 +273,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.OrderingWeight); err != nil {
 		return nil, err
 	}
-	node.Fields[11] = &Field{
+	node.Fields[12] = &Field{
 		Type:  "int",
 		Name:  "ordering_weight",
 		Value: string(buf),

@@ -81,7 +81,6 @@ input GCPCredentialInput {
   jsonData: String!
 }
 
-
 input SignInInput {
   email: String!
   password: String!
@@ -91,7 +90,6 @@ type SignInPayload {
   user: User!
   token: String!
 }
-
 
 input TestChannelInput {
   channelID: ID!
@@ -125,6 +123,16 @@ type BulkImportChannelsResult {
   failed: Int!
   errors: [String!]
   channels: [Channel!]!
+}
+
+input BulkCreateChannelsInput {
+  type: String!
+  name: String!
+  baseURL: String
+  apiKeys: [String!]!
+  supportedModels: [String!]!
+  defaultTestModel: String!
+  settings: ChannelSettingsInput
 }
 
 input ChannelOrderingItem {
@@ -190,12 +198,6 @@ input ModelsInput {
 type ChannelTypeCount {
   type: String!
   count: Int!
-}
-
-extend type Query {
-  fetchModels(input: FetchModelsInput!): FetchModelsPayload!
-  models(status: ChannelStatus): [Model!]!
-  countChannelsByType: [ChannelTypeCount!]!
 }
 
 input AddUserToProjectInput {
@@ -346,6 +348,7 @@ type SpanSystemInstruction {
 
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
+  bulkCreateChannels(input: BulkCreateChannelsInput!): [Channel!]!
   updateChannel(id: ID!, input: UpdateChannelInput!): Channel!
   updateChannelStatus(id: ID!, status: ChannelStatus!): Channel!
   deleteChannel(id: ID!): Boolean!
@@ -355,7 +358,9 @@ type Mutation {
   bulkDeleteChannels(ids: [ID!]!): Boolean!
   testChannel(input: TestChannelInput!): TestChannelPayload!
   bulkImportChannels(input: BulkImportChannelsInput!): BulkImportChannelsResult!
-  bulkUpdateChannelOrdering(input: BulkUpdateChannelOrderingInput!): BulkUpdateChannelOrderingResult!
+  bulkUpdateChannelOrdering(
+    input: BulkUpdateChannelOrderingInput!
+  ): BulkUpdateChannelOrderingResult!
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!
@@ -376,11 +381,67 @@ type Mutation {
   createProject(input: CreateProjectInput!): Project!
   updateProject(id: ID!, input: UpdateProjectInput!): Project!
   updateProjectStatus(id: ID!, status: ProjectStatus!): Project!
-  
+
   addUserToProject(input: AddUserToProjectInput!): UserProject!
   removeUserFromProject(input: RemoveUserFromProjectInput!): Boolean!
   updateProjectUser(input: UpdateProjectUserInput!): UserProject!
 
   createDataStorage(input: CreateDataStorageInput!): DataStorage!
   updateDataStorage(id: ID!, input: UpdateDataStorageInput!): DataStorage!
+}
+
+input QueryChannelInput {
+  """
+  Returns the elements in the list that come after the specified cursor.
+  """
+  after: Cursor
+
+  """
+  Returns the first _n_ elements from the list.
+  """
+  first: Int
+
+  """
+  Returns the elements in the list that come before the specified cursor.
+  """
+  before: Cursor
+
+  """
+  Returns the last _n_ elements from the list.
+  """
+  last: Int
+
+  """
+  Ordering options for Channels returned from the connection.
+  """
+  orderBy: ChannelOrder
+
+  """
+  Filtering options for Channels returned from the connection.
+  """
+  where: ChannelWhereInput
+
+  """
+  Filtering options for Channels returned from the connection.
+  """
+  hasTag: String
+}
+
+input CountChannelsByTypeInput {
+  """
+  Filtering options for Channels returned from the connection.
+  """
+  statusIn: [ChannelStatus!]
+}
+
+extend type Query {
+  fetchModels(input: FetchModelsInput!): FetchModelsPayload!
+  models(status: ChannelStatus): [Model!]!
+  allChannelTags: [String!]!
+  countChannelsByType(input: CountChannelsByTypeInput!): [ChannelTypeCount!]!
+  """
+  Query channels with extra options
+  hasTag: String
+  """
+  queryChannels(input: QueryChannelInput!): ChannelConnection!
 }

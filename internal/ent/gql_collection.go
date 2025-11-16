@@ -607,6 +607,11 @@ func (_q *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, channel.FieldSupportedModels)
 				fieldSeen[channel.FieldSupportedModels] = struct{}{}
 			}
+		case "tags":
+			if _, ok := fieldSeen[channel.FieldTags]; !ok {
+				selectedFields = append(selectedFields, channel.FieldTags)
+				fieldSeen[channel.FieldTags] = struct{}{}
+			}
 		case "defaultTestModel":
 			if _, ok := fieldSeen[channel.FieldDefaultTestModel]; !ok {
 				selectedFields = append(selectedFields, channel.FieldDefaultTestModel)

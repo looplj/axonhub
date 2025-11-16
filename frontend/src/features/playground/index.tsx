@@ -26,7 +26,7 @@ import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/component
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning'
 import { Response as UIResponse } from '@/components/ai-elements/response'
 import { AutoCompleteSelect } from '@/components/auto-complete-select'
-import { useChannels } from '@/features/channels/data/channels'
+import { useQueryChannels } from '@/features/channels/data/channels'
 
 export default function Playground() {
   const { t } = useTranslation()
@@ -69,7 +69,7 @@ export default function Playground() {
   const selectedProjectId = useSelectedProjectId()
 
   // 获取 channels 数据
-  const { data: channelsData, isLoading: channelsLoading } = useChannels({
+  const { data: channelsData, isLoading: channelsLoading } = useQueryChannels({
     first: 100,
     orderBy: { field: 'ORDERING_WEIGHT', direction: 'DESC' },
     where: {

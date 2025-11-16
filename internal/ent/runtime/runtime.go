@@ -117,12 +117,16 @@ func init() {
 	channelDescCredentials := channelFields[4].Descriptor()
 	// channel.DefaultCredentials holds the default value on creation for the credentials field.
 	channel.DefaultCredentials = channelDescCredentials.Default.(*objects.ChannelCredentials)
+	// channelDescTags is the schema descriptor for tags field.
+	channelDescTags := channelFields[6].Descriptor()
+	// channel.DefaultTags holds the default value on creation for the tags field.
+	channel.DefaultTags = channelDescTags.Default.([]string)
 	// channelDescSettings is the schema descriptor for settings field.
-	channelDescSettings := channelFields[7].Descriptor()
+	channelDescSettings := channelFields[8].Descriptor()
 	// channel.DefaultSettings holds the default value on creation for the settings field.
 	channel.DefaultSettings = channelDescSettings.Default.(*objects.ChannelSettings)
 	// channelDescOrderingWeight is the schema descriptor for ordering_weight field.
-	channelDescOrderingWeight := channelFields[8].Descriptor()
+	channelDescOrderingWeight := channelFields[9].Descriptor()
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
 	datastorageMixin := schema.DataStorage{}.Mixin()

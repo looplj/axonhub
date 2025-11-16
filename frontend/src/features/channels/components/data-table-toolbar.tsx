@@ -4,10 +4,11 @@ import { IconArchive, IconBan, IconCheck, IconTrash } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DataTableViewOptions } from './data-table-view-options'
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { useChannels } from '../context/channels-context'
-import { ChannelType } from '../data/schema'
+import { CHANNEL_CONFIGS } from '../data/constants'
+import { useAllChannelTags } from '../data/channels'
+import { useMemo } from 'react'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -30,66 +31,21 @@ export function DataTableToolbar<TData>({
   const isFiltered = externalIsFiltered ?? tableState.columnFilters.length > 0
   const hasSelectedRows = selectedCount > 0
 
-  const channelTypes = [
-    {
-      value: 'openai' as ChannelType,
-      label: t('channels.types.openai'),
-    },
-    {
-      value: 'anthropic' as ChannelType,
-      label: t('channels.types.anthropic'),
-    },
-    {
-      value: 'anthropic_aws' as ChannelType,
-      label: t('channels.types.anthropic_aws'),
-    },
-    {
-      value: 'anthropic_gcp' as ChannelType,
-      label: t('channels.types.anthropic_gcp'),
-    },
-    {
-      value: 'gemini_openai' as ChannelType,
-      label: t('channels.types.gemini_openai'),
-    },
-    {
-      value: 'deepseek' as ChannelType,
-      label: t('channels.types.deepseek'),
-    },
-    {
-      value: 'doubao' as ChannelType,
-      label: t('channels.types.doubao'),
-    },
-    {
-      value: 'moonshot' as ChannelType,
-      label: t('channels.types.moonshot'),
-    },
-    {
-      value: 'openrouter' as ChannelType,
-      label: t('channels.types.openrouter'),
-    },
-    {
-      value: 'deepseek_anthropic' as ChannelType,
-      label: t('channels.types.deepseek_anthropic'),
-    },
-    {
-      value: 'moonshot_anthropic' as ChannelType,
-      label: t('channels.types.moonshot_anthropic'),
-    },
-    {
-      value: 'zhipu_anthropic' as ChannelType,
-      label: t('channels.types.zhipu_anthropic'),
-    },
-    {
-      value: 'anthropic_fake' as ChannelType,
-      label: t('channels.types.anthropic_fake'),
-    },
-    {
-      value: 'openai_fake' as ChannelType,
-      label: t('channels.types.openai_fake'),
-    },
-  ]
+  // Get all channel tags from GraphQL
+  const { data: allTags = [] } = useAllChannelTags()
 
-  const channelStatuses = [
+  const tagOptions = useMemo(() => allTags.map((tag) => ({
+    value: tag,
+    label: tag,
+  })), [allTags])
+
+  // Generate channel types from CHANNEL_CONFIGS
+  const channelTypes = useMemo(() => Object.values(CHANNEL_CONFIGS).map((config) => ({
+    value: config.channelType,
+    label: t(`channels.types.${config.channelType}`),
+  })), [t])
+
+  const channelStatuses = useMemo(() => [
     {
       value: 'enabled',
       label: t('channels.status.enabled'),
@@ -102,7 +58,7 @@ export function DataTableToolbar<TData>({
       value: 'archived',
       label: t('channels.status.archived'),
     },
-  ]
+  ], [t])
 
   return (
     <div className='flex items-center justify-between'>
@@ -110,31 +66,20 @@ export function DataTableToolbar<TData>({
         <Input
           placeholder={t('channels.filters.filterByName')}
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
-          onChange={(event) =>
-            table.getColumn('name')?.setFilterValue(event.target.value)
-          }
+          onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
           className='h-8 w-[150px] lg:w-[250px]'
         />
         {table.getColumn('type') && selectedTypeTab === 'all' && (
-          <DataTableFacetedFilter
-            column={table.getColumn('type')}
-            title={t('channels.filters.type')}
-            options={channelTypes}
-          />
+          <DataTableFacetedFilter column={table.getColumn('type')} title={t('channels.filters.type')} options={channelTypes} />
         )}
         {table.getColumn('status') && (
-          <DataTableFacetedFilter
-            column={table.getColumn('status')}
-            title={t('channels.filters.status')}
-            options={channelStatuses}
-          />
+          <DataTableFacetedFilter column={table.getColumn('status')} title={t('channels.filters.status')} options={channelStatuses} />
+        )}
+        {table.getColumn('tags') && tagOptions.length > 0 && (
+          <DataTableFacetedFilter column={table.getColumn('tags')} title={t('channels.filters.tags')} options={tagOptions} singleSelect />
         )}
         {isFiltered && (
-          <Button
-            variant='ghost'
-            onClick={() => table.resetColumnFilters()}
-            className='h-8 px-2 lg:px-3'
-          >
+          <Button variant='ghost' onClick={() => table.resetColumnFilters()} className='h-8 px-2 lg:px-3'>
             {t('common.filters.reset')}
             <Cross2Icon className='ml-2 h-4 w-4' />
           </Button>

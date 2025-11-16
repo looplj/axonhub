@@ -92,6 +92,9 @@ models:
   ChannelCredentialsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelCredentials
+  BulkCreateChannelsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.BulkCreateChannelsInput
   StoragePolicy:
     model:
       - github.com/looplj/axonhub/internal/server/biz.StoragePolicy

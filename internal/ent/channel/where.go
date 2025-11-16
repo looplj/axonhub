@@ -390,6 +390,16 @@ func StatusNotIn(vs ...Status) predicate.Channel {
 	return predicate.Channel(sql.FieldNotIn(FieldStatus, vs...))
 }
 
+// TagsIsNil applies the IsNil predicate on the "tags" field.
+func TagsIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldTags))
+}
+
+// TagsNotNil applies the NotNil predicate on the "tags" field.
+func TagsNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldTags))
+}
+
 // DefaultTestModelEQ applies the EQ predicate on the "default_test_model" field.
 func DefaultTestModelEQ(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldDefaultTestModel, v))
