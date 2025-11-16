@@ -23,6 +23,7 @@ const (
 	PlatformBedrock  PlatformType = "bedrock"  // AWS Bedrock
 	PlatformVertex   PlatformType = "vertex"   // Google Vertex AI
 	PlatformDeepSeek PlatformType = "deepseek" // DeepSeek with Anthropic format
+	PlatformDoubao   PlatformType = "doubao"   // Doubao with Anthropic format
 	PlatformMoonshot PlatformType = "moonshot" // Moonshot with Anthropic format
 	PlatformZhipu    PlatformType = "zhipu"    // Zhipu with Anthropic format
 	PlatformZai      PlatformType = "zai"      // Zai with Anthropic format

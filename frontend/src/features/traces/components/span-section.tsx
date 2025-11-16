@@ -21,7 +21,7 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
     if (!selectedSpan?.value) return []
 
     const sections: { title: string; content: React.ReactNode }[] = []
-    const { userQuery: query, text, thinking, toolUse, toolResult, imageUrl, systemInstruction } = selectedSpan.value
+    const { userQuery: query, userImageUrl, text, thinking, toolUse, toolResult, imageUrl, systemInstruction } = selectedSpan.value
 
     if (query?.text) {
       sections.push({
@@ -114,6 +114,19 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
               </pre>
             )}
           </div>
+        ),
+      })
+    }
+
+    if (userImageUrl?.url) {
+      sections.push({
+        title: t('traces.detail.userImage'),
+        content: (
+          <img
+            src={userImageUrl.url || ''}
+            alt={t('traces.detail.userImageAlt')}
+            className='max-h-96 w-full rounded-lg border object-contain'
+          />
         ),
       })
     }

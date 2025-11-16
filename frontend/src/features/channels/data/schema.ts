@@ -13,6 +13,7 @@ export const channelTypeSchema = z.enum([
   'gemini_openai',
   'deepseek',
   'doubao',
+  'doubao_anthropic',
   'moonshot',
   'zhipu',
   'zai',

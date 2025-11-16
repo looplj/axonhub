@@ -1,25 +1,6 @@
 import { format } from 'date-fns'
 import { ColumnDef, Row } from '@tanstack/react-table'
 import { IconPlayerPlay, IconChevronDown } from '@tabler/icons-react'
-import {
-  OpenAI,
-  Anthropic,
-  Google,
-  DeepSeek,
-  Doubao,
-  Moonshot,
-  Zhipu,
-  OpenRouter,
-  XAI,
-  Volcengine,
-  SiliconCloud,
-  PPIO,
-  ZAI,
-  LongCat,
-  Minimax,
-  BurnCloud,
-  Vercel,
-} from '@lobehub/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -29,161 +10,9 @@ import LongText from '@/components/long-text'
 import { useChannels } from '../context/channels-context'
 import { useTestChannel } from '../data/channels'
 import { Channel, ChannelType } from '../data/schema'
+import { CHANNEL_CONFIGS } from '../data/constants'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'
-
-// Channel type configurations
-const getChannelTypeConfig = (
-  t: ReturnType<typeof useTranslation>['t']
-): Record<
-  ChannelType,
-  {
-    label: string
-    color: string
-    icon: React.ComponentType<{ size?: number; className?: string }>
-  }
-> => ({
-  openai: {
-    label: t('channels.types.openai'),
-    color: 'bg-green-100 text-green-800 border-green-200',
-    icon: OpenAI,
-  },
-  anthropic: {
-    label: t('channels.types.anthropic'),
-    color: 'bg-orange-100 text-orange-800 border-orange-200',
-    icon: Anthropic,
-  },
-  anthropic_aws: {
-    label: t('channels.types.anthropic_aws'),
-    color: 'bg-orange-100 text-orange-800 border-orange-200',
-    icon: Anthropic,
-  },
-  anthropic_gcp: {
-    label: t('channels.types.anthropic_gcp'),
-    color: 'bg-orange-100 text-orange-800 border-orange-200',
-    icon: Anthropic,
-  },
-  gemini_openai: {
-    label: t('channels.types.gemini_openai'),
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: Google,
-  },
-  deepseek: {
-    label: t('channels.types.deepseek'),
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: DeepSeek,
-  },
-  doubao: {
-    label: t('channels.types.doubao'),
-    color: 'bg-red-100 text-red-800 border-red-200',
-    icon: Doubao,
-  },
-  moonshot: {
-    label: t('channels.types.moonshot'),
-    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    icon: Moonshot,
-  },
-  zhipu: {
-    label: t('channels.types.zhipu'),
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
-    icon: Zhipu,
-  },
-  zai: {
-    label: t('channels.types.zai'),
-    color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
-    icon: ZAI,
-  },
-  vercel: {
-    label: t('channels.types.vercel'),
-    color: 'bg-black-100 text-black-800 border-black-200',
-    icon: Vercel,
-  },
-  deepseek_anthropic: {
-    label: t('channels.types.deepseek_anthropic'),
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: DeepSeek,
-  },
-  moonshot_anthropic: {
-    label: t('channels.types.moonshot_anthropic'),
-    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    icon: Moonshot,
-  },
-  zhipu_anthropic: {
-    label: t('channels.types.zhipu_anthropic'),
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
-    icon: Zhipu,
-  },
-  zai_anthropic: {
-    label: t('channels.types.zai_anthropic'),
-    color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
-    icon: ZAI,
-  },
-  openrouter: {
-    label: t('channels.types.openrouter'),
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
-    icon: OpenRouter,
-  },
-  anthropic_fake: {
-    label: t('channels.types.anthropic_fake'),
-    color: 'bg-orange-100 text-orange-800 border-orange-200',
-    icon: Anthropic,
-  },
-  openai_fake: {
-    label: t('channels.types.openai_fake'),
-    color: 'bg-green-100 text-green-800 border-green-200',
-    icon: OpenAI,
-  },
-  xai: {
-    label: t('channels.types.xai'),
-    color: 'bg-black-100 text-black-800 border-black-200',
-    icon: XAI,
-  },
-  ppio: {
-    label: t('channels.types.ppio'),
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: PPIO,
-  },
-  siliconflow: {
-    label: t('channels.types.siliconflow'),
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
-    icon: SiliconCloud,
-  },
-  volcengine: {
-    label: t('channels.types.volcengine'),
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: Volcengine,
-  },
-  longcat: {
-    label: t('channels.types.longcat'),
-    color: 'bg-green-100 text-green-800 border-green-200',
-    icon: LongCat,
-  },
-  longcat_anthropic: {
-    label: t('channels.types.longcat_anthropic'),
-    color: 'bg-green-100 text-green-800 border-green-200',
-    icon: LongCat,
-  },
-  minimax: {
-    label: t('channels.types.minimax'),
-    color: 'bg-red-100 text-red-800 border-red-200',
-    icon: Minimax,
-  },
-  minimax_anthropic: {
-    label: t('channels.types.minimax_anthropic'),
-    color: 'bg-red-100 text-red-800 border-red-200',
-    icon: Minimax,
-  },
-  aihubmix: {
-    label: t('channels.types.aihubmix'),
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: OpenAI,
-  },
-  burncloud: {
-    label: t('channels.types.burncloud'),
-    color: 'bg-orange-100 text-orange-800 border-orange-200',
-    icon: BurnCloud,
-  },
-})
 
 // Test Cell Component to handle hooks properly
 function TestCell({ row }: { row: Row<Channel> }) {
@@ -229,8 +58,6 @@ function TestCell({ row }: { row: Row<Channel> }) {
 }
 
 export const createColumns = (t: ReturnType<typeof useTranslation>['t']): ColumnDef<Channel>[] => {
-  const channelTypeConfig = getChannelTypeConfig(t)
-
   return [
     {
       id: 'select',
@@ -277,13 +104,13 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.type')} />,
       cell: ({ row }) => {
         const type = row.getValue('type') as ChannelType
-        const config = channelTypeConfig[type]
+        const config = CHANNEL_CONFIGS[type]
         const IconComponent = config.icon
         return (
           <Badge variant='outline' className={cn('capitalize', config.color)}>
             <div className='flex items-center gap-2'>
               <IconComponent size={16} className='shrink-0' />
-              <span>{config.label}</span>
+              <span>{t(`channels.types.${type}`)}</span>
             </div>
           </Badge>
         )

@@ -264,6 +264,7 @@ func getProxyConfig(channelSettings *objects.ChannelSettings) *objects.ProxyConf
 	return channelSettings.Proxy
 }
 
+//nolint:maintidx // Simple switch statement.
 func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 	httpClient := httpclient.NewHttpClientWithProxy(getProxyConfig(c.Settings))
 
@@ -334,6 +335,21 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 	case channel.TypeDeepseekAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:    anthropic.PlatformDeepSeek,
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
+		}, nil
+	case channel.TypeDoubaoAnthropic:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:    anthropic.PlatformDoubao,
 			BaseURL: c.BaseURL,
 			APIKey:  c.Credentials.APIKey,
 		})

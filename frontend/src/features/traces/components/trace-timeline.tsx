@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Circle, Workflow, MessageSquare, Sparkles, Wrench, CheckCircle2, Image, Settings } from 'lucide-react'
+import { ChevronDown, ChevronRight, Workflow } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,7 @@ import { formatNumber } from '@/utils/format-number'
 import type { Segment, RequestMetadata, Span } from '../data/schema'
 import { getSpanDisplayLabels, normalizeSpanType } from '../utils/span-display'
 import { formatDuration } from '../../../utils/format-duration'
+import { getSpanIcon } from './constant'
 
 type SpanKind = 'request' | 'response'
 
@@ -188,33 +189,7 @@ function SpanRow({ node, depth, totalDuration, onSelectSpan, selectedSpanId }: S
   const spanDisplay = spanSource ? getSpanDisplayLabels(spanSource.span, t) : null
   const spanKindLabel = spanSource ? t(`traces.common.badges.${spanSource.spanKind}`) : null
   const normalizedSpanType = spanSource ? normalizeSpanType(spanSource.span.type) : null
-
-  const spanIcon = () => {
-    switch (normalizedSpanType) {
-      case 'user_query':
-      case 'text':
-      case 'message':
-        return MessageSquare
-      case 'thinking':
-      case 'llm':
-        return Sparkles
-      case 'tool_use':
-      case 'function_call':
-        return Wrench
-      case 'tool_result':
-      case 'function_result':
-        return CheckCircle2
-      case 'user_image_url':
-      case 'image_url':
-        return Image
-      case 'system_instruction':
-        return Settings
-      default:
-        return Circle
-    }
-  }
-
-  const SpanIcon = spanIcon()
+  const SpanIcon = normalizedSpanType ? getSpanIcon(normalizedSpanType) : getSpanIcon('')
 
   return (
     <div className="border-b border-border/40">
