@@ -187,9 +187,15 @@ input ModelsInput {
   status: ChannelStatus
 }
 
+type ChannelTypeCount {
+  type: String!
+  count: Int!
+}
+
 extend type Query {
   fetchModels(input: FetchModelsInput!): FetchModelsPayload!
   models(status: ChannelStatus): [Model!]!
+  countChannelsByType: [ChannelTypeCount!]!
 }
 
 input AddUserToProjectInput {

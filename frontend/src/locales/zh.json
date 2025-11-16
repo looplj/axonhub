@@ -572,6 +572,9 @@
     "orderChannels": "批量排序",
     "settings": "设置",
     "filterChannels": "筛选渠道...",
+    "tabs": {
+      "all": "全部"
+    },
     "columns": {
       "name": "名称",
       "type": "类型",
@@ -661,7 +664,16 @@
       "duplicateMappingWarning": "检测到重复的映射，请在保存前删除重复的映射。",
       "fetchModelsSuccess": "成功获取 {{count}} 个模型",
       "fetchModelsSuccessLarge": "成功获取 {{count}} 个模型。使用搜索查找特定模型。",
-      "fetchModelsError": "获取模型失败：{{error}}"
+      "fetchModelsError": "获取模型失败：{{error}}",
+      "fetchTypesError": "获取渠道类型失败：{{error}}"
+    },
+    "errors": {
+      "fetchList": "获取渠道列表失败",
+      "fetchDetail": "获取渠道详情失败",
+      "notFound": "未找到渠道",
+      "fetchNames": "获取已有渠道名称失败",
+      "fetchOrdering": "获取渠道排序数据失败",
+      "fetchTypes": "获取渠道类型失败"
     },
     "filters": {
       "type": "类型",
@@ -800,6 +812,11 @@
           "label": "GCP 项目 ID",
           "placeholder": "my-gcp-project",
           "description": "Google Cloud Platform 项目标识符"
+        },
+        "gcpJsonData": {
+          "label": "服务账户 JSON",
+          "placeholder": "在此粘贴您的 GCP 服务账户 JSON 凭据",
+          "description": "用于 GCP 服务账户认证的完整 JSON 凭据"
         },
         "jsonData": {
           "label": "服务账户 JSON",

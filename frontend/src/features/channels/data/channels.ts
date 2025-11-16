@@ -272,6 +272,15 @@ const FETCH_MODELS_QUERY = `
   }
 `
 
+const CHANNEL_TYPES_QUERY = `
+  query CountChannelsByType {
+    countChannelsByType {
+      type
+      count
+    }
+  }
+`
+
 // Query hooks
 export function useChannels(
   variables?: {
@@ -285,6 +294,7 @@ export function useChannels(
   }
 ) {
   const { handleError } = useErrorHandler()
+  const { t } = useTranslation()
 
   return useQuery({
     enabled: !options?.disableAutoFetch,
@@ -294,7 +304,7 @@ export function useChannels(
         const data = await graphqlRequest<{ channels: ChannelConnection }>(CHANNELS_QUERY, variables)
         return channelConnectionSchema.parse(data?.channels)
       } catch (error) {
-        handleError(error, '获取渠道数据')
+        handleError(error, t('channels.errors.fetchList'))
         throw error
       }
     },
@@ -303,6 +313,7 @@ export function useChannels(
 
 export function useChannel(id: string) {
   const { handleError } = useErrorHandler()
+  const { t } = useTranslation()
 
   return useQuery({
     queryKey: ['channel', id],
@@ -311,11 +322,11 @@ export function useChannel(id: string) {
         const data = await graphqlRequest<{ channels: ChannelConnection }>(CHANNELS_QUERY, { where: { id } })
         const channel = data.channels.edges[0]?.node
         if (!channel) {
-          throw new Error('Channel not found')
+          throw new Error(t('channels.errors.notFound'))
         }
         return channelSchema.parse(channel)
       } catch (error) {
-        handleError(error, '获取渠道详情')
+        handleError(error, t('channels.errors.fetchDetail'))
         throw error
       }
     },
@@ -384,14 +395,12 @@ export function useUpdateChannelStatus() {
             ? t('channels.status.archived')
             : t('channels.status.disabled')
 
-      const messageKey =
-        variables.status === 'archived' ? 'channels.messages.archiveSuccess' : 'channels.messages.statusUpdateSuccess'
+      const messageKey = variables.status === 'archived' ? 'channels.messages.archiveSuccess' : 'channels.messages.statusUpdateSuccess'
 
       toast.success(variables.status === 'archived' ? t(messageKey) : t(messageKey, { status: statusText }))
     },
     onError: (error, variables) => {
-      const errorKey =
-        variables.status === 'archived' ? 'channels.messages.archiveError' : 'channels.messages.statusUpdateError'
+      const errorKey = variables.status === 'archived' ? 'channels.messages.archiveError' : 'channels.messages.statusUpdateError'
       toast.error(t(errorKey, { error: error.message }))
     },
   })
@@ -403,10 +412,7 @@ export function useBulkArchiveChannels() {
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      const data = await graphqlRequest<{ bulkArchiveChannels: boolean }>(
-        BULK_ARCHIVE_CHANNELS_MUTATION,
-        { ids }
-      )
+      const data = await graphqlRequest<{ bulkArchiveChannels: boolean }>(BULK_ARCHIVE_CHANNELS_MUTATION, { ids })
       return data.bulkArchiveChannels
     },
     onSuccess: (_data, variables) => {
@@ -425,10 +431,7 @@ export function useBulkDisableChannels() {
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      const data = await graphqlRequest<{ bulkDisableChannels: boolean }>(
-        BULK_DISABLE_CHANNELS_MUTATION,
-        { ids }
-      )
+      const data = await graphqlRequest<{ bulkDisableChannels: boolean }>(BULK_DISABLE_CHANNELS_MUTATION, { ids })
       return data.bulkDisableChannels
     },
     onSuccess: (_data, variables) => {
@@ -447,10 +450,7 @@ export function useBulkEnableChannels() {
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      const data = await graphqlRequest<{ bulkEnableChannels: boolean }>(
-        BULK_ENABLE_CHANNELS_MUTATION,
-        { ids }
-      )
+      const data = await graphqlRequest<{ bulkEnableChannels: boolean }>(BULK_ENABLE_CHANNELS_MUTATION, { ids })
       return data.bulkEnableChannels
     },
     onSuccess: (_data, variables) => {
@@ -488,10 +488,7 @@ export function useBulkDeleteChannels() {
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      const data = await graphqlRequest<{ bulkDeleteChannels: boolean }>(
-        BULK_DELETE_CHANNELS_MUTATION,
-        { ids }
-      )
+      const data = await graphqlRequest<{ bulkDeleteChannels: boolean }>(BULK_DELETE_CHANNELS_MUTATION, { ids })
       return data.bulkDeleteChannels
     },
     onSuccess: (_data, variables) => {
@@ -508,11 +505,11 @@ export function useTestChannel() {
   const { t } = useTranslation()
 
   return useMutation({
-    mutationFn: async ({ 
-      channelID, 
-      modelID, 
-      proxy 
-    }: { 
+    mutationFn: async ({
+      channelID,
+      modelID,
+      proxy,
+    }: {
       channelID: string
       modelID?: string
       proxy?: { type: string; url?: string; username?: string; password?: string }
@@ -545,6 +542,7 @@ export function useTestChannel() {
 
 export function useAllChannelNames() {
   const { handleError } = useErrorHandler()
+  const { t } = useTranslation()
 
   return useQuery({
     queryKey: ['channelNames'],
@@ -560,7 +558,7 @@ export function useAllChannelNames() {
         const channelConnection = channelConnectionSchema.parse(data?.channels)
         return channelConnection.edges?.map((edge) => edge.node.name) || []
       } catch (error) {
-        handleError(error, 'Failed to load existing channel names')
+        handleError(error, t('channels.errors.fetchNames'))
         throw error
       }
     },
@@ -574,10 +572,7 @@ export function useBulkImportChannels() {
 
   return useMutation({
     mutationFn: async (input: BulkImportChannelsInput) => {
-      const data = await graphqlRequest<{ bulkImportChannels: BulkImportChannelsResult }>(
-        BULK_IMPORT_CHANNELS_MUTATION,
-        { input }
-      )
+      const data = await graphqlRequest<{ bulkImportChannels: BulkImportChannelsResult }>(BULK_IMPORT_CHANNELS_MUTATION, { input })
       return bulkImportChannelsResultSchema.parse(data.bulkImportChannels)
     },
     onSuccess: (data) => {
@@ -606,6 +601,7 @@ export function useBulkImportChannels() {
 
 export function useAllChannelsForOrdering(options?: { enabled?: boolean }) {
   const { handleError } = useErrorHandler()
+  const { t } = useTranslation()
 
   return useQuery({
     queryKey: ['allChannelsForOrdering'],
@@ -614,7 +610,7 @@ export function useAllChannelsForOrdering(options?: { enabled?: boolean }) {
         const data = await graphqlRequest<{ channels: ChannelConnection }>(ALL_CHANNELS_QUERY)
         return channelOrderingConnectionSchema.parse(data?.channels)
       } catch (error) {
-        handleError(error, '获取渠道排序数据')
+        handleError(error, t('channels.errors.fetchOrdering'))
         throw error
       }
     },
@@ -653,12 +649,7 @@ export function useFetchModels() {
   const { t } = useTranslation()
 
   return useMutation({
-    mutationFn: async (input: {
-      channelType: string
-      baseURL: string
-      apiKey?: string
-      channelID?: string
-    }) => {
+    mutationFn: async (input: { channelType: string; baseURL: string; apiKey?: string; channelID?: string }) => {
       const data = await graphqlRequest<{
         fetchModels: {
           models: Array<{ id: string }>
@@ -682,5 +673,29 @@ export function useFetchModels() {
     onError: (error) => {
       toast.error(t('channels.messages.fetchModelsError', { error: error.message }))
     },
+  })
+}
+
+export interface ChannelTypeCount {
+  type: string
+  count: number
+}
+
+export function useChannelTypes() {
+  const { handleError } = useErrorHandler()
+  const { t } = useTranslation()
+
+  return useQuery({
+    queryKey: ['channelTypes'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ countChannelsByType: ChannelTypeCount[] }>(CHANNEL_TYPES_QUERY)
+        return data.countChannelsByType || []
+      } catch (error) {
+        handleError(error, t('channels.errors.fetchTypes'))
+        throw error
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }

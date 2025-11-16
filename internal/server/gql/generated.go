@@ -180,6 +180,11 @@ type ComplexityRoot struct {
 		Proxy              func(childComplexity int) int
 	}
 
+	ChannelTypeCount struct {
+		Count func(childComplexity int) int
+		Type  func(childComplexity int) int
+	}
+
 	CleanupOption struct {
 		CleanupDays  func(childComplexity int) int
 		Enabled      func(childComplexity int) int
@@ -361,6 +366,7 @@ type ComplexityRoot struct {
 		AllScopes             func(childComplexity int, level *string) int
 		BrandSettings         func(childComplexity int) int
 		Channels              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
+		CountChannelsByType   func(childComplexity int) int
 		DailyRequestStats     func(childComplexity int, days *int) int
 		DashboardOverview     func(childComplexity int) int
 		DataStorages          func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.DataStorageOrder, where *ent.DataStorageWhereInput) int
@@ -893,6 +899,7 @@ type QueryResolver interface {
 	Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error)
 	FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsPayload, error)
 	Models(ctx context.Context, status *channel.Status) ([]*Model, error)
+	CountChannelsByType(ctx context.Context) ([]*ChannelTypeCount, error)
 	DashboardOverview(ctx context.Context) (*DashboardOverview, error)
 	RequestStats(ctx context.Context) (*RequestStats, error)
 	RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error)
@@ -1477,6 +1484,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.Proxy(childComplexity), true
+
+	case "ChannelTypeCount.count":
+		if e.complexity.ChannelTypeCount.Count == nil {
+			break
+		}
+
+		return e.complexity.ChannelTypeCount.Count(childComplexity), true
+
+	case "ChannelTypeCount.type":
+		if e.complexity.ChannelTypeCount.Type == nil {
+			break
+		}
+
+		return e.complexity.ChannelTypeCount.Type(childComplexity), true
 
 	case "CleanupOption.cleanupDays":
 		if e.complexity.CleanupOption.CleanupDays == nil {
@@ -2541,6 +2562,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Channels(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.ChannelOrder), args["where"].(*ent.ChannelWhereInput)), true
+
+	case "Query.countChannelsByType":
+		if e.complexity.Query.CountChannelsByType == nil {
+			break
+		}
+
+		return e.complexity.Query.CountChannelsByType(childComplexity), true
 
 	case "Query.dailyRequestStats":
 		if e.complexity.Query.DailyRequestStats == nil {
@@ -9779,6 +9807,94 @@ func (ec *executionContext) fieldContext_ChannelSettings_proxy(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelTypeCount_type(ctx context.Context, field graphql.CollectedField, obj *ChannelTypeCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelTypeCount_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelTypeCount_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelTypeCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelTypeCount_count(ctx context.Context, field graphql.CollectedField, obj *ChannelTypeCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelTypeCount_count(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelTypeCount_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelTypeCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CleanupOption_resourceType(ctx context.Context, field graphql.CollectedField, obj *biz.CleanupOption) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CleanupOption_resourceType(ctx, field)
 	if err != nil {
@@ -17005,6 +17121,56 @@ func (ec *executionContext) fieldContext_Query_models(ctx context.Context, field
 	if fc.Args, err = ec.field_Query_models_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_countChannelsByType(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_countChannelsByType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CountChannelsByType(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ChannelTypeCount)
+	fc.Result = res
+	return ec.marshalNChannelTypeCount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelTypeCountᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_countChannelsByType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "type":
+				return ec.fieldContext_ChannelTypeCount_type(ctx, field)
+			case "count":
+				return ec.fieldContext_ChannelTypeCount_count(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelTypeCount", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -46607,6 +46773,50 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 	return out
 }
 
+var channelTypeCountImplementors = []string{"ChannelTypeCount"}
+
+func (ec *executionContext) _ChannelTypeCount(ctx context.Context, sel ast.SelectionSet, obj *ChannelTypeCount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelTypeCountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelTypeCount")
+		case "type":
+			out.Values[i] = ec._ChannelTypeCount_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "count":
+			out.Values[i] = ec._ChannelTypeCount_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var cleanupOptionImplementors = []string{"CleanupOption"}
 
 func (ec *executionContext) _CleanupOption(ctx context.Context, sel ast.SelectionSet, obj *biz.CleanupOption) graphql.Marshaler {
@@ -48620,6 +48830,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_models(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "countChannelsByType":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_countChannelsByType(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -54724,6 +54956,60 @@ func (ec *executionContext) unmarshalNChannelType2githubᚗcomᚋloopljᚋaxonhu
 
 func (ec *executionContext) marshalNChannelType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelᚐType(ctx context.Context, sel ast.SelectionSet, v channel.Type) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNChannelTypeCount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelTypeCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*ChannelTypeCount) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNChannelTypeCount2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelTypeCount(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNChannelTypeCount2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelTypeCount(ctx context.Context, sel ast.SelectionSet, v *ChannelTypeCount) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ChannelTypeCount(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNChannelWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelWhereInput(ctx context.Context, v any) (*ent.ChannelWhereInput, error) {
