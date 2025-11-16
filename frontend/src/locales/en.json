@@ -545,6 +545,9 @@
     "orderChannels": "Bulk Ordering",
     "settings": "Settings",
     "filterChannels": "Filter channels...",
+    "tabs": {
+      "all": "All"
+    },
     "columns": {
       "name": "Name",
       "type": "Type",
@@ -639,7 +642,16 @@
       "duplicateMappingWarning": "Duplicate model mapping detected. Please remove the duplicate mapping before saving.",
       "fetchModelsSuccess": "Successfully fetched {{count}} models",
       "fetchModelsSuccessLarge": "Successfully fetched {{count}} models. Use search to find specific models.",
-      "fetchModelsError": "Failed to fetch models: {{error}}"
+      "fetchModelsError": "Failed to fetch models: {{error}}",
+      "fetchTypesError": "Failed to fetch channel types: {{error}}"
+    },
+    "errors": {
+      "fetchList": "Failed to load channels",
+      "fetchDetail": "Failed to load channel details",
+      "notFound": "Channel not found",
+      "fetchNames": "Failed to load existing channel names",
+      "fetchOrdering": "Failed to load channels for ordering",
+      "fetchTypes": "Failed to fetch channel types"
     },
     "dialogs": {
       "create": {
@@ -772,6 +784,11 @@
           "label": "GCP Project ID",
           "placeholder": "my-gcp-project",
           "description": "Google Cloud Platform project identifier"
+        },
+        "gcpJsonData": {
+          "label": "Service Account JSON",
+          "placeholder": "Paste your GCP service account JSON credentials here",
+          "description": "Complete JSON credentials for GCP service account authentication"
         },
         "jsonData": {
           "label": "GCP Service Account JSON",

@@ -387,6 +387,36 @@ func (r *queryResolver) Models(ctx context.Context, status *channel.Status) ([]*
 	return models, nil
 }
 
+// CountChannelsByType is the resolver for the countChannelsByType field.
+func (r *queryResolver) CountChannelsByType(ctx context.Context) ([]*ChannelTypeCount, error) {
+	// Query channel types with counts
+	var results []struct {
+		Type  string `json:"type"`
+		Count int    `json:"count"`
+	}
+
+	err := r.client.Channel.
+		Query().
+		Where(channel.StatusNEQ(channel.StatusArchived)).
+		GroupBy(channel.FieldType).
+		Aggregate(ent.Count()).
+		Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channel type counts: %w", err)
+	}
+
+	// Convert to GraphQL type
+	typeCounts := make([]*ChannelTypeCount, len(results))
+	for i, result := range results {
+		typeCounts[i] = &ChannelTypeCount{
+			Type:  result.Type,
+			Count: result.Count,
+		}
+	}
+
+	return typeCounts, nil
+}
+
 // ID is the resolver for the id field.
 func (r *segmentResolver) ID(ctx context.Context, obj *biz.Segment) (*objects.GUID, error) {
 	return &objects.GUID{Type: ent.TypeRequest, ID: obj.ID}, nil

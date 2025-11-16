@@ -38,6 +38,7 @@ interface DataTableProps {
   nameFilter: string
   typeFilter: string[]
   statusFilter: string[]
+  selectedTypeTab?: string
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
@@ -56,6 +57,7 @@ export function ChannelsTable({
   nameFilter,
   typeFilter,
   statusFilter,
+  selectedTypeTab = 'all',
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
@@ -183,7 +185,12 @@ export function ChannelsTable({
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <DataTableToolbar table={table} isFiltered={isFiltered} selectedCount={selectedCount} />
+      <DataTableToolbar 
+        table={table} 
+        isFiltered={isFiltered} 
+        selectedCount={selectedCount}
+        selectedTypeTab={selectedTypeTab}
+      />
       <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table data-testid='channels-table'>
           <TableHeader className='bg-background sticky top-0 z-10'>

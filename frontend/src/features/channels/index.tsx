@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
@@ -8,8 +8,9 @@ import { createColumns } from './components/channels-columns'
 import { ChannelsDialogs } from './components/channels-dialogs'
 import { ChannelsPrimaryButtons } from './components/channels-primary-buttons'
 import { ChannelsTable } from './components/channels-table'
+import { ChannelsTypeTabs } from './components/channels-type-tabs'
 import ChannelsProvider from './context/channels-context'
-import { useChannels } from './data/channels'
+import { useChannels, useChannelTypes } from './data/channels'
 
 function ChannelsContent() {
   const { t } = useTranslation()
@@ -19,9 +20,24 @@ function ChannelsContent() {
   const [nameFilter, setNameFilter] = useState<string>('')
   const [typeFilter, setTypeFilter] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [selectedTypeTab, setSelectedTypeTab] = useState<string>('all')
+  
+  // Fetch channel types for tabs
+  const { data: channelTypeCounts = [] } = useChannelTypes()
   
   // Debounce the name filter to avoid excessive API calls
   const debouncedNameFilter = useDebounce(nameFilter, 300)
+  
+  // Get types for the selected tab
+  const tabFilteredTypes = useMemo(() => {
+    if (selectedTypeTab === 'all') {
+      return []
+    }
+    // Filter types that start with the selected prefix
+    return channelTypeCounts
+      .filter(({ type }) => type.startsWith(selectedTypeTab))
+      .map(({ type }) => type)
+  }, [selectedTypeTab, channelTypeCounts])
   
   // Build where clause with filters
   const whereClause = (() => {
@@ -29,8 +45,14 @@ function ChannelsContent() {
     if (debouncedNameFilter) {
       where.nameContainsFold = debouncedNameFilter
     }
-    if (typeFilter.length > 0) {
-      where.typeIn = typeFilter
+    // Combine tab filter with manual type filter
+    const combinedTypeFilter = [...typeFilter]
+    if (tabFilteredTypes.length > 0) {
+      // If tab is selected, use tab types
+      combinedTypeFilter.push(...tabFilteredTypes)
+    }
+    if (combinedTypeFilter.length > 0) {
+      where.typeIn = Array.from(new Set(combinedTypeFilter)) // Remove duplicates
     }
     if (statusFilter.length > 0) {
       where.statusIn = statusFilter
@@ -75,6 +97,13 @@ function ChannelsContent() {
     setTypeFilter(filters)
     resetCursor()
   }
+  
+  const handleTabChange = (tab: string) => {
+    setSelectedTypeTab(tab)
+    // Clear manual type filter when switching tabs
+    setTypeFilter([])
+    resetCursor()
+  }
 
   const handleStatusFilterChange = (filters: string[]) => {
     setStatusFilter(filters)
@@ -85,6 +114,11 @@ function ChannelsContent() {
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
+        <ChannelsTypeTabs 
+          typeCounts={channelTypeCounts}
+          selectedTab={selectedTypeTab}
+          onTabChange={handleTabChange}
+        />
         <ChannelsTable 
           // loading={isLoading}
           data={data?.edges?.map(edge => edge.node) || []} 
@@ -95,6 +129,7 @@ function ChannelsContent() {
           nameFilter={nameFilter}
           typeFilter={typeFilter}
           statusFilter={statusFilter}
+          selectedTypeTab={selectedTypeTab}
           onNextPage={handleNextPage}
           onPreviousPage={handlePreviousPage}
           onPageSizeChange={handlePageSizeChange}

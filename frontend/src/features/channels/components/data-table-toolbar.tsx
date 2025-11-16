@@ -13,12 +13,14 @@ interface DataTableToolbarProps<TData> {
   table: Table<TData>
   isFiltered?: boolean
   selectedCount?: number
+  selectedTypeTab?: string
 }
 
 export function DataTableToolbar<TData>({
   table,
   isFiltered: externalIsFiltered,
   selectedCount: externalSelectedCount,
+  selectedTypeTab = 'all',
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const { setOpen } = useChannels()
@@ -113,7 +115,7 @@ export function DataTableToolbar<TData>({
           }
           className='h-8 w-[150px] lg:w-[250px]'
         />
-        {table.getColumn('type') && (
+        {table.getColumn('type') && selectedTypeTab === 'all' && (
           <DataTableFacetedFilter
             column={table.getColumn('type')}
             title={t('channels.filters.type')}

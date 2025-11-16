@@ -11,7 +11,7 @@ export function useErrorHandler() {
     
     if (error instanceof ZodError) {
       // Schema validation error
-      const fieldErrors = error.errors?.map(err => {
+      const fieldErrors = error.issues?.map((err: any) => {
         const path = err.path.join('.')
         return `${path}: ${err.message}`
       }).join(', ') || 'Validation failed'

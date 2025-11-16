@@ -107,7 +107,6 @@ package-lock.json
 # tasks/ 
 
 .kiro
-.windsurf
 openspec
 .cursor
 .vercel

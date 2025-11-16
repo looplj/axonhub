@@ -57,6 +57,11 @@ type ChannelOrderingItem struct {
 	OrderingWeight int          `json:"orderingWeight"`
 }
 
+type ChannelTypeCount struct {
+	Type  string `json:"type"`
+	Count int    `json:"count"`
+}
+
 type DailyRequestStats struct {
 	Date  string `json:"date"`
 	Count int    `json:"count"`
