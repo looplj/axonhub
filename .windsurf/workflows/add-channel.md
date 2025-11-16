@@ -1,5 +1,5 @@
 ---
-description: auto_execution_mode: 1
+description: "Workflow to add a new channel by following DEVELOPMENT.md"
 auto_execution_mode: 1
 ---
 
