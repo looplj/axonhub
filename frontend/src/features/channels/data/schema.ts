@@ -81,6 +81,7 @@ export const channelSchema = z.object({
   name: z.string(),
   status: channelStatusSchema,
   supportedModels: z.array(z.string()),
+  tags: z.array(z.string()).optional().default([]).nullable(),
   defaultTestModel: z.string(),
   settings: channelSettingsSchema.optional().nullable(),
   orderingWeight: z.number().default(0),
@@ -94,6 +95,7 @@ export const createChannelInputSchema = z
     baseURL: z.string().url('Please enter a valid URL'),
     name: z.string().min(1, 'Name is required'),
     supportedModels: z.array(z.string()).min(0, 'At least one supported model is required'),
+    tags: z.array(z.string()).optional().default([]),
     defaultTestModel: z.string().min(1, 'Please select a default test model'),
     settings: channelSettingsSchema.optional(),
     credentials: z.object({
@@ -175,6 +177,7 @@ export const updateChannelInputSchema = z
     baseURL: z.string().url('Please enter a valid URL').optional(),
     name: z.string().min(1, 'Name is required').optional(),
     supportedModels: z.array(z.string()).min(1, 'At least one supported model is required').optional(),
+    tags: z.array(z.string()).optional(),
     defaultTestModel: z.string().min(1, 'Please select a default test model').optional(),
     settings: channelSettingsSchema.optional(),
     credentials: z

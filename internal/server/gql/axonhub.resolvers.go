@@ -19,11 +19,17 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/samber/lo"
 )
 
 // CreateChannel is the resolver for the createChannel field.
 func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
-	return r.channelService.CreateChannel(ctx, &input)
+	return r.channelService.CreateChannel(ctx, input)
+}
+
+// BulkCreateChannels is the resolver for the bulkCreateChannels field.
+func (r *mutationResolver) BulkCreateChannels(ctx context.Context, input biz.BulkCreateChannelsInput) ([]*ent.Channel, error) {
+	return r.channelService.BulkCreateChannels(ctx, input)
 }
 
 // UpdateChannel is the resolver for the updateChannel field.
@@ -387,25 +393,46 @@ func (r *queryResolver) Models(ctx context.Context, status *channel.Status) ([]*
 	return models, nil
 }
 
+// AllChannelTags is the resolver for the allChannelTags field.
+func (r *queryResolver) AllChannelTags(ctx context.Context) ([]string, error) {
+	// Query all channels that are not archived
+	channels, err := r.client.Channel.
+		Query().
+		Select(channel.FieldTags).
+		Where(channel.StatusNEQ(channel.StatusArchived)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	tags := lo.Reduce(channels, func(acc []string, ch *ent.Channel, _ int) []string {
+		return append(acc, ch.Tags...)
+	}, []string{})
+
+	return lo.Uniq(tags), nil
+}
+
 // CountChannelsByType is the resolver for the countChannelsByType field.
-func (r *queryResolver) CountChannelsByType(ctx context.Context) ([]*ChannelTypeCount, error) {
+func (r *queryResolver) CountChannelsByType(ctx context.Context, input CountChannelsByTypeInput) ([]*ChannelTypeCount, error) {
 	// Query channel types with counts
 	var results []struct {
 		Type  string `json:"type"`
 		Count int    `json:"count"`
 	}
 
-	err := r.client.Channel.
-		Query().
-		Where(channel.StatusNEQ(channel.StatusArchived)).
-		GroupBy(channel.FieldType).
-		Aggregate(ent.Count()).
-		Scan(ctx, &results)
+	q := r.client.Channel.Query()
+	if len(input.StatusIn) > 0 {
+		q = q.Where(channel.StatusIn(input.StatusIn...))
+	} else {
+		q = q.Where(channel.StatusNEQ(channel.StatusArchived))
+	}
+
+	err := q.GroupBy(channel.FieldType).
+		Aggregate(ent.Count()).Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channel type counts: %w", err)
 	}
 
-	// Convert to GraphQL type
 	typeCounts := make([]*ChannelTypeCount, len(results))
 	for i, result := range results {
 		typeCounts[i] = &ChannelTypeCount{
@@ -415,6 +442,19 @@ func (r *queryResolver) CountChannelsByType(ctx context.Context) ([]*ChannelType
 	}
 
 	return typeCounts, nil
+}
+
+// QueryChannels is the resolver for the queryChannels field.
+func (r *queryResolver) QueryChannels(ctx context.Context, input QueryChannelInput) (*ent.ChannelConnection, error) {
+	if err := validatePaginationArgs(input.First, input.Last); err != nil {
+		return nil, err
+	}
+
+	return r.client.Channel.Query().Paginate(ctx, input.After, input.First, input.Before, input.Last,
+		ent.WithChannelOrder(input.OrderBy),
+		ent.WithChannelFilter(input.Where.Filter),
+		ent.WithChannelTagFilter(input.HasTag),
+	)
 }
 
 // ID is the resolver for the id field.

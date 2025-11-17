@@ -17,6 +17,7 @@ import {
   BulkUpdateChannelOrderingResult,
   bulkUpdateChannelOrderingResultSchema,
   channelOrderingConnectionSchema,
+  ChannelSettings,
 } from './schema'
 
 // GraphQL queries and mutations
@@ -38,6 +39,7 @@ const CHANNELS_QUERY = `
           name
           status
           supportedModels
+          tags
           defaultTestModel
           settings {
             extraModelPrefix
@@ -80,6 +82,39 @@ const CREATE_CHANNEL_MUTATION = `
       name
       status
       supportedModels
+      tags
+      defaultTestModel
+      settings {
+        extraModelPrefix
+        modelMappings {
+          from
+          to
+        }
+        overrideParameters
+        proxy {
+          type
+          url
+          username
+          password
+        }
+      }
+      orderingWeight
+    }
+  }
+`
+
+const BULK_CREATE_CHANNELS_MUTATION = `
+  mutation BulkCreateChannels($input: BulkCreateChannelsInput!) {
+    bulkCreateChannels(input: $input) {
+      id
+      type
+      createdAt
+      updatedAt
+      baseURL
+      name
+      status
+      supportedModels
+      tags
       defaultTestModel
       settings {
         extraModelPrefix
@@ -111,6 +146,7 @@ const UPDATE_CHANNEL_MUTATION = `
       name
       status
       supportedModels
+      tags
       defaultTestModel
       settings {
         extraModelPrefix
@@ -197,6 +233,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         name
         status
         supportedModels
+        tags
         defaultTestModel
         settings {
           extraModelPrefix
@@ -273,15 +310,65 @@ const FETCH_MODELS_QUERY = `
 `
 
 const CHANNEL_TYPES_QUERY = `
-  query CountChannelsByType {
-    countChannelsByType {
+  query CountChannelsByType($input: CountChannelsByTypeInput!) {
+    countChannelsByType(input: $input) {
       type
       count
     }
   }
 `
 
-// Query hooks
+const ALL_CHANNEL_TAGS_QUERY = `
+  query AllChannelTags {
+    allChannelTags
+  }
+`
+
+const QUERY_CHANNELS_QUERY = `
+  query QueryChannels($input: QueryChannelInput!) {
+    queryChannels(input: $input) {
+      edges {
+        node {
+          id
+          createdAt
+          updatedAt
+          type
+          baseURL
+          name
+          status
+          supportedModels
+          tags
+          defaultTestModel
+          settings {
+            extraModelPrefix
+            modelMappings {
+              from
+              to
+            }
+            overrideParameters
+            proxy {
+              type
+              url
+              username
+              password
+            }
+          }
+          orderingWeight
+        }
+        cursor
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+      totalCount
+    }
+  }
+`
+
+//@deprecated use useQueryChannels instead.
 export function useChannels(
   variables?: {
     first?: number
@@ -303,6 +390,39 @@ export function useChannels(
       try {
         const data = await graphqlRequest<{ channels: ChannelConnection }>(CHANNELS_QUERY, variables)
         return channelConnectionSchema.parse(data?.channels)
+      } catch (error) {
+        handleError(error, t('channels.errors.fetchList'))
+        throw error
+      }
+    },
+  })
+}
+
+// Use this hook to query channels with pagination and filtering
+export function useQueryChannels(
+  variables?: {
+    first?: number
+    after?: string
+    before?: string
+    last?: number
+    orderBy?: { field: 'CREATED_AT' | 'ORDERING_WEIGHT'; direction: 'ASC' | 'DESC' }
+    where?: Record<string, unknown>
+    hasTag?: string
+  },
+  options?: {
+    disableAutoFetch?: boolean
+  }
+) {
+  const { handleError } = useErrorHandler()
+  const { t } = useTranslation()
+
+  return useQuery({
+    enabled: !options?.disableAutoFetch,
+    queryKey: ['channels', variables],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ queryChannels: ChannelConnection }>(QUERY_CHANNELS_QUERY, { input: variables })
+        return channelConnectionSchema.parse(data?.queryChannels)
       } catch (error) {
         handleError(error, t('channels.errors.fetchList'))
         throw error
@@ -350,6 +470,35 @@ export function useCreateChannel() {
     },
     onError: (error) => {
       toast.error(t('channels.messages.createError', { error: error.message }))
+    },
+  })
+}
+
+export interface BulkCreateChannelsInput {
+  type: string
+  name: string
+  baseURL?: string
+  apiKeys: string[]
+  supportedModels: string[]
+  defaultTestModel: string
+  settings?: ChannelSettings
+}
+
+export function useBulkCreateChannels() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async (input: BulkCreateChannelsInput) => {
+      const data = await graphqlRequest<{ bulkCreateChannels: Channel[] }>(BULK_CREATE_CHANNELS_MUTATION, { input })
+      return data.bulkCreateChannels.map((ch) => channelSchema.parse(ch))
+    },
+    onSuccess: (channels) => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] })
+      toast.success(t('channels.messages.batchCreateSuccess', { count: channels.length }))
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.batchCreateError', { error: error.message }))
     },
   })
 }
@@ -681,18 +830,44 @@ export interface ChannelTypeCount {
   count: number
 }
 
-export function useChannelTypes() {
+export function useChannelTypes(statusIn?: string[]) {
   const { handleError } = useErrorHandler()
   const { t } = useTranslation()
 
   return useQuery({
-    queryKey: ['channelTypes'],
+    queryKey: ['channelTypes', statusIn],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ countChannelsByType: ChannelTypeCount[] }>(CHANNEL_TYPES_QUERY)
+        const input: { statusIn?: string[] } = {}
+        if (statusIn && statusIn.length > 0) {
+          input.statusIn = statusIn
+        }
+        const data = await graphqlRequest<{ countChannelsByType: ChannelTypeCount[] }>(
+          CHANNEL_TYPES_QUERY,
+          { input }
+        )
         return data.countChannelsByType || []
       } catch (error) {
         handleError(error, t('channels.errors.fetchTypes'))
+        throw error
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
+export function useAllChannelTags() {
+  const { handleError } = useErrorHandler()
+  const { t } = useTranslation()
+
+  return useQuery({
+    queryKey: ['allChannelTags'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ allChannelTags: string[] }>(ALL_CHANNEL_TAGS_QUERY)
+        return data.allChannelTags || []
+      } catch (error) {
+        handleError(error, t('channels.errors.fetchTags'))
         throw error
       }
     },

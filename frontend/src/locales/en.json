@@ -552,6 +552,7 @@
       "name": "Name",
       "type": "Type",
       "status": "Status",
+      "tags": "Tags",
       "baseURL": "Base URL",
       "supportedModels": "Supported Models",
       "test": "Test",
@@ -605,6 +606,7 @@
     "filters": {
       "type": "Type",
       "status": "Status",
+      "tags": "Tags",
       "filterByName": "Search by name"
     },
     "messages": {
@@ -651,7 +653,8 @@
       "notFound": "Channel not found",
       "fetchNames": "Failed to load existing channel names",
       "fetchOrdering": "Failed to load channels for ordering",
-      "fetchTypes": "Failed to fetch channel types"
+      "fetchTypes": "Failed to fetch channel types",
+      "fetchTags": "Failed to fetch channel tags"
     },
     "dialogs": {
       "create": {
@@ -742,7 +745,8 @@
           "label": "API Key",
           "placeholder": "sk-...",
           "editPlaceholder": "Leave empty to keep unchanged",
-          "description": "API key for authentication"
+          "description": "API key for authentication",
+          "multiLineHint": "Enter one API key per line for batch creation"
         },
         "supportedModels": {
           "label": "Supported Models",

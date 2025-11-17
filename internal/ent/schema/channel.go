@@ -72,6 +72,7 @@ func (Channel) Fields() []ent.Field {
 		field.Enum("status").Values("enabled", "disabled", "archived").Default("disabled"),
 		field.JSON("credentials", &objects.ChannelCredentials{}).Sensitive().Default(&objects.ChannelCredentials{}),
 		field.Strings("supported_models"),
+		field.Strings("tags").Optional().Default([]string{}),
 		field.String("default_test_model"),
 		field.JSON("settings", &objects.ChannelSettings{}).
 			Default(&objects.ChannelSettings{

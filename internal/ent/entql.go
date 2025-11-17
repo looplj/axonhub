@@ -71,6 +71,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channel.FieldStatus:           {Type: field.TypeEnum, Column: channel.FieldStatus},
 			channel.FieldCredentials:      {Type: field.TypeJSON, Column: channel.FieldCredentials},
 			channel.FieldSupportedModels:  {Type: field.TypeJSON, Column: channel.FieldSupportedModels},
+			channel.FieldTags:             {Type: field.TypeJSON, Column: channel.FieldTags},
 			channel.FieldDefaultTestModel: {Type: field.TypeString, Column: channel.FieldDefaultTestModel},
 			channel.FieldSettings:         {Type: field.TypeJSON, Column: channel.FieldSettings},
 			channel.FieldOrderingWeight:   {Type: field.TypeInt, Column: channel.FieldOrderingWeight},
@@ -1115,6 +1116,11 @@ func (f *ChannelFilter) WhereCredentials(p entql.BytesP) {
 // WhereSupportedModels applies the entql json.RawMessage predicate on the supported_models field.
 func (f *ChannelFilter) WhereSupportedModels(p entql.BytesP) {
 	f.Where(p.Field(channel.FieldSupportedModels))
+}
+
+// WhereTags applies the entql json.RawMessage predicate on the tags field.
+func (f *ChannelFilter) WhereTags(p entql.BytesP) {
+	f.Where(p.Field(channel.FieldTags))
 }
 
 // WhereDefaultTestModel applies the entql string predicate on the default_test_model field.

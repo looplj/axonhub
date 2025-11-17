@@ -620,10 +620,34 @@ func (svc *ChannelService) ListAllModels(ctx context.Context) []objects.Model {
 	return lo.Values(modelSet)
 }
 
+// createChannel creates a new channel without triggering a reload.
+// This is useful for batch operations where reload should happen once at the end.
+func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
+	createBuilder := ent.FromContext(ctx).Channel.Create().
+		SetType(input.Type).
+		SetNillableBaseURL(input.BaseURL).
+		SetName(input.Name).
+		SetCredentials(input.Credentials).
+		SetSupportedModels(input.SupportedModels).
+		SetDefaultTestModel(input.DefaultTestModel).
+		SetSettings(input.Settings)
+
+	if input.Tags != nil {
+		createBuilder.SetTags(input.Tags)
+	}
+
+	channel, err := createBuilder.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create channel: %w", err)
+	}
+
+	return channel, nil
+}
+
 // CreateChannel creates a new channel with the provided input.
-func (svc *ChannelService) CreateChannel(ctx context.Context, input *ent.CreateChannelInput) (*ent.Channel, error) {
+func (svc *ChannelService) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
 	// Check if a channel with the same name already exists
-	existing, err := svc.Ent.Channel.Query().
+	existing, err := ent.FromContext(ctx).Channel.Query().
 		Where(channel.Name(input.Name)).
 		First(ctx)
 	if err != nil && !ent.IsNotFound(err) {
@@ -634,22 +658,93 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input *ent.CreateC
 		return nil, fmt.Errorf("channel with name '%s' already exists", input.Name)
 	}
 
-	channel, err := svc.Ent.Channel.Create().
-		SetType(input.Type).
-		SetNillableBaseURL(input.BaseURL).
-		SetName(input.Name).
-		SetCredentials(input.Credentials).
-		SetSupportedModels(input.SupportedModels).
-		SetDefaultTestModel(input.DefaultTestModel).
-		SetSettings(input.Settings).
-		Save(ctx)
+	channel, err := svc.createChannel(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create channel: %w", err)
+		return nil, err
 	}
 
 	svc.asyncReloadChannels()
 
 	return channel, nil
+}
+
+// BulkCreateChannelsInput represents input for bulk creating channels.
+type BulkCreateChannelsInput struct {
+	Type             channel.Type
+	Name             string
+	BaseURL          *string
+	APIKeys          []string
+	SupportedModels  []string
+	DefaultTestModel string
+	Settings         *objects.ChannelSettings
+}
+
+// BulkCreateChannels creates multiple channels with the same configuration but different API keys.
+// Returns error if any channel creation fails (transaction will rollback).
+func (svc *ChannelService) BulkCreateChannels(ctx context.Context, input BulkCreateChannelsInput) ([]*ent.Channel, error) {
+	if len(input.APIKeys) == 0 {
+		return nil, fmt.Errorf("no API keys provided")
+	}
+
+	if input.BaseURL == nil {
+		return nil, fmt.Errorf("base URL is required")
+	}
+
+	if err := channel.TypeValidator(input.Type); err != nil {
+		return nil, fmt.Errorf("invalid channel type '%s': %w", input.Type, err)
+	}
+
+	var createdChannels []*ent.Channel
+
+	// Get all existing channel names to check for conflicts
+	existingChannels, err := svc.Ent.Channel.Query().Select(channel.FieldName).All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query existing channels: %w", err)
+	}
+
+	existingNames := lo.SliceToMap(existingChannels, func(ch *ent.Channel) (string, bool) {
+		return ch.Name, true
+	})
+
+	// All channels use numbered format: "base - (1)", "base - (2)", etc.
+	counter := 1
+	for _, apiKey := range input.APIKeys {
+		// Generate unique channel name with numbering
+		channelName := fmt.Sprintf("%s - (%d)", input.Name, counter)
+		// Find next available counter
+		for existingNames[channelName] {
+			counter++
+			channelName = fmt.Sprintf("%s - (%d)", input.Name, counter)
+		}
+
+		counter++
+		existingNames[channelName] = true
+
+		// Create channel input
+		createInput := ent.CreateChannelInput{
+			Type:             input.Type,
+			BaseURL:          input.BaseURL,
+			Name:             channelName,
+			Credentials:      &objects.ChannelCredentials{APIKey: apiKey},
+			SupportedModels:  input.SupportedModels,
+			Tags:             []string{input.Name}, // Use base name as tag
+			DefaultTestModel: input.DefaultTestModel,
+			Settings:         input.Settings,
+		}
+
+		// Create the channel without reload
+		ch, err := svc.createChannel(ctx, createInput)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create channel '%s': %w", channelName, err)
+		}
+
+		createdChannels = append(createdChannels, ch)
+	}
+
+	// Reload channels once after all successful creations
+	svc.asyncReloadChannels()
+
+	return createdChannels, nil
 }
 
 // UpdateChannel updates an existing channel with the provided input.
@@ -680,6 +775,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 	if input.SupportedModels != nil {
 		mut.SetSupportedModels(input.SupportedModels)
+	}
+
+	if input.Tags != nil {
+		mut.SetTags(input.Tags)
 	}
 
 	if input.Settings != nil {

@@ -120,6 +120,12 @@ func (_c *ChannelCreate) SetSupportedModels(v []string) *ChannelCreate {
 	return _c
 }
 
+// SetTags sets the "tags" field.
+func (_c *ChannelCreate) SetTags(v []string) *ChannelCreate {
+	_c.mutation.SetTags(v)
+	return _c
+}
+
 // SetDefaultTestModel sets the "default_test_model" field.
 func (_c *ChannelCreate) SetDefaultTestModel(v string) *ChannelCreate {
 	_c.mutation.SetDefaultTestModel(v)
@@ -254,6 +260,10 @@ func (_c *ChannelCreate) defaults() error {
 		v := channel.DefaultCredentials
 		_c.mutation.SetCredentials(v)
 	}
+	if _, ok := _c.mutation.Tags(); !ok {
+		v := channel.DefaultTags
+		_c.mutation.SetTags(v)
+	}
 	if _, ok := _c.mutation.Settings(); !ok {
 		v := channel.DefaultSettings
 		_c.mutation.SetSettings(v)
@@ -369,6 +379,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.SupportedModels(); ok {
 		_spec.SetField(channel.FieldSupportedModels, field.TypeJSON, value)
 		_node.SupportedModels = value
+	}
+	if value, ok := _c.mutation.Tags(); ok {
+		_spec.SetField(channel.FieldTags, field.TypeJSON, value)
+		_node.Tags = value
 	}
 	if value, ok := _c.mutation.DefaultTestModel(); ok {
 		_spec.SetField(channel.FieldDefaultTestModel, field.TypeString, value)
@@ -578,6 +592,24 @@ func (u *ChannelUpsert) UpdateSupportedModels() *ChannelUpsert {
 	return u
 }
 
+// SetTags sets the "tags" field.
+func (u *ChannelUpsert) SetTags(v []string) *ChannelUpsert {
+	u.Set(channel.FieldTags, v)
+	return u
+}
+
+// UpdateTags sets the "tags" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateTags() *ChannelUpsert {
+	u.SetExcluded(channel.FieldTags)
+	return u
+}
+
+// ClearTags clears the value of the "tags" field.
+func (u *ChannelUpsert) ClearTags() *ChannelUpsert {
+	u.SetNull(channel.FieldTags)
+	return u
+}
+
 // SetDefaultTestModel sets the "default_test_model" field.
 func (u *ChannelUpsert) SetDefaultTestModel(v string) *ChannelUpsert {
 	u.Set(channel.FieldDefaultTestModel, v)
@@ -783,6 +815,27 @@ func (u *ChannelUpsertOne) SetSupportedModels(v []string) *ChannelUpsertOne {
 func (u *ChannelUpsertOne) UpdateSupportedModels() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateSupportedModels()
+	})
+}
+
+// SetTags sets the "tags" field.
+func (u *ChannelUpsertOne) SetTags(v []string) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetTags(v)
+	})
+}
+
+// UpdateTags sets the "tags" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateTags() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateTags()
+	})
+}
+
+// ClearTags clears the value of the "tags" field.
+func (u *ChannelUpsertOne) ClearTags() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearTags()
 	})
 }
 
@@ -1165,6 +1218,27 @@ func (u *ChannelUpsertBulk) SetSupportedModels(v []string) *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) UpdateSupportedModels() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateSupportedModels()
+	})
+}
+
+// SetTags sets the "tags" field.
+func (u *ChannelUpsertBulk) SetTags(v []string) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetTags(v)
+	})
+}
+
+// UpdateTags sets the "tags" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateTags() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateTags()
+	})
+}
+
+// ClearTags clears the value of the "tags" field.
+func (u *ChannelUpsertBulk) ClearTags() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearTags()
 	})
 }
 

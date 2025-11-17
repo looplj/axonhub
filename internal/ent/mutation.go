@@ -1162,6 +1162,8 @@ type ChannelMutation struct {
 	credentials            **objects.ChannelCredentials
 	supported_models       *[]string
 	appendsupported_models []string
+	tags                   *[]string
+	appendtags             []string
 	default_test_model     *string
 	settings               **objects.ChannelSettings
 	ordering_weight        *int
@@ -1651,6 +1653,71 @@ func (m *ChannelMutation) ResetSupportedModels() {
 	m.appendsupported_models = nil
 }
 
+// SetTags sets the "tags" field.
+func (m *ChannelMutation) SetTags(s []string) {
+	m.tags = &s
+	m.appendtags = nil
+}
+
+// Tags returns the value of the "tags" field in the mutation.
+func (m *ChannelMutation) Tags() (r []string, exists bool) {
+	v := m.tags
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTags returns the old "tags" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldTags(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTags is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTags requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTags: %w", err)
+	}
+	return oldValue.Tags, nil
+}
+
+// AppendTags adds s to the "tags" field.
+func (m *ChannelMutation) AppendTags(s []string) {
+	m.appendtags = append(m.appendtags, s...)
+}
+
+// AppendedTags returns the list of values that were appended to the "tags" field in this mutation.
+func (m *ChannelMutation) AppendedTags() ([]string, bool) {
+	if len(m.appendtags) == 0 {
+		return nil, false
+	}
+	return m.appendtags, true
+}
+
+// ClearTags clears the value of the "tags" field.
+func (m *ChannelMutation) ClearTags() {
+	m.tags = nil
+	m.appendtags = nil
+	m.clearedFields[channel.FieldTags] = struct{}{}
+}
+
+// TagsCleared returns if the "tags" field was cleared in this mutation.
+func (m *ChannelMutation) TagsCleared() bool {
+	_, ok := m.clearedFields[channel.FieldTags]
+	return ok
+}
+
+// ResetTags resets all changes to the "tags" field.
+func (m *ChannelMutation) ResetTags() {
+	m.tags = nil
+	m.appendtags = nil
+	delete(m.clearedFields, channel.FieldTags)
+}
+
 // SetDefaultTestModel sets the "default_test_model" field.
 func (m *ChannelMutation) SetDefaultTestModel(s string) {
 	m.default_test_model = &s
@@ -1988,7 +2055,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -2015,6 +2082,9 @@ func (m *ChannelMutation) Fields() []string {
 	}
 	if m.supported_models != nil {
 		fields = append(fields, channel.FieldSupportedModels)
+	}
+	if m.tags != nil {
+		fields = append(fields, channel.FieldTags)
 	}
 	if m.default_test_model != nil {
 		fields = append(fields, channel.FieldDefaultTestModel)
@@ -2051,6 +2121,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.Credentials()
 	case channel.FieldSupportedModels:
 		return m.SupportedModels()
+	case channel.FieldTags:
+		return m.Tags()
 	case channel.FieldDefaultTestModel:
 		return m.DefaultTestModel()
 	case channel.FieldSettings:
@@ -2084,6 +2156,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldCredentials(ctx)
 	case channel.FieldSupportedModels:
 		return m.OldSupportedModels(ctx)
+	case channel.FieldTags:
+		return m.OldTags(ctx)
 	case channel.FieldDefaultTestModel:
 		return m.OldDefaultTestModel(ctx)
 	case channel.FieldSettings:
@@ -2161,6 +2235,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSupportedModels(v)
+		return nil
+	case channel.FieldTags:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTags(v)
 		return nil
 	case channel.FieldDefaultTestModel:
 		v, ok := value.(string)
@@ -2243,6 +2324,9 @@ func (m *ChannelMutation) ClearedFields() []string {
 	if m.FieldCleared(channel.FieldBaseURL) {
 		fields = append(fields, channel.FieldBaseURL)
 	}
+	if m.FieldCleared(channel.FieldTags) {
+		fields = append(fields, channel.FieldTags)
+	}
 	if m.FieldCleared(channel.FieldSettings) {
 		fields = append(fields, channel.FieldSettings)
 	}
@@ -2262,6 +2346,9 @@ func (m *ChannelMutation) ClearField(name string) error {
 	switch name {
 	case channel.FieldBaseURL:
 		m.ClearBaseURL()
+		return nil
+	case channel.FieldTags:
+		m.ClearTags()
 		return nil
 	case channel.FieldSettings:
 		m.ClearSettings()
@@ -2300,6 +2387,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldSupportedModels:
 		m.ResetSupportedModels()
+		return nil
+	case channel.FieldTags:
+		m.ResetTags()
 		return nil
 	case channel.FieldDefaultTestModel:
 		m.ResetDefaultTestModel()

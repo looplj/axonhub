@@ -176,12 +176,12 @@ func TestChannelService_CreateChannel(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		input   *ent.CreateChannelInput
+		input   ent.CreateChannelInput
 		wantErr bool
 	}{
 		{
 			name: "create openai channel successfully",
-			input: &ent.CreateChannelInput{
+			input: ent.CreateChannelInput{
 				Type:    channel.TypeOpenai,
 				Name:    "Test OpenAI Channel",
 				BaseURL: lo.ToPtr("https://api.openai.com/v1"),
@@ -195,7 +195,7 @@ func TestChannelService_CreateChannel(t *testing.T) {
 		},
 		{
 			name: "create anthropic channel with settings",
-			input: &ent.CreateChannelInput{
+			input: ent.CreateChannelInput{
 				Type:    channel.TypeAnthropic,
 				Name:    "Test Anthropic Channel",
 				BaseURL: lo.ToPtr("https://api.anthropic.com"),
@@ -214,7 +214,7 @@ func TestChannelService_CreateChannel(t *testing.T) {
 		},
 		{
 			name: "fail to create channel with duplicate name",
-			input: &ent.CreateChannelInput{
+			input: ent.CreateChannelInput{
 				Type:    channel.TypeOpenai,
 				Name:    "Duplicate Channel Name",
 				BaseURL: lo.ToPtr("https://api.openai.com/v1"),
@@ -848,6 +848,275 @@ func TestChannelService_BulkUpdateChannelOrdering(t *testing.T) {
 					}
 				}
 			}
+		})
+	}
+}
+
+func TestChannelService_BulkCreateChannels(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	baseURL := "https://api.openai.com/v1"
+
+	tests := []struct {
+		name             string
+		existingChannels []*ent.Channel
+		channelType      channel.Type
+		baseName         string
+		baseURL          *string
+		apiKeys          []string
+		supportedModels  []string
+		defaultTestModel string
+		wantErr          bool
+		wantCreatedCount int
+		wantChannelNames []string
+		wantTags         []string
+	}{
+		{
+			name:             "create multiple channels successfully",
+			channelType:      channel.TypeOpenai,
+			baseName:         "Test Channel",
+			baseURL:          &baseURL,
+			apiKeys:          []string{"key1", "key2", "key3"},
+			supportedModels:  []string{"gpt-4", "gpt-3.5-turbo"},
+			defaultTestModel: "gpt-4",
+			wantErr:          false,
+			wantCreatedCount: 3,
+			wantChannelNames: []string{"Test Channel - (1)", "Test Channel - (2)", "Test Channel - (3)"},
+			wantTags:         []string{"Test Channel"},
+		},
+		{
+			name: "create channels with existing base name",
+			existingChannels: []*ent.Channel{
+				{
+					Type:             channel.TypeOpenai,
+					Name:             "Existing Channel",
+					BaseURL:          baseURL,
+					Credentials:      &objects.ChannelCredentials{APIKey: "existing-key"},
+					SupportedModels:  []string{"gpt-4"},
+					DefaultTestModel: "gpt-4",
+				},
+			},
+			channelType:      channel.TypeOpenai,
+			baseName:         "Existing Channel",
+			baseURL:          &baseURL,
+			apiKeys:          []string{"key1", "key2"},
+			supportedModels:  []string{"gpt-4"},
+			defaultTestModel: "gpt-4",
+			wantErr:          false,
+			wantCreatedCount: 2,
+			wantChannelNames: []string{"Existing Channel - (1)", "Existing Channel - (2)"},
+			wantTags:         []string{"Existing Channel"},
+		},
+		{
+			name: "create channels with some existing numbered names",
+			existingChannels: []*ent.Channel{
+				{
+					Type:             channel.TypeOpenai,
+					Name:             "Test",
+					BaseURL:          baseURL,
+					Credentials:      &objects.ChannelCredentials{APIKey: "key0"},
+					SupportedModels:  []string{"gpt-4"},
+					DefaultTestModel: "gpt-4",
+				},
+				{
+					Type:             channel.TypeOpenai,
+					Name:             "Test - (1)",
+					BaseURL:          baseURL,
+					Credentials:      &objects.ChannelCredentials{APIKey: "key1"},
+					SupportedModels:  []string{"gpt-4"},
+					DefaultTestModel: "gpt-4",
+				},
+			},
+			channelType:      channel.TypeOpenai,
+			baseName:         "Test",
+			baseURL:          &baseURL,
+			apiKeys:          []string{"key2", "key3", "key4"},
+			supportedModels:  []string{"gpt-4"},
+			defaultTestModel: "gpt-4",
+			wantErr:          false,
+			wantCreatedCount: 3,
+			wantChannelNames: []string{"Test - (2)", "Test - (3)", "Test - (4)"},
+			wantTags:         []string{"Test"},
+		},
+		{
+			name:             "fail with invalid channel type",
+			channelType:      channel.Type("invalid-type"),
+			baseName:         "Test",
+			baseURL:          &baseURL,
+			apiKeys:          []string{"key1"},
+			supportedModels:  []string{"gpt-4"},
+			defaultTestModel: "gpt-4",
+			wantErr:          true,
+			wantCreatedCount: 0,
+		},
+		{
+			name:             "fail with no API keys",
+			channelType:      channel.TypeOpenai,
+			baseName:         "Test",
+			baseURL:          &baseURL,
+			apiKeys:          []string{},
+			supportedModels:  []string{"gpt-4"},
+			defaultTestModel: "gpt-4",
+			wantErr:          true,
+			wantCreatedCount: 0,
+		},
+		{
+			name:             "create single channel with numbering",
+			channelType:      channel.TypeOpenai,
+			baseName:         "Single Channel",
+			baseURL:          &baseURL,
+			apiKeys:          []string{"key1"},
+			supportedModels:  []string{"gpt-4"},
+			defaultTestModel: "gpt-4",
+			wantErr:          false,
+			wantCreatedCount: 1,
+			wantChannelNames: []string{"Single Channel - (1)"},
+			wantTags:         []string{"Single Channel"},
+		},
+		{
+			name: "create single channel when numbered name exists",
+			existingChannels: []*ent.Channel{
+				{
+					Type:             channel.TypeOpenai,
+					Name:             "Conflict - (1)",
+					BaseURL:          baseURL,
+					Credentials:      &objects.ChannelCredentials{APIKey: "existing-key"},
+					SupportedModels:  []string{"gpt-4"},
+					DefaultTestModel: "gpt-4",
+				},
+			},
+			channelType:      channel.TypeOpenai,
+			baseName:         "Conflict",
+			baseURL:          &baseURL,
+			apiKeys:          []string{"key1"},
+			supportedModels:  []string{"gpt-4"},
+			defaultTestModel: "gpt-4",
+			wantErr:          false,
+			wantCreatedCount: 1,
+			wantChannelNames: []string{"Conflict - (2)"},
+			wantTags:         []string{"Conflict"},
+		},
+		{
+			name: "create channels with gaps in numbering",
+			existingChannels: []*ent.Channel{
+				{
+					Type:             channel.TypeOpenai,
+					Name:             "Gap Test",
+					BaseURL:          baseURL,
+					Credentials:      &objects.ChannelCredentials{APIKey: "key0"},
+					SupportedModels:  []string{"gpt-4"},
+					DefaultTestModel: "gpt-4",
+				},
+				{
+					Type:             channel.TypeOpenai,
+					Name:             "Gap Test - (2)",
+					BaseURL:          baseURL,
+					Credentials:      &objects.ChannelCredentials{APIKey: "key2"},
+					SupportedModels:  []string{"gpt-4"},
+					DefaultTestModel: "gpt-4",
+				},
+			},
+			channelType:      channel.TypeOpenai,
+			baseName:         "Gap Test",
+			baseURL:          &baseURL,
+			apiKeys:          []string{"key1", "key3"},
+			supportedModels:  []string{"gpt-4"},
+			defaultTestModel: "gpt-4",
+			wantErr:          false,
+			wantCreatedCount: 2,
+			wantChannelNames: []string{"Gap Test - (1)", "Gap Test - (3)"},
+			wantTags:         []string{"Gap Test"},
+		},
+		{
+			name:             "fail with nil base URL",
+			channelType:      channel.TypeOpenai,
+			baseName:         "Test",
+			baseURL:          nil,
+			apiKeys:          []string{"key1"},
+			supportedModels:  []string{"gpt-4"},
+			defaultTestModel: "gpt-4",
+			wantErr:          true,
+			wantCreatedCount: 0,
+		},
+		{
+			name:             "create channels with settings",
+			channelType:      channel.TypeOpenai,
+			baseName:         "Settings Test",
+			baseURL:          &baseURL,
+			apiKeys:          []string{"key1", "key2"},
+			supportedModels:  []string{"gpt-4", "gpt-3.5-turbo"},
+			defaultTestModel: "gpt-4",
+			wantErr:          false,
+			wantCreatedCount: 2,
+			wantChannelNames: []string{"Settings Test - (1)", "Settings Test - (2)"},
+			wantTags:         []string{"Settings Test"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create existing channels if any
+			for _, ch := range tt.existingChannels {
+				_, err := client.Channel.Create().
+					SetType(ch.Type).
+					SetName(ch.Name).
+					SetBaseURL(ch.BaseURL).
+					SetCredentials(ch.Credentials).
+					SetSupportedModels(ch.SupportedModels).
+					SetDefaultTestModel(ch.DefaultTestModel).
+					Save(ctx)
+				require.NoError(t, err)
+			}
+
+			// Call BulkCreateChannels
+			channels, err := svc.BulkCreateChannels(ctx, BulkCreateChannelsInput{
+				Type:             tt.channelType,
+				Name:             tt.baseName,
+				BaseURL:          tt.baseURL,
+				APIKeys:          tt.apiKeys,
+				SupportedModels:  tt.supportedModels,
+				DefaultTestModel: tt.defaultTestModel,
+				Settings:         nil,
+			})
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Len(t, channels, tt.wantCreatedCount)
+
+				// Verify channel names
+				if tt.wantChannelNames != nil {
+					actualNames := lo.Map(channels, func(ch *ent.Channel, _ int) string {
+						return ch.Name
+					})
+					require.Equal(t, tt.wantChannelNames, actualNames)
+				}
+
+				// Verify tags
+				if tt.wantTags != nil {
+					for _, ch := range channels {
+						require.Equal(t, tt.wantTags, ch.Tags)
+					}
+				}
+
+				// Verify all channels have correct type and models
+				for _, ch := range channels {
+					require.Equal(t, tt.channelType, ch.Type)
+					require.Equal(t, tt.supportedModels, ch.SupportedModels)
+					require.Equal(t, tt.defaultTestModel, ch.DefaultTestModel)
+					require.NotNil(t, ch.Credentials)
+				}
+			}
+
+			// Clean up for next test
+			_, err = client.Channel.Delete().Exec(ctx)
+			require.NoError(t, err)
 		})
 	}
 }

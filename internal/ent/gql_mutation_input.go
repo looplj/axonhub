@@ -63,6 +63,7 @@ type CreateChannelInput struct {
 	Status           *channel.Status
 	Credentials      *objects.ChannelCredentials
 	SupportedModels  []string
+	Tags             []string
 	DefaultTestModel string
 	Settings         *objects.ChannelSettings
 	OrderingWeight   *int
@@ -83,6 +84,9 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.SupportedModels; v != nil {
 		m.SetSupportedModels(v)
+	}
+	if v := i.Tags; v != nil {
+		m.SetTags(v)
 	}
 	m.SetDefaultTestModel(i.DefaultTestModel)
 	if v := i.Settings; v != nil {
@@ -108,6 +112,9 @@ type UpdateChannelInput struct {
 	Credentials           *objects.ChannelCredentials
 	SupportedModels       []string
 	AppendSupportedModels []string
+	ClearTags             bool
+	Tags                  []string
+	AppendTags            []string
 	DefaultTestModel      *string
 	ClearSettings         bool
 	Settings              *objects.ChannelSettings
@@ -136,6 +143,15 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if i.AppendSupportedModels != nil {
 		m.AppendSupportedModels(i.SupportedModels)
+	}
+	if i.ClearTags {
+		m.ClearTags()
+	}
+	if v := i.Tags; v != nil {
+		m.SetTags(v)
+	}
+	if i.AppendTags != nil {
+		m.AppendTags(i.Tags)
 	}
 	if v := i.DefaultTestModel; v != nil {
 		m.SetDefaultTestModel(*v)

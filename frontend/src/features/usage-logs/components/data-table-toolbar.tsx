@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions'
-import { useChannels } from '../../channels/data'
+import { useQueryChannels } from '../../channels/data'
 import { UsageLogSource } from '../data/schema'
 import { DataTableViewOptions } from './data-table-view-options'
 
@@ -25,7 +25,7 @@ export function DataTableToolbar<TData>({ table, onRefresh, showRefresh = false 
   const isFiltered = table.getState().columnFilters.length > 0
 
   // Fetch channels data if user has permission
-  const { data: channelsData } = useChannels(
+  const { data: channelsData } = useQueryChannels(
     canViewChannels
       ? {
           first: 100,

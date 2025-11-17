@@ -25,17 +25,22 @@ interface DataTableFacetedFilterProps<TData, TValue> {
     value: string
     icon?: React.ComponentType<{ className?: string }>
   }[]
+  singleSelect?: boolean
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
   column,
   title,
   options = [],
+  singleSelect = false,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const { t } = useTranslation()
 
   const facets = column?.getFacetedUniqueValues() || new Map()
-  const selectedValues = new Set((column?.getFilterValue() || []) as string[])
+  const filterValue = column?.getFilterValue()
+  const selectedValues = singleSelect 
+    ? new Set(filterValue ? [filterValue as string] : [])
+    : new Set((filterValue || []) as string[])
   
   return (
     <Popover>
@@ -80,13 +85,19 @@ export function DataTableFacetedFilter<TData, TValue>({
                   <CommandItem
                     key={option.value}
                     onSelect={() => {
-                      if (isSelected) {
-                        selectedValues.delete(option.value)
+                      if (singleSelect) {
+                        // Single select mode: set value directly or clear if already selected
+                        column?.setFilterValue(isSelected ? undefined : option.value)
                       } else {
-                        selectedValues.add(option.value)
+                        // Multi select mode: toggle selection
+                        if (isSelected) {
+                          selectedValues.delete(option.value)
+                        } else {
+                          selectedValues.add(option.value)
+                        }
+                        const filterValues = Array.from(selectedValues)
+                        column?.setFilterValue(filterValues?.length ? filterValues : undefined)
                       }
-                      const filterValues = Array.from(selectedValues)
-                      column?.setFilterValue(filterValues?.length ? filterValues : undefined)
                     }}
                   >
                     <div

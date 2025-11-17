@@ -37,6 +37,8 @@ const (
 	FieldCredentials = "credentials"
 	// FieldSupportedModels holds the string denoting the supported_models field in the database.
 	FieldSupportedModels = "supported_models"
+	// FieldTags holds the string denoting the tags field in the database.
+	FieldTags = "tags"
 	// FieldDefaultTestModel holds the string denoting the default_test_model field in the database.
 	FieldDefaultTestModel = "default_test_model"
 	// FieldSettings holds the string denoting the settings field in the database.
@@ -86,6 +88,7 @@ var Columns = []string{
 	FieldStatus,
 	FieldCredentials,
 	FieldSupportedModels,
+	FieldTags,
 	FieldDefaultTestModel,
 	FieldSettings,
 	FieldOrderingWeight,
@@ -120,6 +123,8 @@ var (
 	DefaultDeletedAt int
 	// DefaultCredentials holds the default value on creation for the "credentials" field.
 	DefaultCredentials *objects.ChannelCredentials
+	// DefaultTags holds the default value on creation for the "tags" field.
+	DefaultTags []string
 	// DefaultSettings holds the default value on creation for the "settings" field.
 	DefaultSettings *objects.ChannelSettings
 	// DefaultOrderingWeight holds the default value on creation for the "ordering_weight" field.

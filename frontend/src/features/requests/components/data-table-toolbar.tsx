@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { useMe } from '@/features/auth/data/auth'
-import { useChannels } from '@/features/channels/data/channels'
+import { useQueryChannels } from '@/features/channels/data/channels'
 import { RequestStatus } from '../data/schema'
 import { DataTableViewOptions } from './data-table-view-options'
 
@@ -33,7 +33,7 @@ export function DataTableToolbar<TData>({ table, onRefresh, showRefresh = false 
   const canViewChannels = isOwner || userScopes.includes('*') || userScopes.includes('read_channels')
 
   // Fetch channels data if user has permission
-  const { data: channelsData } = useChannels(
+  const { data: channelsData } = useQueryChannels(
     {
       first: 100,
       orderBy: { field: 'CREATED_AT', direction: 'DESC' },

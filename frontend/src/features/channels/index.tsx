@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from '@/hooks/use-debounce'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
@@ -10,7 +10,7 @@ import { ChannelsPrimaryButtons } from './components/channels-primary-buttons'
 import { ChannelsTable } from './components/channels-table'
 import { ChannelsTypeTabs } from './components/channels-type-tabs'
 import ChannelsProvider from './context/channels-context'
-import { useChannels, useChannelTypes } from './data/channels'
+import { useQueryChannels, useChannelTypes } from './data/channels'
 
 function ChannelsContent() {
   const { t } = useTranslation()
@@ -20,14 +20,15 @@ function ChannelsContent() {
   const [nameFilter, setNameFilter] = useState<string>('')
   const [typeFilter, setTypeFilter] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [tagFilter, setTagFilter] = useState<string>('')
   const [selectedTypeTab, setSelectedTypeTab] = useState<string>('all')
-  
+
   // Fetch channel types for tabs
-  const { data: channelTypeCounts = [] } = useChannelTypes()
-  
+  const { data: channelTypeCounts = [] } = useChannelTypes(statusFilter.length > 0 ? statusFilter : ['enabled', 'disabled'])
+
   // Debounce the name filter to avoid excessive API calls
   const debouncedNameFilter = useDebounce(nameFilter, 300)
-  
+
   // Get types for the selected tab
   const tabFilteredTypes = useMemo(() => {
     if (selectedTypeTab === 'all') {
@@ -38,7 +39,7 @@ function ChannelsContent() {
       .filter(({ type }) => type.startsWith(selectedTypeTab))
       .map(({ type }) => type)
   }, [selectedTypeTab, channelTypeCounts])
-  
+
   // Build where clause with filters
   const whereClause = (() => {
     const where: Record<string, string | string[]> = {}
@@ -62,88 +63,96 @@ function ChannelsContent() {
     }
     return Object.keys(where).length > 0 ? where : undefined
   })()
-  
-  const { data, isLoading: _isLoading, error: _error } = useChannels({
+
+  const { data, isLoading: _isLoading, error: _error } = useQueryChannels({
     ...paginationArgs,
     where: whereClause,
     orderBy: {
       field: 'CREATED_AT',
       direction: 'DESC',
     },
+    hasTag: tagFilter || undefined,
   })
 
-  const handleNextPage = () => {
+  const handleNextPage = useCallback(() => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
       setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'after')
     }
-  }
+  }, [data?.pageInfo, setCursors])
 
-  const handlePreviousPage = () => {
+  const handlePreviousPage = useCallback(() => {
     if (data?.pageInfo?.hasPreviousPage) {
       setCursors(data.pageInfo.startCursor ?? undefined, data.pageInfo.endCursor ?? undefined, 'before')
     }
-  }
+  }, [data?.pageInfo, setCursors])
 
-  const handlePageSizeChange = (newPageSize: number) => {
+  const handlePageSizeChange = useCallback((newPageSize: number) => {
     setPageSize(newPageSize)
-  }
+  }, [setPageSize])
 
-  const handleNameFilterChange = (filter: string) => {
+  const handleNameFilterChange = useCallback((filter: string) => {
     setNameFilter(filter)
     resetCursor()
-  }
+  }, [resetCursor, setNameFilter])
 
-  const handleTypeFilterChange = (filters: string[]) => {
+  const handleTypeFilterChange = useCallback((filters: string[]) => {
     setTypeFilter(filters)
     resetCursor()
-  }
-  
-  const handleTabChange = (tab: string) => {
+  }, [resetCursor, setTypeFilter])
+
+  const handleTabChange = useCallback((tab: string) => {
     setSelectedTypeTab(tab)
     // Clear manual type filter when switching tabs
     setTypeFilter([])
     resetCursor()
-  }
+  }, [resetCursor, setSelectedTypeTab])
 
-  const handleStatusFilterChange = (filters: string[]) => {
+  const handleStatusFilterChange = useCallback((filters: string[]) => {
     setStatusFilter(filters)
     resetCursor()
-  }
+  }, [resetCursor, setStatusFilter])
 
-  const columns = createColumns(t)
+  const handleTagFilterChange = useCallback((filter: string) => {
+    setTagFilter(filter)
+    resetCursor()
+  }, [resetCursor, setTagFilter])
+
+  const columns = useMemo(() => createColumns(t), [t])
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-        <ChannelsTypeTabs 
-          typeCounts={channelTypeCounts}
-          selectedTab={selectedTypeTab}
-          onTabChange={handleTabChange}
-        />
-        <ChannelsTable 
-          // loading={isLoading}
-          data={data?.edges?.map(edge => edge.node) || []} 
-          columns={columns}
-          pageInfo={data?.pageInfo}
-          pageSize={pageSize}
-          totalCount={data?.totalCount}
-          nameFilter={nameFilter}
-          typeFilter={typeFilter}
-          statusFilter={statusFilter}
-          selectedTypeTab={selectedTypeTab}
-          onNextPage={handleNextPage}
-          onPreviousPage={handlePreviousPage}
-          onPageSizeChange={handlePageSizeChange}
-          onNameFilterChange={handleNameFilterChange}
-          onTypeFilterChange={handleTypeFilterChange}
-          onStatusFilterChange={handleStatusFilterChange}
-        />
+      <ChannelsTypeTabs
+        typeCounts={channelTypeCounts}
+        selectedTab={selectedTypeTab}
+        onTabChange={handleTabChange}
+      />
+      <ChannelsTable
+        // loading={isLoading}
+        data={data?.edges?.map(edge => edge.node) || []}
+        columns={columns}
+        pageInfo={data?.pageInfo}
+        pageSize={pageSize}
+        totalCount={data?.totalCount}
+        nameFilter={nameFilter}
+        typeFilter={typeFilter}
+        statusFilter={statusFilter}
+        tagFilter={tagFilter}
+        selectedTypeTab={selectedTypeTab}
+        onNextPage={handleNextPage}
+        onPreviousPage={handlePreviousPage}
+        onPageSizeChange={handlePageSizeChange}
+        onNameFilterChange={handleNameFilterChange}
+        onTypeFilterChange={handleTypeFilterChange}
+        onStatusFilterChange={handleStatusFilterChange}
+        onTagFilterChange={handleTagFilterChange}
+      />
     </div>
   )
 }
 
 export default function ChannelsManagement() {
   const { t } = useTranslation()
-  
+
   return (
     <ChannelsProvider>
       <Header fixed>

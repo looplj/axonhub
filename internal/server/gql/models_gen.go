@@ -3,6 +3,7 @@
 package gql
 
 import (
+	"entgo.io/contrib/entgql"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
@@ -62,6 +63,11 @@ type ChannelTypeCount struct {
 	Count int    `json:"count"`
 }
 
+type CountChannelsByTypeInput struct {
+	// Filtering options for Channels returned from the connection.
+	StatusIn []channel.Status `json:"statusIn,omitempty"`
+}
+
 type DailyRequestStats struct {
 	Date  string `json:"date"`
 	Count int    `json:"count"`
@@ -114,6 +120,23 @@ type Model struct {
 
 type ModelsInput struct {
 	Status *channel.Status `json:"status,omitempty"`
+}
+
+type QueryChannelInput struct {
+	// Returns the elements in the list that come after the specified cursor.
+	After *entgql.Cursor[int] `json:"after,omitempty"`
+	// Returns the first _n_ elements from the list.
+	First *int `json:"first,omitempty"`
+	// Returns the elements in the list that come before the specified cursor.
+	Before *entgql.Cursor[int] `json:"before,omitempty"`
+	// Returns the last _n_ elements from the list.
+	Last *int `json:"last,omitempty"`
+	// Ordering options for Channels returned from the connection.
+	OrderBy *ent.ChannelOrder `json:"orderBy,omitempty"`
+	// Filtering options for Channels returned from the connection.
+	Where *ent.ChannelWhereInput `json:"where,omitempty"`
+	// Filtering options for Channels returned from the connection.
+	HasTag *string `json:"hasTag,omitempty"`
 }
 
 type RemoveUserFromProjectInput struct {

@@ -12,7 +12,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { RequestExecution } from '../data/schema'
-import { useChannels } from '@/features/channels/data'
+import { useQueryChannels } from '@/features/channels/data'
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
 import { getStatusColor } from './help'
 
