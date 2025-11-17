@@ -16,7 +16,7 @@ AxonHub can act as a drop-in replacement for Anthropic or OpenAI endpoints, lett
 ### Configure Claude Code
 1. Open your shell environment and export the AxonHub credentials:
    ```bash
-   export ANTHROPIC_API_KEY="<your-axonhub-api-key>"
+   export ANTHROPIC_AUTH_TOKEN="<your-axonhub-api-key>"
    export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
    ```
 2. Launch Claude Code. It will read the environment variables and route all Anthropic requests through AxonHub.
@@ -68,7 +68,8 @@ AxonHub model profiles remap incoming model names to provider-specific equivalen
 </table>
 
 #### Example
-- Request `claude-sonnet-4-5` → mapped to `deepseek-v3.2` for cost optimisation.
+- Request `claude-sonnet-4-5` → mapped to `deepseek-reasoner` for getting more accurate responses.
+- Request `claude-haiku-4-5` → mapped to `deepseek-chat` for reducing costs.
 
 ### Troubleshooting
 - **Claude Code cannot connect**: verify `ANTHROPIC_BASE_URL` points to the `/anthropic` path and that your firewall allows outbound calls.
@@ -96,7 +97,7 @@ AxonHub 可以作为 Anthropic 或 OpenAI 接口的直接替代方案，使 Clau
 ### 配置 Claude Code
 1. 在 Shell 环境变量中写入 AxonHub 凭证：
    ```bash
-   export ANTHROPIC_API_KEY="<your-axonhub-api-key>"
+   export ANTHROPIC_AUTH_TOKEN="<your-axonhub-api-key>"
    export ANTHROPIC_BASE_URL="http://localhost:8090/anthropic"
    ```
 2. 启动 Claude Code，程序会自动读取上述变量并将所有 Anthropic 请求代理到 AxonHub。
@@ -148,7 +149,8 @@ AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型
 </table>
 
 #### 示例
-- 请求 `claude-sonnet-4-5` → 映射到 `deepseek-v3.2` 以降低成本。
+- 请求 `claude-sonnet-4-5` → 映射到 `deepseek-reasoner` 以获取更准确的回复。
+- 请求 `claude-haiku-4-5` → 映射到 `deepseek-chat` 以降低成本。
 
 ### 常见问题
 - **Claude Code 无法连接**：确认 `ANTHROPIC_BASE_URL` 指向 `/anthropic` 路径，且本地防火墙允许外部请求。
