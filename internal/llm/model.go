@@ -250,7 +250,7 @@ func (s *Stop) UnmarshalJSON(data []byte) error {
 
 // Message represents a message in the conversation.
 type Message struct {
-	Role    string         `json:"role"`
+	Role    string         `json:"role,omitempty"`
 	Content MessageContent `json:"content"` // string or []ContentPart
 	Name    *string        `json:"name,omitempty"`
 
