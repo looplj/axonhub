@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/llm/transformer"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/llm/transformer/doubao"
+	"github.com/looplj/axonhub/internal/llm/transformer/modelscope"
 	"github.com/looplj/axonhub/internal/llm/transformer/openai"
 	"github.com/looplj/axonhub/internal/llm/transformer/openrouter"
 	"github.com/looplj/axonhub/internal/llm/transformer/xai"
@@ -462,6 +463,20 @@ func (svc *ChannelService) buildChannel(c *ent.Channel) (*Channel, error) {
 		return &Channel{
 			Channel:  c,
 			Outbound: fakeTransformer,
+		}, nil
+	case channel.TypeModelscope:
+		transformer, err := modelscope.NewOutboundTransformerWithConfig(&modelscope.Config{
+			BaseURL: c.BaseURL,
+			APIKey:  c.Credentials.APIKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		return &Channel{
+			Channel:    c,
+			Outbound:   transformer,
+			HTTPClient: httpClient,
 		}, nil
 	case channel.TypeOpenai,
 		channel.TypeDeepseek, channel.TypeMoonshot, channel.TypeLongcat, channel.TypeMinimax,

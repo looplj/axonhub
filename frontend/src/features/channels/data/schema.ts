@@ -35,6 +35,7 @@ export const channelTypeSchema = z.enum([
   'minimax_anthropic',
   'aihubmix',
   'burncloud',
+  'modelscope',
 ])
 export type ChannelType = z.infer<typeof channelTypeSchema>
 

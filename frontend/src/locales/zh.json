@@ -624,7 +624,8 @@
       "minimax": "Minimax",
       "minimax_anthropic": "Minimax (Anthropic)",
       "aihubmix": "AiHubMix",
-      "burncloud": "BurnCloud"
+      "burncloud": "BurnCloud",
+      "modelscope": "魔搭"
     },
     "actions": {
       "test": "测试",
@@ -666,7 +667,9 @@
       "fetchModelsSuccess": "成功获取 {{count}} 个模型",
       "fetchModelsSuccessLarge": "成功获取 {{count}} 个模型。使用搜索查找特定模型。",
       "fetchModelsError": "获取模型失败：{{error}}",
-      "fetchTypesError": "获取渠道类型失败：{{error}}"
+      "fetchTypesError": "获取渠道类型失败：{{error}}",
+      "batchCreateSuccess": "成功创建 {{count}} 个渠道",
+      "batchCreateError": "批量创建失败：{{error}}"
     },
     "errors": {
       "fetchList": "获取渠道列表失败",

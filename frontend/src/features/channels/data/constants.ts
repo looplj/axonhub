@@ -19,6 +19,7 @@ import {
   Minimax,
   BurnCloud,
   Vercel,
+  ModelScope,
 } from '@lobehub/icons'
 
 const OPENAI_API_FORMAT: ApiFormat = 'openai/chat_completions'
@@ -397,6 +398,22 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     apiFormat: OPENAI_API_FORMAT,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     icon: BurnCloud,
+  },
+  modelscope: {
+    channelType: 'modelscope',
+    baseURL: 'https://api-inference.modelscope.cn/v1',
+    defaultModels: [
+      'qwen-plus',
+      'qwen-turbo',
+      'qwen-max',
+      'qwen2.5-72b-instruct',
+      'qwen2.5-32b-instruct',
+      'qwen2.5-14b-instruct',
+      'qwen2.5-7b-instruct',
+    ],
+    apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: ModelScope,
   },
   anthropic_aws: {
     channelType: 'anthropic_aws',

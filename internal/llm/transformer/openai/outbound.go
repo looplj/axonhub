@@ -48,7 +48,6 @@ type OutboundTransformer struct {
 }
 
 // NewOutboundTransformer creates a new OpenAI OutboundTransformer with legacy parameters.
-// Deprecated: Use NewOutboundTransformerWithConfig instead.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
 		Type:    PlatformOpenAI,
