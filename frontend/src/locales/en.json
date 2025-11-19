@@ -597,7 +597,8 @@
       "minimax": "Minimax",
       "minimax_anthropic": "Minimax (Anthropic)",
       "aihubmix": "AiHubMix",
-      "burncloud": "BurnCloud"
+      "burncloud": "BurnCloud",
+      "modelscope": "ModelScope"
     },
     "actions": {
       "test": "Test",
@@ -645,7 +646,9 @@
       "fetchModelsSuccess": "Successfully fetched {{count}} models",
       "fetchModelsSuccessLarge": "Successfully fetched {{count}} models. Use search to find specific models.",
       "fetchModelsError": "Failed to fetch models: {{error}}",
-      "fetchTypesError": "Failed to fetch channel types: {{error}}"
+      "fetchTypesError": "Failed to fetch channel types: {{error}}",
+      "batchCreateSuccess": "Successfully created {{count}} channels",
+      "batchCreateError": "Failed to create channels: {{error}}"
     },
     "errors": {
       "fetchList": "Failed to load channels",
