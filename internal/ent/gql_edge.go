@@ -108,6 +108,22 @@ func (_m *Channel) UsageLogs(
 	return _m.QueryUsageLogs().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *Channel) ChannelPerformance(ctx context.Context) (*ChannelPerformance, error) {
+	result, err := _m.Edges.ChannelPerformanceOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryChannelPerformance().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *ChannelPerformance) Channel(ctx context.Context) (*Channel, error) {
+	result, err := _m.Edges.ChannelOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryChannel().Only(ctx)
+	}
+	return result, err
+}
+
 func (_m *DataStorage) Requests(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *RequestOrder, where *RequestWhereInput,
 ) (*RequestConnection, error) {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -171,7 +172,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 		ID:     _m.ID,
 		Type:   "Channel",
 		Fields: make([]*Field, 13),
-		Edges:  make([]*Edge, 3),
+		Edges:  make([]*Edge, 4),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -305,6 +306,238 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	err = _m.QueryUsageLogs().
 		Select(usagelog.FieldID).
 		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[3] = &Edge{
+		Type: "ChannelPerformance",
+		Name: "channel_performance",
+	}
+	err = _m.QueryChannelPerformance().
+		Select(channelperformance.FieldID).
+		Scan(ctx, &node.Edges[3].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *ChannelPerformance) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "ChannelPerformance",
+		Fields: make([]*Field, 25),
+		Edges:  make([]*Edge, 1),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.DeletedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "deleted_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ChannelID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "channel_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.HealthStatus); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "channelperformance.HealthStatus",
+		Name:  "health_status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.TotalCount); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "int",
+		Name:  "total_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.TotalSuccessCount); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "int",
+		Name:  "total_success_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.TotalTokenCount); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "int",
+		Name:  "total_token_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.TotalAvgLatencyMs); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "int",
+		Name:  "total_avg_latency_ms",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.TotalAvgTokenPerSecond); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "int",
+		Name:  "total_avg_token_per_second",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.TotalAvgStreamFirstTokenLatenchMs); err != nil {
+		return nil, err
+	}
+	node.Fields[10] = &Field{
+		Type:  "int",
+		Name:  "total_avg_stream_first_token_latench_ms",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.TotalAvgStreamTokenPerSecond); err != nil {
+		return nil, err
+	}
+	node.Fields[11] = &Field{
+		Type:  "float64",
+		Name:  "total_avg_stream_token_per_second",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastPeriodStart); err != nil {
+		return nil, err
+	}
+	node.Fields[12] = &Field{
+		Type:  "time.Time",
+		Name:  "last_period_start",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastPeriodEnd); err != nil {
+		return nil, err
+	}
+	node.Fields[13] = &Field{
+		Type:  "time.Time",
+		Name:  "last_period_end",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastPeriodSeconds); err != nil {
+		return nil, err
+	}
+	node.Fields[14] = &Field{
+		Type:  "int",
+		Name:  "last_period_seconds",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastPeriodCount); err != nil {
+		return nil, err
+	}
+	node.Fields[15] = &Field{
+		Type:  "int",
+		Name:  "last_period_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastPeriodSuccessCount); err != nil {
+		return nil, err
+	}
+	node.Fields[16] = &Field{
+		Type:  "int",
+		Name:  "last_period_success_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastPeriodTokenCount); err != nil {
+		return nil, err
+	}
+	node.Fields[17] = &Field{
+		Type:  "int",
+		Name:  "last_period_token_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastPeriodAvgLatencyMs); err != nil {
+		return nil, err
+	}
+	node.Fields[18] = &Field{
+		Type:  "int",
+		Name:  "last_period_avg_latency_ms",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastPeriodAvgTokenPerSecond); err != nil {
+		return nil, err
+	}
+	node.Fields[19] = &Field{
+		Type:  "int",
+		Name:  "last_period_avg_token_per_second",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastPeriodAvgStreamFirstTokenLatenchMs); err != nil {
+		return nil, err
+	}
+	node.Fields[20] = &Field{
+		Type:  "int",
+		Name:  "last_period_avg_stream_first_token_latench_ms",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastPeriodAvgStreamTokenPerSecond); err != nil {
+		return nil, err
+	}
+	node.Fields[21] = &Field{
+		Type:  "float64",
+		Name:  "last_period_avg_stream_token_per_second",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastSuccessAt); err != nil {
+		return nil, err
+	}
+	node.Fields[22] = &Field{
+		Type:  "time.Time",
+		Name:  "last_success_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastFailureAt); err != nil {
+		return nil, err
+	}
+	node.Fields[23] = &Field{
+		Type:  "time.Time",
+		Name:  "last_failure_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastAttemptAt); err != nil {
+		return nil, err
+	}
+	node.Fields[24] = &Field{
+		Type:  "time.Time",
+		Name:  "last_attempt_at",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Channel",
+		Name: "channel",
+	}
+	err = _m.QueryChannel().
+		Select(channel.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
 	if err != nil {
 		return nil, err
 	}

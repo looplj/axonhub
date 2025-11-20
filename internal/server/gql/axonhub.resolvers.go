@@ -147,24 +147,15 @@ func (r *mutationResolver) BulkImportChannels(ctx context.Context, input BulkImp
 
 // BulkUpdateChannelOrdering is the resolver for the bulkUpdateChannelOrdering field.
 func (r *mutationResolver) BulkUpdateChannelOrdering(ctx context.Context, input BulkUpdateChannelOrderingInput) (*BulkUpdateChannelOrderingResult, error) {
-	// Prepare updates for the service layer
-	updates := make([]struct {
-		ID             int
-		OrderingWeight int
-	}, len(input.Channels))
-
+	items := make([]biz.ChannelOrderingItem, len(input.Channels))
 	for i, item := range input.Channels {
-		updates[i] = struct {
-			ID             int
-			OrderingWeight int
-		}{
+		items[i] = biz.ChannelOrderingItem{
 			ID:             item.ID.ID,
 			OrderingWeight: item.OrderingWeight,
 		}
 	}
 
-	// Call the business logic layer
-	updatedChannels, err := r.channelService.BulkUpdateChannelOrdering(ctx, updates)
+	updatedChannels, err := r.channelService.BulkUpdateChannelOrdering(ctx, items)
 	if err != nil {
 		return nil, fmt.Errorf("failed to bulk update channel ordering: %w", err)
 	}

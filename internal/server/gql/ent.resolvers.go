@@ -47,6 +47,16 @@ func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (*objects.GU
 }
 
 // ID is the resolver for the id field.
+func (r *channelPerformanceResolver) ID(ctx context.Context, obj *ent.ChannelPerformance) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// ChannelID is the resolver for the channelID field.
+func (r *channelPerformanceResolver) ChannelID(ctx context.Context, obj *ent.ChannelPerformance) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ChannelID - channelID"))
+}
+
+// ID is the resolver for the id field.
 func (r *dataStorageResolver) ID(ctx context.Context, obj *ent.DataStorage) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeDataStorage,
@@ -578,6 +588,11 @@ func (r *Resolver) APIKey() APIKeyResolver { return &aPIKeyResolver{r} }
 // Channel returns ChannelResolver implementation.
 func (r *Resolver) Channel() ChannelResolver { return &channelResolver{r} }
 
+// ChannelPerformance returns ChannelPerformanceResolver implementation.
+func (r *Resolver) ChannelPerformance() ChannelPerformanceResolver {
+	return &channelPerformanceResolver{r}
+}
+
 // DataStorage returns DataStorageResolver implementation.
 func (r *Resolver) DataStorage() DataStorageResolver { return &dataStorageResolver{r} }
 
@@ -619,6 +634,7 @@ func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
 
 type aPIKeyResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
+type channelPerformanceResolver struct{ *Resolver }
 type dataStorageResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }

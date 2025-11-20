@@ -386,15 +386,6 @@ func (p *PersistentOutboundTransformer) GetRequest() *ent.Request {
 	return p.state.Request
 }
 
-// GetCurrentChannelOutbound returns the current channel's outbound transformer.
-func (p *PersistentOutboundTransformer) GetCurrentChannelOutbound() transformer.Outbound {
-	if p.state.CurrentChannel != nil {
-		return p.state.CurrentChannel.Outbound
-	}
-
-	return nil
-}
-
 // GetCurrentChannel returns the current channel.
 func (p *PersistentOutboundTransformer) GetCurrentChannel() *biz.Channel {
 	return p.state.CurrentChannel
@@ -440,6 +431,11 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	return nil
 }
 
+// CanRetry returns true if the current channel can be retried.
+func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
+	return p.state.CurrentChannel != nil && isRetryableError(err)
+}
+
 // PrepareForRetry prepares for retrying the same channel.
 // This creates a new request execution for the same channel without switching channels.
 func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) error {
@@ -469,11 +465,6 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 		log.Any("channel", p.state.CurrentChannel.Name))
 
 	return nil
-}
-
-// CanRetry returns true if the current channel can be retried.
-func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
-	return p.state.CurrentChannel != nil && isRetryableError(err)
 }
 
 // CustomizeExecutor customizes the executor for the current channel.

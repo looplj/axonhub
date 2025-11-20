@@ -15,6 +15,7 @@ type PersistenceState struct {
 
 	RequestService  *biz.RequestService
 	UsageLogService *biz.UsageLogService
+	ChannelService  *biz.ChannelService
 	ChannelSelector ChannelSelector
 
 	// Request state
@@ -33,4 +34,6 @@ type PersistenceState struct {
 	Channels       []*biz.Channel
 	CurrentChannel *biz.Channel
 	ChannelIndex   int
+
+	Perf *biz.PerformanceRecord
 }

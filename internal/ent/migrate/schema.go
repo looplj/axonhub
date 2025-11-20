@@ -89,6 +89,56 @@ var (
 			},
 		},
 	}
+	// ChannelPerformancesColumns holds the columns for the "channel_performances" table.
+	ChannelPerformancesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "health_status", Type: field.TypeEnum, Enums: []string{"good", "warning", "critical", "panic"}, Default: "good"},
+		{Name: "total_count", Type: field.TypeInt, Default: 0},
+		{Name: "total_success_count", Type: field.TypeInt, Default: 0},
+		{Name: "total_token_count", Type: field.TypeInt, Default: 0},
+		{Name: "total_avg_latency_ms", Type: field.TypeInt, Default: 0},
+		{Name: "total_avg_token_per_second", Type: field.TypeInt, Default: 0},
+		{Name: "total_avg_stream_first_token_latench_ms", Type: field.TypeInt, Default: 0},
+		{Name: "total_avg_stream_token_per_second", Type: field.TypeFloat64, Default: 0},
+		{Name: "last_period_start", Type: field.TypeTime},
+		{Name: "last_period_end", Type: field.TypeTime},
+		{Name: "last_period_seconds", Type: field.TypeInt, Default: 0},
+		{Name: "last_period_count", Type: field.TypeInt, Default: 0},
+		{Name: "last_period_success_count", Type: field.TypeInt, Default: 0},
+		{Name: "last_period_token_count", Type: field.TypeInt, Default: 0},
+		{Name: "last_period_avg_latency_ms", Type: field.TypeInt, Default: 0},
+		{Name: "last_period_avg_token_per_second", Type: field.TypeInt, Default: 0},
+		{Name: "last_period_avg_stream_first_token_latench_ms", Type: field.TypeInt, Default: 0},
+		{Name: "last_period_avg_stream_token_per_second", Type: field.TypeFloat64, Default: 0},
+		{Name: "last_success_at", Type: field.TypeTime},
+		{Name: "last_failure_at", Type: field.TypeTime},
+		{Name: "last_attempt_at", Type: field.TypeTime},
+		{Name: "channel_id", Type: field.TypeInt, Unique: true},
+	}
+	// ChannelPerformancesTable holds the schema information for the "channel_performances" table.
+	ChannelPerformancesTable = &schema.Table{
+		Name:       "channel_performances",
+		Columns:    ChannelPerformancesColumns,
+		PrimaryKey: []*schema.Column{ChannelPerformancesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "channel_performances_channels_channel_performance",
+				Columns:    []*schema.Column{ChannelPerformancesColumns[25]},
+				RefColumns: []*schema.Column{ChannelsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "channel_performances_by_channel_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChannelPerformancesColumns[25], ChannelPerformancesColumns[3]},
+			},
+		},
+	}
 	// DataStoragesColumns holds the columns for the "data_storages" table.
 	DataStoragesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -620,6 +670,7 @@ var (
 	Tables = []*schema.Table{
 		APIKeysTable,
 		ChannelsTable,
+		ChannelPerformancesTable,
 		DataStoragesTable,
 		ProjectsTable,
 		RequestsTable,
@@ -638,6 +689,7 @@ var (
 func init() {
 	APIKeysTable.ForeignKeys[0].RefTable = ProjectsTable
 	APIKeysTable.ForeignKeys[1].RefTable = UsersTable
+	ChannelPerformancesTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[2].RefTable = DataStoragesTable

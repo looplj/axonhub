@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -133,6 +134,33 @@ func (f TraverseChannel) Traverse(ctx context.Context, q ent.Query) error {
 		return f(ctx, q)
 	}
 	return fmt.Errorf("unexpected query type %T. expect *ent.ChannelQuery", q)
+}
+
+// The ChannelPerformanceFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ChannelPerformanceFunc func(context.Context, *ent.ChannelPerformanceQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ChannelPerformanceFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ChannelPerformanceQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ChannelPerformanceQuery", q)
+}
+
+// The TraverseChannelPerformance type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseChannelPerformance func(context.Context, *ent.ChannelPerformanceQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseChannelPerformance) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseChannelPerformance) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ChannelPerformanceQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ChannelPerformanceQuery", q)
 }
 
 // The DataStorageFunc type is an adapter to allow the use of ordinary function as a Querier.
@@ -466,6 +494,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.APIKeyQuery, predicate.APIKey, apikey.OrderOption]{typ: ent.TypeAPIKey, tq: q}, nil
 	case *ent.ChannelQuery:
 		return &query[*ent.ChannelQuery, predicate.Channel, channel.OrderOption]{typ: ent.TypeChannel, tq: q}, nil
+	case *ent.ChannelPerformanceQuery:
+		return &query[*ent.ChannelPerformanceQuery, predicate.ChannelPerformance, channelperformance.OrderOption]{typ: ent.TypeChannelPerformance, tq: q}, nil
 	case *ent.DataStorageQuery:
 		return &query[*ent.DataStorageQuery, predicate.DataStorage, datastorage.OrderOption]{typ: ent.TypeDataStorage, tq: q}, nil
 	case *ent.ProjectQuery:

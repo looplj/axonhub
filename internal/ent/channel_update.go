@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -237,6 +238,25 @@ func (_u *ChannelUpdate) AddUsageLogs(v ...*UsageLog) *ChannelUpdate {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// SetChannelPerformanceID sets the "channel_performance" edge to the ChannelPerformance entity by ID.
+func (_u *ChannelUpdate) SetChannelPerformanceID(id int) *ChannelUpdate {
+	_u.mutation.SetChannelPerformanceID(id)
+	return _u
+}
+
+// SetNillableChannelPerformanceID sets the "channel_performance" edge to the ChannelPerformance entity by ID if the given value is not nil.
+func (_u *ChannelUpdate) SetNillableChannelPerformanceID(id *int) *ChannelUpdate {
+	if id != nil {
+		_u = _u.SetChannelPerformanceID(*id)
+	}
+	return _u
+}
+
+// SetChannelPerformance sets the "channel_performance" edge to the ChannelPerformance entity.
+func (_u *ChannelUpdate) SetChannelPerformance(v *ChannelPerformance) *ChannelUpdate {
+	return _u.SetChannelPerformanceID(v.ID)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (_u *ChannelUpdate) Mutation() *ChannelMutation {
 	return _u.mutation
@@ -303,6 +323,12 @@ func (_u *ChannelUpdate) RemoveUsageLogs(v ...*UsageLog) *ChannelUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearChannelPerformance clears the "channel_performance" edge to the ChannelPerformance entity.
+func (_u *ChannelUpdate) ClearChannelPerformance() *ChannelUpdate {
+	_u.mutation.ClearChannelPerformance()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -568,6 +594,35 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ChannelPerformanceCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   channel.ChannelPerformanceTable,
+			Columns: []string{channel.ChannelPerformanceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelperformance.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChannelPerformanceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   channel.ChannelPerformanceTable,
+			Columns: []string{channel.ChannelPerformanceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelperformance.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -793,6 +848,25 @@ func (_u *ChannelUpdateOne) AddUsageLogs(v ...*UsageLog) *ChannelUpdateOne {
 	return _u.AddUsageLogIDs(ids...)
 }
 
+// SetChannelPerformanceID sets the "channel_performance" edge to the ChannelPerformance entity by ID.
+func (_u *ChannelUpdateOne) SetChannelPerformanceID(id int) *ChannelUpdateOne {
+	_u.mutation.SetChannelPerformanceID(id)
+	return _u
+}
+
+// SetNillableChannelPerformanceID sets the "channel_performance" edge to the ChannelPerformance entity by ID if the given value is not nil.
+func (_u *ChannelUpdateOne) SetNillableChannelPerformanceID(id *int) *ChannelUpdateOne {
+	if id != nil {
+		_u = _u.SetChannelPerformanceID(*id)
+	}
+	return _u
+}
+
+// SetChannelPerformance sets the "channel_performance" edge to the ChannelPerformance entity.
+func (_u *ChannelUpdateOne) SetChannelPerformance(v *ChannelPerformance) *ChannelUpdateOne {
+	return _u.SetChannelPerformanceID(v.ID)
+}
+
 // Mutation returns the ChannelMutation object of the builder.
 func (_u *ChannelUpdateOne) Mutation() *ChannelMutation {
 	return _u.mutation
@@ -859,6 +933,12 @@ func (_u *ChannelUpdateOne) RemoveUsageLogs(v ...*UsageLog) *ChannelUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUsageLogIDs(ids...)
+}
+
+// ClearChannelPerformance clears the "channel_performance" edge to the ChannelPerformance entity.
+func (_u *ChannelUpdateOne) ClearChannelPerformance() *ChannelUpdateOne {
+	_u.mutation.ClearChannelPerformance()
+	return _u
 }
 
 // Where appends a list predicates to the ChannelUpdate builder.
@@ -1147,6 +1227,35 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChannelPerformanceCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   channel.ChannelPerformanceTable,
+			Columns: []string{channel.ChannelPerformanceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelperformance.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChannelPerformanceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   channel.ChannelPerformanceTable,
+			Columns: []string{channel.ChannelPerformanceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelperformance.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
