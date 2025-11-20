@@ -76,6 +76,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channel.FieldDefaultTestModel: {Type: field.TypeString, Column: channel.FieldDefaultTestModel},
 			channel.FieldSettings:         {Type: field.TypeJSON, Column: channel.FieldSettings},
 			channel.FieldOrderingWeight:   {Type: field.TypeInt, Column: channel.FieldOrderingWeight},
+			channel.FieldErrorMessage:     {Type: field.TypeString, Column: channel.FieldErrorMessage},
 		},
 	}
 	graph.Nodes[2] = &sqlgraph.Node{
@@ -89,31 +90,17 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "ChannelPerformance",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			channelperformance.FieldCreatedAt:                              {Type: field.TypeTime, Column: channelperformance.FieldCreatedAt},
-			channelperformance.FieldUpdatedAt:                              {Type: field.TypeTime, Column: channelperformance.FieldUpdatedAt},
-			channelperformance.FieldDeletedAt:                              {Type: field.TypeInt, Column: channelperformance.FieldDeletedAt},
-			channelperformance.FieldChannelID:                              {Type: field.TypeInt, Column: channelperformance.FieldChannelID},
-			channelperformance.FieldHealthStatus:                           {Type: field.TypeEnum, Column: channelperformance.FieldHealthStatus},
-			channelperformance.FieldTotalCount:                             {Type: field.TypeInt, Column: channelperformance.FieldTotalCount},
-			channelperformance.FieldTotalSuccessCount:                      {Type: field.TypeInt, Column: channelperformance.FieldTotalSuccessCount},
-			channelperformance.FieldTotalTokenCount:                        {Type: field.TypeInt, Column: channelperformance.FieldTotalTokenCount},
-			channelperformance.FieldTotalAvgLatencyMs:                      {Type: field.TypeInt, Column: channelperformance.FieldTotalAvgLatencyMs},
-			channelperformance.FieldTotalAvgTokenPerSecond:                 {Type: field.TypeInt, Column: channelperformance.FieldTotalAvgTokenPerSecond},
-			channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs:      {Type: field.TypeInt, Column: channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs},
-			channelperformance.FieldTotalAvgStreamTokenPerSecond:           {Type: field.TypeFloat64, Column: channelperformance.FieldTotalAvgStreamTokenPerSecond},
-			channelperformance.FieldLastPeriodStart:                        {Type: field.TypeTime, Column: channelperformance.FieldLastPeriodStart},
-			channelperformance.FieldLastPeriodEnd:                          {Type: field.TypeTime, Column: channelperformance.FieldLastPeriodEnd},
-			channelperformance.FieldLastPeriodSeconds:                      {Type: field.TypeInt, Column: channelperformance.FieldLastPeriodSeconds},
-			channelperformance.FieldLastPeriodCount:                        {Type: field.TypeInt, Column: channelperformance.FieldLastPeriodCount},
-			channelperformance.FieldLastPeriodSuccessCount:                 {Type: field.TypeInt, Column: channelperformance.FieldLastPeriodSuccessCount},
-			channelperformance.FieldLastPeriodTokenCount:                   {Type: field.TypeInt, Column: channelperformance.FieldLastPeriodTokenCount},
-			channelperformance.FieldLastPeriodAvgLatencyMs:                 {Type: field.TypeInt, Column: channelperformance.FieldLastPeriodAvgLatencyMs},
-			channelperformance.FieldLastPeriodAvgTokenPerSecond:            {Type: field.TypeInt, Column: channelperformance.FieldLastPeriodAvgTokenPerSecond},
-			channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs: {Type: field.TypeInt, Column: channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs},
-			channelperformance.FieldLastPeriodAvgStreamTokenPerSecond:      {Type: field.TypeFloat64, Column: channelperformance.FieldLastPeriodAvgStreamTokenPerSecond},
-			channelperformance.FieldLastSuccessAt:                          {Type: field.TypeTime, Column: channelperformance.FieldLastSuccessAt},
-			channelperformance.FieldLastFailureAt:                          {Type: field.TypeTime, Column: channelperformance.FieldLastFailureAt},
-			channelperformance.FieldLastAttemptAt:                          {Type: field.TypeTime, Column: channelperformance.FieldLastAttemptAt},
+			channelperformance.FieldCreatedAt:                    {Type: field.TypeTime, Column: channelperformance.FieldCreatedAt},
+			channelperformance.FieldUpdatedAt:                    {Type: field.TypeTime, Column: channelperformance.FieldUpdatedAt},
+			channelperformance.FieldDeletedAt:                    {Type: field.TypeInt, Column: channelperformance.FieldDeletedAt},
+			channelperformance.FieldChannelID:                    {Type: field.TypeInt, Column: channelperformance.FieldChannelID},
+			channelperformance.FieldSuccessRate:                  {Type: field.TypeInt, Column: channelperformance.FieldSuccessRate},
+			channelperformance.FieldAvgLatencyMs:                 {Type: field.TypeInt, Column: channelperformance.FieldAvgLatencyMs},
+			channelperformance.FieldAvgTokenPerSecond:            {Type: field.TypeInt, Column: channelperformance.FieldAvgTokenPerSecond},
+			channelperformance.FieldAvgStreamFirstTokenLatencyMs: {Type: field.TypeInt, Column: channelperformance.FieldAvgStreamFirstTokenLatencyMs},
+			channelperformance.FieldAvgStreamTokenPerSecond:      {Type: field.TypeFloat64, Column: channelperformance.FieldAvgStreamTokenPerSecond},
+			channelperformance.FieldLastSuccessAt:                {Type: field.TypeTime, Column: channelperformance.FieldLastSuccessAt},
+			channelperformance.FieldLastFailureAt:                {Type: field.TypeTime, Column: channelperformance.FieldLastFailureAt},
 		},
 	}
 	graph.Nodes[3] = &sqlgraph.Node{
@@ -1201,6 +1188,11 @@ func (f *ChannelFilter) WhereOrderingWeight(p entql.IntP) {
 	f.Where(p.Field(channel.FieldOrderingWeight))
 }
 
+// WhereErrorMessage applies the entql string predicate on the error_message field.
+func (f *ChannelFilter) WhereErrorMessage(p entql.StringP) {
+	f.Where(p.Field(channel.FieldErrorMessage))
+}
+
 // WhereHasRequests applies a predicate to check if query has an edge requests.
 func (f *ChannelFilter) WhereHasRequests() {
 	f.Where(entql.HasEdge("requests"))
@@ -1317,94 +1309,29 @@ func (f *ChannelPerformanceFilter) WhereChannelID(p entql.IntP) {
 	f.Where(p.Field(channelperformance.FieldChannelID))
 }
 
-// WhereHealthStatus applies the entql string predicate on the health_status field.
-func (f *ChannelPerformanceFilter) WhereHealthStatus(p entql.StringP) {
-	f.Where(p.Field(channelperformance.FieldHealthStatus))
+// WhereSuccessRate applies the entql int predicate on the success_rate field.
+func (f *ChannelPerformanceFilter) WhereSuccessRate(p entql.IntP) {
+	f.Where(p.Field(channelperformance.FieldSuccessRate))
 }
 
-// WhereTotalCount applies the entql int predicate on the total_count field.
-func (f *ChannelPerformanceFilter) WhereTotalCount(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldTotalCount))
+// WhereAvgLatencyMs applies the entql int predicate on the avg_latency_ms field.
+func (f *ChannelPerformanceFilter) WhereAvgLatencyMs(p entql.IntP) {
+	f.Where(p.Field(channelperformance.FieldAvgLatencyMs))
 }
 
-// WhereTotalSuccessCount applies the entql int predicate on the total_success_count field.
-func (f *ChannelPerformanceFilter) WhereTotalSuccessCount(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldTotalSuccessCount))
+// WhereAvgTokenPerSecond applies the entql int predicate on the avg_token_per_second field.
+func (f *ChannelPerformanceFilter) WhereAvgTokenPerSecond(p entql.IntP) {
+	f.Where(p.Field(channelperformance.FieldAvgTokenPerSecond))
 }
 
-// WhereTotalTokenCount applies the entql int predicate on the total_token_count field.
-func (f *ChannelPerformanceFilter) WhereTotalTokenCount(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldTotalTokenCount))
+// WhereAvgStreamFirstTokenLatencyMs applies the entql int predicate on the avg_stream_first_token_latency_ms field.
+func (f *ChannelPerformanceFilter) WhereAvgStreamFirstTokenLatencyMs(p entql.IntP) {
+	f.Where(p.Field(channelperformance.FieldAvgStreamFirstTokenLatencyMs))
 }
 
-// WhereTotalAvgLatencyMs applies the entql int predicate on the total_avg_latency_ms field.
-func (f *ChannelPerformanceFilter) WhereTotalAvgLatencyMs(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldTotalAvgLatencyMs))
-}
-
-// WhereTotalAvgTokenPerSecond applies the entql int predicate on the total_avg_token_per_second field.
-func (f *ChannelPerformanceFilter) WhereTotalAvgTokenPerSecond(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldTotalAvgTokenPerSecond))
-}
-
-// WhereTotalAvgStreamFirstTokenLatenchMs applies the entql int predicate on the total_avg_stream_first_token_latench_ms field.
-func (f *ChannelPerformanceFilter) WhereTotalAvgStreamFirstTokenLatenchMs(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs))
-}
-
-// WhereTotalAvgStreamTokenPerSecond applies the entql float64 predicate on the total_avg_stream_token_per_second field.
-func (f *ChannelPerformanceFilter) WhereTotalAvgStreamTokenPerSecond(p entql.Float64P) {
-	f.Where(p.Field(channelperformance.FieldTotalAvgStreamTokenPerSecond))
-}
-
-// WhereLastPeriodStart applies the entql time.Time predicate on the last_period_start field.
-func (f *ChannelPerformanceFilter) WhereLastPeriodStart(p entql.TimeP) {
-	f.Where(p.Field(channelperformance.FieldLastPeriodStart))
-}
-
-// WhereLastPeriodEnd applies the entql time.Time predicate on the last_period_end field.
-func (f *ChannelPerformanceFilter) WhereLastPeriodEnd(p entql.TimeP) {
-	f.Where(p.Field(channelperformance.FieldLastPeriodEnd))
-}
-
-// WhereLastPeriodSeconds applies the entql int predicate on the last_period_seconds field.
-func (f *ChannelPerformanceFilter) WhereLastPeriodSeconds(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldLastPeriodSeconds))
-}
-
-// WhereLastPeriodCount applies the entql int predicate on the last_period_count field.
-func (f *ChannelPerformanceFilter) WhereLastPeriodCount(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldLastPeriodCount))
-}
-
-// WhereLastPeriodSuccessCount applies the entql int predicate on the last_period_success_count field.
-func (f *ChannelPerformanceFilter) WhereLastPeriodSuccessCount(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldLastPeriodSuccessCount))
-}
-
-// WhereLastPeriodTokenCount applies the entql int predicate on the last_period_token_count field.
-func (f *ChannelPerformanceFilter) WhereLastPeriodTokenCount(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldLastPeriodTokenCount))
-}
-
-// WhereLastPeriodAvgLatencyMs applies the entql int predicate on the last_period_avg_latency_ms field.
-func (f *ChannelPerformanceFilter) WhereLastPeriodAvgLatencyMs(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldLastPeriodAvgLatencyMs))
-}
-
-// WhereLastPeriodAvgTokenPerSecond applies the entql int predicate on the last_period_avg_token_per_second field.
-func (f *ChannelPerformanceFilter) WhereLastPeriodAvgTokenPerSecond(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldLastPeriodAvgTokenPerSecond))
-}
-
-// WhereLastPeriodAvgStreamFirstTokenLatenchMs applies the entql int predicate on the last_period_avg_stream_first_token_latench_ms field.
-func (f *ChannelPerformanceFilter) WhereLastPeriodAvgStreamFirstTokenLatenchMs(p entql.IntP) {
-	f.Where(p.Field(channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs))
-}
-
-// WhereLastPeriodAvgStreamTokenPerSecond applies the entql float64 predicate on the last_period_avg_stream_token_per_second field.
-func (f *ChannelPerformanceFilter) WhereLastPeriodAvgStreamTokenPerSecond(p entql.Float64P) {
-	f.Where(p.Field(channelperformance.FieldLastPeriodAvgStreamTokenPerSecond))
+// WhereAvgStreamTokenPerSecond applies the entql float64 predicate on the avg_stream_token_per_second field.
+func (f *ChannelPerformanceFilter) WhereAvgStreamTokenPerSecond(p entql.Float64P) {
+	f.Where(p.Field(channelperformance.FieldAvgStreamTokenPerSecond))
 }
 
 // WhereLastSuccessAt applies the entql time.Time predicate on the last_success_at field.
@@ -1415,11 +1342,6 @@ func (f *ChannelPerformanceFilter) WhereLastSuccessAt(p entql.TimeP) {
 // WhereLastFailureAt applies the entql time.Time predicate on the last_failure_at field.
 func (f *ChannelPerformanceFilter) WhereLastFailureAt(p entql.TimeP) {
 	f.Where(p.Field(channelperformance.FieldLastFailureAt))
-}
-
-// WhereLastAttemptAt applies the entql time.Time predicate on the last_attempt_at field.
-func (f *ChannelPerformanceFilter) WhereLastAttemptAt(p entql.TimeP) {
-	f.Where(p.Field(channelperformance.FieldLastAttemptAt))
 }
 
 // WhereHasChannel applies a predicate to check if query has an edge channel.

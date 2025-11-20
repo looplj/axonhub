@@ -639,6 +639,11 @@ func (_q *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, channel.FieldOrderingWeight)
 				fieldSeen[channel.FieldOrderingWeight] = struct{}{}
 			}
+		case "errorMessage":
+			if _, ok := fieldSeen[channel.FieldErrorMessage]; !ok {
+				selectedFields = append(selectedFields, channel.FieldErrorMessage)
+				fieldSeen[channel.FieldErrorMessage] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:
@@ -758,95 +763,30 @@ func (_q *ChannelPerformanceQuery) collectField(ctx context.Context, oneNode boo
 				selectedFields = append(selectedFields, channelperformance.FieldChannelID)
 				fieldSeen[channelperformance.FieldChannelID] = struct{}{}
 			}
-		case "healthStatus":
-			if _, ok := fieldSeen[channelperformance.FieldHealthStatus]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldHealthStatus)
-				fieldSeen[channelperformance.FieldHealthStatus] = struct{}{}
+		case "successRate":
+			if _, ok := fieldSeen[channelperformance.FieldSuccessRate]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldSuccessRate)
+				fieldSeen[channelperformance.FieldSuccessRate] = struct{}{}
 			}
-		case "totalCount":
-			if _, ok := fieldSeen[channelperformance.FieldTotalCount]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldTotalCount)
-				fieldSeen[channelperformance.FieldTotalCount] = struct{}{}
+		case "avgLatencyMs":
+			if _, ok := fieldSeen[channelperformance.FieldAvgLatencyMs]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldAvgLatencyMs)
+				fieldSeen[channelperformance.FieldAvgLatencyMs] = struct{}{}
 			}
-		case "totalSuccessCount":
-			if _, ok := fieldSeen[channelperformance.FieldTotalSuccessCount]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldTotalSuccessCount)
-				fieldSeen[channelperformance.FieldTotalSuccessCount] = struct{}{}
+		case "avgTokenPerSecond":
+			if _, ok := fieldSeen[channelperformance.FieldAvgTokenPerSecond]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldAvgTokenPerSecond)
+				fieldSeen[channelperformance.FieldAvgTokenPerSecond] = struct{}{}
 			}
-		case "totalTokenCount":
-			if _, ok := fieldSeen[channelperformance.FieldTotalTokenCount]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldTotalTokenCount)
-				fieldSeen[channelperformance.FieldTotalTokenCount] = struct{}{}
+		case "avgStreamFirstTokenLatencyMs":
+			if _, ok := fieldSeen[channelperformance.FieldAvgStreamFirstTokenLatencyMs]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldAvgStreamFirstTokenLatencyMs)
+				fieldSeen[channelperformance.FieldAvgStreamFirstTokenLatencyMs] = struct{}{}
 			}
-		case "totalAvgLatencyMs":
-			if _, ok := fieldSeen[channelperformance.FieldTotalAvgLatencyMs]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldTotalAvgLatencyMs)
-				fieldSeen[channelperformance.FieldTotalAvgLatencyMs] = struct{}{}
-			}
-		case "totalAvgTokenPerSecond":
-			if _, ok := fieldSeen[channelperformance.FieldTotalAvgTokenPerSecond]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldTotalAvgTokenPerSecond)
-				fieldSeen[channelperformance.FieldTotalAvgTokenPerSecond] = struct{}{}
-			}
-		case "totalAvgStreamFirstTokenLatenchMs":
-			if _, ok := fieldSeen[channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs)
-				fieldSeen[channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs] = struct{}{}
-			}
-		case "totalAvgStreamTokenPerSecond":
-			if _, ok := fieldSeen[channelperformance.FieldTotalAvgStreamTokenPerSecond]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldTotalAvgStreamTokenPerSecond)
-				fieldSeen[channelperformance.FieldTotalAvgStreamTokenPerSecond] = struct{}{}
-			}
-		case "lastPeriodStart":
-			if _, ok := fieldSeen[channelperformance.FieldLastPeriodStart]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodStart)
-				fieldSeen[channelperformance.FieldLastPeriodStart] = struct{}{}
-			}
-		case "lastPeriodEnd":
-			if _, ok := fieldSeen[channelperformance.FieldLastPeriodEnd]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodEnd)
-				fieldSeen[channelperformance.FieldLastPeriodEnd] = struct{}{}
-			}
-		case "lastPeriodSeconds":
-			if _, ok := fieldSeen[channelperformance.FieldLastPeriodSeconds]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodSeconds)
-				fieldSeen[channelperformance.FieldLastPeriodSeconds] = struct{}{}
-			}
-		case "lastPeriodCount":
-			if _, ok := fieldSeen[channelperformance.FieldLastPeriodCount]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodCount)
-				fieldSeen[channelperformance.FieldLastPeriodCount] = struct{}{}
-			}
-		case "lastPeriodSuccessCount":
-			if _, ok := fieldSeen[channelperformance.FieldLastPeriodSuccessCount]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodSuccessCount)
-				fieldSeen[channelperformance.FieldLastPeriodSuccessCount] = struct{}{}
-			}
-		case "lastPeriodTokenCount":
-			if _, ok := fieldSeen[channelperformance.FieldLastPeriodTokenCount]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodTokenCount)
-				fieldSeen[channelperformance.FieldLastPeriodTokenCount] = struct{}{}
-			}
-		case "lastPeriodAvgLatencyMs":
-			if _, ok := fieldSeen[channelperformance.FieldLastPeriodAvgLatencyMs]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodAvgLatencyMs)
-				fieldSeen[channelperformance.FieldLastPeriodAvgLatencyMs] = struct{}{}
-			}
-		case "lastPeriodAvgTokenPerSecond":
-			if _, ok := fieldSeen[channelperformance.FieldLastPeriodAvgTokenPerSecond]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodAvgTokenPerSecond)
-				fieldSeen[channelperformance.FieldLastPeriodAvgTokenPerSecond] = struct{}{}
-			}
-		case "lastPeriodAvgStreamFirstTokenLatenchMs":
-			if _, ok := fieldSeen[channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs)
-				fieldSeen[channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs] = struct{}{}
-			}
-		case "lastPeriodAvgStreamTokenPerSecond":
-			if _, ok := fieldSeen[channelperformance.FieldLastPeriodAvgStreamTokenPerSecond]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodAvgStreamTokenPerSecond)
-				fieldSeen[channelperformance.FieldLastPeriodAvgStreamTokenPerSecond] = struct{}{}
+		case "avgStreamTokenPerSecond":
+			if _, ok := fieldSeen[channelperformance.FieldAvgStreamTokenPerSecond]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldAvgStreamTokenPerSecond)
+				fieldSeen[channelperformance.FieldAvgStreamTokenPerSecond] = struct{}{}
 			}
 		case "lastSuccessAt":
 			if _, ok := fieldSeen[channelperformance.FieldLastSuccessAt]; !ok {
@@ -857,11 +797,6 @@ func (_q *ChannelPerformanceQuery) collectField(ctx context.Context, oneNode boo
 			if _, ok := fieldSeen[channelperformance.FieldLastFailureAt]; !ok {
 				selectedFields = append(selectedFields, channelperformance.FieldLastFailureAt)
 				fieldSeen[channelperformance.FieldLastFailureAt] = struct{}{}
-			}
-		case "lastAttemptAt":
-			if _, ok := fieldSeen[channelperformance.FieldLastAttemptAt]; !ok {
-				selectedFields = append(selectedFields, channelperformance.FieldLastAttemptAt)
-				fieldSeen[channelperformance.FieldLastAttemptAt] = struct{}{}
 			}
 		case "id":
 		case "__typename":

@@ -251,6 +251,7 @@ type Channel implements Node {
   Ordering weight for display sorting
   """
   orderingWeight: Int!
+  errorMessage: String
   requests(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -403,40 +404,14 @@ type ChannelPerformance implements Node {
   updatedAt: Time!
   deletedAt: Int!
   channelID: ID!
-  """
-  Health status of the channel
-  """
-  healthStatus: ChannelPerformanceHealthStatus!
-  totalCount: Int!
-  totalSuccessCount: Int!
-  totalTokenCount: Int!
-  totalAvgLatencyMs: Int!
-  totalAvgTokenPerSecond: Int!
-  totalAvgStreamFirstTokenLatenchMs: Int!
-  totalAvgStreamTokenPerSecond: Float!
-  lastPeriodStart: Time!
-  lastPeriodEnd: Time!
-  lastPeriodSeconds: Int!
-  lastPeriodCount: Int!
-  lastPeriodSuccessCount: Int!
-  lastPeriodTokenCount: Int!
-  lastPeriodAvgLatencyMs: Int!
-  lastPeriodAvgTokenPerSecond: Int!
-  lastPeriodAvgStreamFirstTokenLatenchMs: Int!
-  lastPeriodAvgStreamTokenPerSecond: Float!
-  lastSuccessAt: Time!
-  lastFailureAt: Time!
-  lastAttemptAt: Time!
+  successRate: Int!
+  avgLatencyMs: Int!
+  avgTokenPerSecond: Int!
+  avgStreamFirstTokenLatencyMs: Int!
+  avgStreamTokenPerSecond: Float!
+  lastSuccessAt: Time
+  lastFailureAt: Time
   channel: Channel!
-}
-"""
-ChannelPerformanceHealthStatus is enum for the field health_status
-"""
-enum ChannelPerformanceHealthStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/channelperformance.HealthStatus") {
-  good
-  warning
-  critical
-  panic
 }
 """
 Ordering options for ChannelPerformance connections
@@ -518,199 +493,60 @@ input ChannelPerformanceWhereInput {
   channelIDIn: [ID!]
   channelIDNotIn: [ID!]
   """
-  health_status field predicates
+  success_rate field predicates
   """
-  healthStatus: ChannelPerformanceHealthStatus
-  healthStatusNEQ: ChannelPerformanceHealthStatus
-  healthStatusIn: [ChannelPerformanceHealthStatus!]
-  healthStatusNotIn: [ChannelPerformanceHealthStatus!]
+  successRate: Int
+  successRateNEQ: Int
+  successRateIn: [Int!]
+  successRateNotIn: [Int!]
+  successRateGT: Int
+  successRateGTE: Int
+  successRateLT: Int
+  successRateLTE: Int
   """
-  total_count field predicates
+  avg_latency_ms field predicates
   """
-  totalCount: Int
-  totalCountNEQ: Int
-  totalCountIn: [Int!]
-  totalCountNotIn: [Int!]
-  totalCountGT: Int
-  totalCountGTE: Int
-  totalCountLT: Int
-  totalCountLTE: Int
+  avgLatencyMs: Int
+  avgLatencyMsNEQ: Int
+  avgLatencyMsIn: [Int!]
+  avgLatencyMsNotIn: [Int!]
+  avgLatencyMsGT: Int
+  avgLatencyMsGTE: Int
+  avgLatencyMsLT: Int
+  avgLatencyMsLTE: Int
   """
-  total_success_count field predicates
+  avg_token_per_second field predicates
   """
-  totalSuccessCount: Int
-  totalSuccessCountNEQ: Int
-  totalSuccessCountIn: [Int!]
-  totalSuccessCountNotIn: [Int!]
-  totalSuccessCountGT: Int
-  totalSuccessCountGTE: Int
-  totalSuccessCountLT: Int
-  totalSuccessCountLTE: Int
+  avgTokenPerSecond: Int
+  avgTokenPerSecondNEQ: Int
+  avgTokenPerSecondIn: [Int!]
+  avgTokenPerSecondNotIn: [Int!]
+  avgTokenPerSecondGT: Int
+  avgTokenPerSecondGTE: Int
+  avgTokenPerSecondLT: Int
+  avgTokenPerSecondLTE: Int
   """
-  total_token_count field predicates
+  avg_stream_first_token_latency_ms field predicates
   """
-  totalTokenCount: Int
-  totalTokenCountNEQ: Int
-  totalTokenCountIn: [Int!]
-  totalTokenCountNotIn: [Int!]
-  totalTokenCountGT: Int
-  totalTokenCountGTE: Int
-  totalTokenCountLT: Int
-  totalTokenCountLTE: Int
+  avgStreamFirstTokenLatencyMs: Int
+  avgStreamFirstTokenLatencyMsNEQ: Int
+  avgStreamFirstTokenLatencyMsIn: [Int!]
+  avgStreamFirstTokenLatencyMsNotIn: [Int!]
+  avgStreamFirstTokenLatencyMsGT: Int
+  avgStreamFirstTokenLatencyMsGTE: Int
+  avgStreamFirstTokenLatencyMsLT: Int
+  avgStreamFirstTokenLatencyMsLTE: Int
   """
-  total_avg_latency_ms field predicates
+  avg_stream_token_per_second field predicates
   """
-  totalAvgLatencyMs: Int
-  totalAvgLatencyMsNEQ: Int
-  totalAvgLatencyMsIn: [Int!]
-  totalAvgLatencyMsNotIn: [Int!]
-  totalAvgLatencyMsGT: Int
-  totalAvgLatencyMsGTE: Int
-  totalAvgLatencyMsLT: Int
-  totalAvgLatencyMsLTE: Int
-  """
-  total_avg_token_per_second field predicates
-  """
-  totalAvgTokenPerSecond: Int
-  totalAvgTokenPerSecondNEQ: Int
-  totalAvgTokenPerSecondIn: [Int!]
-  totalAvgTokenPerSecondNotIn: [Int!]
-  totalAvgTokenPerSecondGT: Int
-  totalAvgTokenPerSecondGTE: Int
-  totalAvgTokenPerSecondLT: Int
-  totalAvgTokenPerSecondLTE: Int
-  """
-  total_avg_stream_first_token_latench_ms field predicates
-  """
-  totalAvgStreamFirstTokenLatenchMs: Int
-  totalAvgStreamFirstTokenLatenchMsNEQ: Int
-  totalAvgStreamFirstTokenLatenchMsIn: [Int!]
-  totalAvgStreamFirstTokenLatenchMsNotIn: [Int!]
-  totalAvgStreamFirstTokenLatenchMsGT: Int
-  totalAvgStreamFirstTokenLatenchMsGTE: Int
-  totalAvgStreamFirstTokenLatenchMsLT: Int
-  totalAvgStreamFirstTokenLatenchMsLTE: Int
-  """
-  total_avg_stream_token_per_second field predicates
-  """
-  totalAvgStreamTokenPerSecond: Float
-  totalAvgStreamTokenPerSecondNEQ: Float
-  totalAvgStreamTokenPerSecondIn: [Float!]
-  totalAvgStreamTokenPerSecondNotIn: [Float!]
-  totalAvgStreamTokenPerSecondGT: Float
-  totalAvgStreamTokenPerSecondGTE: Float
-  totalAvgStreamTokenPerSecondLT: Float
-  totalAvgStreamTokenPerSecondLTE: Float
-  """
-  last_period_start field predicates
-  """
-  lastPeriodStart: Time
-  lastPeriodStartNEQ: Time
-  lastPeriodStartIn: [Time!]
-  lastPeriodStartNotIn: [Time!]
-  lastPeriodStartGT: Time
-  lastPeriodStartGTE: Time
-  lastPeriodStartLT: Time
-  lastPeriodStartLTE: Time
-  """
-  last_period_end field predicates
-  """
-  lastPeriodEnd: Time
-  lastPeriodEndNEQ: Time
-  lastPeriodEndIn: [Time!]
-  lastPeriodEndNotIn: [Time!]
-  lastPeriodEndGT: Time
-  lastPeriodEndGTE: Time
-  lastPeriodEndLT: Time
-  lastPeriodEndLTE: Time
-  """
-  last_period_seconds field predicates
-  """
-  lastPeriodSeconds: Int
-  lastPeriodSecondsNEQ: Int
-  lastPeriodSecondsIn: [Int!]
-  lastPeriodSecondsNotIn: [Int!]
-  lastPeriodSecondsGT: Int
-  lastPeriodSecondsGTE: Int
-  lastPeriodSecondsLT: Int
-  lastPeriodSecondsLTE: Int
-  """
-  last_period_count field predicates
-  """
-  lastPeriodCount: Int
-  lastPeriodCountNEQ: Int
-  lastPeriodCountIn: [Int!]
-  lastPeriodCountNotIn: [Int!]
-  lastPeriodCountGT: Int
-  lastPeriodCountGTE: Int
-  lastPeriodCountLT: Int
-  lastPeriodCountLTE: Int
-  """
-  last_period_success_count field predicates
-  """
-  lastPeriodSuccessCount: Int
-  lastPeriodSuccessCountNEQ: Int
-  lastPeriodSuccessCountIn: [Int!]
-  lastPeriodSuccessCountNotIn: [Int!]
-  lastPeriodSuccessCountGT: Int
-  lastPeriodSuccessCountGTE: Int
-  lastPeriodSuccessCountLT: Int
-  lastPeriodSuccessCountLTE: Int
-  """
-  last_period_token_count field predicates
-  """
-  lastPeriodTokenCount: Int
-  lastPeriodTokenCountNEQ: Int
-  lastPeriodTokenCountIn: [Int!]
-  lastPeriodTokenCountNotIn: [Int!]
-  lastPeriodTokenCountGT: Int
-  lastPeriodTokenCountGTE: Int
-  lastPeriodTokenCountLT: Int
-  lastPeriodTokenCountLTE: Int
-  """
-  last_period_avg_latency_ms field predicates
-  """
-  lastPeriodAvgLatencyMs: Int
-  lastPeriodAvgLatencyMsNEQ: Int
-  lastPeriodAvgLatencyMsIn: [Int!]
-  lastPeriodAvgLatencyMsNotIn: [Int!]
-  lastPeriodAvgLatencyMsGT: Int
-  lastPeriodAvgLatencyMsGTE: Int
-  lastPeriodAvgLatencyMsLT: Int
-  lastPeriodAvgLatencyMsLTE: Int
-  """
-  last_period_avg_token_per_second field predicates
-  """
-  lastPeriodAvgTokenPerSecond: Int
-  lastPeriodAvgTokenPerSecondNEQ: Int
-  lastPeriodAvgTokenPerSecondIn: [Int!]
-  lastPeriodAvgTokenPerSecondNotIn: [Int!]
-  lastPeriodAvgTokenPerSecondGT: Int
-  lastPeriodAvgTokenPerSecondGTE: Int
-  lastPeriodAvgTokenPerSecondLT: Int
-  lastPeriodAvgTokenPerSecondLTE: Int
-  """
-  last_period_avg_stream_first_token_latench_ms field predicates
-  """
-  lastPeriodAvgStreamFirstTokenLatenchMs: Int
-  lastPeriodAvgStreamFirstTokenLatenchMsNEQ: Int
-  lastPeriodAvgStreamFirstTokenLatenchMsIn: [Int!]
-  lastPeriodAvgStreamFirstTokenLatenchMsNotIn: [Int!]
-  lastPeriodAvgStreamFirstTokenLatenchMsGT: Int
-  lastPeriodAvgStreamFirstTokenLatenchMsGTE: Int
-  lastPeriodAvgStreamFirstTokenLatenchMsLT: Int
-  lastPeriodAvgStreamFirstTokenLatenchMsLTE: Int
-  """
-  last_period_avg_stream_token_per_second field predicates
-  """
-  lastPeriodAvgStreamTokenPerSecond: Float
-  lastPeriodAvgStreamTokenPerSecondNEQ: Float
-  lastPeriodAvgStreamTokenPerSecondIn: [Float!]
-  lastPeriodAvgStreamTokenPerSecondNotIn: [Float!]
-  lastPeriodAvgStreamTokenPerSecondGT: Float
-  lastPeriodAvgStreamTokenPerSecondGTE: Float
-  lastPeriodAvgStreamTokenPerSecondLT: Float
-  lastPeriodAvgStreamTokenPerSecondLTE: Float
+  avgStreamTokenPerSecond: Float
+  avgStreamTokenPerSecondNEQ: Float
+  avgStreamTokenPerSecondIn: [Float!]
+  avgStreamTokenPerSecondNotIn: [Float!]
+  avgStreamTokenPerSecondGT: Float
+  avgStreamTokenPerSecondGTE: Float
+  avgStreamTokenPerSecondLT: Float
+  avgStreamTokenPerSecondLTE: Float
   """
   last_success_at field predicates
   """
@@ -722,6 +558,8 @@ input ChannelPerformanceWhereInput {
   lastSuccessAtGTE: Time
   lastSuccessAtLT: Time
   lastSuccessAtLTE: Time
+  lastSuccessAtIsNil: Boolean
+  lastSuccessAtNotNil: Boolean
   """
   last_failure_at field predicates
   """
@@ -733,17 +571,8 @@ input ChannelPerformanceWhereInput {
   lastFailureAtGTE: Time
   lastFailureAtLT: Time
   lastFailureAtLTE: Time
-  """
-  last_attempt_at field predicates
-  """
-  lastAttemptAt: Time
-  lastAttemptAtNEQ: Time
-  lastAttemptAtIn: [Time!]
-  lastAttemptAtNotIn: [Time!]
-  lastAttemptAtGT: Time
-  lastAttemptAtGTE: Time
-  lastAttemptAtLT: Time
-  lastAttemptAtLTE: Time
+  lastFailureAtIsNil: Boolean
+  lastFailureAtNotNil: Boolean
   """
   channel edge predicates
   """
@@ -920,6 +749,24 @@ input ChannelWhereInput {
   orderingWeightGTE: Int
   orderingWeightLT: Int
   orderingWeightLTE: Int
+  """
+  error_message field predicates
+  """
+  errorMessage: String
+  errorMessageNEQ: String
+  errorMessageIn: [String!]
+  errorMessageNotIn: [String!]
+  errorMessageGT: String
+  errorMessageGTE: String
+  errorMessageLT: String
+  errorMessageLTE: String
+  errorMessageContains: String
+  errorMessageHasPrefix: String
+  errorMessageHasSuffix: String
+  errorMessageIsNil: Boolean
+  errorMessageNotNil: Boolean
+  errorMessageEqualFold: String
+  errorMessageContainsFold: String
   """
   requests edge predicates
   """

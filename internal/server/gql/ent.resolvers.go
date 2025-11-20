@@ -48,12 +48,18 @@ func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (*objects.GU
 
 // ID is the resolver for the id field.
 func (r *channelPerformanceResolver) ID(ctx context.Context, obj *ent.ChannelPerformance) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return &objects.GUID{
+		Type: ent.TypeChannelPerformance,
+		ID:   obj.ID,
+	}, nil
 }
 
 // ChannelID is the resolver for the channelID field.
 func (r *channelPerformanceResolver) ChannelID(ctx context.Context, obj *ent.ChannelPerformance) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ChannelID - channelID"))
+	return &objects.GUID{
+		Type: ent.TypeChannel,
+		ID:   obj.ChannelID,
+	}, nil
 }
 
 // ID is the resolver for the id field.

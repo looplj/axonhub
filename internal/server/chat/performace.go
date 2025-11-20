@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/log"
@@ -78,7 +80,7 @@ func (m *performanceRecording) OnOutboundLlmResponse(ctx context.Context, respon
 		return response, nil
 	}
 
-	m.outbound.state.Perf.MarkSuccess(response.Usage.GetCompletionTokens())
+	m.outbound.state.Perf.MarkSuccess(lo.FromPtr(response.Usage.GetCompletionTokens()))
 	m.outbound.state.ChannelService.RecordPerformance(ctx, m.outbound.state.Perf)
 
 	return response, nil
@@ -132,7 +134,7 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 	}
 
 	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
-		s.state.Perf.MarkSuccess(tokenCount)
+		s.state.Perf.MarkSuccess(*tokenCount)
 		s.state.ChannelService.RecordPerformance(s.ctx, s.state.Perf)
 	}
 

@@ -45,6 +45,8 @@ const (
 	FieldSettings = "settings"
 	// FieldOrderingWeight holds the string denoting the ordering_weight field in the database.
 	FieldOrderingWeight = "ordering_weight"
+	// FieldErrorMessage holds the string denoting the error_message field in the database.
+	FieldErrorMessage = "error_message"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
 	EdgeRequests = "requests"
 	// EdgeExecutions holds the string denoting the executions edge name in mutations.
@@ -101,6 +103,7 @@ var Columns = []string{
 	FieldDefaultTestModel,
 	FieldSettings,
 	FieldOrderingWeight,
+	FieldErrorMessage,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -269,6 +272,11 @@ func ByDefaultTestModel(opts ...sql.OrderTermOption) OrderOption {
 // ByOrderingWeight orders the results by the ordering_weight field.
 func ByOrderingWeight(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldOrderingWeight, opts...).ToFunc()
+}
+
+// ByErrorMessage orders the results by the error_message field.
+func ByErrorMessage(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldErrorMessage, opts...).ToFunc()
 }
 
 // ByRequestsCount orders the results by requests count.

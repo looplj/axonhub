@@ -56,360 +56,108 @@ func (_u *ChannelPerformanceUpdate) AddDeletedAt(v int) *ChannelPerformanceUpdat
 	return _u
 }
 
-// SetHealthStatus sets the "health_status" field.
-func (_u *ChannelPerformanceUpdate) SetHealthStatus(v channelperformance.HealthStatus) *ChannelPerformanceUpdate {
-	_u.mutation.SetHealthStatus(v)
+// SetSuccessRate sets the "success_rate" field.
+func (_u *ChannelPerformanceUpdate) SetSuccessRate(v int) *ChannelPerformanceUpdate {
+	_u.mutation.ResetSuccessRate()
+	_u.mutation.SetSuccessRate(v)
 	return _u
 }
 
-// SetNillableHealthStatus sets the "health_status" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableHealthStatus(v *channelperformance.HealthStatus) *ChannelPerformanceUpdate {
+// SetNillableSuccessRate sets the "success_rate" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableSuccessRate(v *int) *ChannelPerformanceUpdate {
 	if v != nil {
-		_u.SetHealthStatus(*v)
+		_u.SetSuccessRate(*v)
 	}
 	return _u
 }
 
-// SetTotalCount sets the "total_count" field.
-func (_u *ChannelPerformanceUpdate) SetTotalCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetTotalCount()
-	_u.mutation.SetTotalCount(v)
+// AddSuccessRate adds value to the "success_rate" field.
+func (_u *ChannelPerformanceUpdate) AddSuccessRate(v int) *ChannelPerformanceUpdate {
+	_u.mutation.AddSuccessRate(v)
 	return _u
 }
 
-// SetNillableTotalCount sets the "total_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableTotalCount(v *int) *ChannelPerformanceUpdate {
+// SetAvgLatencyMs sets the "avg_latency_ms" field.
+func (_u *ChannelPerformanceUpdate) SetAvgLatencyMs(v int) *ChannelPerformanceUpdate {
+	_u.mutation.ResetAvgLatencyMs()
+	_u.mutation.SetAvgLatencyMs(v)
+	return _u
+}
+
+// SetNillableAvgLatencyMs sets the "avg_latency_ms" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableAvgLatencyMs(v *int) *ChannelPerformanceUpdate {
 	if v != nil {
-		_u.SetTotalCount(*v)
+		_u.SetAvgLatencyMs(*v)
 	}
 	return _u
 }
 
-// AddTotalCount adds value to the "total_count" field.
-func (_u *ChannelPerformanceUpdate) AddTotalCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddTotalCount(v)
+// AddAvgLatencyMs adds value to the "avg_latency_ms" field.
+func (_u *ChannelPerformanceUpdate) AddAvgLatencyMs(v int) *ChannelPerformanceUpdate {
+	_u.mutation.AddAvgLatencyMs(v)
 	return _u
 }
 
-// SetTotalSuccessCount sets the "total_success_count" field.
-func (_u *ChannelPerformanceUpdate) SetTotalSuccessCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetTotalSuccessCount()
-	_u.mutation.SetTotalSuccessCount(v)
+// SetAvgTokenPerSecond sets the "avg_token_per_second" field.
+func (_u *ChannelPerformanceUpdate) SetAvgTokenPerSecond(v int) *ChannelPerformanceUpdate {
+	_u.mutation.ResetAvgTokenPerSecond()
+	_u.mutation.SetAvgTokenPerSecond(v)
 	return _u
 }
 
-// SetNillableTotalSuccessCount sets the "total_success_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableTotalSuccessCount(v *int) *ChannelPerformanceUpdate {
+// SetNillableAvgTokenPerSecond sets the "avg_token_per_second" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableAvgTokenPerSecond(v *int) *ChannelPerformanceUpdate {
 	if v != nil {
-		_u.SetTotalSuccessCount(*v)
+		_u.SetAvgTokenPerSecond(*v)
 	}
 	return _u
 }
 
-// AddTotalSuccessCount adds value to the "total_success_count" field.
-func (_u *ChannelPerformanceUpdate) AddTotalSuccessCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddTotalSuccessCount(v)
+// AddAvgTokenPerSecond adds value to the "avg_token_per_second" field.
+func (_u *ChannelPerformanceUpdate) AddAvgTokenPerSecond(v int) *ChannelPerformanceUpdate {
+	_u.mutation.AddAvgTokenPerSecond(v)
 	return _u
 }
 
-// SetTotalTokenCount sets the "total_token_count" field.
-func (_u *ChannelPerformanceUpdate) SetTotalTokenCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetTotalTokenCount()
-	_u.mutation.SetTotalTokenCount(v)
+// SetAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field.
+func (_u *ChannelPerformanceUpdate) SetAvgStreamFirstTokenLatencyMs(v int) *ChannelPerformanceUpdate {
+	_u.mutation.ResetAvgStreamFirstTokenLatencyMs()
+	_u.mutation.SetAvgStreamFirstTokenLatencyMs(v)
 	return _u
 }
 
-// SetNillableTotalTokenCount sets the "total_token_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableTotalTokenCount(v *int) *ChannelPerformanceUpdate {
+// SetNillableAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableAvgStreamFirstTokenLatencyMs(v *int) *ChannelPerformanceUpdate {
 	if v != nil {
-		_u.SetTotalTokenCount(*v)
+		_u.SetAvgStreamFirstTokenLatencyMs(*v)
 	}
 	return _u
 }
 
-// AddTotalTokenCount adds value to the "total_token_count" field.
-func (_u *ChannelPerformanceUpdate) AddTotalTokenCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddTotalTokenCount(v)
+// AddAvgStreamFirstTokenLatencyMs adds value to the "avg_stream_first_token_latency_ms" field.
+func (_u *ChannelPerformanceUpdate) AddAvgStreamFirstTokenLatencyMs(v int) *ChannelPerformanceUpdate {
+	_u.mutation.AddAvgStreamFirstTokenLatencyMs(v)
 	return _u
 }
 
-// SetTotalAvgLatencyMs sets the "total_avg_latency_ms" field.
-func (_u *ChannelPerformanceUpdate) SetTotalAvgLatencyMs(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetTotalAvgLatencyMs()
-	_u.mutation.SetTotalAvgLatencyMs(v)
+// SetAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field.
+func (_u *ChannelPerformanceUpdate) SetAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetAvgStreamTokenPerSecond()
+	_u.mutation.SetAvgStreamTokenPerSecond(v)
 	return _u
 }
 
-// SetNillableTotalAvgLatencyMs sets the "total_avg_latency_ms" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableTotalAvgLatencyMs(v *int) *ChannelPerformanceUpdate {
+// SetNillableAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableAvgStreamTokenPerSecond(v *float64) *ChannelPerformanceUpdate {
 	if v != nil {
-		_u.SetTotalAvgLatencyMs(*v)
+		_u.SetAvgStreamTokenPerSecond(*v)
 	}
 	return _u
 }
 
-// AddTotalAvgLatencyMs adds value to the "total_avg_latency_ms" field.
-func (_u *ChannelPerformanceUpdate) AddTotalAvgLatencyMs(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddTotalAvgLatencyMs(v)
-	return _u
-}
-
-// SetTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field.
-func (_u *ChannelPerformanceUpdate) SetTotalAvgTokenPerSecond(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetTotalAvgTokenPerSecond()
-	_u.mutation.SetTotalAvgTokenPerSecond(v)
-	return _u
-}
-
-// SetNillableTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableTotalAvgTokenPerSecond(v *int) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetTotalAvgTokenPerSecond(*v)
-	}
-	return _u
-}
-
-// AddTotalAvgTokenPerSecond adds value to the "total_avg_token_per_second" field.
-func (_u *ChannelPerformanceUpdate) AddTotalAvgTokenPerSecond(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddTotalAvgTokenPerSecond(v)
-	return _u
-}
-
-// SetTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field.
-func (_u *ChannelPerformanceUpdate) SetTotalAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetTotalAvgStreamFirstTokenLatenchMs()
-	_u.mutation.SetTotalAvgStreamFirstTokenLatenchMs(v)
-	return _u
-}
-
-// SetNillableTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableTotalAvgStreamFirstTokenLatenchMs(v *int) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetTotalAvgStreamFirstTokenLatenchMs(*v)
-	}
-	return _u
-}
-
-// AddTotalAvgStreamFirstTokenLatenchMs adds value to the "total_avg_stream_first_token_latench_ms" field.
-func (_u *ChannelPerformanceUpdate) AddTotalAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddTotalAvgStreamFirstTokenLatenchMs(v)
-	return _u
-}
-
-// SetTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field.
-func (_u *ChannelPerformanceUpdate) SetTotalAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdate {
-	_u.mutation.ResetTotalAvgStreamTokenPerSecond()
-	_u.mutation.SetTotalAvgStreamTokenPerSecond(v)
-	return _u
-}
-
-// SetNillableTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableTotalAvgStreamTokenPerSecond(v *float64) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetTotalAvgStreamTokenPerSecond(*v)
-	}
-	return _u
-}
-
-// AddTotalAvgStreamTokenPerSecond adds value to the "total_avg_stream_token_per_second" field.
-func (_u *ChannelPerformanceUpdate) AddTotalAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdate {
-	_u.mutation.AddTotalAvgStreamTokenPerSecond(v)
-	return _u
-}
-
-// SetLastPeriodStart sets the "last_period_start" field.
-func (_u *ChannelPerformanceUpdate) SetLastPeriodStart(v time.Time) *ChannelPerformanceUpdate {
-	_u.mutation.SetLastPeriodStart(v)
-	return _u
-}
-
-// SetNillableLastPeriodStart sets the "last_period_start" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableLastPeriodStart(v *time.Time) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetLastPeriodStart(*v)
-	}
-	return _u
-}
-
-// SetLastPeriodEnd sets the "last_period_end" field.
-func (_u *ChannelPerformanceUpdate) SetLastPeriodEnd(v time.Time) *ChannelPerformanceUpdate {
-	_u.mutation.SetLastPeriodEnd(v)
-	return _u
-}
-
-// SetNillableLastPeriodEnd sets the "last_period_end" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableLastPeriodEnd(v *time.Time) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetLastPeriodEnd(*v)
-	}
-	return _u
-}
-
-// SetLastPeriodSeconds sets the "last_period_seconds" field.
-func (_u *ChannelPerformanceUpdate) SetLastPeriodSeconds(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetLastPeriodSeconds()
-	_u.mutation.SetLastPeriodSeconds(v)
-	return _u
-}
-
-// SetNillableLastPeriodSeconds sets the "last_period_seconds" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableLastPeriodSeconds(v *int) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetLastPeriodSeconds(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodSeconds adds value to the "last_period_seconds" field.
-func (_u *ChannelPerformanceUpdate) AddLastPeriodSeconds(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddLastPeriodSeconds(v)
-	return _u
-}
-
-// SetLastPeriodCount sets the "last_period_count" field.
-func (_u *ChannelPerformanceUpdate) SetLastPeriodCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetLastPeriodCount()
-	_u.mutation.SetLastPeriodCount(v)
-	return _u
-}
-
-// SetNillableLastPeriodCount sets the "last_period_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableLastPeriodCount(v *int) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetLastPeriodCount(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodCount adds value to the "last_period_count" field.
-func (_u *ChannelPerformanceUpdate) AddLastPeriodCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddLastPeriodCount(v)
-	return _u
-}
-
-// SetLastPeriodSuccessCount sets the "last_period_success_count" field.
-func (_u *ChannelPerformanceUpdate) SetLastPeriodSuccessCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetLastPeriodSuccessCount()
-	_u.mutation.SetLastPeriodSuccessCount(v)
-	return _u
-}
-
-// SetNillableLastPeriodSuccessCount sets the "last_period_success_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableLastPeriodSuccessCount(v *int) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetLastPeriodSuccessCount(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodSuccessCount adds value to the "last_period_success_count" field.
-func (_u *ChannelPerformanceUpdate) AddLastPeriodSuccessCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddLastPeriodSuccessCount(v)
-	return _u
-}
-
-// SetLastPeriodTokenCount sets the "last_period_token_count" field.
-func (_u *ChannelPerformanceUpdate) SetLastPeriodTokenCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetLastPeriodTokenCount()
-	_u.mutation.SetLastPeriodTokenCount(v)
-	return _u
-}
-
-// SetNillableLastPeriodTokenCount sets the "last_period_token_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableLastPeriodTokenCount(v *int) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetLastPeriodTokenCount(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodTokenCount adds value to the "last_period_token_count" field.
-func (_u *ChannelPerformanceUpdate) AddLastPeriodTokenCount(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddLastPeriodTokenCount(v)
-	return _u
-}
-
-// SetLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field.
-func (_u *ChannelPerformanceUpdate) SetLastPeriodAvgLatencyMs(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetLastPeriodAvgLatencyMs()
-	_u.mutation.SetLastPeriodAvgLatencyMs(v)
-	return _u
-}
-
-// SetNillableLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableLastPeriodAvgLatencyMs(v *int) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetLastPeriodAvgLatencyMs(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodAvgLatencyMs adds value to the "last_period_avg_latency_ms" field.
-func (_u *ChannelPerformanceUpdate) AddLastPeriodAvgLatencyMs(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddLastPeriodAvgLatencyMs(v)
-	return _u
-}
-
-// SetLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field.
-func (_u *ChannelPerformanceUpdate) SetLastPeriodAvgTokenPerSecond(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetLastPeriodAvgTokenPerSecond()
-	_u.mutation.SetLastPeriodAvgTokenPerSecond(v)
-	return _u
-}
-
-// SetNillableLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableLastPeriodAvgTokenPerSecond(v *int) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetLastPeriodAvgTokenPerSecond(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodAvgTokenPerSecond adds value to the "last_period_avg_token_per_second" field.
-func (_u *ChannelPerformanceUpdate) AddLastPeriodAvgTokenPerSecond(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddLastPeriodAvgTokenPerSecond(v)
-	return _u
-}
-
-// SetLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field.
-func (_u *ChannelPerformanceUpdate) SetLastPeriodAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpdate {
-	_u.mutation.ResetLastPeriodAvgStreamFirstTokenLatenchMs()
-	_u.mutation.SetLastPeriodAvgStreamFirstTokenLatenchMs(v)
-	return _u
-}
-
-// SetNillableLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableLastPeriodAvgStreamFirstTokenLatenchMs(v *int) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetLastPeriodAvgStreamFirstTokenLatenchMs(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodAvgStreamFirstTokenLatenchMs adds value to the "last_period_avg_stream_first_token_latench_ms" field.
-func (_u *ChannelPerformanceUpdate) AddLastPeriodAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpdate {
-	_u.mutation.AddLastPeriodAvgStreamFirstTokenLatenchMs(v)
-	return _u
-}
-
-// SetLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field.
-func (_u *ChannelPerformanceUpdate) SetLastPeriodAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdate {
-	_u.mutation.ResetLastPeriodAvgStreamTokenPerSecond()
-	_u.mutation.SetLastPeriodAvgStreamTokenPerSecond(v)
-	return _u
-}
-
-// SetNillableLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableLastPeriodAvgStreamTokenPerSecond(v *float64) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetLastPeriodAvgStreamTokenPerSecond(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodAvgStreamTokenPerSecond adds value to the "last_period_avg_stream_token_per_second" field.
-func (_u *ChannelPerformanceUpdate) AddLastPeriodAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdate {
-	_u.mutation.AddLastPeriodAvgStreamTokenPerSecond(v)
+// AddAvgStreamTokenPerSecond adds value to the "avg_stream_token_per_second" field.
+func (_u *ChannelPerformanceUpdate) AddAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdate {
+	_u.mutation.AddAvgStreamTokenPerSecond(v)
 	return _u
 }
 
@@ -427,6 +175,12 @@ func (_u *ChannelPerformanceUpdate) SetNillableLastSuccessAt(v *time.Time) *Chan
 	return _u
 }
 
+// ClearLastSuccessAt clears the value of the "last_success_at" field.
+func (_u *ChannelPerformanceUpdate) ClearLastSuccessAt() *ChannelPerformanceUpdate {
+	_u.mutation.ClearLastSuccessAt()
+	return _u
+}
+
 // SetLastFailureAt sets the "last_failure_at" field.
 func (_u *ChannelPerformanceUpdate) SetLastFailureAt(v time.Time) *ChannelPerformanceUpdate {
 	_u.mutation.SetLastFailureAt(v)
@@ -441,17 +195,9 @@ func (_u *ChannelPerformanceUpdate) SetNillableLastFailureAt(v *time.Time) *Chan
 	return _u
 }
 
-// SetLastAttemptAt sets the "last_attempt_at" field.
-func (_u *ChannelPerformanceUpdate) SetLastAttemptAt(v time.Time) *ChannelPerformanceUpdate {
-	_u.mutation.SetLastAttemptAt(v)
-	return _u
-}
-
-// SetNillableLastAttemptAt sets the "last_attempt_at" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdate) SetNillableLastAttemptAt(v *time.Time) *ChannelPerformanceUpdate {
-	if v != nil {
-		_u.SetLastAttemptAt(*v)
-	}
+// ClearLastFailureAt clears the value of the "last_failure_at" field.
+func (_u *ChannelPerformanceUpdate) ClearLastFailureAt() *ChannelPerformanceUpdate {
+	_u.mutation.ClearLastFailureAt()
 	return _u
 }
 
@@ -504,11 +250,6 @@ func (_u *ChannelPerformanceUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ChannelPerformanceUpdate) check() error {
-	if v, ok := _u.mutation.HealthStatus(); ok {
-		if err := channelperformance.HealthStatusValidator(v); err != nil {
-			return &ValidationError{Name: "health_status", err: fmt.Errorf(`ent: validator failed for field "ChannelPerformance.health_status": %w`, err)}
-		}
-	}
 	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ChannelPerformance.channel"`)
 	}
@@ -542,113 +283,47 @@ func (_u *ChannelPerformanceUpdate) sqlSave(ctx context.Context) (_node int, err
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(channelperformance.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.HealthStatus(); ok {
-		_spec.SetField(channelperformance.FieldHealthStatus, field.TypeEnum, value)
+	if value, ok := _u.mutation.SuccessRate(); ok {
+		_spec.SetField(channelperformance.FieldSuccessRate, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.TotalCount(); ok {
-		_spec.SetField(channelperformance.FieldTotalCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedSuccessRate(); ok {
+		_spec.AddField(channelperformance.FieldSuccessRate, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedTotalCount(); ok {
-		_spec.AddField(channelperformance.FieldTotalCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AvgLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldAvgLatencyMs, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.TotalSuccessCount(); ok {
-		_spec.SetField(channelperformance.FieldTotalSuccessCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedAvgLatencyMs(); ok {
+		_spec.AddField(channelperformance.FieldAvgLatencyMs, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedTotalSuccessCount(); ok {
-		_spec.AddField(channelperformance.FieldTotalSuccessCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AvgTokenPerSecond(); ok {
+		_spec.SetField(channelperformance.FieldAvgTokenPerSecond, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.TotalTokenCount(); ok {
-		_spec.SetField(channelperformance.FieldTotalTokenCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedAvgTokenPerSecond(); ok {
+		_spec.AddField(channelperformance.FieldAvgTokenPerSecond, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedTotalTokenCount(); ok {
-		_spec.AddField(channelperformance.FieldTotalTokenCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AvgStreamFirstTokenLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldAvgStreamFirstTokenLatencyMs, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.TotalAvgLatencyMs(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgLatencyMs, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedAvgStreamFirstTokenLatencyMs(); ok {
+		_spec.AddField(channelperformance.FieldAvgStreamFirstTokenLatencyMs, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedTotalAvgLatencyMs(); ok {
-		_spec.AddField(channelperformance.FieldTotalAvgLatencyMs, field.TypeInt, value)
+	if value, ok := _u.mutation.AvgStreamTokenPerSecond(); ok {
+		_spec.SetField(channelperformance.FieldAvgStreamTokenPerSecond, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.TotalAvgTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgTokenPerSecond, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedTotalAvgTokenPerSecond(); ok {
-		_spec.AddField(channelperformance.FieldTotalAvgTokenPerSecond, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.TotalAvgStreamFirstTokenLatenchMs(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedTotalAvgStreamFirstTokenLatenchMs(); ok {
-		_spec.AddField(channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.TotalAvgStreamTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgStreamTokenPerSecond, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedTotalAvgStreamTokenPerSecond(); ok {
-		_spec.AddField(channelperformance.FieldTotalAvgStreamTokenPerSecond, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.LastPeriodStart(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodStart, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.LastPeriodEnd(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodEnd, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.LastPeriodSeconds(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodSeconds, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodSeconds(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodSeconds, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodCount(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodCount(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodSuccessCount(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodSuccessCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodSuccessCount(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodSuccessCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodTokenCount(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodTokenCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodTokenCount(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodTokenCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodAvgLatencyMs(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgLatencyMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodAvgLatencyMs(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodAvgLatencyMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodAvgTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgTokenPerSecond, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodAvgTokenPerSecond(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodAvgTokenPerSecond, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodAvgStreamFirstTokenLatenchMs(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodAvgStreamFirstTokenLatenchMs(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodAvgStreamTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgStreamTokenPerSecond, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodAvgStreamTokenPerSecond(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodAvgStreamTokenPerSecond, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedAvgStreamTokenPerSecond(); ok {
+		_spec.AddField(channelperformance.FieldAvgStreamTokenPerSecond, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.LastSuccessAt(); ok {
 		_spec.SetField(channelperformance.FieldLastSuccessAt, field.TypeTime, value)
 	}
+	if _u.mutation.LastSuccessAtCleared() {
+		_spec.ClearField(channelperformance.FieldLastSuccessAt, field.TypeTime)
+	}
 	if value, ok := _u.mutation.LastFailureAt(); ok {
 		_spec.SetField(channelperformance.FieldLastFailureAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.LastAttemptAt(); ok {
-		_spec.SetField(channelperformance.FieldLastAttemptAt, field.TypeTime, value)
+	if _u.mutation.LastFailureAtCleared() {
+		_spec.ClearField(channelperformance.FieldLastFailureAt, field.TypeTime)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -699,360 +374,108 @@ func (_u *ChannelPerformanceUpdateOne) AddDeletedAt(v int) *ChannelPerformanceUp
 	return _u
 }
 
-// SetHealthStatus sets the "health_status" field.
-func (_u *ChannelPerformanceUpdateOne) SetHealthStatus(v channelperformance.HealthStatus) *ChannelPerformanceUpdateOne {
-	_u.mutation.SetHealthStatus(v)
+// SetSuccessRate sets the "success_rate" field.
+func (_u *ChannelPerformanceUpdateOne) SetSuccessRate(v int) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetSuccessRate()
+	_u.mutation.SetSuccessRate(v)
 	return _u
 }
 
-// SetNillableHealthStatus sets the "health_status" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableHealthStatus(v *channelperformance.HealthStatus) *ChannelPerformanceUpdateOne {
+// SetNillableSuccessRate sets the "success_rate" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableSuccessRate(v *int) *ChannelPerformanceUpdateOne {
 	if v != nil {
-		_u.SetHealthStatus(*v)
+		_u.SetSuccessRate(*v)
 	}
 	return _u
 }
 
-// SetTotalCount sets the "total_count" field.
-func (_u *ChannelPerformanceUpdateOne) SetTotalCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetTotalCount()
-	_u.mutation.SetTotalCount(v)
+// AddSuccessRate adds value to the "success_rate" field.
+func (_u *ChannelPerformanceUpdateOne) AddSuccessRate(v int) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddSuccessRate(v)
 	return _u
 }
 
-// SetNillableTotalCount sets the "total_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableTotalCount(v *int) *ChannelPerformanceUpdateOne {
+// SetAvgLatencyMs sets the "avg_latency_ms" field.
+func (_u *ChannelPerformanceUpdateOne) SetAvgLatencyMs(v int) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetAvgLatencyMs()
+	_u.mutation.SetAvgLatencyMs(v)
+	return _u
+}
+
+// SetNillableAvgLatencyMs sets the "avg_latency_ms" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableAvgLatencyMs(v *int) *ChannelPerformanceUpdateOne {
 	if v != nil {
-		_u.SetTotalCount(*v)
+		_u.SetAvgLatencyMs(*v)
 	}
 	return _u
 }
 
-// AddTotalCount adds value to the "total_count" field.
-func (_u *ChannelPerformanceUpdateOne) AddTotalCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddTotalCount(v)
+// AddAvgLatencyMs adds value to the "avg_latency_ms" field.
+func (_u *ChannelPerformanceUpdateOne) AddAvgLatencyMs(v int) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddAvgLatencyMs(v)
 	return _u
 }
 
-// SetTotalSuccessCount sets the "total_success_count" field.
-func (_u *ChannelPerformanceUpdateOne) SetTotalSuccessCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetTotalSuccessCount()
-	_u.mutation.SetTotalSuccessCount(v)
+// SetAvgTokenPerSecond sets the "avg_token_per_second" field.
+func (_u *ChannelPerformanceUpdateOne) SetAvgTokenPerSecond(v int) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetAvgTokenPerSecond()
+	_u.mutation.SetAvgTokenPerSecond(v)
 	return _u
 }
 
-// SetNillableTotalSuccessCount sets the "total_success_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableTotalSuccessCount(v *int) *ChannelPerformanceUpdateOne {
+// SetNillableAvgTokenPerSecond sets the "avg_token_per_second" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableAvgTokenPerSecond(v *int) *ChannelPerformanceUpdateOne {
 	if v != nil {
-		_u.SetTotalSuccessCount(*v)
+		_u.SetAvgTokenPerSecond(*v)
 	}
 	return _u
 }
 
-// AddTotalSuccessCount adds value to the "total_success_count" field.
-func (_u *ChannelPerformanceUpdateOne) AddTotalSuccessCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddTotalSuccessCount(v)
+// AddAvgTokenPerSecond adds value to the "avg_token_per_second" field.
+func (_u *ChannelPerformanceUpdateOne) AddAvgTokenPerSecond(v int) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddAvgTokenPerSecond(v)
 	return _u
 }
 
-// SetTotalTokenCount sets the "total_token_count" field.
-func (_u *ChannelPerformanceUpdateOne) SetTotalTokenCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetTotalTokenCount()
-	_u.mutation.SetTotalTokenCount(v)
+// SetAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field.
+func (_u *ChannelPerformanceUpdateOne) SetAvgStreamFirstTokenLatencyMs(v int) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetAvgStreamFirstTokenLatencyMs()
+	_u.mutation.SetAvgStreamFirstTokenLatencyMs(v)
 	return _u
 }
 
-// SetNillableTotalTokenCount sets the "total_token_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableTotalTokenCount(v *int) *ChannelPerformanceUpdateOne {
+// SetNillableAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableAvgStreamFirstTokenLatencyMs(v *int) *ChannelPerformanceUpdateOne {
 	if v != nil {
-		_u.SetTotalTokenCount(*v)
+		_u.SetAvgStreamFirstTokenLatencyMs(*v)
 	}
 	return _u
 }
 
-// AddTotalTokenCount adds value to the "total_token_count" field.
-func (_u *ChannelPerformanceUpdateOne) AddTotalTokenCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddTotalTokenCount(v)
+// AddAvgStreamFirstTokenLatencyMs adds value to the "avg_stream_first_token_latency_ms" field.
+func (_u *ChannelPerformanceUpdateOne) AddAvgStreamFirstTokenLatencyMs(v int) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddAvgStreamFirstTokenLatencyMs(v)
 	return _u
 }
 
-// SetTotalAvgLatencyMs sets the "total_avg_latency_ms" field.
-func (_u *ChannelPerformanceUpdateOne) SetTotalAvgLatencyMs(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetTotalAvgLatencyMs()
-	_u.mutation.SetTotalAvgLatencyMs(v)
+// SetAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field.
+func (_u *ChannelPerformanceUpdateOne) SetAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetAvgStreamTokenPerSecond()
+	_u.mutation.SetAvgStreamTokenPerSecond(v)
 	return _u
 }
 
-// SetNillableTotalAvgLatencyMs sets the "total_avg_latency_ms" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableTotalAvgLatencyMs(v *int) *ChannelPerformanceUpdateOne {
+// SetNillableAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableAvgStreamTokenPerSecond(v *float64) *ChannelPerformanceUpdateOne {
 	if v != nil {
-		_u.SetTotalAvgLatencyMs(*v)
+		_u.SetAvgStreamTokenPerSecond(*v)
 	}
 	return _u
 }
 
-// AddTotalAvgLatencyMs adds value to the "total_avg_latency_ms" field.
-func (_u *ChannelPerformanceUpdateOne) AddTotalAvgLatencyMs(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddTotalAvgLatencyMs(v)
-	return _u
-}
-
-// SetTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field.
-func (_u *ChannelPerformanceUpdateOne) SetTotalAvgTokenPerSecond(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetTotalAvgTokenPerSecond()
-	_u.mutation.SetTotalAvgTokenPerSecond(v)
-	return _u
-}
-
-// SetNillableTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableTotalAvgTokenPerSecond(v *int) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetTotalAvgTokenPerSecond(*v)
-	}
-	return _u
-}
-
-// AddTotalAvgTokenPerSecond adds value to the "total_avg_token_per_second" field.
-func (_u *ChannelPerformanceUpdateOne) AddTotalAvgTokenPerSecond(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddTotalAvgTokenPerSecond(v)
-	return _u
-}
-
-// SetTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field.
-func (_u *ChannelPerformanceUpdateOne) SetTotalAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetTotalAvgStreamFirstTokenLatenchMs()
-	_u.mutation.SetTotalAvgStreamFirstTokenLatenchMs(v)
-	return _u
-}
-
-// SetNillableTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableTotalAvgStreamFirstTokenLatenchMs(v *int) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetTotalAvgStreamFirstTokenLatenchMs(*v)
-	}
-	return _u
-}
-
-// AddTotalAvgStreamFirstTokenLatenchMs adds value to the "total_avg_stream_first_token_latench_ms" field.
-func (_u *ChannelPerformanceUpdateOne) AddTotalAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddTotalAvgStreamFirstTokenLatenchMs(v)
-	return _u
-}
-
-// SetTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field.
-func (_u *ChannelPerformanceUpdateOne) SetTotalAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetTotalAvgStreamTokenPerSecond()
-	_u.mutation.SetTotalAvgStreamTokenPerSecond(v)
-	return _u
-}
-
-// SetNillableTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableTotalAvgStreamTokenPerSecond(v *float64) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetTotalAvgStreamTokenPerSecond(*v)
-	}
-	return _u
-}
-
-// AddTotalAvgStreamTokenPerSecond adds value to the "total_avg_stream_token_per_second" field.
-func (_u *ChannelPerformanceUpdateOne) AddTotalAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddTotalAvgStreamTokenPerSecond(v)
-	return _u
-}
-
-// SetLastPeriodStart sets the "last_period_start" field.
-func (_u *ChannelPerformanceUpdateOne) SetLastPeriodStart(v time.Time) *ChannelPerformanceUpdateOne {
-	_u.mutation.SetLastPeriodStart(v)
-	return _u
-}
-
-// SetNillableLastPeriodStart sets the "last_period_start" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableLastPeriodStart(v *time.Time) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetLastPeriodStart(*v)
-	}
-	return _u
-}
-
-// SetLastPeriodEnd sets the "last_period_end" field.
-func (_u *ChannelPerformanceUpdateOne) SetLastPeriodEnd(v time.Time) *ChannelPerformanceUpdateOne {
-	_u.mutation.SetLastPeriodEnd(v)
-	return _u
-}
-
-// SetNillableLastPeriodEnd sets the "last_period_end" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableLastPeriodEnd(v *time.Time) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetLastPeriodEnd(*v)
-	}
-	return _u
-}
-
-// SetLastPeriodSeconds sets the "last_period_seconds" field.
-func (_u *ChannelPerformanceUpdateOne) SetLastPeriodSeconds(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetLastPeriodSeconds()
-	_u.mutation.SetLastPeriodSeconds(v)
-	return _u
-}
-
-// SetNillableLastPeriodSeconds sets the "last_period_seconds" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableLastPeriodSeconds(v *int) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetLastPeriodSeconds(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodSeconds adds value to the "last_period_seconds" field.
-func (_u *ChannelPerformanceUpdateOne) AddLastPeriodSeconds(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddLastPeriodSeconds(v)
-	return _u
-}
-
-// SetLastPeriodCount sets the "last_period_count" field.
-func (_u *ChannelPerformanceUpdateOne) SetLastPeriodCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetLastPeriodCount()
-	_u.mutation.SetLastPeriodCount(v)
-	return _u
-}
-
-// SetNillableLastPeriodCount sets the "last_period_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableLastPeriodCount(v *int) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetLastPeriodCount(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodCount adds value to the "last_period_count" field.
-func (_u *ChannelPerformanceUpdateOne) AddLastPeriodCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddLastPeriodCount(v)
-	return _u
-}
-
-// SetLastPeriodSuccessCount sets the "last_period_success_count" field.
-func (_u *ChannelPerformanceUpdateOne) SetLastPeriodSuccessCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetLastPeriodSuccessCount()
-	_u.mutation.SetLastPeriodSuccessCount(v)
-	return _u
-}
-
-// SetNillableLastPeriodSuccessCount sets the "last_period_success_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableLastPeriodSuccessCount(v *int) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetLastPeriodSuccessCount(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodSuccessCount adds value to the "last_period_success_count" field.
-func (_u *ChannelPerformanceUpdateOne) AddLastPeriodSuccessCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddLastPeriodSuccessCount(v)
-	return _u
-}
-
-// SetLastPeriodTokenCount sets the "last_period_token_count" field.
-func (_u *ChannelPerformanceUpdateOne) SetLastPeriodTokenCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetLastPeriodTokenCount()
-	_u.mutation.SetLastPeriodTokenCount(v)
-	return _u
-}
-
-// SetNillableLastPeriodTokenCount sets the "last_period_token_count" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableLastPeriodTokenCount(v *int) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetLastPeriodTokenCount(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodTokenCount adds value to the "last_period_token_count" field.
-func (_u *ChannelPerformanceUpdateOne) AddLastPeriodTokenCount(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddLastPeriodTokenCount(v)
-	return _u
-}
-
-// SetLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field.
-func (_u *ChannelPerformanceUpdateOne) SetLastPeriodAvgLatencyMs(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetLastPeriodAvgLatencyMs()
-	_u.mutation.SetLastPeriodAvgLatencyMs(v)
-	return _u
-}
-
-// SetNillableLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableLastPeriodAvgLatencyMs(v *int) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetLastPeriodAvgLatencyMs(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodAvgLatencyMs adds value to the "last_period_avg_latency_ms" field.
-func (_u *ChannelPerformanceUpdateOne) AddLastPeriodAvgLatencyMs(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddLastPeriodAvgLatencyMs(v)
-	return _u
-}
-
-// SetLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field.
-func (_u *ChannelPerformanceUpdateOne) SetLastPeriodAvgTokenPerSecond(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetLastPeriodAvgTokenPerSecond()
-	_u.mutation.SetLastPeriodAvgTokenPerSecond(v)
-	return _u
-}
-
-// SetNillableLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableLastPeriodAvgTokenPerSecond(v *int) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetLastPeriodAvgTokenPerSecond(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodAvgTokenPerSecond adds value to the "last_period_avg_token_per_second" field.
-func (_u *ChannelPerformanceUpdateOne) AddLastPeriodAvgTokenPerSecond(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddLastPeriodAvgTokenPerSecond(v)
-	return _u
-}
-
-// SetLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field.
-func (_u *ChannelPerformanceUpdateOne) SetLastPeriodAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetLastPeriodAvgStreamFirstTokenLatenchMs()
-	_u.mutation.SetLastPeriodAvgStreamFirstTokenLatenchMs(v)
-	return _u
-}
-
-// SetNillableLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableLastPeriodAvgStreamFirstTokenLatenchMs(v *int) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetLastPeriodAvgStreamFirstTokenLatenchMs(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodAvgStreamFirstTokenLatenchMs adds value to the "last_period_avg_stream_first_token_latench_ms" field.
-func (_u *ChannelPerformanceUpdateOne) AddLastPeriodAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddLastPeriodAvgStreamFirstTokenLatenchMs(v)
-	return _u
-}
-
-// SetLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field.
-func (_u *ChannelPerformanceUpdateOne) SetLastPeriodAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdateOne {
-	_u.mutation.ResetLastPeriodAvgStreamTokenPerSecond()
-	_u.mutation.SetLastPeriodAvgStreamTokenPerSecond(v)
-	return _u
-}
-
-// SetNillableLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableLastPeriodAvgStreamTokenPerSecond(v *float64) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetLastPeriodAvgStreamTokenPerSecond(*v)
-	}
-	return _u
-}
-
-// AddLastPeriodAvgStreamTokenPerSecond adds value to the "last_period_avg_stream_token_per_second" field.
-func (_u *ChannelPerformanceUpdateOne) AddLastPeriodAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdateOne {
-	_u.mutation.AddLastPeriodAvgStreamTokenPerSecond(v)
+// AddAvgStreamTokenPerSecond adds value to the "avg_stream_token_per_second" field.
+func (_u *ChannelPerformanceUpdateOne) AddAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddAvgStreamTokenPerSecond(v)
 	return _u
 }
 
@@ -1070,6 +493,12 @@ func (_u *ChannelPerformanceUpdateOne) SetNillableLastSuccessAt(v *time.Time) *C
 	return _u
 }
 
+// ClearLastSuccessAt clears the value of the "last_success_at" field.
+func (_u *ChannelPerformanceUpdateOne) ClearLastSuccessAt() *ChannelPerformanceUpdateOne {
+	_u.mutation.ClearLastSuccessAt()
+	return _u
+}
+
 // SetLastFailureAt sets the "last_failure_at" field.
 func (_u *ChannelPerformanceUpdateOne) SetLastFailureAt(v time.Time) *ChannelPerformanceUpdateOne {
 	_u.mutation.SetLastFailureAt(v)
@@ -1084,17 +513,9 @@ func (_u *ChannelPerformanceUpdateOne) SetNillableLastFailureAt(v *time.Time) *C
 	return _u
 }
 
-// SetLastAttemptAt sets the "last_attempt_at" field.
-func (_u *ChannelPerformanceUpdateOne) SetLastAttemptAt(v time.Time) *ChannelPerformanceUpdateOne {
-	_u.mutation.SetLastAttemptAt(v)
-	return _u
-}
-
-// SetNillableLastAttemptAt sets the "last_attempt_at" field if the given value is not nil.
-func (_u *ChannelPerformanceUpdateOne) SetNillableLastAttemptAt(v *time.Time) *ChannelPerformanceUpdateOne {
-	if v != nil {
-		_u.SetLastAttemptAt(*v)
-	}
+// ClearLastFailureAt clears the value of the "last_failure_at" field.
+func (_u *ChannelPerformanceUpdateOne) ClearLastFailureAt() *ChannelPerformanceUpdateOne {
+	_u.mutation.ClearLastFailureAt()
 	return _u
 }
 
@@ -1160,11 +581,6 @@ func (_u *ChannelPerformanceUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ChannelPerformanceUpdateOne) check() error {
-	if v, ok := _u.mutation.HealthStatus(); ok {
-		if err := channelperformance.HealthStatusValidator(v); err != nil {
-			return &ValidationError{Name: "health_status", err: fmt.Errorf(`ent: validator failed for field "ChannelPerformance.health_status": %w`, err)}
-		}
-	}
 	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "ChannelPerformance.channel"`)
 	}
@@ -1215,113 +631,47 @@ func (_u *ChannelPerformanceUpdateOne) sqlSave(ctx context.Context) (_node *Chan
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(channelperformance.FieldDeletedAt, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.HealthStatus(); ok {
-		_spec.SetField(channelperformance.FieldHealthStatus, field.TypeEnum, value)
+	if value, ok := _u.mutation.SuccessRate(); ok {
+		_spec.SetField(channelperformance.FieldSuccessRate, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.TotalCount(); ok {
-		_spec.SetField(channelperformance.FieldTotalCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedSuccessRate(); ok {
+		_spec.AddField(channelperformance.FieldSuccessRate, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedTotalCount(); ok {
-		_spec.AddField(channelperformance.FieldTotalCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AvgLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldAvgLatencyMs, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.TotalSuccessCount(); ok {
-		_spec.SetField(channelperformance.FieldTotalSuccessCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedAvgLatencyMs(); ok {
+		_spec.AddField(channelperformance.FieldAvgLatencyMs, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedTotalSuccessCount(); ok {
-		_spec.AddField(channelperformance.FieldTotalSuccessCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AvgTokenPerSecond(); ok {
+		_spec.SetField(channelperformance.FieldAvgTokenPerSecond, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.TotalTokenCount(); ok {
-		_spec.SetField(channelperformance.FieldTotalTokenCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedAvgTokenPerSecond(); ok {
+		_spec.AddField(channelperformance.FieldAvgTokenPerSecond, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedTotalTokenCount(); ok {
-		_spec.AddField(channelperformance.FieldTotalTokenCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AvgStreamFirstTokenLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldAvgStreamFirstTokenLatencyMs, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.TotalAvgLatencyMs(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgLatencyMs, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedAvgStreamFirstTokenLatencyMs(); ok {
+		_spec.AddField(channelperformance.FieldAvgStreamFirstTokenLatencyMs, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedTotalAvgLatencyMs(); ok {
-		_spec.AddField(channelperformance.FieldTotalAvgLatencyMs, field.TypeInt, value)
+	if value, ok := _u.mutation.AvgStreamTokenPerSecond(); ok {
+		_spec.SetField(channelperformance.FieldAvgStreamTokenPerSecond, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.TotalAvgTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgTokenPerSecond, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedTotalAvgTokenPerSecond(); ok {
-		_spec.AddField(channelperformance.FieldTotalAvgTokenPerSecond, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.TotalAvgStreamFirstTokenLatenchMs(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedTotalAvgStreamFirstTokenLatenchMs(); ok {
-		_spec.AddField(channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.TotalAvgStreamTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgStreamTokenPerSecond, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedTotalAvgStreamTokenPerSecond(); ok {
-		_spec.AddField(channelperformance.FieldTotalAvgStreamTokenPerSecond, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.LastPeriodStart(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodStart, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.LastPeriodEnd(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodEnd, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.LastPeriodSeconds(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodSeconds, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodSeconds(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodSeconds, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodCount(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodCount(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodSuccessCount(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodSuccessCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodSuccessCount(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodSuccessCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodTokenCount(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodTokenCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodTokenCount(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodTokenCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodAvgLatencyMs(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgLatencyMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodAvgLatencyMs(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodAvgLatencyMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodAvgTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgTokenPerSecond, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodAvgTokenPerSecond(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodAvgTokenPerSecond, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodAvgStreamFirstTokenLatenchMs(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodAvgStreamFirstTokenLatenchMs(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.LastPeriodAvgStreamTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgStreamTokenPerSecond, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedLastPeriodAvgStreamTokenPerSecond(); ok {
-		_spec.AddField(channelperformance.FieldLastPeriodAvgStreamTokenPerSecond, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedAvgStreamTokenPerSecond(); ok {
+		_spec.AddField(channelperformance.FieldAvgStreamTokenPerSecond, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.LastSuccessAt(); ok {
 		_spec.SetField(channelperformance.FieldLastSuccessAt, field.TypeTime, value)
 	}
+	if _u.mutation.LastSuccessAtCleared() {
+		_spec.ClearField(channelperformance.FieldLastSuccessAt, field.TypeTime)
+	}
 	if value, ok := _u.mutation.LastFailureAt(); ok {
 		_spec.SetField(channelperformance.FieldLastFailureAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.LastAttemptAt(); ok {
-		_spec.SetField(channelperformance.FieldLastAttemptAt, field.TypeTime, value)
+	if _u.mutation.LastFailureAtCleared() {
+		_spec.ClearField(channelperformance.FieldLastFailureAt, field.TypeTime)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &ChannelPerformance{config: _u.config}

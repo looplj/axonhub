@@ -75,89 +75,29 @@ func ChannelID(v int) predicate.ChannelPerformance {
 	return predicate.ChannelPerformance(sql.FieldEQ(FieldChannelID, v))
 }
 
-// TotalCount applies equality check predicate on the "total_count" field. It's identical to TotalCountEQ.
-func TotalCount(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalCount, v))
+// SuccessRate applies equality check predicate on the "success_rate" field. It's identical to SuccessRateEQ.
+func SuccessRate(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldSuccessRate, v))
 }
 
-// TotalSuccessCount applies equality check predicate on the "total_success_count" field. It's identical to TotalSuccessCountEQ.
-func TotalSuccessCount(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalSuccessCount, v))
+// AvgLatencyMs applies equality check predicate on the "avg_latency_ms" field. It's identical to AvgLatencyMsEQ.
+func AvgLatencyMs(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldAvgLatencyMs, v))
 }
 
-// TotalTokenCount applies equality check predicate on the "total_token_count" field. It's identical to TotalTokenCountEQ.
-func TotalTokenCount(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalTokenCount, v))
+// AvgTokenPerSecond applies equality check predicate on the "avg_token_per_second" field. It's identical to AvgTokenPerSecondEQ.
+func AvgTokenPerSecond(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldAvgTokenPerSecond, v))
 }
 
-// TotalAvgLatencyMs applies equality check predicate on the "total_avg_latency_ms" field. It's identical to TotalAvgLatencyMsEQ.
-func TotalAvgLatencyMs(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalAvgLatencyMs, v))
+// AvgStreamFirstTokenLatencyMs applies equality check predicate on the "avg_stream_first_token_latency_ms" field. It's identical to AvgStreamFirstTokenLatencyMsEQ.
+func AvgStreamFirstTokenLatencyMs(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldAvgStreamFirstTokenLatencyMs, v))
 }
 
-// TotalAvgTokenPerSecond applies equality check predicate on the "total_avg_token_per_second" field. It's identical to TotalAvgTokenPerSecondEQ.
-func TotalAvgTokenPerSecond(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalAvgTokenPerSecond, v))
-}
-
-// TotalAvgStreamFirstTokenLatenchMs applies equality check predicate on the "total_avg_stream_first_token_latench_ms" field. It's identical to TotalAvgStreamFirstTokenLatenchMsEQ.
-func TotalAvgStreamFirstTokenLatenchMs(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalAvgStreamFirstTokenLatenchMs, v))
-}
-
-// TotalAvgStreamTokenPerSecond applies equality check predicate on the "total_avg_stream_token_per_second" field. It's identical to TotalAvgStreamTokenPerSecondEQ.
-func TotalAvgStreamTokenPerSecond(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalAvgStreamTokenPerSecond, v))
-}
-
-// LastPeriodStart applies equality check predicate on the "last_period_start" field. It's identical to LastPeriodStartEQ.
-func LastPeriodStart(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodStart, v))
-}
-
-// LastPeriodEnd applies equality check predicate on the "last_period_end" field. It's identical to LastPeriodEndEQ.
-func LastPeriodEnd(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodEnd, v))
-}
-
-// LastPeriodSeconds applies equality check predicate on the "last_period_seconds" field. It's identical to LastPeriodSecondsEQ.
-func LastPeriodSeconds(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodSeconds, v))
-}
-
-// LastPeriodCount applies equality check predicate on the "last_period_count" field. It's identical to LastPeriodCountEQ.
-func LastPeriodCount(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodCount, v))
-}
-
-// LastPeriodSuccessCount applies equality check predicate on the "last_period_success_count" field. It's identical to LastPeriodSuccessCountEQ.
-func LastPeriodSuccessCount(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodSuccessCount, v))
-}
-
-// LastPeriodTokenCount applies equality check predicate on the "last_period_token_count" field. It's identical to LastPeriodTokenCountEQ.
-func LastPeriodTokenCount(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodTokenCount, v))
-}
-
-// LastPeriodAvgLatencyMs applies equality check predicate on the "last_period_avg_latency_ms" field. It's identical to LastPeriodAvgLatencyMsEQ.
-func LastPeriodAvgLatencyMs(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodAvgLatencyMs, v))
-}
-
-// LastPeriodAvgTokenPerSecond applies equality check predicate on the "last_period_avg_token_per_second" field. It's identical to LastPeriodAvgTokenPerSecondEQ.
-func LastPeriodAvgTokenPerSecond(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodAvgTokenPerSecond, v))
-}
-
-// LastPeriodAvgStreamFirstTokenLatenchMs applies equality check predicate on the "last_period_avg_stream_first_token_latench_ms" field. It's identical to LastPeriodAvgStreamFirstTokenLatenchMsEQ.
-func LastPeriodAvgStreamFirstTokenLatenchMs(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodAvgStreamFirstTokenLatenchMs, v))
-}
-
-// LastPeriodAvgStreamTokenPerSecond applies equality check predicate on the "last_period_avg_stream_token_per_second" field. It's identical to LastPeriodAvgStreamTokenPerSecondEQ.
-func LastPeriodAvgStreamTokenPerSecond(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodAvgStreamTokenPerSecond, v))
+// AvgStreamTokenPerSecond applies equality check predicate on the "avg_stream_token_per_second" field. It's identical to AvgStreamTokenPerSecondEQ.
+func AvgStreamTokenPerSecond(v float64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldAvgStreamTokenPerSecond, v))
 }
 
 // LastSuccessAt applies equality check predicate on the "last_success_at" field. It's identical to LastSuccessAtEQ.
@@ -168,11 +108,6 @@ func LastSuccessAt(v time.Time) predicate.ChannelPerformance {
 // LastFailureAt applies equality check predicate on the "last_failure_at" field. It's identical to LastFailureAtEQ.
 func LastFailureAt(v time.Time) predicate.ChannelPerformance {
 	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastFailureAt, v))
-}
-
-// LastAttemptAt applies equality check predicate on the "last_attempt_at" field. It's identical to LastAttemptAtEQ.
-func LastAttemptAt(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastAttemptAt, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -315,704 +250,204 @@ func ChannelIDNotIn(vs ...int) predicate.ChannelPerformance {
 	return predicate.ChannelPerformance(sql.FieldNotIn(FieldChannelID, vs...))
 }
 
-// HealthStatusEQ applies the EQ predicate on the "health_status" field.
-func HealthStatusEQ(v HealthStatus) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldHealthStatus, v))
+// SuccessRateEQ applies the EQ predicate on the "success_rate" field.
+func SuccessRateEQ(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldSuccessRate, v))
 }
 
-// HealthStatusNEQ applies the NEQ predicate on the "health_status" field.
-func HealthStatusNEQ(v HealthStatus) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldHealthStatus, v))
+// SuccessRateNEQ applies the NEQ predicate on the "success_rate" field.
+func SuccessRateNEQ(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldSuccessRate, v))
 }
 
-// HealthStatusIn applies the In predicate on the "health_status" field.
-func HealthStatusIn(vs ...HealthStatus) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldHealthStatus, vs...))
+// SuccessRateIn applies the In predicate on the "success_rate" field.
+func SuccessRateIn(vs ...int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldSuccessRate, vs...))
 }
 
-// HealthStatusNotIn applies the NotIn predicate on the "health_status" field.
-func HealthStatusNotIn(vs ...HealthStatus) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldHealthStatus, vs...))
+// SuccessRateNotIn applies the NotIn predicate on the "success_rate" field.
+func SuccessRateNotIn(vs ...int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldSuccessRate, vs...))
 }
 
-// TotalCountEQ applies the EQ predicate on the "total_count" field.
-func TotalCountEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalCount, v))
+// SuccessRateGT applies the GT predicate on the "success_rate" field.
+func SuccessRateGT(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldSuccessRate, v))
 }
 
-// TotalCountNEQ applies the NEQ predicate on the "total_count" field.
-func TotalCountNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldTotalCount, v))
+// SuccessRateGTE applies the GTE predicate on the "success_rate" field.
+func SuccessRateGTE(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldSuccessRate, v))
 }
 
-// TotalCountIn applies the In predicate on the "total_count" field.
-func TotalCountIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldTotalCount, vs...))
+// SuccessRateLT applies the LT predicate on the "success_rate" field.
+func SuccessRateLT(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldSuccessRate, v))
 }
 
-// TotalCountNotIn applies the NotIn predicate on the "total_count" field.
-func TotalCountNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldTotalCount, vs...))
+// SuccessRateLTE applies the LTE predicate on the "success_rate" field.
+func SuccessRateLTE(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldSuccessRate, v))
 }
 
-// TotalCountGT applies the GT predicate on the "total_count" field.
-func TotalCountGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldTotalCount, v))
+// AvgLatencyMsEQ applies the EQ predicate on the "avg_latency_ms" field.
+func AvgLatencyMsEQ(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldAvgLatencyMs, v))
 }
 
-// TotalCountGTE applies the GTE predicate on the "total_count" field.
-func TotalCountGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldTotalCount, v))
+// AvgLatencyMsNEQ applies the NEQ predicate on the "avg_latency_ms" field.
+func AvgLatencyMsNEQ(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldAvgLatencyMs, v))
 }
 
-// TotalCountLT applies the LT predicate on the "total_count" field.
-func TotalCountLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldTotalCount, v))
+// AvgLatencyMsIn applies the In predicate on the "avg_latency_ms" field.
+func AvgLatencyMsIn(vs ...int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldAvgLatencyMs, vs...))
 }
 
-// TotalCountLTE applies the LTE predicate on the "total_count" field.
-func TotalCountLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldTotalCount, v))
+// AvgLatencyMsNotIn applies the NotIn predicate on the "avg_latency_ms" field.
+func AvgLatencyMsNotIn(vs ...int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldAvgLatencyMs, vs...))
 }
 
-// TotalSuccessCountEQ applies the EQ predicate on the "total_success_count" field.
-func TotalSuccessCountEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalSuccessCount, v))
+// AvgLatencyMsGT applies the GT predicate on the "avg_latency_ms" field.
+func AvgLatencyMsGT(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldAvgLatencyMs, v))
 }
 
-// TotalSuccessCountNEQ applies the NEQ predicate on the "total_success_count" field.
-func TotalSuccessCountNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldTotalSuccessCount, v))
+// AvgLatencyMsGTE applies the GTE predicate on the "avg_latency_ms" field.
+func AvgLatencyMsGTE(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldAvgLatencyMs, v))
 }
 
-// TotalSuccessCountIn applies the In predicate on the "total_success_count" field.
-func TotalSuccessCountIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldTotalSuccessCount, vs...))
+// AvgLatencyMsLT applies the LT predicate on the "avg_latency_ms" field.
+func AvgLatencyMsLT(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldAvgLatencyMs, v))
 }
 
-// TotalSuccessCountNotIn applies the NotIn predicate on the "total_success_count" field.
-func TotalSuccessCountNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldTotalSuccessCount, vs...))
+// AvgLatencyMsLTE applies the LTE predicate on the "avg_latency_ms" field.
+func AvgLatencyMsLTE(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldAvgLatencyMs, v))
 }
 
-// TotalSuccessCountGT applies the GT predicate on the "total_success_count" field.
-func TotalSuccessCountGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldTotalSuccessCount, v))
+// AvgTokenPerSecondEQ applies the EQ predicate on the "avg_token_per_second" field.
+func AvgTokenPerSecondEQ(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldAvgTokenPerSecond, v))
 }
 
-// TotalSuccessCountGTE applies the GTE predicate on the "total_success_count" field.
-func TotalSuccessCountGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldTotalSuccessCount, v))
+// AvgTokenPerSecondNEQ applies the NEQ predicate on the "avg_token_per_second" field.
+func AvgTokenPerSecondNEQ(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldAvgTokenPerSecond, v))
 }
 
-// TotalSuccessCountLT applies the LT predicate on the "total_success_count" field.
-func TotalSuccessCountLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldTotalSuccessCount, v))
+// AvgTokenPerSecondIn applies the In predicate on the "avg_token_per_second" field.
+func AvgTokenPerSecondIn(vs ...int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldAvgTokenPerSecond, vs...))
 }
 
-// TotalSuccessCountLTE applies the LTE predicate on the "total_success_count" field.
-func TotalSuccessCountLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldTotalSuccessCount, v))
+// AvgTokenPerSecondNotIn applies the NotIn predicate on the "avg_token_per_second" field.
+func AvgTokenPerSecondNotIn(vs ...int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldAvgTokenPerSecond, vs...))
 }
 
-// TotalTokenCountEQ applies the EQ predicate on the "total_token_count" field.
-func TotalTokenCountEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalTokenCount, v))
+// AvgTokenPerSecondGT applies the GT predicate on the "avg_token_per_second" field.
+func AvgTokenPerSecondGT(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldAvgTokenPerSecond, v))
 }
 
-// TotalTokenCountNEQ applies the NEQ predicate on the "total_token_count" field.
-func TotalTokenCountNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldTotalTokenCount, v))
+// AvgTokenPerSecondGTE applies the GTE predicate on the "avg_token_per_second" field.
+func AvgTokenPerSecondGTE(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldAvgTokenPerSecond, v))
 }
 
-// TotalTokenCountIn applies the In predicate on the "total_token_count" field.
-func TotalTokenCountIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldTotalTokenCount, vs...))
+// AvgTokenPerSecondLT applies the LT predicate on the "avg_token_per_second" field.
+func AvgTokenPerSecondLT(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldAvgTokenPerSecond, v))
 }
 
-// TotalTokenCountNotIn applies the NotIn predicate on the "total_token_count" field.
-func TotalTokenCountNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldTotalTokenCount, vs...))
+// AvgTokenPerSecondLTE applies the LTE predicate on the "avg_token_per_second" field.
+func AvgTokenPerSecondLTE(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldAvgTokenPerSecond, v))
 }
 
-// TotalTokenCountGT applies the GT predicate on the "total_token_count" field.
-func TotalTokenCountGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldTotalTokenCount, v))
+// AvgStreamFirstTokenLatencyMsEQ applies the EQ predicate on the "avg_stream_first_token_latency_ms" field.
+func AvgStreamFirstTokenLatencyMsEQ(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldAvgStreamFirstTokenLatencyMs, v))
 }
 
-// TotalTokenCountGTE applies the GTE predicate on the "total_token_count" field.
-func TotalTokenCountGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldTotalTokenCount, v))
+// AvgStreamFirstTokenLatencyMsNEQ applies the NEQ predicate on the "avg_stream_first_token_latency_ms" field.
+func AvgStreamFirstTokenLatencyMsNEQ(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldAvgStreamFirstTokenLatencyMs, v))
 }
 
-// TotalTokenCountLT applies the LT predicate on the "total_token_count" field.
-func TotalTokenCountLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldTotalTokenCount, v))
+// AvgStreamFirstTokenLatencyMsIn applies the In predicate on the "avg_stream_first_token_latency_ms" field.
+func AvgStreamFirstTokenLatencyMsIn(vs ...int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldAvgStreamFirstTokenLatencyMs, vs...))
 }
 
-// TotalTokenCountLTE applies the LTE predicate on the "total_token_count" field.
-func TotalTokenCountLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldTotalTokenCount, v))
+// AvgStreamFirstTokenLatencyMsNotIn applies the NotIn predicate on the "avg_stream_first_token_latency_ms" field.
+func AvgStreamFirstTokenLatencyMsNotIn(vs ...int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldAvgStreamFirstTokenLatencyMs, vs...))
 }
 
-// TotalAvgLatencyMsEQ applies the EQ predicate on the "total_avg_latency_ms" field.
-func TotalAvgLatencyMsEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalAvgLatencyMs, v))
+// AvgStreamFirstTokenLatencyMsGT applies the GT predicate on the "avg_stream_first_token_latency_ms" field.
+func AvgStreamFirstTokenLatencyMsGT(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldAvgStreamFirstTokenLatencyMs, v))
 }
 
-// TotalAvgLatencyMsNEQ applies the NEQ predicate on the "total_avg_latency_ms" field.
-func TotalAvgLatencyMsNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldTotalAvgLatencyMs, v))
+// AvgStreamFirstTokenLatencyMsGTE applies the GTE predicate on the "avg_stream_first_token_latency_ms" field.
+func AvgStreamFirstTokenLatencyMsGTE(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldAvgStreamFirstTokenLatencyMs, v))
 }
 
-// TotalAvgLatencyMsIn applies the In predicate on the "total_avg_latency_ms" field.
-func TotalAvgLatencyMsIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldTotalAvgLatencyMs, vs...))
+// AvgStreamFirstTokenLatencyMsLT applies the LT predicate on the "avg_stream_first_token_latency_ms" field.
+func AvgStreamFirstTokenLatencyMsLT(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldAvgStreamFirstTokenLatencyMs, v))
 }
 
-// TotalAvgLatencyMsNotIn applies the NotIn predicate on the "total_avg_latency_ms" field.
-func TotalAvgLatencyMsNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldTotalAvgLatencyMs, vs...))
+// AvgStreamFirstTokenLatencyMsLTE applies the LTE predicate on the "avg_stream_first_token_latency_ms" field.
+func AvgStreamFirstTokenLatencyMsLTE(v int) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldAvgStreamFirstTokenLatencyMs, v))
 }
 
-// TotalAvgLatencyMsGT applies the GT predicate on the "total_avg_latency_ms" field.
-func TotalAvgLatencyMsGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldTotalAvgLatencyMs, v))
+// AvgStreamTokenPerSecondEQ applies the EQ predicate on the "avg_stream_token_per_second" field.
+func AvgStreamTokenPerSecondEQ(v float64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldAvgStreamTokenPerSecond, v))
 }
 
-// TotalAvgLatencyMsGTE applies the GTE predicate on the "total_avg_latency_ms" field.
-func TotalAvgLatencyMsGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldTotalAvgLatencyMs, v))
+// AvgStreamTokenPerSecondNEQ applies the NEQ predicate on the "avg_stream_token_per_second" field.
+func AvgStreamTokenPerSecondNEQ(v float64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldAvgStreamTokenPerSecond, v))
 }
 
-// TotalAvgLatencyMsLT applies the LT predicate on the "total_avg_latency_ms" field.
-func TotalAvgLatencyMsLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldTotalAvgLatencyMs, v))
+// AvgStreamTokenPerSecondIn applies the In predicate on the "avg_stream_token_per_second" field.
+func AvgStreamTokenPerSecondIn(vs ...float64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldAvgStreamTokenPerSecond, vs...))
 }
 
-// TotalAvgLatencyMsLTE applies the LTE predicate on the "total_avg_latency_ms" field.
-func TotalAvgLatencyMsLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldTotalAvgLatencyMs, v))
+// AvgStreamTokenPerSecondNotIn applies the NotIn predicate on the "avg_stream_token_per_second" field.
+func AvgStreamTokenPerSecondNotIn(vs ...float64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldAvgStreamTokenPerSecond, vs...))
 }
 
-// TotalAvgTokenPerSecondEQ applies the EQ predicate on the "total_avg_token_per_second" field.
-func TotalAvgTokenPerSecondEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalAvgTokenPerSecond, v))
+// AvgStreamTokenPerSecondGT applies the GT predicate on the "avg_stream_token_per_second" field.
+func AvgStreamTokenPerSecondGT(v float64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldAvgStreamTokenPerSecond, v))
 }
 
-// TotalAvgTokenPerSecondNEQ applies the NEQ predicate on the "total_avg_token_per_second" field.
-func TotalAvgTokenPerSecondNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldTotalAvgTokenPerSecond, v))
+// AvgStreamTokenPerSecondGTE applies the GTE predicate on the "avg_stream_token_per_second" field.
+func AvgStreamTokenPerSecondGTE(v float64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldAvgStreamTokenPerSecond, v))
 }
 
-// TotalAvgTokenPerSecondIn applies the In predicate on the "total_avg_token_per_second" field.
-func TotalAvgTokenPerSecondIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldTotalAvgTokenPerSecond, vs...))
+// AvgStreamTokenPerSecondLT applies the LT predicate on the "avg_stream_token_per_second" field.
+func AvgStreamTokenPerSecondLT(v float64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldAvgStreamTokenPerSecond, v))
 }
 
-// TotalAvgTokenPerSecondNotIn applies the NotIn predicate on the "total_avg_token_per_second" field.
-func TotalAvgTokenPerSecondNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldTotalAvgTokenPerSecond, vs...))
-}
-
-// TotalAvgTokenPerSecondGT applies the GT predicate on the "total_avg_token_per_second" field.
-func TotalAvgTokenPerSecondGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldTotalAvgTokenPerSecond, v))
-}
-
-// TotalAvgTokenPerSecondGTE applies the GTE predicate on the "total_avg_token_per_second" field.
-func TotalAvgTokenPerSecondGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldTotalAvgTokenPerSecond, v))
-}
-
-// TotalAvgTokenPerSecondLT applies the LT predicate on the "total_avg_token_per_second" field.
-func TotalAvgTokenPerSecondLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldTotalAvgTokenPerSecond, v))
-}
-
-// TotalAvgTokenPerSecondLTE applies the LTE predicate on the "total_avg_token_per_second" field.
-func TotalAvgTokenPerSecondLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldTotalAvgTokenPerSecond, v))
-}
-
-// TotalAvgStreamFirstTokenLatenchMsEQ applies the EQ predicate on the "total_avg_stream_first_token_latench_ms" field.
-func TotalAvgStreamFirstTokenLatenchMsEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalAvgStreamFirstTokenLatenchMs, v))
-}
-
-// TotalAvgStreamFirstTokenLatenchMsNEQ applies the NEQ predicate on the "total_avg_stream_first_token_latench_ms" field.
-func TotalAvgStreamFirstTokenLatenchMsNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldTotalAvgStreamFirstTokenLatenchMs, v))
-}
-
-// TotalAvgStreamFirstTokenLatenchMsIn applies the In predicate on the "total_avg_stream_first_token_latench_ms" field.
-func TotalAvgStreamFirstTokenLatenchMsIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldTotalAvgStreamFirstTokenLatenchMs, vs...))
-}
-
-// TotalAvgStreamFirstTokenLatenchMsNotIn applies the NotIn predicate on the "total_avg_stream_first_token_latench_ms" field.
-func TotalAvgStreamFirstTokenLatenchMsNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldTotalAvgStreamFirstTokenLatenchMs, vs...))
-}
-
-// TotalAvgStreamFirstTokenLatenchMsGT applies the GT predicate on the "total_avg_stream_first_token_latench_ms" field.
-func TotalAvgStreamFirstTokenLatenchMsGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldTotalAvgStreamFirstTokenLatenchMs, v))
-}
-
-// TotalAvgStreamFirstTokenLatenchMsGTE applies the GTE predicate on the "total_avg_stream_first_token_latench_ms" field.
-func TotalAvgStreamFirstTokenLatenchMsGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldTotalAvgStreamFirstTokenLatenchMs, v))
-}
-
-// TotalAvgStreamFirstTokenLatenchMsLT applies the LT predicate on the "total_avg_stream_first_token_latench_ms" field.
-func TotalAvgStreamFirstTokenLatenchMsLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldTotalAvgStreamFirstTokenLatenchMs, v))
-}
-
-// TotalAvgStreamFirstTokenLatenchMsLTE applies the LTE predicate on the "total_avg_stream_first_token_latench_ms" field.
-func TotalAvgStreamFirstTokenLatenchMsLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldTotalAvgStreamFirstTokenLatenchMs, v))
-}
-
-// TotalAvgStreamTokenPerSecondEQ applies the EQ predicate on the "total_avg_stream_token_per_second" field.
-func TotalAvgStreamTokenPerSecondEQ(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalAvgStreamTokenPerSecond, v))
-}
-
-// TotalAvgStreamTokenPerSecondNEQ applies the NEQ predicate on the "total_avg_stream_token_per_second" field.
-func TotalAvgStreamTokenPerSecondNEQ(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldTotalAvgStreamTokenPerSecond, v))
-}
-
-// TotalAvgStreamTokenPerSecondIn applies the In predicate on the "total_avg_stream_token_per_second" field.
-func TotalAvgStreamTokenPerSecondIn(vs ...float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldTotalAvgStreamTokenPerSecond, vs...))
-}
-
-// TotalAvgStreamTokenPerSecondNotIn applies the NotIn predicate on the "total_avg_stream_token_per_second" field.
-func TotalAvgStreamTokenPerSecondNotIn(vs ...float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldTotalAvgStreamTokenPerSecond, vs...))
-}
-
-// TotalAvgStreamTokenPerSecondGT applies the GT predicate on the "total_avg_stream_token_per_second" field.
-func TotalAvgStreamTokenPerSecondGT(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldTotalAvgStreamTokenPerSecond, v))
-}
-
-// TotalAvgStreamTokenPerSecondGTE applies the GTE predicate on the "total_avg_stream_token_per_second" field.
-func TotalAvgStreamTokenPerSecondGTE(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldTotalAvgStreamTokenPerSecond, v))
-}
-
-// TotalAvgStreamTokenPerSecondLT applies the LT predicate on the "total_avg_stream_token_per_second" field.
-func TotalAvgStreamTokenPerSecondLT(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldTotalAvgStreamTokenPerSecond, v))
-}
-
-// TotalAvgStreamTokenPerSecondLTE applies the LTE predicate on the "total_avg_stream_token_per_second" field.
-func TotalAvgStreamTokenPerSecondLTE(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldTotalAvgStreamTokenPerSecond, v))
-}
-
-// LastPeriodStartEQ applies the EQ predicate on the "last_period_start" field.
-func LastPeriodStartEQ(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodStart, v))
-}
-
-// LastPeriodStartNEQ applies the NEQ predicate on the "last_period_start" field.
-func LastPeriodStartNEQ(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldLastPeriodStart, v))
-}
-
-// LastPeriodStartIn applies the In predicate on the "last_period_start" field.
-func LastPeriodStartIn(vs ...time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldLastPeriodStart, vs...))
-}
-
-// LastPeriodStartNotIn applies the NotIn predicate on the "last_period_start" field.
-func LastPeriodStartNotIn(vs ...time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldLastPeriodStart, vs...))
-}
-
-// LastPeriodStartGT applies the GT predicate on the "last_period_start" field.
-func LastPeriodStartGT(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldLastPeriodStart, v))
-}
-
-// LastPeriodStartGTE applies the GTE predicate on the "last_period_start" field.
-func LastPeriodStartGTE(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldLastPeriodStart, v))
-}
-
-// LastPeriodStartLT applies the LT predicate on the "last_period_start" field.
-func LastPeriodStartLT(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldLastPeriodStart, v))
-}
-
-// LastPeriodStartLTE applies the LTE predicate on the "last_period_start" field.
-func LastPeriodStartLTE(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastPeriodStart, v))
-}
-
-// LastPeriodEndEQ applies the EQ predicate on the "last_period_end" field.
-func LastPeriodEndEQ(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodEnd, v))
-}
-
-// LastPeriodEndNEQ applies the NEQ predicate on the "last_period_end" field.
-func LastPeriodEndNEQ(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldLastPeriodEnd, v))
-}
-
-// LastPeriodEndIn applies the In predicate on the "last_period_end" field.
-func LastPeriodEndIn(vs ...time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldLastPeriodEnd, vs...))
-}
-
-// LastPeriodEndNotIn applies the NotIn predicate on the "last_period_end" field.
-func LastPeriodEndNotIn(vs ...time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldLastPeriodEnd, vs...))
-}
-
-// LastPeriodEndGT applies the GT predicate on the "last_period_end" field.
-func LastPeriodEndGT(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldLastPeriodEnd, v))
-}
-
-// LastPeriodEndGTE applies the GTE predicate on the "last_period_end" field.
-func LastPeriodEndGTE(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldLastPeriodEnd, v))
-}
-
-// LastPeriodEndLT applies the LT predicate on the "last_period_end" field.
-func LastPeriodEndLT(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldLastPeriodEnd, v))
-}
-
-// LastPeriodEndLTE applies the LTE predicate on the "last_period_end" field.
-func LastPeriodEndLTE(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastPeriodEnd, v))
-}
-
-// LastPeriodSecondsEQ applies the EQ predicate on the "last_period_seconds" field.
-func LastPeriodSecondsEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodSeconds, v))
-}
-
-// LastPeriodSecondsNEQ applies the NEQ predicate on the "last_period_seconds" field.
-func LastPeriodSecondsNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldLastPeriodSeconds, v))
-}
-
-// LastPeriodSecondsIn applies the In predicate on the "last_period_seconds" field.
-func LastPeriodSecondsIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldLastPeriodSeconds, vs...))
-}
-
-// LastPeriodSecondsNotIn applies the NotIn predicate on the "last_period_seconds" field.
-func LastPeriodSecondsNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldLastPeriodSeconds, vs...))
-}
-
-// LastPeriodSecondsGT applies the GT predicate on the "last_period_seconds" field.
-func LastPeriodSecondsGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldLastPeriodSeconds, v))
-}
-
-// LastPeriodSecondsGTE applies the GTE predicate on the "last_period_seconds" field.
-func LastPeriodSecondsGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldLastPeriodSeconds, v))
-}
-
-// LastPeriodSecondsLT applies the LT predicate on the "last_period_seconds" field.
-func LastPeriodSecondsLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldLastPeriodSeconds, v))
-}
-
-// LastPeriodSecondsLTE applies the LTE predicate on the "last_period_seconds" field.
-func LastPeriodSecondsLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastPeriodSeconds, v))
-}
-
-// LastPeriodCountEQ applies the EQ predicate on the "last_period_count" field.
-func LastPeriodCountEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodCount, v))
-}
-
-// LastPeriodCountNEQ applies the NEQ predicate on the "last_period_count" field.
-func LastPeriodCountNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldLastPeriodCount, v))
-}
-
-// LastPeriodCountIn applies the In predicate on the "last_period_count" field.
-func LastPeriodCountIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldLastPeriodCount, vs...))
-}
-
-// LastPeriodCountNotIn applies the NotIn predicate on the "last_period_count" field.
-func LastPeriodCountNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldLastPeriodCount, vs...))
-}
-
-// LastPeriodCountGT applies the GT predicate on the "last_period_count" field.
-func LastPeriodCountGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldLastPeriodCount, v))
-}
-
-// LastPeriodCountGTE applies the GTE predicate on the "last_period_count" field.
-func LastPeriodCountGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldLastPeriodCount, v))
-}
-
-// LastPeriodCountLT applies the LT predicate on the "last_period_count" field.
-func LastPeriodCountLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldLastPeriodCount, v))
-}
-
-// LastPeriodCountLTE applies the LTE predicate on the "last_period_count" field.
-func LastPeriodCountLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastPeriodCount, v))
-}
-
-// LastPeriodSuccessCountEQ applies the EQ predicate on the "last_period_success_count" field.
-func LastPeriodSuccessCountEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodSuccessCount, v))
-}
-
-// LastPeriodSuccessCountNEQ applies the NEQ predicate on the "last_period_success_count" field.
-func LastPeriodSuccessCountNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldLastPeriodSuccessCount, v))
-}
-
-// LastPeriodSuccessCountIn applies the In predicate on the "last_period_success_count" field.
-func LastPeriodSuccessCountIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldLastPeriodSuccessCount, vs...))
-}
-
-// LastPeriodSuccessCountNotIn applies the NotIn predicate on the "last_period_success_count" field.
-func LastPeriodSuccessCountNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldLastPeriodSuccessCount, vs...))
-}
-
-// LastPeriodSuccessCountGT applies the GT predicate on the "last_period_success_count" field.
-func LastPeriodSuccessCountGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldLastPeriodSuccessCount, v))
-}
-
-// LastPeriodSuccessCountGTE applies the GTE predicate on the "last_period_success_count" field.
-func LastPeriodSuccessCountGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldLastPeriodSuccessCount, v))
-}
-
-// LastPeriodSuccessCountLT applies the LT predicate on the "last_period_success_count" field.
-func LastPeriodSuccessCountLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldLastPeriodSuccessCount, v))
-}
-
-// LastPeriodSuccessCountLTE applies the LTE predicate on the "last_period_success_count" field.
-func LastPeriodSuccessCountLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastPeriodSuccessCount, v))
-}
-
-// LastPeriodTokenCountEQ applies the EQ predicate on the "last_period_token_count" field.
-func LastPeriodTokenCountEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodTokenCount, v))
-}
-
-// LastPeriodTokenCountNEQ applies the NEQ predicate on the "last_period_token_count" field.
-func LastPeriodTokenCountNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldLastPeriodTokenCount, v))
-}
-
-// LastPeriodTokenCountIn applies the In predicate on the "last_period_token_count" field.
-func LastPeriodTokenCountIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldLastPeriodTokenCount, vs...))
-}
-
-// LastPeriodTokenCountNotIn applies the NotIn predicate on the "last_period_token_count" field.
-func LastPeriodTokenCountNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldLastPeriodTokenCount, vs...))
-}
-
-// LastPeriodTokenCountGT applies the GT predicate on the "last_period_token_count" field.
-func LastPeriodTokenCountGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldLastPeriodTokenCount, v))
-}
-
-// LastPeriodTokenCountGTE applies the GTE predicate on the "last_period_token_count" field.
-func LastPeriodTokenCountGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldLastPeriodTokenCount, v))
-}
-
-// LastPeriodTokenCountLT applies the LT predicate on the "last_period_token_count" field.
-func LastPeriodTokenCountLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldLastPeriodTokenCount, v))
-}
-
-// LastPeriodTokenCountLTE applies the LTE predicate on the "last_period_token_count" field.
-func LastPeriodTokenCountLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastPeriodTokenCount, v))
-}
-
-// LastPeriodAvgLatencyMsEQ applies the EQ predicate on the "last_period_avg_latency_ms" field.
-func LastPeriodAvgLatencyMsEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodAvgLatencyMs, v))
-}
-
-// LastPeriodAvgLatencyMsNEQ applies the NEQ predicate on the "last_period_avg_latency_ms" field.
-func LastPeriodAvgLatencyMsNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldLastPeriodAvgLatencyMs, v))
-}
-
-// LastPeriodAvgLatencyMsIn applies the In predicate on the "last_period_avg_latency_ms" field.
-func LastPeriodAvgLatencyMsIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldLastPeriodAvgLatencyMs, vs...))
-}
-
-// LastPeriodAvgLatencyMsNotIn applies the NotIn predicate on the "last_period_avg_latency_ms" field.
-func LastPeriodAvgLatencyMsNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldLastPeriodAvgLatencyMs, vs...))
-}
-
-// LastPeriodAvgLatencyMsGT applies the GT predicate on the "last_period_avg_latency_ms" field.
-func LastPeriodAvgLatencyMsGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldLastPeriodAvgLatencyMs, v))
-}
-
-// LastPeriodAvgLatencyMsGTE applies the GTE predicate on the "last_period_avg_latency_ms" field.
-func LastPeriodAvgLatencyMsGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldLastPeriodAvgLatencyMs, v))
-}
-
-// LastPeriodAvgLatencyMsLT applies the LT predicate on the "last_period_avg_latency_ms" field.
-func LastPeriodAvgLatencyMsLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldLastPeriodAvgLatencyMs, v))
-}
-
-// LastPeriodAvgLatencyMsLTE applies the LTE predicate on the "last_period_avg_latency_ms" field.
-func LastPeriodAvgLatencyMsLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastPeriodAvgLatencyMs, v))
-}
-
-// LastPeriodAvgTokenPerSecondEQ applies the EQ predicate on the "last_period_avg_token_per_second" field.
-func LastPeriodAvgTokenPerSecondEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodAvgTokenPerSecond, v))
-}
-
-// LastPeriodAvgTokenPerSecondNEQ applies the NEQ predicate on the "last_period_avg_token_per_second" field.
-func LastPeriodAvgTokenPerSecondNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldLastPeriodAvgTokenPerSecond, v))
-}
-
-// LastPeriodAvgTokenPerSecondIn applies the In predicate on the "last_period_avg_token_per_second" field.
-func LastPeriodAvgTokenPerSecondIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldLastPeriodAvgTokenPerSecond, vs...))
-}
-
-// LastPeriodAvgTokenPerSecondNotIn applies the NotIn predicate on the "last_period_avg_token_per_second" field.
-func LastPeriodAvgTokenPerSecondNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldLastPeriodAvgTokenPerSecond, vs...))
-}
-
-// LastPeriodAvgTokenPerSecondGT applies the GT predicate on the "last_period_avg_token_per_second" field.
-func LastPeriodAvgTokenPerSecondGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldLastPeriodAvgTokenPerSecond, v))
-}
-
-// LastPeriodAvgTokenPerSecondGTE applies the GTE predicate on the "last_period_avg_token_per_second" field.
-func LastPeriodAvgTokenPerSecondGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldLastPeriodAvgTokenPerSecond, v))
-}
-
-// LastPeriodAvgTokenPerSecondLT applies the LT predicate on the "last_period_avg_token_per_second" field.
-func LastPeriodAvgTokenPerSecondLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldLastPeriodAvgTokenPerSecond, v))
-}
-
-// LastPeriodAvgTokenPerSecondLTE applies the LTE predicate on the "last_period_avg_token_per_second" field.
-func LastPeriodAvgTokenPerSecondLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastPeriodAvgTokenPerSecond, v))
-}
-
-// LastPeriodAvgStreamFirstTokenLatenchMsEQ applies the EQ predicate on the "last_period_avg_stream_first_token_latench_ms" field.
-func LastPeriodAvgStreamFirstTokenLatenchMsEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodAvgStreamFirstTokenLatenchMs, v))
-}
-
-// LastPeriodAvgStreamFirstTokenLatenchMsNEQ applies the NEQ predicate on the "last_period_avg_stream_first_token_latench_ms" field.
-func LastPeriodAvgStreamFirstTokenLatenchMsNEQ(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldLastPeriodAvgStreamFirstTokenLatenchMs, v))
-}
-
-// LastPeriodAvgStreamFirstTokenLatenchMsIn applies the In predicate on the "last_period_avg_stream_first_token_latench_ms" field.
-func LastPeriodAvgStreamFirstTokenLatenchMsIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldLastPeriodAvgStreamFirstTokenLatenchMs, vs...))
-}
-
-// LastPeriodAvgStreamFirstTokenLatenchMsNotIn applies the NotIn predicate on the "last_period_avg_stream_first_token_latench_ms" field.
-func LastPeriodAvgStreamFirstTokenLatenchMsNotIn(vs ...int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldLastPeriodAvgStreamFirstTokenLatenchMs, vs...))
-}
-
-// LastPeriodAvgStreamFirstTokenLatenchMsGT applies the GT predicate on the "last_period_avg_stream_first_token_latench_ms" field.
-func LastPeriodAvgStreamFirstTokenLatenchMsGT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldLastPeriodAvgStreamFirstTokenLatenchMs, v))
-}
-
-// LastPeriodAvgStreamFirstTokenLatenchMsGTE applies the GTE predicate on the "last_period_avg_stream_first_token_latench_ms" field.
-func LastPeriodAvgStreamFirstTokenLatenchMsGTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldLastPeriodAvgStreamFirstTokenLatenchMs, v))
-}
-
-// LastPeriodAvgStreamFirstTokenLatenchMsLT applies the LT predicate on the "last_period_avg_stream_first_token_latench_ms" field.
-func LastPeriodAvgStreamFirstTokenLatenchMsLT(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldLastPeriodAvgStreamFirstTokenLatenchMs, v))
-}
-
-// LastPeriodAvgStreamFirstTokenLatenchMsLTE applies the LTE predicate on the "last_period_avg_stream_first_token_latench_ms" field.
-func LastPeriodAvgStreamFirstTokenLatenchMsLTE(v int) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastPeriodAvgStreamFirstTokenLatenchMs, v))
-}
-
-// LastPeriodAvgStreamTokenPerSecondEQ applies the EQ predicate on the "last_period_avg_stream_token_per_second" field.
-func LastPeriodAvgStreamTokenPerSecondEQ(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastPeriodAvgStreamTokenPerSecond, v))
-}
-
-// LastPeriodAvgStreamTokenPerSecondNEQ applies the NEQ predicate on the "last_period_avg_stream_token_per_second" field.
-func LastPeriodAvgStreamTokenPerSecondNEQ(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldLastPeriodAvgStreamTokenPerSecond, v))
-}
-
-// LastPeriodAvgStreamTokenPerSecondIn applies the In predicate on the "last_period_avg_stream_token_per_second" field.
-func LastPeriodAvgStreamTokenPerSecondIn(vs ...float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldLastPeriodAvgStreamTokenPerSecond, vs...))
-}
-
-// LastPeriodAvgStreamTokenPerSecondNotIn applies the NotIn predicate on the "last_period_avg_stream_token_per_second" field.
-func LastPeriodAvgStreamTokenPerSecondNotIn(vs ...float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldLastPeriodAvgStreamTokenPerSecond, vs...))
-}
-
-// LastPeriodAvgStreamTokenPerSecondGT applies the GT predicate on the "last_period_avg_stream_token_per_second" field.
-func LastPeriodAvgStreamTokenPerSecondGT(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldLastPeriodAvgStreamTokenPerSecond, v))
-}
-
-// LastPeriodAvgStreamTokenPerSecondGTE applies the GTE predicate on the "last_period_avg_stream_token_per_second" field.
-func LastPeriodAvgStreamTokenPerSecondGTE(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldLastPeriodAvgStreamTokenPerSecond, v))
-}
-
-// LastPeriodAvgStreamTokenPerSecondLT applies the LT predicate on the "last_period_avg_stream_token_per_second" field.
-func LastPeriodAvgStreamTokenPerSecondLT(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldLastPeriodAvgStreamTokenPerSecond, v))
-}
-
-// LastPeriodAvgStreamTokenPerSecondLTE applies the LTE predicate on the "last_period_avg_stream_token_per_second" field.
-func LastPeriodAvgStreamTokenPerSecondLTE(v float64) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastPeriodAvgStreamTokenPerSecond, v))
+// AvgStreamTokenPerSecondLTE applies the LTE predicate on the "avg_stream_token_per_second" field.
+func AvgStreamTokenPerSecondLTE(v float64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldAvgStreamTokenPerSecond, v))
 }
 
 // LastSuccessAtEQ applies the EQ predicate on the "last_success_at" field.
@@ -1055,6 +490,16 @@ func LastSuccessAtLTE(v time.Time) predicate.ChannelPerformance {
 	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastSuccessAt, v))
 }
 
+// LastSuccessAtIsNil applies the IsNil predicate on the "last_success_at" field.
+func LastSuccessAtIsNil() predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIsNull(FieldLastSuccessAt))
+}
+
+// LastSuccessAtNotNil applies the NotNil predicate on the "last_success_at" field.
+func LastSuccessAtNotNil() predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotNull(FieldLastSuccessAt))
+}
+
 // LastFailureAtEQ applies the EQ predicate on the "last_failure_at" field.
 func LastFailureAtEQ(v time.Time) predicate.ChannelPerformance {
 	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastFailureAt, v))
@@ -1095,44 +540,14 @@ func LastFailureAtLTE(v time.Time) predicate.ChannelPerformance {
 	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastFailureAt, v))
 }
 
-// LastAttemptAtEQ applies the EQ predicate on the "last_attempt_at" field.
-func LastAttemptAtEQ(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastAttemptAt, v))
+// LastFailureAtIsNil applies the IsNil predicate on the "last_failure_at" field.
+func LastFailureAtIsNil() predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIsNull(FieldLastFailureAt))
 }
 
-// LastAttemptAtNEQ applies the NEQ predicate on the "last_attempt_at" field.
-func LastAttemptAtNEQ(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNEQ(FieldLastAttemptAt, v))
-}
-
-// LastAttemptAtIn applies the In predicate on the "last_attempt_at" field.
-func LastAttemptAtIn(vs ...time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldIn(FieldLastAttemptAt, vs...))
-}
-
-// LastAttemptAtNotIn applies the NotIn predicate on the "last_attempt_at" field.
-func LastAttemptAtNotIn(vs ...time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldNotIn(FieldLastAttemptAt, vs...))
-}
-
-// LastAttemptAtGT applies the GT predicate on the "last_attempt_at" field.
-func LastAttemptAtGT(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGT(FieldLastAttemptAt, v))
-}
-
-// LastAttemptAtGTE applies the GTE predicate on the "last_attempt_at" field.
-func LastAttemptAtGTE(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldGTE(FieldLastAttemptAt, v))
-}
-
-// LastAttemptAtLT applies the LT predicate on the "last_attempt_at" field.
-func LastAttemptAtLT(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLT(FieldLastAttemptAt, v))
-}
-
-// LastAttemptAtLTE applies the LTE predicate on the "last_attempt_at" field.
-func LastAttemptAtLTE(v time.Time) predicate.ChannelPerformance {
-	return predicate.ChannelPerformance(sql.FieldLTE(FieldLastAttemptAt, v))
+// LastFailureAtNotNil applies the NotNil predicate on the "last_failure_at" field.
+func LastFailureAtNotNil() predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotNull(FieldLastFailureAt))
 }
 
 // HasChannel applies the HasEdge predicate on the "channel" edge.

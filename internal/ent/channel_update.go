@@ -193,6 +193,26 @@ func (_u *ChannelUpdate) AddOrderingWeight(v int) *ChannelUpdate {
 	return _u
 }
 
+// SetErrorMessage sets the "error_message" field.
+func (_u *ChannelUpdate) SetErrorMessage(v string) *ChannelUpdate {
+	_u.mutation.SetErrorMessage(v)
+	return _u
+}
+
+// SetNillableErrorMessage sets the "error_message" field if the given value is not nil.
+func (_u *ChannelUpdate) SetNillableErrorMessage(v *string) *ChannelUpdate {
+	if v != nil {
+		_u.SetErrorMessage(*v)
+	}
+	return _u
+}
+
+// ClearErrorMessage clears the value of the "error_message" field.
+func (_u *ChannelUpdate) ClearErrorMessage() *ChannelUpdate {
+	_u.mutation.ClearErrorMessage()
+	return _u
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_u *ChannelUpdate) AddRequestIDs(ids ...int) *ChannelUpdate {
 	_u.mutation.AddRequestIDs(ids...)
@@ -458,6 +478,12 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedOrderingWeight(); ok {
 		_spec.AddField(channel.FieldOrderingWeight, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.ErrorMessage(); ok {
+		_spec.SetField(channel.FieldErrorMessage, field.TypeString, value)
+	}
+	if _u.mutation.ErrorMessageCleared() {
+		_spec.ClearField(channel.FieldErrorMessage, field.TypeString)
 	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -803,6 +829,26 @@ func (_u *ChannelUpdateOne) AddOrderingWeight(v int) *ChannelUpdateOne {
 	return _u
 }
 
+// SetErrorMessage sets the "error_message" field.
+func (_u *ChannelUpdateOne) SetErrorMessage(v string) *ChannelUpdateOne {
+	_u.mutation.SetErrorMessage(v)
+	return _u
+}
+
+// SetNillableErrorMessage sets the "error_message" field if the given value is not nil.
+func (_u *ChannelUpdateOne) SetNillableErrorMessage(v *string) *ChannelUpdateOne {
+	if v != nil {
+		_u.SetErrorMessage(*v)
+	}
+	return _u
+}
+
+// ClearErrorMessage clears the value of the "error_message" field.
+func (_u *ChannelUpdateOne) ClearErrorMessage() *ChannelUpdateOne {
+	_u.mutation.ClearErrorMessage()
+	return _u
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_u *ChannelUpdateOne) AddRequestIDs(ids ...int) *ChannelUpdateOne {
 	_u.mutation.AddRequestIDs(ids...)
@@ -1098,6 +1144,12 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 	}
 	if value, ok := _u.mutation.AddedOrderingWeight(); ok {
 		_spec.AddField(channel.FieldOrderingWeight, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.ErrorMessage(); ok {
+		_spec.SetField(channel.FieldErrorMessage, field.TypeString, value)
+	}
+	if _u.mutation.ErrorMessageCleared() {
+		_spec.ClearField(channel.FieldErrorMessage, field.TypeString)
 	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
