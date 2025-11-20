@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -59,11 +60,13 @@ type ChannelEdges struct {
 	Executions []*RequestExecution `json:"executions,omitempty"`
 	// UsageLogs holds the value of the usage_logs edge.
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
+	// ChannelPerformance holds the value of the channel_performance edge.
+	ChannelPerformance *ChannelPerformance `json:"channel_performance,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 	// totalCount holds the count of the edges above.
-	totalCount [3]map[string]int
+	totalCount [4]map[string]int
 
 	namedRequests   map[string][]*Request
 	namedExecutions map[string][]*RequestExecution
@@ -95,6 +98,17 @@ func (e ChannelEdges) UsageLogsOrErr() ([]*UsageLog, error) {
 		return e.UsageLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "usage_logs"}
+}
+
+// ChannelPerformanceOrErr returns the ChannelPerformance value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e ChannelEdges) ChannelPerformanceOrErr() (*ChannelPerformance, error) {
+	if e.ChannelPerformance != nil {
+		return e.ChannelPerformance, nil
+	} else if e.loadedTypes[3] {
+		return nil, &NotFoundError{label: channelperformance.Label}
+	}
+	return nil, &NotLoadedError{edge: "channel_performance"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -243,6 +257,11 @@ func (_m *Channel) QueryExecutions() *RequestExecutionQuery {
 // QueryUsageLogs queries the "usage_logs" edge of the Channel entity.
 func (_m *Channel) QueryUsageLogs() *UsageLogQuery {
 	return NewChannelClient(_m.config).QueryUsageLogs(_m)
+}
+
+// QueryChannelPerformance queries the "channel_performance" edge of the Channel entity.
+func (_m *Channel) QueryChannelPerformance() *ChannelPerformanceQuery {
+	return NewChannelClient(_m.config).QueryChannelPerformance(_m)
 }
 
 // Update returns a builder for updating this Channel.

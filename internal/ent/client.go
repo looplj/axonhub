@@ -17,6 +17,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -40,6 +41,8 @@ type Client struct {
 	APIKey *APIKeyClient
 	// Channel is the client for interacting with the Channel builders.
 	Channel *ChannelClient
+	// ChannelPerformance is the client for interacting with the ChannelPerformance builders.
+	ChannelPerformance *ChannelPerformanceClient
 	// DataStorage is the client for interacting with the DataStorage builders.
 	DataStorage *DataStorageClient
 	// Project is the client for interacting with the Project builders.
@@ -79,6 +82,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.APIKey = NewAPIKeyClient(c.config)
 	c.Channel = NewChannelClient(c.config)
+	c.ChannelPerformance = NewChannelPerformanceClient(c.config)
 	c.DataStorage = NewDataStorageClient(c.config)
 	c.Project = NewProjectClient(c.config)
 	c.Request = NewRequestClient(c.config)
@@ -181,22 +185,23 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:              ctx,
-		config:           cfg,
-		APIKey:           NewAPIKeyClient(cfg),
-		Channel:          NewChannelClient(cfg),
-		DataStorage:      NewDataStorageClient(cfg),
-		Project:          NewProjectClient(cfg),
-		Request:          NewRequestClient(cfg),
-		RequestExecution: NewRequestExecutionClient(cfg),
-		Role:             NewRoleClient(cfg),
-		System:           NewSystemClient(cfg),
-		Thread:           NewThreadClient(cfg),
-		Trace:            NewTraceClient(cfg),
-		UsageLog:         NewUsageLogClient(cfg),
-		User:             NewUserClient(cfg),
-		UserProject:      NewUserProjectClient(cfg),
-		UserRole:         NewUserRoleClient(cfg),
+		ctx:                ctx,
+		config:             cfg,
+		APIKey:             NewAPIKeyClient(cfg),
+		Channel:            NewChannelClient(cfg),
+		ChannelPerformance: NewChannelPerformanceClient(cfg),
+		DataStorage:        NewDataStorageClient(cfg),
+		Project:            NewProjectClient(cfg),
+		Request:            NewRequestClient(cfg),
+		RequestExecution:   NewRequestExecutionClient(cfg),
+		Role:               NewRoleClient(cfg),
+		System:             NewSystemClient(cfg),
+		Thread:             NewThreadClient(cfg),
+		Trace:              NewTraceClient(cfg),
+		UsageLog:           NewUsageLogClient(cfg),
+		User:               NewUserClient(cfg),
+		UserProject:        NewUserProjectClient(cfg),
+		UserRole:           NewUserRoleClient(cfg),
 	}, nil
 }
 
@@ -214,22 +219,23 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:              ctx,
-		config:           cfg,
-		APIKey:           NewAPIKeyClient(cfg),
-		Channel:          NewChannelClient(cfg),
-		DataStorage:      NewDataStorageClient(cfg),
-		Project:          NewProjectClient(cfg),
-		Request:          NewRequestClient(cfg),
-		RequestExecution: NewRequestExecutionClient(cfg),
-		Role:             NewRoleClient(cfg),
-		System:           NewSystemClient(cfg),
-		Thread:           NewThreadClient(cfg),
-		Trace:            NewTraceClient(cfg),
-		UsageLog:         NewUsageLogClient(cfg),
-		User:             NewUserClient(cfg),
-		UserProject:      NewUserProjectClient(cfg),
-		UserRole:         NewUserRoleClient(cfg),
+		ctx:                ctx,
+		config:             cfg,
+		APIKey:             NewAPIKeyClient(cfg),
+		Channel:            NewChannelClient(cfg),
+		ChannelPerformance: NewChannelPerformanceClient(cfg),
+		DataStorage:        NewDataStorageClient(cfg),
+		Project:            NewProjectClient(cfg),
+		Request:            NewRequestClient(cfg),
+		RequestExecution:   NewRequestExecutionClient(cfg),
+		Role:               NewRoleClient(cfg),
+		System:             NewSystemClient(cfg),
+		Thread:             NewThreadClient(cfg),
+		Trace:              NewTraceClient(cfg),
+		UsageLog:           NewUsageLogClient(cfg),
+		User:               NewUserClient(cfg),
+		UserProject:        NewUserProjectClient(cfg),
+		UserRole:           NewUserRoleClient(cfg),
 	}, nil
 }
 
@@ -259,9 +265,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.APIKey, c.Channel, c.DataStorage, c.Project, c.Request, c.RequestExecution,
-		c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject,
-		c.UserRole,
+		c.APIKey, c.Channel, c.ChannelPerformance, c.DataStorage, c.Project, c.Request,
+		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
+		c.UserProject, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -271,9 +277,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.APIKey, c.Channel, c.DataStorage, c.Project, c.Request, c.RequestExecution,
-		c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject,
-		c.UserRole,
+		c.APIKey, c.Channel, c.ChannelPerformance, c.DataStorage, c.Project, c.Request,
+		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
+		c.UserProject, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -286,6 +292,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.APIKey.mutate(ctx, m)
 	case *ChannelMutation:
 		return c.Channel.mutate(ctx, m)
+	case *ChannelPerformanceMutation:
+		return c.ChannelPerformance.mutate(ctx, m)
 	case *DataStorageMutation:
 		return c.DataStorage.mutate(ctx, m)
 	case *ProjectMutation:
@@ -654,6 +662,22 @@ func (c *ChannelClient) QueryUsageLogs(_m *Channel) *UsageLogQuery {
 	return query
 }
 
+// QueryChannelPerformance queries the channel_performance edge of a Channel.
+func (c *ChannelClient) QueryChannelPerformance(_m *Channel) *ChannelPerformanceQuery {
+	query := (&ChannelPerformanceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channel.Table, channel.FieldID, id),
+			sqlgraph.To(channelperformance.Table, channelperformance.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, channel.ChannelPerformanceTable, channel.ChannelPerformanceColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ChannelClient) Hooks() []Hook {
 	hooks := c.hooks.Channel
@@ -678,6 +702,157 @@ func (c *ChannelClient) mutate(ctx context.Context, m *ChannelMutation) (Value, 
 		return (&ChannelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Channel mutation op: %q", m.Op())
+	}
+}
+
+// ChannelPerformanceClient is a client for the ChannelPerformance schema.
+type ChannelPerformanceClient struct {
+	config
+}
+
+// NewChannelPerformanceClient returns a client for the ChannelPerformance from the given config.
+func NewChannelPerformanceClient(c config) *ChannelPerformanceClient {
+	return &ChannelPerformanceClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `channelperformance.Hooks(f(g(h())))`.
+func (c *ChannelPerformanceClient) Use(hooks ...Hook) {
+	c.hooks.ChannelPerformance = append(c.hooks.ChannelPerformance, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `channelperformance.Intercept(f(g(h())))`.
+func (c *ChannelPerformanceClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ChannelPerformance = append(c.inters.ChannelPerformance, interceptors...)
+}
+
+// Create returns a builder for creating a ChannelPerformance entity.
+func (c *ChannelPerformanceClient) Create() *ChannelPerformanceCreate {
+	mutation := newChannelPerformanceMutation(c.config, OpCreate)
+	return &ChannelPerformanceCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ChannelPerformance entities.
+func (c *ChannelPerformanceClient) CreateBulk(builders ...*ChannelPerformanceCreate) *ChannelPerformanceCreateBulk {
+	return &ChannelPerformanceCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ChannelPerformanceClient) MapCreateBulk(slice any, setFunc func(*ChannelPerformanceCreate, int)) *ChannelPerformanceCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ChannelPerformanceCreateBulk{err: fmt.Errorf("calling to ChannelPerformanceClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ChannelPerformanceCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ChannelPerformanceCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ChannelPerformance.
+func (c *ChannelPerformanceClient) Update() *ChannelPerformanceUpdate {
+	mutation := newChannelPerformanceMutation(c.config, OpUpdate)
+	return &ChannelPerformanceUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ChannelPerformanceClient) UpdateOne(_m *ChannelPerformance) *ChannelPerformanceUpdateOne {
+	mutation := newChannelPerformanceMutation(c.config, OpUpdateOne, withChannelPerformance(_m))
+	return &ChannelPerformanceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ChannelPerformanceClient) UpdateOneID(id int) *ChannelPerformanceUpdateOne {
+	mutation := newChannelPerformanceMutation(c.config, OpUpdateOne, withChannelPerformanceID(id))
+	return &ChannelPerformanceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ChannelPerformance.
+func (c *ChannelPerformanceClient) Delete() *ChannelPerformanceDelete {
+	mutation := newChannelPerformanceMutation(c.config, OpDelete)
+	return &ChannelPerformanceDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ChannelPerformanceClient) DeleteOne(_m *ChannelPerformance) *ChannelPerformanceDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ChannelPerformanceClient) DeleteOneID(id int) *ChannelPerformanceDeleteOne {
+	builder := c.Delete().Where(channelperformance.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ChannelPerformanceDeleteOne{builder}
+}
+
+// Query returns a query builder for ChannelPerformance.
+func (c *ChannelPerformanceClient) Query() *ChannelPerformanceQuery {
+	return &ChannelPerformanceQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeChannelPerformance},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ChannelPerformance entity by its id.
+func (c *ChannelPerformanceClient) Get(ctx context.Context, id int) (*ChannelPerformance, error) {
+	return c.Query().Where(channelperformance.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ChannelPerformanceClient) GetX(ctx context.Context, id int) *ChannelPerformance {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryChannel queries the channel edge of a ChannelPerformance.
+func (c *ChannelPerformanceClient) QueryChannel(_m *ChannelPerformance) *ChannelQuery {
+	query := (&ChannelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(channelperformance.Table, channelperformance.FieldID, id),
+			sqlgraph.To(channel.Table, channel.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, channelperformance.ChannelTable, channelperformance.ChannelColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ChannelPerformanceClient) Hooks() []Hook {
+	hooks := c.hooks.ChannelPerformance
+	return append(hooks[:len(hooks):len(hooks)], channelperformance.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *ChannelPerformanceClient) Interceptors() []Interceptor {
+	inters := c.inters.ChannelPerformance
+	return append(inters[:len(inters):len(inters)], channelperformance.Interceptors[:]...)
+}
+
+func (c *ChannelPerformanceClient) mutate(ctx context.Context, m *ChannelPerformanceMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ChannelPerformanceCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ChannelPerformanceUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ChannelPerformanceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ChannelPerformanceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ChannelPerformance mutation op: %q", m.Op())
 	}
 }
 
@@ -2938,11 +3113,13 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, Channel, DataStorage, Project, Request, RequestExecution, Role, System,
-		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Hook
+		APIKey, Channel, ChannelPerformance, DataStorage, Project, Request,
+		RequestExecution, Role, System, Thread, Trace, UsageLog, User, UserProject,
+		UserRole []ent.Hook
 	}
 	inters struct {
-		APIKey, Channel, DataStorage, Project, Request, RequestExecution, Role, System,
-		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
+		APIKey, Channel, ChannelPerformance, DataStorage, Project, Request,
+		RequestExecution, Role, System, Thread, Trace, UsageLog, User, UserProject,
+		UserRole []ent.Interceptor
 	}
 )

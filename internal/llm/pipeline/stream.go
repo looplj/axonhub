@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/log"
@@ -19,11 +20,20 @@ func (p *pipeline) stream(
 ) (streams.Stream[*httpclient.StreamEvent], error) {
 	outboundStream, err := executor.DoStream(ctx, request)
 	if err != nil {
+		// Apply error response middlewares
+		p.applyRawErrorResponseMiddlewares(ctx, err)
+
 		if httpErr, ok := xerrors.As[*httpclient.Error](err); ok {
 			return nil, p.Outbound.TransformError(ctx, httpErr)
 		}
 
 		return nil, err
+	}
+
+	// Apply raw stream middlewares
+	outboundStream, err = p.applyRawStreamMiddlewares(ctx, outboundStream)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply raw stream middlewares: %w", err)
 	}
 
 	if log.DebugEnabled(ctx) {
@@ -39,6 +49,12 @@ func (p *pipeline) stream(
 	if err != nil {
 		log.Error(ctx, "Failed to transform streaming request", log.Cause(err))
 		return nil, err
+	}
+
+	// Apply LLM stream middlewares
+	llmStream, err = p.applyLlmStreamMiddlewares(ctx, llmStream)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply llm stream middlewares: %w", err)
 	}
 
 	if log.DebugEnabled(ctx) {

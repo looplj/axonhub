@@ -16,6 +16,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/errcode"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -752,6 +753,320 @@ func (_m *Channel) ToEdge(order *ChannelOrder) *ChannelEdge {
 		order = DefaultChannelOrder
 	}
 	return &ChannelEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// ChannelPerformanceEdge is the edge representation of ChannelPerformance.
+type ChannelPerformanceEdge struct {
+	Node   *ChannelPerformance `json:"node"`
+	Cursor Cursor              `json:"cursor"`
+}
+
+// ChannelPerformanceConnection is the connection containing edges to ChannelPerformance.
+type ChannelPerformanceConnection struct {
+	Edges      []*ChannelPerformanceEdge `json:"edges"`
+	PageInfo   PageInfo                  `json:"pageInfo"`
+	TotalCount int                       `json:"totalCount"`
+}
+
+func (c *ChannelPerformanceConnection) build(nodes []*ChannelPerformance, pager *channelperformancePager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *ChannelPerformance
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *ChannelPerformance {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *ChannelPerformance {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ChannelPerformanceEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ChannelPerformanceEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ChannelPerformancePaginateOption enables pagination customization.
+type ChannelPerformancePaginateOption func(*channelperformancePager) error
+
+// WithChannelPerformanceOrder configures pagination ordering.
+func WithChannelPerformanceOrder(order *ChannelPerformanceOrder) ChannelPerformancePaginateOption {
+	if order == nil {
+		order = DefaultChannelPerformanceOrder
+	}
+	o := *order
+	return func(pager *channelperformancePager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultChannelPerformanceOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithChannelPerformanceFilter configures pagination filter.
+func WithChannelPerformanceFilter(filter func(*ChannelPerformanceQuery) (*ChannelPerformanceQuery, error)) ChannelPerformancePaginateOption {
+	return func(pager *channelperformancePager) error {
+		if filter == nil {
+			return errors.New("ChannelPerformanceQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type channelperformancePager struct {
+	reverse bool
+	order   *ChannelPerformanceOrder
+	filter  func(*ChannelPerformanceQuery) (*ChannelPerformanceQuery, error)
+}
+
+func newChannelPerformancePager(opts []ChannelPerformancePaginateOption, reverse bool) (*channelperformancePager, error) {
+	pager := &channelperformancePager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultChannelPerformanceOrder
+	}
+	return pager, nil
+}
+
+func (p *channelperformancePager) applyFilter(query *ChannelPerformanceQuery) (*ChannelPerformanceQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *channelperformancePager) toCursor(_m *ChannelPerformance) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *channelperformancePager) applyCursors(query *ChannelPerformanceQuery, after, before *Cursor) (*ChannelPerformanceQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultChannelPerformanceOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *channelperformancePager) applyOrder(query *ChannelPerformanceQuery) *ChannelPerformanceQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultChannelPerformanceOrder.Field {
+		query = query.Order(DefaultChannelPerformanceOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *channelperformancePager) orderExpr(query *ChannelPerformanceQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultChannelPerformanceOrder.Field {
+			b.Comma().Ident(DefaultChannelPerformanceOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to ChannelPerformance.
+func (_m *ChannelPerformanceQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ChannelPerformancePaginateOption,
+) (*ChannelPerformanceConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newChannelPerformancePager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &ChannelPerformanceConnection{Edges: []*ChannelPerformanceEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// ChannelPerformanceOrderFieldCreatedAt orders ChannelPerformance by created_at.
+	ChannelPerformanceOrderFieldCreatedAt = &ChannelPerformanceOrderField{
+		Value: func(_m *ChannelPerformance) (ent.Value, error) {
+			return _m.CreatedAt, nil
+		},
+		column: channelperformance.FieldCreatedAt,
+		toTerm: channelperformance.ByCreatedAt,
+		toCursor: func(_m *ChannelPerformance) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.CreatedAt,
+			}
+		},
+	}
+	// ChannelPerformanceOrderFieldUpdatedAt orders ChannelPerformance by updated_at.
+	ChannelPerformanceOrderFieldUpdatedAt = &ChannelPerformanceOrderField{
+		Value: func(_m *ChannelPerformance) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: channelperformance.FieldUpdatedAt,
+		toTerm: channelperformance.ByUpdatedAt,
+		toCursor: func(_m *ChannelPerformance) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f ChannelPerformanceOrderField) String() string {
+	var str string
+	switch f.column {
+	case ChannelPerformanceOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	case ChannelPerformanceOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f ChannelPerformanceOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *ChannelPerformanceOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ChannelPerformanceOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *ChannelPerformanceOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *ChannelPerformanceOrderFieldUpdatedAt
+	default:
+		return fmt.Errorf("%s is not a valid ChannelPerformanceOrderField", str)
+	}
+	return nil
+}
+
+// ChannelPerformanceOrderField defines the ordering field of ChannelPerformance.
+type ChannelPerformanceOrderField struct {
+	// Value extracts the ordering value from the given ChannelPerformance.
+	Value    func(*ChannelPerformance) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) channelperformance.OrderOption
+	toCursor func(*ChannelPerformance) Cursor
+}
+
+// ChannelPerformanceOrder defines the ordering of ChannelPerformance.
+type ChannelPerformanceOrder struct {
+	Direction OrderDirection                `json:"direction"`
+	Field     *ChannelPerformanceOrderField `json:"field"`
+}
+
+// DefaultChannelPerformanceOrder is the default ordering of ChannelPerformance.
+var DefaultChannelPerformanceOrder = &ChannelPerformanceOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &ChannelPerformanceOrderField{
+		Value: func(_m *ChannelPerformance) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: channelperformance.FieldID,
+		toTerm: channelperformance.ByID,
+		toCursor: func(_m *ChannelPerformance) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts ChannelPerformance into ChannelPerformanceEdge.
+func (_m *ChannelPerformance) ToEdge(order *ChannelPerformanceOrder) *ChannelPerformanceEdge {
+	if order == nil {
+		order = DefaultChannelPerformanceOrder
+	}
+	return &ChannelPerformanceEdge{
 		Node:   _m,
 		Cursor: order.Field.toCursor(_m),
 	}

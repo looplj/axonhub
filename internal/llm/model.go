@@ -460,6 +460,22 @@ type Usage struct {
 	CompletionTokensDetails *CompletionTokensDetails `json:"completion_tokens_details"`
 }
 
+func (u *Usage) GetCompletionTokens() *int64 {
+	if u == nil {
+		return nil
+	}
+
+	return &u.CompletionTokens
+}
+
+func (u *Usage) GetPromptTokens() *int64 {
+	if u == nil {
+		return nil
+	}
+
+	return &u.PromptTokens
+}
+
 // CompletionTokensDetails Breakdown of tokens used in a completion.
 type CompletionTokensDetails struct {
 	AudioTokens              int64 `json:"audio_tokens"`

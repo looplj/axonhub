@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -38,20 +39,21 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAPIKey           = "APIKey"
-	TypeChannel          = "Channel"
-	TypeDataStorage      = "DataStorage"
-	TypeProject          = "Project"
-	TypeRequest          = "Request"
-	TypeRequestExecution = "RequestExecution"
-	TypeRole             = "Role"
-	TypeSystem           = "System"
-	TypeThread           = "Thread"
-	TypeTrace            = "Trace"
-	TypeUsageLog         = "UsageLog"
-	TypeUser             = "User"
-	TypeUserProject      = "UserProject"
-	TypeUserRole         = "UserRole"
+	TypeAPIKey             = "APIKey"
+	TypeChannel            = "Channel"
+	TypeChannelPerformance = "ChannelPerformance"
+	TypeDataStorage        = "DataStorage"
+	TypeProject            = "Project"
+	TypeRequest            = "Request"
+	TypeRequestExecution   = "RequestExecution"
+	TypeRole               = "Role"
+	TypeSystem             = "System"
+	TypeThread             = "Thread"
+	TypeTrace              = "Trace"
+	TypeUsageLog           = "UsageLog"
+	TypeUser               = "User"
+	TypeUserProject        = "UserProject"
+	TypeUserRole           = "UserRole"
 )
 
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
@@ -1148,39 +1150,41 @@ func (m *APIKeyMutation) ResetEdge(name string) error {
 // ChannelMutation represents an operation that mutates the Channel nodes in the graph.
 type ChannelMutation struct {
 	config
-	op                     Op
-	typ                    string
-	id                     *int
-	created_at             *time.Time
-	updated_at             *time.Time
-	deleted_at             *int
-	adddeleted_at          *int
-	_type                  *channel.Type
-	base_url               *string
-	name                   *string
-	status                 *channel.Status
-	credentials            **objects.ChannelCredentials
-	supported_models       *[]string
-	appendsupported_models []string
-	tags                   *[]string
-	appendtags             []string
-	default_test_model     *string
-	settings               **objects.ChannelSettings
-	ordering_weight        *int
-	addordering_weight     *int
-	clearedFields          map[string]struct{}
-	requests               map[int]struct{}
-	removedrequests        map[int]struct{}
-	clearedrequests        bool
-	executions             map[int]struct{}
-	removedexecutions      map[int]struct{}
-	clearedexecutions      bool
-	usage_logs             map[int]struct{}
-	removedusage_logs      map[int]struct{}
-	clearedusage_logs      bool
-	done                   bool
-	oldValue               func(context.Context) (*Channel, error)
-	predicates             []predicate.Channel
+	op                         Op
+	typ                        string
+	id                         *int
+	created_at                 *time.Time
+	updated_at                 *time.Time
+	deleted_at                 *int
+	adddeleted_at              *int
+	_type                      *channel.Type
+	base_url                   *string
+	name                       *string
+	status                     *channel.Status
+	credentials                **objects.ChannelCredentials
+	supported_models           *[]string
+	appendsupported_models     []string
+	tags                       *[]string
+	appendtags                 []string
+	default_test_model         *string
+	settings                   **objects.ChannelSettings
+	ordering_weight            *int
+	addordering_weight         *int
+	clearedFields              map[string]struct{}
+	requests                   map[int]struct{}
+	removedrequests            map[int]struct{}
+	clearedrequests            bool
+	executions                 map[int]struct{}
+	removedexecutions          map[int]struct{}
+	clearedexecutions          bool
+	usage_logs                 map[int]struct{}
+	removedusage_logs          map[int]struct{}
+	clearedusage_logs          bool
+	channel_performance        *int
+	clearedchannel_performance bool
+	done                       bool
+	oldValue                   func(context.Context) (*Channel, error)
+	predicates                 []predicate.Channel
 }
 
 var _ ent.Mutation = (*ChannelMutation)(nil)
@@ -2021,6 +2025,45 @@ func (m *ChannelMutation) ResetUsageLogs() {
 	m.removedusage_logs = nil
 }
 
+// SetChannelPerformanceID sets the "channel_performance" edge to the ChannelPerformance entity by id.
+func (m *ChannelMutation) SetChannelPerformanceID(id int) {
+	m.channel_performance = &id
+}
+
+// ClearChannelPerformance clears the "channel_performance" edge to the ChannelPerformance entity.
+func (m *ChannelMutation) ClearChannelPerformance() {
+	m.clearedchannel_performance = true
+}
+
+// ChannelPerformanceCleared reports if the "channel_performance" edge to the ChannelPerformance entity was cleared.
+func (m *ChannelMutation) ChannelPerformanceCleared() bool {
+	return m.clearedchannel_performance
+}
+
+// ChannelPerformanceID returns the "channel_performance" edge ID in the mutation.
+func (m *ChannelMutation) ChannelPerformanceID() (id int, exists bool) {
+	if m.channel_performance != nil {
+		return *m.channel_performance, true
+	}
+	return
+}
+
+// ChannelPerformanceIDs returns the "channel_performance" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ChannelPerformanceID instead. It exists only for internal usage by the builders.
+func (m *ChannelMutation) ChannelPerformanceIDs() (ids []int) {
+	if id := m.channel_performance; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetChannelPerformance resets all changes to the "channel_performance" edge.
+func (m *ChannelMutation) ResetChannelPerformance() {
+	m.channel_performance = nil
+	m.clearedchannel_performance = false
+}
+
 // Where appends a list predicates to the ChannelMutation builder.
 func (m *ChannelMutation) Where(ps ...predicate.Channel) {
 	m.predicates = append(m.predicates, ps...)
@@ -2406,7 +2449,7 @@ func (m *ChannelMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ChannelMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.requests != nil {
 		edges = append(edges, channel.EdgeRequests)
 	}
@@ -2415,6 +2458,9 @@ func (m *ChannelMutation) AddedEdges() []string {
 	}
 	if m.usage_logs != nil {
 		edges = append(edges, channel.EdgeUsageLogs)
+	}
+	if m.channel_performance != nil {
+		edges = append(edges, channel.EdgeChannelPerformance)
 	}
 	return edges
 }
@@ -2441,13 +2487,17 @@ func (m *ChannelMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case channel.EdgeChannelPerformance:
+		if id := m.channel_performance; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ChannelMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.removedrequests != nil {
 		edges = append(edges, channel.EdgeRequests)
 	}
@@ -2488,7 +2538,7 @@ func (m *ChannelMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ChannelMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.clearedrequests {
 		edges = append(edges, channel.EdgeRequests)
 	}
@@ -2497,6 +2547,9 @@ func (m *ChannelMutation) ClearedEdges() []string {
 	}
 	if m.clearedusage_logs {
 		edges = append(edges, channel.EdgeUsageLogs)
+	}
+	if m.clearedchannel_performance {
+		edges = append(edges, channel.EdgeChannelPerformance)
 	}
 	return edges
 }
@@ -2511,6 +2564,8 @@ func (m *ChannelMutation) EdgeCleared(name string) bool {
 		return m.clearedexecutions
 	case channel.EdgeUsageLogs:
 		return m.clearedusage_logs
+	case channel.EdgeChannelPerformance:
+		return m.clearedchannel_performance
 	}
 	return false
 }
@@ -2519,6 +2574,9 @@ func (m *ChannelMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *ChannelMutation) ClearEdge(name string) error {
 	switch name {
+	case channel.EdgeChannelPerformance:
+		m.ClearChannelPerformance()
+		return nil
 	}
 	return fmt.Errorf("unknown Channel unique edge %s", name)
 }
@@ -2536,8 +2594,2218 @@ func (m *ChannelMutation) ResetEdge(name string) error {
 	case channel.EdgeUsageLogs:
 		m.ResetUsageLogs()
 		return nil
+	case channel.EdgeChannelPerformance:
+		m.ResetChannelPerformance()
+		return nil
 	}
 	return fmt.Errorf("unknown Channel edge %s", name)
+}
+
+// ChannelPerformanceMutation represents an operation that mutates the ChannelPerformance nodes in the graph.
+type ChannelPerformanceMutation struct {
+	config
+	op                                               Op
+	typ                                              string
+	id                                               *int
+	created_at                                       *time.Time
+	updated_at                                       *time.Time
+	deleted_at                                       *int
+	adddeleted_at                                    *int
+	health_status                                    *channelperformance.HealthStatus
+	total_count                                      *int
+	addtotal_count                                   *int
+	total_success_count                              *int
+	addtotal_success_count                           *int
+	total_token_count                                *int
+	addtotal_token_count                             *int
+	total_avg_latency_ms                             *int
+	addtotal_avg_latency_ms                          *int
+	total_avg_token_per_second                       *int
+	addtotal_avg_token_per_second                    *int
+	total_avg_stream_first_token_latench_ms          *int
+	addtotal_avg_stream_first_token_latench_ms       *int
+	total_avg_stream_token_per_second                *float64
+	addtotal_avg_stream_token_per_second             *float64
+	last_period_start                                *time.Time
+	last_period_end                                  *time.Time
+	last_period_seconds                              *int
+	addlast_period_seconds                           *int
+	last_period_count                                *int
+	addlast_period_count                             *int
+	last_period_success_count                        *int
+	addlast_period_success_count                     *int
+	last_period_token_count                          *int
+	addlast_period_token_count                       *int
+	last_period_avg_latency_ms                       *int
+	addlast_period_avg_latency_ms                    *int
+	last_period_avg_token_per_second                 *int
+	addlast_period_avg_token_per_second              *int
+	last_period_avg_stream_first_token_latench_ms    *int
+	addlast_period_avg_stream_first_token_latench_ms *int
+	last_period_avg_stream_token_per_second          *float64
+	addlast_period_avg_stream_token_per_second       *float64
+	last_success_at                                  *time.Time
+	last_failure_at                                  *time.Time
+	last_attempt_at                                  *time.Time
+	clearedFields                                    map[string]struct{}
+	channel                                          *int
+	clearedchannel                                   bool
+	done                                             bool
+	oldValue                                         func(context.Context) (*ChannelPerformance, error)
+	predicates                                       []predicate.ChannelPerformance
+}
+
+var _ ent.Mutation = (*ChannelPerformanceMutation)(nil)
+
+// channelperformanceOption allows management of the mutation configuration using functional options.
+type channelperformanceOption func(*ChannelPerformanceMutation)
+
+// newChannelPerformanceMutation creates new mutation for the ChannelPerformance entity.
+func newChannelPerformanceMutation(c config, op Op, opts ...channelperformanceOption) *ChannelPerformanceMutation {
+	m := &ChannelPerformanceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeChannelPerformance,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withChannelPerformanceID sets the ID field of the mutation.
+func withChannelPerformanceID(id int) channelperformanceOption {
+	return func(m *ChannelPerformanceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ChannelPerformance
+		)
+		m.oldValue = func(ctx context.Context) (*ChannelPerformance, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ChannelPerformance.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withChannelPerformance sets the old ChannelPerformance of the mutation.
+func withChannelPerformance(node *ChannelPerformance) channelperformanceOption {
+	return func(m *ChannelPerformanceMutation) {
+		m.oldValue = func(context.Context) (*ChannelPerformance, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ChannelPerformanceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ChannelPerformanceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ChannelPerformanceMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ChannelPerformanceMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ChannelPerformance.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ChannelPerformanceMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ChannelPerformanceMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ChannelPerformanceMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ChannelPerformanceMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ChannelPerformanceMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ChannelPerformanceMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *ChannelPerformanceMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *ChannelPerformanceMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *ChannelPerformanceMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *ChannelPerformanceMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetChannelID sets the "channel_id" field.
+func (m *ChannelPerformanceMutation) SetChannelID(i int) {
+	m.channel = &i
+}
+
+// ChannelID returns the value of the "channel_id" field in the mutation.
+func (m *ChannelPerformanceMutation) ChannelID() (r int, exists bool) {
+	v := m.channel
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelID returns the old "channel_id" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldChannelID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelID: %w", err)
+	}
+	return oldValue.ChannelID, nil
+}
+
+// ResetChannelID resets all changes to the "channel_id" field.
+func (m *ChannelPerformanceMutation) ResetChannelID() {
+	m.channel = nil
+}
+
+// SetHealthStatus sets the "health_status" field.
+func (m *ChannelPerformanceMutation) SetHealthStatus(cs channelperformance.HealthStatus) {
+	m.health_status = &cs
+}
+
+// HealthStatus returns the value of the "health_status" field in the mutation.
+func (m *ChannelPerformanceMutation) HealthStatus() (r channelperformance.HealthStatus, exists bool) {
+	v := m.health_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldHealthStatus returns the old "health_status" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldHealthStatus(ctx context.Context) (v channelperformance.HealthStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldHealthStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldHealthStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldHealthStatus: %w", err)
+	}
+	return oldValue.HealthStatus, nil
+}
+
+// ResetHealthStatus resets all changes to the "health_status" field.
+func (m *ChannelPerformanceMutation) ResetHealthStatus() {
+	m.health_status = nil
+}
+
+// SetTotalCount sets the "total_count" field.
+func (m *ChannelPerformanceMutation) SetTotalCount(i int) {
+	m.total_count = &i
+	m.addtotal_count = nil
+}
+
+// TotalCount returns the value of the "total_count" field in the mutation.
+func (m *ChannelPerformanceMutation) TotalCount() (r int, exists bool) {
+	v := m.total_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalCount returns the old "total_count" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldTotalCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalCount: %w", err)
+	}
+	return oldValue.TotalCount, nil
+}
+
+// AddTotalCount adds i to the "total_count" field.
+func (m *ChannelPerformanceMutation) AddTotalCount(i int) {
+	if m.addtotal_count != nil {
+		*m.addtotal_count += i
+	} else {
+		m.addtotal_count = &i
+	}
+}
+
+// AddedTotalCount returns the value that was added to the "total_count" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedTotalCount() (r int, exists bool) {
+	v := m.addtotal_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalCount resets all changes to the "total_count" field.
+func (m *ChannelPerformanceMutation) ResetTotalCount() {
+	m.total_count = nil
+	m.addtotal_count = nil
+}
+
+// SetTotalSuccessCount sets the "total_success_count" field.
+func (m *ChannelPerformanceMutation) SetTotalSuccessCount(i int) {
+	m.total_success_count = &i
+	m.addtotal_success_count = nil
+}
+
+// TotalSuccessCount returns the value of the "total_success_count" field in the mutation.
+func (m *ChannelPerformanceMutation) TotalSuccessCount() (r int, exists bool) {
+	v := m.total_success_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalSuccessCount returns the old "total_success_count" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldTotalSuccessCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalSuccessCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalSuccessCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalSuccessCount: %w", err)
+	}
+	return oldValue.TotalSuccessCount, nil
+}
+
+// AddTotalSuccessCount adds i to the "total_success_count" field.
+func (m *ChannelPerformanceMutation) AddTotalSuccessCount(i int) {
+	if m.addtotal_success_count != nil {
+		*m.addtotal_success_count += i
+	} else {
+		m.addtotal_success_count = &i
+	}
+}
+
+// AddedTotalSuccessCount returns the value that was added to the "total_success_count" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedTotalSuccessCount() (r int, exists bool) {
+	v := m.addtotal_success_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalSuccessCount resets all changes to the "total_success_count" field.
+func (m *ChannelPerformanceMutation) ResetTotalSuccessCount() {
+	m.total_success_count = nil
+	m.addtotal_success_count = nil
+}
+
+// SetTotalTokenCount sets the "total_token_count" field.
+func (m *ChannelPerformanceMutation) SetTotalTokenCount(i int) {
+	m.total_token_count = &i
+	m.addtotal_token_count = nil
+}
+
+// TotalTokenCount returns the value of the "total_token_count" field in the mutation.
+func (m *ChannelPerformanceMutation) TotalTokenCount() (r int, exists bool) {
+	v := m.total_token_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalTokenCount returns the old "total_token_count" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldTotalTokenCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalTokenCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalTokenCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalTokenCount: %w", err)
+	}
+	return oldValue.TotalTokenCount, nil
+}
+
+// AddTotalTokenCount adds i to the "total_token_count" field.
+func (m *ChannelPerformanceMutation) AddTotalTokenCount(i int) {
+	if m.addtotal_token_count != nil {
+		*m.addtotal_token_count += i
+	} else {
+		m.addtotal_token_count = &i
+	}
+}
+
+// AddedTotalTokenCount returns the value that was added to the "total_token_count" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedTotalTokenCount() (r int, exists bool) {
+	v := m.addtotal_token_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalTokenCount resets all changes to the "total_token_count" field.
+func (m *ChannelPerformanceMutation) ResetTotalTokenCount() {
+	m.total_token_count = nil
+	m.addtotal_token_count = nil
+}
+
+// SetTotalAvgLatencyMs sets the "total_avg_latency_ms" field.
+func (m *ChannelPerformanceMutation) SetTotalAvgLatencyMs(i int) {
+	m.total_avg_latency_ms = &i
+	m.addtotal_avg_latency_ms = nil
+}
+
+// TotalAvgLatencyMs returns the value of the "total_avg_latency_ms" field in the mutation.
+func (m *ChannelPerformanceMutation) TotalAvgLatencyMs() (r int, exists bool) {
+	v := m.total_avg_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalAvgLatencyMs returns the old "total_avg_latency_ms" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldTotalAvgLatencyMs(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalAvgLatencyMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalAvgLatencyMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalAvgLatencyMs: %w", err)
+	}
+	return oldValue.TotalAvgLatencyMs, nil
+}
+
+// AddTotalAvgLatencyMs adds i to the "total_avg_latency_ms" field.
+func (m *ChannelPerformanceMutation) AddTotalAvgLatencyMs(i int) {
+	if m.addtotal_avg_latency_ms != nil {
+		*m.addtotal_avg_latency_ms += i
+	} else {
+		m.addtotal_avg_latency_ms = &i
+	}
+}
+
+// AddedTotalAvgLatencyMs returns the value that was added to the "total_avg_latency_ms" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedTotalAvgLatencyMs() (r int, exists bool) {
+	v := m.addtotal_avg_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalAvgLatencyMs resets all changes to the "total_avg_latency_ms" field.
+func (m *ChannelPerformanceMutation) ResetTotalAvgLatencyMs() {
+	m.total_avg_latency_ms = nil
+	m.addtotal_avg_latency_ms = nil
+}
+
+// SetTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field.
+func (m *ChannelPerformanceMutation) SetTotalAvgTokenPerSecond(i int) {
+	m.total_avg_token_per_second = &i
+	m.addtotal_avg_token_per_second = nil
+}
+
+// TotalAvgTokenPerSecond returns the value of the "total_avg_token_per_second" field in the mutation.
+func (m *ChannelPerformanceMutation) TotalAvgTokenPerSecond() (r int, exists bool) {
+	v := m.total_avg_token_per_second
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalAvgTokenPerSecond returns the old "total_avg_token_per_second" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldTotalAvgTokenPerSecond(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalAvgTokenPerSecond is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalAvgTokenPerSecond requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalAvgTokenPerSecond: %w", err)
+	}
+	return oldValue.TotalAvgTokenPerSecond, nil
+}
+
+// AddTotalAvgTokenPerSecond adds i to the "total_avg_token_per_second" field.
+func (m *ChannelPerformanceMutation) AddTotalAvgTokenPerSecond(i int) {
+	if m.addtotal_avg_token_per_second != nil {
+		*m.addtotal_avg_token_per_second += i
+	} else {
+		m.addtotal_avg_token_per_second = &i
+	}
+}
+
+// AddedTotalAvgTokenPerSecond returns the value that was added to the "total_avg_token_per_second" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedTotalAvgTokenPerSecond() (r int, exists bool) {
+	v := m.addtotal_avg_token_per_second
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalAvgTokenPerSecond resets all changes to the "total_avg_token_per_second" field.
+func (m *ChannelPerformanceMutation) ResetTotalAvgTokenPerSecond() {
+	m.total_avg_token_per_second = nil
+	m.addtotal_avg_token_per_second = nil
+}
+
+// SetTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field.
+func (m *ChannelPerformanceMutation) SetTotalAvgStreamFirstTokenLatenchMs(i int) {
+	m.total_avg_stream_first_token_latench_ms = &i
+	m.addtotal_avg_stream_first_token_latench_ms = nil
+}
+
+// TotalAvgStreamFirstTokenLatenchMs returns the value of the "total_avg_stream_first_token_latench_ms" field in the mutation.
+func (m *ChannelPerformanceMutation) TotalAvgStreamFirstTokenLatenchMs() (r int, exists bool) {
+	v := m.total_avg_stream_first_token_latench_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalAvgStreamFirstTokenLatenchMs returns the old "total_avg_stream_first_token_latench_ms" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldTotalAvgStreamFirstTokenLatenchMs(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalAvgStreamFirstTokenLatenchMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalAvgStreamFirstTokenLatenchMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalAvgStreamFirstTokenLatenchMs: %w", err)
+	}
+	return oldValue.TotalAvgStreamFirstTokenLatenchMs, nil
+}
+
+// AddTotalAvgStreamFirstTokenLatenchMs adds i to the "total_avg_stream_first_token_latench_ms" field.
+func (m *ChannelPerformanceMutation) AddTotalAvgStreamFirstTokenLatenchMs(i int) {
+	if m.addtotal_avg_stream_first_token_latench_ms != nil {
+		*m.addtotal_avg_stream_first_token_latench_ms += i
+	} else {
+		m.addtotal_avg_stream_first_token_latench_ms = &i
+	}
+}
+
+// AddedTotalAvgStreamFirstTokenLatenchMs returns the value that was added to the "total_avg_stream_first_token_latench_ms" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedTotalAvgStreamFirstTokenLatenchMs() (r int, exists bool) {
+	v := m.addtotal_avg_stream_first_token_latench_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalAvgStreamFirstTokenLatenchMs resets all changes to the "total_avg_stream_first_token_latench_ms" field.
+func (m *ChannelPerformanceMutation) ResetTotalAvgStreamFirstTokenLatenchMs() {
+	m.total_avg_stream_first_token_latench_ms = nil
+	m.addtotal_avg_stream_first_token_latench_ms = nil
+}
+
+// SetTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field.
+func (m *ChannelPerformanceMutation) SetTotalAvgStreamTokenPerSecond(f float64) {
+	m.total_avg_stream_token_per_second = &f
+	m.addtotal_avg_stream_token_per_second = nil
+}
+
+// TotalAvgStreamTokenPerSecond returns the value of the "total_avg_stream_token_per_second" field in the mutation.
+func (m *ChannelPerformanceMutation) TotalAvgStreamTokenPerSecond() (r float64, exists bool) {
+	v := m.total_avg_stream_token_per_second
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalAvgStreamTokenPerSecond returns the old "total_avg_stream_token_per_second" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldTotalAvgStreamTokenPerSecond(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalAvgStreamTokenPerSecond is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalAvgStreamTokenPerSecond requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalAvgStreamTokenPerSecond: %w", err)
+	}
+	return oldValue.TotalAvgStreamTokenPerSecond, nil
+}
+
+// AddTotalAvgStreamTokenPerSecond adds f to the "total_avg_stream_token_per_second" field.
+func (m *ChannelPerformanceMutation) AddTotalAvgStreamTokenPerSecond(f float64) {
+	if m.addtotal_avg_stream_token_per_second != nil {
+		*m.addtotal_avg_stream_token_per_second += f
+	} else {
+		m.addtotal_avg_stream_token_per_second = &f
+	}
+}
+
+// AddedTotalAvgStreamTokenPerSecond returns the value that was added to the "total_avg_stream_token_per_second" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedTotalAvgStreamTokenPerSecond() (r float64, exists bool) {
+	v := m.addtotal_avg_stream_token_per_second
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalAvgStreamTokenPerSecond resets all changes to the "total_avg_stream_token_per_second" field.
+func (m *ChannelPerformanceMutation) ResetTotalAvgStreamTokenPerSecond() {
+	m.total_avg_stream_token_per_second = nil
+	m.addtotal_avg_stream_token_per_second = nil
+}
+
+// SetLastPeriodStart sets the "last_period_start" field.
+func (m *ChannelPerformanceMutation) SetLastPeriodStart(t time.Time) {
+	m.last_period_start = &t
+}
+
+// LastPeriodStart returns the value of the "last_period_start" field in the mutation.
+func (m *ChannelPerformanceMutation) LastPeriodStart() (r time.Time, exists bool) {
+	v := m.last_period_start
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPeriodStart returns the old "last_period_start" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastPeriodStart(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPeriodStart is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPeriodStart requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPeriodStart: %w", err)
+	}
+	return oldValue.LastPeriodStart, nil
+}
+
+// ResetLastPeriodStart resets all changes to the "last_period_start" field.
+func (m *ChannelPerformanceMutation) ResetLastPeriodStart() {
+	m.last_period_start = nil
+}
+
+// SetLastPeriodEnd sets the "last_period_end" field.
+func (m *ChannelPerformanceMutation) SetLastPeriodEnd(t time.Time) {
+	m.last_period_end = &t
+}
+
+// LastPeriodEnd returns the value of the "last_period_end" field in the mutation.
+func (m *ChannelPerformanceMutation) LastPeriodEnd() (r time.Time, exists bool) {
+	v := m.last_period_end
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPeriodEnd returns the old "last_period_end" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastPeriodEnd(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPeriodEnd is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPeriodEnd requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPeriodEnd: %w", err)
+	}
+	return oldValue.LastPeriodEnd, nil
+}
+
+// ResetLastPeriodEnd resets all changes to the "last_period_end" field.
+func (m *ChannelPerformanceMutation) ResetLastPeriodEnd() {
+	m.last_period_end = nil
+}
+
+// SetLastPeriodSeconds sets the "last_period_seconds" field.
+func (m *ChannelPerformanceMutation) SetLastPeriodSeconds(i int) {
+	m.last_period_seconds = &i
+	m.addlast_period_seconds = nil
+}
+
+// LastPeriodSeconds returns the value of the "last_period_seconds" field in the mutation.
+func (m *ChannelPerformanceMutation) LastPeriodSeconds() (r int, exists bool) {
+	v := m.last_period_seconds
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPeriodSeconds returns the old "last_period_seconds" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastPeriodSeconds(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPeriodSeconds is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPeriodSeconds requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPeriodSeconds: %w", err)
+	}
+	return oldValue.LastPeriodSeconds, nil
+}
+
+// AddLastPeriodSeconds adds i to the "last_period_seconds" field.
+func (m *ChannelPerformanceMutation) AddLastPeriodSeconds(i int) {
+	if m.addlast_period_seconds != nil {
+		*m.addlast_period_seconds += i
+	} else {
+		m.addlast_period_seconds = &i
+	}
+}
+
+// AddedLastPeriodSeconds returns the value that was added to the "last_period_seconds" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedLastPeriodSeconds() (r int, exists bool) {
+	v := m.addlast_period_seconds
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLastPeriodSeconds resets all changes to the "last_period_seconds" field.
+func (m *ChannelPerformanceMutation) ResetLastPeriodSeconds() {
+	m.last_period_seconds = nil
+	m.addlast_period_seconds = nil
+}
+
+// SetLastPeriodCount sets the "last_period_count" field.
+func (m *ChannelPerformanceMutation) SetLastPeriodCount(i int) {
+	m.last_period_count = &i
+	m.addlast_period_count = nil
+}
+
+// LastPeriodCount returns the value of the "last_period_count" field in the mutation.
+func (m *ChannelPerformanceMutation) LastPeriodCount() (r int, exists bool) {
+	v := m.last_period_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPeriodCount returns the old "last_period_count" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastPeriodCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPeriodCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPeriodCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPeriodCount: %w", err)
+	}
+	return oldValue.LastPeriodCount, nil
+}
+
+// AddLastPeriodCount adds i to the "last_period_count" field.
+func (m *ChannelPerformanceMutation) AddLastPeriodCount(i int) {
+	if m.addlast_period_count != nil {
+		*m.addlast_period_count += i
+	} else {
+		m.addlast_period_count = &i
+	}
+}
+
+// AddedLastPeriodCount returns the value that was added to the "last_period_count" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedLastPeriodCount() (r int, exists bool) {
+	v := m.addlast_period_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLastPeriodCount resets all changes to the "last_period_count" field.
+func (m *ChannelPerformanceMutation) ResetLastPeriodCount() {
+	m.last_period_count = nil
+	m.addlast_period_count = nil
+}
+
+// SetLastPeriodSuccessCount sets the "last_period_success_count" field.
+func (m *ChannelPerformanceMutation) SetLastPeriodSuccessCount(i int) {
+	m.last_period_success_count = &i
+	m.addlast_period_success_count = nil
+}
+
+// LastPeriodSuccessCount returns the value of the "last_period_success_count" field in the mutation.
+func (m *ChannelPerformanceMutation) LastPeriodSuccessCount() (r int, exists bool) {
+	v := m.last_period_success_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPeriodSuccessCount returns the old "last_period_success_count" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastPeriodSuccessCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPeriodSuccessCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPeriodSuccessCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPeriodSuccessCount: %w", err)
+	}
+	return oldValue.LastPeriodSuccessCount, nil
+}
+
+// AddLastPeriodSuccessCount adds i to the "last_period_success_count" field.
+func (m *ChannelPerformanceMutation) AddLastPeriodSuccessCount(i int) {
+	if m.addlast_period_success_count != nil {
+		*m.addlast_period_success_count += i
+	} else {
+		m.addlast_period_success_count = &i
+	}
+}
+
+// AddedLastPeriodSuccessCount returns the value that was added to the "last_period_success_count" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedLastPeriodSuccessCount() (r int, exists bool) {
+	v := m.addlast_period_success_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLastPeriodSuccessCount resets all changes to the "last_period_success_count" field.
+func (m *ChannelPerformanceMutation) ResetLastPeriodSuccessCount() {
+	m.last_period_success_count = nil
+	m.addlast_period_success_count = nil
+}
+
+// SetLastPeriodTokenCount sets the "last_period_token_count" field.
+func (m *ChannelPerformanceMutation) SetLastPeriodTokenCount(i int) {
+	m.last_period_token_count = &i
+	m.addlast_period_token_count = nil
+}
+
+// LastPeriodTokenCount returns the value of the "last_period_token_count" field in the mutation.
+func (m *ChannelPerformanceMutation) LastPeriodTokenCount() (r int, exists bool) {
+	v := m.last_period_token_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPeriodTokenCount returns the old "last_period_token_count" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastPeriodTokenCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPeriodTokenCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPeriodTokenCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPeriodTokenCount: %w", err)
+	}
+	return oldValue.LastPeriodTokenCount, nil
+}
+
+// AddLastPeriodTokenCount adds i to the "last_period_token_count" field.
+func (m *ChannelPerformanceMutation) AddLastPeriodTokenCount(i int) {
+	if m.addlast_period_token_count != nil {
+		*m.addlast_period_token_count += i
+	} else {
+		m.addlast_period_token_count = &i
+	}
+}
+
+// AddedLastPeriodTokenCount returns the value that was added to the "last_period_token_count" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedLastPeriodTokenCount() (r int, exists bool) {
+	v := m.addlast_period_token_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLastPeriodTokenCount resets all changes to the "last_period_token_count" field.
+func (m *ChannelPerformanceMutation) ResetLastPeriodTokenCount() {
+	m.last_period_token_count = nil
+	m.addlast_period_token_count = nil
+}
+
+// SetLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field.
+func (m *ChannelPerformanceMutation) SetLastPeriodAvgLatencyMs(i int) {
+	m.last_period_avg_latency_ms = &i
+	m.addlast_period_avg_latency_ms = nil
+}
+
+// LastPeriodAvgLatencyMs returns the value of the "last_period_avg_latency_ms" field in the mutation.
+func (m *ChannelPerformanceMutation) LastPeriodAvgLatencyMs() (r int, exists bool) {
+	v := m.last_period_avg_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPeriodAvgLatencyMs returns the old "last_period_avg_latency_ms" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastPeriodAvgLatencyMs(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPeriodAvgLatencyMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPeriodAvgLatencyMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPeriodAvgLatencyMs: %w", err)
+	}
+	return oldValue.LastPeriodAvgLatencyMs, nil
+}
+
+// AddLastPeriodAvgLatencyMs adds i to the "last_period_avg_latency_ms" field.
+func (m *ChannelPerformanceMutation) AddLastPeriodAvgLatencyMs(i int) {
+	if m.addlast_period_avg_latency_ms != nil {
+		*m.addlast_period_avg_latency_ms += i
+	} else {
+		m.addlast_period_avg_latency_ms = &i
+	}
+}
+
+// AddedLastPeriodAvgLatencyMs returns the value that was added to the "last_period_avg_latency_ms" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedLastPeriodAvgLatencyMs() (r int, exists bool) {
+	v := m.addlast_period_avg_latency_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLastPeriodAvgLatencyMs resets all changes to the "last_period_avg_latency_ms" field.
+func (m *ChannelPerformanceMutation) ResetLastPeriodAvgLatencyMs() {
+	m.last_period_avg_latency_ms = nil
+	m.addlast_period_avg_latency_ms = nil
+}
+
+// SetLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field.
+func (m *ChannelPerformanceMutation) SetLastPeriodAvgTokenPerSecond(i int) {
+	m.last_period_avg_token_per_second = &i
+	m.addlast_period_avg_token_per_second = nil
+}
+
+// LastPeriodAvgTokenPerSecond returns the value of the "last_period_avg_token_per_second" field in the mutation.
+func (m *ChannelPerformanceMutation) LastPeriodAvgTokenPerSecond() (r int, exists bool) {
+	v := m.last_period_avg_token_per_second
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPeriodAvgTokenPerSecond returns the old "last_period_avg_token_per_second" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastPeriodAvgTokenPerSecond(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPeriodAvgTokenPerSecond is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPeriodAvgTokenPerSecond requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPeriodAvgTokenPerSecond: %w", err)
+	}
+	return oldValue.LastPeriodAvgTokenPerSecond, nil
+}
+
+// AddLastPeriodAvgTokenPerSecond adds i to the "last_period_avg_token_per_second" field.
+func (m *ChannelPerformanceMutation) AddLastPeriodAvgTokenPerSecond(i int) {
+	if m.addlast_period_avg_token_per_second != nil {
+		*m.addlast_period_avg_token_per_second += i
+	} else {
+		m.addlast_period_avg_token_per_second = &i
+	}
+}
+
+// AddedLastPeriodAvgTokenPerSecond returns the value that was added to the "last_period_avg_token_per_second" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedLastPeriodAvgTokenPerSecond() (r int, exists bool) {
+	v := m.addlast_period_avg_token_per_second
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLastPeriodAvgTokenPerSecond resets all changes to the "last_period_avg_token_per_second" field.
+func (m *ChannelPerformanceMutation) ResetLastPeriodAvgTokenPerSecond() {
+	m.last_period_avg_token_per_second = nil
+	m.addlast_period_avg_token_per_second = nil
+}
+
+// SetLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field.
+func (m *ChannelPerformanceMutation) SetLastPeriodAvgStreamFirstTokenLatenchMs(i int) {
+	m.last_period_avg_stream_first_token_latench_ms = &i
+	m.addlast_period_avg_stream_first_token_latench_ms = nil
+}
+
+// LastPeriodAvgStreamFirstTokenLatenchMs returns the value of the "last_period_avg_stream_first_token_latench_ms" field in the mutation.
+func (m *ChannelPerformanceMutation) LastPeriodAvgStreamFirstTokenLatenchMs() (r int, exists bool) {
+	v := m.last_period_avg_stream_first_token_latench_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPeriodAvgStreamFirstTokenLatenchMs returns the old "last_period_avg_stream_first_token_latench_ms" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastPeriodAvgStreamFirstTokenLatenchMs(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPeriodAvgStreamFirstTokenLatenchMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPeriodAvgStreamFirstTokenLatenchMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPeriodAvgStreamFirstTokenLatenchMs: %w", err)
+	}
+	return oldValue.LastPeriodAvgStreamFirstTokenLatenchMs, nil
+}
+
+// AddLastPeriodAvgStreamFirstTokenLatenchMs adds i to the "last_period_avg_stream_first_token_latench_ms" field.
+func (m *ChannelPerformanceMutation) AddLastPeriodAvgStreamFirstTokenLatenchMs(i int) {
+	if m.addlast_period_avg_stream_first_token_latench_ms != nil {
+		*m.addlast_period_avg_stream_first_token_latench_ms += i
+	} else {
+		m.addlast_period_avg_stream_first_token_latench_ms = &i
+	}
+}
+
+// AddedLastPeriodAvgStreamFirstTokenLatenchMs returns the value that was added to the "last_period_avg_stream_first_token_latench_ms" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedLastPeriodAvgStreamFirstTokenLatenchMs() (r int, exists bool) {
+	v := m.addlast_period_avg_stream_first_token_latench_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLastPeriodAvgStreamFirstTokenLatenchMs resets all changes to the "last_period_avg_stream_first_token_latench_ms" field.
+func (m *ChannelPerformanceMutation) ResetLastPeriodAvgStreamFirstTokenLatenchMs() {
+	m.last_period_avg_stream_first_token_latench_ms = nil
+	m.addlast_period_avg_stream_first_token_latench_ms = nil
+}
+
+// SetLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field.
+func (m *ChannelPerformanceMutation) SetLastPeriodAvgStreamTokenPerSecond(f float64) {
+	m.last_period_avg_stream_token_per_second = &f
+	m.addlast_period_avg_stream_token_per_second = nil
+}
+
+// LastPeriodAvgStreamTokenPerSecond returns the value of the "last_period_avg_stream_token_per_second" field in the mutation.
+func (m *ChannelPerformanceMutation) LastPeriodAvgStreamTokenPerSecond() (r float64, exists bool) {
+	v := m.last_period_avg_stream_token_per_second
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastPeriodAvgStreamTokenPerSecond returns the old "last_period_avg_stream_token_per_second" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastPeriodAvgStreamTokenPerSecond(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastPeriodAvgStreamTokenPerSecond is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastPeriodAvgStreamTokenPerSecond requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastPeriodAvgStreamTokenPerSecond: %w", err)
+	}
+	return oldValue.LastPeriodAvgStreamTokenPerSecond, nil
+}
+
+// AddLastPeriodAvgStreamTokenPerSecond adds f to the "last_period_avg_stream_token_per_second" field.
+func (m *ChannelPerformanceMutation) AddLastPeriodAvgStreamTokenPerSecond(f float64) {
+	if m.addlast_period_avg_stream_token_per_second != nil {
+		*m.addlast_period_avg_stream_token_per_second += f
+	} else {
+		m.addlast_period_avg_stream_token_per_second = &f
+	}
+}
+
+// AddedLastPeriodAvgStreamTokenPerSecond returns the value that was added to the "last_period_avg_stream_token_per_second" field in this mutation.
+func (m *ChannelPerformanceMutation) AddedLastPeriodAvgStreamTokenPerSecond() (r float64, exists bool) {
+	v := m.addlast_period_avg_stream_token_per_second
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLastPeriodAvgStreamTokenPerSecond resets all changes to the "last_period_avg_stream_token_per_second" field.
+func (m *ChannelPerformanceMutation) ResetLastPeriodAvgStreamTokenPerSecond() {
+	m.last_period_avg_stream_token_per_second = nil
+	m.addlast_period_avg_stream_token_per_second = nil
+}
+
+// SetLastSuccessAt sets the "last_success_at" field.
+func (m *ChannelPerformanceMutation) SetLastSuccessAt(t time.Time) {
+	m.last_success_at = &t
+}
+
+// LastSuccessAt returns the value of the "last_success_at" field in the mutation.
+func (m *ChannelPerformanceMutation) LastSuccessAt() (r time.Time, exists bool) {
+	v := m.last_success_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastSuccessAt returns the old "last_success_at" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastSuccessAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastSuccessAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastSuccessAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastSuccessAt: %w", err)
+	}
+	return oldValue.LastSuccessAt, nil
+}
+
+// ResetLastSuccessAt resets all changes to the "last_success_at" field.
+func (m *ChannelPerformanceMutation) ResetLastSuccessAt() {
+	m.last_success_at = nil
+}
+
+// SetLastFailureAt sets the "last_failure_at" field.
+func (m *ChannelPerformanceMutation) SetLastFailureAt(t time.Time) {
+	m.last_failure_at = &t
+}
+
+// LastFailureAt returns the value of the "last_failure_at" field in the mutation.
+func (m *ChannelPerformanceMutation) LastFailureAt() (r time.Time, exists bool) {
+	v := m.last_failure_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastFailureAt returns the old "last_failure_at" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastFailureAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastFailureAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastFailureAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastFailureAt: %w", err)
+	}
+	return oldValue.LastFailureAt, nil
+}
+
+// ResetLastFailureAt resets all changes to the "last_failure_at" field.
+func (m *ChannelPerformanceMutation) ResetLastFailureAt() {
+	m.last_failure_at = nil
+}
+
+// SetLastAttemptAt sets the "last_attempt_at" field.
+func (m *ChannelPerformanceMutation) SetLastAttemptAt(t time.Time) {
+	m.last_attempt_at = &t
+}
+
+// LastAttemptAt returns the value of the "last_attempt_at" field in the mutation.
+func (m *ChannelPerformanceMutation) LastAttemptAt() (r time.Time, exists bool) {
+	v := m.last_attempt_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastAttemptAt returns the old "last_attempt_at" field's value of the ChannelPerformance entity.
+// If the ChannelPerformance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelPerformanceMutation) OldLastAttemptAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastAttemptAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastAttemptAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastAttemptAt: %w", err)
+	}
+	return oldValue.LastAttemptAt, nil
+}
+
+// ResetLastAttemptAt resets all changes to the "last_attempt_at" field.
+func (m *ChannelPerformanceMutation) ResetLastAttemptAt() {
+	m.last_attempt_at = nil
+}
+
+// ClearChannel clears the "channel" edge to the Channel entity.
+func (m *ChannelPerformanceMutation) ClearChannel() {
+	m.clearedchannel = true
+	m.clearedFields[channelperformance.FieldChannelID] = struct{}{}
+}
+
+// ChannelCleared reports if the "channel" edge to the Channel entity was cleared.
+func (m *ChannelPerformanceMutation) ChannelCleared() bool {
+	return m.clearedchannel
+}
+
+// ChannelIDs returns the "channel" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ChannelID instead. It exists only for internal usage by the builders.
+func (m *ChannelPerformanceMutation) ChannelIDs() (ids []int) {
+	if id := m.channel; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetChannel resets all changes to the "channel" edge.
+func (m *ChannelPerformanceMutation) ResetChannel() {
+	m.channel = nil
+	m.clearedchannel = false
+}
+
+// Where appends a list predicates to the ChannelPerformanceMutation builder.
+func (m *ChannelPerformanceMutation) Where(ps ...predicate.ChannelPerformance) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ChannelPerformanceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ChannelPerformanceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ChannelPerformance, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ChannelPerformanceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ChannelPerformanceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ChannelPerformance).
+func (m *ChannelPerformanceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ChannelPerformanceMutation) Fields() []string {
+	fields := make([]string, 0, 25)
+	if m.created_at != nil {
+		fields = append(fields, channelperformance.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, channelperformance.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, channelperformance.FieldDeletedAt)
+	}
+	if m.channel != nil {
+		fields = append(fields, channelperformance.FieldChannelID)
+	}
+	if m.health_status != nil {
+		fields = append(fields, channelperformance.FieldHealthStatus)
+	}
+	if m.total_count != nil {
+		fields = append(fields, channelperformance.FieldTotalCount)
+	}
+	if m.total_success_count != nil {
+		fields = append(fields, channelperformance.FieldTotalSuccessCount)
+	}
+	if m.total_token_count != nil {
+		fields = append(fields, channelperformance.FieldTotalTokenCount)
+	}
+	if m.total_avg_latency_ms != nil {
+		fields = append(fields, channelperformance.FieldTotalAvgLatencyMs)
+	}
+	if m.total_avg_token_per_second != nil {
+		fields = append(fields, channelperformance.FieldTotalAvgTokenPerSecond)
+	}
+	if m.total_avg_stream_first_token_latench_ms != nil {
+		fields = append(fields, channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs)
+	}
+	if m.total_avg_stream_token_per_second != nil {
+		fields = append(fields, channelperformance.FieldTotalAvgStreamTokenPerSecond)
+	}
+	if m.last_period_start != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodStart)
+	}
+	if m.last_period_end != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodEnd)
+	}
+	if m.last_period_seconds != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodSeconds)
+	}
+	if m.last_period_count != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodCount)
+	}
+	if m.last_period_success_count != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodSuccessCount)
+	}
+	if m.last_period_token_count != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodTokenCount)
+	}
+	if m.last_period_avg_latency_ms != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodAvgLatencyMs)
+	}
+	if m.last_period_avg_token_per_second != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodAvgTokenPerSecond)
+	}
+	if m.last_period_avg_stream_first_token_latench_ms != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs)
+	}
+	if m.last_period_avg_stream_token_per_second != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodAvgStreamTokenPerSecond)
+	}
+	if m.last_success_at != nil {
+		fields = append(fields, channelperformance.FieldLastSuccessAt)
+	}
+	if m.last_failure_at != nil {
+		fields = append(fields, channelperformance.FieldLastFailureAt)
+	}
+	if m.last_attempt_at != nil {
+		fields = append(fields, channelperformance.FieldLastAttemptAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ChannelPerformanceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case channelperformance.FieldCreatedAt:
+		return m.CreatedAt()
+	case channelperformance.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case channelperformance.FieldDeletedAt:
+		return m.DeletedAt()
+	case channelperformance.FieldChannelID:
+		return m.ChannelID()
+	case channelperformance.FieldHealthStatus:
+		return m.HealthStatus()
+	case channelperformance.FieldTotalCount:
+		return m.TotalCount()
+	case channelperformance.FieldTotalSuccessCount:
+		return m.TotalSuccessCount()
+	case channelperformance.FieldTotalTokenCount:
+		return m.TotalTokenCount()
+	case channelperformance.FieldTotalAvgLatencyMs:
+		return m.TotalAvgLatencyMs()
+	case channelperformance.FieldTotalAvgTokenPerSecond:
+		return m.TotalAvgTokenPerSecond()
+	case channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs:
+		return m.TotalAvgStreamFirstTokenLatenchMs()
+	case channelperformance.FieldTotalAvgStreamTokenPerSecond:
+		return m.TotalAvgStreamTokenPerSecond()
+	case channelperformance.FieldLastPeriodStart:
+		return m.LastPeriodStart()
+	case channelperformance.FieldLastPeriodEnd:
+		return m.LastPeriodEnd()
+	case channelperformance.FieldLastPeriodSeconds:
+		return m.LastPeriodSeconds()
+	case channelperformance.FieldLastPeriodCount:
+		return m.LastPeriodCount()
+	case channelperformance.FieldLastPeriodSuccessCount:
+		return m.LastPeriodSuccessCount()
+	case channelperformance.FieldLastPeriodTokenCount:
+		return m.LastPeriodTokenCount()
+	case channelperformance.FieldLastPeriodAvgLatencyMs:
+		return m.LastPeriodAvgLatencyMs()
+	case channelperformance.FieldLastPeriodAvgTokenPerSecond:
+		return m.LastPeriodAvgTokenPerSecond()
+	case channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs:
+		return m.LastPeriodAvgStreamFirstTokenLatenchMs()
+	case channelperformance.FieldLastPeriodAvgStreamTokenPerSecond:
+		return m.LastPeriodAvgStreamTokenPerSecond()
+	case channelperformance.FieldLastSuccessAt:
+		return m.LastSuccessAt()
+	case channelperformance.FieldLastFailureAt:
+		return m.LastFailureAt()
+	case channelperformance.FieldLastAttemptAt:
+		return m.LastAttemptAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ChannelPerformanceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case channelperformance.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case channelperformance.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case channelperformance.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case channelperformance.FieldChannelID:
+		return m.OldChannelID(ctx)
+	case channelperformance.FieldHealthStatus:
+		return m.OldHealthStatus(ctx)
+	case channelperformance.FieldTotalCount:
+		return m.OldTotalCount(ctx)
+	case channelperformance.FieldTotalSuccessCount:
+		return m.OldTotalSuccessCount(ctx)
+	case channelperformance.FieldTotalTokenCount:
+		return m.OldTotalTokenCount(ctx)
+	case channelperformance.FieldTotalAvgLatencyMs:
+		return m.OldTotalAvgLatencyMs(ctx)
+	case channelperformance.FieldTotalAvgTokenPerSecond:
+		return m.OldTotalAvgTokenPerSecond(ctx)
+	case channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs:
+		return m.OldTotalAvgStreamFirstTokenLatenchMs(ctx)
+	case channelperformance.FieldTotalAvgStreamTokenPerSecond:
+		return m.OldTotalAvgStreamTokenPerSecond(ctx)
+	case channelperformance.FieldLastPeriodStart:
+		return m.OldLastPeriodStart(ctx)
+	case channelperformance.FieldLastPeriodEnd:
+		return m.OldLastPeriodEnd(ctx)
+	case channelperformance.FieldLastPeriodSeconds:
+		return m.OldLastPeriodSeconds(ctx)
+	case channelperformance.FieldLastPeriodCount:
+		return m.OldLastPeriodCount(ctx)
+	case channelperformance.FieldLastPeriodSuccessCount:
+		return m.OldLastPeriodSuccessCount(ctx)
+	case channelperformance.FieldLastPeriodTokenCount:
+		return m.OldLastPeriodTokenCount(ctx)
+	case channelperformance.FieldLastPeriodAvgLatencyMs:
+		return m.OldLastPeriodAvgLatencyMs(ctx)
+	case channelperformance.FieldLastPeriodAvgTokenPerSecond:
+		return m.OldLastPeriodAvgTokenPerSecond(ctx)
+	case channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs:
+		return m.OldLastPeriodAvgStreamFirstTokenLatenchMs(ctx)
+	case channelperformance.FieldLastPeriodAvgStreamTokenPerSecond:
+		return m.OldLastPeriodAvgStreamTokenPerSecond(ctx)
+	case channelperformance.FieldLastSuccessAt:
+		return m.OldLastSuccessAt(ctx)
+	case channelperformance.FieldLastFailureAt:
+		return m.OldLastFailureAt(ctx)
+	case channelperformance.FieldLastAttemptAt:
+		return m.OldLastAttemptAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ChannelPerformance field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChannelPerformanceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case channelperformance.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case channelperformance.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case channelperformance.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case channelperformance.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelID(v)
+		return nil
+	case channelperformance.FieldHealthStatus:
+		v, ok := value.(channelperformance.HealthStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetHealthStatus(v)
+		return nil
+	case channelperformance.FieldTotalCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalCount(v)
+		return nil
+	case channelperformance.FieldTotalSuccessCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalSuccessCount(v)
+		return nil
+	case channelperformance.FieldTotalTokenCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalTokenCount(v)
+		return nil
+	case channelperformance.FieldTotalAvgLatencyMs:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalAvgLatencyMs(v)
+		return nil
+	case channelperformance.FieldTotalAvgTokenPerSecond:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalAvgTokenPerSecond(v)
+		return nil
+	case channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalAvgStreamFirstTokenLatenchMs(v)
+		return nil
+	case channelperformance.FieldTotalAvgStreamTokenPerSecond:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalAvgStreamTokenPerSecond(v)
+		return nil
+	case channelperformance.FieldLastPeriodStart:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPeriodStart(v)
+		return nil
+	case channelperformance.FieldLastPeriodEnd:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPeriodEnd(v)
+		return nil
+	case channelperformance.FieldLastPeriodSeconds:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPeriodSeconds(v)
+		return nil
+	case channelperformance.FieldLastPeriodCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPeriodCount(v)
+		return nil
+	case channelperformance.FieldLastPeriodSuccessCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPeriodSuccessCount(v)
+		return nil
+	case channelperformance.FieldLastPeriodTokenCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPeriodTokenCount(v)
+		return nil
+	case channelperformance.FieldLastPeriodAvgLatencyMs:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPeriodAvgLatencyMs(v)
+		return nil
+	case channelperformance.FieldLastPeriodAvgTokenPerSecond:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPeriodAvgTokenPerSecond(v)
+		return nil
+	case channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPeriodAvgStreamFirstTokenLatenchMs(v)
+		return nil
+	case channelperformance.FieldLastPeriodAvgStreamTokenPerSecond:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastPeriodAvgStreamTokenPerSecond(v)
+		return nil
+	case channelperformance.FieldLastSuccessAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastSuccessAt(v)
+		return nil
+	case channelperformance.FieldLastFailureAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastFailureAt(v)
+		return nil
+	case channelperformance.FieldLastAttemptAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastAttemptAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelPerformance field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ChannelPerformanceMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, channelperformance.FieldDeletedAt)
+	}
+	if m.addtotal_count != nil {
+		fields = append(fields, channelperformance.FieldTotalCount)
+	}
+	if m.addtotal_success_count != nil {
+		fields = append(fields, channelperformance.FieldTotalSuccessCount)
+	}
+	if m.addtotal_token_count != nil {
+		fields = append(fields, channelperformance.FieldTotalTokenCount)
+	}
+	if m.addtotal_avg_latency_ms != nil {
+		fields = append(fields, channelperformance.FieldTotalAvgLatencyMs)
+	}
+	if m.addtotal_avg_token_per_second != nil {
+		fields = append(fields, channelperformance.FieldTotalAvgTokenPerSecond)
+	}
+	if m.addtotal_avg_stream_first_token_latench_ms != nil {
+		fields = append(fields, channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs)
+	}
+	if m.addtotal_avg_stream_token_per_second != nil {
+		fields = append(fields, channelperformance.FieldTotalAvgStreamTokenPerSecond)
+	}
+	if m.addlast_period_seconds != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodSeconds)
+	}
+	if m.addlast_period_count != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodCount)
+	}
+	if m.addlast_period_success_count != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodSuccessCount)
+	}
+	if m.addlast_period_token_count != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodTokenCount)
+	}
+	if m.addlast_period_avg_latency_ms != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodAvgLatencyMs)
+	}
+	if m.addlast_period_avg_token_per_second != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodAvgTokenPerSecond)
+	}
+	if m.addlast_period_avg_stream_first_token_latench_ms != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs)
+	}
+	if m.addlast_period_avg_stream_token_per_second != nil {
+		fields = append(fields, channelperformance.FieldLastPeriodAvgStreamTokenPerSecond)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ChannelPerformanceMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case channelperformance.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	case channelperformance.FieldTotalCount:
+		return m.AddedTotalCount()
+	case channelperformance.FieldTotalSuccessCount:
+		return m.AddedTotalSuccessCount()
+	case channelperformance.FieldTotalTokenCount:
+		return m.AddedTotalTokenCount()
+	case channelperformance.FieldTotalAvgLatencyMs:
+		return m.AddedTotalAvgLatencyMs()
+	case channelperformance.FieldTotalAvgTokenPerSecond:
+		return m.AddedTotalAvgTokenPerSecond()
+	case channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs:
+		return m.AddedTotalAvgStreamFirstTokenLatenchMs()
+	case channelperformance.FieldTotalAvgStreamTokenPerSecond:
+		return m.AddedTotalAvgStreamTokenPerSecond()
+	case channelperformance.FieldLastPeriodSeconds:
+		return m.AddedLastPeriodSeconds()
+	case channelperformance.FieldLastPeriodCount:
+		return m.AddedLastPeriodCount()
+	case channelperformance.FieldLastPeriodSuccessCount:
+		return m.AddedLastPeriodSuccessCount()
+	case channelperformance.FieldLastPeriodTokenCount:
+		return m.AddedLastPeriodTokenCount()
+	case channelperformance.FieldLastPeriodAvgLatencyMs:
+		return m.AddedLastPeriodAvgLatencyMs()
+	case channelperformance.FieldLastPeriodAvgTokenPerSecond:
+		return m.AddedLastPeriodAvgTokenPerSecond()
+	case channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs:
+		return m.AddedLastPeriodAvgStreamFirstTokenLatenchMs()
+	case channelperformance.FieldLastPeriodAvgStreamTokenPerSecond:
+		return m.AddedLastPeriodAvgStreamTokenPerSecond()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChannelPerformanceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case channelperformance.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	case channelperformance.FieldTotalCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalCount(v)
+		return nil
+	case channelperformance.FieldTotalSuccessCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalSuccessCount(v)
+		return nil
+	case channelperformance.FieldTotalTokenCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalTokenCount(v)
+		return nil
+	case channelperformance.FieldTotalAvgLatencyMs:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalAvgLatencyMs(v)
+		return nil
+	case channelperformance.FieldTotalAvgTokenPerSecond:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalAvgTokenPerSecond(v)
+		return nil
+	case channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalAvgStreamFirstTokenLatenchMs(v)
+		return nil
+	case channelperformance.FieldTotalAvgStreamTokenPerSecond:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalAvgStreamTokenPerSecond(v)
+		return nil
+	case channelperformance.FieldLastPeriodSeconds:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLastPeriodSeconds(v)
+		return nil
+	case channelperformance.FieldLastPeriodCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLastPeriodCount(v)
+		return nil
+	case channelperformance.FieldLastPeriodSuccessCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLastPeriodSuccessCount(v)
+		return nil
+	case channelperformance.FieldLastPeriodTokenCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLastPeriodTokenCount(v)
+		return nil
+	case channelperformance.FieldLastPeriodAvgLatencyMs:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLastPeriodAvgLatencyMs(v)
+		return nil
+	case channelperformance.FieldLastPeriodAvgTokenPerSecond:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLastPeriodAvgTokenPerSecond(v)
+		return nil
+	case channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLastPeriodAvgStreamFirstTokenLatenchMs(v)
+		return nil
+	case channelperformance.FieldLastPeriodAvgStreamTokenPerSecond:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLastPeriodAvgStreamTokenPerSecond(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelPerformance numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ChannelPerformanceMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ChannelPerformanceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ChannelPerformanceMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ChannelPerformance nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ChannelPerformanceMutation) ResetField(name string) error {
+	switch name {
+	case channelperformance.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case channelperformance.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case channelperformance.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case channelperformance.FieldChannelID:
+		m.ResetChannelID()
+		return nil
+	case channelperformance.FieldHealthStatus:
+		m.ResetHealthStatus()
+		return nil
+	case channelperformance.FieldTotalCount:
+		m.ResetTotalCount()
+		return nil
+	case channelperformance.FieldTotalSuccessCount:
+		m.ResetTotalSuccessCount()
+		return nil
+	case channelperformance.FieldTotalTokenCount:
+		m.ResetTotalTokenCount()
+		return nil
+	case channelperformance.FieldTotalAvgLatencyMs:
+		m.ResetTotalAvgLatencyMs()
+		return nil
+	case channelperformance.FieldTotalAvgTokenPerSecond:
+		m.ResetTotalAvgTokenPerSecond()
+		return nil
+	case channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs:
+		m.ResetTotalAvgStreamFirstTokenLatenchMs()
+		return nil
+	case channelperformance.FieldTotalAvgStreamTokenPerSecond:
+		m.ResetTotalAvgStreamTokenPerSecond()
+		return nil
+	case channelperformance.FieldLastPeriodStart:
+		m.ResetLastPeriodStart()
+		return nil
+	case channelperformance.FieldLastPeriodEnd:
+		m.ResetLastPeriodEnd()
+		return nil
+	case channelperformance.FieldLastPeriodSeconds:
+		m.ResetLastPeriodSeconds()
+		return nil
+	case channelperformance.FieldLastPeriodCount:
+		m.ResetLastPeriodCount()
+		return nil
+	case channelperformance.FieldLastPeriodSuccessCount:
+		m.ResetLastPeriodSuccessCount()
+		return nil
+	case channelperformance.FieldLastPeriodTokenCount:
+		m.ResetLastPeriodTokenCount()
+		return nil
+	case channelperformance.FieldLastPeriodAvgLatencyMs:
+		m.ResetLastPeriodAvgLatencyMs()
+		return nil
+	case channelperformance.FieldLastPeriodAvgTokenPerSecond:
+		m.ResetLastPeriodAvgTokenPerSecond()
+		return nil
+	case channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs:
+		m.ResetLastPeriodAvgStreamFirstTokenLatenchMs()
+		return nil
+	case channelperformance.FieldLastPeriodAvgStreamTokenPerSecond:
+		m.ResetLastPeriodAvgStreamTokenPerSecond()
+		return nil
+	case channelperformance.FieldLastSuccessAt:
+		m.ResetLastSuccessAt()
+		return nil
+	case channelperformance.FieldLastFailureAt:
+		m.ResetLastFailureAt()
+		return nil
+	case channelperformance.FieldLastAttemptAt:
+		m.ResetLastAttemptAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelPerformance field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ChannelPerformanceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.channel != nil {
+		edges = append(edges, channelperformance.EdgeChannel)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ChannelPerformanceMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case channelperformance.EdgeChannel:
+		if id := m.channel; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ChannelPerformanceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ChannelPerformanceMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ChannelPerformanceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedchannel {
+		edges = append(edges, channelperformance.EdgeChannel)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ChannelPerformanceMutation) EdgeCleared(name string) bool {
+	switch name {
+	case channelperformance.EdgeChannel:
+		return m.clearedchannel
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ChannelPerformanceMutation) ClearEdge(name string) error {
+	switch name {
+	case channelperformance.EdgeChannel:
+		m.ClearChannel()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelPerformance unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ChannelPerformanceMutation) ResetEdge(name string) error {
+	switch name {
+	case channelperformance.EdgeChannel:
+		m.ResetChannel()
+		return nil
+	}
+	return fmt.Errorf("unknown ChannelPerformance edge %s", name)
 }
 
 // DataStorageMutation represents an operation that mutates the DataStorage nodes in the graph.

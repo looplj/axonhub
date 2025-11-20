@@ -254,6 +254,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 		processor = chat.NewChatCompletionProcessorWithSelector(
 			chat.NewSpecifiedChannelSelector(handlers.ChannelService, channelID),
 			handlers.RequestService,
+			handlers.ChannelService,
 			handlers.HttpClient,
 			aisdk.NewDataStreamTransformer(),
 			handlers.SystemService,

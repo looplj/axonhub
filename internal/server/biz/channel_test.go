@@ -789,21 +789,15 @@ func TestChannelService_BulkUpdateChannelOrdering(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name    string
-		updates []struct {
-			ID             int
-			OrderingWeight int
-		}
+		name          string
+		updates       []ChannelOrderingItem
 		wantErr       bool
 		wantUpdated   int
 		verifyWeights map[int]int
 	}{
 		{
 			name: "update ordering weights successfully",
-			updates: []struct {
-				ID             int
-				OrderingWeight int
-			}{
+			updates: []ChannelOrderingItem{
 				{ID: ch1.ID, OrderingWeight: 100},
 				{ID: ch2.ID, OrderingWeight: 50},
 			},
@@ -816,10 +810,7 @@ func TestChannelService_BulkUpdateChannelOrdering(t *testing.T) {
 		},
 		{
 			name: "update with non-existent channel",
-			updates: []struct {
-				ID             int
-				OrderingWeight int
-			}{
+			updates: []ChannelOrderingItem{
 				{ID: 99999, OrderingWeight: 100},
 			},
 			wantErr: true,

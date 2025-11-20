@@ -27,6 +27,7 @@ func NewChatCompletionProcessor(
 	return NewChatCompletionProcessorWithSelector(
 		NewDefaultChannelSelector(channelService),
 		requestService,
+		channelService,
 		httpClient,
 		inbound,
 		systemService,
@@ -36,6 +37,7 @@ func NewChatCompletionProcessor(
 func NewChatCompletionProcessorWithSelector(
 	channelSelector ChannelSelector,
 	requestService *biz.RequestService,
+	channelService *biz.ChannelService,
 	httpClient *httpclient.HttpClient,
 	inbound transformer.Inbound,
 	systemService *biz.SystemService,
@@ -44,6 +46,7 @@ func NewChatCompletionProcessorWithSelector(
 		ChannelSelector: channelSelector,
 		Inbound:         inbound,
 		RequestService:  requestService,
+		ChannelService:  channelService,
 		SystemService:   systemService,
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
@@ -57,6 +60,7 @@ type ChatCompletionProcessor struct {
 	ChannelSelector ChannelSelector
 	Inbound         transformer.Inbound
 	RequestService  *biz.RequestService
+	ChannelService  *biz.ChannelService
 	SystemService   *biz.SystemService
 	Middlewares     []pipeline.Middleware
 	PipelineFactory *pipeline.Factory
@@ -82,6 +86,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		ctx,
 		processor.Inbound,
 		processor.RequestService,
+		processor.ChannelService,
 		apiKey,
 		user,
 		processor.ModelMapper,
@@ -121,6 +126,8 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
 		createRequestExecution(outbound),
+		// Unified performance tracking middleware
+		withPerformanceRecording(outbound),
 	)
 
 	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(middlewares...))

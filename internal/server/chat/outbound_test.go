@@ -379,7 +379,7 @@ func TestOverrideParametersMiddleware(t *testing.T) {
 			}
 
 			// Apply the middleware
-			modifiedRequest, err := middleware.OnRawRequest(ctx, httpRequest)
+			modifiedRequest, err := middleware.OnOutboundRawRequest(ctx, httpRequest)
 			require.NoError(t, err)
 			require.NotNil(t, modifiedRequest)
 
@@ -435,7 +435,7 @@ func TestOverrideParametersMiddleware_NoChannel(t *testing.T) {
 	}
 
 	// Apply the middleware - should not modify the request
-	modifiedRequest, err := middleware.OnRawRequest(ctx, httpRequest)
+	modifiedRequest, err := middleware.OnOutboundRawRequest(ctx, httpRequest)
 	require.NoError(t, err)
 	require.NotNil(t, modifiedRequest)
 
@@ -486,7 +486,7 @@ func TestOverrideParametersMiddleware_InvalidJSON(t *testing.T) {
 	}
 
 	// Apply the middleware - should not modify the request due to invalid JSON
-	modifiedRequest, err := middleware.OnRawRequest(ctx, httpRequest)
+	modifiedRequest, err := middleware.OnOutboundRawRequest(ctx, httpRequest)
 	require.NoError(t, err)
 	require.NotNil(t, modifiedRequest)
 
@@ -537,7 +537,7 @@ func TestOverrideParametersMiddleware_EmptySettings(t *testing.T) {
 	}
 
 	// Apply the middleware - should not modify the request
-	modifiedRequest, err := middleware.OnRawRequest(ctx, httpRequest)
+	modifiedRequest, err := middleware.OnOutboundRawRequest(ctx, httpRequest)
 	require.NoError(t, err)
 	require.NotNil(t, modifiedRequest)
 

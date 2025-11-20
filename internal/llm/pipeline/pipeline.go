@@ -115,7 +115,7 @@ func (p *pipeline) applyBeforeRequestMiddlewares(ctx context.Context, request *l
 
 	if len(p.middlewares) > 0 {
 		for _, dec := range p.middlewares {
-			request, err = dec.OnLlmRequest(ctx, request)
+			request, err = dec.OnInboundLlmRequest(ctx, request)
 			if err != nil {
 				return nil, err
 			}
@@ -130,7 +130,7 @@ func (p *pipeline) applyRawRequestMiddlewares(ctx context.Context, request *http
 
 	if len(p.middlewares) > 0 {
 		for _, dec := range p.middlewares {
-			request, err = dec.OnRawRequest(ctx, request)
+			request, err = dec.OnOutboundRawRequest(ctx, request)
 			if err != nil {
 				return nil, err
 			}
@@ -138,6 +138,79 @@ func (p *pipeline) applyRawRequestMiddlewares(ctx context.Context, request *http
 	}
 
 	return request, nil
+}
+
+func (p *pipeline) applyRawResponseMiddlewares(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
+	var err error
+
+	if len(p.middlewares) > 0 {
+		// Response middlewares should be applied in reverse order (last to first)
+		for i := len(p.middlewares) - 1; i >= 0; i-- {
+			response, err = p.middlewares[i].OnOutboundRawResponse(ctx, response)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return response, nil
+}
+
+func (p *pipeline) applyRawStreamMiddlewares(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
+	var err error
+
+	if len(p.middlewares) > 0 {
+		// Stream middlewares should be applied in reverse order (last to first)
+		for i := len(p.middlewares) - 1; i >= 0; i-- {
+			stream, err = p.middlewares[i].OnOutboundRawStream(ctx, stream)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return stream, nil
+}
+
+func (p *pipeline) applyRawErrorResponseMiddlewares(ctx context.Context, err error) {
+	if len(p.middlewares) > 0 {
+		// Error response middlewares should be applied in reverse order (last to first)
+		for i := len(p.middlewares) - 1; i >= 0; i-- {
+			p.middlewares[i].OnOutboundRawErrorResponse(ctx, err)
+		}
+	}
+}
+
+func (p *pipeline) applyLlmResponseMiddlewares(ctx context.Context, response *llm.Response) (*llm.Response, error) {
+	var err error
+
+	if len(p.middlewares) > 0 {
+		// LLM response middlewares should be applied in reverse order (last to first)
+		for i := len(p.middlewares) - 1; i >= 0; i-- {
+			response, err = p.middlewares[i].OnOutboundLlmResponse(ctx, response)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return response, nil
+}
+
+func (p *pipeline) applyLlmStreamMiddlewares(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
+	var err error
+
+	if len(p.middlewares) > 0 {
+		// LLM stream middlewares should be applied in reverse order (last to first)
+		for i := len(p.middlewares) - 1; i >= 0; i-- {
+			stream, err = p.middlewares[i].OnOutboundLlmStream(ctx, stream)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return stream, nil
 }
 
 func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*Result, error) {

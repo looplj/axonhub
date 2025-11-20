@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -195,6 +196,25 @@ func (_c *ChannelCreate) AddUsageLogs(v ...*UsageLog) *ChannelCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddUsageLogIDs(ids...)
+}
+
+// SetChannelPerformanceID sets the "channel_performance" edge to the ChannelPerformance entity by ID.
+func (_c *ChannelCreate) SetChannelPerformanceID(id int) *ChannelCreate {
+	_c.mutation.SetChannelPerformanceID(id)
+	return _c
+}
+
+// SetNillableChannelPerformanceID sets the "channel_performance" edge to the ChannelPerformance entity by ID if the given value is not nil.
+func (_c *ChannelCreate) SetNillableChannelPerformanceID(id *int) *ChannelCreate {
+	if id != nil {
+		_c = _c.SetChannelPerformanceID(*id)
+	}
+	return _c
+}
+
+// SetChannelPerformance sets the "channel_performance" edge to the ChannelPerformance entity.
+func (_c *ChannelCreate) SetChannelPerformance(v *ChannelPerformance) *ChannelCreate {
+	return _c.SetChannelPerformanceID(v.ID)
 }
 
 // Mutation returns the ChannelMutation object of the builder.
@@ -437,6 +457,22 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChannelPerformanceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   channel.ChannelPerformanceTable,
+			Columns: []string{channel.ChannelPerformanceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(channelperformance.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

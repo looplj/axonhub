@@ -33,6 +33,18 @@ func (f ChannelFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChannelMutation", m)
 }
 
+// The ChannelPerformanceFunc type is an adapter to allow the use of ordinary
+// function as ChannelPerformance mutator.
+type ChannelPerformanceFunc func(context.Context, *ent.ChannelPerformanceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChannelPerformanceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChannelPerformanceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChannelPerformanceMutation", m)
+}
+
 // The DataStorageFunc type is an adapter to allow the use of ordinary
 // function as DataStorage mutator.
 type DataStorageFunc func(context.Context, *ent.DataStorageMutation) (ent.Value, error)

@@ -12,6 +12,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -567,6 +568,17 @@ func (_q *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			_q.WithNamedUsageLogs(alias, func(wq *UsageLogQuery) {
 				*wq = *query
 			})
+
+		case "channelPerformance":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ChannelPerformanceClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, channelperformanceImplementors)...); err != nil {
+				return err
+			}
+			_q.withChannelPerformance = query
 		case "createdAt":
 			if _, ok := fieldSeen[channel.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, channel.FieldCreatedAt)
@@ -686,6 +698,230 @@ func newChannelPaginateArgs(rv map[string]any) *channelPaginateArgs {
 	}
 	if v, ok := rv[whereField].(*ChannelWhereInput); ok {
 		args.opts = append(args.opts, WithChannelFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *ChannelPerformanceQuery) CollectFields(ctx context.Context, satisfies ...string) (*ChannelPerformanceQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *ChannelPerformanceQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(channelperformance.Columns))
+		selectedFields = []string{channelperformance.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "channel":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ChannelClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, channelImplementors)...); err != nil {
+				return err
+			}
+			_q.withChannel = query
+			if _, ok := fieldSeen[channelperformance.FieldChannelID]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldChannelID)
+				fieldSeen[channelperformance.FieldChannelID] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[channelperformance.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldCreatedAt)
+				fieldSeen[channelperformance.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[channelperformance.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldUpdatedAt)
+				fieldSeen[channelperformance.FieldUpdatedAt] = struct{}{}
+			}
+		case "deletedAt":
+			if _, ok := fieldSeen[channelperformance.FieldDeletedAt]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldDeletedAt)
+				fieldSeen[channelperformance.FieldDeletedAt] = struct{}{}
+			}
+		case "channelID":
+			if _, ok := fieldSeen[channelperformance.FieldChannelID]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldChannelID)
+				fieldSeen[channelperformance.FieldChannelID] = struct{}{}
+			}
+		case "healthStatus":
+			if _, ok := fieldSeen[channelperformance.FieldHealthStatus]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldHealthStatus)
+				fieldSeen[channelperformance.FieldHealthStatus] = struct{}{}
+			}
+		case "totalCount":
+			if _, ok := fieldSeen[channelperformance.FieldTotalCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldTotalCount)
+				fieldSeen[channelperformance.FieldTotalCount] = struct{}{}
+			}
+		case "totalSuccessCount":
+			if _, ok := fieldSeen[channelperformance.FieldTotalSuccessCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldTotalSuccessCount)
+				fieldSeen[channelperformance.FieldTotalSuccessCount] = struct{}{}
+			}
+		case "totalTokenCount":
+			if _, ok := fieldSeen[channelperformance.FieldTotalTokenCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldTotalTokenCount)
+				fieldSeen[channelperformance.FieldTotalTokenCount] = struct{}{}
+			}
+		case "totalAvgLatencyMs":
+			if _, ok := fieldSeen[channelperformance.FieldTotalAvgLatencyMs]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldTotalAvgLatencyMs)
+				fieldSeen[channelperformance.FieldTotalAvgLatencyMs] = struct{}{}
+			}
+		case "totalAvgTokenPerSecond":
+			if _, ok := fieldSeen[channelperformance.FieldTotalAvgTokenPerSecond]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldTotalAvgTokenPerSecond)
+				fieldSeen[channelperformance.FieldTotalAvgTokenPerSecond] = struct{}{}
+			}
+		case "totalAvgStreamFirstTokenLatenchMs":
+			if _, ok := fieldSeen[channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs)
+				fieldSeen[channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs] = struct{}{}
+			}
+		case "totalAvgStreamTokenPerSecond":
+			if _, ok := fieldSeen[channelperformance.FieldTotalAvgStreamTokenPerSecond]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldTotalAvgStreamTokenPerSecond)
+				fieldSeen[channelperformance.FieldTotalAvgStreamTokenPerSecond] = struct{}{}
+			}
+		case "lastPeriodStart":
+			if _, ok := fieldSeen[channelperformance.FieldLastPeriodStart]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodStart)
+				fieldSeen[channelperformance.FieldLastPeriodStart] = struct{}{}
+			}
+		case "lastPeriodEnd":
+			if _, ok := fieldSeen[channelperformance.FieldLastPeriodEnd]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodEnd)
+				fieldSeen[channelperformance.FieldLastPeriodEnd] = struct{}{}
+			}
+		case "lastPeriodSeconds":
+			if _, ok := fieldSeen[channelperformance.FieldLastPeriodSeconds]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodSeconds)
+				fieldSeen[channelperformance.FieldLastPeriodSeconds] = struct{}{}
+			}
+		case "lastPeriodCount":
+			if _, ok := fieldSeen[channelperformance.FieldLastPeriodCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodCount)
+				fieldSeen[channelperformance.FieldLastPeriodCount] = struct{}{}
+			}
+		case "lastPeriodSuccessCount":
+			if _, ok := fieldSeen[channelperformance.FieldLastPeriodSuccessCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodSuccessCount)
+				fieldSeen[channelperformance.FieldLastPeriodSuccessCount] = struct{}{}
+			}
+		case "lastPeriodTokenCount":
+			if _, ok := fieldSeen[channelperformance.FieldLastPeriodTokenCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodTokenCount)
+				fieldSeen[channelperformance.FieldLastPeriodTokenCount] = struct{}{}
+			}
+		case "lastPeriodAvgLatencyMs":
+			if _, ok := fieldSeen[channelperformance.FieldLastPeriodAvgLatencyMs]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodAvgLatencyMs)
+				fieldSeen[channelperformance.FieldLastPeriodAvgLatencyMs] = struct{}{}
+			}
+		case "lastPeriodAvgTokenPerSecond":
+			if _, ok := fieldSeen[channelperformance.FieldLastPeriodAvgTokenPerSecond]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodAvgTokenPerSecond)
+				fieldSeen[channelperformance.FieldLastPeriodAvgTokenPerSecond] = struct{}{}
+			}
+		case "lastPeriodAvgStreamFirstTokenLatenchMs":
+			if _, ok := fieldSeen[channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs)
+				fieldSeen[channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs] = struct{}{}
+			}
+		case "lastPeriodAvgStreamTokenPerSecond":
+			if _, ok := fieldSeen[channelperformance.FieldLastPeriodAvgStreamTokenPerSecond]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastPeriodAvgStreamTokenPerSecond)
+				fieldSeen[channelperformance.FieldLastPeriodAvgStreamTokenPerSecond] = struct{}{}
+			}
+		case "lastSuccessAt":
+			if _, ok := fieldSeen[channelperformance.FieldLastSuccessAt]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastSuccessAt)
+				fieldSeen[channelperformance.FieldLastSuccessAt] = struct{}{}
+			}
+		case "lastFailureAt":
+			if _, ok := fieldSeen[channelperformance.FieldLastFailureAt]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastFailureAt)
+				fieldSeen[channelperformance.FieldLastFailureAt] = struct{}{}
+			}
+		case "lastAttemptAt":
+			if _, ok := fieldSeen[channelperformance.FieldLastAttemptAt]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldLastAttemptAt)
+				fieldSeen[channelperformance.FieldLastAttemptAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type channelperformancePaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []ChannelPerformancePaginateOption
+}
+
+func newChannelPerformancePaginateArgs(rv map[string]any) *channelperformancePaginateArgs {
+	args := &channelperformancePaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &ChannelPerformanceOrder{Field: &ChannelPerformanceOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithChannelPerformanceOrder(order))
+			}
+		case *ChannelPerformanceOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithChannelPerformanceOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*ChannelPerformanceWhereInput); ok {
+		args.opts = append(args.opts, WithChannelPerformanceFilter(v.Filter))
 	}
 	return args
 }
