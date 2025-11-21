@@ -20,17 +20,21 @@ import (
 func NewChatCompletionProcessor(
 	channelService *biz.ChannelService,
 	requestService *biz.RequestService,
+	traceService *biz.TraceService,
 	httpClient *httpclient.HttpClient,
 	inbound transformer.Inbound,
 	systemService *biz.SystemService,
 ) *ChatCompletionProcessor {
+	connectionTracker := NewDefaultConnectionTracker(1024)
+
 	return NewChatCompletionProcessorWithSelector(
-		NewDefaultChannelSelector(channelService),
+		NewDefaultChannelSelector(channelService, traceService, connectionTracker),
 		requestService,
 		channelService,
 		httpClient,
 		inbound,
 		systemService,
+		connectionTracker,
 	)
 }
 
@@ -41,6 +45,7 @@ func NewChatCompletionProcessorWithSelector(
 	httpClient *httpclient.HttpClient,
 	inbound transformer.Inbound,
 	systemService *biz.SystemService,
+	connectionTracker *DefaultConnectionTracker,
 ) *ChatCompletionProcessor {
 	return &ChatCompletionProcessor{
 		ChannelSelector: channelSelector,
@@ -51,20 +56,22 @@ func NewChatCompletionProcessorWithSelector(
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
-		ModelMapper:     NewModelMapper(),
-		PipelineFactory: pipeline.NewFactory(httpClient),
+		ModelMapper:       NewModelMapper(),
+		PipelineFactory:   pipeline.NewFactory(httpClient),
+		ConnectionTracker: connectionTracker,
 	}
 }
 
 type ChatCompletionProcessor struct {
-	ChannelSelector ChannelSelector
-	Inbound         transformer.Inbound
-	RequestService  *biz.RequestService
-	ChannelService  *biz.ChannelService
-	SystemService   *biz.SystemService
-	Middlewares     []pipeline.Middleware
-	PipelineFactory *pipeline.Factory
-	ModelMapper     *ModelMapper
+	ChannelSelector   ChannelSelector
+	Inbound           transformer.Inbound
+	RequestService    *biz.RequestService
+	ChannelService    *biz.ChannelService
+	SystemService     *biz.SystemService
+	Middlewares       []pipeline.Middleware
+	PipelineFactory   *pipeline.Factory
+	ModelMapper       *ModelMapper
+	ConnectionTracker *DefaultConnectionTracker
 
 	// Proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
@@ -82,7 +89,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 
 	log.Debug(ctx, "request received", log.String("request_body", string(request.Body)))
 
-	inbound, outbound := NewPersistentTransformersWithSelector(
+	inbound, outbound := NewPersistentTransformers(
 		ctx,
 		processor.Inbound,
 		processor.RequestService,
@@ -123,11 +130,16 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 	// Add outbound middlewares (executed after outbound.TransformRequest)
 	middlewares = append(middlewares,
 		applyOverrideParameters(outbound),
+
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
 		createRequestExecution(outbound),
-		// Unified performance tracking middleware
+
+		// Unified performance tracking middleware.
 		withPerformanceRecording(outbound),
+
+		// Connection tracking middleware for load balancing.
+		withConnectionTracking(outbound, processor.ConnectionTracker),
 	)
 
 	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(middlewares...))

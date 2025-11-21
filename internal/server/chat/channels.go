@@ -14,14 +14,33 @@ type ChannelSelector interface {
 	Select(ctx context.Context, req *llm.Request) ([]*biz.Channel, error)
 }
 
-// DefaultChannelSelector selects only enabled channels.
+// DefaultChannelSelector selects only enabled channels and sorts them using load balancing.
 type DefaultChannelSelector struct {
-	ChannelService *biz.ChannelService
+	ChannelService    *biz.ChannelService
+	LoadBalancer      *LoadBalancer
+	ConnectionTracker *DefaultConnectionTracker
 }
 
-func NewDefaultChannelSelector(channelService *biz.ChannelService) *DefaultChannelSelector {
+// NewDefaultChannelSelector creates a selector with optional connection tracking.
+func NewDefaultChannelSelector(
+	channelService *biz.ChannelService,
+	traceService *biz.TraceService,
+	connectionTracker *DefaultConnectionTracker,
+) *DefaultChannelSelector {
+	// Build strategies
+	strategies := []LoadBalanceStrategy{
+		NewTraceAwareStrategy(traceService),   // Priority 1: Last successful channel from trace
+		NewErrorAwareStrategy(channelService), // Priority 2: Health and error rate
+		NewWeightStrategy(),                   // Priority 3: Admin-configured weight
+		NewConnectionAwareStrategy(channelService, connectionTracker),
+	}
+
+	loadBalancer := NewLoadBalancer(strategies...)
+
 	return &DefaultChannelSelector{
-		ChannelService: channelService,
+		ChannelService:    channelService,
+		LoadBalancer:      loadBalancer,
+		ConnectionTracker: connectionTracker,
 	}
 }
 
@@ -33,11 +52,18 @@ func (s *DefaultChannelSelector) Select(ctx context.Context, req *llm.Request) (
 		return nil, err
 	}
 
-	log.Debug(ctx, "Selected channels for model",
-		log.String("model", req.Model),
-		log.Int("channel_count", len(channels)))
+	if len(channels) == 1 {
+		return channels, nil
+	}
 
-	return channels, nil
+	// Apply load balancing to sort channels by priority
+	sortedChannels := s.LoadBalancer.Sort(ctx, channels, req.Model)
+
+	log.Debug(ctx, "Selected and sorted channels for model",
+		log.String("model", req.Model),
+		log.Int("channel_count", len(sortedChannels)))
+
+	return sortedChannels, nil
 }
 
 // SpecifiedChannelSelector allows selecting specific channels (including disabled ones) for testing.

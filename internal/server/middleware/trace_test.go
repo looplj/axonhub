@@ -39,7 +39,9 @@ func setupTestTraceMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.Trac
 		Executor:      executors.NewPoolScheduleExecutor(),
 	})
 	usageLogService := biz.NewUsageLogService(systemService)
-	traceService := biz.NewTraceService(biz.NewRequestService(systemService, usageLogService, dataStorageService))
+	traceService := biz.NewTraceService(biz.TraceServiceParams{
+		RequestService: biz.NewRequestService(systemService, usageLogService, dataStorageService),
+	})
 
 	router := gin.New()
 

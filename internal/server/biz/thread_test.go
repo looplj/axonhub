@@ -21,18 +21,20 @@ func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
 		CacheConfig: xcache.Config{},
 	})
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-	threadService := NewThreadService(NewTraceService(NewRequestService(
-		systemService,
-		NewUsageLogService(systemService),
-		NewDataStorageService(
-			DataStorageServiceParams{
-				SystemService: systemService,
-				CacheConfig:   xcache.Config{},
-				Executor:      executors.NewPoolScheduleExecutor(),
-				Client:        client,
-			},
+	threadService := NewThreadService(NewTraceService(TraceServiceParams{
+		RequestService: NewRequestService(
+			systemService,
+			NewUsageLogService(systemService),
+			NewDataStorageService(
+				DataStorageServiceParams{
+					SystemService: systemService,
+					CacheConfig:   xcache.Config{},
+					Executor:      executors.NewPoolScheduleExecutor(),
+					Client:        client,
+				},
+			),
 		),
-	)))
+	}))
 
 	return threadService, client
 }

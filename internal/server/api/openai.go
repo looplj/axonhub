@@ -17,6 +17,7 @@ type OpenAIHandlersParams struct {
 
 	ChannelService *biz.ChannelService
 	RequestService *biz.RequestService
+	TraceService   *biz.TraceService
 	SystemService  *biz.SystemService
 	HttpClient     *httpclient.HttpClient
 }
@@ -32,6 +33,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
 				params.ChannelService,
 				params.RequestService,
+				params.TraceService,
 				params.HttpClient,
 				openai.NewInboundTransformer(),
 				params.SystemService,

@@ -98,7 +98,13 @@ func (svc *ChannelService) InitializeChannelPerformance(ctx context.Context, cha
 	log.Info(ctx, "Initializing channel performance record",
 		log.Int("channel_id", channelID),
 	)
-	_, err := ent.FromContext(ctx).ChannelPerformance.Create().
+
+	client := ent.FromContext(ctx)
+	if client == nil {
+		client = svc.Ent
+	}
+
+	_, err := client.ChannelPerformance.Create().
 		SetChannelID(channelID).
 		SetSuccessRate(0).
 		SetAvgLatencyMs(0).

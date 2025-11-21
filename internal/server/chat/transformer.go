@@ -14,33 +14,8 @@ var (
 	_ transformer.Outbound = &PersistentOutboundTransformer{}
 )
 
-// NewPersistentTransformers creates enhanced persistent transformers with channel management
-// It accepts an httpclient.Request and transforms it to llm.Request internally.
+// NewPersistentTransformers creates enhanced persistent transformers with custom channel selector.
 func NewPersistentTransformers(
-	ctx context.Context,
-	inbound transformer.Inbound,
-	channelService *biz.ChannelService,
-	requestService *biz.RequestService,
-	apiKey *ent.APIKey,
-	user *ent.User,
-	modelMapper *ModelMapper,
-	proxy *objects.ProxyConfig,
-) (*PersistentInboundTransformer, *PersistentOutboundTransformer) {
-	return NewPersistentTransformersWithSelector(
-		ctx,
-		inbound,
-		requestService,
-		channelService,
-		apiKey,
-		user,
-		modelMapper,
-		proxy,
-		NewDefaultChannelSelector(channelService),
-	)
-}
-
-// NewPersistentTransformersWithSelector creates enhanced persistent transformers with custom channel selector.
-func NewPersistentTransformersWithSelector(
 	ctx context.Context,
 	inbound transformer.Inbound,
 	requestService *biz.RequestService,

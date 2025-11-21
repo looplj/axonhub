@@ -36,7 +36,9 @@ func setupTestThreadMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.Thr
 		Executor:      executors.NewPoolScheduleExecutor(),
 	})
 	usageLogService := biz.NewUsageLogService(systemService)
-	traceService := biz.NewTraceService(biz.NewRequestService(systemService, usageLogService, dataStorageService))
+	traceService := biz.NewTraceService(biz.TraceServiceParams{
+		RequestService: biz.NewRequestService(systemService, usageLogService, dataStorageService),
+	})
 
 	threadService := biz.NewThreadService(traceService)
 
