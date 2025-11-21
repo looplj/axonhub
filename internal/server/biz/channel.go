@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/samber/lo"
@@ -156,10 +157,13 @@ type ChannelServiceParams struct {
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
 	svc := &ChannelService{
-		Executors: params.Executor,
-		Ent:       params.Client,
+		Executors:          params.Executor,
+		Ent:                params.Client,
+		channelPerfMetrics: make(map[int]*channelMetrics),
+		perfStopCh:         make(chan struct{}),
 	}
 
+	xerrors.NoErr(svc.InitializeAllChannelPerformances(context.Background()))
 	xerrors.NoErr(svc.loadChannels(context.Background()))
 	xerrors.NoErr2(
 		params.Executor.ScheduleFuncAtCronRate(
@@ -167,6 +171,9 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 			executors.CRONRule{Expr: "*/1 * * * *"},
 		),
 	)
+
+	// Start performance metrics background flush
+	svc.startPerformanceFlush()
 
 	return svc
 }
@@ -178,6 +185,16 @@ type ChannelService struct {
 	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
 	EnabledChannels []*Channel
 	latestUpdate    time.Time
+
+	// PerformanceWindowSeconds is the configurable sliding window size for performance metrics (in seconds)
+	// If not set (0), uses defaultPerformanceWindowSize (600 seconds = 10 minutes)
+	PerformanceWindowSeconds int64
+
+	// Performance metrics cache
+	channelPerfMetrics map[int]*channelMetrics
+	perfMetricsLock    sync.RWMutex
+	perfStopCh         chan struct{}
+	perfWg             sync.WaitGroup
 }
 
 func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {
@@ -614,6 +631,16 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	channel, err := createBuilder.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create channel: %w", err)
+	}
+
+	// Initialize ChannelPerformance record for the new channel
+	// Log error but don't fail channel creation if performance record fails
+	if err := svc.InitializeChannelPerformance(ctx, channel.ID); err != nil {
+		log.Error(ctx, "Failed to initialize channel performance record",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Cause(err),
+		)
 	}
 
 	return channel, nil

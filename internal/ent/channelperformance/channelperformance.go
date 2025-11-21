@@ -3,9 +3,6 @@
 package channelperformance
 
 import (
-	"fmt"
-	"io"
-	"strconv"
 	"time"
 
 	"entgo.io/ent"
@@ -26,48 +23,20 @@ const (
 	FieldDeletedAt = "deleted_at"
 	// FieldChannelID holds the string denoting the channel_id field in the database.
 	FieldChannelID = "channel_id"
-	// FieldHealthStatus holds the string denoting the health_status field in the database.
-	FieldHealthStatus = "health_status"
-	// FieldTotalCount holds the string denoting the total_count field in the database.
-	FieldTotalCount = "total_count"
-	// FieldTotalSuccessCount holds the string denoting the total_success_count field in the database.
-	FieldTotalSuccessCount = "total_success_count"
-	// FieldTotalTokenCount holds the string denoting the total_token_count field in the database.
-	FieldTotalTokenCount = "total_token_count"
-	// FieldTotalAvgLatencyMs holds the string denoting the total_avg_latency_ms field in the database.
-	FieldTotalAvgLatencyMs = "total_avg_latency_ms"
-	// FieldTotalAvgTokenPerSecond holds the string denoting the total_avg_token_per_second field in the database.
-	FieldTotalAvgTokenPerSecond = "total_avg_token_per_second"
-	// FieldTotalAvgStreamFirstTokenLatenchMs holds the string denoting the total_avg_stream_first_token_latench_ms field in the database.
-	FieldTotalAvgStreamFirstTokenLatenchMs = "total_avg_stream_first_token_latench_ms"
-	// FieldTotalAvgStreamTokenPerSecond holds the string denoting the total_avg_stream_token_per_second field in the database.
-	FieldTotalAvgStreamTokenPerSecond = "total_avg_stream_token_per_second"
-	// FieldLastPeriodStart holds the string denoting the last_period_start field in the database.
-	FieldLastPeriodStart = "last_period_start"
-	// FieldLastPeriodEnd holds the string denoting the last_period_end field in the database.
-	FieldLastPeriodEnd = "last_period_end"
-	// FieldLastPeriodSeconds holds the string denoting the last_period_seconds field in the database.
-	FieldLastPeriodSeconds = "last_period_seconds"
-	// FieldLastPeriodCount holds the string denoting the last_period_count field in the database.
-	FieldLastPeriodCount = "last_period_count"
-	// FieldLastPeriodSuccessCount holds the string denoting the last_period_success_count field in the database.
-	FieldLastPeriodSuccessCount = "last_period_success_count"
-	// FieldLastPeriodTokenCount holds the string denoting the last_period_token_count field in the database.
-	FieldLastPeriodTokenCount = "last_period_token_count"
-	// FieldLastPeriodAvgLatencyMs holds the string denoting the last_period_avg_latency_ms field in the database.
-	FieldLastPeriodAvgLatencyMs = "last_period_avg_latency_ms"
-	// FieldLastPeriodAvgTokenPerSecond holds the string denoting the last_period_avg_token_per_second field in the database.
-	FieldLastPeriodAvgTokenPerSecond = "last_period_avg_token_per_second"
-	// FieldLastPeriodAvgStreamFirstTokenLatenchMs holds the string denoting the last_period_avg_stream_first_token_latench_ms field in the database.
-	FieldLastPeriodAvgStreamFirstTokenLatenchMs = "last_period_avg_stream_first_token_latench_ms"
-	// FieldLastPeriodAvgStreamTokenPerSecond holds the string denoting the last_period_avg_stream_token_per_second field in the database.
-	FieldLastPeriodAvgStreamTokenPerSecond = "last_period_avg_stream_token_per_second"
+	// FieldSuccessRate holds the string denoting the success_rate field in the database.
+	FieldSuccessRate = "success_rate"
+	// FieldAvgLatencyMs holds the string denoting the avg_latency_ms field in the database.
+	FieldAvgLatencyMs = "avg_latency_ms"
+	// FieldAvgTokenPerSecond holds the string denoting the avg_token_per_second field in the database.
+	FieldAvgTokenPerSecond = "avg_token_per_second"
+	// FieldAvgStreamFirstTokenLatencyMs holds the string denoting the avg_stream_first_token_latency_ms field in the database.
+	FieldAvgStreamFirstTokenLatencyMs = "avg_stream_first_token_latency_ms"
+	// FieldAvgStreamTokenPerSecond holds the string denoting the avg_stream_token_per_second field in the database.
+	FieldAvgStreamTokenPerSecond = "avg_stream_token_per_second"
 	// FieldLastSuccessAt holds the string denoting the last_success_at field in the database.
 	FieldLastSuccessAt = "last_success_at"
 	// FieldLastFailureAt holds the string denoting the last_failure_at field in the database.
 	FieldLastFailureAt = "last_failure_at"
-	// FieldLastAttemptAt holds the string denoting the last_attempt_at field in the database.
-	FieldLastAttemptAt = "last_attempt_at"
 	// EdgeChannel holds the string denoting the channel edge name in mutations.
 	EdgeChannel = "channel"
 	// Table holds the table name of the channelperformance in the database.
@@ -88,27 +57,13 @@ var Columns = []string{
 	FieldUpdatedAt,
 	FieldDeletedAt,
 	FieldChannelID,
-	FieldHealthStatus,
-	FieldTotalCount,
-	FieldTotalSuccessCount,
-	FieldTotalTokenCount,
-	FieldTotalAvgLatencyMs,
-	FieldTotalAvgTokenPerSecond,
-	FieldTotalAvgStreamFirstTokenLatenchMs,
-	FieldTotalAvgStreamTokenPerSecond,
-	FieldLastPeriodStart,
-	FieldLastPeriodEnd,
-	FieldLastPeriodSeconds,
-	FieldLastPeriodCount,
-	FieldLastPeriodSuccessCount,
-	FieldLastPeriodTokenCount,
-	FieldLastPeriodAvgLatencyMs,
-	FieldLastPeriodAvgTokenPerSecond,
-	FieldLastPeriodAvgStreamFirstTokenLatenchMs,
-	FieldLastPeriodAvgStreamTokenPerSecond,
+	FieldSuccessRate,
+	FieldAvgLatencyMs,
+	FieldAvgTokenPerSecond,
+	FieldAvgStreamFirstTokenLatencyMs,
+	FieldAvgStreamTokenPerSecond,
 	FieldLastSuccessAt,
 	FieldLastFailureAt,
-	FieldLastAttemptAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -137,65 +92,17 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
-	// DefaultTotalCount holds the default value on creation for the "total_count" field.
-	DefaultTotalCount int
-	// DefaultTotalSuccessCount holds the default value on creation for the "total_success_count" field.
-	DefaultTotalSuccessCount int
-	// DefaultTotalTokenCount holds the default value on creation for the "total_token_count" field.
-	DefaultTotalTokenCount int
-	// DefaultTotalAvgLatencyMs holds the default value on creation for the "total_avg_latency_ms" field.
-	DefaultTotalAvgLatencyMs int
-	// DefaultTotalAvgTokenPerSecond holds the default value on creation for the "total_avg_token_per_second" field.
-	DefaultTotalAvgTokenPerSecond int
-	// DefaultTotalAvgStreamFirstTokenLatenchMs holds the default value on creation for the "total_avg_stream_first_token_latench_ms" field.
-	DefaultTotalAvgStreamFirstTokenLatenchMs int
-	// DefaultTotalAvgStreamTokenPerSecond holds the default value on creation for the "total_avg_stream_token_per_second" field.
-	DefaultTotalAvgStreamTokenPerSecond float64
-	// DefaultLastPeriodSeconds holds the default value on creation for the "last_period_seconds" field.
-	DefaultLastPeriodSeconds int
-	// DefaultLastPeriodCount holds the default value on creation for the "last_period_count" field.
-	DefaultLastPeriodCount int
-	// DefaultLastPeriodSuccessCount holds the default value on creation for the "last_period_success_count" field.
-	DefaultLastPeriodSuccessCount int
-	// DefaultLastPeriodTokenCount holds the default value on creation for the "last_period_token_count" field.
-	DefaultLastPeriodTokenCount int
-	// DefaultLastPeriodAvgLatencyMs holds the default value on creation for the "last_period_avg_latency_ms" field.
-	DefaultLastPeriodAvgLatencyMs int
-	// DefaultLastPeriodAvgTokenPerSecond holds the default value on creation for the "last_period_avg_token_per_second" field.
-	DefaultLastPeriodAvgTokenPerSecond int
-	// DefaultLastPeriodAvgStreamFirstTokenLatenchMs holds the default value on creation for the "last_period_avg_stream_first_token_latench_ms" field.
-	DefaultLastPeriodAvgStreamFirstTokenLatenchMs int
-	// DefaultLastPeriodAvgStreamTokenPerSecond holds the default value on creation for the "last_period_avg_stream_token_per_second" field.
-	DefaultLastPeriodAvgStreamTokenPerSecond float64
+	// DefaultSuccessRate holds the default value on creation for the "success_rate" field.
+	DefaultSuccessRate int
+	// DefaultAvgLatencyMs holds the default value on creation for the "avg_latency_ms" field.
+	DefaultAvgLatencyMs int
+	// DefaultAvgTokenPerSecond holds the default value on creation for the "avg_token_per_second" field.
+	DefaultAvgTokenPerSecond int
+	// DefaultAvgStreamFirstTokenLatencyMs holds the default value on creation for the "avg_stream_first_token_latency_ms" field.
+	DefaultAvgStreamFirstTokenLatencyMs int
+	// DefaultAvgStreamTokenPerSecond holds the default value on creation for the "avg_stream_token_per_second" field.
+	DefaultAvgStreamTokenPerSecond float64
 )
-
-// HealthStatus defines the type for the "health_status" enum field.
-type HealthStatus string
-
-// HealthStatusGood is the default value of the HealthStatus enum.
-const DefaultHealthStatus = HealthStatusGood
-
-// HealthStatus values.
-const (
-	HealthStatusGood     HealthStatus = "good"
-	HealthStatusWarning  HealthStatus = "warning"
-	HealthStatusCritical HealthStatus = "critical"
-	HealthStatusPanic    HealthStatus = "panic"
-)
-
-func (hs HealthStatus) String() string {
-	return string(hs)
-}
-
-// HealthStatusValidator is a validator for the "health_status" field enum values. It is called by the builders before save.
-func HealthStatusValidator(hs HealthStatus) error {
-	switch hs {
-	case HealthStatusGood, HealthStatusWarning, HealthStatusCritical, HealthStatusPanic:
-		return nil
-	default:
-		return fmt.Errorf("channelperformance: invalid enum value for health_status field: %q", hs)
-	}
-}
 
 // OrderOption defines the ordering options for the ChannelPerformance queries.
 type OrderOption func(*sql.Selector)
@@ -225,94 +132,29 @@ func ByChannelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldChannelID, opts...).ToFunc()
 }
 
-// ByHealthStatus orders the results by the health_status field.
-func ByHealthStatus(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldHealthStatus, opts...).ToFunc()
+// BySuccessRate orders the results by the success_rate field.
+func BySuccessRate(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSuccessRate, opts...).ToFunc()
 }
 
-// ByTotalCount orders the results by the total_count field.
-func ByTotalCount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTotalCount, opts...).ToFunc()
+// ByAvgLatencyMs orders the results by the avg_latency_ms field.
+func ByAvgLatencyMs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAvgLatencyMs, opts...).ToFunc()
 }
 
-// ByTotalSuccessCount orders the results by the total_success_count field.
-func ByTotalSuccessCount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTotalSuccessCount, opts...).ToFunc()
+// ByAvgTokenPerSecond orders the results by the avg_token_per_second field.
+func ByAvgTokenPerSecond(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAvgTokenPerSecond, opts...).ToFunc()
 }
 
-// ByTotalTokenCount orders the results by the total_token_count field.
-func ByTotalTokenCount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTotalTokenCount, opts...).ToFunc()
+// ByAvgStreamFirstTokenLatencyMs orders the results by the avg_stream_first_token_latency_ms field.
+func ByAvgStreamFirstTokenLatencyMs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAvgStreamFirstTokenLatencyMs, opts...).ToFunc()
 }
 
-// ByTotalAvgLatencyMs orders the results by the total_avg_latency_ms field.
-func ByTotalAvgLatencyMs(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTotalAvgLatencyMs, opts...).ToFunc()
-}
-
-// ByTotalAvgTokenPerSecond orders the results by the total_avg_token_per_second field.
-func ByTotalAvgTokenPerSecond(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTotalAvgTokenPerSecond, opts...).ToFunc()
-}
-
-// ByTotalAvgStreamFirstTokenLatenchMs orders the results by the total_avg_stream_first_token_latench_ms field.
-func ByTotalAvgStreamFirstTokenLatenchMs(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTotalAvgStreamFirstTokenLatenchMs, opts...).ToFunc()
-}
-
-// ByTotalAvgStreamTokenPerSecond orders the results by the total_avg_stream_token_per_second field.
-func ByTotalAvgStreamTokenPerSecond(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTotalAvgStreamTokenPerSecond, opts...).ToFunc()
-}
-
-// ByLastPeriodStart orders the results by the last_period_start field.
-func ByLastPeriodStart(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLastPeriodStart, opts...).ToFunc()
-}
-
-// ByLastPeriodEnd orders the results by the last_period_end field.
-func ByLastPeriodEnd(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLastPeriodEnd, opts...).ToFunc()
-}
-
-// ByLastPeriodSeconds orders the results by the last_period_seconds field.
-func ByLastPeriodSeconds(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLastPeriodSeconds, opts...).ToFunc()
-}
-
-// ByLastPeriodCount orders the results by the last_period_count field.
-func ByLastPeriodCount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLastPeriodCount, opts...).ToFunc()
-}
-
-// ByLastPeriodSuccessCount orders the results by the last_period_success_count field.
-func ByLastPeriodSuccessCount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLastPeriodSuccessCount, opts...).ToFunc()
-}
-
-// ByLastPeriodTokenCount orders the results by the last_period_token_count field.
-func ByLastPeriodTokenCount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLastPeriodTokenCount, opts...).ToFunc()
-}
-
-// ByLastPeriodAvgLatencyMs orders the results by the last_period_avg_latency_ms field.
-func ByLastPeriodAvgLatencyMs(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLastPeriodAvgLatencyMs, opts...).ToFunc()
-}
-
-// ByLastPeriodAvgTokenPerSecond orders the results by the last_period_avg_token_per_second field.
-func ByLastPeriodAvgTokenPerSecond(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLastPeriodAvgTokenPerSecond, opts...).ToFunc()
-}
-
-// ByLastPeriodAvgStreamFirstTokenLatenchMs orders the results by the last_period_avg_stream_first_token_latench_ms field.
-func ByLastPeriodAvgStreamFirstTokenLatenchMs(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLastPeriodAvgStreamFirstTokenLatenchMs, opts...).ToFunc()
-}
-
-// ByLastPeriodAvgStreamTokenPerSecond orders the results by the last_period_avg_stream_token_per_second field.
-func ByLastPeriodAvgStreamTokenPerSecond(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLastPeriodAvgStreamTokenPerSecond, opts...).ToFunc()
+// ByAvgStreamTokenPerSecond orders the results by the avg_stream_token_per_second field.
+func ByAvgStreamTokenPerSecond(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAvgStreamTokenPerSecond, opts...).ToFunc()
 }
 
 // ByLastSuccessAt orders the results by the last_success_at field.
@@ -323,11 +165,6 @@ func ByLastSuccessAt(opts ...sql.OrderTermOption) OrderOption {
 // ByLastFailureAt orders the results by the last_failure_at field.
 func ByLastFailureAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastFailureAt, opts...).ToFunc()
-}
-
-// ByLastAttemptAt orders the results by the last_attempt_at field.
-func ByLastAttemptAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLastAttemptAt, opts...).ToFunc()
 }
 
 // ByChannelField orders the results by channel field.
@@ -342,22 +179,4 @@ func newChannelStep() *sqlgraph.Step {
 		sqlgraph.To(ChannelInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2O, true, ChannelTable, ChannelColumn),
 	)
-}
-
-// MarshalGQL implements graphql.Marshaler interface.
-func (e HealthStatus) MarshalGQL(w io.Writer) {
-	io.WriteString(w, strconv.Quote(e.String()))
-}
-
-// UnmarshalGQL implements graphql.Unmarshaler interface.
-func (e *HealthStatus) UnmarshalGQL(val interface{}) error {
-	str, ok := val.(string)
-	if !ok {
-		return fmt.Errorf("enum %T must be a string", val)
-	}
-	*e = HealthStatus(str)
-	if err := HealthStatusValidator(*e); err != nil {
-		return fmt.Errorf("%s is not a valid HealthStatus", str)
-	}
-	return nil
 }

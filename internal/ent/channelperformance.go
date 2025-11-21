@@ -26,48 +26,20 @@ type ChannelPerformance struct {
 	DeletedAt int `json:"deleted_at,omitempty"`
 	// ChannelID holds the value of the "channel_id" field.
 	ChannelID int `json:"channel_id,omitempty"`
-	// Health status of the channel
-	HealthStatus channelperformance.HealthStatus `json:"health_status,omitempty"`
-	// TotalCount holds the value of the "total_count" field.
-	TotalCount int `json:"total_count,omitempty"`
-	// TotalSuccessCount holds the value of the "total_success_count" field.
-	TotalSuccessCount int `json:"total_success_count,omitempty"`
-	// TotalTokenCount holds the value of the "total_token_count" field.
-	TotalTokenCount int `json:"total_token_count,omitempty"`
-	// TotalAvgLatencyMs holds the value of the "total_avg_latency_ms" field.
-	TotalAvgLatencyMs int `json:"total_avg_latency_ms,omitempty"`
-	// TotalAvgTokenPerSecond holds the value of the "total_avg_token_per_second" field.
-	TotalAvgTokenPerSecond int `json:"total_avg_token_per_second,omitempty"`
-	// TotalAvgStreamFirstTokenLatenchMs holds the value of the "total_avg_stream_first_token_latench_ms" field.
-	TotalAvgStreamFirstTokenLatenchMs int `json:"total_avg_stream_first_token_latench_ms,omitempty"`
-	// TotalAvgStreamTokenPerSecond holds the value of the "total_avg_stream_token_per_second" field.
-	TotalAvgStreamTokenPerSecond float64 `json:"total_avg_stream_token_per_second,omitempty"`
-	// LastPeriodStart holds the value of the "last_period_start" field.
-	LastPeriodStart time.Time `json:"last_period_start,omitempty"`
-	// LastPeriodEnd holds the value of the "last_period_end" field.
-	LastPeriodEnd time.Time `json:"last_period_end,omitempty"`
-	// LastPeriodSeconds holds the value of the "last_period_seconds" field.
-	LastPeriodSeconds int `json:"last_period_seconds,omitempty"`
-	// LastPeriodCount holds the value of the "last_period_count" field.
-	LastPeriodCount int `json:"last_period_count,omitempty"`
-	// LastPeriodSuccessCount holds the value of the "last_period_success_count" field.
-	LastPeriodSuccessCount int `json:"last_period_success_count,omitempty"`
-	// LastPeriodTokenCount holds the value of the "last_period_token_count" field.
-	LastPeriodTokenCount int `json:"last_period_token_count,omitempty"`
-	// LastPeriodAvgLatencyMs holds the value of the "last_period_avg_latency_ms" field.
-	LastPeriodAvgLatencyMs int `json:"last_period_avg_latency_ms,omitempty"`
-	// LastPeriodAvgTokenPerSecond holds the value of the "last_period_avg_token_per_second" field.
-	LastPeriodAvgTokenPerSecond int `json:"last_period_avg_token_per_second,omitempty"`
-	// LastPeriodAvgStreamFirstTokenLatenchMs holds the value of the "last_period_avg_stream_first_token_latench_ms" field.
-	LastPeriodAvgStreamFirstTokenLatenchMs int `json:"last_period_avg_stream_first_token_latench_ms,omitempty"`
-	// LastPeriodAvgStreamTokenPerSecond holds the value of the "last_period_avg_stream_token_per_second" field.
-	LastPeriodAvgStreamTokenPerSecond float64 `json:"last_period_avg_stream_token_per_second,omitempty"`
+	// SuccessRate holds the value of the "success_rate" field.
+	SuccessRate int `json:"success_rate,omitempty"`
+	// AvgLatencyMs holds the value of the "avg_latency_ms" field.
+	AvgLatencyMs int `json:"avg_latency_ms,omitempty"`
+	// AvgTokenPerSecond holds the value of the "avg_token_per_second" field.
+	AvgTokenPerSecond int `json:"avg_token_per_second,omitempty"`
+	// AvgStreamFirstTokenLatencyMs holds the value of the "avg_stream_first_token_latency_ms" field.
+	AvgStreamFirstTokenLatencyMs int `json:"avg_stream_first_token_latency_ms,omitempty"`
+	// AvgStreamTokenPerSecond holds the value of the "avg_stream_token_per_second" field.
+	AvgStreamTokenPerSecond float64 `json:"avg_stream_token_per_second,omitempty"`
 	// LastSuccessAt holds the value of the "last_success_at" field.
 	LastSuccessAt *time.Time `json:"last_success_at,omitempty"`
 	// LastFailureAt holds the value of the "last_failure_at" field.
 	LastFailureAt *time.Time `json:"last_failure_at,omitempty"`
-	// LastAttemptAt holds the value of the "last_attempt_at" field.
-	LastAttemptAt *time.Time `json:"last_attempt_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChannelPerformanceQuery when eager-loading is set.
 	Edges        ChannelPerformanceEdges `json:"edges"`
@@ -101,13 +73,11 @@ func (*ChannelPerformance) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case channelperformance.FieldTotalAvgStreamTokenPerSecond, channelperformance.FieldLastPeriodAvgStreamTokenPerSecond:
+		case channelperformance.FieldAvgStreamTokenPerSecond:
 			values[i] = new(sql.NullFloat64)
-		case channelperformance.FieldID, channelperformance.FieldDeletedAt, channelperformance.FieldChannelID, channelperformance.FieldTotalCount, channelperformance.FieldTotalSuccessCount, channelperformance.FieldTotalTokenCount, channelperformance.FieldTotalAvgLatencyMs, channelperformance.FieldTotalAvgTokenPerSecond, channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs, channelperformance.FieldLastPeriodSeconds, channelperformance.FieldLastPeriodCount, channelperformance.FieldLastPeriodSuccessCount, channelperformance.FieldLastPeriodTokenCount, channelperformance.FieldLastPeriodAvgLatencyMs, channelperformance.FieldLastPeriodAvgTokenPerSecond, channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs:
+		case channelperformance.FieldID, channelperformance.FieldDeletedAt, channelperformance.FieldChannelID, channelperformance.FieldSuccessRate, channelperformance.FieldAvgLatencyMs, channelperformance.FieldAvgTokenPerSecond, channelperformance.FieldAvgStreamFirstTokenLatencyMs:
 			values[i] = new(sql.NullInt64)
-		case channelperformance.FieldHealthStatus:
-			values[i] = new(sql.NullString)
-		case channelperformance.FieldCreatedAt, channelperformance.FieldUpdatedAt, channelperformance.FieldLastPeriodStart, channelperformance.FieldLastPeriodEnd, channelperformance.FieldLastSuccessAt, channelperformance.FieldLastFailureAt, channelperformance.FieldLastAttemptAt:
+		case channelperformance.FieldCreatedAt, channelperformance.FieldUpdatedAt, channelperformance.FieldLastSuccessAt, channelperformance.FieldLastFailureAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -154,113 +124,35 @@ func (_m *ChannelPerformance) assignValues(columns []string, values []any) error
 			} else if value.Valid {
 				_m.ChannelID = int(value.Int64)
 			}
-		case channelperformance.FieldHealthStatus:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field health_status", values[i])
-			} else if value.Valid {
-				_m.HealthStatus = channelperformance.HealthStatus(value.String)
-			}
-		case channelperformance.FieldTotalCount:
+		case channelperformance.FieldSuccessRate:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field total_count", values[i])
+				return fmt.Errorf("unexpected type %T for field success_rate", values[i])
 			} else if value.Valid {
-				_m.TotalCount = int(value.Int64)
+				_m.SuccessRate = int(value.Int64)
 			}
-		case channelperformance.FieldTotalSuccessCount:
+		case channelperformance.FieldAvgLatencyMs:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field total_success_count", values[i])
+				return fmt.Errorf("unexpected type %T for field avg_latency_ms", values[i])
 			} else if value.Valid {
-				_m.TotalSuccessCount = int(value.Int64)
+				_m.AvgLatencyMs = int(value.Int64)
 			}
-		case channelperformance.FieldTotalTokenCount:
+		case channelperformance.FieldAvgTokenPerSecond:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field total_token_count", values[i])
+				return fmt.Errorf("unexpected type %T for field avg_token_per_second", values[i])
 			} else if value.Valid {
-				_m.TotalTokenCount = int(value.Int64)
+				_m.AvgTokenPerSecond = int(value.Int64)
 			}
-		case channelperformance.FieldTotalAvgLatencyMs:
+		case channelperformance.FieldAvgStreamFirstTokenLatencyMs:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field total_avg_latency_ms", values[i])
+				return fmt.Errorf("unexpected type %T for field avg_stream_first_token_latency_ms", values[i])
 			} else if value.Valid {
-				_m.TotalAvgLatencyMs = int(value.Int64)
+				_m.AvgStreamFirstTokenLatencyMs = int(value.Int64)
 			}
-		case channelperformance.FieldTotalAvgTokenPerSecond:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field total_avg_token_per_second", values[i])
-			} else if value.Valid {
-				_m.TotalAvgTokenPerSecond = int(value.Int64)
-			}
-		case channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field total_avg_stream_first_token_latench_ms", values[i])
-			} else if value.Valid {
-				_m.TotalAvgStreamFirstTokenLatenchMs = int(value.Int64)
-			}
-		case channelperformance.FieldTotalAvgStreamTokenPerSecond:
+		case channelperformance.FieldAvgStreamTokenPerSecond:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field total_avg_stream_token_per_second", values[i])
+				return fmt.Errorf("unexpected type %T for field avg_stream_token_per_second", values[i])
 			} else if value.Valid {
-				_m.TotalAvgStreamTokenPerSecond = value.Float64
-			}
-		case channelperformance.FieldLastPeriodStart:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field last_period_start", values[i])
-			} else if value.Valid {
-				_m.LastPeriodStart = value.Time
-			}
-		case channelperformance.FieldLastPeriodEnd:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field last_period_end", values[i])
-			} else if value.Valid {
-				_m.LastPeriodEnd = value.Time
-			}
-		case channelperformance.FieldLastPeriodSeconds:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field last_period_seconds", values[i])
-			} else if value.Valid {
-				_m.LastPeriodSeconds = int(value.Int64)
-			}
-		case channelperformance.FieldLastPeriodCount:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field last_period_count", values[i])
-			} else if value.Valid {
-				_m.LastPeriodCount = int(value.Int64)
-			}
-		case channelperformance.FieldLastPeriodSuccessCount:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field last_period_success_count", values[i])
-			} else if value.Valid {
-				_m.LastPeriodSuccessCount = int(value.Int64)
-			}
-		case channelperformance.FieldLastPeriodTokenCount:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field last_period_token_count", values[i])
-			} else if value.Valid {
-				_m.LastPeriodTokenCount = int(value.Int64)
-			}
-		case channelperformance.FieldLastPeriodAvgLatencyMs:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field last_period_avg_latency_ms", values[i])
-			} else if value.Valid {
-				_m.LastPeriodAvgLatencyMs = int(value.Int64)
-			}
-		case channelperformance.FieldLastPeriodAvgTokenPerSecond:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field last_period_avg_token_per_second", values[i])
-			} else if value.Valid {
-				_m.LastPeriodAvgTokenPerSecond = int(value.Int64)
-			}
-		case channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field last_period_avg_stream_first_token_latench_ms", values[i])
-			} else if value.Valid {
-				_m.LastPeriodAvgStreamFirstTokenLatenchMs = int(value.Int64)
-			}
-		case channelperformance.FieldLastPeriodAvgStreamTokenPerSecond:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field last_period_avg_stream_token_per_second", values[i])
-			} else if value.Valid {
-				_m.LastPeriodAvgStreamTokenPerSecond = value.Float64
+				_m.AvgStreamTokenPerSecond = value.Float64
 			}
 		case channelperformance.FieldLastSuccessAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -275,13 +167,6 @@ func (_m *ChannelPerformance) assignValues(columns []string, values []any) error
 			} else if value.Valid {
 				_m.LastFailureAt = new(time.Time)
 				*_m.LastFailureAt = value.Time
-			}
-		case channelperformance.FieldLastAttemptAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field last_attempt_at", values[i])
-			} else if value.Valid {
-				_m.LastAttemptAt = new(time.Time)
-				*_m.LastAttemptAt = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -336,59 +221,20 @@ func (_m *ChannelPerformance) String() string {
 	builder.WriteString("channel_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ChannelID))
 	builder.WriteString(", ")
-	builder.WriteString("health_status=")
-	builder.WriteString(fmt.Sprintf("%v", _m.HealthStatus))
+	builder.WriteString("success_rate=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SuccessRate))
 	builder.WriteString(", ")
-	builder.WriteString("total_count=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TotalCount))
+	builder.WriteString("avg_latency_ms=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AvgLatencyMs))
 	builder.WriteString(", ")
-	builder.WriteString("total_success_count=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TotalSuccessCount))
+	builder.WriteString("avg_token_per_second=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AvgTokenPerSecond))
 	builder.WriteString(", ")
-	builder.WriteString("total_token_count=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TotalTokenCount))
+	builder.WriteString("avg_stream_first_token_latency_ms=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AvgStreamFirstTokenLatencyMs))
 	builder.WriteString(", ")
-	builder.WriteString("total_avg_latency_ms=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TotalAvgLatencyMs))
-	builder.WriteString(", ")
-	builder.WriteString("total_avg_token_per_second=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TotalAvgTokenPerSecond))
-	builder.WriteString(", ")
-	builder.WriteString("total_avg_stream_first_token_latench_ms=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TotalAvgStreamFirstTokenLatenchMs))
-	builder.WriteString(", ")
-	builder.WriteString("total_avg_stream_token_per_second=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TotalAvgStreamTokenPerSecond))
-	builder.WriteString(", ")
-	builder.WriteString("last_period_start=")
-	builder.WriteString(_m.LastPeriodStart.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("last_period_end=")
-	builder.WriteString(_m.LastPeriodEnd.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("last_period_seconds=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LastPeriodSeconds))
-	builder.WriteString(", ")
-	builder.WriteString("last_period_count=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LastPeriodCount))
-	builder.WriteString(", ")
-	builder.WriteString("last_period_success_count=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LastPeriodSuccessCount))
-	builder.WriteString(", ")
-	builder.WriteString("last_period_token_count=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LastPeriodTokenCount))
-	builder.WriteString(", ")
-	builder.WriteString("last_period_avg_latency_ms=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LastPeriodAvgLatencyMs))
-	builder.WriteString(", ")
-	builder.WriteString("last_period_avg_token_per_second=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LastPeriodAvgTokenPerSecond))
-	builder.WriteString(", ")
-	builder.WriteString("last_period_avg_stream_first_token_latench_ms=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LastPeriodAvgStreamFirstTokenLatenchMs))
-	builder.WriteString(", ")
-	builder.WriteString("last_period_avg_stream_token_per_second=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LastPeriodAvgStreamTokenPerSecond))
+	builder.WriteString("avg_stream_token_per_second=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AvgStreamTokenPerSecond))
 	builder.WriteString(", ")
 	if v := _m.LastSuccessAt; v != nil {
 		builder.WriteString("last_success_at=")
@@ -397,11 +243,6 @@ func (_m *ChannelPerformance) String() string {
 	builder.WriteString(", ")
 	if v := _m.LastFailureAt; v != nil {
 		builder.WriteString("last_failure_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
-	builder.WriteString(", ")
-	if v := _m.LastAttemptAt; v != nil {
-		builder.WriteString("last_attempt_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteByte(')')

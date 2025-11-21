@@ -153,6 +153,20 @@ func (_c *ChannelCreate) SetNillableOrderingWeight(v *int) *ChannelCreate {
 	return _c
 }
 
+// SetErrorMessage sets the "error_message" field.
+func (_c *ChannelCreate) SetErrorMessage(v string) *ChannelCreate {
+	_c.mutation.SetErrorMessage(v)
+	return _c
+}
+
+// SetNillableErrorMessage sets the "error_message" field if the given value is not nil.
+func (_c *ChannelCreate) SetNillableErrorMessage(v *string) *ChannelCreate {
+	if v != nil {
+		_c.SetErrorMessage(*v)
+	}
+	return _c
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_c *ChannelCreate) AddRequestIDs(ids ...int) *ChannelCreate {
 	_c.mutation.AddRequestIDs(ids...)
@@ -415,6 +429,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.OrderingWeight(); ok {
 		_spec.SetField(channel.FieldOrderingWeight, field.TypeInt, value)
 		_node.OrderingWeight = value
+	}
+	if value, ok := _c.mutation.ErrorMessage(); ok {
+		_spec.SetField(channel.FieldErrorMessage, field.TypeString, value)
+		_node.ErrorMessage = &value
 	}
 	if nodes := _c.mutation.RequestsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -694,6 +712,24 @@ func (u *ChannelUpsert) AddOrderingWeight(v int) *ChannelUpsert {
 	return u
 }
 
+// SetErrorMessage sets the "error_message" field.
+func (u *ChannelUpsert) SetErrorMessage(v string) *ChannelUpsert {
+	u.Set(channel.FieldErrorMessage, v)
+	return u
+}
+
+// UpdateErrorMessage sets the "error_message" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateErrorMessage() *ChannelUpsert {
+	u.SetExcluded(channel.FieldErrorMessage)
+	return u
+}
+
+// ClearErrorMessage clears the value of the "error_message" field.
+func (u *ChannelUpsert) ClearErrorMessage() *ChannelUpsert {
+	u.SetNull(channel.FieldErrorMessage)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -928,6 +964,27 @@ func (u *ChannelUpsertOne) AddOrderingWeight(v int) *ChannelUpsertOne {
 func (u *ChannelUpsertOne) UpdateOrderingWeight() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateOrderingWeight()
+	})
+}
+
+// SetErrorMessage sets the "error_message" field.
+func (u *ChannelUpsertOne) SetErrorMessage(v string) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetErrorMessage(v)
+	})
+}
+
+// UpdateErrorMessage sets the "error_message" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateErrorMessage() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateErrorMessage()
+	})
+}
+
+// ClearErrorMessage clears the value of the "error_message" field.
+func (u *ChannelUpsertOne) ClearErrorMessage() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearErrorMessage()
 	})
 }
 
@@ -1331,6 +1388,27 @@ func (u *ChannelUpsertBulk) AddOrderingWeight(v int) *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) UpdateOrderingWeight() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateOrderingWeight()
+	})
+}
+
+// SetErrorMessage sets the "error_message" field.
+func (u *ChannelUpsertBulk) SetErrorMessage(v string) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetErrorMessage(v)
+	})
+}
+
+// UpdateErrorMessage sets the "error_message" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateErrorMessage() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateErrorMessage()
+	})
+}
+
+// ClearErrorMessage clears the value of the "error_message" field.
+func (u *ChannelUpsertBulk) ClearErrorMessage() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearErrorMessage()
 	})
 }
 

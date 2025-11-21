@@ -71,238 +71,72 @@ func (_c *ChannelPerformanceCreate) SetChannelID(v int) *ChannelPerformanceCreat
 	return _c
 }
 
-// SetHealthStatus sets the "health_status" field.
-func (_c *ChannelPerformanceCreate) SetHealthStatus(v channelperformance.HealthStatus) *ChannelPerformanceCreate {
-	_c.mutation.SetHealthStatus(v)
+// SetSuccessRate sets the "success_rate" field.
+func (_c *ChannelPerformanceCreate) SetSuccessRate(v int) *ChannelPerformanceCreate {
+	_c.mutation.SetSuccessRate(v)
 	return _c
 }
 
-// SetNillableHealthStatus sets the "health_status" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableHealthStatus(v *channelperformance.HealthStatus) *ChannelPerformanceCreate {
+// SetNillableSuccessRate sets the "success_rate" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableSuccessRate(v *int) *ChannelPerformanceCreate {
 	if v != nil {
-		_c.SetHealthStatus(*v)
+		_c.SetSuccessRate(*v)
 	}
 	return _c
 }
 
-// SetTotalCount sets the "total_count" field.
-func (_c *ChannelPerformanceCreate) SetTotalCount(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetTotalCount(v)
+// SetAvgLatencyMs sets the "avg_latency_ms" field.
+func (_c *ChannelPerformanceCreate) SetAvgLatencyMs(v int) *ChannelPerformanceCreate {
+	_c.mutation.SetAvgLatencyMs(v)
 	return _c
 }
 
-// SetNillableTotalCount sets the "total_count" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableTotalCount(v *int) *ChannelPerformanceCreate {
+// SetNillableAvgLatencyMs sets the "avg_latency_ms" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableAvgLatencyMs(v *int) *ChannelPerformanceCreate {
 	if v != nil {
-		_c.SetTotalCount(*v)
+		_c.SetAvgLatencyMs(*v)
 	}
 	return _c
 }
 
-// SetTotalSuccessCount sets the "total_success_count" field.
-func (_c *ChannelPerformanceCreate) SetTotalSuccessCount(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetTotalSuccessCount(v)
+// SetAvgTokenPerSecond sets the "avg_token_per_second" field.
+func (_c *ChannelPerformanceCreate) SetAvgTokenPerSecond(v int) *ChannelPerformanceCreate {
+	_c.mutation.SetAvgTokenPerSecond(v)
 	return _c
 }
 
-// SetNillableTotalSuccessCount sets the "total_success_count" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableTotalSuccessCount(v *int) *ChannelPerformanceCreate {
+// SetNillableAvgTokenPerSecond sets the "avg_token_per_second" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableAvgTokenPerSecond(v *int) *ChannelPerformanceCreate {
 	if v != nil {
-		_c.SetTotalSuccessCount(*v)
+		_c.SetAvgTokenPerSecond(*v)
 	}
 	return _c
 }
 
-// SetTotalTokenCount sets the "total_token_count" field.
-func (_c *ChannelPerformanceCreate) SetTotalTokenCount(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetTotalTokenCount(v)
+// SetAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field.
+func (_c *ChannelPerformanceCreate) SetAvgStreamFirstTokenLatencyMs(v int) *ChannelPerformanceCreate {
+	_c.mutation.SetAvgStreamFirstTokenLatencyMs(v)
 	return _c
 }
 
-// SetNillableTotalTokenCount sets the "total_token_count" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableTotalTokenCount(v *int) *ChannelPerformanceCreate {
+// SetNillableAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableAvgStreamFirstTokenLatencyMs(v *int) *ChannelPerformanceCreate {
 	if v != nil {
-		_c.SetTotalTokenCount(*v)
+		_c.SetAvgStreamFirstTokenLatencyMs(*v)
 	}
 	return _c
 }
 
-// SetTotalAvgLatencyMs sets the "total_avg_latency_ms" field.
-func (_c *ChannelPerformanceCreate) SetTotalAvgLatencyMs(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetTotalAvgLatencyMs(v)
+// SetAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field.
+func (_c *ChannelPerformanceCreate) SetAvgStreamTokenPerSecond(v float64) *ChannelPerformanceCreate {
+	_c.mutation.SetAvgStreamTokenPerSecond(v)
 	return _c
 }
 
-// SetNillableTotalAvgLatencyMs sets the "total_avg_latency_ms" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableTotalAvgLatencyMs(v *int) *ChannelPerformanceCreate {
+// SetNillableAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableAvgStreamTokenPerSecond(v *float64) *ChannelPerformanceCreate {
 	if v != nil {
-		_c.SetTotalAvgLatencyMs(*v)
-	}
-	return _c
-}
-
-// SetTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field.
-func (_c *ChannelPerformanceCreate) SetTotalAvgTokenPerSecond(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetTotalAvgTokenPerSecond(v)
-	return _c
-}
-
-// SetNillableTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableTotalAvgTokenPerSecond(v *int) *ChannelPerformanceCreate {
-	if v != nil {
-		_c.SetTotalAvgTokenPerSecond(*v)
-	}
-	return _c
-}
-
-// SetTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field.
-func (_c *ChannelPerformanceCreate) SetTotalAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetTotalAvgStreamFirstTokenLatenchMs(v)
-	return _c
-}
-
-// SetNillableTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableTotalAvgStreamFirstTokenLatenchMs(v *int) *ChannelPerformanceCreate {
-	if v != nil {
-		_c.SetTotalAvgStreamFirstTokenLatenchMs(*v)
-	}
-	return _c
-}
-
-// SetTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field.
-func (_c *ChannelPerformanceCreate) SetTotalAvgStreamTokenPerSecond(v float64) *ChannelPerformanceCreate {
-	_c.mutation.SetTotalAvgStreamTokenPerSecond(v)
-	return _c
-}
-
-// SetNillableTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableTotalAvgStreamTokenPerSecond(v *float64) *ChannelPerformanceCreate {
-	if v != nil {
-		_c.SetTotalAvgStreamTokenPerSecond(*v)
-	}
-	return _c
-}
-
-// SetLastPeriodStart sets the "last_period_start" field.
-func (_c *ChannelPerformanceCreate) SetLastPeriodStart(v time.Time) *ChannelPerformanceCreate {
-	_c.mutation.SetLastPeriodStart(v)
-	return _c
-}
-
-// SetLastPeriodEnd sets the "last_period_end" field.
-func (_c *ChannelPerformanceCreate) SetLastPeriodEnd(v time.Time) *ChannelPerformanceCreate {
-	_c.mutation.SetLastPeriodEnd(v)
-	return _c
-}
-
-// SetLastPeriodSeconds sets the "last_period_seconds" field.
-func (_c *ChannelPerformanceCreate) SetLastPeriodSeconds(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetLastPeriodSeconds(v)
-	return _c
-}
-
-// SetNillableLastPeriodSeconds sets the "last_period_seconds" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableLastPeriodSeconds(v *int) *ChannelPerformanceCreate {
-	if v != nil {
-		_c.SetLastPeriodSeconds(*v)
-	}
-	return _c
-}
-
-// SetLastPeriodCount sets the "last_period_count" field.
-func (_c *ChannelPerformanceCreate) SetLastPeriodCount(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetLastPeriodCount(v)
-	return _c
-}
-
-// SetNillableLastPeriodCount sets the "last_period_count" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableLastPeriodCount(v *int) *ChannelPerformanceCreate {
-	if v != nil {
-		_c.SetLastPeriodCount(*v)
-	}
-	return _c
-}
-
-// SetLastPeriodSuccessCount sets the "last_period_success_count" field.
-func (_c *ChannelPerformanceCreate) SetLastPeriodSuccessCount(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetLastPeriodSuccessCount(v)
-	return _c
-}
-
-// SetNillableLastPeriodSuccessCount sets the "last_period_success_count" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableLastPeriodSuccessCount(v *int) *ChannelPerformanceCreate {
-	if v != nil {
-		_c.SetLastPeriodSuccessCount(*v)
-	}
-	return _c
-}
-
-// SetLastPeriodTokenCount sets the "last_period_token_count" field.
-func (_c *ChannelPerformanceCreate) SetLastPeriodTokenCount(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetLastPeriodTokenCount(v)
-	return _c
-}
-
-// SetNillableLastPeriodTokenCount sets the "last_period_token_count" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableLastPeriodTokenCount(v *int) *ChannelPerformanceCreate {
-	if v != nil {
-		_c.SetLastPeriodTokenCount(*v)
-	}
-	return _c
-}
-
-// SetLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field.
-func (_c *ChannelPerformanceCreate) SetLastPeriodAvgLatencyMs(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetLastPeriodAvgLatencyMs(v)
-	return _c
-}
-
-// SetNillableLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableLastPeriodAvgLatencyMs(v *int) *ChannelPerformanceCreate {
-	if v != nil {
-		_c.SetLastPeriodAvgLatencyMs(*v)
-	}
-	return _c
-}
-
-// SetLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field.
-func (_c *ChannelPerformanceCreate) SetLastPeriodAvgTokenPerSecond(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetLastPeriodAvgTokenPerSecond(v)
-	return _c
-}
-
-// SetNillableLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableLastPeriodAvgTokenPerSecond(v *int) *ChannelPerformanceCreate {
-	if v != nil {
-		_c.SetLastPeriodAvgTokenPerSecond(*v)
-	}
-	return _c
-}
-
-// SetLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field.
-func (_c *ChannelPerformanceCreate) SetLastPeriodAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceCreate {
-	_c.mutation.SetLastPeriodAvgStreamFirstTokenLatenchMs(v)
-	return _c
-}
-
-// SetNillableLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableLastPeriodAvgStreamFirstTokenLatenchMs(v *int) *ChannelPerformanceCreate {
-	if v != nil {
-		_c.SetLastPeriodAvgStreamFirstTokenLatenchMs(*v)
-	}
-	return _c
-}
-
-// SetLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field.
-func (_c *ChannelPerformanceCreate) SetLastPeriodAvgStreamTokenPerSecond(v float64) *ChannelPerformanceCreate {
-	_c.mutation.SetLastPeriodAvgStreamTokenPerSecond(v)
-	return _c
-}
-
-// SetNillableLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field if the given value is not nil.
-func (_c *ChannelPerformanceCreate) SetNillableLastPeriodAvgStreamTokenPerSecond(v *float64) *ChannelPerformanceCreate {
-	if v != nil {
-		_c.SetLastPeriodAvgStreamTokenPerSecond(*v)
+		_c.SetAvgStreamTokenPerSecond(*v)
 	}
 	return _c
 }
@@ -313,15 +147,25 @@ func (_c *ChannelPerformanceCreate) SetLastSuccessAt(v time.Time) *ChannelPerfor
 	return _c
 }
 
+// SetNillableLastSuccessAt sets the "last_success_at" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableLastSuccessAt(v *time.Time) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetLastSuccessAt(*v)
+	}
+	return _c
+}
+
 // SetLastFailureAt sets the "last_failure_at" field.
 func (_c *ChannelPerformanceCreate) SetLastFailureAt(v time.Time) *ChannelPerformanceCreate {
 	_c.mutation.SetLastFailureAt(v)
 	return _c
 }
 
-// SetLastAttemptAt sets the "last_attempt_at" field.
-func (_c *ChannelPerformanceCreate) SetLastAttemptAt(v time.Time) *ChannelPerformanceCreate {
-	_c.mutation.SetLastAttemptAt(v)
+// SetNillableLastFailureAt sets the "last_failure_at" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableLastFailureAt(v *time.Time) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetLastFailureAt(*v)
+	}
 	return _c
 }
 
@@ -385,69 +229,25 @@ func (_c *ChannelPerformanceCreate) defaults() error {
 		v := channelperformance.DefaultDeletedAt
 		_c.mutation.SetDeletedAt(v)
 	}
-	if _, ok := _c.mutation.HealthStatus(); !ok {
-		v := channelperformance.DefaultHealthStatus
-		_c.mutation.SetHealthStatus(v)
+	if _, ok := _c.mutation.SuccessRate(); !ok {
+		v := channelperformance.DefaultSuccessRate
+		_c.mutation.SetSuccessRate(v)
 	}
-	if _, ok := _c.mutation.TotalCount(); !ok {
-		v := channelperformance.DefaultTotalCount
-		_c.mutation.SetTotalCount(v)
+	if _, ok := _c.mutation.AvgLatencyMs(); !ok {
+		v := channelperformance.DefaultAvgLatencyMs
+		_c.mutation.SetAvgLatencyMs(v)
 	}
-	if _, ok := _c.mutation.TotalSuccessCount(); !ok {
-		v := channelperformance.DefaultTotalSuccessCount
-		_c.mutation.SetTotalSuccessCount(v)
+	if _, ok := _c.mutation.AvgTokenPerSecond(); !ok {
+		v := channelperformance.DefaultAvgTokenPerSecond
+		_c.mutation.SetAvgTokenPerSecond(v)
 	}
-	if _, ok := _c.mutation.TotalTokenCount(); !ok {
-		v := channelperformance.DefaultTotalTokenCount
-		_c.mutation.SetTotalTokenCount(v)
+	if _, ok := _c.mutation.AvgStreamFirstTokenLatencyMs(); !ok {
+		v := channelperformance.DefaultAvgStreamFirstTokenLatencyMs
+		_c.mutation.SetAvgStreamFirstTokenLatencyMs(v)
 	}
-	if _, ok := _c.mutation.TotalAvgLatencyMs(); !ok {
-		v := channelperformance.DefaultTotalAvgLatencyMs
-		_c.mutation.SetTotalAvgLatencyMs(v)
-	}
-	if _, ok := _c.mutation.TotalAvgTokenPerSecond(); !ok {
-		v := channelperformance.DefaultTotalAvgTokenPerSecond
-		_c.mutation.SetTotalAvgTokenPerSecond(v)
-	}
-	if _, ok := _c.mutation.TotalAvgStreamFirstTokenLatenchMs(); !ok {
-		v := channelperformance.DefaultTotalAvgStreamFirstTokenLatenchMs
-		_c.mutation.SetTotalAvgStreamFirstTokenLatenchMs(v)
-	}
-	if _, ok := _c.mutation.TotalAvgStreamTokenPerSecond(); !ok {
-		v := channelperformance.DefaultTotalAvgStreamTokenPerSecond
-		_c.mutation.SetTotalAvgStreamTokenPerSecond(v)
-	}
-	if _, ok := _c.mutation.LastPeriodSeconds(); !ok {
-		v := channelperformance.DefaultLastPeriodSeconds
-		_c.mutation.SetLastPeriodSeconds(v)
-	}
-	if _, ok := _c.mutation.LastPeriodCount(); !ok {
-		v := channelperformance.DefaultLastPeriodCount
-		_c.mutation.SetLastPeriodCount(v)
-	}
-	if _, ok := _c.mutation.LastPeriodSuccessCount(); !ok {
-		v := channelperformance.DefaultLastPeriodSuccessCount
-		_c.mutation.SetLastPeriodSuccessCount(v)
-	}
-	if _, ok := _c.mutation.LastPeriodTokenCount(); !ok {
-		v := channelperformance.DefaultLastPeriodTokenCount
-		_c.mutation.SetLastPeriodTokenCount(v)
-	}
-	if _, ok := _c.mutation.LastPeriodAvgLatencyMs(); !ok {
-		v := channelperformance.DefaultLastPeriodAvgLatencyMs
-		_c.mutation.SetLastPeriodAvgLatencyMs(v)
-	}
-	if _, ok := _c.mutation.LastPeriodAvgTokenPerSecond(); !ok {
-		v := channelperformance.DefaultLastPeriodAvgTokenPerSecond
-		_c.mutation.SetLastPeriodAvgTokenPerSecond(v)
-	}
-	if _, ok := _c.mutation.LastPeriodAvgStreamFirstTokenLatenchMs(); !ok {
-		v := channelperformance.DefaultLastPeriodAvgStreamFirstTokenLatenchMs
-		_c.mutation.SetLastPeriodAvgStreamFirstTokenLatenchMs(v)
-	}
-	if _, ok := _c.mutation.LastPeriodAvgStreamTokenPerSecond(); !ok {
-		v := channelperformance.DefaultLastPeriodAvgStreamTokenPerSecond
-		_c.mutation.SetLastPeriodAvgStreamTokenPerSecond(v)
+	if _, ok := _c.mutation.AvgStreamTokenPerSecond(); !ok {
+		v := channelperformance.DefaultAvgStreamTokenPerSecond
+		_c.mutation.SetAvgStreamTokenPerSecond(v)
 	}
 	return nil
 }
@@ -466,73 +266,20 @@ func (_c *ChannelPerformanceCreate) check() error {
 	if _, ok := _c.mutation.ChannelID(); !ok {
 		return &ValidationError{Name: "channel_id", err: errors.New(`ent: missing required field "ChannelPerformance.channel_id"`)}
 	}
-	if _, ok := _c.mutation.HealthStatus(); !ok {
-		return &ValidationError{Name: "health_status", err: errors.New(`ent: missing required field "ChannelPerformance.health_status"`)}
+	if _, ok := _c.mutation.SuccessRate(); !ok {
+		return &ValidationError{Name: "success_rate", err: errors.New(`ent: missing required field "ChannelPerformance.success_rate"`)}
 	}
-	if v, ok := _c.mutation.HealthStatus(); ok {
-		if err := channelperformance.HealthStatusValidator(v); err != nil {
-			return &ValidationError{Name: "health_status", err: fmt.Errorf(`ent: validator failed for field "ChannelPerformance.health_status": %w`, err)}
-		}
+	if _, ok := _c.mutation.AvgLatencyMs(); !ok {
+		return &ValidationError{Name: "avg_latency_ms", err: errors.New(`ent: missing required field "ChannelPerformance.avg_latency_ms"`)}
 	}
-	if _, ok := _c.mutation.TotalCount(); !ok {
-		return &ValidationError{Name: "total_count", err: errors.New(`ent: missing required field "ChannelPerformance.total_count"`)}
+	if _, ok := _c.mutation.AvgTokenPerSecond(); !ok {
+		return &ValidationError{Name: "avg_token_per_second", err: errors.New(`ent: missing required field "ChannelPerformance.avg_token_per_second"`)}
 	}
-	if _, ok := _c.mutation.TotalSuccessCount(); !ok {
-		return &ValidationError{Name: "total_success_count", err: errors.New(`ent: missing required field "ChannelPerformance.total_success_count"`)}
+	if _, ok := _c.mutation.AvgStreamFirstTokenLatencyMs(); !ok {
+		return &ValidationError{Name: "avg_stream_first_token_latency_ms", err: errors.New(`ent: missing required field "ChannelPerformance.avg_stream_first_token_latency_ms"`)}
 	}
-	if _, ok := _c.mutation.TotalTokenCount(); !ok {
-		return &ValidationError{Name: "total_token_count", err: errors.New(`ent: missing required field "ChannelPerformance.total_token_count"`)}
-	}
-	if _, ok := _c.mutation.TotalAvgLatencyMs(); !ok {
-		return &ValidationError{Name: "total_avg_latency_ms", err: errors.New(`ent: missing required field "ChannelPerformance.total_avg_latency_ms"`)}
-	}
-	if _, ok := _c.mutation.TotalAvgTokenPerSecond(); !ok {
-		return &ValidationError{Name: "total_avg_token_per_second", err: errors.New(`ent: missing required field "ChannelPerformance.total_avg_token_per_second"`)}
-	}
-	if _, ok := _c.mutation.TotalAvgStreamFirstTokenLatenchMs(); !ok {
-		return &ValidationError{Name: "total_avg_stream_first_token_latench_ms", err: errors.New(`ent: missing required field "ChannelPerformance.total_avg_stream_first_token_latench_ms"`)}
-	}
-	if _, ok := _c.mutation.TotalAvgStreamTokenPerSecond(); !ok {
-		return &ValidationError{Name: "total_avg_stream_token_per_second", err: errors.New(`ent: missing required field "ChannelPerformance.total_avg_stream_token_per_second"`)}
-	}
-	if _, ok := _c.mutation.LastPeriodStart(); !ok {
-		return &ValidationError{Name: "last_period_start", err: errors.New(`ent: missing required field "ChannelPerformance.last_period_start"`)}
-	}
-	if _, ok := _c.mutation.LastPeriodEnd(); !ok {
-		return &ValidationError{Name: "last_period_end", err: errors.New(`ent: missing required field "ChannelPerformance.last_period_end"`)}
-	}
-	if _, ok := _c.mutation.LastPeriodSeconds(); !ok {
-		return &ValidationError{Name: "last_period_seconds", err: errors.New(`ent: missing required field "ChannelPerformance.last_period_seconds"`)}
-	}
-	if _, ok := _c.mutation.LastPeriodCount(); !ok {
-		return &ValidationError{Name: "last_period_count", err: errors.New(`ent: missing required field "ChannelPerformance.last_period_count"`)}
-	}
-	if _, ok := _c.mutation.LastPeriodSuccessCount(); !ok {
-		return &ValidationError{Name: "last_period_success_count", err: errors.New(`ent: missing required field "ChannelPerformance.last_period_success_count"`)}
-	}
-	if _, ok := _c.mutation.LastPeriodTokenCount(); !ok {
-		return &ValidationError{Name: "last_period_token_count", err: errors.New(`ent: missing required field "ChannelPerformance.last_period_token_count"`)}
-	}
-	if _, ok := _c.mutation.LastPeriodAvgLatencyMs(); !ok {
-		return &ValidationError{Name: "last_period_avg_latency_ms", err: errors.New(`ent: missing required field "ChannelPerformance.last_period_avg_latency_ms"`)}
-	}
-	if _, ok := _c.mutation.LastPeriodAvgTokenPerSecond(); !ok {
-		return &ValidationError{Name: "last_period_avg_token_per_second", err: errors.New(`ent: missing required field "ChannelPerformance.last_period_avg_token_per_second"`)}
-	}
-	if _, ok := _c.mutation.LastPeriodAvgStreamFirstTokenLatenchMs(); !ok {
-		return &ValidationError{Name: "last_period_avg_stream_first_token_latench_ms", err: errors.New(`ent: missing required field "ChannelPerformance.last_period_avg_stream_first_token_latench_ms"`)}
-	}
-	if _, ok := _c.mutation.LastPeriodAvgStreamTokenPerSecond(); !ok {
-		return &ValidationError{Name: "last_period_avg_stream_token_per_second", err: errors.New(`ent: missing required field "ChannelPerformance.last_period_avg_stream_token_per_second"`)}
-	}
-	if _, ok := _c.mutation.LastSuccessAt(); !ok {
-		return &ValidationError{Name: "last_success_at", err: errors.New(`ent: missing required field "ChannelPerformance.last_success_at"`)}
-	}
-	if _, ok := _c.mutation.LastFailureAt(); !ok {
-		return &ValidationError{Name: "last_failure_at", err: errors.New(`ent: missing required field "ChannelPerformance.last_failure_at"`)}
-	}
-	if _, ok := _c.mutation.LastAttemptAt(); !ok {
-		return &ValidationError{Name: "last_attempt_at", err: errors.New(`ent: missing required field "ChannelPerformance.last_attempt_at"`)}
+	if _, ok := _c.mutation.AvgStreamTokenPerSecond(); !ok {
+		return &ValidationError{Name: "avg_stream_token_per_second", err: errors.New(`ent: missing required field "ChannelPerformance.avg_stream_token_per_second"`)}
 	}
 	if len(_c.mutation.ChannelIDs()) == 0 {
 		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required edge "ChannelPerformance.channel"`)}
@@ -576,77 +323,25 @@ func (_c *ChannelPerformanceCreate) createSpec() (*ChannelPerformance, *sqlgraph
 		_spec.SetField(channelperformance.FieldDeletedAt, field.TypeInt, value)
 		_node.DeletedAt = value
 	}
-	if value, ok := _c.mutation.HealthStatus(); ok {
-		_spec.SetField(channelperformance.FieldHealthStatus, field.TypeEnum, value)
-		_node.HealthStatus = value
+	if value, ok := _c.mutation.SuccessRate(); ok {
+		_spec.SetField(channelperformance.FieldSuccessRate, field.TypeInt, value)
+		_node.SuccessRate = value
 	}
-	if value, ok := _c.mutation.TotalCount(); ok {
-		_spec.SetField(channelperformance.FieldTotalCount, field.TypeInt, value)
-		_node.TotalCount = value
+	if value, ok := _c.mutation.AvgLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldAvgLatencyMs, field.TypeInt, value)
+		_node.AvgLatencyMs = value
 	}
-	if value, ok := _c.mutation.TotalSuccessCount(); ok {
-		_spec.SetField(channelperformance.FieldTotalSuccessCount, field.TypeInt, value)
-		_node.TotalSuccessCount = value
+	if value, ok := _c.mutation.AvgTokenPerSecond(); ok {
+		_spec.SetField(channelperformance.FieldAvgTokenPerSecond, field.TypeInt, value)
+		_node.AvgTokenPerSecond = value
 	}
-	if value, ok := _c.mutation.TotalTokenCount(); ok {
-		_spec.SetField(channelperformance.FieldTotalTokenCount, field.TypeInt, value)
-		_node.TotalTokenCount = value
+	if value, ok := _c.mutation.AvgStreamFirstTokenLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldAvgStreamFirstTokenLatencyMs, field.TypeInt, value)
+		_node.AvgStreamFirstTokenLatencyMs = value
 	}
-	if value, ok := _c.mutation.TotalAvgLatencyMs(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgLatencyMs, field.TypeInt, value)
-		_node.TotalAvgLatencyMs = value
-	}
-	if value, ok := _c.mutation.TotalAvgTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgTokenPerSecond, field.TypeInt, value)
-		_node.TotalAvgTokenPerSecond = value
-	}
-	if value, ok := _c.mutation.TotalAvgStreamFirstTokenLatenchMs(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs, field.TypeInt, value)
-		_node.TotalAvgStreamFirstTokenLatenchMs = value
-	}
-	if value, ok := _c.mutation.TotalAvgStreamTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldTotalAvgStreamTokenPerSecond, field.TypeFloat64, value)
-		_node.TotalAvgStreamTokenPerSecond = value
-	}
-	if value, ok := _c.mutation.LastPeriodStart(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodStart, field.TypeTime, value)
-		_node.LastPeriodStart = value
-	}
-	if value, ok := _c.mutation.LastPeriodEnd(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodEnd, field.TypeTime, value)
-		_node.LastPeriodEnd = value
-	}
-	if value, ok := _c.mutation.LastPeriodSeconds(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodSeconds, field.TypeInt, value)
-		_node.LastPeriodSeconds = value
-	}
-	if value, ok := _c.mutation.LastPeriodCount(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodCount, field.TypeInt, value)
-		_node.LastPeriodCount = value
-	}
-	if value, ok := _c.mutation.LastPeriodSuccessCount(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodSuccessCount, field.TypeInt, value)
-		_node.LastPeriodSuccessCount = value
-	}
-	if value, ok := _c.mutation.LastPeriodTokenCount(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodTokenCount, field.TypeInt, value)
-		_node.LastPeriodTokenCount = value
-	}
-	if value, ok := _c.mutation.LastPeriodAvgLatencyMs(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgLatencyMs, field.TypeInt, value)
-		_node.LastPeriodAvgLatencyMs = value
-	}
-	if value, ok := _c.mutation.LastPeriodAvgTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgTokenPerSecond, field.TypeInt, value)
-		_node.LastPeriodAvgTokenPerSecond = value
-	}
-	if value, ok := _c.mutation.LastPeriodAvgStreamFirstTokenLatenchMs(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs, field.TypeInt, value)
-		_node.LastPeriodAvgStreamFirstTokenLatenchMs = value
-	}
-	if value, ok := _c.mutation.LastPeriodAvgStreamTokenPerSecond(); ok {
-		_spec.SetField(channelperformance.FieldLastPeriodAvgStreamTokenPerSecond, field.TypeFloat64, value)
-		_node.LastPeriodAvgStreamTokenPerSecond = value
+	if value, ok := _c.mutation.AvgStreamTokenPerSecond(); ok {
+		_spec.SetField(channelperformance.FieldAvgStreamTokenPerSecond, field.TypeFloat64, value)
+		_node.AvgStreamTokenPerSecond = value
 	}
 	if value, ok := _c.mutation.LastSuccessAt(); ok {
 		_spec.SetField(channelperformance.FieldLastSuccessAt, field.TypeTime, value)
@@ -655,10 +350,6 @@ func (_c *ChannelPerformanceCreate) createSpec() (*ChannelPerformance, *sqlgraph
 	if value, ok := _c.mutation.LastFailureAt(); ok {
 		_spec.SetField(channelperformance.FieldLastFailureAt, field.TypeTime, value)
 		_node.LastFailureAt = &value
-	}
-	if value, ok := _c.mutation.LastAttemptAt(); ok {
-		_spec.SetField(channelperformance.FieldLastAttemptAt, field.TypeTime, value)
-		_node.LastAttemptAt = &value
 	}
 	if nodes := _c.mutation.ChannelIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -759,309 +450,93 @@ func (u *ChannelPerformanceUpsert) AddDeletedAt(v int) *ChannelPerformanceUpsert
 	return u
 }
 
-// SetHealthStatus sets the "health_status" field.
-func (u *ChannelPerformanceUpsert) SetHealthStatus(v channelperformance.HealthStatus) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldHealthStatus, v)
+// SetSuccessRate sets the "success_rate" field.
+func (u *ChannelPerformanceUpsert) SetSuccessRate(v int) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldSuccessRate, v)
 	return u
 }
 
-// UpdateHealthStatus sets the "health_status" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateHealthStatus() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldHealthStatus)
+// UpdateSuccessRate sets the "success_rate" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateSuccessRate() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldSuccessRate)
 	return u
 }
 
-// SetTotalCount sets the "total_count" field.
-func (u *ChannelPerformanceUpsert) SetTotalCount(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldTotalCount, v)
+// AddSuccessRate adds v to the "success_rate" field.
+func (u *ChannelPerformanceUpsert) AddSuccessRate(v int) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldSuccessRate, v)
 	return u
 }
 
-// UpdateTotalCount sets the "total_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateTotalCount() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldTotalCount)
+// SetAvgLatencyMs sets the "avg_latency_ms" field.
+func (u *ChannelPerformanceUpsert) SetAvgLatencyMs(v int) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldAvgLatencyMs, v)
 	return u
 }
 
-// AddTotalCount adds v to the "total_count" field.
-func (u *ChannelPerformanceUpsert) AddTotalCount(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldTotalCount, v)
+// UpdateAvgLatencyMs sets the "avg_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateAvgLatencyMs() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldAvgLatencyMs)
 	return u
 }
 
-// SetTotalSuccessCount sets the "total_success_count" field.
-func (u *ChannelPerformanceUpsert) SetTotalSuccessCount(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldTotalSuccessCount, v)
+// AddAvgLatencyMs adds v to the "avg_latency_ms" field.
+func (u *ChannelPerformanceUpsert) AddAvgLatencyMs(v int) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldAvgLatencyMs, v)
 	return u
 }
 
-// UpdateTotalSuccessCount sets the "total_success_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateTotalSuccessCount() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldTotalSuccessCount)
+// SetAvgTokenPerSecond sets the "avg_token_per_second" field.
+func (u *ChannelPerformanceUpsert) SetAvgTokenPerSecond(v int) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldAvgTokenPerSecond, v)
 	return u
 }
 
-// AddTotalSuccessCount adds v to the "total_success_count" field.
-func (u *ChannelPerformanceUpsert) AddTotalSuccessCount(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldTotalSuccessCount, v)
+// UpdateAvgTokenPerSecond sets the "avg_token_per_second" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateAvgTokenPerSecond() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldAvgTokenPerSecond)
 	return u
 }
 
-// SetTotalTokenCount sets the "total_token_count" field.
-func (u *ChannelPerformanceUpsert) SetTotalTokenCount(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldTotalTokenCount, v)
+// AddAvgTokenPerSecond adds v to the "avg_token_per_second" field.
+func (u *ChannelPerformanceUpsert) AddAvgTokenPerSecond(v int) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldAvgTokenPerSecond, v)
 	return u
 }
 
-// UpdateTotalTokenCount sets the "total_token_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateTotalTokenCount() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldTotalTokenCount)
+// SetAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsert) SetAvgStreamFirstTokenLatencyMs(v int) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldAvgStreamFirstTokenLatencyMs, v)
 	return u
 }
 
-// AddTotalTokenCount adds v to the "total_token_count" field.
-func (u *ChannelPerformanceUpsert) AddTotalTokenCount(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldTotalTokenCount, v)
+// UpdateAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateAvgStreamFirstTokenLatencyMs() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldAvgStreamFirstTokenLatencyMs)
 	return u
 }
 
-// SetTotalAvgLatencyMs sets the "total_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsert) SetTotalAvgLatencyMs(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldTotalAvgLatencyMs, v)
+// AddAvgStreamFirstTokenLatencyMs adds v to the "avg_stream_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsert) AddAvgStreamFirstTokenLatencyMs(v int) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldAvgStreamFirstTokenLatencyMs, v)
 	return u
 }
 
-// UpdateTotalAvgLatencyMs sets the "total_avg_latency_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateTotalAvgLatencyMs() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldTotalAvgLatencyMs)
+// SetAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field.
+func (u *ChannelPerformanceUpsert) SetAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldAvgStreamTokenPerSecond, v)
 	return u
 }
 
-// AddTotalAvgLatencyMs adds v to the "total_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsert) AddTotalAvgLatencyMs(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldTotalAvgLatencyMs, v)
+// UpdateAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateAvgStreamTokenPerSecond() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldAvgStreamTokenPerSecond)
 	return u
 }
 
-// SetTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsert) SetTotalAvgTokenPerSecond(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldTotalAvgTokenPerSecond, v)
-	return u
-}
-
-// UpdateTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateTotalAvgTokenPerSecond() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldTotalAvgTokenPerSecond)
-	return u
-}
-
-// AddTotalAvgTokenPerSecond adds v to the "total_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsert) AddTotalAvgTokenPerSecond(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldTotalAvgTokenPerSecond, v)
-	return u
-}
-
-// SetTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsert) SetTotalAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs, v)
-	return u
-}
-
-// UpdateTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateTotalAvgStreamFirstTokenLatenchMs() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs)
-	return u
-}
-
-// AddTotalAvgStreamFirstTokenLatenchMs adds v to the "total_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsert) AddTotalAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldTotalAvgStreamFirstTokenLatenchMs, v)
-	return u
-}
-
-// SetTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsert) SetTotalAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldTotalAvgStreamTokenPerSecond, v)
-	return u
-}
-
-// UpdateTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateTotalAvgStreamTokenPerSecond() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldTotalAvgStreamTokenPerSecond)
-	return u
-}
-
-// AddTotalAvgStreamTokenPerSecond adds v to the "total_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsert) AddTotalAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldTotalAvgStreamTokenPerSecond, v)
-	return u
-}
-
-// SetLastPeriodStart sets the "last_period_start" field.
-func (u *ChannelPerformanceUpsert) SetLastPeriodStart(v time.Time) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldLastPeriodStart, v)
-	return u
-}
-
-// UpdateLastPeriodStart sets the "last_period_start" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateLastPeriodStart() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldLastPeriodStart)
-	return u
-}
-
-// SetLastPeriodEnd sets the "last_period_end" field.
-func (u *ChannelPerformanceUpsert) SetLastPeriodEnd(v time.Time) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldLastPeriodEnd, v)
-	return u
-}
-
-// UpdateLastPeriodEnd sets the "last_period_end" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateLastPeriodEnd() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldLastPeriodEnd)
-	return u
-}
-
-// SetLastPeriodSeconds sets the "last_period_seconds" field.
-func (u *ChannelPerformanceUpsert) SetLastPeriodSeconds(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldLastPeriodSeconds, v)
-	return u
-}
-
-// UpdateLastPeriodSeconds sets the "last_period_seconds" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateLastPeriodSeconds() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldLastPeriodSeconds)
-	return u
-}
-
-// AddLastPeriodSeconds adds v to the "last_period_seconds" field.
-func (u *ChannelPerformanceUpsert) AddLastPeriodSeconds(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldLastPeriodSeconds, v)
-	return u
-}
-
-// SetLastPeriodCount sets the "last_period_count" field.
-func (u *ChannelPerformanceUpsert) SetLastPeriodCount(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldLastPeriodCount, v)
-	return u
-}
-
-// UpdateLastPeriodCount sets the "last_period_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateLastPeriodCount() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldLastPeriodCount)
-	return u
-}
-
-// AddLastPeriodCount adds v to the "last_period_count" field.
-func (u *ChannelPerformanceUpsert) AddLastPeriodCount(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldLastPeriodCount, v)
-	return u
-}
-
-// SetLastPeriodSuccessCount sets the "last_period_success_count" field.
-func (u *ChannelPerformanceUpsert) SetLastPeriodSuccessCount(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldLastPeriodSuccessCount, v)
-	return u
-}
-
-// UpdateLastPeriodSuccessCount sets the "last_period_success_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateLastPeriodSuccessCount() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldLastPeriodSuccessCount)
-	return u
-}
-
-// AddLastPeriodSuccessCount adds v to the "last_period_success_count" field.
-func (u *ChannelPerformanceUpsert) AddLastPeriodSuccessCount(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldLastPeriodSuccessCount, v)
-	return u
-}
-
-// SetLastPeriodTokenCount sets the "last_period_token_count" field.
-func (u *ChannelPerformanceUpsert) SetLastPeriodTokenCount(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldLastPeriodTokenCount, v)
-	return u
-}
-
-// UpdateLastPeriodTokenCount sets the "last_period_token_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateLastPeriodTokenCount() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldLastPeriodTokenCount)
-	return u
-}
-
-// AddLastPeriodTokenCount adds v to the "last_period_token_count" field.
-func (u *ChannelPerformanceUpsert) AddLastPeriodTokenCount(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldLastPeriodTokenCount, v)
-	return u
-}
-
-// SetLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsert) SetLastPeriodAvgLatencyMs(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldLastPeriodAvgLatencyMs, v)
-	return u
-}
-
-// UpdateLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateLastPeriodAvgLatencyMs() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldLastPeriodAvgLatencyMs)
-	return u
-}
-
-// AddLastPeriodAvgLatencyMs adds v to the "last_period_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsert) AddLastPeriodAvgLatencyMs(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldLastPeriodAvgLatencyMs, v)
-	return u
-}
-
-// SetLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsert) SetLastPeriodAvgTokenPerSecond(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldLastPeriodAvgTokenPerSecond, v)
-	return u
-}
-
-// UpdateLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateLastPeriodAvgTokenPerSecond() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldLastPeriodAvgTokenPerSecond)
-	return u
-}
-
-// AddLastPeriodAvgTokenPerSecond adds v to the "last_period_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsert) AddLastPeriodAvgTokenPerSecond(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldLastPeriodAvgTokenPerSecond, v)
-	return u
-}
-
-// SetLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsert) SetLastPeriodAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs, v)
-	return u
-}
-
-// UpdateLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateLastPeriodAvgStreamFirstTokenLatenchMs() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs)
-	return u
-}
-
-// AddLastPeriodAvgStreamFirstTokenLatenchMs adds v to the "last_period_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsert) AddLastPeriodAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldLastPeriodAvgStreamFirstTokenLatenchMs, v)
-	return u
-}
-
-// SetLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsert) SetLastPeriodAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldLastPeriodAvgStreamTokenPerSecond, v)
-	return u
-}
-
-// UpdateLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateLastPeriodAvgStreamTokenPerSecond() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldLastPeriodAvgStreamTokenPerSecond)
-	return u
-}
-
-// AddLastPeriodAvgStreamTokenPerSecond adds v to the "last_period_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsert) AddLastPeriodAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsert {
-	u.Add(channelperformance.FieldLastPeriodAvgStreamTokenPerSecond, v)
+// AddAvgStreamTokenPerSecond adds v to the "avg_stream_token_per_second" field.
+func (u *ChannelPerformanceUpsert) AddAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldAvgStreamTokenPerSecond, v)
 	return u
 }
 
@@ -1077,6 +552,12 @@ func (u *ChannelPerformanceUpsert) UpdateLastSuccessAt() *ChannelPerformanceUpse
 	return u
 }
 
+// ClearLastSuccessAt clears the value of the "last_success_at" field.
+func (u *ChannelPerformanceUpsert) ClearLastSuccessAt() *ChannelPerformanceUpsert {
+	u.SetNull(channelperformance.FieldLastSuccessAt)
+	return u
+}
+
 // SetLastFailureAt sets the "last_failure_at" field.
 func (u *ChannelPerformanceUpsert) SetLastFailureAt(v time.Time) *ChannelPerformanceUpsert {
 	u.Set(channelperformance.FieldLastFailureAt, v)
@@ -1089,15 +570,9 @@ func (u *ChannelPerformanceUpsert) UpdateLastFailureAt() *ChannelPerformanceUpse
 	return u
 }
 
-// SetLastAttemptAt sets the "last_attempt_at" field.
-func (u *ChannelPerformanceUpsert) SetLastAttemptAt(v time.Time) *ChannelPerformanceUpsert {
-	u.Set(channelperformance.FieldLastAttemptAt, v)
-	return u
-}
-
-// UpdateLastAttemptAt sets the "last_attempt_at" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsert) UpdateLastAttemptAt() *ChannelPerformanceUpsert {
-	u.SetExcluded(channelperformance.FieldLastAttemptAt)
+// ClearLastFailureAt clears the value of the "last_failure_at" field.
+func (u *ChannelPerformanceUpsert) ClearLastFailureAt() *ChannelPerformanceUpsert {
+	u.SetNull(channelperformance.FieldLastFailureAt)
 	return u
 }
 
@@ -1184,360 +659,108 @@ func (u *ChannelPerformanceUpsertOne) UpdateDeletedAt() *ChannelPerformanceUpser
 	})
 }
 
-// SetHealthStatus sets the "health_status" field.
-func (u *ChannelPerformanceUpsertOne) SetHealthStatus(v channelperformance.HealthStatus) *ChannelPerformanceUpsertOne {
+// SetSuccessRate sets the "success_rate" field.
+func (u *ChannelPerformanceUpsertOne) SetSuccessRate(v int) *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetHealthStatus(v)
+		s.SetSuccessRate(v)
 	})
 }
 
-// UpdateHealthStatus sets the "health_status" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateHealthStatus() *ChannelPerformanceUpsertOne {
+// AddSuccessRate adds v to the "success_rate" field.
+func (u *ChannelPerformanceUpsertOne) AddSuccessRate(v int) *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateHealthStatus()
+		s.AddSuccessRate(v)
 	})
 }
 
-// SetTotalCount sets the "total_count" field.
-func (u *ChannelPerformanceUpsertOne) SetTotalCount(v int) *ChannelPerformanceUpsertOne {
+// UpdateSuccessRate sets the "success_rate" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateSuccessRate() *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalCount(v)
+		s.UpdateSuccessRate()
 	})
 }
 
-// AddTotalCount adds v to the "total_count" field.
-func (u *ChannelPerformanceUpsertOne) AddTotalCount(v int) *ChannelPerformanceUpsertOne {
+// SetAvgLatencyMs sets the "avg_latency_ms" field.
+func (u *ChannelPerformanceUpsertOne) SetAvgLatencyMs(v int) *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalCount(v)
+		s.SetAvgLatencyMs(v)
 	})
 }
 
-// UpdateTotalCount sets the "total_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateTotalCount() *ChannelPerformanceUpsertOne {
+// AddAvgLatencyMs adds v to the "avg_latency_ms" field.
+func (u *ChannelPerformanceUpsertOne) AddAvgLatencyMs(v int) *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalCount()
+		s.AddAvgLatencyMs(v)
 	})
 }
 
-// SetTotalSuccessCount sets the "total_success_count" field.
-func (u *ChannelPerformanceUpsertOne) SetTotalSuccessCount(v int) *ChannelPerformanceUpsertOne {
+// UpdateAvgLatencyMs sets the "avg_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateAvgLatencyMs() *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalSuccessCount(v)
+		s.UpdateAvgLatencyMs()
 	})
 }
 
-// AddTotalSuccessCount adds v to the "total_success_count" field.
-func (u *ChannelPerformanceUpsertOne) AddTotalSuccessCount(v int) *ChannelPerformanceUpsertOne {
+// SetAvgTokenPerSecond sets the "avg_token_per_second" field.
+func (u *ChannelPerformanceUpsertOne) SetAvgTokenPerSecond(v int) *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalSuccessCount(v)
+		s.SetAvgTokenPerSecond(v)
 	})
 }
 
-// UpdateTotalSuccessCount sets the "total_success_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateTotalSuccessCount() *ChannelPerformanceUpsertOne {
+// AddAvgTokenPerSecond adds v to the "avg_token_per_second" field.
+func (u *ChannelPerformanceUpsertOne) AddAvgTokenPerSecond(v int) *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalSuccessCount()
+		s.AddAvgTokenPerSecond(v)
 	})
 }
 
-// SetTotalTokenCount sets the "total_token_count" field.
-func (u *ChannelPerformanceUpsertOne) SetTotalTokenCount(v int) *ChannelPerformanceUpsertOne {
+// UpdateAvgTokenPerSecond sets the "avg_token_per_second" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateAvgTokenPerSecond() *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalTokenCount(v)
+		s.UpdateAvgTokenPerSecond()
 	})
 }
 
-// AddTotalTokenCount adds v to the "total_token_count" field.
-func (u *ChannelPerformanceUpsertOne) AddTotalTokenCount(v int) *ChannelPerformanceUpsertOne {
+// SetAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsertOne) SetAvgStreamFirstTokenLatencyMs(v int) *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalTokenCount(v)
+		s.SetAvgStreamFirstTokenLatencyMs(v)
 	})
 }
 
-// UpdateTotalTokenCount sets the "total_token_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateTotalTokenCount() *ChannelPerformanceUpsertOne {
+// AddAvgStreamFirstTokenLatencyMs adds v to the "avg_stream_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsertOne) AddAvgStreamFirstTokenLatencyMs(v int) *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalTokenCount()
+		s.AddAvgStreamFirstTokenLatencyMs(v)
 	})
 }
 
-// SetTotalAvgLatencyMs sets the "total_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsertOne) SetTotalAvgLatencyMs(v int) *ChannelPerformanceUpsertOne {
+// UpdateAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateAvgStreamFirstTokenLatencyMs() *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalAvgLatencyMs(v)
+		s.UpdateAvgStreamFirstTokenLatencyMs()
 	})
 }
 
-// AddTotalAvgLatencyMs adds v to the "total_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsertOne) AddTotalAvgLatencyMs(v int) *ChannelPerformanceUpsertOne {
+// SetAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field.
+func (u *ChannelPerformanceUpsertOne) SetAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalAvgLatencyMs(v)
+		s.SetAvgStreamTokenPerSecond(v)
 	})
 }
 
-// UpdateTotalAvgLatencyMs sets the "total_avg_latency_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateTotalAvgLatencyMs() *ChannelPerformanceUpsertOne {
+// AddAvgStreamTokenPerSecond adds v to the "avg_stream_token_per_second" field.
+func (u *ChannelPerformanceUpsertOne) AddAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalAvgLatencyMs()
+		s.AddAvgStreamTokenPerSecond(v)
 	})
 }
 
-// SetTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsertOne) SetTotalAvgTokenPerSecond(v int) *ChannelPerformanceUpsertOne {
+// UpdateAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateAvgStreamTokenPerSecond() *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalAvgTokenPerSecond(v)
-	})
-}
-
-// AddTotalAvgTokenPerSecond adds v to the "total_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsertOne) AddTotalAvgTokenPerSecond(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalAvgTokenPerSecond(v)
-	})
-}
-
-// UpdateTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateTotalAvgTokenPerSecond() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalAvgTokenPerSecond()
-	})
-}
-
-// SetTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsertOne) SetTotalAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalAvgStreamFirstTokenLatenchMs(v)
-	})
-}
-
-// AddTotalAvgStreamFirstTokenLatenchMs adds v to the "total_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsertOne) AddTotalAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalAvgStreamFirstTokenLatenchMs(v)
-	})
-}
-
-// UpdateTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateTotalAvgStreamFirstTokenLatenchMs() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalAvgStreamFirstTokenLatenchMs()
-	})
-}
-
-// SetTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsertOne) SetTotalAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalAvgStreamTokenPerSecond(v)
-	})
-}
-
-// AddTotalAvgStreamTokenPerSecond adds v to the "total_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsertOne) AddTotalAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalAvgStreamTokenPerSecond(v)
-	})
-}
-
-// UpdateTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateTotalAvgStreamTokenPerSecond() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalAvgStreamTokenPerSecond()
-	})
-}
-
-// SetLastPeriodStart sets the "last_period_start" field.
-func (u *ChannelPerformanceUpsertOne) SetLastPeriodStart(v time.Time) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodStart(v)
-	})
-}
-
-// UpdateLastPeriodStart sets the "last_period_start" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateLastPeriodStart() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodStart()
-	})
-}
-
-// SetLastPeriodEnd sets the "last_period_end" field.
-func (u *ChannelPerformanceUpsertOne) SetLastPeriodEnd(v time.Time) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodEnd(v)
-	})
-}
-
-// UpdateLastPeriodEnd sets the "last_period_end" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateLastPeriodEnd() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodEnd()
-	})
-}
-
-// SetLastPeriodSeconds sets the "last_period_seconds" field.
-func (u *ChannelPerformanceUpsertOne) SetLastPeriodSeconds(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodSeconds(v)
-	})
-}
-
-// AddLastPeriodSeconds adds v to the "last_period_seconds" field.
-func (u *ChannelPerformanceUpsertOne) AddLastPeriodSeconds(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodSeconds(v)
-	})
-}
-
-// UpdateLastPeriodSeconds sets the "last_period_seconds" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateLastPeriodSeconds() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodSeconds()
-	})
-}
-
-// SetLastPeriodCount sets the "last_period_count" field.
-func (u *ChannelPerformanceUpsertOne) SetLastPeriodCount(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodCount(v)
-	})
-}
-
-// AddLastPeriodCount adds v to the "last_period_count" field.
-func (u *ChannelPerformanceUpsertOne) AddLastPeriodCount(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodCount(v)
-	})
-}
-
-// UpdateLastPeriodCount sets the "last_period_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateLastPeriodCount() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodCount()
-	})
-}
-
-// SetLastPeriodSuccessCount sets the "last_period_success_count" field.
-func (u *ChannelPerformanceUpsertOne) SetLastPeriodSuccessCount(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodSuccessCount(v)
-	})
-}
-
-// AddLastPeriodSuccessCount adds v to the "last_period_success_count" field.
-func (u *ChannelPerformanceUpsertOne) AddLastPeriodSuccessCount(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodSuccessCount(v)
-	})
-}
-
-// UpdateLastPeriodSuccessCount sets the "last_period_success_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateLastPeriodSuccessCount() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodSuccessCount()
-	})
-}
-
-// SetLastPeriodTokenCount sets the "last_period_token_count" field.
-func (u *ChannelPerformanceUpsertOne) SetLastPeriodTokenCount(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodTokenCount(v)
-	})
-}
-
-// AddLastPeriodTokenCount adds v to the "last_period_token_count" field.
-func (u *ChannelPerformanceUpsertOne) AddLastPeriodTokenCount(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodTokenCount(v)
-	})
-}
-
-// UpdateLastPeriodTokenCount sets the "last_period_token_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateLastPeriodTokenCount() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodTokenCount()
-	})
-}
-
-// SetLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsertOne) SetLastPeriodAvgLatencyMs(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodAvgLatencyMs(v)
-	})
-}
-
-// AddLastPeriodAvgLatencyMs adds v to the "last_period_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsertOne) AddLastPeriodAvgLatencyMs(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodAvgLatencyMs(v)
-	})
-}
-
-// UpdateLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateLastPeriodAvgLatencyMs() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodAvgLatencyMs()
-	})
-}
-
-// SetLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsertOne) SetLastPeriodAvgTokenPerSecond(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodAvgTokenPerSecond(v)
-	})
-}
-
-// AddLastPeriodAvgTokenPerSecond adds v to the "last_period_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsertOne) AddLastPeriodAvgTokenPerSecond(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodAvgTokenPerSecond(v)
-	})
-}
-
-// UpdateLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateLastPeriodAvgTokenPerSecond() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodAvgTokenPerSecond()
-	})
-}
-
-// SetLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsertOne) SetLastPeriodAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodAvgStreamFirstTokenLatenchMs(v)
-	})
-}
-
-// AddLastPeriodAvgStreamFirstTokenLatenchMs adds v to the "last_period_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsertOne) AddLastPeriodAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodAvgStreamFirstTokenLatenchMs(v)
-	})
-}
-
-// UpdateLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateLastPeriodAvgStreamFirstTokenLatenchMs() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodAvgStreamFirstTokenLatenchMs()
-	})
-}
-
-// SetLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsertOne) SetLastPeriodAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodAvgStreamTokenPerSecond(v)
-	})
-}
-
-// AddLastPeriodAvgStreamTokenPerSecond adds v to the "last_period_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsertOne) AddLastPeriodAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodAvgStreamTokenPerSecond(v)
-	})
-}
-
-// UpdateLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateLastPeriodAvgStreamTokenPerSecond() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodAvgStreamTokenPerSecond()
+		s.UpdateAvgStreamTokenPerSecond()
 	})
 }
 
@@ -1555,6 +778,13 @@ func (u *ChannelPerformanceUpsertOne) UpdateLastSuccessAt() *ChannelPerformanceU
 	})
 }
 
+// ClearLastSuccessAt clears the value of the "last_success_at" field.
+func (u *ChannelPerformanceUpsertOne) ClearLastSuccessAt() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.ClearLastSuccessAt()
+	})
+}
+
 // SetLastFailureAt sets the "last_failure_at" field.
 func (u *ChannelPerformanceUpsertOne) SetLastFailureAt(v time.Time) *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
@@ -1569,17 +799,10 @@ func (u *ChannelPerformanceUpsertOne) UpdateLastFailureAt() *ChannelPerformanceU
 	})
 }
 
-// SetLastAttemptAt sets the "last_attempt_at" field.
-func (u *ChannelPerformanceUpsertOne) SetLastAttemptAt(v time.Time) *ChannelPerformanceUpsertOne {
+// ClearLastFailureAt clears the value of the "last_failure_at" field.
+func (u *ChannelPerformanceUpsertOne) ClearLastFailureAt() *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastAttemptAt(v)
-	})
-}
-
-// UpdateLastAttemptAt sets the "last_attempt_at" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertOne) UpdateLastAttemptAt() *ChannelPerformanceUpsertOne {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastAttemptAt()
+		s.ClearLastFailureAt()
 	})
 }
 
@@ -1832,360 +1055,108 @@ func (u *ChannelPerformanceUpsertBulk) UpdateDeletedAt() *ChannelPerformanceUpse
 	})
 }
 
-// SetHealthStatus sets the "health_status" field.
-func (u *ChannelPerformanceUpsertBulk) SetHealthStatus(v channelperformance.HealthStatus) *ChannelPerformanceUpsertBulk {
+// SetSuccessRate sets the "success_rate" field.
+func (u *ChannelPerformanceUpsertBulk) SetSuccessRate(v int) *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetHealthStatus(v)
+		s.SetSuccessRate(v)
 	})
 }
 
-// UpdateHealthStatus sets the "health_status" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateHealthStatus() *ChannelPerformanceUpsertBulk {
+// AddSuccessRate adds v to the "success_rate" field.
+func (u *ChannelPerformanceUpsertBulk) AddSuccessRate(v int) *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateHealthStatus()
+		s.AddSuccessRate(v)
 	})
 }
 
-// SetTotalCount sets the "total_count" field.
-func (u *ChannelPerformanceUpsertBulk) SetTotalCount(v int) *ChannelPerformanceUpsertBulk {
+// UpdateSuccessRate sets the "success_rate" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateSuccessRate() *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalCount(v)
+		s.UpdateSuccessRate()
 	})
 }
 
-// AddTotalCount adds v to the "total_count" field.
-func (u *ChannelPerformanceUpsertBulk) AddTotalCount(v int) *ChannelPerformanceUpsertBulk {
+// SetAvgLatencyMs sets the "avg_latency_ms" field.
+func (u *ChannelPerformanceUpsertBulk) SetAvgLatencyMs(v int) *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalCount(v)
+		s.SetAvgLatencyMs(v)
 	})
 }
 
-// UpdateTotalCount sets the "total_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateTotalCount() *ChannelPerformanceUpsertBulk {
+// AddAvgLatencyMs adds v to the "avg_latency_ms" field.
+func (u *ChannelPerformanceUpsertBulk) AddAvgLatencyMs(v int) *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalCount()
+		s.AddAvgLatencyMs(v)
 	})
 }
 
-// SetTotalSuccessCount sets the "total_success_count" field.
-func (u *ChannelPerformanceUpsertBulk) SetTotalSuccessCount(v int) *ChannelPerformanceUpsertBulk {
+// UpdateAvgLatencyMs sets the "avg_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateAvgLatencyMs() *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalSuccessCount(v)
+		s.UpdateAvgLatencyMs()
 	})
 }
 
-// AddTotalSuccessCount adds v to the "total_success_count" field.
-func (u *ChannelPerformanceUpsertBulk) AddTotalSuccessCount(v int) *ChannelPerformanceUpsertBulk {
+// SetAvgTokenPerSecond sets the "avg_token_per_second" field.
+func (u *ChannelPerformanceUpsertBulk) SetAvgTokenPerSecond(v int) *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalSuccessCount(v)
+		s.SetAvgTokenPerSecond(v)
 	})
 }
 
-// UpdateTotalSuccessCount sets the "total_success_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateTotalSuccessCount() *ChannelPerformanceUpsertBulk {
+// AddAvgTokenPerSecond adds v to the "avg_token_per_second" field.
+func (u *ChannelPerformanceUpsertBulk) AddAvgTokenPerSecond(v int) *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalSuccessCount()
+		s.AddAvgTokenPerSecond(v)
 	})
 }
 
-// SetTotalTokenCount sets the "total_token_count" field.
-func (u *ChannelPerformanceUpsertBulk) SetTotalTokenCount(v int) *ChannelPerformanceUpsertBulk {
+// UpdateAvgTokenPerSecond sets the "avg_token_per_second" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateAvgTokenPerSecond() *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalTokenCount(v)
+		s.UpdateAvgTokenPerSecond()
 	})
 }
 
-// AddTotalTokenCount adds v to the "total_token_count" field.
-func (u *ChannelPerformanceUpsertBulk) AddTotalTokenCount(v int) *ChannelPerformanceUpsertBulk {
+// SetAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsertBulk) SetAvgStreamFirstTokenLatencyMs(v int) *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalTokenCount(v)
+		s.SetAvgStreamFirstTokenLatencyMs(v)
 	})
 }
 
-// UpdateTotalTokenCount sets the "total_token_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateTotalTokenCount() *ChannelPerformanceUpsertBulk {
+// AddAvgStreamFirstTokenLatencyMs adds v to the "avg_stream_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsertBulk) AddAvgStreamFirstTokenLatencyMs(v int) *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalTokenCount()
+		s.AddAvgStreamFirstTokenLatencyMs(v)
 	})
 }
 
-// SetTotalAvgLatencyMs sets the "total_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsertBulk) SetTotalAvgLatencyMs(v int) *ChannelPerformanceUpsertBulk {
+// UpdateAvgStreamFirstTokenLatencyMs sets the "avg_stream_first_token_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateAvgStreamFirstTokenLatencyMs() *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalAvgLatencyMs(v)
+		s.UpdateAvgStreamFirstTokenLatencyMs()
 	})
 }
 
-// AddTotalAvgLatencyMs adds v to the "total_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsertBulk) AddTotalAvgLatencyMs(v int) *ChannelPerformanceUpsertBulk {
+// SetAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field.
+func (u *ChannelPerformanceUpsertBulk) SetAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalAvgLatencyMs(v)
+		s.SetAvgStreamTokenPerSecond(v)
 	})
 }
 
-// UpdateTotalAvgLatencyMs sets the "total_avg_latency_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateTotalAvgLatencyMs() *ChannelPerformanceUpsertBulk {
+// AddAvgStreamTokenPerSecond adds v to the "avg_stream_token_per_second" field.
+func (u *ChannelPerformanceUpsertBulk) AddAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalAvgLatencyMs()
+		s.AddAvgStreamTokenPerSecond(v)
 	})
 }
 
-// SetTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsertBulk) SetTotalAvgTokenPerSecond(v int) *ChannelPerformanceUpsertBulk {
+// UpdateAvgStreamTokenPerSecond sets the "avg_stream_token_per_second" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateAvgStreamTokenPerSecond() *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalAvgTokenPerSecond(v)
-	})
-}
-
-// AddTotalAvgTokenPerSecond adds v to the "total_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsertBulk) AddTotalAvgTokenPerSecond(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalAvgTokenPerSecond(v)
-	})
-}
-
-// UpdateTotalAvgTokenPerSecond sets the "total_avg_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateTotalAvgTokenPerSecond() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalAvgTokenPerSecond()
-	})
-}
-
-// SetTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsertBulk) SetTotalAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalAvgStreamFirstTokenLatenchMs(v)
-	})
-}
-
-// AddTotalAvgStreamFirstTokenLatenchMs adds v to the "total_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsertBulk) AddTotalAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalAvgStreamFirstTokenLatenchMs(v)
-	})
-}
-
-// UpdateTotalAvgStreamFirstTokenLatenchMs sets the "total_avg_stream_first_token_latench_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateTotalAvgStreamFirstTokenLatenchMs() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalAvgStreamFirstTokenLatenchMs()
-	})
-}
-
-// SetTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsertBulk) SetTotalAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetTotalAvgStreamTokenPerSecond(v)
-	})
-}
-
-// AddTotalAvgStreamTokenPerSecond adds v to the "total_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsertBulk) AddTotalAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddTotalAvgStreamTokenPerSecond(v)
-	})
-}
-
-// UpdateTotalAvgStreamTokenPerSecond sets the "total_avg_stream_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateTotalAvgStreamTokenPerSecond() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateTotalAvgStreamTokenPerSecond()
-	})
-}
-
-// SetLastPeriodStart sets the "last_period_start" field.
-func (u *ChannelPerformanceUpsertBulk) SetLastPeriodStart(v time.Time) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodStart(v)
-	})
-}
-
-// UpdateLastPeriodStart sets the "last_period_start" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateLastPeriodStart() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodStart()
-	})
-}
-
-// SetLastPeriodEnd sets the "last_period_end" field.
-func (u *ChannelPerformanceUpsertBulk) SetLastPeriodEnd(v time.Time) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodEnd(v)
-	})
-}
-
-// UpdateLastPeriodEnd sets the "last_period_end" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateLastPeriodEnd() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodEnd()
-	})
-}
-
-// SetLastPeriodSeconds sets the "last_period_seconds" field.
-func (u *ChannelPerformanceUpsertBulk) SetLastPeriodSeconds(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodSeconds(v)
-	})
-}
-
-// AddLastPeriodSeconds adds v to the "last_period_seconds" field.
-func (u *ChannelPerformanceUpsertBulk) AddLastPeriodSeconds(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodSeconds(v)
-	})
-}
-
-// UpdateLastPeriodSeconds sets the "last_period_seconds" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateLastPeriodSeconds() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodSeconds()
-	})
-}
-
-// SetLastPeriodCount sets the "last_period_count" field.
-func (u *ChannelPerformanceUpsertBulk) SetLastPeriodCount(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodCount(v)
-	})
-}
-
-// AddLastPeriodCount adds v to the "last_period_count" field.
-func (u *ChannelPerformanceUpsertBulk) AddLastPeriodCount(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodCount(v)
-	})
-}
-
-// UpdateLastPeriodCount sets the "last_period_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateLastPeriodCount() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodCount()
-	})
-}
-
-// SetLastPeriodSuccessCount sets the "last_period_success_count" field.
-func (u *ChannelPerformanceUpsertBulk) SetLastPeriodSuccessCount(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodSuccessCount(v)
-	})
-}
-
-// AddLastPeriodSuccessCount adds v to the "last_period_success_count" field.
-func (u *ChannelPerformanceUpsertBulk) AddLastPeriodSuccessCount(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodSuccessCount(v)
-	})
-}
-
-// UpdateLastPeriodSuccessCount sets the "last_period_success_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateLastPeriodSuccessCount() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodSuccessCount()
-	})
-}
-
-// SetLastPeriodTokenCount sets the "last_period_token_count" field.
-func (u *ChannelPerformanceUpsertBulk) SetLastPeriodTokenCount(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodTokenCount(v)
-	})
-}
-
-// AddLastPeriodTokenCount adds v to the "last_period_token_count" field.
-func (u *ChannelPerformanceUpsertBulk) AddLastPeriodTokenCount(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodTokenCount(v)
-	})
-}
-
-// UpdateLastPeriodTokenCount sets the "last_period_token_count" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateLastPeriodTokenCount() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodTokenCount()
-	})
-}
-
-// SetLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsertBulk) SetLastPeriodAvgLatencyMs(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodAvgLatencyMs(v)
-	})
-}
-
-// AddLastPeriodAvgLatencyMs adds v to the "last_period_avg_latency_ms" field.
-func (u *ChannelPerformanceUpsertBulk) AddLastPeriodAvgLatencyMs(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodAvgLatencyMs(v)
-	})
-}
-
-// UpdateLastPeriodAvgLatencyMs sets the "last_period_avg_latency_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateLastPeriodAvgLatencyMs() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodAvgLatencyMs()
-	})
-}
-
-// SetLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsertBulk) SetLastPeriodAvgTokenPerSecond(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodAvgTokenPerSecond(v)
-	})
-}
-
-// AddLastPeriodAvgTokenPerSecond adds v to the "last_period_avg_token_per_second" field.
-func (u *ChannelPerformanceUpsertBulk) AddLastPeriodAvgTokenPerSecond(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodAvgTokenPerSecond(v)
-	})
-}
-
-// UpdateLastPeriodAvgTokenPerSecond sets the "last_period_avg_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateLastPeriodAvgTokenPerSecond() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodAvgTokenPerSecond()
-	})
-}
-
-// SetLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsertBulk) SetLastPeriodAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodAvgStreamFirstTokenLatenchMs(v)
-	})
-}
-
-// AddLastPeriodAvgStreamFirstTokenLatenchMs adds v to the "last_period_avg_stream_first_token_latench_ms" field.
-func (u *ChannelPerformanceUpsertBulk) AddLastPeriodAvgStreamFirstTokenLatenchMs(v int) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodAvgStreamFirstTokenLatenchMs(v)
-	})
-}
-
-// UpdateLastPeriodAvgStreamFirstTokenLatenchMs sets the "last_period_avg_stream_first_token_latench_ms" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateLastPeriodAvgStreamFirstTokenLatenchMs() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodAvgStreamFirstTokenLatenchMs()
-	})
-}
-
-// SetLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsertBulk) SetLastPeriodAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastPeriodAvgStreamTokenPerSecond(v)
-	})
-}
-
-// AddLastPeriodAvgStreamTokenPerSecond adds v to the "last_period_avg_stream_token_per_second" field.
-func (u *ChannelPerformanceUpsertBulk) AddLastPeriodAvgStreamTokenPerSecond(v float64) *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.AddLastPeriodAvgStreamTokenPerSecond(v)
-	})
-}
-
-// UpdateLastPeriodAvgStreamTokenPerSecond sets the "last_period_avg_stream_token_per_second" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateLastPeriodAvgStreamTokenPerSecond() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastPeriodAvgStreamTokenPerSecond()
+		s.UpdateAvgStreamTokenPerSecond()
 	})
 }
 
@@ -2203,6 +1174,13 @@ func (u *ChannelPerformanceUpsertBulk) UpdateLastSuccessAt() *ChannelPerformance
 	})
 }
 
+// ClearLastSuccessAt clears the value of the "last_success_at" field.
+func (u *ChannelPerformanceUpsertBulk) ClearLastSuccessAt() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.ClearLastSuccessAt()
+	})
+}
+
 // SetLastFailureAt sets the "last_failure_at" field.
 func (u *ChannelPerformanceUpsertBulk) SetLastFailureAt(v time.Time) *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
@@ -2217,17 +1195,10 @@ func (u *ChannelPerformanceUpsertBulk) UpdateLastFailureAt() *ChannelPerformance
 	})
 }
 
-// SetLastAttemptAt sets the "last_attempt_at" field.
-func (u *ChannelPerformanceUpsertBulk) SetLastAttemptAt(v time.Time) *ChannelPerformanceUpsertBulk {
+// ClearLastFailureAt clears the value of the "last_failure_at" field.
+func (u *ChannelPerformanceUpsertBulk) ClearLastFailureAt() *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.SetLastAttemptAt(v)
-	})
-}
-
-// UpdateLastAttemptAt sets the "last_attempt_at" field to the value that was provided on create.
-func (u *ChannelPerformanceUpsertBulk) UpdateLastAttemptAt() *ChannelPerformanceUpsertBulk {
-	return u.Update(func(s *ChannelPerformanceUpsert) {
-		s.UpdateLastAttemptAt()
+		s.ClearLastFailureAt()
 	})
 }
 

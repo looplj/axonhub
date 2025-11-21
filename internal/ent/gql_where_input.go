@@ -595,6 +595,23 @@ type ChannelWhereInput struct {
 	OrderingWeightLT    *int  `json:"orderingWeightLT,omitempty"`
 	OrderingWeightLTE   *int  `json:"orderingWeightLTE,omitempty"`
 
+	// "error_message" field predicates.
+	ErrorMessage             *string  `json:"errorMessage,omitempty"`
+	ErrorMessageNEQ          *string  `json:"errorMessageNEQ,omitempty"`
+	ErrorMessageIn           []string `json:"errorMessageIn,omitempty"`
+	ErrorMessageNotIn        []string `json:"errorMessageNotIn,omitempty"`
+	ErrorMessageGT           *string  `json:"errorMessageGT,omitempty"`
+	ErrorMessageGTE          *string  `json:"errorMessageGTE,omitempty"`
+	ErrorMessageLT           *string  `json:"errorMessageLT,omitempty"`
+	ErrorMessageLTE          *string  `json:"errorMessageLTE,omitempty"`
+	ErrorMessageContains     *string  `json:"errorMessageContains,omitempty"`
+	ErrorMessageHasPrefix    *string  `json:"errorMessageHasPrefix,omitempty"`
+	ErrorMessageHasSuffix    *string  `json:"errorMessageHasSuffix,omitempty"`
+	ErrorMessageIsNil        bool     `json:"errorMessageIsNil,omitempty"`
+	ErrorMessageNotNil       bool     `json:"errorMessageNotNil,omitempty"`
+	ErrorMessageEqualFold    *string  `json:"errorMessageEqualFold,omitempty"`
+	ErrorMessageContainsFold *string  `json:"errorMessageContainsFold,omitempty"`
+
 	// "requests" edge predicates.
 	HasRequests     *bool                `json:"hasRequests,omitempty"`
 	HasRequestsWith []*RequestWhereInput `json:"hasRequestsWith,omitempty"`
@@ -950,6 +967,51 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 	if i.OrderingWeightLTE != nil {
 		predicates = append(predicates, channel.OrderingWeightLTE(*i.OrderingWeightLTE))
 	}
+	if i.ErrorMessage != nil {
+		predicates = append(predicates, channel.ErrorMessageEQ(*i.ErrorMessage))
+	}
+	if i.ErrorMessageNEQ != nil {
+		predicates = append(predicates, channel.ErrorMessageNEQ(*i.ErrorMessageNEQ))
+	}
+	if len(i.ErrorMessageIn) > 0 {
+		predicates = append(predicates, channel.ErrorMessageIn(i.ErrorMessageIn...))
+	}
+	if len(i.ErrorMessageNotIn) > 0 {
+		predicates = append(predicates, channel.ErrorMessageNotIn(i.ErrorMessageNotIn...))
+	}
+	if i.ErrorMessageGT != nil {
+		predicates = append(predicates, channel.ErrorMessageGT(*i.ErrorMessageGT))
+	}
+	if i.ErrorMessageGTE != nil {
+		predicates = append(predicates, channel.ErrorMessageGTE(*i.ErrorMessageGTE))
+	}
+	if i.ErrorMessageLT != nil {
+		predicates = append(predicates, channel.ErrorMessageLT(*i.ErrorMessageLT))
+	}
+	if i.ErrorMessageLTE != nil {
+		predicates = append(predicates, channel.ErrorMessageLTE(*i.ErrorMessageLTE))
+	}
+	if i.ErrorMessageContains != nil {
+		predicates = append(predicates, channel.ErrorMessageContains(*i.ErrorMessageContains))
+	}
+	if i.ErrorMessageHasPrefix != nil {
+		predicates = append(predicates, channel.ErrorMessageHasPrefix(*i.ErrorMessageHasPrefix))
+	}
+	if i.ErrorMessageHasSuffix != nil {
+		predicates = append(predicates, channel.ErrorMessageHasSuffix(*i.ErrorMessageHasSuffix))
+	}
+	if i.ErrorMessageIsNil {
+		predicates = append(predicates, channel.ErrorMessageIsNil())
+	}
+	if i.ErrorMessageNotNil {
+		predicates = append(predicates, channel.ErrorMessageNotNil())
+	}
+	if i.ErrorMessageEqualFold != nil {
+		predicates = append(predicates, channel.ErrorMessageEqualFold(*i.ErrorMessageEqualFold))
+	}
+	if i.ErrorMessageContainsFold != nil {
+		predicates = append(predicates, channel.ErrorMessageContainsFold(*i.ErrorMessageContainsFold))
+	}
 
 	if i.HasRequests != nil {
 		p := channel.HasRequests()
@@ -1086,211 +1148,79 @@ type ChannelPerformanceWhereInput struct {
 	ChannelIDIn    []int `json:"channelIDIn,omitempty"`
 	ChannelIDNotIn []int `json:"channelIDNotIn,omitempty"`
 
-	// "health_status" field predicates.
-	HealthStatus      *channelperformance.HealthStatus  `json:"healthStatus,omitempty"`
-	HealthStatusNEQ   *channelperformance.HealthStatus  `json:"healthStatusNEQ,omitempty"`
-	HealthStatusIn    []channelperformance.HealthStatus `json:"healthStatusIn,omitempty"`
-	HealthStatusNotIn []channelperformance.HealthStatus `json:"healthStatusNotIn,omitempty"`
+	// "success_rate" field predicates.
+	SuccessRate      *int  `json:"successRate,omitempty"`
+	SuccessRateNEQ   *int  `json:"successRateNEQ,omitempty"`
+	SuccessRateIn    []int `json:"successRateIn,omitempty"`
+	SuccessRateNotIn []int `json:"successRateNotIn,omitempty"`
+	SuccessRateGT    *int  `json:"successRateGT,omitempty"`
+	SuccessRateGTE   *int  `json:"successRateGTE,omitempty"`
+	SuccessRateLT    *int  `json:"successRateLT,omitempty"`
+	SuccessRateLTE   *int  `json:"successRateLTE,omitempty"`
 
-	// "total_count" field predicates.
-	TotalCount      *int  `json:"totalCount,omitempty"`
-	TotalCountNEQ   *int  `json:"totalCountNEQ,omitempty"`
-	TotalCountIn    []int `json:"totalCountIn,omitempty"`
-	TotalCountNotIn []int `json:"totalCountNotIn,omitempty"`
-	TotalCountGT    *int  `json:"totalCountGT,omitempty"`
-	TotalCountGTE   *int  `json:"totalCountGTE,omitempty"`
-	TotalCountLT    *int  `json:"totalCountLT,omitempty"`
-	TotalCountLTE   *int  `json:"totalCountLTE,omitempty"`
+	// "avg_latency_ms" field predicates.
+	AvgLatencyMs      *int  `json:"avgLatencyMs,omitempty"`
+	AvgLatencyMsNEQ   *int  `json:"avgLatencyMsNEQ,omitempty"`
+	AvgLatencyMsIn    []int `json:"avgLatencyMsIn,omitempty"`
+	AvgLatencyMsNotIn []int `json:"avgLatencyMsNotIn,omitempty"`
+	AvgLatencyMsGT    *int  `json:"avgLatencyMsGT,omitempty"`
+	AvgLatencyMsGTE   *int  `json:"avgLatencyMsGTE,omitempty"`
+	AvgLatencyMsLT    *int  `json:"avgLatencyMsLT,omitempty"`
+	AvgLatencyMsLTE   *int  `json:"avgLatencyMsLTE,omitempty"`
 
-	// "total_success_count" field predicates.
-	TotalSuccessCount      *int  `json:"totalSuccessCount,omitempty"`
-	TotalSuccessCountNEQ   *int  `json:"totalSuccessCountNEQ,omitempty"`
-	TotalSuccessCountIn    []int `json:"totalSuccessCountIn,omitempty"`
-	TotalSuccessCountNotIn []int `json:"totalSuccessCountNotIn,omitempty"`
-	TotalSuccessCountGT    *int  `json:"totalSuccessCountGT,omitempty"`
-	TotalSuccessCountGTE   *int  `json:"totalSuccessCountGTE,omitempty"`
-	TotalSuccessCountLT    *int  `json:"totalSuccessCountLT,omitempty"`
-	TotalSuccessCountLTE   *int  `json:"totalSuccessCountLTE,omitempty"`
+	// "avg_token_per_second" field predicates.
+	AvgTokenPerSecond      *int  `json:"avgTokenPerSecond,omitempty"`
+	AvgTokenPerSecondNEQ   *int  `json:"avgTokenPerSecondNEQ,omitempty"`
+	AvgTokenPerSecondIn    []int `json:"avgTokenPerSecondIn,omitempty"`
+	AvgTokenPerSecondNotIn []int `json:"avgTokenPerSecondNotIn,omitempty"`
+	AvgTokenPerSecondGT    *int  `json:"avgTokenPerSecondGT,omitempty"`
+	AvgTokenPerSecondGTE   *int  `json:"avgTokenPerSecondGTE,omitempty"`
+	AvgTokenPerSecondLT    *int  `json:"avgTokenPerSecondLT,omitempty"`
+	AvgTokenPerSecondLTE   *int  `json:"avgTokenPerSecondLTE,omitempty"`
 
-	// "total_token_count" field predicates.
-	TotalTokenCount      *int  `json:"totalTokenCount,omitempty"`
-	TotalTokenCountNEQ   *int  `json:"totalTokenCountNEQ,omitempty"`
-	TotalTokenCountIn    []int `json:"totalTokenCountIn,omitempty"`
-	TotalTokenCountNotIn []int `json:"totalTokenCountNotIn,omitempty"`
-	TotalTokenCountGT    *int  `json:"totalTokenCountGT,omitempty"`
-	TotalTokenCountGTE   *int  `json:"totalTokenCountGTE,omitempty"`
-	TotalTokenCountLT    *int  `json:"totalTokenCountLT,omitempty"`
-	TotalTokenCountLTE   *int  `json:"totalTokenCountLTE,omitempty"`
+	// "avg_stream_first_token_latency_ms" field predicates.
+	AvgStreamFirstTokenLatencyMs      *int  `json:"avgStreamFirstTokenLatencyMs,omitempty"`
+	AvgStreamFirstTokenLatencyMsNEQ   *int  `json:"avgStreamFirstTokenLatencyMsNEQ,omitempty"`
+	AvgStreamFirstTokenLatencyMsIn    []int `json:"avgStreamFirstTokenLatencyMsIn,omitempty"`
+	AvgStreamFirstTokenLatencyMsNotIn []int `json:"avgStreamFirstTokenLatencyMsNotIn,omitempty"`
+	AvgStreamFirstTokenLatencyMsGT    *int  `json:"avgStreamFirstTokenLatencyMsGT,omitempty"`
+	AvgStreamFirstTokenLatencyMsGTE   *int  `json:"avgStreamFirstTokenLatencyMsGTE,omitempty"`
+	AvgStreamFirstTokenLatencyMsLT    *int  `json:"avgStreamFirstTokenLatencyMsLT,omitempty"`
+	AvgStreamFirstTokenLatencyMsLTE   *int  `json:"avgStreamFirstTokenLatencyMsLTE,omitempty"`
 
-	// "total_avg_latency_ms" field predicates.
-	TotalAvgLatencyMs      *int  `json:"totalAvgLatencyMs,omitempty"`
-	TotalAvgLatencyMsNEQ   *int  `json:"totalAvgLatencyMsNEQ,omitempty"`
-	TotalAvgLatencyMsIn    []int `json:"totalAvgLatencyMsIn,omitempty"`
-	TotalAvgLatencyMsNotIn []int `json:"totalAvgLatencyMsNotIn,omitempty"`
-	TotalAvgLatencyMsGT    *int  `json:"totalAvgLatencyMsGT,omitempty"`
-	TotalAvgLatencyMsGTE   *int  `json:"totalAvgLatencyMsGTE,omitempty"`
-	TotalAvgLatencyMsLT    *int  `json:"totalAvgLatencyMsLT,omitempty"`
-	TotalAvgLatencyMsLTE   *int  `json:"totalAvgLatencyMsLTE,omitempty"`
-
-	// "total_avg_token_per_second" field predicates.
-	TotalAvgTokenPerSecond      *int  `json:"totalAvgTokenPerSecond,omitempty"`
-	TotalAvgTokenPerSecondNEQ   *int  `json:"totalAvgTokenPerSecondNEQ,omitempty"`
-	TotalAvgTokenPerSecondIn    []int `json:"totalAvgTokenPerSecondIn,omitempty"`
-	TotalAvgTokenPerSecondNotIn []int `json:"totalAvgTokenPerSecondNotIn,omitempty"`
-	TotalAvgTokenPerSecondGT    *int  `json:"totalAvgTokenPerSecondGT,omitempty"`
-	TotalAvgTokenPerSecondGTE   *int  `json:"totalAvgTokenPerSecondGTE,omitempty"`
-	TotalAvgTokenPerSecondLT    *int  `json:"totalAvgTokenPerSecondLT,omitempty"`
-	TotalAvgTokenPerSecondLTE   *int  `json:"totalAvgTokenPerSecondLTE,omitempty"`
-
-	// "total_avg_stream_first_token_latench_ms" field predicates.
-	TotalAvgStreamFirstTokenLatenchMs      *int  `json:"totalAvgStreamFirstTokenLatenchMs,omitempty"`
-	TotalAvgStreamFirstTokenLatenchMsNEQ   *int  `json:"totalAvgStreamFirstTokenLatenchMsNEQ,omitempty"`
-	TotalAvgStreamFirstTokenLatenchMsIn    []int `json:"totalAvgStreamFirstTokenLatenchMsIn,omitempty"`
-	TotalAvgStreamFirstTokenLatenchMsNotIn []int `json:"totalAvgStreamFirstTokenLatenchMsNotIn,omitempty"`
-	TotalAvgStreamFirstTokenLatenchMsGT    *int  `json:"totalAvgStreamFirstTokenLatenchMsGT,omitempty"`
-	TotalAvgStreamFirstTokenLatenchMsGTE   *int  `json:"totalAvgStreamFirstTokenLatenchMsGTE,omitempty"`
-	TotalAvgStreamFirstTokenLatenchMsLT    *int  `json:"totalAvgStreamFirstTokenLatenchMsLT,omitempty"`
-	TotalAvgStreamFirstTokenLatenchMsLTE   *int  `json:"totalAvgStreamFirstTokenLatenchMsLTE,omitempty"`
-
-	// "total_avg_stream_token_per_second" field predicates.
-	TotalAvgStreamTokenPerSecond      *float64  `json:"totalAvgStreamTokenPerSecond,omitempty"`
-	TotalAvgStreamTokenPerSecondNEQ   *float64  `json:"totalAvgStreamTokenPerSecondNEQ,omitempty"`
-	TotalAvgStreamTokenPerSecondIn    []float64 `json:"totalAvgStreamTokenPerSecondIn,omitempty"`
-	TotalAvgStreamTokenPerSecondNotIn []float64 `json:"totalAvgStreamTokenPerSecondNotIn,omitempty"`
-	TotalAvgStreamTokenPerSecondGT    *float64  `json:"totalAvgStreamTokenPerSecondGT,omitempty"`
-	TotalAvgStreamTokenPerSecondGTE   *float64  `json:"totalAvgStreamTokenPerSecondGTE,omitempty"`
-	TotalAvgStreamTokenPerSecondLT    *float64  `json:"totalAvgStreamTokenPerSecondLT,omitempty"`
-	TotalAvgStreamTokenPerSecondLTE   *float64  `json:"totalAvgStreamTokenPerSecondLTE,omitempty"`
-
-	// "last_period_start" field predicates.
-	LastPeriodStart      *time.Time  `json:"lastPeriodStart,omitempty"`
-	LastPeriodStartNEQ   *time.Time  `json:"lastPeriodStartNEQ,omitempty"`
-	LastPeriodStartIn    []time.Time `json:"lastPeriodStartIn,omitempty"`
-	LastPeriodStartNotIn []time.Time `json:"lastPeriodStartNotIn,omitempty"`
-	LastPeriodStartGT    *time.Time  `json:"lastPeriodStartGT,omitempty"`
-	LastPeriodStartGTE   *time.Time  `json:"lastPeriodStartGTE,omitempty"`
-	LastPeriodStartLT    *time.Time  `json:"lastPeriodStartLT,omitempty"`
-	LastPeriodStartLTE   *time.Time  `json:"lastPeriodStartLTE,omitempty"`
-
-	// "last_period_end" field predicates.
-	LastPeriodEnd      *time.Time  `json:"lastPeriodEnd,omitempty"`
-	LastPeriodEndNEQ   *time.Time  `json:"lastPeriodEndNEQ,omitempty"`
-	LastPeriodEndIn    []time.Time `json:"lastPeriodEndIn,omitempty"`
-	LastPeriodEndNotIn []time.Time `json:"lastPeriodEndNotIn,omitempty"`
-	LastPeriodEndGT    *time.Time  `json:"lastPeriodEndGT,omitempty"`
-	LastPeriodEndGTE   *time.Time  `json:"lastPeriodEndGTE,omitempty"`
-	LastPeriodEndLT    *time.Time  `json:"lastPeriodEndLT,omitempty"`
-	LastPeriodEndLTE   *time.Time  `json:"lastPeriodEndLTE,omitempty"`
-
-	// "last_period_seconds" field predicates.
-	LastPeriodSeconds      *int  `json:"lastPeriodSeconds,omitempty"`
-	LastPeriodSecondsNEQ   *int  `json:"lastPeriodSecondsNEQ,omitempty"`
-	LastPeriodSecondsIn    []int `json:"lastPeriodSecondsIn,omitempty"`
-	LastPeriodSecondsNotIn []int `json:"lastPeriodSecondsNotIn,omitempty"`
-	LastPeriodSecondsGT    *int  `json:"lastPeriodSecondsGT,omitempty"`
-	LastPeriodSecondsGTE   *int  `json:"lastPeriodSecondsGTE,omitempty"`
-	LastPeriodSecondsLT    *int  `json:"lastPeriodSecondsLT,omitempty"`
-	LastPeriodSecondsLTE   *int  `json:"lastPeriodSecondsLTE,omitempty"`
-
-	// "last_period_count" field predicates.
-	LastPeriodCount      *int  `json:"lastPeriodCount,omitempty"`
-	LastPeriodCountNEQ   *int  `json:"lastPeriodCountNEQ,omitempty"`
-	LastPeriodCountIn    []int `json:"lastPeriodCountIn,omitempty"`
-	LastPeriodCountNotIn []int `json:"lastPeriodCountNotIn,omitempty"`
-	LastPeriodCountGT    *int  `json:"lastPeriodCountGT,omitempty"`
-	LastPeriodCountGTE   *int  `json:"lastPeriodCountGTE,omitempty"`
-	LastPeriodCountLT    *int  `json:"lastPeriodCountLT,omitempty"`
-	LastPeriodCountLTE   *int  `json:"lastPeriodCountLTE,omitempty"`
-
-	// "last_period_success_count" field predicates.
-	LastPeriodSuccessCount      *int  `json:"lastPeriodSuccessCount,omitempty"`
-	LastPeriodSuccessCountNEQ   *int  `json:"lastPeriodSuccessCountNEQ,omitempty"`
-	LastPeriodSuccessCountIn    []int `json:"lastPeriodSuccessCountIn,omitempty"`
-	LastPeriodSuccessCountNotIn []int `json:"lastPeriodSuccessCountNotIn,omitempty"`
-	LastPeriodSuccessCountGT    *int  `json:"lastPeriodSuccessCountGT,omitempty"`
-	LastPeriodSuccessCountGTE   *int  `json:"lastPeriodSuccessCountGTE,omitempty"`
-	LastPeriodSuccessCountLT    *int  `json:"lastPeriodSuccessCountLT,omitempty"`
-	LastPeriodSuccessCountLTE   *int  `json:"lastPeriodSuccessCountLTE,omitempty"`
-
-	// "last_period_token_count" field predicates.
-	LastPeriodTokenCount      *int  `json:"lastPeriodTokenCount,omitempty"`
-	LastPeriodTokenCountNEQ   *int  `json:"lastPeriodTokenCountNEQ,omitempty"`
-	LastPeriodTokenCountIn    []int `json:"lastPeriodTokenCountIn,omitempty"`
-	LastPeriodTokenCountNotIn []int `json:"lastPeriodTokenCountNotIn,omitempty"`
-	LastPeriodTokenCountGT    *int  `json:"lastPeriodTokenCountGT,omitempty"`
-	LastPeriodTokenCountGTE   *int  `json:"lastPeriodTokenCountGTE,omitempty"`
-	LastPeriodTokenCountLT    *int  `json:"lastPeriodTokenCountLT,omitempty"`
-	LastPeriodTokenCountLTE   *int  `json:"lastPeriodTokenCountLTE,omitempty"`
-
-	// "last_period_avg_latency_ms" field predicates.
-	LastPeriodAvgLatencyMs      *int  `json:"lastPeriodAvgLatencyMs,omitempty"`
-	LastPeriodAvgLatencyMsNEQ   *int  `json:"lastPeriodAvgLatencyMsNEQ,omitempty"`
-	LastPeriodAvgLatencyMsIn    []int `json:"lastPeriodAvgLatencyMsIn,omitempty"`
-	LastPeriodAvgLatencyMsNotIn []int `json:"lastPeriodAvgLatencyMsNotIn,omitempty"`
-	LastPeriodAvgLatencyMsGT    *int  `json:"lastPeriodAvgLatencyMsGT,omitempty"`
-	LastPeriodAvgLatencyMsGTE   *int  `json:"lastPeriodAvgLatencyMsGTE,omitempty"`
-	LastPeriodAvgLatencyMsLT    *int  `json:"lastPeriodAvgLatencyMsLT,omitempty"`
-	LastPeriodAvgLatencyMsLTE   *int  `json:"lastPeriodAvgLatencyMsLTE,omitempty"`
-
-	// "last_period_avg_token_per_second" field predicates.
-	LastPeriodAvgTokenPerSecond      *int  `json:"lastPeriodAvgTokenPerSecond,omitempty"`
-	LastPeriodAvgTokenPerSecondNEQ   *int  `json:"lastPeriodAvgTokenPerSecondNEQ,omitempty"`
-	LastPeriodAvgTokenPerSecondIn    []int `json:"lastPeriodAvgTokenPerSecondIn,omitempty"`
-	LastPeriodAvgTokenPerSecondNotIn []int `json:"lastPeriodAvgTokenPerSecondNotIn,omitempty"`
-	LastPeriodAvgTokenPerSecondGT    *int  `json:"lastPeriodAvgTokenPerSecondGT,omitempty"`
-	LastPeriodAvgTokenPerSecondGTE   *int  `json:"lastPeriodAvgTokenPerSecondGTE,omitempty"`
-	LastPeriodAvgTokenPerSecondLT    *int  `json:"lastPeriodAvgTokenPerSecondLT,omitempty"`
-	LastPeriodAvgTokenPerSecondLTE   *int  `json:"lastPeriodAvgTokenPerSecondLTE,omitempty"`
-
-	// "last_period_avg_stream_first_token_latench_ms" field predicates.
-	LastPeriodAvgStreamFirstTokenLatenchMs      *int  `json:"lastPeriodAvgStreamFirstTokenLatenchMs,omitempty"`
-	LastPeriodAvgStreamFirstTokenLatenchMsNEQ   *int  `json:"lastPeriodAvgStreamFirstTokenLatenchMsNEQ,omitempty"`
-	LastPeriodAvgStreamFirstTokenLatenchMsIn    []int `json:"lastPeriodAvgStreamFirstTokenLatenchMsIn,omitempty"`
-	LastPeriodAvgStreamFirstTokenLatenchMsNotIn []int `json:"lastPeriodAvgStreamFirstTokenLatenchMsNotIn,omitempty"`
-	LastPeriodAvgStreamFirstTokenLatenchMsGT    *int  `json:"lastPeriodAvgStreamFirstTokenLatenchMsGT,omitempty"`
-	LastPeriodAvgStreamFirstTokenLatenchMsGTE   *int  `json:"lastPeriodAvgStreamFirstTokenLatenchMsGTE,omitempty"`
-	LastPeriodAvgStreamFirstTokenLatenchMsLT    *int  `json:"lastPeriodAvgStreamFirstTokenLatenchMsLT,omitempty"`
-	LastPeriodAvgStreamFirstTokenLatenchMsLTE   *int  `json:"lastPeriodAvgStreamFirstTokenLatenchMsLTE,omitempty"`
-
-	// "last_period_avg_stream_token_per_second" field predicates.
-	LastPeriodAvgStreamTokenPerSecond      *float64  `json:"lastPeriodAvgStreamTokenPerSecond,omitempty"`
-	LastPeriodAvgStreamTokenPerSecondNEQ   *float64  `json:"lastPeriodAvgStreamTokenPerSecondNEQ,omitempty"`
-	LastPeriodAvgStreamTokenPerSecondIn    []float64 `json:"lastPeriodAvgStreamTokenPerSecondIn,omitempty"`
-	LastPeriodAvgStreamTokenPerSecondNotIn []float64 `json:"lastPeriodAvgStreamTokenPerSecondNotIn,omitempty"`
-	LastPeriodAvgStreamTokenPerSecondGT    *float64  `json:"lastPeriodAvgStreamTokenPerSecondGT,omitempty"`
-	LastPeriodAvgStreamTokenPerSecondGTE   *float64  `json:"lastPeriodAvgStreamTokenPerSecondGTE,omitempty"`
-	LastPeriodAvgStreamTokenPerSecondLT    *float64  `json:"lastPeriodAvgStreamTokenPerSecondLT,omitempty"`
-	LastPeriodAvgStreamTokenPerSecondLTE   *float64  `json:"lastPeriodAvgStreamTokenPerSecondLTE,omitempty"`
+	// "avg_stream_token_per_second" field predicates.
+	AvgStreamTokenPerSecond      *float64  `json:"avgStreamTokenPerSecond,omitempty"`
+	AvgStreamTokenPerSecondNEQ   *float64  `json:"avgStreamTokenPerSecondNEQ,omitempty"`
+	AvgStreamTokenPerSecondIn    []float64 `json:"avgStreamTokenPerSecondIn,omitempty"`
+	AvgStreamTokenPerSecondNotIn []float64 `json:"avgStreamTokenPerSecondNotIn,omitempty"`
+	AvgStreamTokenPerSecondGT    *float64  `json:"avgStreamTokenPerSecondGT,omitempty"`
+	AvgStreamTokenPerSecondGTE   *float64  `json:"avgStreamTokenPerSecondGTE,omitempty"`
+	AvgStreamTokenPerSecondLT    *float64  `json:"avgStreamTokenPerSecondLT,omitempty"`
+	AvgStreamTokenPerSecondLTE   *float64  `json:"avgStreamTokenPerSecondLTE,omitempty"`
 
 	// "last_success_at" field predicates.
-	LastSuccessAt      *time.Time  `json:"lastSuccessAt,omitempty"`
-	LastSuccessAtNEQ   *time.Time  `json:"lastSuccessAtNEQ,omitempty"`
-	LastSuccessAtIn    []time.Time `json:"lastSuccessAtIn,omitempty"`
-	LastSuccessAtNotIn []time.Time `json:"lastSuccessAtNotIn,omitempty"`
-	LastSuccessAtGT    *time.Time  `json:"lastSuccessAtGT,omitempty"`
-	LastSuccessAtGTE   *time.Time  `json:"lastSuccessAtGTE,omitempty"`
-	LastSuccessAtLT    *time.Time  `json:"lastSuccessAtLT,omitempty"`
-	LastSuccessAtLTE   *time.Time  `json:"lastSuccessAtLTE,omitempty"`
+	LastSuccessAt       *time.Time  `json:"lastSuccessAt,omitempty"`
+	LastSuccessAtNEQ    *time.Time  `json:"lastSuccessAtNEQ,omitempty"`
+	LastSuccessAtIn     []time.Time `json:"lastSuccessAtIn,omitempty"`
+	LastSuccessAtNotIn  []time.Time `json:"lastSuccessAtNotIn,omitempty"`
+	LastSuccessAtGT     *time.Time  `json:"lastSuccessAtGT,omitempty"`
+	LastSuccessAtGTE    *time.Time  `json:"lastSuccessAtGTE,omitempty"`
+	LastSuccessAtLT     *time.Time  `json:"lastSuccessAtLT,omitempty"`
+	LastSuccessAtLTE    *time.Time  `json:"lastSuccessAtLTE,omitempty"`
+	LastSuccessAtIsNil  bool        `json:"lastSuccessAtIsNil,omitempty"`
+	LastSuccessAtNotNil bool        `json:"lastSuccessAtNotNil,omitempty"`
 
 	// "last_failure_at" field predicates.
-	LastFailureAt      *time.Time  `json:"lastFailureAt,omitempty"`
-	LastFailureAtNEQ   *time.Time  `json:"lastFailureAtNEQ,omitempty"`
-	LastFailureAtIn    []time.Time `json:"lastFailureAtIn,omitempty"`
-	LastFailureAtNotIn []time.Time `json:"lastFailureAtNotIn,omitempty"`
-	LastFailureAtGT    *time.Time  `json:"lastFailureAtGT,omitempty"`
-	LastFailureAtGTE   *time.Time  `json:"lastFailureAtGTE,omitempty"`
-	LastFailureAtLT    *time.Time  `json:"lastFailureAtLT,omitempty"`
-	LastFailureAtLTE   *time.Time  `json:"lastFailureAtLTE,omitempty"`
-
-	// "last_attempt_at" field predicates.
-	LastAttemptAt      *time.Time  `json:"lastAttemptAt,omitempty"`
-	LastAttemptAtNEQ   *time.Time  `json:"lastAttemptAtNEQ,omitempty"`
-	LastAttemptAtIn    []time.Time `json:"lastAttemptAtIn,omitempty"`
-	LastAttemptAtNotIn []time.Time `json:"lastAttemptAtNotIn,omitempty"`
-	LastAttemptAtGT    *time.Time  `json:"lastAttemptAtGT,omitempty"`
-	LastAttemptAtGTE   *time.Time  `json:"lastAttemptAtGTE,omitempty"`
-	LastAttemptAtLT    *time.Time  `json:"lastAttemptAtLT,omitempty"`
-	LastAttemptAtLTE   *time.Time  `json:"lastAttemptAtLTE,omitempty"`
+	LastFailureAt       *time.Time  `json:"lastFailureAt,omitempty"`
+	LastFailureAtNEQ    *time.Time  `json:"lastFailureAtNEQ,omitempty"`
+	LastFailureAtIn     []time.Time `json:"lastFailureAtIn,omitempty"`
+	LastFailureAtNotIn  []time.Time `json:"lastFailureAtNotIn,omitempty"`
+	LastFailureAtGT     *time.Time  `json:"lastFailureAtGT,omitempty"`
+	LastFailureAtGTE    *time.Time  `json:"lastFailureAtGTE,omitempty"`
+	LastFailureAtLT     *time.Time  `json:"lastFailureAtLT,omitempty"`
+	LastFailureAtLTE    *time.Time  `json:"lastFailureAtLTE,omitempty"`
+	LastFailureAtIsNil  bool        `json:"lastFailureAtIsNil,omitempty"`
+	LastFailureAtNotNil bool        `json:"lastFailureAtNotNil,omitempty"`
 
 	// "channel" edge predicates.
 	HasChannel     *bool                `json:"hasChannel,omitempty"`
@@ -1476,425 +1406,125 @@ func (i *ChannelPerformanceWhereInput) P() (predicate.ChannelPerformance, error)
 	if len(i.ChannelIDNotIn) > 0 {
 		predicates = append(predicates, channelperformance.ChannelIDNotIn(i.ChannelIDNotIn...))
 	}
-	if i.HealthStatus != nil {
-		predicates = append(predicates, channelperformance.HealthStatusEQ(*i.HealthStatus))
+	if i.SuccessRate != nil {
+		predicates = append(predicates, channelperformance.SuccessRateEQ(*i.SuccessRate))
 	}
-	if i.HealthStatusNEQ != nil {
-		predicates = append(predicates, channelperformance.HealthStatusNEQ(*i.HealthStatusNEQ))
+	if i.SuccessRateNEQ != nil {
+		predicates = append(predicates, channelperformance.SuccessRateNEQ(*i.SuccessRateNEQ))
 	}
-	if len(i.HealthStatusIn) > 0 {
-		predicates = append(predicates, channelperformance.HealthStatusIn(i.HealthStatusIn...))
+	if len(i.SuccessRateIn) > 0 {
+		predicates = append(predicates, channelperformance.SuccessRateIn(i.SuccessRateIn...))
 	}
-	if len(i.HealthStatusNotIn) > 0 {
-		predicates = append(predicates, channelperformance.HealthStatusNotIn(i.HealthStatusNotIn...))
+	if len(i.SuccessRateNotIn) > 0 {
+		predicates = append(predicates, channelperformance.SuccessRateNotIn(i.SuccessRateNotIn...))
 	}
-	if i.TotalCount != nil {
-		predicates = append(predicates, channelperformance.TotalCountEQ(*i.TotalCount))
+	if i.SuccessRateGT != nil {
+		predicates = append(predicates, channelperformance.SuccessRateGT(*i.SuccessRateGT))
 	}
-	if i.TotalCountNEQ != nil {
-		predicates = append(predicates, channelperformance.TotalCountNEQ(*i.TotalCountNEQ))
+	if i.SuccessRateGTE != nil {
+		predicates = append(predicates, channelperformance.SuccessRateGTE(*i.SuccessRateGTE))
 	}
-	if len(i.TotalCountIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalCountIn(i.TotalCountIn...))
+	if i.SuccessRateLT != nil {
+		predicates = append(predicates, channelperformance.SuccessRateLT(*i.SuccessRateLT))
 	}
-	if len(i.TotalCountNotIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalCountNotIn(i.TotalCountNotIn...))
+	if i.SuccessRateLTE != nil {
+		predicates = append(predicates, channelperformance.SuccessRateLTE(*i.SuccessRateLTE))
 	}
-	if i.TotalCountGT != nil {
-		predicates = append(predicates, channelperformance.TotalCountGT(*i.TotalCountGT))
+	if i.AvgLatencyMs != nil {
+		predicates = append(predicates, channelperformance.AvgLatencyMsEQ(*i.AvgLatencyMs))
 	}
-	if i.TotalCountGTE != nil {
-		predicates = append(predicates, channelperformance.TotalCountGTE(*i.TotalCountGTE))
+	if i.AvgLatencyMsNEQ != nil {
+		predicates = append(predicates, channelperformance.AvgLatencyMsNEQ(*i.AvgLatencyMsNEQ))
 	}
-	if i.TotalCountLT != nil {
-		predicates = append(predicates, channelperformance.TotalCountLT(*i.TotalCountLT))
+	if len(i.AvgLatencyMsIn) > 0 {
+		predicates = append(predicates, channelperformance.AvgLatencyMsIn(i.AvgLatencyMsIn...))
 	}
-	if i.TotalCountLTE != nil {
-		predicates = append(predicates, channelperformance.TotalCountLTE(*i.TotalCountLTE))
+	if len(i.AvgLatencyMsNotIn) > 0 {
+		predicates = append(predicates, channelperformance.AvgLatencyMsNotIn(i.AvgLatencyMsNotIn...))
 	}
-	if i.TotalSuccessCount != nil {
-		predicates = append(predicates, channelperformance.TotalSuccessCountEQ(*i.TotalSuccessCount))
+	if i.AvgLatencyMsGT != nil {
+		predicates = append(predicates, channelperformance.AvgLatencyMsGT(*i.AvgLatencyMsGT))
 	}
-	if i.TotalSuccessCountNEQ != nil {
-		predicates = append(predicates, channelperformance.TotalSuccessCountNEQ(*i.TotalSuccessCountNEQ))
+	if i.AvgLatencyMsGTE != nil {
+		predicates = append(predicates, channelperformance.AvgLatencyMsGTE(*i.AvgLatencyMsGTE))
 	}
-	if len(i.TotalSuccessCountIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalSuccessCountIn(i.TotalSuccessCountIn...))
+	if i.AvgLatencyMsLT != nil {
+		predicates = append(predicates, channelperformance.AvgLatencyMsLT(*i.AvgLatencyMsLT))
 	}
-	if len(i.TotalSuccessCountNotIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalSuccessCountNotIn(i.TotalSuccessCountNotIn...))
+	if i.AvgLatencyMsLTE != nil {
+		predicates = append(predicates, channelperformance.AvgLatencyMsLTE(*i.AvgLatencyMsLTE))
 	}
-	if i.TotalSuccessCountGT != nil {
-		predicates = append(predicates, channelperformance.TotalSuccessCountGT(*i.TotalSuccessCountGT))
+	if i.AvgTokenPerSecond != nil {
+		predicates = append(predicates, channelperformance.AvgTokenPerSecondEQ(*i.AvgTokenPerSecond))
 	}
-	if i.TotalSuccessCountGTE != nil {
-		predicates = append(predicates, channelperformance.TotalSuccessCountGTE(*i.TotalSuccessCountGTE))
+	if i.AvgTokenPerSecondNEQ != nil {
+		predicates = append(predicates, channelperformance.AvgTokenPerSecondNEQ(*i.AvgTokenPerSecondNEQ))
 	}
-	if i.TotalSuccessCountLT != nil {
-		predicates = append(predicates, channelperformance.TotalSuccessCountLT(*i.TotalSuccessCountLT))
+	if len(i.AvgTokenPerSecondIn) > 0 {
+		predicates = append(predicates, channelperformance.AvgTokenPerSecondIn(i.AvgTokenPerSecondIn...))
 	}
-	if i.TotalSuccessCountLTE != nil {
-		predicates = append(predicates, channelperformance.TotalSuccessCountLTE(*i.TotalSuccessCountLTE))
+	if len(i.AvgTokenPerSecondNotIn) > 0 {
+		predicates = append(predicates, channelperformance.AvgTokenPerSecondNotIn(i.AvgTokenPerSecondNotIn...))
 	}
-	if i.TotalTokenCount != nil {
-		predicates = append(predicates, channelperformance.TotalTokenCountEQ(*i.TotalTokenCount))
+	if i.AvgTokenPerSecondGT != nil {
+		predicates = append(predicates, channelperformance.AvgTokenPerSecondGT(*i.AvgTokenPerSecondGT))
 	}
-	if i.TotalTokenCountNEQ != nil {
-		predicates = append(predicates, channelperformance.TotalTokenCountNEQ(*i.TotalTokenCountNEQ))
+	if i.AvgTokenPerSecondGTE != nil {
+		predicates = append(predicates, channelperformance.AvgTokenPerSecondGTE(*i.AvgTokenPerSecondGTE))
 	}
-	if len(i.TotalTokenCountIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalTokenCountIn(i.TotalTokenCountIn...))
+	if i.AvgTokenPerSecondLT != nil {
+		predicates = append(predicates, channelperformance.AvgTokenPerSecondLT(*i.AvgTokenPerSecondLT))
 	}
-	if len(i.TotalTokenCountNotIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalTokenCountNotIn(i.TotalTokenCountNotIn...))
+	if i.AvgTokenPerSecondLTE != nil {
+		predicates = append(predicates, channelperformance.AvgTokenPerSecondLTE(*i.AvgTokenPerSecondLTE))
 	}
-	if i.TotalTokenCountGT != nil {
-		predicates = append(predicates, channelperformance.TotalTokenCountGT(*i.TotalTokenCountGT))
+	if i.AvgStreamFirstTokenLatencyMs != nil {
+		predicates = append(predicates, channelperformance.AvgStreamFirstTokenLatencyMsEQ(*i.AvgStreamFirstTokenLatencyMs))
 	}
-	if i.TotalTokenCountGTE != nil {
-		predicates = append(predicates, channelperformance.TotalTokenCountGTE(*i.TotalTokenCountGTE))
+	if i.AvgStreamFirstTokenLatencyMsNEQ != nil {
+		predicates = append(predicates, channelperformance.AvgStreamFirstTokenLatencyMsNEQ(*i.AvgStreamFirstTokenLatencyMsNEQ))
 	}
-	if i.TotalTokenCountLT != nil {
-		predicates = append(predicates, channelperformance.TotalTokenCountLT(*i.TotalTokenCountLT))
+	if len(i.AvgStreamFirstTokenLatencyMsIn) > 0 {
+		predicates = append(predicates, channelperformance.AvgStreamFirstTokenLatencyMsIn(i.AvgStreamFirstTokenLatencyMsIn...))
 	}
-	if i.TotalTokenCountLTE != nil {
-		predicates = append(predicates, channelperformance.TotalTokenCountLTE(*i.TotalTokenCountLTE))
+	if len(i.AvgStreamFirstTokenLatencyMsNotIn) > 0 {
+		predicates = append(predicates, channelperformance.AvgStreamFirstTokenLatencyMsNotIn(i.AvgStreamFirstTokenLatencyMsNotIn...))
 	}
-	if i.TotalAvgLatencyMs != nil {
-		predicates = append(predicates, channelperformance.TotalAvgLatencyMsEQ(*i.TotalAvgLatencyMs))
+	if i.AvgStreamFirstTokenLatencyMsGT != nil {
+		predicates = append(predicates, channelperformance.AvgStreamFirstTokenLatencyMsGT(*i.AvgStreamFirstTokenLatencyMsGT))
 	}
-	if i.TotalAvgLatencyMsNEQ != nil {
-		predicates = append(predicates, channelperformance.TotalAvgLatencyMsNEQ(*i.TotalAvgLatencyMsNEQ))
+	if i.AvgStreamFirstTokenLatencyMsGTE != nil {
+		predicates = append(predicates, channelperformance.AvgStreamFirstTokenLatencyMsGTE(*i.AvgStreamFirstTokenLatencyMsGTE))
 	}
-	if len(i.TotalAvgLatencyMsIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalAvgLatencyMsIn(i.TotalAvgLatencyMsIn...))
+	if i.AvgStreamFirstTokenLatencyMsLT != nil {
+		predicates = append(predicates, channelperformance.AvgStreamFirstTokenLatencyMsLT(*i.AvgStreamFirstTokenLatencyMsLT))
 	}
-	if len(i.TotalAvgLatencyMsNotIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalAvgLatencyMsNotIn(i.TotalAvgLatencyMsNotIn...))
+	if i.AvgStreamFirstTokenLatencyMsLTE != nil {
+		predicates = append(predicates, channelperformance.AvgStreamFirstTokenLatencyMsLTE(*i.AvgStreamFirstTokenLatencyMsLTE))
 	}
-	if i.TotalAvgLatencyMsGT != nil {
-		predicates = append(predicates, channelperformance.TotalAvgLatencyMsGT(*i.TotalAvgLatencyMsGT))
+	if i.AvgStreamTokenPerSecond != nil {
+		predicates = append(predicates, channelperformance.AvgStreamTokenPerSecondEQ(*i.AvgStreamTokenPerSecond))
 	}
-	if i.TotalAvgLatencyMsGTE != nil {
-		predicates = append(predicates, channelperformance.TotalAvgLatencyMsGTE(*i.TotalAvgLatencyMsGTE))
+	if i.AvgStreamTokenPerSecondNEQ != nil {
+		predicates = append(predicates, channelperformance.AvgStreamTokenPerSecondNEQ(*i.AvgStreamTokenPerSecondNEQ))
 	}
-	if i.TotalAvgLatencyMsLT != nil {
-		predicates = append(predicates, channelperformance.TotalAvgLatencyMsLT(*i.TotalAvgLatencyMsLT))
+	if len(i.AvgStreamTokenPerSecondIn) > 0 {
+		predicates = append(predicates, channelperformance.AvgStreamTokenPerSecondIn(i.AvgStreamTokenPerSecondIn...))
 	}
-	if i.TotalAvgLatencyMsLTE != nil {
-		predicates = append(predicates, channelperformance.TotalAvgLatencyMsLTE(*i.TotalAvgLatencyMsLTE))
+	if len(i.AvgStreamTokenPerSecondNotIn) > 0 {
+		predicates = append(predicates, channelperformance.AvgStreamTokenPerSecondNotIn(i.AvgStreamTokenPerSecondNotIn...))
 	}
-	if i.TotalAvgTokenPerSecond != nil {
-		predicates = append(predicates, channelperformance.TotalAvgTokenPerSecondEQ(*i.TotalAvgTokenPerSecond))
+	if i.AvgStreamTokenPerSecondGT != nil {
+		predicates = append(predicates, channelperformance.AvgStreamTokenPerSecondGT(*i.AvgStreamTokenPerSecondGT))
 	}
-	if i.TotalAvgTokenPerSecondNEQ != nil {
-		predicates = append(predicates, channelperformance.TotalAvgTokenPerSecondNEQ(*i.TotalAvgTokenPerSecondNEQ))
+	if i.AvgStreamTokenPerSecondGTE != nil {
+		predicates = append(predicates, channelperformance.AvgStreamTokenPerSecondGTE(*i.AvgStreamTokenPerSecondGTE))
 	}
-	if len(i.TotalAvgTokenPerSecondIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalAvgTokenPerSecondIn(i.TotalAvgTokenPerSecondIn...))
+	if i.AvgStreamTokenPerSecondLT != nil {
+		predicates = append(predicates, channelperformance.AvgStreamTokenPerSecondLT(*i.AvgStreamTokenPerSecondLT))
 	}
-	if len(i.TotalAvgTokenPerSecondNotIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalAvgTokenPerSecondNotIn(i.TotalAvgTokenPerSecondNotIn...))
-	}
-	if i.TotalAvgTokenPerSecondGT != nil {
-		predicates = append(predicates, channelperformance.TotalAvgTokenPerSecondGT(*i.TotalAvgTokenPerSecondGT))
-	}
-	if i.TotalAvgTokenPerSecondGTE != nil {
-		predicates = append(predicates, channelperformance.TotalAvgTokenPerSecondGTE(*i.TotalAvgTokenPerSecondGTE))
-	}
-	if i.TotalAvgTokenPerSecondLT != nil {
-		predicates = append(predicates, channelperformance.TotalAvgTokenPerSecondLT(*i.TotalAvgTokenPerSecondLT))
-	}
-	if i.TotalAvgTokenPerSecondLTE != nil {
-		predicates = append(predicates, channelperformance.TotalAvgTokenPerSecondLTE(*i.TotalAvgTokenPerSecondLTE))
-	}
-	if i.TotalAvgStreamFirstTokenLatenchMs != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamFirstTokenLatenchMsEQ(*i.TotalAvgStreamFirstTokenLatenchMs))
-	}
-	if i.TotalAvgStreamFirstTokenLatenchMsNEQ != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamFirstTokenLatenchMsNEQ(*i.TotalAvgStreamFirstTokenLatenchMsNEQ))
-	}
-	if len(i.TotalAvgStreamFirstTokenLatenchMsIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalAvgStreamFirstTokenLatenchMsIn(i.TotalAvgStreamFirstTokenLatenchMsIn...))
-	}
-	if len(i.TotalAvgStreamFirstTokenLatenchMsNotIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalAvgStreamFirstTokenLatenchMsNotIn(i.TotalAvgStreamFirstTokenLatenchMsNotIn...))
-	}
-	if i.TotalAvgStreamFirstTokenLatenchMsGT != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamFirstTokenLatenchMsGT(*i.TotalAvgStreamFirstTokenLatenchMsGT))
-	}
-	if i.TotalAvgStreamFirstTokenLatenchMsGTE != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamFirstTokenLatenchMsGTE(*i.TotalAvgStreamFirstTokenLatenchMsGTE))
-	}
-	if i.TotalAvgStreamFirstTokenLatenchMsLT != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamFirstTokenLatenchMsLT(*i.TotalAvgStreamFirstTokenLatenchMsLT))
-	}
-	if i.TotalAvgStreamFirstTokenLatenchMsLTE != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamFirstTokenLatenchMsLTE(*i.TotalAvgStreamFirstTokenLatenchMsLTE))
-	}
-	if i.TotalAvgStreamTokenPerSecond != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamTokenPerSecondEQ(*i.TotalAvgStreamTokenPerSecond))
-	}
-	if i.TotalAvgStreamTokenPerSecondNEQ != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamTokenPerSecondNEQ(*i.TotalAvgStreamTokenPerSecondNEQ))
-	}
-	if len(i.TotalAvgStreamTokenPerSecondIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalAvgStreamTokenPerSecondIn(i.TotalAvgStreamTokenPerSecondIn...))
-	}
-	if len(i.TotalAvgStreamTokenPerSecondNotIn) > 0 {
-		predicates = append(predicates, channelperformance.TotalAvgStreamTokenPerSecondNotIn(i.TotalAvgStreamTokenPerSecondNotIn...))
-	}
-	if i.TotalAvgStreamTokenPerSecondGT != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamTokenPerSecondGT(*i.TotalAvgStreamTokenPerSecondGT))
-	}
-	if i.TotalAvgStreamTokenPerSecondGTE != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamTokenPerSecondGTE(*i.TotalAvgStreamTokenPerSecondGTE))
-	}
-	if i.TotalAvgStreamTokenPerSecondLT != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamTokenPerSecondLT(*i.TotalAvgStreamTokenPerSecondLT))
-	}
-	if i.TotalAvgStreamTokenPerSecondLTE != nil {
-		predicates = append(predicates, channelperformance.TotalAvgStreamTokenPerSecondLTE(*i.TotalAvgStreamTokenPerSecondLTE))
-	}
-	if i.LastPeriodStart != nil {
-		predicates = append(predicates, channelperformance.LastPeriodStartEQ(*i.LastPeriodStart))
-	}
-	if i.LastPeriodStartNEQ != nil {
-		predicates = append(predicates, channelperformance.LastPeriodStartNEQ(*i.LastPeriodStartNEQ))
-	}
-	if len(i.LastPeriodStartIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodStartIn(i.LastPeriodStartIn...))
-	}
-	if len(i.LastPeriodStartNotIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodStartNotIn(i.LastPeriodStartNotIn...))
-	}
-	if i.LastPeriodStartGT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodStartGT(*i.LastPeriodStartGT))
-	}
-	if i.LastPeriodStartGTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodStartGTE(*i.LastPeriodStartGTE))
-	}
-	if i.LastPeriodStartLT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodStartLT(*i.LastPeriodStartLT))
-	}
-	if i.LastPeriodStartLTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodStartLTE(*i.LastPeriodStartLTE))
-	}
-	if i.LastPeriodEnd != nil {
-		predicates = append(predicates, channelperformance.LastPeriodEndEQ(*i.LastPeriodEnd))
-	}
-	if i.LastPeriodEndNEQ != nil {
-		predicates = append(predicates, channelperformance.LastPeriodEndNEQ(*i.LastPeriodEndNEQ))
-	}
-	if len(i.LastPeriodEndIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodEndIn(i.LastPeriodEndIn...))
-	}
-	if len(i.LastPeriodEndNotIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodEndNotIn(i.LastPeriodEndNotIn...))
-	}
-	if i.LastPeriodEndGT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodEndGT(*i.LastPeriodEndGT))
-	}
-	if i.LastPeriodEndGTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodEndGTE(*i.LastPeriodEndGTE))
-	}
-	if i.LastPeriodEndLT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodEndLT(*i.LastPeriodEndLT))
-	}
-	if i.LastPeriodEndLTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodEndLTE(*i.LastPeriodEndLTE))
-	}
-	if i.LastPeriodSeconds != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSecondsEQ(*i.LastPeriodSeconds))
-	}
-	if i.LastPeriodSecondsNEQ != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSecondsNEQ(*i.LastPeriodSecondsNEQ))
-	}
-	if len(i.LastPeriodSecondsIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodSecondsIn(i.LastPeriodSecondsIn...))
-	}
-	if len(i.LastPeriodSecondsNotIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodSecondsNotIn(i.LastPeriodSecondsNotIn...))
-	}
-	if i.LastPeriodSecondsGT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSecondsGT(*i.LastPeriodSecondsGT))
-	}
-	if i.LastPeriodSecondsGTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSecondsGTE(*i.LastPeriodSecondsGTE))
-	}
-	if i.LastPeriodSecondsLT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSecondsLT(*i.LastPeriodSecondsLT))
-	}
-	if i.LastPeriodSecondsLTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSecondsLTE(*i.LastPeriodSecondsLTE))
-	}
-	if i.LastPeriodCount != nil {
-		predicates = append(predicates, channelperformance.LastPeriodCountEQ(*i.LastPeriodCount))
-	}
-	if i.LastPeriodCountNEQ != nil {
-		predicates = append(predicates, channelperformance.LastPeriodCountNEQ(*i.LastPeriodCountNEQ))
-	}
-	if len(i.LastPeriodCountIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodCountIn(i.LastPeriodCountIn...))
-	}
-	if len(i.LastPeriodCountNotIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodCountNotIn(i.LastPeriodCountNotIn...))
-	}
-	if i.LastPeriodCountGT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodCountGT(*i.LastPeriodCountGT))
-	}
-	if i.LastPeriodCountGTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodCountGTE(*i.LastPeriodCountGTE))
-	}
-	if i.LastPeriodCountLT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodCountLT(*i.LastPeriodCountLT))
-	}
-	if i.LastPeriodCountLTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodCountLTE(*i.LastPeriodCountLTE))
-	}
-	if i.LastPeriodSuccessCount != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSuccessCountEQ(*i.LastPeriodSuccessCount))
-	}
-	if i.LastPeriodSuccessCountNEQ != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSuccessCountNEQ(*i.LastPeriodSuccessCountNEQ))
-	}
-	if len(i.LastPeriodSuccessCountIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodSuccessCountIn(i.LastPeriodSuccessCountIn...))
-	}
-	if len(i.LastPeriodSuccessCountNotIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodSuccessCountNotIn(i.LastPeriodSuccessCountNotIn...))
-	}
-	if i.LastPeriodSuccessCountGT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSuccessCountGT(*i.LastPeriodSuccessCountGT))
-	}
-	if i.LastPeriodSuccessCountGTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSuccessCountGTE(*i.LastPeriodSuccessCountGTE))
-	}
-	if i.LastPeriodSuccessCountLT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSuccessCountLT(*i.LastPeriodSuccessCountLT))
-	}
-	if i.LastPeriodSuccessCountLTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodSuccessCountLTE(*i.LastPeriodSuccessCountLTE))
-	}
-	if i.LastPeriodTokenCount != nil {
-		predicates = append(predicates, channelperformance.LastPeriodTokenCountEQ(*i.LastPeriodTokenCount))
-	}
-	if i.LastPeriodTokenCountNEQ != nil {
-		predicates = append(predicates, channelperformance.LastPeriodTokenCountNEQ(*i.LastPeriodTokenCountNEQ))
-	}
-	if len(i.LastPeriodTokenCountIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodTokenCountIn(i.LastPeriodTokenCountIn...))
-	}
-	if len(i.LastPeriodTokenCountNotIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodTokenCountNotIn(i.LastPeriodTokenCountNotIn...))
-	}
-	if i.LastPeriodTokenCountGT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodTokenCountGT(*i.LastPeriodTokenCountGT))
-	}
-	if i.LastPeriodTokenCountGTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodTokenCountGTE(*i.LastPeriodTokenCountGTE))
-	}
-	if i.LastPeriodTokenCountLT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodTokenCountLT(*i.LastPeriodTokenCountLT))
-	}
-	if i.LastPeriodTokenCountLTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodTokenCountLTE(*i.LastPeriodTokenCountLTE))
-	}
-	if i.LastPeriodAvgLatencyMs != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgLatencyMsEQ(*i.LastPeriodAvgLatencyMs))
-	}
-	if i.LastPeriodAvgLatencyMsNEQ != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgLatencyMsNEQ(*i.LastPeriodAvgLatencyMsNEQ))
-	}
-	if len(i.LastPeriodAvgLatencyMsIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodAvgLatencyMsIn(i.LastPeriodAvgLatencyMsIn...))
-	}
-	if len(i.LastPeriodAvgLatencyMsNotIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodAvgLatencyMsNotIn(i.LastPeriodAvgLatencyMsNotIn...))
-	}
-	if i.LastPeriodAvgLatencyMsGT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgLatencyMsGT(*i.LastPeriodAvgLatencyMsGT))
-	}
-	if i.LastPeriodAvgLatencyMsGTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgLatencyMsGTE(*i.LastPeriodAvgLatencyMsGTE))
-	}
-	if i.LastPeriodAvgLatencyMsLT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgLatencyMsLT(*i.LastPeriodAvgLatencyMsLT))
-	}
-	if i.LastPeriodAvgLatencyMsLTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgLatencyMsLTE(*i.LastPeriodAvgLatencyMsLTE))
-	}
-	if i.LastPeriodAvgTokenPerSecond != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgTokenPerSecondEQ(*i.LastPeriodAvgTokenPerSecond))
-	}
-	if i.LastPeriodAvgTokenPerSecondNEQ != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgTokenPerSecondNEQ(*i.LastPeriodAvgTokenPerSecondNEQ))
-	}
-	if len(i.LastPeriodAvgTokenPerSecondIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodAvgTokenPerSecondIn(i.LastPeriodAvgTokenPerSecondIn...))
-	}
-	if len(i.LastPeriodAvgTokenPerSecondNotIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodAvgTokenPerSecondNotIn(i.LastPeriodAvgTokenPerSecondNotIn...))
-	}
-	if i.LastPeriodAvgTokenPerSecondGT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgTokenPerSecondGT(*i.LastPeriodAvgTokenPerSecondGT))
-	}
-	if i.LastPeriodAvgTokenPerSecondGTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgTokenPerSecondGTE(*i.LastPeriodAvgTokenPerSecondGTE))
-	}
-	if i.LastPeriodAvgTokenPerSecondLT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgTokenPerSecondLT(*i.LastPeriodAvgTokenPerSecondLT))
-	}
-	if i.LastPeriodAvgTokenPerSecondLTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgTokenPerSecondLTE(*i.LastPeriodAvgTokenPerSecondLTE))
-	}
-	if i.LastPeriodAvgStreamFirstTokenLatenchMs != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamFirstTokenLatenchMsEQ(*i.LastPeriodAvgStreamFirstTokenLatenchMs))
-	}
-	if i.LastPeriodAvgStreamFirstTokenLatenchMsNEQ != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamFirstTokenLatenchMsNEQ(*i.LastPeriodAvgStreamFirstTokenLatenchMsNEQ))
-	}
-	if len(i.LastPeriodAvgStreamFirstTokenLatenchMsIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamFirstTokenLatenchMsIn(i.LastPeriodAvgStreamFirstTokenLatenchMsIn...))
-	}
-	if len(i.LastPeriodAvgStreamFirstTokenLatenchMsNotIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamFirstTokenLatenchMsNotIn(i.LastPeriodAvgStreamFirstTokenLatenchMsNotIn...))
-	}
-	if i.LastPeriodAvgStreamFirstTokenLatenchMsGT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamFirstTokenLatenchMsGT(*i.LastPeriodAvgStreamFirstTokenLatenchMsGT))
-	}
-	if i.LastPeriodAvgStreamFirstTokenLatenchMsGTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamFirstTokenLatenchMsGTE(*i.LastPeriodAvgStreamFirstTokenLatenchMsGTE))
-	}
-	if i.LastPeriodAvgStreamFirstTokenLatenchMsLT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamFirstTokenLatenchMsLT(*i.LastPeriodAvgStreamFirstTokenLatenchMsLT))
-	}
-	if i.LastPeriodAvgStreamFirstTokenLatenchMsLTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamFirstTokenLatenchMsLTE(*i.LastPeriodAvgStreamFirstTokenLatenchMsLTE))
-	}
-	if i.LastPeriodAvgStreamTokenPerSecond != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamTokenPerSecondEQ(*i.LastPeriodAvgStreamTokenPerSecond))
-	}
-	if i.LastPeriodAvgStreamTokenPerSecondNEQ != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamTokenPerSecondNEQ(*i.LastPeriodAvgStreamTokenPerSecondNEQ))
-	}
-	if len(i.LastPeriodAvgStreamTokenPerSecondIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamTokenPerSecondIn(i.LastPeriodAvgStreamTokenPerSecondIn...))
-	}
-	if len(i.LastPeriodAvgStreamTokenPerSecondNotIn) > 0 {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamTokenPerSecondNotIn(i.LastPeriodAvgStreamTokenPerSecondNotIn...))
-	}
-	if i.LastPeriodAvgStreamTokenPerSecondGT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamTokenPerSecondGT(*i.LastPeriodAvgStreamTokenPerSecondGT))
-	}
-	if i.LastPeriodAvgStreamTokenPerSecondGTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamTokenPerSecondGTE(*i.LastPeriodAvgStreamTokenPerSecondGTE))
-	}
-	if i.LastPeriodAvgStreamTokenPerSecondLT != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamTokenPerSecondLT(*i.LastPeriodAvgStreamTokenPerSecondLT))
-	}
-	if i.LastPeriodAvgStreamTokenPerSecondLTE != nil {
-		predicates = append(predicates, channelperformance.LastPeriodAvgStreamTokenPerSecondLTE(*i.LastPeriodAvgStreamTokenPerSecondLTE))
+	if i.AvgStreamTokenPerSecondLTE != nil {
+		predicates = append(predicates, channelperformance.AvgStreamTokenPerSecondLTE(*i.AvgStreamTokenPerSecondLTE))
 	}
 	if i.LastSuccessAt != nil {
 		predicates = append(predicates, channelperformance.LastSuccessAtEQ(*i.LastSuccessAt))
@@ -1920,6 +1550,12 @@ func (i *ChannelPerformanceWhereInput) P() (predicate.ChannelPerformance, error)
 	if i.LastSuccessAtLTE != nil {
 		predicates = append(predicates, channelperformance.LastSuccessAtLTE(*i.LastSuccessAtLTE))
 	}
+	if i.LastSuccessAtIsNil {
+		predicates = append(predicates, channelperformance.LastSuccessAtIsNil())
+	}
+	if i.LastSuccessAtNotNil {
+		predicates = append(predicates, channelperformance.LastSuccessAtNotNil())
+	}
 	if i.LastFailureAt != nil {
 		predicates = append(predicates, channelperformance.LastFailureAtEQ(*i.LastFailureAt))
 	}
@@ -1944,29 +1580,11 @@ func (i *ChannelPerformanceWhereInput) P() (predicate.ChannelPerformance, error)
 	if i.LastFailureAtLTE != nil {
 		predicates = append(predicates, channelperformance.LastFailureAtLTE(*i.LastFailureAtLTE))
 	}
-	if i.LastAttemptAt != nil {
-		predicates = append(predicates, channelperformance.LastAttemptAtEQ(*i.LastAttemptAt))
+	if i.LastFailureAtIsNil {
+		predicates = append(predicates, channelperformance.LastFailureAtIsNil())
 	}
-	if i.LastAttemptAtNEQ != nil {
-		predicates = append(predicates, channelperformance.LastAttemptAtNEQ(*i.LastAttemptAtNEQ))
-	}
-	if len(i.LastAttemptAtIn) > 0 {
-		predicates = append(predicates, channelperformance.LastAttemptAtIn(i.LastAttemptAtIn...))
-	}
-	if len(i.LastAttemptAtNotIn) > 0 {
-		predicates = append(predicates, channelperformance.LastAttemptAtNotIn(i.LastAttemptAtNotIn...))
-	}
-	if i.LastAttemptAtGT != nil {
-		predicates = append(predicates, channelperformance.LastAttemptAtGT(*i.LastAttemptAtGT))
-	}
-	if i.LastAttemptAtGTE != nil {
-		predicates = append(predicates, channelperformance.LastAttemptAtGTE(*i.LastAttemptAtGTE))
-	}
-	if i.LastAttemptAtLT != nil {
-		predicates = append(predicates, channelperformance.LastAttemptAtLT(*i.LastAttemptAtLT))
-	}
-	if i.LastAttemptAtLTE != nil {
-		predicates = append(predicates, channelperformance.LastAttemptAtLTE(*i.LastAttemptAtLTE))
+	if i.LastFailureAtNotNil {
+		predicates = append(predicates, channelperformance.LastFailureAtNotNil())
 	}
 
 	if i.HasChannel != nil {

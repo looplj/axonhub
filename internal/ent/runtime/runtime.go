@@ -155,66 +155,26 @@ func init() {
 	channelperformanceDescDeletedAt := channelperformanceMixinFields1[0].Descriptor()
 	// channelperformance.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	channelperformance.DefaultDeletedAt = channelperformanceDescDeletedAt.Default.(int)
-	// channelperformanceDescTotalCount is the schema descriptor for total_count field.
-	channelperformanceDescTotalCount := channelperformanceFields[2].Descriptor()
-	// channelperformance.DefaultTotalCount holds the default value on creation for the total_count field.
-	channelperformance.DefaultTotalCount = channelperformanceDescTotalCount.Default.(int)
-	// channelperformanceDescTotalSuccessCount is the schema descriptor for total_success_count field.
-	channelperformanceDescTotalSuccessCount := channelperformanceFields[3].Descriptor()
-	// channelperformance.DefaultTotalSuccessCount holds the default value on creation for the total_success_count field.
-	channelperformance.DefaultTotalSuccessCount = channelperformanceDescTotalSuccessCount.Default.(int)
-	// channelperformanceDescTotalTokenCount is the schema descriptor for total_token_count field.
-	channelperformanceDescTotalTokenCount := channelperformanceFields[4].Descriptor()
-	// channelperformance.DefaultTotalTokenCount holds the default value on creation for the total_token_count field.
-	channelperformance.DefaultTotalTokenCount = channelperformanceDescTotalTokenCount.Default.(int)
-	// channelperformanceDescTotalAvgLatencyMs is the schema descriptor for total_avg_latency_ms field.
-	channelperformanceDescTotalAvgLatencyMs := channelperformanceFields[5].Descriptor()
-	// channelperformance.DefaultTotalAvgLatencyMs holds the default value on creation for the total_avg_latency_ms field.
-	channelperformance.DefaultTotalAvgLatencyMs = channelperformanceDescTotalAvgLatencyMs.Default.(int)
-	// channelperformanceDescTotalAvgTokenPerSecond is the schema descriptor for total_avg_token_per_second field.
-	channelperformanceDescTotalAvgTokenPerSecond := channelperformanceFields[6].Descriptor()
-	// channelperformance.DefaultTotalAvgTokenPerSecond holds the default value on creation for the total_avg_token_per_second field.
-	channelperformance.DefaultTotalAvgTokenPerSecond = channelperformanceDescTotalAvgTokenPerSecond.Default.(int)
-	// channelperformanceDescTotalAvgStreamFirstTokenLatenchMs is the schema descriptor for total_avg_stream_first_token_latench_ms field.
-	channelperformanceDescTotalAvgStreamFirstTokenLatenchMs := channelperformanceFields[7].Descriptor()
-	// channelperformance.DefaultTotalAvgStreamFirstTokenLatenchMs holds the default value on creation for the total_avg_stream_first_token_latench_ms field.
-	channelperformance.DefaultTotalAvgStreamFirstTokenLatenchMs = channelperformanceDescTotalAvgStreamFirstTokenLatenchMs.Default.(int)
-	// channelperformanceDescTotalAvgStreamTokenPerSecond is the schema descriptor for total_avg_stream_token_per_second field.
-	channelperformanceDescTotalAvgStreamTokenPerSecond := channelperformanceFields[8].Descriptor()
-	// channelperformance.DefaultTotalAvgStreamTokenPerSecond holds the default value on creation for the total_avg_stream_token_per_second field.
-	channelperformance.DefaultTotalAvgStreamTokenPerSecond = channelperformanceDescTotalAvgStreamTokenPerSecond.Default.(float64)
-	// channelperformanceDescLastPeriodSeconds is the schema descriptor for last_period_seconds field.
-	channelperformanceDescLastPeriodSeconds := channelperformanceFields[11].Descriptor()
-	// channelperformance.DefaultLastPeriodSeconds holds the default value on creation for the last_period_seconds field.
-	channelperformance.DefaultLastPeriodSeconds = channelperformanceDescLastPeriodSeconds.Default.(int)
-	// channelperformanceDescLastPeriodCount is the schema descriptor for last_period_count field.
-	channelperformanceDescLastPeriodCount := channelperformanceFields[12].Descriptor()
-	// channelperformance.DefaultLastPeriodCount holds the default value on creation for the last_period_count field.
-	channelperformance.DefaultLastPeriodCount = channelperformanceDescLastPeriodCount.Default.(int)
-	// channelperformanceDescLastPeriodSuccessCount is the schema descriptor for last_period_success_count field.
-	channelperformanceDescLastPeriodSuccessCount := channelperformanceFields[13].Descriptor()
-	// channelperformance.DefaultLastPeriodSuccessCount holds the default value on creation for the last_period_success_count field.
-	channelperformance.DefaultLastPeriodSuccessCount = channelperformanceDescLastPeriodSuccessCount.Default.(int)
-	// channelperformanceDescLastPeriodTokenCount is the schema descriptor for last_period_token_count field.
-	channelperformanceDescLastPeriodTokenCount := channelperformanceFields[14].Descriptor()
-	// channelperformance.DefaultLastPeriodTokenCount holds the default value on creation for the last_period_token_count field.
-	channelperformance.DefaultLastPeriodTokenCount = channelperformanceDescLastPeriodTokenCount.Default.(int)
-	// channelperformanceDescLastPeriodAvgLatencyMs is the schema descriptor for last_period_avg_latency_ms field.
-	channelperformanceDescLastPeriodAvgLatencyMs := channelperformanceFields[15].Descriptor()
-	// channelperformance.DefaultLastPeriodAvgLatencyMs holds the default value on creation for the last_period_avg_latency_ms field.
-	channelperformance.DefaultLastPeriodAvgLatencyMs = channelperformanceDescLastPeriodAvgLatencyMs.Default.(int)
-	// channelperformanceDescLastPeriodAvgTokenPerSecond is the schema descriptor for last_period_avg_token_per_second field.
-	channelperformanceDescLastPeriodAvgTokenPerSecond := channelperformanceFields[16].Descriptor()
-	// channelperformance.DefaultLastPeriodAvgTokenPerSecond holds the default value on creation for the last_period_avg_token_per_second field.
-	channelperformance.DefaultLastPeriodAvgTokenPerSecond = channelperformanceDescLastPeriodAvgTokenPerSecond.Default.(int)
-	// channelperformanceDescLastPeriodAvgStreamFirstTokenLatenchMs is the schema descriptor for last_period_avg_stream_first_token_latench_ms field.
-	channelperformanceDescLastPeriodAvgStreamFirstTokenLatenchMs := channelperformanceFields[17].Descriptor()
-	// channelperformance.DefaultLastPeriodAvgStreamFirstTokenLatenchMs holds the default value on creation for the last_period_avg_stream_first_token_latench_ms field.
-	channelperformance.DefaultLastPeriodAvgStreamFirstTokenLatenchMs = channelperformanceDescLastPeriodAvgStreamFirstTokenLatenchMs.Default.(int)
-	// channelperformanceDescLastPeriodAvgStreamTokenPerSecond is the schema descriptor for last_period_avg_stream_token_per_second field.
-	channelperformanceDescLastPeriodAvgStreamTokenPerSecond := channelperformanceFields[18].Descriptor()
-	// channelperformance.DefaultLastPeriodAvgStreamTokenPerSecond holds the default value on creation for the last_period_avg_stream_token_per_second field.
-	channelperformance.DefaultLastPeriodAvgStreamTokenPerSecond = channelperformanceDescLastPeriodAvgStreamTokenPerSecond.Default.(float64)
+	// channelperformanceDescSuccessRate is the schema descriptor for success_rate field.
+	channelperformanceDescSuccessRate := channelperformanceFields[1].Descriptor()
+	// channelperformance.DefaultSuccessRate holds the default value on creation for the success_rate field.
+	channelperformance.DefaultSuccessRate = channelperformanceDescSuccessRate.Default.(int)
+	// channelperformanceDescAvgLatencyMs is the schema descriptor for avg_latency_ms field.
+	channelperformanceDescAvgLatencyMs := channelperformanceFields[2].Descriptor()
+	// channelperformance.DefaultAvgLatencyMs holds the default value on creation for the avg_latency_ms field.
+	channelperformance.DefaultAvgLatencyMs = channelperformanceDescAvgLatencyMs.Default.(int)
+	// channelperformanceDescAvgTokenPerSecond is the schema descriptor for avg_token_per_second field.
+	channelperformanceDescAvgTokenPerSecond := channelperformanceFields[3].Descriptor()
+	// channelperformance.DefaultAvgTokenPerSecond holds the default value on creation for the avg_token_per_second field.
+	channelperformance.DefaultAvgTokenPerSecond = channelperformanceDescAvgTokenPerSecond.Default.(int)
+	// channelperformanceDescAvgStreamFirstTokenLatencyMs is the schema descriptor for avg_stream_first_token_latency_ms field.
+	channelperformanceDescAvgStreamFirstTokenLatencyMs := channelperformanceFields[4].Descriptor()
+	// channelperformance.DefaultAvgStreamFirstTokenLatencyMs holds the default value on creation for the avg_stream_first_token_latency_ms field.
+	channelperformance.DefaultAvgStreamFirstTokenLatencyMs = channelperformanceDescAvgStreamFirstTokenLatencyMs.Default.(int)
+	// channelperformanceDescAvgStreamTokenPerSecond is the schema descriptor for avg_stream_token_per_second field.
+	channelperformanceDescAvgStreamTokenPerSecond := channelperformanceFields[5].Descriptor()
+	// channelperformance.DefaultAvgStreamTokenPerSecond holds the default value on creation for the avg_stream_token_per_second field.
+	channelperformance.DefaultAvgStreamTokenPerSecond = channelperformanceDescAvgStreamTokenPerSecond.Default.(float64)
 	datastorageMixin := schema.DataStorage{}.Mixin()
 	datastorage.Policy = privacy.NewPolicies(schema.DataStorage{})
 	datastorage.Hooks[0] = func(next ent.Mutator) ent.Mutator {

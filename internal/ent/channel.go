@@ -46,6 +46,8 @@ type Channel struct {
 	Settings *objects.ChannelSettings `json:"settings,omitempty"`
 	// Ordering weight for display sorting
 	OrderingWeight int `json:"ordering_weight,omitempty"`
+	// ErrorMessage holds the value of the "error_message" field.
+	ErrorMessage *string `json:"error_message,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChannelQuery when eager-loading is set.
 	Edges        ChannelEdges `json:"edges"`
@@ -120,7 +122,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case channel.FieldID, channel.FieldDeletedAt, channel.FieldOrderingWeight:
 			values[i] = new(sql.NullInt64)
-		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldDefaultTestModel:
+		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldDefaultTestModel, channel.FieldErrorMessage:
 			values[i] = new(sql.NullString)
 		case channel.FieldCreatedAt, channel.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -231,6 +233,13 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.OrderingWeight = int(value.Int64)
 			}
+		case channel.FieldErrorMessage:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field error_message", values[i])
+			} else if value.Valid {
+				_m.ErrorMessage = new(string)
+				*_m.ErrorMessage = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -324,6 +333,11 @@ func (_m *Channel) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("ordering_weight=")
 	builder.WriteString(fmt.Sprintf("%v", _m.OrderingWeight))
+	builder.WriteString(", ")
+	if v := _m.ErrorMessage; v != nil {
+		builder.WriteString("error_message=")
+		builder.WriteString(*v)
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

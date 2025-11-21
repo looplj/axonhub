@@ -19,7 +19,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -146,6 +145,7 @@ type ComplexityRoot struct {
 		CreatedAt          func(childComplexity int) int
 		DefaultTestModel   func(childComplexity int) int
 		DeletedAt          func(childComplexity int) int
+		ErrorMessage       func(childComplexity int) int
 		Executions         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestExecutionOrder, where *ent.RequestExecutionWhereInput) int
 		ID                 func(childComplexity int) int
 		Name               func(childComplexity int) int
@@ -178,33 +178,19 @@ type ComplexityRoot struct {
 	}
 
 	ChannelPerformance struct {
-		Channel                                func(childComplexity int) int
-		ChannelID                              func(childComplexity int) int
-		CreatedAt                              func(childComplexity int) int
-		DeletedAt                              func(childComplexity int) int
-		HealthStatus                           func(childComplexity int) int
-		ID                                     func(childComplexity int) int
-		LastAttemptAt                          func(childComplexity int) int
-		LastFailureAt                          func(childComplexity int) int
-		LastPeriodAvgLatencyMs                 func(childComplexity int) int
-		LastPeriodAvgStreamFirstTokenLatenchMs func(childComplexity int) int
-		LastPeriodAvgStreamTokenPerSecond      func(childComplexity int) int
-		LastPeriodAvgTokenPerSecond            func(childComplexity int) int
-		LastPeriodCount                        func(childComplexity int) int
-		LastPeriodEnd                          func(childComplexity int) int
-		LastPeriodSeconds                      func(childComplexity int) int
-		LastPeriodStart                        func(childComplexity int) int
-		LastPeriodSuccessCount                 func(childComplexity int) int
-		LastPeriodTokenCount                   func(childComplexity int) int
-		LastSuccessAt                          func(childComplexity int) int
-		TotalAvgLatencyMs                      func(childComplexity int) int
-		TotalAvgStreamFirstTokenLatenchMs      func(childComplexity int) int
-		TotalAvgStreamTokenPerSecond           func(childComplexity int) int
-		TotalAvgTokenPerSecond                 func(childComplexity int) int
-		TotalCount                             func(childComplexity int) int
-		TotalSuccessCount                      func(childComplexity int) int
-		TotalTokenCount                        func(childComplexity int) int
-		UpdatedAt                              func(childComplexity int) int
+		AvgLatencyMs                 func(childComplexity int) int
+		AvgStreamFirstTokenLatencyMs func(childComplexity int) int
+		AvgStreamTokenPerSecond      func(childComplexity int) int
+		AvgTokenPerSecond            func(childComplexity int) int
+		Channel                      func(childComplexity int) int
+		ChannelID                    func(childComplexity int) int
+		CreatedAt                    func(childComplexity int) int
+		DeletedAt                    func(childComplexity int) int
+		ID                           func(childComplexity int) int
+		LastFailureAt                func(childComplexity int) int
+		LastSuccessAt                func(childComplexity int) int
+		SuccessRate                  func(childComplexity int) int
+		UpdatedAt                    func(childComplexity int) int
 	}
 
 	ChannelSettings struct {
@@ -1361,6 +1347,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Channel.DeletedAt(childComplexity), true
 
+	case "Channel.errorMessage":
+		if e.complexity.Channel.ErrorMessage == nil {
+			break
+		}
+
+		return e.complexity.Channel.ErrorMessage(childComplexity), true
+
 	case "Channel.executions":
 		if e.complexity.Channel.Executions == nil {
 			break
@@ -1516,6 +1509,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelEdge.Node(childComplexity), true
 
+	case "ChannelPerformance.avgLatencyMs":
+		if e.complexity.ChannelPerformance.AvgLatencyMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.AvgLatencyMs(childComplexity), true
+
+	case "ChannelPerformance.avgStreamFirstTokenLatencyMs":
+		if e.complexity.ChannelPerformance.AvgStreamFirstTokenLatencyMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.AvgStreamFirstTokenLatencyMs(childComplexity), true
+
+	case "ChannelPerformance.avgStreamTokenPerSecond":
+		if e.complexity.ChannelPerformance.AvgStreamTokenPerSecond == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.AvgStreamTokenPerSecond(childComplexity), true
+
+	case "ChannelPerformance.avgTokenPerSecond":
+		if e.complexity.ChannelPerformance.AvgTokenPerSecond == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.AvgTokenPerSecond(childComplexity), true
+
 	case "ChannelPerformance.channel":
 		if e.complexity.ChannelPerformance.Channel == nil {
 			break
@@ -1544,26 +1565,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelPerformance.DeletedAt(childComplexity), true
 
-	case "ChannelPerformance.healthStatus":
-		if e.complexity.ChannelPerformance.HealthStatus == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.HealthStatus(childComplexity), true
-
 	case "ChannelPerformance.id":
 		if e.complexity.ChannelPerformance.ID == nil {
 			break
 		}
 
 		return e.complexity.ChannelPerformance.ID(childComplexity), true
-
-	case "ChannelPerformance.lastAttemptAt":
-		if e.complexity.ChannelPerformance.LastAttemptAt == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.LastAttemptAt(childComplexity), true
 
 	case "ChannelPerformance.lastFailureAt":
 		if e.complexity.ChannelPerformance.LastFailureAt == nil {
@@ -1572,76 +1579,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelPerformance.LastFailureAt(childComplexity), true
 
-	case "ChannelPerformance.lastPeriodAvgLatencyMs":
-		if e.complexity.ChannelPerformance.LastPeriodAvgLatencyMs == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.LastPeriodAvgLatencyMs(childComplexity), true
-
-	case "ChannelPerformance.lastPeriodAvgStreamFirstTokenLatenchMs":
-		if e.complexity.ChannelPerformance.LastPeriodAvgStreamFirstTokenLatenchMs == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.LastPeriodAvgStreamFirstTokenLatenchMs(childComplexity), true
-
-	case "ChannelPerformance.lastPeriodAvgStreamTokenPerSecond":
-		if e.complexity.ChannelPerformance.LastPeriodAvgStreamTokenPerSecond == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.LastPeriodAvgStreamTokenPerSecond(childComplexity), true
-
-	case "ChannelPerformance.lastPeriodAvgTokenPerSecond":
-		if e.complexity.ChannelPerformance.LastPeriodAvgTokenPerSecond == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.LastPeriodAvgTokenPerSecond(childComplexity), true
-
-	case "ChannelPerformance.lastPeriodCount":
-		if e.complexity.ChannelPerformance.LastPeriodCount == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.LastPeriodCount(childComplexity), true
-
-	case "ChannelPerformance.lastPeriodEnd":
-		if e.complexity.ChannelPerformance.LastPeriodEnd == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.LastPeriodEnd(childComplexity), true
-
-	case "ChannelPerformance.lastPeriodSeconds":
-		if e.complexity.ChannelPerformance.LastPeriodSeconds == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.LastPeriodSeconds(childComplexity), true
-
-	case "ChannelPerformance.lastPeriodStart":
-		if e.complexity.ChannelPerformance.LastPeriodStart == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.LastPeriodStart(childComplexity), true
-
-	case "ChannelPerformance.lastPeriodSuccessCount":
-		if e.complexity.ChannelPerformance.LastPeriodSuccessCount == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.LastPeriodSuccessCount(childComplexity), true
-
-	case "ChannelPerformance.lastPeriodTokenCount":
-		if e.complexity.ChannelPerformance.LastPeriodTokenCount == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.LastPeriodTokenCount(childComplexity), true
-
 	case "ChannelPerformance.lastSuccessAt":
 		if e.complexity.ChannelPerformance.LastSuccessAt == nil {
 			break
@@ -1649,54 +1586,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelPerformance.LastSuccessAt(childComplexity), true
 
-	case "ChannelPerformance.totalAvgLatencyMs":
-		if e.complexity.ChannelPerformance.TotalAvgLatencyMs == nil {
+	case "ChannelPerformance.successRate":
+		if e.complexity.ChannelPerformance.SuccessRate == nil {
 			break
 		}
 
-		return e.complexity.ChannelPerformance.TotalAvgLatencyMs(childComplexity), true
-
-	case "ChannelPerformance.totalAvgStreamFirstTokenLatenchMs":
-		if e.complexity.ChannelPerformance.TotalAvgStreamFirstTokenLatenchMs == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.TotalAvgStreamFirstTokenLatenchMs(childComplexity), true
-
-	case "ChannelPerformance.totalAvgStreamTokenPerSecond":
-		if e.complexity.ChannelPerformance.TotalAvgStreamTokenPerSecond == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.TotalAvgStreamTokenPerSecond(childComplexity), true
-
-	case "ChannelPerformance.totalAvgTokenPerSecond":
-		if e.complexity.ChannelPerformance.TotalAvgTokenPerSecond == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.TotalAvgTokenPerSecond(childComplexity), true
-
-	case "ChannelPerformance.totalCount":
-		if e.complexity.ChannelPerformance.TotalCount == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.TotalCount(childComplexity), true
-
-	case "ChannelPerformance.totalSuccessCount":
-		if e.complexity.ChannelPerformance.TotalSuccessCount == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.TotalSuccessCount(childComplexity), true
-
-	case "ChannelPerformance.totalTokenCount":
-		if e.complexity.ChannelPerformance.TotalTokenCount == nil {
-			break
-		}
-
-		return e.complexity.ChannelPerformance.TotalTokenCount(childComplexity), true
+		return e.complexity.ChannelPerformance.SuccessRate(childComplexity), true
 
 	case "ChannelPerformance.updatedAt":
 		if e.complexity.ChannelPerformance.UpdatedAt == nil {
@@ -8652,6 +8547,8 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_channels(_ con
 				return ec.fieldContext_Channel_settings(ctx, field)
 			case "orderingWeight":
 				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -8820,6 +8717,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_channel
 				return ec.fieldContext_Channel_settings(ctx, field)
 			case "orderingWeight":
 				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -9408,6 +9307,47 @@ func (ec *executionContext) fieldContext_Channel_orderingWeight(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Channel_errorMessage(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Channel_errorMessage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ErrorMessage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Channel_errorMessage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Channel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Channel_requests(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Channel_requests(ctx, field)
 	if err != nil {
@@ -9643,48 +9583,20 @@ func (ec *executionContext) fieldContext_Channel_channelPerformance(_ context.Co
 				return ec.fieldContext_ChannelPerformance_deletedAt(ctx, field)
 			case "channelID":
 				return ec.fieldContext_ChannelPerformance_channelID(ctx, field)
-			case "healthStatus":
-				return ec.fieldContext_ChannelPerformance_healthStatus(ctx, field)
-			case "totalCount":
-				return ec.fieldContext_ChannelPerformance_totalCount(ctx, field)
-			case "totalSuccessCount":
-				return ec.fieldContext_ChannelPerformance_totalSuccessCount(ctx, field)
-			case "totalTokenCount":
-				return ec.fieldContext_ChannelPerformance_totalTokenCount(ctx, field)
-			case "totalAvgLatencyMs":
-				return ec.fieldContext_ChannelPerformance_totalAvgLatencyMs(ctx, field)
-			case "totalAvgTokenPerSecond":
-				return ec.fieldContext_ChannelPerformance_totalAvgTokenPerSecond(ctx, field)
-			case "totalAvgStreamFirstTokenLatenchMs":
-				return ec.fieldContext_ChannelPerformance_totalAvgStreamFirstTokenLatenchMs(ctx, field)
-			case "totalAvgStreamTokenPerSecond":
-				return ec.fieldContext_ChannelPerformance_totalAvgStreamTokenPerSecond(ctx, field)
-			case "lastPeriodStart":
-				return ec.fieldContext_ChannelPerformance_lastPeriodStart(ctx, field)
-			case "lastPeriodEnd":
-				return ec.fieldContext_ChannelPerformance_lastPeriodEnd(ctx, field)
-			case "lastPeriodSeconds":
-				return ec.fieldContext_ChannelPerformance_lastPeriodSeconds(ctx, field)
-			case "lastPeriodCount":
-				return ec.fieldContext_ChannelPerformance_lastPeriodCount(ctx, field)
-			case "lastPeriodSuccessCount":
-				return ec.fieldContext_ChannelPerformance_lastPeriodSuccessCount(ctx, field)
-			case "lastPeriodTokenCount":
-				return ec.fieldContext_ChannelPerformance_lastPeriodTokenCount(ctx, field)
-			case "lastPeriodAvgLatencyMs":
-				return ec.fieldContext_ChannelPerformance_lastPeriodAvgLatencyMs(ctx, field)
-			case "lastPeriodAvgTokenPerSecond":
-				return ec.fieldContext_ChannelPerformance_lastPeriodAvgTokenPerSecond(ctx, field)
-			case "lastPeriodAvgStreamFirstTokenLatenchMs":
-				return ec.fieldContext_ChannelPerformance_lastPeriodAvgStreamFirstTokenLatenchMs(ctx, field)
-			case "lastPeriodAvgStreamTokenPerSecond":
-				return ec.fieldContext_ChannelPerformance_lastPeriodAvgStreamTokenPerSecond(ctx, field)
+			case "successRate":
+				return ec.fieldContext_ChannelPerformance_successRate(ctx, field)
+			case "avgLatencyMs":
+				return ec.fieldContext_ChannelPerformance_avgLatencyMs(ctx, field)
+			case "avgTokenPerSecond":
+				return ec.fieldContext_ChannelPerformance_avgTokenPerSecond(ctx, field)
+			case "avgStreamFirstTokenLatencyMs":
+				return ec.fieldContext_ChannelPerformance_avgStreamFirstTokenLatencyMs(ctx, field)
+			case "avgStreamTokenPerSecond":
+				return ec.fieldContext_ChannelPerformance_avgStreamTokenPerSecond(ctx, field)
 			case "lastSuccessAt":
 				return ec.fieldContext_ChannelPerformance_lastSuccessAt(ctx, field)
 			case "lastFailureAt":
 				return ec.fieldContext_ChannelPerformance_lastFailureAt(ctx, field)
-			case "lastAttemptAt":
-				return ec.fieldContext_ChannelPerformance_lastAttemptAt(ctx, field)
 			case "channel":
 				return ec.fieldContext_ChannelPerformance_channel(ctx, field)
 			}
@@ -10040,6 +9952,8 @@ func (ec *executionContext) fieldContext_ChannelEdge_node(_ context.Context, fie
 				return ec.fieldContext_Channel_settings(ctx, field)
 			case "orderingWeight":
 				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -10319,8 +10233,8 @@ func (ec *executionContext) fieldContext_ChannelPerformance_channelID(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _ChannelPerformance_healthStatus(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_healthStatus(ctx, field)
+func (ec *executionContext) _ChannelPerformance_successRate(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_successRate(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10333,51 +10247,7 @@ func (ec *executionContext) _ChannelPerformance_healthStatus(ctx context.Context
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.HealthStatus, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(channelperformance.HealthStatus)
-	fc.Result = res
-	return ec.marshalNChannelPerformanceHealthStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatus(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_healthStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ChannelPerformanceHealthStatus does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_totalCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_totalCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TotalCount, nil
+		return obj.SuccessRate, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10394,7 +10264,7 @@ func (ec *executionContext) _ChannelPerformance_totalCount(ctx context.Context, 
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ChannelPerformance_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ChannelPerformance_successRate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelPerformance",
 		Field:      field,
@@ -10407,8 +10277,8 @@ func (ec *executionContext) fieldContext_ChannelPerformance_totalCount(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _ChannelPerformance_totalSuccessCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_totalSuccessCount(ctx, field)
+func (ec *executionContext) _ChannelPerformance_avgLatencyMs(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_avgLatencyMs(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10421,7 +10291,7 @@ func (ec *executionContext) _ChannelPerformance_totalSuccessCount(ctx context.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.TotalSuccessCount, nil
+		return obj.AvgLatencyMs, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10438,7 +10308,7 @@ func (ec *executionContext) _ChannelPerformance_totalSuccessCount(ctx context.Co
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ChannelPerformance_totalSuccessCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ChannelPerformance_avgLatencyMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelPerformance",
 		Field:      field,
@@ -10451,8 +10321,8 @@ func (ec *executionContext) fieldContext_ChannelPerformance_totalSuccessCount(_ 
 	return fc, nil
 }
 
-func (ec *executionContext) _ChannelPerformance_totalTokenCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_totalTokenCount(ctx, field)
+func (ec *executionContext) _ChannelPerformance_avgTokenPerSecond(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_avgTokenPerSecond(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10465,7 +10335,7 @@ func (ec *executionContext) _ChannelPerformance_totalTokenCount(ctx context.Cont
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.TotalTokenCount, nil
+		return obj.AvgTokenPerSecond, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10482,7 +10352,7 @@ func (ec *executionContext) _ChannelPerformance_totalTokenCount(ctx context.Cont
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ChannelPerformance_totalTokenCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ChannelPerformance_avgTokenPerSecond(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelPerformance",
 		Field:      field,
@@ -10495,8 +10365,8 @@ func (ec *executionContext) fieldContext_ChannelPerformance_totalTokenCount(_ co
 	return fc, nil
 }
 
-func (ec *executionContext) _ChannelPerformance_totalAvgLatencyMs(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_totalAvgLatencyMs(ctx, field)
+func (ec *executionContext) _ChannelPerformance_avgStreamFirstTokenLatencyMs(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_avgStreamFirstTokenLatencyMs(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10509,7 +10379,7 @@ func (ec *executionContext) _ChannelPerformance_totalAvgLatencyMs(ctx context.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.TotalAvgLatencyMs, nil
+		return obj.AvgStreamFirstTokenLatencyMs, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10526,7 +10396,7 @@ func (ec *executionContext) _ChannelPerformance_totalAvgLatencyMs(ctx context.Co
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ChannelPerformance_totalAvgLatencyMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ChannelPerformance_avgStreamFirstTokenLatencyMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelPerformance",
 		Field:      field,
@@ -10539,8 +10409,8 @@ func (ec *executionContext) fieldContext_ChannelPerformance_totalAvgLatencyMs(_ 
 	return fc, nil
 }
 
-func (ec *executionContext) _ChannelPerformance_totalAvgTokenPerSecond(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_totalAvgTokenPerSecond(ctx, field)
+func (ec *executionContext) _ChannelPerformance_avgStreamTokenPerSecond(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_avgStreamTokenPerSecond(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10553,95 +10423,7 @@ func (ec *executionContext) _ChannelPerformance_totalAvgTokenPerSecond(ctx conte
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.TotalAvgTokenPerSecond, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_totalAvgTokenPerSecond(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_totalAvgStreamFirstTokenLatenchMs(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_totalAvgStreamFirstTokenLatenchMs(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TotalAvgStreamFirstTokenLatenchMs, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_totalAvgStreamFirstTokenLatenchMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_totalAvgStreamTokenPerSecond(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_totalAvgStreamTokenPerSecond(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TotalAvgStreamTokenPerSecond, nil
+		return obj.AvgStreamTokenPerSecond, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10658,447 +10440,7 @@ func (ec *executionContext) _ChannelPerformance_totalAvgStreamTokenPerSecond(ctx
 	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ChannelPerformance_totalAvgStreamTokenPerSecond(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_lastPeriodStart(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_lastPeriodStart(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LastPeriodStart, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_lastPeriodStart(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_lastPeriodEnd(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_lastPeriodEnd(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LastPeriodEnd, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_lastPeriodEnd(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_lastPeriodSeconds(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_lastPeriodSeconds(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LastPeriodSeconds, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_lastPeriodSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_lastPeriodCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_lastPeriodCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LastPeriodCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_lastPeriodCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_lastPeriodSuccessCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_lastPeriodSuccessCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LastPeriodSuccessCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_lastPeriodSuccessCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_lastPeriodTokenCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_lastPeriodTokenCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LastPeriodTokenCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_lastPeriodTokenCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_lastPeriodAvgLatencyMs(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_lastPeriodAvgLatencyMs(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LastPeriodAvgLatencyMs, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_lastPeriodAvgLatencyMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_lastPeriodAvgTokenPerSecond(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_lastPeriodAvgTokenPerSecond(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LastPeriodAvgTokenPerSecond, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_lastPeriodAvgTokenPerSecond(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_lastPeriodAvgStreamFirstTokenLatenchMs(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_lastPeriodAvgStreamFirstTokenLatenchMs(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LastPeriodAvgStreamFirstTokenLatenchMs, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_lastPeriodAvgStreamFirstTokenLatenchMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_lastPeriodAvgStreamTokenPerSecond(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_lastPeriodAvgStreamTokenPerSecond(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LastPeriodAvgStreamTokenPerSecond, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(float64)
-	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_lastPeriodAvgStreamTokenPerSecond(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ChannelPerformance_avgStreamTokenPerSecond(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelPerformance",
 		Field:      field,
@@ -11132,14 +10474,11 @@ func (ec *executionContext) _ChannelPerformance_lastSuccessAt(ctx context.Contex
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ChannelPerformance_lastSuccessAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -11176,61 +10515,14 @@ func (ec *executionContext) _ChannelPerformance_lastFailureAt(ctx context.Contex
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ChannelPerformance_lastFailureAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelPerformance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPerformance_lastAttemptAt(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ChannelPerformance_lastAttemptAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LastAttemptAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*time.Time)
-	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ChannelPerformance_lastAttemptAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelPerformance",
 		Field:      field,
@@ -11308,6 +10600,8 @@ func (ec *executionContext) fieldContext_ChannelPerformance_channel(_ context.Co
 				return ec.fieldContext_Channel_settings(ctx, field)
 			case "orderingWeight":
 				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -13888,6 +13182,8 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 				return ec.fieldContext_Channel_settings(ctx, field)
 			case "orderingWeight":
 				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -13979,6 +13275,8 @@ func (ec *executionContext) fieldContext_Mutation_bulkCreateChannels(ctx context
 				return ec.fieldContext_Channel_settings(ctx, field)
 			case "orderingWeight":
 				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -14070,6 +13368,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Cont
 				return ec.fieldContext_Channel_settings(ctx, field)
 			case "orderingWeight":
 				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -14161,6 +13461,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelStatus(ctx contex
 				return ec.fieldContext_Channel_settings(ctx, field)
 			case "orderingWeight":
 				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -21208,6 +20510,8 @@ func (ec *executionContext) fieldContext_Request_channel(_ context.Context, fiel
 				return ec.fieldContext_Channel_settings(ctx, field)
 			case "orderingWeight":
 				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -22364,6 +21668,8 @@ func (ec *executionContext) fieldContext_RequestExecution_channel(_ context.Cont
 				return ec.fieldContext_Channel_settings(ctx, field)
 			case "orderingWeight":
 				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -30287,6 +29593,8 @@ func (ec *executionContext) fieldContext_UsageLog_channel(_ context.Context, fie
 				return ec.fieldContext_Channel_settings(ctx, field)
 			case "orderingWeight":
 				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
 			case "requests":
 				return ec.fieldContext_Channel_requests(ctx, field)
 			case "executions":
@@ -36272,7 +35580,7 @@ func (ec *executionContext) unmarshalInputChannelPerformanceWhereInput(ctx conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "healthStatus", "healthStatusNEQ", "healthStatusIn", "healthStatusNotIn", "totalCount", "totalCountNEQ", "totalCountIn", "totalCountNotIn", "totalCountGT", "totalCountGTE", "totalCountLT", "totalCountLTE", "totalSuccessCount", "totalSuccessCountNEQ", "totalSuccessCountIn", "totalSuccessCountNotIn", "totalSuccessCountGT", "totalSuccessCountGTE", "totalSuccessCountLT", "totalSuccessCountLTE", "totalTokenCount", "totalTokenCountNEQ", "totalTokenCountIn", "totalTokenCountNotIn", "totalTokenCountGT", "totalTokenCountGTE", "totalTokenCountLT", "totalTokenCountLTE", "totalAvgLatencyMs", "totalAvgLatencyMsNEQ", "totalAvgLatencyMsIn", "totalAvgLatencyMsNotIn", "totalAvgLatencyMsGT", "totalAvgLatencyMsGTE", "totalAvgLatencyMsLT", "totalAvgLatencyMsLTE", "totalAvgTokenPerSecond", "totalAvgTokenPerSecondNEQ", "totalAvgTokenPerSecondIn", "totalAvgTokenPerSecondNotIn", "totalAvgTokenPerSecondGT", "totalAvgTokenPerSecondGTE", "totalAvgTokenPerSecondLT", "totalAvgTokenPerSecondLTE", "totalAvgStreamFirstTokenLatenchMs", "totalAvgStreamFirstTokenLatenchMsNEQ", "totalAvgStreamFirstTokenLatenchMsIn", "totalAvgStreamFirstTokenLatenchMsNotIn", "totalAvgStreamFirstTokenLatenchMsGT", "totalAvgStreamFirstTokenLatenchMsGTE", "totalAvgStreamFirstTokenLatenchMsLT", "totalAvgStreamFirstTokenLatenchMsLTE", "totalAvgStreamTokenPerSecond", "totalAvgStreamTokenPerSecondNEQ", "totalAvgStreamTokenPerSecondIn", "totalAvgStreamTokenPerSecondNotIn", "totalAvgStreamTokenPerSecondGT", "totalAvgStreamTokenPerSecondGTE", "totalAvgStreamTokenPerSecondLT", "totalAvgStreamTokenPerSecondLTE", "lastPeriodStart", "lastPeriodStartNEQ", "lastPeriodStartIn", "lastPeriodStartNotIn", "lastPeriodStartGT", "lastPeriodStartGTE", "lastPeriodStartLT", "lastPeriodStartLTE", "lastPeriodEnd", "lastPeriodEndNEQ", "lastPeriodEndIn", "lastPeriodEndNotIn", "lastPeriodEndGT", "lastPeriodEndGTE", "lastPeriodEndLT", "lastPeriodEndLTE", "lastPeriodSeconds", "lastPeriodSecondsNEQ", "lastPeriodSecondsIn", "lastPeriodSecondsNotIn", "lastPeriodSecondsGT", "lastPeriodSecondsGTE", "lastPeriodSecondsLT", "lastPeriodSecondsLTE", "lastPeriodCount", "lastPeriodCountNEQ", "lastPeriodCountIn", "lastPeriodCountNotIn", "lastPeriodCountGT", "lastPeriodCountGTE", "lastPeriodCountLT", "lastPeriodCountLTE", "lastPeriodSuccessCount", "lastPeriodSuccessCountNEQ", "lastPeriodSuccessCountIn", "lastPeriodSuccessCountNotIn", "lastPeriodSuccessCountGT", "lastPeriodSuccessCountGTE", "lastPeriodSuccessCountLT", "lastPeriodSuccessCountLTE", "lastPeriodTokenCount", "lastPeriodTokenCountNEQ", "lastPeriodTokenCountIn", "lastPeriodTokenCountNotIn", "lastPeriodTokenCountGT", "lastPeriodTokenCountGTE", "lastPeriodTokenCountLT", "lastPeriodTokenCountLTE", "lastPeriodAvgLatencyMs", "lastPeriodAvgLatencyMsNEQ", "lastPeriodAvgLatencyMsIn", "lastPeriodAvgLatencyMsNotIn", "lastPeriodAvgLatencyMsGT", "lastPeriodAvgLatencyMsGTE", "lastPeriodAvgLatencyMsLT", "lastPeriodAvgLatencyMsLTE", "lastPeriodAvgTokenPerSecond", "lastPeriodAvgTokenPerSecondNEQ", "lastPeriodAvgTokenPerSecondIn", "lastPeriodAvgTokenPerSecondNotIn", "lastPeriodAvgTokenPerSecondGT", "lastPeriodAvgTokenPerSecondGTE", "lastPeriodAvgTokenPerSecondLT", "lastPeriodAvgTokenPerSecondLTE", "lastPeriodAvgStreamFirstTokenLatenchMs", "lastPeriodAvgStreamFirstTokenLatenchMsNEQ", "lastPeriodAvgStreamFirstTokenLatenchMsIn", "lastPeriodAvgStreamFirstTokenLatenchMsNotIn", "lastPeriodAvgStreamFirstTokenLatenchMsGT", "lastPeriodAvgStreamFirstTokenLatenchMsGTE", "lastPeriodAvgStreamFirstTokenLatenchMsLT", "lastPeriodAvgStreamFirstTokenLatenchMsLTE", "lastPeriodAvgStreamTokenPerSecond", "lastPeriodAvgStreamTokenPerSecondNEQ", "lastPeriodAvgStreamTokenPerSecondIn", "lastPeriodAvgStreamTokenPerSecondNotIn", "lastPeriodAvgStreamTokenPerSecondGT", "lastPeriodAvgStreamTokenPerSecondGTE", "lastPeriodAvgStreamTokenPerSecondLT", "lastPeriodAvgStreamTokenPerSecondLTE", "lastSuccessAt", "lastSuccessAtNEQ", "lastSuccessAtIn", "lastSuccessAtNotIn", "lastSuccessAtGT", "lastSuccessAtGTE", "lastSuccessAtLT", "lastSuccessAtLTE", "lastFailureAt", "lastFailureAtNEQ", "lastFailureAtIn", "lastFailureAtNotIn", "lastFailureAtGT", "lastFailureAtGTE", "lastFailureAtLT", "lastFailureAtLTE", "lastAttemptAt", "lastAttemptAtNEQ", "lastAttemptAtIn", "lastAttemptAtNotIn", "lastAttemptAtGT", "lastAttemptAtGTE", "lastAttemptAtLT", "lastAttemptAtLTE", "hasChannel", "hasChannelWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "successRate", "successRateNEQ", "successRateIn", "successRateNotIn", "successRateGT", "successRateGTE", "successRateLT", "successRateLTE", "avgLatencyMs", "avgLatencyMsNEQ", "avgLatencyMsIn", "avgLatencyMsNotIn", "avgLatencyMsGT", "avgLatencyMsGTE", "avgLatencyMsLT", "avgLatencyMsLTE", "avgTokenPerSecond", "avgTokenPerSecondNEQ", "avgTokenPerSecondIn", "avgTokenPerSecondNotIn", "avgTokenPerSecondGT", "avgTokenPerSecondGTE", "avgTokenPerSecondLT", "avgTokenPerSecondLTE", "avgStreamFirstTokenLatencyMs", "avgStreamFirstTokenLatencyMsNEQ", "avgStreamFirstTokenLatencyMsIn", "avgStreamFirstTokenLatencyMsNotIn", "avgStreamFirstTokenLatencyMsGT", "avgStreamFirstTokenLatencyMsGTE", "avgStreamFirstTokenLatencyMsLT", "avgStreamFirstTokenLatencyMsLTE", "avgStreamTokenPerSecond", "avgStreamTokenPerSecondNEQ", "avgStreamTokenPerSecondIn", "avgStreamTokenPerSecondNotIn", "avgStreamTokenPerSecondGT", "avgStreamTokenPerSecondGTE", "avgStreamTokenPerSecondLT", "avgStreamTokenPerSecondLTE", "lastSuccessAt", "lastSuccessAtNEQ", "lastSuccessAtIn", "lastSuccessAtNotIn", "lastSuccessAtGT", "lastSuccessAtGTE", "lastSuccessAtLT", "lastSuccessAtLTE", "lastSuccessAtIsNil", "lastSuccessAtNotNil", "lastFailureAt", "lastFailureAtNEQ", "lastFailureAtIn", "lastFailureAtNotIn", "lastFailureAtGT", "lastFailureAtGTE", "lastFailureAtLT", "lastFailureAtLTE", "lastFailureAtIsNil", "lastFailureAtNotNil", "hasChannel", "hasChannelWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -36600,986 +35908,286 @@ func (ec *executionContext) unmarshalInputChannelPerformanceWhereInput(ctx conte
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.ChannelIDNotIn = converted
-		case "healthStatus":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("healthStatus"))
-			data, err := ec.unmarshalOChannelPerformanceHealthStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatus(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HealthStatus = data
-		case "healthStatusNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("healthStatusNEQ"))
-			data, err := ec.unmarshalOChannelPerformanceHealthStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatus(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HealthStatusNEQ = data
-		case "healthStatusIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("healthStatusIn"))
-			data, err := ec.unmarshalOChannelPerformanceHealthStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatusᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HealthStatusIn = data
-		case "healthStatusNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("healthStatusNotIn"))
-			data, err := ec.unmarshalOChannelPerformanceHealthStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatusᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HealthStatusNotIn = data
-		case "totalCount":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCount"))
+		case "successRate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successRate"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalCount = data
-		case "totalCountNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCountNEQ"))
+			it.SuccessRate = data
+		case "successRateNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successRateNEQ"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalCountNEQ = data
-		case "totalCountIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCountIn"))
+			it.SuccessRateNEQ = data
+		case "successRateIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successRateIn"))
 			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalCountIn = data
-		case "totalCountNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCountNotIn"))
+			it.SuccessRateIn = data
+		case "successRateNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successRateNotIn"))
 			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalCountNotIn = data
-		case "totalCountGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCountGT"))
+			it.SuccessRateNotIn = data
+		case "successRateGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successRateGT"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalCountGT = data
-		case "totalCountGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCountGTE"))
+			it.SuccessRateGT = data
+		case "successRateGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successRateGTE"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalCountGTE = data
-		case "totalCountLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCountLT"))
+			it.SuccessRateGTE = data
+		case "successRateLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successRateLT"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalCountLT = data
-		case "totalCountLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalCountLTE"))
+			it.SuccessRateLT = data
+		case "successRateLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successRateLTE"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalCountLTE = data
-		case "totalSuccessCount":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalSuccessCount"))
+			it.SuccessRateLTE = data
+		case "avgLatencyMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgLatencyMs"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalSuccessCount = data
-		case "totalSuccessCountNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalSuccessCountNEQ"))
+			it.AvgLatencyMs = data
+		case "avgLatencyMsNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgLatencyMsNEQ"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalSuccessCountNEQ = data
-		case "totalSuccessCountIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalSuccessCountIn"))
+			it.AvgLatencyMsNEQ = data
+		case "avgLatencyMsIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgLatencyMsIn"))
 			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalSuccessCountIn = data
-		case "totalSuccessCountNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalSuccessCountNotIn"))
+			it.AvgLatencyMsIn = data
+		case "avgLatencyMsNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgLatencyMsNotIn"))
 			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalSuccessCountNotIn = data
-		case "totalSuccessCountGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalSuccessCountGT"))
+			it.AvgLatencyMsNotIn = data
+		case "avgLatencyMsGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgLatencyMsGT"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalSuccessCountGT = data
-		case "totalSuccessCountGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalSuccessCountGTE"))
+			it.AvgLatencyMsGT = data
+		case "avgLatencyMsGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgLatencyMsGTE"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalSuccessCountGTE = data
-		case "totalSuccessCountLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalSuccessCountLT"))
+			it.AvgLatencyMsGTE = data
+		case "avgLatencyMsLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgLatencyMsLT"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalSuccessCountLT = data
-		case "totalSuccessCountLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalSuccessCountLTE"))
+			it.AvgLatencyMsLT = data
+		case "avgLatencyMsLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgLatencyMsLTE"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalSuccessCountLTE = data
-		case "totalTokenCount":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCount"))
+			it.AvgLatencyMsLTE = data
+		case "avgTokenPerSecond":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokenPerSecond"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalTokenCount = data
-		case "totalTokenCountNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountNEQ"))
+			it.AvgTokenPerSecond = data
+		case "avgTokenPerSecondNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokenPerSecondNEQ"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalTokenCountNEQ = data
-		case "totalTokenCountIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountIn"))
+			it.AvgTokenPerSecondNEQ = data
+		case "avgTokenPerSecondIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokenPerSecondIn"))
 			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalTokenCountIn = data
-		case "totalTokenCountNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountNotIn"))
+			it.AvgTokenPerSecondIn = data
+		case "avgTokenPerSecondNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokenPerSecondNotIn"))
 			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalTokenCountNotIn = data
-		case "totalTokenCountGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountGT"))
+			it.AvgTokenPerSecondNotIn = data
+		case "avgTokenPerSecondGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokenPerSecondGT"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalTokenCountGT = data
-		case "totalTokenCountGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountGTE"))
+			it.AvgTokenPerSecondGT = data
+		case "avgTokenPerSecondGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokenPerSecondGTE"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalTokenCountGTE = data
-		case "totalTokenCountLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountLT"))
+			it.AvgTokenPerSecondGTE = data
+		case "avgTokenPerSecondLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokenPerSecondLT"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalTokenCountLT = data
-		case "totalTokenCountLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountLTE"))
+			it.AvgTokenPerSecondLT = data
+		case "avgTokenPerSecondLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgTokenPerSecondLTE"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalTokenCountLTE = data
-		case "totalAvgLatencyMs":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgLatencyMs"))
+			it.AvgTokenPerSecondLTE = data
+		case "avgStreamFirstTokenLatencyMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamFirstTokenLatencyMs"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgLatencyMs = data
-		case "totalAvgLatencyMsNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgLatencyMsNEQ"))
+			it.AvgStreamFirstTokenLatencyMs = data
+		case "avgStreamFirstTokenLatencyMsNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamFirstTokenLatencyMsNEQ"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgLatencyMsNEQ = data
-		case "totalAvgLatencyMsIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgLatencyMsIn"))
+			it.AvgStreamFirstTokenLatencyMsNEQ = data
+		case "avgStreamFirstTokenLatencyMsIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamFirstTokenLatencyMsIn"))
 			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgLatencyMsIn = data
-		case "totalAvgLatencyMsNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgLatencyMsNotIn"))
+			it.AvgStreamFirstTokenLatencyMsIn = data
+		case "avgStreamFirstTokenLatencyMsNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamFirstTokenLatencyMsNotIn"))
 			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgLatencyMsNotIn = data
-		case "totalAvgLatencyMsGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgLatencyMsGT"))
+			it.AvgStreamFirstTokenLatencyMsNotIn = data
+		case "avgStreamFirstTokenLatencyMsGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamFirstTokenLatencyMsGT"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgLatencyMsGT = data
-		case "totalAvgLatencyMsGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgLatencyMsGTE"))
+			it.AvgStreamFirstTokenLatencyMsGT = data
+		case "avgStreamFirstTokenLatencyMsGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamFirstTokenLatencyMsGTE"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgLatencyMsGTE = data
-		case "totalAvgLatencyMsLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgLatencyMsLT"))
+			it.AvgStreamFirstTokenLatencyMsGTE = data
+		case "avgStreamFirstTokenLatencyMsLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamFirstTokenLatencyMsLT"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgLatencyMsLT = data
-		case "totalAvgLatencyMsLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgLatencyMsLTE"))
+			it.AvgStreamFirstTokenLatencyMsLT = data
+		case "avgStreamFirstTokenLatencyMsLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamFirstTokenLatencyMsLTE"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgLatencyMsLTE = data
-		case "totalAvgTokenPerSecond":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgTokenPerSecond"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgTokenPerSecond = data
-		case "totalAvgTokenPerSecondNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgTokenPerSecondNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgTokenPerSecondNEQ = data
-		case "totalAvgTokenPerSecondIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgTokenPerSecondIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgTokenPerSecondIn = data
-		case "totalAvgTokenPerSecondNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgTokenPerSecondNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgTokenPerSecondNotIn = data
-		case "totalAvgTokenPerSecondGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgTokenPerSecondGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgTokenPerSecondGT = data
-		case "totalAvgTokenPerSecondGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgTokenPerSecondGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgTokenPerSecondGTE = data
-		case "totalAvgTokenPerSecondLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgTokenPerSecondLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgTokenPerSecondLT = data
-		case "totalAvgTokenPerSecondLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgTokenPerSecondLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgTokenPerSecondLTE = data
-		case "totalAvgStreamFirstTokenLatenchMs":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamFirstTokenLatenchMs"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgStreamFirstTokenLatenchMs = data
-		case "totalAvgStreamFirstTokenLatenchMsNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamFirstTokenLatenchMsNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgStreamFirstTokenLatenchMsNEQ = data
-		case "totalAvgStreamFirstTokenLatenchMsIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamFirstTokenLatenchMsIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgStreamFirstTokenLatenchMsIn = data
-		case "totalAvgStreamFirstTokenLatenchMsNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamFirstTokenLatenchMsNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgStreamFirstTokenLatenchMsNotIn = data
-		case "totalAvgStreamFirstTokenLatenchMsGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamFirstTokenLatenchMsGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgStreamFirstTokenLatenchMsGT = data
-		case "totalAvgStreamFirstTokenLatenchMsGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamFirstTokenLatenchMsGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgStreamFirstTokenLatenchMsGTE = data
-		case "totalAvgStreamFirstTokenLatenchMsLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamFirstTokenLatenchMsLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgStreamFirstTokenLatenchMsLT = data
-		case "totalAvgStreamFirstTokenLatenchMsLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamFirstTokenLatenchMsLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TotalAvgStreamFirstTokenLatenchMsLTE = data
-		case "totalAvgStreamTokenPerSecond":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamTokenPerSecond"))
+			it.AvgStreamFirstTokenLatencyMsLTE = data
+		case "avgStreamTokenPerSecond":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamTokenPerSecond"))
 			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgStreamTokenPerSecond = data
-		case "totalAvgStreamTokenPerSecondNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamTokenPerSecondNEQ"))
+			it.AvgStreamTokenPerSecond = data
+		case "avgStreamTokenPerSecondNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamTokenPerSecondNEQ"))
 			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgStreamTokenPerSecondNEQ = data
-		case "totalAvgStreamTokenPerSecondIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamTokenPerSecondIn"))
+			it.AvgStreamTokenPerSecondNEQ = data
+		case "avgStreamTokenPerSecondIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamTokenPerSecondIn"))
 			data, err := ec.unmarshalOFloat2ᚕfloat64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgStreamTokenPerSecondIn = data
-		case "totalAvgStreamTokenPerSecondNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamTokenPerSecondNotIn"))
+			it.AvgStreamTokenPerSecondIn = data
+		case "avgStreamTokenPerSecondNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamTokenPerSecondNotIn"))
 			data, err := ec.unmarshalOFloat2ᚕfloat64ᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgStreamTokenPerSecondNotIn = data
-		case "totalAvgStreamTokenPerSecondGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamTokenPerSecondGT"))
+			it.AvgStreamTokenPerSecondNotIn = data
+		case "avgStreamTokenPerSecondGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamTokenPerSecondGT"))
 			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgStreamTokenPerSecondGT = data
-		case "totalAvgStreamTokenPerSecondGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamTokenPerSecondGTE"))
+			it.AvgStreamTokenPerSecondGT = data
+		case "avgStreamTokenPerSecondGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamTokenPerSecondGTE"))
 			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgStreamTokenPerSecondGTE = data
-		case "totalAvgStreamTokenPerSecondLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamTokenPerSecondLT"))
+			it.AvgStreamTokenPerSecondGTE = data
+		case "avgStreamTokenPerSecondLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamTokenPerSecondLT"))
 			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgStreamTokenPerSecondLT = data
-		case "totalAvgStreamTokenPerSecondLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalAvgStreamTokenPerSecondLTE"))
+			it.AvgStreamTokenPerSecondLT = data
+		case "avgStreamTokenPerSecondLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avgStreamTokenPerSecondLTE"))
 			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TotalAvgStreamTokenPerSecondLTE = data
-		case "lastPeriodStart":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodStart"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodStart = data
-		case "lastPeriodStartNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodStartNEQ"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodStartNEQ = data
-		case "lastPeriodStartIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodStartIn"))
-			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodStartIn = data
-		case "lastPeriodStartNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodStartNotIn"))
-			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodStartNotIn = data
-		case "lastPeriodStartGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodStartGT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodStartGT = data
-		case "lastPeriodStartGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodStartGTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodStartGTE = data
-		case "lastPeriodStartLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodStartLT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodStartLT = data
-		case "lastPeriodStartLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodStartLTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodStartLTE = data
-		case "lastPeriodEnd":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodEnd"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodEnd = data
-		case "lastPeriodEndNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodEndNEQ"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodEndNEQ = data
-		case "lastPeriodEndIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodEndIn"))
-			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodEndIn = data
-		case "lastPeriodEndNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodEndNotIn"))
-			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodEndNotIn = data
-		case "lastPeriodEndGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodEndGT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodEndGT = data
-		case "lastPeriodEndGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodEndGTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodEndGTE = data
-		case "lastPeriodEndLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodEndLT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodEndLT = data
-		case "lastPeriodEndLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodEndLTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodEndLTE = data
-		case "lastPeriodSeconds":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSeconds"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSeconds = data
-		case "lastPeriodSecondsNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSecondsNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSecondsNEQ = data
-		case "lastPeriodSecondsIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSecondsIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSecondsIn = data
-		case "lastPeriodSecondsNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSecondsNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSecondsNotIn = data
-		case "lastPeriodSecondsGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSecondsGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSecondsGT = data
-		case "lastPeriodSecondsGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSecondsGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSecondsGTE = data
-		case "lastPeriodSecondsLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSecondsLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSecondsLT = data
-		case "lastPeriodSecondsLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSecondsLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSecondsLTE = data
-		case "lastPeriodCount":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodCount"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodCount = data
-		case "lastPeriodCountNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodCountNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodCountNEQ = data
-		case "lastPeriodCountIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodCountIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodCountIn = data
-		case "lastPeriodCountNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodCountNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodCountNotIn = data
-		case "lastPeriodCountGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodCountGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodCountGT = data
-		case "lastPeriodCountGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodCountGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodCountGTE = data
-		case "lastPeriodCountLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodCountLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodCountLT = data
-		case "lastPeriodCountLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodCountLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodCountLTE = data
-		case "lastPeriodSuccessCount":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSuccessCount"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSuccessCount = data
-		case "lastPeriodSuccessCountNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSuccessCountNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSuccessCountNEQ = data
-		case "lastPeriodSuccessCountIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSuccessCountIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSuccessCountIn = data
-		case "lastPeriodSuccessCountNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSuccessCountNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSuccessCountNotIn = data
-		case "lastPeriodSuccessCountGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSuccessCountGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSuccessCountGT = data
-		case "lastPeriodSuccessCountGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSuccessCountGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSuccessCountGTE = data
-		case "lastPeriodSuccessCountLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSuccessCountLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSuccessCountLT = data
-		case "lastPeriodSuccessCountLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodSuccessCountLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodSuccessCountLTE = data
-		case "lastPeriodTokenCount":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodTokenCount"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodTokenCount = data
-		case "lastPeriodTokenCountNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodTokenCountNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodTokenCountNEQ = data
-		case "lastPeriodTokenCountIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodTokenCountIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodTokenCountIn = data
-		case "lastPeriodTokenCountNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodTokenCountNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodTokenCountNotIn = data
-		case "lastPeriodTokenCountGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodTokenCountGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodTokenCountGT = data
-		case "lastPeriodTokenCountGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodTokenCountGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodTokenCountGTE = data
-		case "lastPeriodTokenCountLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodTokenCountLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodTokenCountLT = data
-		case "lastPeriodTokenCountLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodTokenCountLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodTokenCountLTE = data
-		case "lastPeriodAvgLatencyMs":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgLatencyMs"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgLatencyMs = data
-		case "lastPeriodAvgLatencyMsNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgLatencyMsNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgLatencyMsNEQ = data
-		case "lastPeriodAvgLatencyMsIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgLatencyMsIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgLatencyMsIn = data
-		case "lastPeriodAvgLatencyMsNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgLatencyMsNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgLatencyMsNotIn = data
-		case "lastPeriodAvgLatencyMsGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgLatencyMsGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgLatencyMsGT = data
-		case "lastPeriodAvgLatencyMsGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgLatencyMsGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgLatencyMsGTE = data
-		case "lastPeriodAvgLatencyMsLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgLatencyMsLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgLatencyMsLT = data
-		case "lastPeriodAvgLatencyMsLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgLatencyMsLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgLatencyMsLTE = data
-		case "lastPeriodAvgTokenPerSecond":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgTokenPerSecond"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgTokenPerSecond = data
-		case "lastPeriodAvgTokenPerSecondNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgTokenPerSecondNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgTokenPerSecondNEQ = data
-		case "lastPeriodAvgTokenPerSecondIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgTokenPerSecondIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgTokenPerSecondIn = data
-		case "lastPeriodAvgTokenPerSecondNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgTokenPerSecondNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgTokenPerSecondNotIn = data
-		case "lastPeriodAvgTokenPerSecondGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgTokenPerSecondGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgTokenPerSecondGT = data
-		case "lastPeriodAvgTokenPerSecondGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgTokenPerSecondGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgTokenPerSecondGTE = data
-		case "lastPeriodAvgTokenPerSecondLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgTokenPerSecondLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgTokenPerSecondLT = data
-		case "lastPeriodAvgTokenPerSecondLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgTokenPerSecondLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgTokenPerSecondLTE = data
-		case "lastPeriodAvgStreamFirstTokenLatenchMs":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamFirstTokenLatenchMs"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamFirstTokenLatenchMs = data
-		case "lastPeriodAvgStreamFirstTokenLatenchMsNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamFirstTokenLatenchMsNEQ"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamFirstTokenLatenchMsNEQ = data
-		case "lastPeriodAvgStreamFirstTokenLatenchMsIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamFirstTokenLatenchMsIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamFirstTokenLatenchMsIn = data
-		case "lastPeriodAvgStreamFirstTokenLatenchMsNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamFirstTokenLatenchMsNotIn"))
-			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamFirstTokenLatenchMsNotIn = data
-		case "lastPeriodAvgStreamFirstTokenLatenchMsGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamFirstTokenLatenchMsGT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamFirstTokenLatenchMsGT = data
-		case "lastPeriodAvgStreamFirstTokenLatenchMsGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamFirstTokenLatenchMsGTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamFirstTokenLatenchMsGTE = data
-		case "lastPeriodAvgStreamFirstTokenLatenchMsLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamFirstTokenLatenchMsLT"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamFirstTokenLatenchMsLT = data
-		case "lastPeriodAvgStreamFirstTokenLatenchMsLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamFirstTokenLatenchMsLTE"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamFirstTokenLatenchMsLTE = data
-		case "lastPeriodAvgStreamTokenPerSecond":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamTokenPerSecond"))
-			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamTokenPerSecond = data
-		case "lastPeriodAvgStreamTokenPerSecondNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamTokenPerSecondNEQ"))
-			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamTokenPerSecondNEQ = data
-		case "lastPeriodAvgStreamTokenPerSecondIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamTokenPerSecondIn"))
-			data, err := ec.unmarshalOFloat2ᚕfloat64ᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamTokenPerSecondIn = data
-		case "lastPeriodAvgStreamTokenPerSecondNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamTokenPerSecondNotIn"))
-			data, err := ec.unmarshalOFloat2ᚕfloat64ᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamTokenPerSecondNotIn = data
-		case "lastPeriodAvgStreamTokenPerSecondGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamTokenPerSecondGT"))
-			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamTokenPerSecondGT = data
-		case "lastPeriodAvgStreamTokenPerSecondGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamTokenPerSecondGTE"))
-			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamTokenPerSecondGTE = data
-		case "lastPeriodAvgStreamTokenPerSecondLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamTokenPerSecondLT"))
-			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamTokenPerSecondLT = data
-		case "lastPeriodAvgStreamTokenPerSecondLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastPeriodAvgStreamTokenPerSecondLTE"))
-			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastPeriodAvgStreamTokenPerSecondLTE = data
+			it.AvgStreamTokenPerSecondLTE = data
 		case "lastSuccessAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastSuccessAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -37636,6 +36244,20 @@ func (ec *executionContext) unmarshalInputChannelPerformanceWhereInput(ctx conte
 				return it, err
 			}
 			it.LastSuccessAtLTE = data
+		case "lastSuccessAtIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastSuccessAtIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LastSuccessAtIsNil = data
+		case "lastSuccessAtNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastSuccessAtNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LastSuccessAtNotNil = data
 		case "lastFailureAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastFailureAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -37692,62 +36314,20 @@ func (ec *executionContext) unmarshalInputChannelPerformanceWhereInput(ctx conte
 				return it, err
 			}
 			it.LastFailureAtLTE = data
-		case "lastAttemptAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastAttemptAt"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+		case "lastFailureAtIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastFailureAtIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.LastAttemptAt = data
-		case "lastAttemptAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastAttemptAtNEQ"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			it.LastFailureAtIsNil = data
+		case "lastFailureAtNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastFailureAtNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.LastAttemptAtNEQ = data
-		case "lastAttemptAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastAttemptAtIn"))
-			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastAttemptAtIn = data
-		case "lastAttemptAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastAttemptAtNotIn"))
-			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastAttemptAtNotIn = data
-		case "lastAttemptAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastAttemptAtGT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastAttemptAtGT = data
-		case "lastAttemptAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastAttemptAtGTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastAttemptAtGTE = data
-		case "lastAttemptAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastAttemptAtLT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastAttemptAtLT = data
-		case "lastAttemptAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastAttemptAtLTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LastAttemptAtLTE = data
+			it.LastFailureAtNotNil = data
 		case "hasChannel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannel"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -37823,7 +36403,7 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLIsNil", "baseURLNotNil", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "orderingWeight", "orderingWeightNEQ", "orderingWeightIn", "orderingWeightNotIn", "orderingWeightGT", "orderingWeightGTE", "orderingWeightLT", "orderingWeightLTE", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith", "hasUsageLogs", "hasUsageLogsWith", "hasChannelPerformance", "hasChannelPerformanceWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLIsNil", "baseURLNotNil", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "orderingWeight", "orderingWeightNEQ", "orderingWeightIn", "orderingWeightNotIn", "orderingWeightGT", "orderingWeightGTE", "orderingWeightLT", "orderingWeightLTE", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith", "hasUsageLogs", "hasUsageLogsWith", "hasChannelPerformance", "hasChannelPerformanceWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -38506,6 +37086,111 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.OrderingWeightLTE = data
+		case "errorMessage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessage"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessage = data
+		case "errorMessageNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageNEQ = data
+		case "errorMessageIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageIn = data
+		case "errorMessageNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageNotIn = data
+		case "errorMessageGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageGT = data
+		case "errorMessageGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageGTE = data
+		case "errorMessageLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageLT = data
+		case "errorMessageLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageLTE = data
+		case "errorMessageContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageContains = data
+		case "errorMessageHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageHasPrefix = data
+		case "errorMessageHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageHasSuffix = data
+		case "errorMessageIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageIsNil = data
+		case "errorMessageNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageNotNil = data
+		case "errorMessageEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageEqualFold = data
+		case "errorMessageContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessageContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorMessageContainsFold = data
 		case "hasRequests":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasRequests"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -50157,6 +48842,8 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "errorMessage":
+			out.Values[i] = ec._Channel_errorMessage(ctx, field, obj)
 		case "requests":
 			field := field
 
@@ -50546,111 +49233,35 @@ func (ec *executionContext) _ChannelPerformance(ctx context.Context, sel ast.Sel
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "healthStatus":
-			out.Values[i] = ec._ChannelPerformance_healthStatus(ctx, field, obj)
+		case "successRate":
+			out.Values[i] = ec._ChannelPerformance_successRate(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "totalCount":
-			out.Values[i] = ec._ChannelPerformance_totalCount(ctx, field, obj)
+		case "avgLatencyMs":
+			out.Values[i] = ec._ChannelPerformance_avgLatencyMs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "totalSuccessCount":
-			out.Values[i] = ec._ChannelPerformance_totalSuccessCount(ctx, field, obj)
+		case "avgTokenPerSecond":
+			out.Values[i] = ec._ChannelPerformance_avgTokenPerSecond(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "totalTokenCount":
-			out.Values[i] = ec._ChannelPerformance_totalTokenCount(ctx, field, obj)
+		case "avgStreamFirstTokenLatencyMs":
+			out.Values[i] = ec._ChannelPerformance_avgStreamFirstTokenLatencyMs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "totalAvgLatencyMs":
-			out.Values[i] = ec._ChannelPerformance_totalAvgLatencyMs(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "totalAvgTokenPerSecond":
-			out.Values[i] = ec._ChannelPerformance_totalAvgTokenPerSecond(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "totalAvgStreamFirstTokenLatenchMs":
-			out.Values[i] = ec._ChannelPerformance_totalAvgStreamFirstTokenLatenchMs(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "totalAvgStreamTokenPerSecond":
-			out.Values[i] = ec._ChannelPerformance_totalAvgStreamTokenPerSecond(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastPeriodStart":
-			out.Values[i] = ec._ChannelPerformance_lastPeriodStart(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastPeriodEnd":
-			out.Values[i] = ec._ChannelPerformance_lastPeriodEnd(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastPeriodSeconds":
-			out.Values[i] = ec._ChannelPerformance_lastPeriodSeconds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastPeriodCount":
-			out.Values[i] = ec._ChannelPerformance_lastPeriodCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastPeriodSuccessCount":
-			out.Values[i] = ec._ChannelPerformance_lastPeriodSuccessCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastPeriodTokenCount":
-			out.Values[i] = ec._ChannelPerformance_lastPeriodTokenCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastPeriodAvgLatencyMs":
-			out.Values[i] = ec._ChannelPerformance_lastPeriodAvgLatencyMs(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastPeriodAvgTokenPerSecond":
-			out.Values[i] = ec._ChannelPerformance_lastPeriodAvgTokenPerSecond(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastPeriodAvgStreamFirstTokenLatenchMs":
-			out.Values[i] = ec._ChannelPerformance_lastPeriodAvgStreamFirstTokenLatenchMs(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastPeriodAvgStreamTokenPerSecond":
-			out.Values[i] = ec._ChannelPerformance_lastPeriodAvgStreamTokenPerSecond(ctx, field, obj)
+		case "avgStreamTokenPerSecond":
+			out.Values[i] = ec._ChannelPerformance_avgStreamTokenPerSecond(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "lastSuccessAt":
 			out.Values[i] = ec._ChannelPerformance_lastSuccessAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "lastFailureAt":
 			out.Values[i] = ec._ChannelPerformance_lastFailureAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastAttemptAt":
-			out.Values[i] = ec._ChannelPerformance_lastAttemptAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "channel":
 			field := field
 
@@ -58973,16 +57584,6 @@ func (ec *executionContext) unmarshalNChannelOrderingItem2ᚖgithubᚗcomᚋloop
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNChannelPerformanceHealthStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatus(ctx context.Context, v any) (channelperformance.HealthStatus, error) {
-	var res channelperformance.HealthStatus
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNChannelPerformanceHealthStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatus(ctx context.Context, sel ast.SelectionSet, v channelperformance.HealthStatus) graphql.Marshaler {
-	return v
-}
-
 func (ec *executionContext) unmarshalNChannelPerformanceOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelPerformanceOrderField(ctx context.Context, v any) (*ent.ChannelPerformanceOrderField, error) {
 	var res = new(ent.ChannelPerformanceOrderField)
 	err := res.UnmarshalGQL(v)
@@ -60393,28 +58994,6 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 	return res
 }
 
-func (ec *executionContext) unmarshalNTime2ᚖtimeᚐTime(ctx context.Context, v any) (*time.Time, error) {
-	res, err := graphql.UnmarshalTime(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel ast.SelectionSet, v *time.Time) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	_ = sel
-	res := graphql.MarshalTime(*v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
-}
-
 func (ec *executionContext) marshalNTokenStats2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTokenStats(ctx context.Context, sel ast.SelectionSet, v TokenStats) graphql.Marshaler {
 	return ec._TokenStats(ctx, sel, &v)
 }
@@ -61431,87 +60010,6 @@ func (ec *executionContext) marshalOChannelPerformance2ᚖgithubᚗcomᚋlooplj�
 		return graphql.Null
 	}
 	return ec._ChannelPerformance(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOChannelPerformanceHealthStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatusᚄ(ctx context.Context, v any) ([]channelperformance.HealthStatus, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]channelperformance.HealthStatus, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNChannelPerformanceHealthStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatus(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalOChannelPerformanceHealthStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatusᚄ(ctx context.Context, sel ast.SelectionSet, v []channelperformance.HealthStatus) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNChannelPerformanceHealthStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatus(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) unmarshalOChannelPerformanceHealthStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatus(ctx context.Context, v any) (*channelperformance.HealthStatus, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(channelperformance.HealthStatus)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOChannelPerformanceHealthStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelperformanceᚐHealthStatus(ctx context.Context, sel ast.SelectionSet, v *channelperformance.HealthStatus) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
 }
 
 func (ec *executionContext) unmarshalOChannelPerformanceWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelPerformanceWhereInputᚄ(ctx context.Context, v any) ([]*ent.ChannelPerformanceWhereInput, error) {
