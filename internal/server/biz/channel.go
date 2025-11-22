@@ -152,15 +152,15 @@ type ChannelServiceParams struct {
 	fx.In
 
 	Executor executors.ScheduledExecutor
-	Client   *ent.Client
+	Ent      *ent.Client
 }
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
 	svc := &ChannelService{
 		Executors:          params.Executor,
-		Ent:                params.Client,
+		Ent:                params.Ent,
 		channelPerfMetrics: make(map[int]*channelMetrics),
-		perfStopCh:         make(chan struct{}),
+		perfCh:             make(chan *PerformanceRecord, 1024),
 	}
 
 	xerrors.NoErr(svc.InitializeAllChannelPerformances(context.Background()))
@@ -173,28 +173,30 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 	)
 
 	// Start performance metrics background flush
-	svc.startPerformanceFlush()
+	go svc.startPerformanceProcess()
 
 	return svc
 }
 
 type ChannelService struct {
-	Executors executors.ScheduledExecutor
 	Ent       *ent.Client
+	Executors executors.ScheduledExecutor
 
 	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
 	EnabledChannels []*Channel
 	latestUpdate    time.Time
 
-	// PerformanceWindowSeconds is the configurable sliding window size for performance metrics (in seconds)
+	// perfWindowSeconds is the configurable sliding window size for performance metrics (in seconds)
 	// If not set (0), uses defaultPerformanceWindowSize (600 seconds = 10 minutes)
-	PerformanceWindowSeconds int64
+	perfWindowSeconds int64
 
-	// Performance metrics cache
-	channelPerfMetrics map[int]*channelMetrics
-	perfMetricsLock    sync.RWMutex
-	perfStopCh         chan struct{}
-	perfWg             sync.WaitGroup
+	// channelPerfMetrics stores the performance metrics for each channel
+	// protected by channelPerfMetricsLock
+	channelPerfMetrics     map[int]*channelMetrics
+	channelPerfMetricsLock sync.RWMutex
+
+	// perfCh is the channel for performance records for async processing.
+	perfCh chan *PerformanceRecord
 }
 
 func (svc *ChannelService) loadChannelsPeriodic(ctx context.Context) {
@@ -634,13 +636,8 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	}
 
 	// Initialize ChannelPerformance record for the new channel
-	// Log error but don't fail channel creation if performance record fails
 	if err := svc.InitializeChannelPerformance(ctx, channel.ID); err != nil {
-		log.Error(ctx, "Failed to initialize channel performance record",
-			log.Int("channel_id", channel.ID),
-			log.String("channel_name", channel.Name),
-			log.Cause(err),
-		)
+		return nil, fmt.Errorf("failed to initialize channel performance record: %w", err)
 	}
 
 	return channel, nil
@@ -751,7 +748,7 @@ func (svc *ChannelService) asyncReloadChannels() {
 			}
 		}()
 
-		reloadCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		reloadCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		if reloadErr := svc.loadChannels(reloadCtx); reloadErr != nil {

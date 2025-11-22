@@ -3,10 +3,10 @@ package biz
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -32,14 +32,8 @@ type channelMetrics struct {
 	// TODO: use circular buffer instead of map.
 	window map[int64]*timeSlotMetrics
 
-	// windowMu protects window map access
-	windowMu sync.Mutex
-
 	// aggreatedMetrics holds accumulated metrics for the flush period
 	aggreatedMetrics *AggretagedMetrics
-
-	// lock for concurrent access to aggreatedMetrics
-	mu sync.RWMutex
 }
 
 // InitializeAllChannelPerformances ensures every channel has a corresponding performance record.
@@ -95,9 +89,7 @@ func (svc *ChannelService) InitializeAllChannelPerformances(ctx context.Context)
 
 // InitializeChannelPerformance initializes performance record for a newly created channel.
 func (svc *ChannelService) InitializeChannelPerformance(ctx context.Context, channelID int) error {
-	log.Info(ctx, "Initializing channel performance record",
-		log.Int("channel_id", channelID),
-	)
+	log.Info(ctx, "initializing channel performance record", log.Int("channel_id", channelID))
 
 	client := ent.FromContext(ctx)
 	if client == nil {
@@ -193,6 +185,14 @@ type AggretagedMetrics struct {
 	LastFailureAt *time.Time
 }
 
+func (m *AggretagedMetrics) Clone() *AggretagedMetrics {
+	return &AggretagedMetrics{
+		metricsRecord: m.metricsRecord,
+		LastSuccessAt: m.LastSuccessAt,
+		LastFailureAt: m.LastFailureAt,
+	}
+}
+
 // newChannelMetrics creates a new channelMetrics instance.
 func newChannelMetrics(channelID int) *channelMetrics {
 	cm := &channelMetrics{
@@ -244,9 +244,6 @@ func (cm *channelMetrics) recordFailure(slot *timeSlotMetrics, perf *Performance
 
 // getOrCreateTimeSlot gets or creates a time slot for the given timestamp.
 func (cm *channelMetrics) getOrCreateTimeSlot(ts int64, endTime time.Time, windowSize int64) *timeSlotMetrics {
-	cm.windowMu.Lock()
-	defer cm.windowMu.Unlock()
-
 	if slot, ok := cm.window[ts]; ok {
 		return slot
 	}
@@ -267,10 +264,16 @@ func (cm *channelMetrics) getOrCreateTimeSlot(ts int64, endTime time.Time, windo
 
 // RecordMetrics records performance metrics for a channel.
 // This directly saves the period metrics to database.
-func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, metrics *AggretagedMetrics) error {
+func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, metrics *AggretagedMetrics) {
 	if metrics == nil {
-		return nil
+		return
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error(ctx, "panic in flush performance metrics", log.Any("panic", r))
+		}
+	}()
 
 	now := time.Now()
 
@@ -287,7 +290,7 @@ func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, met
 		First(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to query channel performance", log.Cause(err))
-		return err
+		return
 	}
 
 	// Update metrics
@@ -304,7 +307,7 @@ func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, met
 	_, err = update.Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update channel performance", log.Cause(err))
-		return err
+		return
 	}
 
 	log.Debug(ctx, "Recorded channel performance metrics",
@@ -315,8 +318,6 @@ func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, met
 		log.Int("avg_stream_first_token_ms", int(avgFirstTokenLatencyMs)),
 		log.Float64("avg_stream_token_per_second", avgStreamTokensPerSecond),
 	)
-
-	return nil
 }
 
 func (svc *ChannelService) markChannelUnavaiable(ctx context.Context, channelID int, errorStatusCode int) {
@@ -346,10 +347,17 @@ func (svc *ChannelService) markChannelUnavaiable(ctx context.Context, channelID 
 }
 
 // RecordPerformance records performance metrics to in-memory cache.
+// This function is not thread-safe.
 func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *PerformanceRecord) {
 	if perf == nil || !perf.IsValid() {
 		return
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error(ctx, "panic in record performance", log.Any("panic", r))
+		}
+	}()
 
 	// Check for unrecoverable errors and disable channel immediately
 	if !perf.Success && !isRecoverable(perf.ErrorStatusCode) {
@@ -358,7 +366,7 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 	}
 
 	// Get or create channel metrics
-	svc.perfMetricsLock.Lock()
+	svc.channelPerfMetricsLock.Lock()
 
 	cm, exists := svc.channelPerfMetrics[perf.ChannelID]
 	if !exists {
@@ -366,18 +374,15 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		svc.channelPerfMetrics[perf.ChannelID] = cm
 	}
 
-	svc.perfMetricsLock.Unlock()
+	svc.channelPerfMetricsLock.Unlock()
 
 	// Determine window size
 	var windowSize int64 = defaultPerformanceWindowSize
-	if svc.PerformanceWindowSeconds > 0 {
-		windowSize = svc.PerformanceWindowSeconds
+	if svc.perfWindowSeconds > 0 {
+		windowSize = svc.perfWindowSeconds
 	}
 
 	ts := perf.EndTime.Unix()
-
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
 
 	// Get or create time slot for this second
 	slot := cm.getOrCreateTimeSlot(ts, perf.EndTime, windowSize)
@@ -395,7 +400,7 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		cm.recordFailure(slot, perf)
 	}
 
-	log.Debug(ctx, "Recorded performance metrics to cache",
+	log.Debug(ctx, "recorded performance metrics",
 		log.Int("channel_id", perf.ChannelID),
 		log.Bool("success", perf.Success),
 		log.Int64("first_token_latency_ms", firstTokenLatencyMs),
@@ -406,125 +411,94 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 	)
 }
 
+// AsyncRecordPerformance records performance metrics to in-memory cache asynchronously.
+func (svc *ChannelService) AsyncRecordPerformance(ctx context.Context, perr *PerformanceRecord) {
+	svc.perfCh <- perr
+}
+
 // cleanupExpiredSlots removes time slots older than the cutoff time.
 func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 	cutoffTs := cutoff.Unix()
 	for ts := range cm.window {
 		if ts < cutoffTs {
+			metrics := cm.window[ts]
 			delete(cm.window, ts)
+			cm.aggreatedMetrics.RequestCount -= metrics.RequestCount
+			cm.aggreatedMetrics.SuccessCount -= metrics.SuccessCount
+			cm.aggreatedMetrics.FailureCount -= metrics.FailureCount
+			cm.aggreatedMetrics.TotalTokenCount -= metrics.TotalTokenCount
+			cm.aggreatedMetrics.TotalRequestLatencyMs -= metrics.TotalRequestLatencyMs
+			cm.aggreatedMetrics.StreamTotalTokenCount -= metrics.StreamTotalTokenCount
+			cm.aggreatedMetrics.StreamTotalFirstTokenLatencyMs -= metrics.StreamTotalFirstTokenLatencyMs
+			cm.aggreatedMetrics.StreamSuccessCount -= metrics.StreamSuccessCount
 		}
 	}
 }
 
-// startPerformanceFlush starts the background goroutine to flush metrics to database.
-func (svc *ChannelService) startPerformanceFlush() {
-	svc.perfWg.Add(1)
+// startPerformanceProcess starts the background goroutine to flush metrics to database.
+func (svc *ChannelService) startPerformanceProcess() {
+	ticker := time.NewTicker(performanceFlushInterval * time.Second)
+	defer ticker.Stop()
 
-	go func() {
-		defer svc.perfWg.Done()
-
-		ticker := time.NewTicker(performanceFlushInterval * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				svc.flushPerformanceMetrics(context.Background())
-			case <-svc.perfStopCh:
-				// Flush one last time before stopping
-				svc.flushPerformanceMetrics(context.Background())
-				return
-			}
+	for {
+		select {
+		case perf := <-svc.perfCh:
+			svc.RecordPerformance(context.Background(), perf)
+		case <-ticker.C:
+			svc.flushPerformanceMetrics(context.Background())
 		}
-	}()
+	}
 }
 
 // flushPerformanceMetrics flushes accumulated metrics to database.
 func (svc *ChannelService) flushPerformanceMetrics(ctx context.Context) {
-	svc.perfMetricsLock.RLock()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error(ctx, "panic in flush performance metrics", log.Any("panic", r))
+		}
+	}()
+
+	svc.channelPerfMetricsLock.RLock()
 
 	metricsToFlush := make([]*channelMetrics, 0, len(svc.channelPerfMetrics))
 	for _, cm := range svc.channelPerfMetrics {
 		metricsToFlush = append(metricsToFlush, cm)
 	}
 
-	svc.perfMetricsLock.RUnlock()
+	svc.channelPerfMetricsLock.RUnlock()
 
 	for _, cm := range metricsToFlush {
-		cm.mu.Lock()
-
 		if cm.aggreatedMetrics.RequestCount == 0 {
-			cm.mu.Unlock()
 			continue
 		}
 
-		// Reset current period
-		periodMetrics := cm.aggreatedMetrics
-		cm.aggreatedMetrics = &AggretagedMetrics{}
-		cm.mu.Unlock()
+		aggreatedMetrics := cm.aggreatedMetrics.Clone()
 
-		// Record to database (non-blocking, use separate goroutine)
-		go func(channelID int, metrics *AggretagedMetrics) {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Error(ctx, "panic in flush performance metrics", log.Any("panic", r))
-				}
-			}()
-
-			if err := svc.RecordMetrics(ctx, channelID, metrics); err != nil {
-				log.Error(ctx, "Failed to flush performance metrics to database", log.Cause(err))
-			}
-		}(cm.channelID, periodMetrics)
+		err := svc.Executors.Execute(executors.RunnableFunc(
+			func(ctx context.Context) { svc.RecordMetrics(ctx, cm.channelID, aggreatedMetrics) },
+		))
+		if err != nil {
+			log.Error(ctx, "failed to execute record metrics", log.Any("metric", aggreatedMetrics), log.Cause(err))
+		}
 	}
 }
 
-// GetChannelMetrics returns performance metrics for the last N minutes (configurable).
+// GetChannelMetrics returns performance metrics for the channel.
 func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int) (*AggretagedMetrics, error) {
-	svc.perfMetricsLock.RLock()
+	svc.channelPerfMetricsLock.RLock()
 	cm, exists := svc.channelPerfMetrics[channelID]
-	svc.perfMetricsLock.RUnlock()
+	svc.channelPerfMetricsLock.RUnlock()
 
 	if !exists {
 		return &AggretagedMetrics{}, nil
 	}
 
-	// Get window size (configurable, default to 10 minutes)
-	windowSize := int(defaultPerformanceWindowSize)
-	if svc.PerformanceWindowSeconds > 0 {
-		windowSize = int(svc.PerformanceWindowSeconds)
-	}
-
-	now := time.Now()
-	cutoff := now.Add(-time.Duration(windowSize) * time.Second).Unix()
-
-	cm.windowMu.Lock()
-	defer cm.windowMu.Unlock()
-
-	metrics := &AggretagedMetrics{
-		metricsRecord: metricsRecord{},
-	}
-
-	for ts, slot := range cm.window {
-		if ts >= cutoff {
-			metrics.RequestCount += slot.RequestCount
-			metrics.SuccessCount += slot.SuccessCount
-			metrics.FailureCount += slot.FailureCount
-			metrics.TotalTokenCount += slot.TotalTokenCount
-			metrics.TotalRequestLatencyMs += slot.TotalRequestLatencyMs
-			metrics.StreamSuccessCount += slot.StreamSuccessCount
-			metrics.StreamTotalTokenCount += slot.StreamTotalTokenCount
-			metrics.StreamTotalFirstTokenLatencyMs += slot.StreamTotalFirstTokenLatencyMs
-		}
-	}
-
-	// Copy last success/failure times from aggregated metrics
-	cm.mu.RLock()
-	metrics.LastSuccessAt = cm.aggreatedMetrics.LastSuccessAt
-	metrics.LastFailureAt = cm.aggreatedMetrics.LastFailureAt
-	metrics.ConsecutiveFailures = cm.aggreatedMetrics.ConsecutiveFailures
-	cm.mu.RUnlock()
-
-	return metrics, nil
+	// Return a copy of the aggregated metrics to avoid concurrent modification
+	return &AggretagedMetrics{
+		metricsRecord: cm.aggreatedMetrics.metricsRecord,
+		LastSuccessAt: cm.aggreatedMetrics.LastSuccessAt,
+		LastFailureAt: cm.aggreatedMetrics.LastFailureAt,
+	}, nil
 }
 
 // isRecoverable determines the health status based on error code.
@@ -546,12 +520,6 @@ func deriveErrorMessage(errorCode int) string {
 	default:
 		return "Unable to access channel service, please check your channel configuration."
 	}
-}
-
-// Stop gracefully stops the performance metrics collection.
-func (svc *ChannelService) Stop() {
-	close(svc.perfStopCh)
-	svc.perfWg.Wait()
 }
 
 // PerformanceRecord contains performance metrics collected during request processing.

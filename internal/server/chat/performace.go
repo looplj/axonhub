@@ -81,7 +81,7 @@ func (m *performanceRecording) OnOutboundLlmResponse(ctx context.Context, respon
 	}
 
 	m.outbound.state.Perf.MarkSuccess(lo.FromPtr(response.Usage.GetCompletionTokens()))
-	m.outbound.state.ChannelService.RecordPerformance(ctx, m.outbound.state.Perf)
+	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, m.outbound.state.Perf)
 
 	return response, nil
 }
@@ -108,7 +108,7 @@ func (m *performanceRecording) OnOutboundRawErrorResponse(ctx context.Context, e
 	errorCode := ExtractErrorCode(err)
 	perf.MarkFailed(errorCode)
 
-	m.outbound.state.ChannelService.RecordPerformance(ctx, perf)
+	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, perf)
 }
 
 // recordPerformanceStream records performance metrics for a stream of responses.
@@ -135,7 +135,7 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 
 	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
 		s.state.Perf.MarkSuccess(*tokenCount)
-		s.state.ChannelService.RecordPerformance(s.ctx, s.state.Perf)
+		s.state.ChannelService.AsyncRecordPerformance(s.ctx, s.state.Perf)
 	}
 
 	return event

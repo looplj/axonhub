@@ -22,7 +22,7 @@ import (
 func newTestChannelService(client *ent.Client) *biz.ChannelService {
 	return biz.NewChannelService(biz.ChannelServiceParams{
 		Executor: executors.NewPoolScheduleExecutor(),
-		Client:   client,
+		Ent:      client,
 	})
 }
 
