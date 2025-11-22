@@ -46,6 +46,7 @@ type AnthropicHandlersParams struct {
 
 	ChannelService *biz.ChannelService
 	RequestService *biz.RequestService
+	TraceService   *biz.TraceService
 	SystemService  *biz.SystemService
 	HttpClient     *httpclient.HttpClient
 }
@@ -61,6 +62,7 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
 				params.ChannelService,
 				params.RequestService,
+				params.TraceService,
 				params.HttpClient,
 				anthropic.NewInboundTransformer(),
 				params.SystemService,

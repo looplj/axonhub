@@ -165,3 +165,11 @@ func ExtractErrorCode(err error) int {
 	// Default to 500
 	return 500
 }
+
+type NoopPerformanceRecording struct {
+	pipeline.DummyMiddleware
+}
+
+func (m *NoopPerformanceRecording) Name() string {
+	return "noop-performance"
+}

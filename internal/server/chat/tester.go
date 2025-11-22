@@ -69,6 +69,7 @@ func (processor *TestChannelProcessor) TestChannel(
 		ChannelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
 		Inbound:         openai.NewInboundTransformer(),
 		RequestService:  processor.requestService,
+		ChannelService:  processor.channelService,
 		PipelineFactory: pipeline.NewFactory(processor.httpClient),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
