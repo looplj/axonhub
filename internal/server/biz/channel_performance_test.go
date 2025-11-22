@@ -619,14 +619,14 @@ func TestChannelMetrics_GetOrCreateTimeSlot(t *testing.T) {
 		slot := cm.getOrCreateTimeSlot(ts, now, 600)
 		require.NotNil(t, slot)
 		require.Equal(t, ts, slot.timestamp)
-		require.Len(t, cm.window, 1)
+		require.Equal(t, 1, cm.window.Len())
 	})
 
 	t.Run("get existing slot", func(t *testing.T) {
 		slot := cm.getOrCreateTimeSlot(ts, now, 600)
 		require.NotNil(t, slot)
 		require.Equal(t, ts, slot.timestamp)
-		require.Len(t, cm.window, 1) // Should still be 1
+		require.Equal(t, 1, cm.window.Len()) // Should still be 1
 	})
 
 	t.Run("cleanup old slots when window is full", func(t *testing.T) {
@@ -639,7 +639,7 @@ func TestChannelMetrics_GetOrCreateTimeSlot(t *testing.T) {
 			cm.getOrCreateTimeSlot(ts, now.Add(-time.Duration(i)*time.Second), windowSize)
 		}
 
-		require.Len(t, cm.window, int(windowSize))
+		require.Equal(t, int(windowSize), cm.window.Len())
 
 		// Add one more with a much older timestamp - should trigger cleanup
 		// The new slot is far in the future, so old slots should be cleaned
@@ -648,7 +648,7 @@ func TestChannelMetrics_GetOrCreateTimeSlot(t *testing.T) {
 		cm.getOrCreateTimeSlot(newTs, futureTime, windowSize)
 
 		// After cleanup, only the new slot should remain (all old ones are outside the window)
-		require.Equal(t, 1, len(cm.window))
+		require.Equal(t, 1, cm.window.Len())
 	})
 }
 
