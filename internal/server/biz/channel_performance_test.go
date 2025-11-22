@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -66,7 +66,7 @@ func TestMetricsRecord_CalculateSuccessRate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.metrics.CalculateSuccessRate()
-			assert.Equal(t, tt.expected, result)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -114,7 +114,7 @@ func TestMetricsRecord_CalculateAvgLatencyMs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.metrics.CalculateAvgLatencyMs()
-			assert.Equal(t, tt.expected, result)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -162,7 +162,7 @@ func TestMetricsRecord_CalculateAvgTokensPerSecond(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.metrics.CalculateAvgTokensPerSecond()
-			assert.Equal(t, tt.expected, result)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -210,7 +210,7 @@ func TestMetricsRecord_CalculateAvgFirstTokenLatencyMs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.metrics.CalculateAvgFirstTokenLatencyMs()
-			assert.Equal(t, tt.expected, result)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -258,7 +258,7 @@ func TestMetricsRecord_CalculateAvgStreamTokensPerSecond(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.metrics.CalculateAvgStreamTokensPerSecond()
-			assert.Equal(t, tt.expected, result)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -294,7 +294,6 @@ func TestChannelService_RecordMetrics(t *testing.T) {
 		name         string
 		metrics      *AggretagedMetrics
 		channelID    int
-		expectError  bool
 		validateFunc func(t *testing.T)
 	}{
 		{
@@ -313,16 +312,15 @@ func TestChannelService_RecordMetrics(t *testing.T) {
 				LastSuccessAt: func() *time.Time { t := time.Now(); return &t }(),
 				LastFailureAt: func() *time.Time { t := time.Now().Add(-1 * time.Hour); return &t }(),
 			},
-			channelID:   ch.ID,
-			expectError: false,
+			channelID: ch.ID,
 			validateFunc: func(t *testing.T) {
 				perf, err := client.ChannelPerformance.Query().First(ctx)
 				require.NoError(t, err)
-				assert.Equal(t, 90, perf.SuccessRate)
-				assert.Equal(t, 500, perf.AvgLatencyMs)
-				assert.Equal(t, 90, perf.AvgTokenPerSecond)
-				assert.Equal(t, 50, perf.AvgStreamFirstTokenLatencyMs)
-				assert.Equal(t, 100.0, perf.AvgStreamTokenPerSecond)
+				require.Equal(t, 90, perf.SuccessRate)
+				require.Equal(t, 500, perf.AvgLatencyMs)
+				require.Equal(t, 90, perf.AvgTokenPerSecond)
+				require.Equal(t, 50, perf.AvgStreamFirstTokenLatencyMs)
+				require.Equal(t, 100.0, perf.AvgStreamTokenPerSecond)
 			},
 		},
 		{
@@ -336,31 +334,24 @@ func TestChannelService_RecordMetrics(t *testing.T) {
 					TotalRequestLatencyMs: 0,
 				},
 			},
-			channelID:   ch.ID,
-			expectError: false,
+			channelID: ch.ID,
 			validateFunc: func(t *testing.T) {
 				perf, err := client.ChannelPerformance.Query().First(ctx)
 				require.NoError(t, err)
-				assert.Equal(t, 0, perf.SuccessRate)
-				assert.Equal(t, 0, perf.AvgLatencyMs)
+				require.Equal(t, 0, perf.SuccessRate)
+				require.Equal(t, 0, perf.AvgLatencyMs)
 			},
 		},
 		{
-			name:        "nil metrics",
-			metrics:     nil,
-			channelID:   ch.ID,
-			expectError: false,
+			name:      "nil metrics",
+			metrics:   nil,
+			channelID: ch.ID,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := svc.RecordMetrics(ctx, tt.channelID, tt.metrics)
-			if tt.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
+			svc.RecordMetrics(ctx, tt.channelID, tt.metrics)
 
 			if tt.validateFunc != nil {
 				tt.validateFunc(t)
@@ -382,26 +373,26 @@ func TestAggretagedMetrics_AllCalculations(t *testing.T) {
 			StreamTotalFirstTokenLatencyMs: 2000,
 			StreamSuccessCount:             40,
 		},
-		LastSuccessAt: func() *time.Time { t := time.Now(); return &t }(),
-		LastFailureAt: func() *time.Time { t := time.Now().Add(-1 * time.Hour); return &t }(),
+		LastSuccessAt: lo.ToPtr(time.Now()),
+		LastFailureAt: lo.ToPtr(time.Now().Add(-1 * time.Hour)),
 	}
 
 	// Test all calculations
-	assert.Equal(t, int64(80), metrics.CalculateSuccessRate())
-	assert.Equal(t, int64(500), metrics.CalculateAvgLatencyMs())
-	assert.Equal(t, float64(80), metrics.CalculateAvgTokensPerSecond())
-	assert.Equal(t, int64(50), metrics.CalculateAvgFirstTokenLatencyMs())
-	assert.Equal(t, float64(100), metrics.CalculateAvgStreamTokensPerSecond())
+	require.Equal(t, int64(80), metrics.CalculateSuccessRate())
+	require.Equal(t, int64(500), metrics.CalculateAvgLatencyMs())
+	require.Equal(t, float64(80), metrics.CalculateAvgTokensPerSecond())
+	require.Equal(t, int64(50), metrics.CalculateAvgFirstTokenLatencyMs())
+	require.Equal(t, float64(100), metrics.CalculateAvgStreamTokensPerSecond())
 }
 
 func TestMetricsRecord_EdgeCases(t *testing.T) {
 	t.Run("all zeros", func(t *testing.T) {
 		metrics := &metricsRecord{}
-		assert.Equal(t, int64(0), metrics.CalculateSuccessRate())
-		assert.Equal(t, int64(0), metrics.CalculateAvgLatencyMs())
-		assert.Equal(t, float64(0), metrics.CalculateAvgTokensPerSecond())
-		assert.Equal(t, int64(0), metrics.CalculateAvgFirstTokenLatencyMs())
-		assert.Equal(t, float64(0), metrics.CalculateAvgStreamTokensPerSecond())
+		require.Equal(t, int64(0), metrics.CalculateSuccessRate())
+		require.Equal(t, int64(0), metrics.CalculateAvgLatencyMs())
+		require.Equal(t, float64(0), metrics.CalculateAvgTokensPerSecond())
+		require.Equal(t, int64(0), metrics.CalculateAvgFirstTokenLatencyMs())
+		require.Equal(t, float64(0), metrics.CalculateAvgStreamTokensPerSecond())
 	})
 
 	t.Run("large numbers", func(t *testing.T) {
@@ -414,11 +405,11 @@ func TestMetricsRecord_EdgeCases(t *testing.T) {
 			StreamTotalTokenCount:          500000000000,
 			StreamTotalFirstTokenLatencyMs: 500000000000,
 		}
-		assert.Equal(t, int64(99), metrics.CalculateSuccessRate())
-		assert.Equal(t, int64(1000000), metrics.CalculateAvgLatencyMs())
-		assert.Equal(t, float64(999999), metrics.CalculateAvgTokensPerSecond())
-		assert.Equal(t, int64(1000000), metrics.CalculateAvgFirstTokenLatencyMs())
-		assert.Equal(t, float64(1000000), metrics.CalculateAvgStreamTokensPerSecond())
+		require.Equal(t, int64(99), metrics.CalculateSuccessRate())
+		require.Equal(t, int64(1000000), metrics.CalculateAvgLatencyMs())
+		require.Equal(t, float64(999999), metrics.CalculateAvgTokensPerSecond())
+		require.Equal(t, int64(1000000), metrics.CalculateAvgFirstTokenLatencyMs())
+		require.Equal(t, float64(1000000), metrics.CalculateAvgStreamTokensPerSecond())
 	})
 }
 
@@ -451,14 +442,14 @@ func TestChannelMetrics_RecordSuccess(t *testing.T) {
 			firstTokenLatencyMs: 0,
 			requestLatencyMs:    100,
 			validateFunc: func(t *testing.T) {
-				assert.Equal(t, int64(1), slot.SuccessCount)
-				assert.Equal(t, int64(1), cm.aggreatedMetrics.SuccessCount)
-				assert.Equal(t, int64(100), slot.TotalRequestLatencyMs)
-				assert.Equal(t, int64(100), cm.aggreatedMetrics.TotalRequestLatencyMs)
-				assert.Equal(t, int64(100), slot.TotalTokenCount)
-				assert.Equal(t, int64(100), cm.aggreatedMetrics.TotalTokenCount)
-				assert.Equal(t, int64(0), slot.StreamSuccessCount)
-				assert.NotNil(t, cm.aggreatedMetrics.LastSuccessAt)
+				require.Equal(t, int64(1), slot.SuccessCount)
+				require.Equal(t, int64(1), cm.aggreatedMetrics.SuccessCount)
+				require.Equal(t, int64(100), slot.TotalRequestLatencyMs)
+				require.Equal(t, int64(100), cm.aggreatedMetrics.TotalRequestLatencyMs)
+				require.Equal(t, int64(100), slot.TotalTokenCount)
+				require.Equal(t, int64(100), cm.aggreatedMetrics.TotalTokenCount)
+				require.Equal(t, int64(0), slot.StreamSuccessCount)
+				require.NotNil(t, cm.aggreatedMetrics.LastSuccessAt)
 			},
 		},
 		{
@@ -475,14 +466,14 @@ func TestChannelMetrics_RecordSuccess(t *testing.T) {
 			firstTokenLatencyMs: 50,
 			requestLatencyMs:    200,
 			validateFunc: func(t *testing.T) {
-				assert.Equal(t, int64(2), slot.SuccessCount)
-				assert.Equal(t, int64(2), cm.aggreatedMetrics.SuccessCount)
-				assert.Equal(t, int64(300), slot.TotalRequestLatencyMs)
-				assert.Equal(t, int64(300), cm.aggreatedMetrics.TotalRequestLatencyMs)
-				assert.Equal(t, int64(1), slot.StreamSuccessCount)
-				assert.Equal(t, int64(1), cm.aggreatedMetrics.StreamSuccessCount)
-				assert.Equal(t, int64(500), slot.StreamTotalTokenCount)
-				assert.Equal(t, int64(50), slot.StreamTotalFirstTokenLatencyMs)
+				require.Equal(t, int64(2), slot.SuccessCount)
+				require.Equal(t, int64(2), cm.aggreatedMetrics.SuccessCount)
+				require.Equal(t, int64(300), slot.TotalRequestLatencyMs)
+				require.Equal(t, int64(300), cm.aggreatedMetrics.TotalRequestLatencyMs)
+				require.Equal(t, int64(1), slot.StreamSuccessCount)
+				require.Equal(t, int64(1), cm.aggreatedMetrics.StreamSuccessCount)
+				require.Equal(t, int64(500), slot.StreamTotalTokenCount)
+				require.Equal(t, int64(50), slot.StreamTotalFirstTokenLatencyMs)
 			},
 		},
 	}
@@ -522,10 +513,10 @@ func TestChannelMetrics_RecordFailure(t *testing.T) {
 				ErrorStatusCode: 500,
 			},
 			validateFunc: func(t *testing.T) {
-				assert.Equal(t, int64(1), slot.FailureCount)
-				assert.Equal(t, int64(1), cm.aggreatedMetrics.FailureCount)
-				assert.Equal(t, int64(1), cm.aggreatedMetrics.ConsecutiveFailures)
-				assert.NotNil(t, cm.aggreatedMetrics.LastFailureAt)
+				require.Equal(t, int64(1), slot.FailureCount)
+				require.Equal(t, int64(1), cm.aggreatedMetrics.FailureCount)
+				require.Equal(t, int64(1), cm.aggreatedMetrics.ConsecutiveFailures)
+				require.NotNil(t, cm.aggreatedMetrics.LastFailureAt)
 			},
 		},
 		{
@@ -538,9 +529,9 @@ func TestChannelMetrics_RecordFailure(t *testing.T) {
 				ErrorStatusCode: 429,
 			},
 			validateFunc: func(t *testing.T) {
-				assert.Equal(t, int64(2), slot.FailureCount)
-				assert.Equal(t, int64(2), cm.aggreatedMetrics.FailureCount)
-				assert.Equal(t, int64(2), cm.aggreatedMetrics.ConsecutiveFailures)
+				require.Equal(t, int64(2), slot.FailureCount)
+				require.Equal(t, int64(2), cm.aggreatedMetrics.FailureCount)
+				require.Equal(t, int64(2), cm.aggreatedMetrics.ConsecutiveFailures)
 			},
 		},
 		{
@@ -553,9 +544,9 @@ func TestChannelMetrics_RecordFailure(t *testing.T) {
 				ErrorStatusCode: 500,
 			},
 			validateFunc: func(t *testing.T) {
-				assert.Equal(t, int64(3), slot.FailureCount)
-				assert.Equal(t, int64(3), cm.aggreatedMetrics.FailureCount)
-				assert.Equal(t, int64(3), cm.aggreatedMetrics.ConsecutiveFailures)
+				require.Equal(t, int64(3), slot.FailureCount)
+				require.Equal(t, int64(3), cm.aggreatedMetrics.FailureCount)
+				require.Equal(t, int64(3), cm.aggreatedMetrics.ConsecutiveFailures)
 			},
 		},
 	}
@@ -592,7 +583,7 @@ func TestChannelMetrics_ConsecutiveFailures(t *testing.T) {
 		cm.recordFailure(slot, perf)
 	}
 
-	assert.Equal(t, int64(3), cm.aggreatedMetrics.ConsecutiveFailures)
+	require.Equal(t, int64(3), cm.aggreatedMetrics.ConsecutiveFailures)
 
 	// Record a success - should reset consecutive failures
 	successPerf := &PerformanceRecord{
@@ -603,7 +594,7 @@ func TestChannelMetrics_ConsecutiveFailures(t *testing.T) {
 		TokenCount: 100,
 	}
 	cm.recordSuccess(slot, successPerf, 0, 100)
-	assert.Equal(t, int64(0), cm.aggreatedMetrics.ConsecutiveFailures)
+	require.Equal(t, int64(0), cm.aggreatedMetrics.ConsecutiveFailures)
 
 	// Record another failure - should start from 1 again
 	failPerf := &PerformanceRecord{
@@ -614,7 +605,7 @@ func TestChannelMetrics_ConsecutiveFailures(t *testing.T) {
 		ErrorStatusCode: 429,
 	}
 	cm.recordFailure(slot, failPerf)
-	assert.Equal(t, int64(1), cm.aggreatedMetrics.ConsecutiveFailures)
+	require.Equal(t, int64(1), cm.aggreatedMetrics.ConsecutiveFailures)
 }
 
 func TestChannelMetrics_GetOrCreateTimeSlot(t *testing.T) {
@@ -624,16 +615,16 @@ func TestChannelMetrics_GetOrCreateTimeSlot(t *testing.T) {
 
 	t.Run("create new slot", func(t *testing.T) {
 		slot := cm.getOrCreateTimeSlot(ts, now, 600)
-		assert.NotNil(t, slot)
-		assert.Equal(t, ts, slot.timestamp)
-		assert.Len(t, cm.window, 1)
+		require.NotNil(t, slot)
+		require.Equal(t, ts, slot.timestamp)
+		require.Len(t, cm.window, 1)
 	})
 
 	t.Run("get existing slot", func(t *testing.T) {
 		slot := cm.getOrCreateTimeSlot(ts, now, 600)
-		assert.NotNil(t, slot)
-		assert.Equal(t, ts, slot.timestamp)
-		assert.Len(t, cm.window, 1) // Should still be 1
+		require.NotNil(t, slot)
+		require.Equal(t, ts, slot.timestamp)
+		require.Len(t, cm.window, 1) // Should still be 1
 	})
 
 	t.Run("cleanup old slots when window is full", func(t *testing.T) {
@@ -646,7 +637,7 @@ func TestChannelMetrics_GetOrCreateTimeSlot(t *testing.T) {
 			cm.getOrCreateTimeSlot(ts, now.Add(-time.Duration(i)*time.Second), windowSize)
 		}
 
-		assert.Len(t, cm.window, int(windowSize))
+		require.Len(t, cm.window, int(windowSize))
 
 		// Add one more with a much older timestamp - should trigger cleanup
 		// The new slot is far in the future, so old slots should be cleaned
@@ -655,7 +646,7 @@ func TestChannelMetrics_GetOrCreateTimeSlot(t *testing.T) {
 		cm.getOrCreateTimeSlot(newTs, futureTime, windowSize)
 
 		// After cleanup, only the new slot should remain (all old ones are outside the window)
-		assert.Equal(t, 1, len(cm.window))
+		require.Equal(t, 1, len(cm.window))
 	})
 }
 
@@ -668,9 +659,9 @@ func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	svc := &ChannelService{
-		Ent:                      client,
-		channelPerfMetrics:       make(map[int]*channelMetrics),
-		PerformanceWindowSeconds: 600,
+		Ent:                client,
+		channelPerfMetrics: make(map[int]*channelMetrics),
+		perfWindowSeconds:  600,
 	}
 
 	// Create a test channel
@@ -747,10 +738,10 @@ func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
 			require.NoError(t, err)
 
 			if tt.shouldDisable {
-				assert.Equal(t, channel.StatusDisabled, updatedCh.Status)
-				assert.NotNil(t, updatedCh.ErrorMessage)
+				require.Equal(t, channel.StatusDisabled, updatedCh.Status)
+				require.NotNil(t, updatedCh.ErrorMessage)
 			} else {
-				assert.Equal(t, channel.StatusEnabled, updatedCh.Status)
+				require.Equal(t, channel.StatusEnabled, updatedCh.Status)
 			}
 		})
 	}
@@ -759,8 +750,8 @@ func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
 func TestChannelService_RecordPerformance(t *testing.T) {
 	ctx := context.Background()
 	svc := &ChannelService{
-		channelPerfMetrics:       make(map[int]*channelMetrics),
-		PerformanceWindowSeconds: 600,
+		channelPerfMetrics: make(map[int]*channelMetrics),
+		perfWindowSeconds:  600,
 	}
 
 	now := time.Now()
@@ -784,11 +775,11 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 			validateFunc: func(t *testing.T) {
 				cm := svc.channelPerfMetrics[1]
 				require.NotNil(t, cm)
-				assert.Equal(t, int64(1), cm.aggreatedMetrics.RequestCount)
-				assert.Equal(t, int64(1), cm.aggreatedMetrics.SuccessCount)
-				assert.Equal(t, int64(0), cm.aggreatedMetrics.FailureCount)
-				assert.Equal(t, int64(100), cm.aggreatedMetrics.TotalTokenCount)
-				assert.Equal(t, int64(100), cm.aggreatedMetrics.TotalRequestLatencyMs)
+				require.Equal(t, int64(1), cm.aggreatedMetrics.RequestCount)
+				require.Equal(t, int64(1), cm.aggreatedMetrics.SuccessCount)
+				require.Equal(t, int64(0), cm.aggreatedMetrics.FailureCount)
+				require.Equal(t, int64(100), cm.aggreatedMetrics.TotalTokenCount)
+				require.Equal(t, int64(100), cm.aggreatedMetrics.TotalRequestLatencyMs)
 			},
 		},
 		{
@@ -806,11 +797,11 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 			validateFunc: func(t *testing.T) {
 				cm := svc.channelPerfMetrics[1]
 				require.NotNil(t, cm)
-				assert.Equal(t, int64(2), cm.aggreatedMetrics.RequestCount)
-				assert.Equal(t, int64(2), cm.aggreatedMetrics.SuccessCount)
-				assert.Equal(t, int64(1), cm.aggreatedMetrics.StreamSuccessCount)
-				assert.Equal(t, int64(500), cm.aggreatedMetrics.StreamTotalTokenCount)
-				assert.Equal(t, int64(300), cm.aggreatedMetrics.TotalRequestLatencyMs)
+				require.Equal(t, int64(2), cm.aggreatedMetrics.RequestCount)
+				require.Equal(t, int64(2), cm.aggreatedMetrics.SuccessCount)
+				require.Equal(t, int64(1), cm.aggreatedMetrics.StreamSuccessCount)
+				require.Equal(t, int64(500), cm.aggreatedMetrics.StreamTotalTokenCount)
+				require.Equal(t, int64(300), cm.aggreatedMetrics.TotalRequestLatencyMs)
 			},
 		},
 		{
@@ -827,10 +818,10 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 			validateFunc: func(t *testing.T) {
 				cm := svc.channelPerfMetrics[1]
 				require.NotNil(t, cm)
-				assert.Equal(t, int64(3), cm.aggreatedMetrics.RequestCount)
-				assert.Equal(t, int64(1), cm.aggreatedMetrics.FailureCount)
-				assert.Equal(t, int64(1), cm.aggreatedMetrics.ConsecutiveFailures)
-				assert.Equal(t, int64(300), cm.aggreatedMetrics.TotalRequestLatencyMs)
+				require.Equal(t, int64(3), cm.aggreatedMetrics.RequestCount)
+				require.Equal(t, int64(1), cm.aggreatedMetrics.FailureCount)
+				require.Equal(t, int64(1), cm.aggreatedMetrics.ConsecutiveFailures)
+				require.Equal(t, int64(300), cm.aggreatedMetrics.TotalRequestLatencyMs)
 			},
 		},
 		{
@@ -847,9 +838,9 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 			validateFunc: func(t *testing.T) {
 				cm := svc.channelPerfMetrics[1]
 				require.NotNil(t, cm)
-				assert.Equal(t, int64(2), cm.aggreatedMetrics.FailureCount)
-				assert.Equal(t, int64(2), cm.aggreatedMetrics.ConsecutiveFailures)
-				assert.Equal(t, int64(300), cm.aggreatedMetrics.TotalRequestLatencyMs)
+				require.Equal(t, int64(2), cm.aggreatedMetrics.FailureCount)
+				require.Equal(t, int64(2), cm.aggreatedMetrics.ConsecutiveFailures)
+				require.Equal(t, int64(300), cm.aggreatedMetrics.TotalRequestLatencyMs)
 			},
 		},
 		{
@@ -866,9 +857,9 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 			validateFunc: func(t *testing.T) {
 				cm := svc.channelPerfMetrics[1]
 				require.NotNil(t, cm)
-				assert.Equal(t, int64(3), cm.aggreatedMetrics.SuccessCount)
-				assert.Equal(t, int64(0), cm.aggreatedMetrics.ConsecutiveFailures)
-				assert.Equal(t, int64(400), cm.aggreatedMetrics.TotalRequestLatencyMs)
+				require.Equal(t, int64(3), cm.aggreatedMetrics.SuccessCount)
+				require.Equal(t, int64(0), cm.aggreatedMetrics.ConsecutiveFailures)
+				require.Equal(t, int64(400), cm.aggreatedMetrics.TotalRequestLatencyMs)
 			},
 		},
 		{
@@ -882,7 +873,7 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 			validateFunc: func(t *testing.T) {
 				// Should not create metrics for invalid record
 				_, exists := svc.channelPerfMetrics[0]
-				assert.False(t, exists)
+				require.False(t, exists)
 			},
 		},
 	}
