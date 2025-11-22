@@ -157,8 +157,10 @@ type ChannelServiceParams struct {
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
 	svc := &ChannelService{
+		AbstractService: &AbstractService{
+			db: params.Ent,
+		},
 		Executors:          params.Executor,
-		Ent:                params.Ent,
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		perfCh:             make(chan *PerformanceRecord, 1024),
 	}
@@ -179,7 +181,8 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 }
 
 type ChannelService struct {
-	Ent       *ent.Client
+	*AbstractService
+
 	Executors executors.ScheduledExecutor
 
 	// latestUpdate 记录最新的 channel 更新时间，用于优化定时加载
@@ -210,7 +213,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// 检查是否有 channels 被修改
-	latestUpdatedChannel, err := svc.Ent.Channel.Query().
+	latestUpdatedChannel, err := svc.entFromContext(ctx).Channel.Query().
 		Order(ent.Desc(channel.FieldUpdatedAt)).
 		First(ctx)
 	if err != nil && !ent.IsNotFound(err) {
@@ -231,7 +234,7 @@ func (svc *ChannelService) loadChannels(ctx context.Context) error {
 		svc.latestUpdate = time.Time{}
 	}
 
-	entities, err := svc.Ent.Channel.Query().
+	entities, err := svc.entFromContext(ctx).Channel.Query().
 		Where(channel.StatusEQ(channel.StatusEnabled)).
 		Order(ent.Desc(channel.FieldOrderingWeight)).
 		All(ctx)
@@ -542,7 +545,7 @@ func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Get the channel entity from database (including disabled ones)
-	entity, err := svc.Ent.Channel.Get(ctx, channelID)
+	entity, err := svc.entFromContext(ctx).Channel.Get(ctx, channelID)
 	if err != nil {
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
@@ -617,7 +620,7 @@ func (svc *ChannelService) ListAllModels(ctx context.Context) []objects.Model {
 // createChannel creates a new channel without triggering a reload.
 // This is useful for batch operations where reload should happen once at the end.
 func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
-	createBuilder := ent.FromContext(ctx).Channel.Create().
+	createBuilder := svc.entFromContext(ctx).Channel.Create().
 		SetType(input.Type).
 		SetNillableBaseURL(input.BaseURL).
 		SetName(input.Name).
@@ -646,7 +649,7 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 // CreateChannel creates a new channel with the provided input.
 func (svc *ChannelService) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
 	// Check if a channel with the same name already exists
-	existing, err := ent.FromContext(ctx).Channel.Query().
+	existing, err := svc.entFromContext(ctx).Channel.Query().
 		Where(channel.Name(input.Name)).
 		First(ctx)
 	if err != nil && !ent.IsNotFound(err) {
@@ -673,7 +676,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 	// Check if name is being updated and if it conflicts with existing channels
 	if input.Name != nil {
-		existing, err := svc.Ent.Channel.Query().
+		existing, err := svc.entFromContext(ctx).Channel.Query().
 			Where(
 				channel.Name(*input.Name),
 				channel.IDNEQ(id),
@@ -688,7 +691,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 	}
 
-	mut := svc.Ent.Channel.UpdateOneID(id).
+	mut := svc.entFromContext(ctx).Channel.UpdateOneID(id).
 		SetNillableBaseURL(input.BaseURL).
 		SetNillableName(input.Name).
 		SetNillableDefaultTestModel(input.DefaultTestModel)
@@ -721,7 +724,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 // UpdateChannelStatus updates the status of a channel.
 func (svc *ChannelService) UpdateChannelStatus(ctx context.Context, id int, status channel.Status) (*ent.Channel, error) {
-	channel, err := svc.Ent.Channel.UpdateOneID(id).
+	channel, err := svc.entFromContext(ctx).Channel.UpdateOneID(id).
 		SetStatus(status).
 		Save(ctx)
 	if err != nil {
@@ -759,7 +762,7 @@ func (svc *ChannelService) asyncReloadChannels() {
 
 // DeleteChannel deletes a channel by ID.
 func (svc *ChannelService) DeleteChannel(ctx context.Context, id int) error {
-	if err := svc.Ent.Channel.DeleteOneID(id).Exec(ctx); err != nil {
+	if err := svc.entFromContext(ctx).Channel.DeleteOneID(id).Exec(ctx); err != nil {
 		return fmt.Errorf("failed to delete channel: %w", err)
 	}
 

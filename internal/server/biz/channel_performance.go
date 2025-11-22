@@ -38,7 +38,7 @@ type channelMetrics struct {
 
 // InitializeAllChannelPerformances ensures every channel has a corresponding performance record.
 func (svc *ChannelService) InitializeAllChannelPerformances(ctx context.Context) error {
-	client := svc.Ent
+	client := svc.entFromContext(ctx)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	channelIDs, err := client.Channel.Query().IDs(ctx)
@@ -91,10 +91,7 @@ func (svc *ChannelService) InitializeAllChannelPerformances(ctx context.Context)
 func (svc *ChannelService) InitializeChannelPerformance(ctx context.Context, channelID int) error {
 	log.Info(ctx, "initializing channel performance record", log.Int("channel_id", channelID))
 
-	client := ent.FromContext(ctx)
-	if client == nil {
-		client = svc.Ent
-	}
+	client := svc.entFromContext(ctx)
 
 	_, err := client.ChannelPerformance.Create().
 		SetChannelID(channelID).
@@ -285,7 +282,7 @@ func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, met
 	avgStreamTokensPerSecond := metrics.CalculateAvgStreamTokensPerSecond()
 
 	// Ensure ChannelPerformance record exists
-	perf, err := svc.Ent.ChannelPerformance.Query().
+	perf, err := svc.entFromContext(ctx).ChannelPerformance.Query().
 		Where(channelperformance.ChannelID(channelID)).
 		First(ctx)
 	if err != nil {
@@ -294,7 +291,7 @@ func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, met
 	}
 
 	// Update metrics
-	update := svc.Ent.ChannelPerformance.UpdateOneID(perf.ID).
+	update := svc.entFromContext(ctx).ChannelPerformance.UpdateOneID(perf.ID).
 		SetSuccessRate(int(successRate)).
 		SetAvgLatencyMs(int(avgLatencyMs)).
 		SetAvgTokenPerSecond(int(avgTokensPerSecond)).
@@ -326,7 +323,7 @@ func (svc *ChannelService) markChannelUnavaiable(ctx context.Context, channelID 
 
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	_, err := svc.Ent.Channel.UpdateOneID(channelID).
+	_, err := svc.entFromContext(ctx).Channel.UpdateOneID(channelID).
 		SetStatus(channel.StatusDisabled).
 		SetErrorMessage(deriveErrorMessage(errorStatusCode)).
 		Save(ctx)

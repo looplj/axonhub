@@ -25,10 +25,14 @@ type AuthServiceParams struct {
 	SystemService *SystemService
 	APIKeyService *APIKeyService
 	UserService   *UserService
+	Ent           *ent.Client
 }
 
 func NewAuthService(params AuthServiceParams) *AuthService {
 	return &AuthService{
+		AbstractService: &AbstractService{
+			db: params.Ent,
+		},
 		SystemService: params.SystemService,
 		APIKeyService: params.APIKeyService,
 		UserService:   params.UserService,
@@ -36,6 +40,8 @@ func NewAuthService(params AuthServiceParams) *AuthService {
 }
 
 type AuthService struct {
+	*AbstractService
+
 	SystemService *SystemService
 	APIKeyService *APIKeyService
 	UserService   *UserService
@@ -102,7 +108,7 @@ func (s *AuthService) AuthenticateUser(
 ) (*ent.User, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	user, err := client.User.Query().
 		Where(user.EmailEQ(email)).

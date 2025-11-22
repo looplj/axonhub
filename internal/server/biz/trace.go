@@ -26,10 +26,14 @@ type TraceServiceParams struct {
 	fx.In
 
 	RequestService *RequestService
+	Ent            *ent.Client
 }
 
 func NewTraceService(params TraceServiceParams) *TraceService {
 	return &TraceService{
+		AbstractService: &AbstractService{
+			db: params.Ent,
+		},
 		requestService: params.RequestService,
 		channelCache: xcache.NewFromConfig[int](xcache.Config{
 			Mode: xcache.ModeMemory,
@@ -41,6 +45,8 @@ func NewTraceService(params TraceServiceParams) *TraceService {
 }
 
 type TraceService struct {
+	*AbstractService
+
 	requestService *RequestService
 	channelCache   xcache.Cache[int]
 }
@@ -48,7 +54,7 @@ type TraceService struct {
 // GetOrCreateTrace retrieves an existing trace by trace_id and project_id,
 // or creates a new one if it doesn't exist.
 func (s *TraceService) GetOrCreateTrace(ctx context.Context, projectID int, traceID string, threadID *int) (*ent.Trace, error) {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
 	}
@@ -81,7 +87,7 @@ func (s *TraceService) GetOrCreateTrace(ctx context.Context, projectID int, trac
 
 // GetTraceByID retrieves a trace by its trace_id and project_id.
 func (s *TraceService) GetTraceByID(ctx context.Context, traceID string, projectID int) (*ent.Trace, error) {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
 	}
@@ -101,7 +107,7 @@ func (s *TraceService) GetTraceByID(ctx context.Context, traceID string, project
 
 // GetThreadFirstTrace retrieves the first trace for a thread by thread ID.
 func (s *TraceService) GetThreadFirstTrace(ctx context.Context, threadID int) (*ent.Trace, error) {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
 	}
@@ -288,7 +294,7 @@ type RequestMetadata struct {
 
 // GetRootSegment retrieves the hierarchical segments for a trace ID.
 func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segment, error) {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
 	}
@@ -829,7 +835,7 @@ func (s *TraceService) GetLastSuccessfulChannelID(ctx context.Context, traceID i
 	}
 
 	// Query database
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	if client == nil {
 		return 0, fmt.Errorf("ent client not found in context")
 	}

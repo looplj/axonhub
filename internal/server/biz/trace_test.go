@@ -27,6 +27,7 @@ func setupTestTraceService(t *testing.T, client *ent.Client) (*TraceService, *en
 
 	systemService := NewSystemService(SystemServiceParams{
 		CacheConfig: xcache.Config{},
+		Ent:         client,
 	})
 	dataStorageService := NewDataStorageService(
 		DataStorageServiceParams{
@@ -36,9 +37,10 @@ func setupTestTraceService(t *testing.T, client *ent.Client) (*TraceService, *en
 			Client:        client,
 		},
 	)
-	usageLogService := NewUsageLogService(systemService)
+	usageLogService := NewUsageLogService(client, systemService)
 	traceService := NewTraceService(TraceServiceParams{
-		RequestService: NewRequestService(systemService, usageLogService, dataStorageService),
+		RequestService: NewRequestService(client, systemService, usageLogService, dataStorageService),
+		Ent:            client,
 	})
 
 	return traceService, client

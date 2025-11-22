@@ -272,7 +272,9 @@ func TestChannelService_RecordMetrics(t *testing.T) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	svc := &ChannelService{
-		Ent: client,
+		AbstractService: &AbstractService{
+			db: client,
+		},
 	}
 
 	// Create a test channel
@@ -659,7 +661,9 @@ func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	svc := &ChannelService{
-		Ent:                client,
+		AbstractService: &AbstractService{
+			db: client,
+		},
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		perfWindowSeconds:  600,
 	}

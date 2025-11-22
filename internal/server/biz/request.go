@@ -20,14 +20,19 @@ import (
 
 // RequestService handles request and request execution operations.
 type RequestService struct {
+	*AbstractService
+
 	SystemService      *SystemService
 	UsageLogService    *UsageLogService
 	DataStorageService *DataStorageService
 }
 
 // NewRequestService creates a new RequestService.
-func NewRequestService(systemService *SystemService, usageLogService *UsageLogService, dataStorageService *DataStorageService) *RequestService {
+func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogService *UsageLogService, dataStorageService *DataStorageService) *RequestService {
 	return &RequestService{
+		AbstractService: &AbstractService{
+			db: ent,
+		},
 		SystemService:      systemService,
 		UsageLogService:    usageLogService,
 		DataStorageService: dataStorageService,
@@ -132,7 +137,7 @@ func (s *RequestService) CreateRequest(
 		log.Warn(ctx, "Failed to get default data storage, request will be created without data storage", log.Cause(err))
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	mut := client.Request.Create().
 		SetProjectID(projectID).
 		SetModelID(llmRequest.Model).
@@ -217,7 +222,7 @@ func (s *RequestService) CreateRequestExecution(
 		}
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Get data storage if set on request
 	var dataStorage *ent.DataStorage
@@ -291,7 +296,7 @@ func (s *RequestService) UpdateRequestCompleted(
 		log.Warn(ctx, "Failed to get storage policy, defaulting to store response body", log.Cause(err))
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Get the request to check data storage
 	req, err := client.Request.Get(ctx, requestID)
@@ -360,7 +365,7 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 		log.Warn(ctx, "Failed to get storage policy, defaulting to store response body", log.Cause(err))
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Get the execution to check data storage
 	execution, err := client.RequestExecution.Get(ctx, executionID)
@@ -438,7 +443,7 @@ func (s *RequestService) UpdateRequestExecutionStatus(
 	status requestexecution.Status,
 	errorMsg string,
 ) error {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	upd := client.RequestExecution.UpdateOneID(executionID).
 		SetStatus(status)
@@ -501,7 +506,7 @@ func (s *RequestService) AppendRequestExecutionChunk(
 		return err
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Get the execution to check data storage
 	execution, err := client.RequestExecution.Get(ctx, executionID)
@@ -594,7 +599,7 @@ func (s *RequestService) AppendRequestChunk(
 		return err
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Get the request to check data storage
 	req, err := client.Request.Get(ctx, requestID)
@@ -671,7 +676,7 @@ func (s *RequestService) MarkRequestFailed(ctx context.Context, requestID int) e
 
 // UpdateRequestStatus updates request status to the provided value (e.g., canceled or failed).
 func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int, status request.Status) error {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	_, err := client.Request.UpdateOneID(requestID).
 		SetStatus(status).
@@ -695,7 +700,7 @@ func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, reque
 
 // UpdateRequestChannelID updates request with channel ID after channel selection.
 func (s *RequestService) UpdateRequestChannelID(ctx context.Context, requestID int, channelID int) error {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	_, err := client.Request.UpdateOneID(requestID).
 		SetChannelID(channelID).
@@ -928,7 +933,7 @@ func (s *RequestService) getDataStorage(ctx context.Context, dataStorageID int) 
 }
 
 func (s *RequestService) GetTraceFirstRequest(ctx context.Context, traceID int) (*ent.Request, error) {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
 	}

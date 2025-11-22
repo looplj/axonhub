@@ -96,7 +96,7 @@ func TestMultiTurnConversation(t *testing.T) {
 	t.Logf("Assistant (third): %s", thirdResponse)
 
 	// Verify calculation
-	if !testutil.ContainsCaseInsensitive(thirdResponse, "8760") && !testutil.ContainsCaseInsensitive(thirdResponse, "eight thousand") && !testutil.ContainsCaseInsensitive(thirdResponse, "8,760") {
+	if !testutil.ContainsAnyCaseInsensitive(thirdResponse, "8760", "8,760") && !testutil.ContainsCaseInsensitive(thirdResponse, "eight thousand") && !testutil.ContainsCaseInsensitive(thirdResponse, "8,760") {
 		t.Errorf("Expected calculation result 8760, got: %s", thirdResponse)
 	}
 

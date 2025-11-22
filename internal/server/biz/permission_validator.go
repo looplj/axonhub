@@ -11,11 +11,15 @@ import (
 )
 
 // PermissionValidator provides methods to validate permission hierarchies.
-type PermissionValidator struct{}
+type PermissionValidator struct {
+	*AbstractService
+}
 
 // NewPermissionValidator creates a new PermissionValidator.
 func NewPermissionValidator() *PermissionValidator {
-	return &PermissionValidator{}
+	return &PermissionValidator{
+		AbstractService: &AbstractService{}, // No db needed for validator, but embed for consistency
+	}
 }
 
 // getUserScopes returns all scopes for a user (direct + role-based).
@@ -141,7 +145,7 @@ func (v *PermissionValidator) CanEditUserPermissions(ctx context.Context, target
 
 	// Get target user
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := v.entFromContext(ctx)
 
 	targetUser, err := client.User.Query().
 		Where(entuser.IDEQ(targetUserID)).
@@ -211,7 +215,7 @@ func (v *PermissionValidator) CanEditUserPermissions(ctx context.Context, target
 // CanEditRole checks if the current user can edit a role.
 func (v *PermissionValidator) CanEditRole(ctx context.Context, roleID int, projectID *int) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := v.entFromContext(ctx)
 
 	role, err := client.Role.Get(ctx, roleID)
 	if err != nil {

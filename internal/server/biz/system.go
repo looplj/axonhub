@@ -88,19 +88,27 @@ type SystemServiceParams struct {
 	fx.In
 
 	CacheConfig xcache.Config
+	Ent         *ent.Client
 }
 
 func NewSystemService(params SystemServiceParams) *SystemService {
-	return &SystemService{Cache: xcache.NewFromConfig[ent.System](params.CacheConfig)}
+	return &SystemService{
+		AbstractService: &AbstractService{
+			db: params.Ent,
+		},
+		Cache: xcache.NewFromConfig[ent.System](params.CacheConfig),
+	}
 }
 
 type SystemService struct {
+	*AbstractService
+
 	Cache xcache.Cache[ent.System]
 }
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyInitialized)).Only(ctx)
 	if err != nil {
@@ -141,7 +149,7 @@ func (s *SystemService) Initialize(ctx context.Context, args *InitializeSystemAr
 		return fmt.Errorf("failed to generate secret key: %w", err)
 	}
 
-	db := ent.FromContext(ctx)
+	db := s.entFromContext(ctx)
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -276,7 +284,7 @@ func (s *SystemService) StoreChunks(ctx context.Context) (bool, error) {
 // BrandName retrieves the brand name.
 func (s *SystemService) BrandName(ctx context.Context) (string, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyBrandName)).Only(ctx)
 	if err != nil {
@@ -298,7 +306,7 @@ func (s *SystemService) SetBrandName(ctx context.Context, brandName string) erro
 // BrandLogo retrieves the brand logo (base64 encoded).
 func (s *SystemService) BrandLogo(ctx context.Context) (string, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyBrandLogo)).Only(ctx)
 	if err != nil {
@@ -323,7 +331,7 @@ func (s *SystemService) getSystemValue(ctx context.Context, key string) (string,
 		return v.Value, nil
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(key)).Only(ctx)
 	if err != nil {
@@ -340,7 +348,7 @@ func (s *SystemService) setSystemValue(
 	ctx context.Context,
 	key, value string,
 ) error {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	err := client.System.Create().
 		SetKey(key).

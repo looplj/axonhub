@@ -33,10 +33,11 @@ import (
 
 // DataStorageService handles data storage operations.
 type DataStorageService struct {
+	*AbstractService
+
 	SystemService *SystemService
 	Cache         xcache.Cache[ent.DataStorage]
 	Executors     executors.ScheduledExecutor
-	Ent           *ent.Client
 
 	// fsCache caches afero filesystem instances by data storage ID
 	fsCache      map[int]afero.Fs
@@ -57,10 +58,12 @@ type DataStorageServiceParams struct {
 // NewDataStorageService creates a new DataStorageService.
 func NewDataStorageService(params DataStorageServiceParams) *DataStorageService {
 	svc := &DataStorageService{
+		AbstractService: &AbstractService{
+			db: params.Client,
+		},
 		SystemService: params.SystemService,
 		Cache:         xcache.NewFromConfig[ent.DataStorage](params.CacheConfig),
 		Executors:     params.Executor,
-		Ent:           params.Client,
 		fsCache:       make(map[int]afero.Fs),
 	}
 
@@ -87,7 +90,7 @@ func (s *DataStorageService) refreshFileSystemsPeriodic(ctx context.Context) {
 func (s *DataStorageService) refreshFileSystems(ctx context.Context) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	latestUpdatedStorage, err := s.Ent.DataStorage.Query().
+	latestUpdatedStorage, err := s.entFromContext(ctx).DataStorage.Query().
 		Order(ent.Desc(datastorage.FieldUpdatedAt)).
 		First(ctx)
 	if err != nil && !ent.IsNotFound(err) {
@@ -105,7 +108,7 @@ func (s *DataStorageService) refreshFileSystems(ctx context.Context) error {
 		s.latestUpdate = time.Time{}
 	}
 
-	storages, err := s.Ent.DataStorage.Query().
+	storages, err := s.entFromContext(ctx).DataStorage.Query().
 		Where(datastorage.StatusEQ(datastorage.StatusActive)).
 		All(ctx)
 	if err != nil {

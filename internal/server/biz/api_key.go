@@ -24,16 +24,22 @@ type APIKeyServiceParams struct {
 	fx.In
 
 	CacheConfig    xcache.Config
+	Ent            *ent.Client
 	ProjectService *ProjectService
 }
 
 type APIKeyService struct {
+	*AbstractService
+
 	ProjectService *ProjectService
 	APIKeyCache    xcache.Cache[ent.APIKey]
 }
 
 func NewAPIKeyService(params APIKeyServiceParams) *APIKeyService {
 	return &APIKeyService{
+		AbstractService: &AbstractService{
+			db: params.Ent,
+		},
 		ProjectService: params.ProjectService,
 		APIKeyCache:    xcache.NewFromConfig[ent.APIKey](params.CacheConfig),
 	}
@@ -60,7 +66,7 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Generate API key with ah- prefix (similar to OpenAI format)
 	generatedKey, err := GenerateAPIKey()
@@ -85,7 +91,7 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 // UpdateAPIKey updates an existing API key.
 func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.UpdateAPIKeyInput) (*ent.APIKey, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	apiKey, err := client.APIKey.UpdateOneID(id).
 		SetNillableName(input.Name).
@@ -103,7 +109,7 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 // UpdateAPIKeyStatus updates the status of an API key.
 func (s *APIKeyService) UpdateAPIKeyStatus(ctx context.Context, id int, status apikey.Status) (*ent.APIKey, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	apiKey, err := client.APIKey.UpdateOneID(id).
 		SetStatus(status).
@@ -121,7 +127,7 @@ func (s *APIKeyService) UpdateAPIKeyStatus(ctx context.Context, id int, status a
 // UpdateAPIKeyProfiles updates the profiles of an API key.
 func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profiles objects.APIKeyProfiles) (*ent.APIKey, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Validate that profile names are unique (case-insensitive)
 	if err := validateProfileNames(profiles.Profiles); err != nil {
@@ -191,7 +197,7 @@ func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey,
 
 	apiKey, err := s.APIKeyCache.Get(ctx, cacheKey)
 	if err != nil || apiKey.Key != key {
-		client := ent.FromContext(ctx)
+		client := s.entFromContext(ctx)
 
 		dbApiKey, err := client.APIKey.Query().
 			Where(apikey.KeyEQ(key)).
@@ -232,7 +238,7 @@ func (s *APIKeyService) BulkDisableAPIKeys(ctx context.Context, ids []int) error
 		return nil
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	// Verify all API keys exist
 	count, err := client.APIKey.Query().
 		Where(apikey.IDIn(ids...)).
@@ -275,7 +281,7 @@ func (s *APIKeyService) BulkArchiveAPIKeys(ctx context.Context, ids []int) error
 		return nil
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	// Verify all API keys exist
 	count, err := client.APIKey.Query().
 		Where(apikey.IDIn(ids...)).

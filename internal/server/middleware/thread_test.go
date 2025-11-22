@@ -28,6 +28,7 @@ func setupTestThreadMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.Thr
 
 	systemService := biz.NewSystemService(biz.SystemServiceParams{
 		CacheConfig: xcache.Config{},
+		Ent:         client,
 	})
 	dataStorageService := biz.NewDataStorageService(biz.DataStorageServiceParams{
 		Client:        client,
@@ -35,12 +36,13 @@ func setupTestThreadMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.Thr
 		CacheConfig:   xcache.Config{},
 		Executor:      executors.NewPoolScheduleExecutor(),
 	})
-	usageLogService := biz.NewUsageLogService(systemService)
+	usageLogService := biz.NewUsageLogService(client, systemService)
 	traceService := biz.NewTraceService(biz.TraceServiceParams{
-		RequestService: biz.NewRequestService(systemService, usageLogService, dataStorageService),
+		RequestService: biz.NewRequestService(client, systemService, usageLogService, dataStorageService),
+		Ent:            client,
 	})
 
-	threadService := biz.NewThreadService(traceService)
+	threadService := biz.NewThreadService(client, traceService)
 
 	router := gin.New()
 

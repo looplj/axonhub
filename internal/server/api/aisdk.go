@@ -18,11 +18,12 @@ import (
 type AiSdkHandlersParams struct {
 	fx.In
 
-	ChannelService *biz.ChannelService
-	RequestService *biz.RequestService
-	TraceService   *biz.TraceService
-	SystemService  *biz.SystemService
-	HttpClient     *httpclient.HttpClient
+	ChannelService  *biz.ChannelService
+	RequestService  *biz.RequestService
+	TraceService    *biz.TraceService
+	SystemService   *biz.SystemService
+	UsageLogService *biz.UsageLogService
+	HttpClient      *httpclient.HttpClient
 }
 
 type AiSDKHandlers struct {
@@ -39,6 +40,7 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 			params.HttpClient,
 			aisdk.NewTextTransformer(),
 			params.SystemService,
+			params.UsageLogService,
 		),
 		SSEChatCompletionHandler: &ChatCompletionSSEHandlers{
 			ChatCompletionProcessor: chat.NewChatCompletionProcessor(
@@ -48,6 +50,7 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 				params.HttpClient,
 				aisdk.NewDataStreamTransformer(),
 				params.SystemService,
+				params.UsageLogService,
 			),
 		},
 	}
