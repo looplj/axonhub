@@ -17,24 +17,30 @@ import (
 func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
 	t.Helper()
 
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	systemService := NewSystemService(SystemServiceParams{
 		CacheConfig: xcache.Config{},
+		Ent:         client,
 	})
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-	threadService := NewThreadService(NewTraceService(TraceServiceParams{
-		RequestService: NewRequestService(
-			systemService,
-			NewUsageLogService(systemService),
-			NewDataStorageService(
-				DataStorageServiceParams{
-					SystemService: systemService,
-					CacheConfig:   xcache.Config{},
-					Executor:      executors.NewPoolScheduleExecutor(),
-					Client:        client,
-				},
+	threadService := NewThreadService(
+		client,
+		NewTraceService(TraceServiceParams{
+			RequestService: NewRequestService(
+				client,
+				systemService,
+				NewUsageLogService(client, systemService),
+				NewDataStorageService(
+					DataStorageServiceParams{
+						SystemService: systemService,
+						CacheConfig:   xcache.Config{},
+						Executor:      executors.NewPoolScheduleExecutor(),
+						Client:        client,
+					},
+				),
 			),
-		),
-	}))
+			Ent: client,
+		}),
+	)
 
 	return threadService, client
 }
@@ -157,11 +163,15 @@ func TestThreadService_GetThreadByID(t *testing.T) {
 }
 
 func TestThreadService_GetOrCreateThread_NoClient(t *testing.T) {
-	threadService, _ := setupTestThreadService(t)
+	threadService, client := setupTestThreadService(t)
 	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client) // Add client to context
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	// Test without ent client in context
-	_, err := threadService.GetOrCreateThread(ctx, 1, "thread-123")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "ent client not found in context")
+	// Test with ent client in context - should work
+	thread, err := threadService.GetOrCreateThread(ctx, 1, "thread-123")
+	require.NoError(t, err)
+	require.NotNil(t, thread)
+	require.Equal(t, "thread-123", thread.ThreadID)
+	require.Equal(t, 1, thread.ProjectID)
 }

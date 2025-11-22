@@ -32,28 +32,31 @@ type PlaygroundResponseError struct {
 type PlaygroundHandlersParams struct {
 	fx.In
 
-	ChannelService *biz.ChannelService
-	RequestService *biz.RequestService
-	TraceService   *biz.TraceService
-	SystemService  *biz.SystemService
-	HttpClient     *httpclient.HttpClient
+	ChannelService  *biz.ChannelService
+	RequestService  *biz.RequestService
+	TraceService    *biz.TraceService
+	SystemService   *biz.SystemService
+	UsageLogService *biz.UsageLogService
+	HttpClient      *httpclient.HttpClient
 }
 
 type PlaygroundHandlers struct {
-	ChannelService *biz.ChannelService
-	RequestService *biz.RequestService
-	TraceService   *biz.TraceService
-	SystemService  *biz.SystemService
-	HttpClient     *httpclient.HttpClient
+	ChannelService  *biz.ChannelService
+	RequestService  *biz.RequestService
+	TraceService    *biz.TraceService
+	SystemService   *biz.SystemService
+	UsageLogService *biz.UsageLogService
+	HttpClient      *httpclient.HttpClient
 }
 
 func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers {
 	return &PlaygroundHandlers{
-		ChannelService: params.ChannelService,
-		RequestService: params.RequestService,
-		TraceService:   params.TraceService,
-		SystemService:  params.SystemService,
-		HttpClient:     params.HttpClient,
+		ChannelService:  params.ChannelService,
+		RequestService:  params.RequestService,
+		TraceService:    params.TraceService,
+		SystemService:   params.SystemService,
+		UsageLogService: params.UsageLogService,
+		HttpClient:      params.HttpClient,
 	}
 }
 
@@ -261,6 +264,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 			handlers.HttpClient,
 			aisdk.NewDataStreamTransformer(),
 			handlers.SystemService,
+			handlers.UsageLogService,
 			nil,
 		)
 	} else {
@@ -272,6 +276,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 			handlers.HttpClient,
 			aisdk.NewDataStreamTransformer(),
 			handlers.SystemService,
+			handlers.UsageLogService,
 		)
 	}
 

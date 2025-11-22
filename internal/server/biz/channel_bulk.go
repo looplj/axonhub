@@ -20,7 +20,7 @@ type ChannelOrderingItem struct {
 
 // BulkUpdateChannelOrdering updates the ordering weight for multiple channels in a single transaction.
 func (svc *ChannelService) BulkUpdateChannelOrdering(ctx context.Context, items []ChannelOrderingItem) ([]*ent.Channel, error) {
-	client := ent.FromContext(ctx)
+	client := svc.entFromContext(ctx)
 
 	updatedChannels := make([]*ent.Channel, 0, len(items))
 	for _, update := range items {
@@ -69,7 +69,7 @@ func (svc *ChannelService) BulkCreateChannels(ctx context.Context, input BulkCre
 	var createdChannels []*ent.Channel
 
 	// Get all existing channel names to check for conflicts
-	existingChannels, err := svc.Ent.Channel.Query().Select(channel.FieldName).All(ctx)
+	existingChannels, err := svc.entFromContext(ctx).Channel.Query().Select(channel.FieldName).All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query existing channels: %w", err)
 	}
@@ -124,10 +124,7 @@ func (svc *ChannelService) bulkUpdateChannelStatus(ctx context.Context, ids []in
 		return nil
 	}
 
-	client := ent.FromContext(ctx)
-	if client == nil {
-		client = svc.Ent
-	}
+	client := svc.entFromContext(ctx)
 
 	// Verify all channels exist
 	count, err := client.Channel.Query().
@@ -175,7 +172,7 @@ func (svc *ChannelService) BulkDeleteChannels(ctx context.Context, ids []int) er
 		return nil
 	}
 
-	deleted, err := svc.Ent.Channel.Delete().Where(channel.IDIn(ids...)).Exec(ctx)
+	deleted, err := svc.entFromContext(ctx).Channel.Delete().Where(channel.IDIn(ids...)).Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to bulk delete channels: %w", err)
 	}
@@ -246,7 +243,7 @@ func (svc *ChannelService) BulkImportChannels(ctx context.Context, items []BulkI
 		}
 
 		// Create the channel (baseURL is now required)
-		channelBuilder := svc.Ent.Channel.Create().
+		channelBuilder := svc.entFromContext(ctx).Channel.Create().
 			SetType(channelType).
 			SetName(item.Name).
 			SetBaseURL(*item.BaseURL).

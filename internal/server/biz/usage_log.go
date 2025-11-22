@@ -11,12 +11,17 @@ import (
 
 // UsageLogService handles usage log operations.
 type UsageLogService struct {
+	*AbstractService
+
 	SystemService *SystemService
 }
 
 // NewUsageLogService creates a new UsageLogService.
-func NewUsageLogService(systemService *SystemService) *UsageLogService {
+func NewUsageLogService(ent *ent.Client, systemService *SystemService) *UsageLogService {
 	return &UsageLogService{
+		AbstractService: &AbstractService{
+			db: ent,
+		},
 		SystemService: systemService,
 	}
 }
@@ -24,7 +29,6 @@ func NewUsageLogService(systemService *SystemService) *UsageLogService {
 // CreateUsageLog creates a new usage log record from LLM response usage data.
 func (s *UsageLogService) CreateUsageLog(
 	ctx context.Context,
-	userID int,
 	requestID int,
 	projectID int,
 	channelID *int,
@@ -37,7 +41,7 @@ func (s *UsageLogService) CreateUsageLog(
 		return nil, nil // No usage data to log
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	mut := client.UsageLog.Create().
 		SetRequestID(requestID).
@@ -92,7 +96,6 @@ func (s *UsageLogService) CreateUsageLog(
 
 	log.Debug(ctx, "Created usage log",
 		log.Int("usage_log_id", usageLog.ID),
-		log.Int("user_id", userID),
 		log.Int("request_id", requestID),
 		log.String("model_id", modelID),
 		log.Int64("total_tokens", usage.TotalTokens),
@@ -124,7 +127,6 @@ func (s *UsageLogService) CreateUsageLogFromRequest(
 
 	return s.CreateUsageLog(
 		ctx,
-		0, // userID removed, passing 0 as placeholder
 		request.ID,
 		request.ProjectID,
 		channelID,

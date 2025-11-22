@@ -30,6 +30,7 @@ func newTestChannelService(client *ent.Client) *biz.ChannelService {
 func newTestTraceService(client *ent.Client) *biz.TraceService {
 	systemService := biz.NewSystemService(biz.SystemServiceParams{
 		CacheConfig: xcache.Config{},
+		Ent:         client,
 	})
 	dataStorageService := biz.NewDataStorageService(biz.DataStorageServiceParams{
 		Client:        client,
@@ -37,10 +38,11 @@ func newTestTraceService(client *ent.Client) *biz.TraceService {
 		CacheConfig:   xcache.Config{},
 		Executor:      executors.NewPoolScheduleExecutor(),
 	})
-	usageLogService := biz.NewUsageLogService(systemService)
+	usageLogService := biz.NewUsageLogService(client, systemService)
 
 	return biz.NewTraceService(biz.TraceServiceParams{
-		RequestService: biz.NewRequestService(systemService, usageLogService, dataStorageService),
+		RequestService: biz.NewRequestService(client, systemService, usageLogService, dataStorageService),
+		Ent:            client,
 	})
 }
 

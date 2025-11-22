@@ -124,3 +124,12 @@ func CreateTestHelperWithNewTrace(t *testing.T, existingConfig *Config) *TestHel
 func ContainsCaseInsensitive(text, substring string) bool {
 	return strings.Contains(strings.ToLower(text), strings.ToLower(substring))
 }
+
+func ContainsAnyCaseInsensitive(text string, substrings ...string) bool {
+	for _, substring := range substrings {
+		if ContainsCaseInsensitive(text, substring) {
+			return true
+		}
+	}
+	return false
+}

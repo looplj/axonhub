@@ -18,15 +18,21 @@ type RoleServiceParams struct {
 	fx.In
 
 	UserService *UserService
+	Ent         *ent.Client
 }
 
 type RoleService struct {
+	*AbstractService
+
 	userService         *UserService
 	permissionValidator *PermissionValidator
 }
 
 func NewRoleService(params RoleServiceParams) *RoleService {
 	return &RoleService{
+		AbstractService: &AbstractService{
+			db: params.Ent,
+		},
 		userService:         params.UserService,
 		permissionValidator: NewPermissionValidator(),
 	}
@@ -45,7 +51,7 @@ func (s *RoleService) CreateRole(ctx context.Context, input ent.CreateRoleInput)
 	}
 
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	var (
 		level           role.Level
@@ -134,7 +140,7 @@ func (s *RoleService) UpdateRole(ctx context.Context, id int, input ent.UpdateRo
 	}
 
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// If name is being updated, check for duplicates
 	if input.Name != nil {
@@ -177,7 +183,7 @@ func (s *RoleService) UpdateRole(ctx context.Context, id int, input ent.UpdateRo
 // It uses the UserRole entity to delete all relationships through the role_id.
 func (s *RoleService) DeleteRole(ctx context.Context, id int) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// First, check if the role exists
 	exists, err := client.Role.Query().
@@ -212,7 +218,7 @@ func (s *RoleService) DeleteRole(ctx context.Context, id int) error {
 
 // BulkDeleteRoles deletes multiple roles and all associated user-role relationships.
 func (s *RoleService) BulkDeleteRoles(ctx context.Context, ids []int) error {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	if len(ids) == 0 {
 		return nil
@@ -254,7 +260,7 @@ func (s *RoleService) BulkDeleteRoles(ctx context.Context, ids []int) error {
 // RoleNameExists checks if a role name already exists within a specific project.
 func (s *RoleService) RoleNameExists(ctx context.Context, level role.Level, name string, projectID *int) (bool, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	if level == role.LevelSystem {
 		return client.Role.Query().

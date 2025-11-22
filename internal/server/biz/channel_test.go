@@ -160,7 +160,9 @@ func setupTestChannelService(t *testing.T) (*ChannelService, *ent.Client) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	svc := &ChannelService{
-		Ent: client,
+		AbstractService: &AbstractService{
+			db: client,
+		},
 	}
 
 	return svc, client

@@ -21,15 +21,21 @@ type UserServiceParams struct {
 	fx.In
 
 	CacheConfig xcache.Config
+	Ent         *ent.Client
 }
 
 type UserService struct {
+	*AbstractService
+
 	UserCache           xcache.Cache[ent.User]
 	permissionValidator *PermissionValidator
 }
 
 func NewUserService(params UserServiceParams) *UserService {
 	return &UserService{
+		AbstractService: &AbstractService{
+			db: params.Ent,
+		},
 		UserCache:           xcache.NewFromConfig[ent.User](params.CacheConfig),
 		permissionValidator: NewPermissionValidator(),
 	}
@@ -38,7 +44,7 @@ func NewUserService(params UserServiceParams) *UserService {
 // CreateUser creates a new user with hashed password.
 func (s *UserService) CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Hash the password
 	hashedPassword, err := HashPassword(input.Password)
@@ -89,7 +95,7 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 	}
 
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	mut := client.User.UpdateOneID(id).
 		SetNillableEmail(input.Email).
@@ -145,7 +151,7 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 // UpdateUserStatus updates the status of a user.
 func (s *UserService) UpdateUserStatus(ctx context.Context, id int, status user.Status) (*ent.User, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	user, err := client.User.UpdateOneID(id).
 		SetStatus(status).
@@ -171,7 +177,7 @@ func (s *UserService) GetUserByID(ctx context.Context, id int) (*ent.User, error
 	}
 
 	// Query database
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
 	}
@@ -289,7 +295,7 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 // AddUserToProject adds a user to a project with optional owner status, scopes, and roles.
 func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID int, isOwner *bool, scopes []string, roleIDs []int) (*ent.UserProject, error) {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Create the project user relationship
 	mut := client.UserProject.Create().
@@ -331,7 +337,7 @@ func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID in
 // RemoveUserFromProject removes a user from a project.
 func (s *UserService) RemoveUserFromProject(ctx context.Context, userID, projectID int) error {
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Find the UserProject relationship
 	userProject, err := client.UserProject.Query().
@@ -380,7 +386,7 @@ func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID i
 	}
 
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Find the UserProject relationship
 	userProject, err := client.UserProject.Query().

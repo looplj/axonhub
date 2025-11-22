@@ -44,11 +44,12 @@ func (e *AnthropicErrorHandler) HandlerError(c *gin.Context, err error) {
 type AnthropicHandlersParams struct {
 	fx.In
 
-	ChannelService *biz.ChannelService
-	RequestService *biz.RequestService
-	TraceService   *biz.TraceService
-	SystemService  *biz.SystemService
-	HttpClient     *httpclient.HttpClient
+	ChannelService  *biz.ChannelService
+	RequestService  *biz.RequestService
+	TraceService    *biz.TraceService
+	SystemService   *biz.SystemService
+	UsageLogService *biz.UsageLogService
+	HttpClient      *httpclient.HttpClient
 }
 
 type AnthropicHandlers struct {
@@ -66,6 +67,7 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 				params.HttpClient,
 				anthropic.NewInboundTransformer(),
 				params.SystemService,
+				params.UsageLogService,
 			),
 		},
 		ChannelService: params.ChannelService,

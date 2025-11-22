@@ -24,7 +24,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 
 	// First call: Simple greeting
 	messages := []openai.ChatCompletionMessageParamUnion{
-		openai.UserMessage("Hello! I'm working on a complex project that involves multiple steps."),
+		openai.UserMessage("Hello! I need help with a calculation task."),
 	}
 
 	params := openai.ChatCompletionNewParams{
@@ -42,7 +42,7 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 
 	// Second call: Follow-up question in same trace
 	messages = append(messages, completion.Choices[0].Message.ToParam())
-	messages = append(messages, openai.UserMessage("Can you help me break down the project into smaller tasks?"))
+	messages = append(messages, openai.UserMessage("I need to perform some calculations. Can you help?"))
 
 	params.Messages = messages
 	completion2, err := helper.Client.Chat.Completions.New(ctx, params)
@@ -115,8 +115,8 @@ func TestSingleTraceMultipleCalls(t *testing.T) {
 			messages = append(messages, openai.ToolMessage(toolResults[i], toolCall.ID))
 		}
 
-		// Add final question
-		messages = append(messages, openai.UserMessage("Perfect! Now how should I organize these tasks in a timeline?"))
+		// Add final question that explicitly references the calculation
+		messages = append(messages, openai.UserMessage("Thank you! Please confirm: what was the result of the calculation 15 * 7 + 23?"))
 
 		// Fourth call with tool results
 		params.Messages = messages

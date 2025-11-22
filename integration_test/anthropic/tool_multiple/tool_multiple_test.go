@@ -26,8 +26,8 @@ func TestMultipleToolsSequential(t *testing.T) {
 
 	ctx := helper.CreateTestContext()
 
-	// Question that might require multiple tool calls
-	question := "What is the weather in New York and what is 15 * 23?"
+	// Question that explicitly requires multiple tool calls
+	question := "Please use the available tools to: 1) Get the current weather in New York, and 2) Calculate 15 * 23. Provide both results."
 
 	t.Logf("Sending question: %s", question)
 
@@ -174,8 +174,8 @@ func TestMultipleToolsParallel(t *testing.T) {
 
 	ctx := helper.CreateTestContext()
 
-	// Question that requires parallel tool calls
-	question := "Compare the weather in New York and London, and also calculate 100 / 4."
+	// Question that explicitly requires parallel tool calls
+	question := "Please use the available tools to: 1) Get weather for New York, 2) Get weather for London, and 3) Calculate 100 / 4. I need all three results."
 
 	t.Logf("Sending question: %s", question)
 
@@ -309,8 +309,8 @@ func TestToolChoiceRequired(t *testing.T) {
 
 	ctx := helper.CreateTestContext()
 
-	// Question that should force tool usage
-	question := "What is the result of 50 * 30?"
+	// Question that explicitly requires tool usage
+	question := "Please use the calculate tool to compute 50 * 30 and tell me the result."
 
 	t.Logf("Sending question: %s", question)
 
@@ -339,9 +339,9 @@ func TestToolChoiceRequired(t *testing.T) {
 	}
 
 	params := anthropic.MessageNewParams{
-		Model:     helper.GetModel(),
-		Messages:  messages,
-		Tools:     tools,
+		Model:    helper.GetModel(),
+		Messages: messages,
+		Tools:    tools,
 		ToolChoice: anthropic.ToolChoiceUnionParam{
 			OfTool: &anthropic.ToolChoiceToolParam{
 				Name: "calculate",

@@ -59,7 +59,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		// Query channel to get API key
 		ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-		ch, err := f.channelService.Ent.Channel.Get(ctx, *input.ChannelID)
+		ch, err := f.channelService.entFromContext(ctx).Channel.Get(ctx, *input.ChannelID)
 		if err != nil {
 			return &FetchModelsResult{
 				Models: []objects.ModelIdentify{},

@@ -24,6 +24,7 @@ func NewChatCompletionProcessor(
 	httpClient *httpclient.HttpClient,
 	inbound transformer.Inbound,
 	systemService *biz.SystemService,
+	usageLogService *biz.UsageLogService,
 ) *ChatCompletionProcessor {
 	connectionTracker := NewDefaultConnectionTracker(1024)
 
@@ -34,6 +35,7 @@ func NewChatCompletionProcessor(
 		httpClient,
 		inbound,
 		systemService,
+		usageLogService,
 		connectionTracker,
 	)
 }
@@ -45,6 +47,7 @@ func NewChatCompletionProcessorWithSelector(
 	httpClient *httpclient.HttpClient,
 	inbound transformer.Inbound,
 	systemService *biz.SystemService,
+	usageLogService *biz.UsageLogService,
 	connectionTracker *DefaultConnectionTracker,
 ) *ChatCompletionProcessor {
 	return &ChatCompletionProcessor{
@@ -53,6 +56,7 @@ func NewChatCompletionProcessorWithSelector(
 		RequestService:  requestService,
 		ChannelService:  channelService,
 		SystemService:   systemService,
+		UsageLogService: usageLogService,
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
@@ -68,6 +72,7 @@ type ChatCompletionProcessor struct {
 	RequestService    *biz.RequestService
 	ChannelService    *biz.ChannelService
 	SystemService     *biz.SystemService
+	UsageLogService   *biz.UsageLogService
 	Middlewares       []pipeline.Middleware
 	PipelineFactory   *pipeline.Factory
 	ModelMapper       *ModelMapper
@@ -87,19 +92,23 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 	apiKey, _ := contexts.GetAPIKey(ctx)
 	user, _ := contexts.GetUser(ctx)
 
-	log.Debug(ctx, "request received", log.String("request_body", string(request.Body)))
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "request received", log.String("request_body", string(request.Body)))
+	}
 
-	inbound, outbound := NewPersistentTransformers(
-		ctx,
-		processor.Inbound,
-		processor.RequestService,
-		processor.ChannelService,
-		apiKey,
-		user,
-		processor.ModelMapper,
-		processor.Proxy,
-		processor.ChannelSelector,
-	)
+	state := &PersistenceState{
+		APIKey:          apiKey,
+		User:            user,
+		RequestService:  processor.RequestService,
+		UsageLogService: processor.UsageLogService,
+		ChannelService:  processor.ChannelService,
+		ChannelSelector: processor.ChannelSelector,
+		ChannelIndex:    0,
+		ModelMapper:     processor.ModelMapper,
+		Proxy:           processor.Proxy,
+	}
+
+	inbound, outbound := NewPersistentTransformers(state, processor.Inbound)
 
 	// Get retry policy from system settings
 	retryPolicy := processor.SystemService.RetryPolicyOrDefault(ctx)

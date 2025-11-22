@@ -15,11 +15,12 @@ import (
 type OpenAIHandlersParams struct {
 	fx.In
 
-	ChannelService *biz.ChannelService
-	RequestService *biz.RequestService
-	TraceService   *biz.TraceService
-	SystemService  *biz.SystemService
-	HttpClient     *httpclient.HttpClient
+	ChannelService  *biz.ChannelService
+	RequestService  *biz.RequestService
+	TraceService    *biz.TraceService
+	SystemService   *biz.SystemService
+	UsageLogService *biz.UsageLogService
+	HttpClient      *httpclient.HttpClient
 }
 
 type OpenAIHandlers struct {
@@ -37,6 +38,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.HttpClient,
 				openai.NewInboundTransformer(),
 				params.SystemService,
+				params.UsageLogService,
 			),
 		},
 		ChannelService: params.ChannelService,

@@ -21,14 +21,20 @@ type ProjectServiceParams struct {
 	fx.In
 
 	CacheConfig xcache.Config
+	Ent         *ent.Client
 }
 
 type ProjectService struct {
+	*AbstractService
+
 	ProjectCache xcache.Cache[ent.Project]
 }
 
 func NewProjectService(params ProjectServiceParams) *ProjectService {
 	return &ProjectService{
+		AbstractService: &AbstractService{
+			db: params.Ent,
+		},
 		ProjectCache: xcache.NewFromConfig[ent.Project](params.CacheConfig),
 	}
 }
@@ -41,7 +47,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	// Check for duplicate project name
 	exists, err := client.Project.Query().
@@ -141,7 +147,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 
 // UpdateProject updates an existing project.
 func (s *ProjectService) UpdateProject(ctx context.Context, id int, input ent.UpdateProjectInput) (*ent.Project, error) {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	mut := client.Project.UpdateOneID(id)
 	mut.SetNillableName(input.Name)
@@ -181,7 +187,7 @@ func (s *ProjectService) GetProjectByID(ctx context.Context, id int) (*ent.Proje
 	}
 
 	// Query database
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
 	}
@@ -202,7 +208,7 @@ func (s *ProjectService) GetProjectByID(ctx context.Context, id int) (*ent.Proje
 
 // UpdateProjectStatus updates the status of a project.
 func (s *ProjectService) UpdateProjectStatus(ctx context.Context, id int, status project.Status) (*ent.Project, error) {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 
 	proj, err := client.Project.UpdateOneID(id).
 		SetStatus(status).

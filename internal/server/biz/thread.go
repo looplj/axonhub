@@ -10,11 +10,16 @@ import (
 )
 
 type ThreadService struct {
+	*AbstractService
+
 	traceService *TraceService
 }
 
-func NewThreadService(traceService *TraceService) *ThreadService {
+func NewThreadService(ent *ent.Client, traceService *TraceService) *ThreadService {
 	return &ThreadService{
+		AbstractService: &AbstractService{
+			db: ent,
+		},
 		traceService: traceService,
 	}
 }
@@ -22,7 +27,7 @@ func NewThreadService(traceService *TraceService) *ThreadService {
 // GetOrCreateThread retrieves an existing thread by thread_id and project_id,
 // or creates a new one if it doesn't exist.
 func (s *ThreadService) GetOrCreateThread(ctx context.Context, projectID int, threadID string) (*ent.Thread, error) {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
 	}
@@ -60,7 +65,7 @@ func (s *ThreadService) GetOrCreateThread(ctx context.Context, projectID int, th
 
 // GetThreadByID retrieves a thread by its thread_id and project_id.
 func (s *ThreadService) GetThreadByID(ctx context.Context, threadID string, projectID int) (*ent.Thread, error) {
-	client := ent.FromContext(ctx)
+	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
 	}
