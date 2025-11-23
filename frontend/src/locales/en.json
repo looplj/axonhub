@@ -602,7 +602,14 @@
     },
     "actions": {
       "test": "Test",
-      "settings": "Settings"
+      "settings": "Settings",
+      "errorResolved": "Error Resolved"
+    },
+    "errorBanner": {
+      "message": "{{count}} channel(s) need attention for disabled due to unrecoverable errors",
+      "filterButton": "Show Error Channels",
+      "errorOnlyMode": "Showing only channels with errors",
+      "exitErrorOnlyButton": "Exit Error Mode"
     },
     "filters": {
       "type": "Type",
@@ -648,7 +655,12 @@
       "fetchModelsError": "Failed to fetch models: {{error}}",
       "fetchTypesError": "Failed to fetch channel types: {{error}}",
       "batchCreateSuccess": "Successfully created {{count}} channels",
-      "batchCreateError": "Failed to create channels: {{error}}"
+      "batchCreateError": "Failed to create channels: {{error}}",
+      "errorResolvedSuccess": "Channel error resolved successfully",
+      "errorResolvedError": "Failed to resolve channel error: {{error}}",
+      "Unauthorized":"Unauthorized, please check the API key of the channel",
+      "Not Found":"Endpoint not found, pleast check the base url of the channel",
+      "Interval Server Error":"Interval server error, please confirm the channel configuration"
     },
     "errors": {
       "fetchList": "Failed to load channels",
@@ -934,6 +946,11 @@
         "description": "Are you sure you want to delete {{count}} selected channels?",
         "warning": "Warning: This action cannot be undone",
         "warningDetail": "This will permanently delete all selected channels and their related data. This cannot be recovered."
+      },
+      "errorResolved": {
+        "title": "Resolve Channel Error",
+        "description": "Are you sure you want to resolve the error for channel \"{{channelName}}\"? This will clear the error message: \"{{errorMessage}}\"",
+        "currentError": "Current Error Message"
       }
     },
     "validation": {
@@ -1215,6 +1232,7 @@
       "noRoles": "No roles",
       "details": "Details",
       "createdAt": "Created At",
+      "latency": "Latency",
       "actions": "Actions",
       "selectAll": "Select all",
       "selectRow": "Select row",
@@ -1772,6 +1790,7 @@
       "activating": "Activating..."
     },
     "actions": {
+      "test": "Test",
       "openMenu": "Open menu",
       "edit": "Edit",
       "delete": "Delete"

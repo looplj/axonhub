@@ -15,6 +15,8 @@ interface DataTableToolbarProps<TData> {
   isFiltered?: boolean
   selectedCount?: number
   selectedTypeTab?: string
+  showErrorOnly?: boolean
+  onExitErrorOnlyMode?: () => void
 }
 
 export function DataTableToolbar<TData>({
@@ -22,6 +24,8 @@ export function DataTableToolbar<TData>({
   isFiltered: externalIsFiltered,
   selectedCount: externalSelectedCount,
   selectedTypeTab = 'all',
+  showErrorOnly,
+  onExitErrorOnlyMode,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const { setOpen } = useChannels()
@@ -82,6 +86,15 @@ export function DataTableToolbar<TData>({
           <Button variant='ghost' onClick={() => table.resetColumnFilters()} className='h-8 px-2 lg:px-3'>
             {t('common.filters.reset')}
             <Cross2Icon className='ml-2 h-4 w-4' />
+          </Button>
+        )}
+        {showErrorOnly && onExitErrorOnlyMode && (
+          <Button 
+            variant='outline' 
+            onClick={onExitErrorOnlyMode} 
+            className='h-8 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
+          >
+            {t('channels.errorBanner.exitErrorOnlyButton')}
           </Button>
         )}
         {hasSelectedRows && (

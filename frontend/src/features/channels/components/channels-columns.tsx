@@ -1,16 +1,17 @@
 import { format } from 'date-fns'
 import { ColumnDef, Row } from '@tanstack/react-table'
-import { IconPlayerPlay, IconChevronDown } from '@tabler/icons-react'
+import { IconPlayerPlay, IconChevronDown, IconAlertTriangle } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import LongText from '@/components/long-text'
 import { useChannels } from '../context/channels-context'
 import { useTestChannel } from '../data/channels'
-import { Channel, ChannelType } from '../data/schema'
 import { CHANNEL_CONFIGS } from '../data/constants'
+import { Channel, ChannelType } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { DataTableRowActions } from './data-table-row-actions'
 
@@ -40,13 +41,7 @@ function TestCell({ row }: { row: Row<Channel> }) {
 
   return (
     <div className='flex items-center gap-1'>
-      <Button
-        size='sm'
-        variant='outline'
-        className='h-8 px-3'
-        onClick={handleDefaultTest}
-        disabled={testChannel.isPending}
-      >
+      <Button size='sm' variant='outline' className='h-8 px-3' onClick={handleDefaultTest} disabled={testChannel.isPending}>
         <IconPlayerPlay className='mr-1 h-3 w-3' />
         {t('channels.actions.test')}
       </Button>
@@ -89,7 +84,28 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
     {
       accessorKey: 'name',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.name')} />,
-      cell: ({ row }) => <LongText className='max-w-36 font-medium'>{row.getValue('name')}</LongText>,
+      cell: ({ row }) => {
+        const channel = row.original
+        const hasError = !!channel.errorMessage
+
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className='flex max-w-36 items-center gap-2'>
+                  {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
+                  <LongText className={cn('font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</LongText>
+                </div>
+              </TooltipTrigger>
+              {hasError && (
+                <TooltipContent>
+                  <p className='max-w-xs text-sm'>{t(`channels.messages.${channel.errorMessage}`)}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        )
+      },
       meta: {
         className: cn(
           'drop-shadow-[0_1px_2px_rgb(0_0_0_/_0.1)] dark:drop-shadow-[0_1px_2px_rgb(255_255_255_/_0.1)] lg:drop-shadow-none',

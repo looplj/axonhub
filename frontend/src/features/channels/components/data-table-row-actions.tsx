@@ -9,6 +9,7 @@ import {
   IconAdjustments,
   IconTrash,
   IconNetwork,
+  IconCheck,
 } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -31,6 +32,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { t } = useTranslation()
   const { setOpen, setCurrentRow } = useChannels()
   const { channelPermissions } = usePermissions()
+  const channel = row.original
+  const hasError = !!channel.errorMessage
 
   // Don't show menu if user has no permissions
   if (!channelPermissions.canWrite) {
@@ -95,6 +98,20 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           >
             <IconNetwork size={16} className='mr-2' />
             {t('channels.dialogs.proxy.action')}
+          </DropdownMenuItem>
+        )}
+
+        {/* Error Resolved - requires write permission and error message */}
+        {channelPermissions.canWrite && hasError && (
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel)
+              setOpen('errorResolved')
+            }}
+            className='text-green-500!'
+          >
+            <IconCheck size={16} className='mr-2' />
+            {t('channels.actions.errorResolved')}
           </DropdownMenuItem>
         )}
 

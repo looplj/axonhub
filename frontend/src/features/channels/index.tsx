@@ -6,11 +6,12 @@ import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { createColumns } from './components/channels-columns'
 import { ChannelsDialogs } from './components/channels-dialogs'
+import { ChannelsErrorBanner } from './components/channels-error-banner'
 import { ChannelsPrimaryButtons } from './components/channels-primary-buttons'
 import { ChannelsTable } from './components/channels-table'
 import { ChannelsTypeTabs } from './components/channels-type-tabs'
 import ChannelsProvider from './context/channels-context'
-import { useQueryChannels, useChannelTypes } from './data/channels'
+import { useQueryChannels, useChannelTypes, useErrorChannelsCount } from './data/channels'
 
 function ChannelsContent() {
   const { t } = useTranslation()
@@ -22,9 +23,13 @@ function ChannelsContent() {
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [tagFilter, setTagFilter] = useState<string>('')
   const [selectedTypeTab, setSelectedTypeTab] = useState<string>('all')
+  const [showErrorOnly, setShowErrorOnly] = useState<boolean>(false)
 
   // Fetch channel types for tabs
   const { data: channelTypeCounts = [] } = useChannelTypes(statusFilter.length > 0 ? statusFilter : ['enabled', 'disabled'])
+
+  // Fetch error channels count independently
+  const { data: errorCount = 0 } = useErrorChannelsCount()
 
   // Debounce the name filter to avoid excessive API calls
   const debouncedNameFilter = useDebounce(nameFilter, 300)
@@ -35,14 +40,12 @@ function ChannelsContent() {
       return []
     }
     // Filter types that start with the selected prefix
-    return channelTypeCounts
-      .filter(({ type }) => type.startsWith(selectedTypeTab))
-      .map(({ type }) => type)
+    return channelTypeCounts.filter(({ type }) => type.startsWith(selectedTypeTab)).map(({ type }) => type)
   }, [selectedTypeTab, channelTypeCounts])
 
   // Build where clause with filters
   const whereClause = (() => {
-    const where: Record<string, string | string[]> = {}
+    const where: Record<string, string | string[] | boolean> = {}
     if (debouncedNameFilter) {
       where.nameContainsFold = debouncedNameFilter
     }
@@ -61,10 +64,17 @@ function ChannelsContent() {
       // By default, exclude archived channels when no status filter is applied
       where.statusIn = ['enabled', 'disabled']
     }
+    if (showErrorOnly) {
+      where.errorMessageNotNil = true
+    }
     return Object.keys(where).length > 0 ? where : undefined
   })()
 
-  const { data, isLoading: _isLoading, error: _error } = useQueryChannels({
+  const {
+    data,
+    isLoading: _isLoading,
+    error: _error,
+  } = useQueryChannels({
     ...paginationArgs,
     where: whereClause,
     orderBy: {
@@ -86,49 +96,79 @@ function ChannelsContent() {
     }
   }, [data?.pageInfo, setCursors])
 
-  const handlePageSizeChange = useCallback((newPageSize: number) => {
-    setPageSize(newPageSize)
-  }, [setPageSize])
+  const handlePageSizeChange = useCallback(
+    (newPageSize: number) => {
+      setPageSize(newPageSize)
+    },
+    [setPageSize]
+  )
 
-  const handleNameFilterChange = useCallback((filter: string) => {
-    setNameFilter(filter)
-    resetCursor()
-  }, [resetCursor, setNameFilter])
+  const handleNameFilterChange = useCallback(
+    (filter: string) => {
+      setNameFilter(filter)
+      resetCursor()
+    },
+    [resetCursor, setNameFilter]
+  )
 
-  const handleTypeFilterChange = useCallback((filters: string[]) => {
-    setTypeFilter(filters)
-    resetCursor()
-  }, [resetCursor, setTypeFilter])
+  const handleTypeFilterChange = useCallback(
+    (filters: string[]) => {
+      setTypeFilter(filters)
+      resetCursor()
+    },
+    [resetCursor, setTypeFilter]
+  )
 
-  const handleTabChange = useCallback((tab: string) => {
-    setSelectedTypeTab(tab)
-    // Clear manual type filter when switching tabs
-    setTypeFilter([])
-    resetCursor()
-  }, [resetCursor, setSelectedTypeTab])
+  const handleTabChange = useCallback(
+    (tab: string) => {
+      setSelectedTypeTab(tab)
+      // Clear manual type filter when switching tabs
+      setTypeFilter([])
+      resetCursor()
+    },
+    [resetCursor, setSelectedTypeTab]
+  )
 
-  const handleStatusFilterChange = useCallback((filters: string[]) => {
-    setStatusFilter(filters)
-    resetCursor()
-  }, [resetCursor, setStatusFilter])
+  const handleStatusFilterChange = useCallback(
+    (filters: string[]) => {
+      setStatusFilter(filters)
+      resetCursor()
+    },
+    [resetCursor, setStatusFilter]
+  )
 
-  const handleTagFilterChange = useCallback((filter: string) => {
-    setTagFilter(filter)
+  const handleTagFilterChange = useCallback(
+    (filter: string) => {
+      setTagFilter(filter)
+      resetCursor()
+    },
+    [resetCursor, setTagFilter]
+  )
+
+  const handleFilterErrorChannels = useCallback(() => {
+    setShowErrorOnly(true)
     resetCursor()
-  }, [resetCursor, setTagFilter])
+  }, [resetCursor])
+
+  const handleExitErrorOnlyMode = useCallback(() => {
+    setShowErrorOnly(false)
+    resetCursor()
+  }, [resetCursor])
 
   const columns = useMemo(() => createColumns(t), [t])
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <ChannelsTypeTabs
-        typeCounts={channelTypeCounts}
-        selectedTab={selectedTypeTab}
-        onTabChange={handleTabChange}
+      <ChannelsErrorBanner 
+        errorCount={errorCount} 
+        onFilterErrorChannels={handleFilterErrorChannels} 
+        showErrorOnly={showErrorOnly}
+        onExitErrorOnlyMode={handleExitErrorOnlyMode}
       />
+      <ChannelsTypeTabs typeCounts={channelTypeCounts} selectedTab={selectedTypeTab} onTabChange={handleTabChange} />
       <ChannelsTable
         // loading={isLoading}
-        data={data?.edges?.map(edge => edge.node) || []}
+        data={data?.edges?.map((edge) => edge.node) || []}
         columns={columns}
         pageInfo={data?.pageInfo}
         pageSize={pageSize}
@@ -138,6 +178,8 @@ function ChannelsContent() {
         statusFilter={statusFilter}
         tagFilter={tagFilter}
         selectedTypeTab={selectedTypeTab}
+        showErrorOnly={showErrorOnly}
+        onExitErrorOnlyMode={handleExitErrorOnlyMode}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
@@ -155,17 +197,13 @@ export default function ChannelsManagement() {
 
   return (
     <ChannelsProvider>
-      <Header fixed>
-        {/* <Search /> */}
-      </Header>
+      <Header fixed>{/* <Search /> */}</Header>
 
       <Main fixed>
         <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>{t('channels.title')}</h2>
-            <p className='text-muted-foreground'>
-              {t('channels.description')}
-            </p>
+            <p className='text-muted-foreground'>{t('channels.description')}</p>
           </div>
           <ChannelsPrimaryButtons />
         </div>

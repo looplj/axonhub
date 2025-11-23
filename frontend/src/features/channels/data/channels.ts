@@ -56,6 +56,7 @@ const CHANNELS_QUERY = `
             }
           }
           orderingWeight
+          errorMessage
         }
         cursor
       }
@@ -163,6 +164,7 @@ const UPDATE_CHANNEL_MUTATION = `
         }
       }
       orderingWeight
+      errorMessage
     }
   }
 `
@@ -354,6 +356,7 @@ const QUERY_CHANNELS_QUERY = `
             }
           }
           orderingWeight
+          errorMessage
         }
         cursor
       }
@@ -519,6 +522,30 @@ export function useUpdateChannel() {
     },
     onError: (error) => {
       toast.error(t('channels.messages.updateError', { error: error.message }))
+    },
+  })
+}
+
+export function useClearChannelErrorMessage() {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const data = await graphqlRequest<{ updateChannel: Channel }>(UPDATE_CHANNEL_MUTATION, { 
+        id, 
+        input: { clearErrorMessage: true } 
+      })
+      return channelSchema.parse(data.updateChannel)
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] })
+      queryClient.invalidateQueries({ queryKey: ['channel', data.id] })
+      queryClient.invalidateQueries({ queryKey: ['errorChannelsCount'] })
+      toast.success(t('channels.messages.errorResolvedSuccess'))
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.errorResolvedError', { error: error.message }))
     },
   })
 }
@@ -853,6 +880,36 @@ export function useChannelTypes(statusIn?: string[]) {
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
+const ERROR_CHANNELS_COUNT_QUERY = `
+  query GetErrorChannelsCount {
+    channels(
+      first: 1,
+      where: { errorMessageNotNil: true }
+    ) {
+      totalCount
+    }
+  }
+`
+
+export function useErrorChannelsCount() {
+  const { handleError } = useErrorHandler()
+  const { t } = useTranslation()
+
+  return useQuery({
+    queryKey: ['errorChannelsCount'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ channels: { totalCount: number } }>(ERROR_CHANNELS_COUNT_QUERY)
+        return data.channels.totalCount
+      } catch (error) {
+        handleError(error, t('channels.errors.fetchList'))
+        throw error
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
   })
 }
 

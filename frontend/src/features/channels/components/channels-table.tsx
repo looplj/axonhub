@@ -40,6 +40,8 @@ interface DataTableProps {
   statusFilter: string[]
   tagFilter: string
   selectedTypeTab?: string
+  showErrorOnly?: boolean
+  onExitErrorOnlyMode?: () => void
   onNextPage: () => void
   onPreviousPage: () => void
   onPageSizeChange: (pageSize: number) => void
@@ -61,6 +63,8 @@ export function ChannelsTable({
   statusFilter,
   tagFilter,
   selectedTypeTab = 'all',
+  showErrorOnly,
+  onExitErrorOnlyMode,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
@@ -205,6 +209,8 @@ export function ChannelsTable({
         isFiltered={isFiltered} 
         selectedCount={selectedCount}
         selectedTypeTab={selectedTypeTab}
+        showErrorOnly={showErrorOnly}
+        onExitErrorOnlyMode={onExitErrorOnlyMode}
       />
       <div className='mt-4 flex-1 overflow-auto rounded-md border'>
         <Table data-testid='channels-table'>
