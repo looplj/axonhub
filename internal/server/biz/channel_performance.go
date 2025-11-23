@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelperformance"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/ringbuffer"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 )
 
@@ -28,9 +29,8 @@ const (
 type channelMetrics struct {
 	channelID int
 
-	// sliding window of metrics for the last N minutes (key = timestamp rounded to second)
-	// TODO: use circular buffer instead of map.
-	window map[int64]*timeSlotMetrics
+	// sliding window of metrics for the last N minutes using ring buffer for O(1) cleanup
+	window *ringbuffer.RingBuffer[*timeSlotMetrics]
 
 	// aggreatedMetrics holds accumulated metrics for the flush period
 	aggreatedMetrics *AggretagedMetrics
@@ -194,7 +194,7 @@ func (m *AggretagedMetrics) Clone() *AggretagedMetrics {
 func newChannelMetrics(channelID int) *channelMetrics {
 	cm := &channelMetrics{
 		channelID: channelID,
-		window:    make(map[int64]*timeSlotMetrics),
+		window:    ringbuffer.New[*timeSlotMetrics](defaultPerformanceWindowSize),
 		aggreatedMetrics: &AggretagedMetrics{
 			metricsRecord: metricsRecord{},
 		},
@@ -241,12 +241,12 @@ func (cm *channelMetrics) recordFailure(slot *timeSlotMetrics, perf *Performance
 
 // getOrCreateTimeSlot gets or creates a time slot for the given timestamp.
 func (cm *channelMetrics) getOrCreateTimeSlot(ts int64, endTime time.Time, windowSize int64) *timeSlotMetrics {
-	if slot, ok := cm.window[ts]; ok {
+	if slot, ok := cm.window.Get(ts); ok {
 		return slot
 	}
 
 	// Clean old entries to prevent memory leak
-	if len(cm.window) >= int(windowSize) {
+	if cm.window.Len() >= int(windowSize) {
 		cm.cleanupExpiredSlots(endTime.Add(-time.Duration(windowSize) * time.Second))
 	}
 
@@ -254,7 +254,7 @@ func (cm *channelMetrics) getOrCreateTimeSlot(ts int64, endTime time.Time, windo
 		timestamp:     ts,
 		metricsRecord: metricsRecord{},
 	}
-	cm.window[ts] = slot
+	cm.window.Push(ts, slot)
 
 	return slot
 }
@@ -414,22 +414,35 @@ func (svc *ChannelService) AsyncRecordPerformance(ctx context.Context, perr *Per
 }
 
 // cleanupExpiredSlots removes time slots older than the cutoff time.
+// This is now O(k) where k is the number of items to remove, instead of O(n) for the entire map.
 func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 	cutoffTs := cutoff.Unix()
-	for ts := range cm.window {
+
+	// Collect metrics to subtract before cleanup
+	var metricsToRemove []*timeSlotMetrics
+	cm.window.Range(func(ts int64, metrics *timeSlotMetrics) bool {
 		if ts < cutoffTs {
-			metrics := cm.window[ts]
-			delete(cm.window, ts)
-			cm.aggreatedMetrics.RequestCount -= metrics.RequestCount
-			cm.aggreatedMetrics.SuccessCount -= metrics.SuccessCount
-			cm.aggreatedMetrics.FailureCount -= metrics.FailureCount
-			cm.aggreatedMetrics.TotalTokenCount -= metrics.TotalTokenCount
-			cm.aggreatedMetrics.TotalRequestLatencyMs -= metrics.TotalRequestLatencyMs
-			cm.aggreatedMetrics.StreamTotalTokenCount -= metrics.StreamTotalTokenCount
-			cm.aggreatedMetrics.StreamTotalFirstTokenLatencyMs -= metrics.StreamTotalFirstTokenLatencyMs
-			cm.aggreatedMetrics.StreamSuccessCount -= metrics.StreamSuccessCount
+			metricsToRemove = append(metricsToRemove, metrics)
+			return true
 		}
+		// Since ringbuffer is ordered by timestamp, we can stop here
+		return false
+	})
+
+	// Subtract removed metrics from aggregated metrics
+	for _, metrics := range metricsToRemove {
+		cm.aggreatedMetrics.RequestCount -= metrics.RequestCount
+		cm.aggreatedMetrics.SuccessCount -= metrics.SuccessCount
+		cm.aggreatedMetrics.FailureCount -= metrics.FailureCount
+		cm.aggreatedMetrics.TotalTokenCount -= metrics.TotalTokenCount
+		cm.aggreatedMetrics.TotalRequestLatencyMs -= metrics.TotalRequestLatencyMs
+		cm.aggreatedMetrics.StreamTotalTokenCount -= metrics.StreamTotalTokenCount
+		cm.aggreatedMetrics.StreamTotalFirstTokenLatencyMs -= metrics.StreamTotalFirstTokenLatencyMs
+		cm.aggreatedMetrics.StreamSuccessCount -= metrics.StreamSuccessCount
 	}
+
+	// Cleanup old entries from ringbuffer
+	cm.window.CleanupBefore(cutoffTs)
 }
 
 // startPerformanceProcess starts the background goroutine to flush metrics to database.
