@@ -58,7 +58,7 @@ type OpenAIModel struct {
 // ListModels returns all available models from enabled channels.
 // This endpoint is compatible with OpenAI's /v1/models API.
 func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
-	models := handlers.ChannelService.ListAllModels(c.Request.Context())
+	models := handlers.ChannelService.ListEnabledModels(c.Request.Context())
 
 	openaiModels := make([]OpenAIModel, 0, len(models))
 	for _, model := range models {

@@ -22,6 +22,7 @@ function ChannelsContent() {
   const [typeFilter, setTypeFilter] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [tagFilter, setTagFilter] = useState<string>('')
+  const [modelFilter, setModelFilter] = useState<string>('')
   const [selectedTypeTab, setSelectedTypeTab] = useState<string>('all')
   const [showErrorOnly, setShowErrorOnly] = useState<boolean>(false)
 
@@ -82,6 +83,7 @@ function ChannelsContent() {
       direction: 'DESC',
     },
     hasTag: tagFilter || undefined,
+    model: modelFilter || undefined,
   })
 
   const handleNextPage = useCallback(() => {
@@ -145,6 +147,14 @@ function ChannelsContent() {
     [resetCursor, setTagFilter]
   )
 
+  const handleModelFilterChange = useCallback(
+    (filter: string) => {
+      setModelFilter(filter)
+      resetCursor()
+    },
+    [resetCursor, setModelFilter]
+  )
+
   const handleFilterErrorChannels = useCallback(() => {
     setShowErrorOnly(true)
     resetCursor()
@@ -177,6 +187,7 @@ function ChannelsContent() {
         typeFilter={typeFilter}
         statusFilter={statusFilter}
         tagFilter={tagFilter}
+        modelFilter={modelFilter}
         selectedTypeTab={selectedTypeTab}
         showErrorOnly={showErrorOnly}
         onExitErrorOnlyMode={handleExitErrorOnlyMode}
@@ -187,6 +198,7 @@ function ChannelsContent() {
         onTypeFilterChange={handleTypeFilterChange}
         onStatusFilterChange={handleStatusFilterChange}
         onTagFilterChange={handleTagFilterChange}
+        onModelFilterChange={handleModelFilterChange}
       />
     </div>
   )

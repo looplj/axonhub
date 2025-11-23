@@ -615,6 +615,7 @@
       "type": "Type",
       "status": "Status",
       "tags": "Tags",
+      "model": "Model",
       "filterByName": "Search by name"
     },
     "messages": {

@@ -393,14 +393,14 @@ type ComplexityRoot struct {
 		DashboardOverview     func(childComplexity int) int
 		DataStorages          func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.DataStorageOrder, where *ent.DataStorageWhereInput) int
 		DefaultDataStorageID  func(childComplexity int) int
-		FetchModels           func(childComplexity int, input FetchModelsInput) int
+		FetchModels           func(childComplexity int, input biz.FetchModelsInput) int
 		Me                    func(childComplexity int) int
-		Models                func(childComplexity int, status *channel.Status) int
+		Models                func(childComplexity int, input ModelsInput) int
 		MyProjects            func(childComplexity int) int
 		Node                  func(childComplexity int, id objects.GUID) int
 		Nodes                 func(childComplexity int, ids []*objects.GUID) int
 		Projects              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ProjectOrder, where *ent.ProjectWhereInput) int
-		QueryChannels         func(childComplexity int, input QueryChannelInput) int
+		QueryChannels         func(childComplexity int, input biz.QueryChannelsInput) int
 		RequestStats          func(childComplexity int) int
 		RequestStatsByChannel func(childComplexity int) int
 		RequestStatsByModel   func(childComplexity int) int
@@ -878,7 +878,7 @@ type MutationResolver interface {
 	BulkEnableChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkDeleteChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	TestChannel(ctx context.Context, input TestChannelInput) (*TestChannelPayload, error)
-	BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*BulkImportChannelsResult, error)
+	BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*biz.BulkImportChannelsResult, error)
 	BulkUpdateChannelOrdering(ctx context.Context, input BulkUpdateChannelOrderingInput) (*BulkUpdateChannelOrderingResult, error)
 	CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error)
 	UpdateAPIKey(ctx context.Context, id objects.GUID, input ent.UpdateAPIKeyInput) (*ent.APIKey, error)
@@ -926,11 +926,11 @@ type QueryResolver interface {
 	Traces(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) (*ent.TraceConnection, error)
 	UsageLogs(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) (*ent.UsageLogConnection, error)
 	Users(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UserOrder, where *ent.UserWhereInput) (*ent.UserConnection, error)
-	FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsPayload, error)
-	Models(ctx context.Context, status *channel.Status) ([]*Model, error)
+	FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error)
+	Models(ctx context.Context, input ModelsInput) ([]*biz.Model, error)
 	AllChannelTags(ctx context.Context) ([]string, error)
 	CountChannelsByType(ctx context.Context, input CountChannelsByTypeInput) ([]*ChannelTypeCount, error)
-	QueryChannels(ctx context.Context, input QueryChannelInput) (*ent.ChannelConnection, error)
+	QueryChannels(ctx context.Context, input biz.QueryChannelsInput) (*ent.ChannelConnection, error)
 	DashboardOverview(ctx context.Context) (*DashboardOverview, error)
 	RequestStats(ctx context.Context) (*RequestStats, error)
 	RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error)
@@ -2785,7 +2785,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.FetchModels(childComplexity, args["input"].(FetchModelsInput)), true
+		return e.complexity.Query.FetchModels(childComplexity, args["input"].(biz.FetchModelsInput)), true
 
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
@@ -2804,7 +2804,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Models(childComplexity, args["status"].(*channel.Status)), true
+		return e.complexity.Query.Models(childComplexity, args["input"].(ModelsInput)), true
 
 	case "Query.myProjects":
 		if e.complexity.Query.MyProjects == nil {
@@ -2859,7 +2859,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.QueryChannels(childComplexity, args["input"].(QueryChannelInput)), true
+		return e.complexity.Query.QueryChannels(childComplexity, args["input"].(biz.QueryChannelsInput)), true
 
 	case "Query.requestStats":
 		if e.complexity.Query.RequestStats == nil {
@@ -6259,7 +6259,7 @@ func (ec *executionContext) field_Query_dataStorages_args(ctx context.Context, r
 func (ec *executionContext) field_Query_fetchModels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNFetchModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFetchModelsInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNFetchModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐFetchModelsInput)
 	if err != nil {
 		return nil, err
 	}
@@ -6270,11 +6270,11 @@ func (ec *executionContext) field_Query_fetchModels_args(ctx context.Context, ra
 func (ec *executionContext) field_Query_models_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "status", ec.unmarshalOChannelStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelᚐStatus)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelsInput)
 	if err != nil {
 		return nil, err
 	}
-	args["status"] = arg0
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -6339,7 +6339,7 @@ func (ec *executionContext) field_Query_projects_args(ctx context.Context, rawAr
 func (ec *executionContext) field_Query_queryChannels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNQueryChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐQueryChannelInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNQueryChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQueryChannelsInput)
 	if err != nil {
 		return nil, err
 	}
@@ -8309,7 +8309,7 @@ func (ec *executionContext) fieldContext_BrandSettings_brandLogo(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _BulkImportChannelsResult_success(ctx context.Context, field graphql.CollectedField, obj *BulkImportChannelsResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _BulkImportChannelsResult_success(ctx context.Context, field graphql.CollectedField, obj *biz.BulkImportChannelsResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_BulkImportChannelsResult_success(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8353,7 +8353,7 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_success(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _BulkImportChannelsResult_created(ctx context.Context, field graphql.CollectedField, obj *BulkImportChannelsResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _BulkImportChannelsResult_created(ctx context.Context, field graphql.CollectedField, obj *biz.BulkImportChannelsResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_BulkImportChannelsResult_created(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8397,7 +8397,7 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_created(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _BulkImportChannelsResult_failed(ctx context.Context, field graphql.CollectedField, obj *BulkImportChannelsResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _BulkImportChannelsResult_failed(ctx context.Context, field graphql.CollectedField, obj *biz.BulkImportChannelsResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_BulkImportChannelsResult_failed(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8441,7 +8441,7 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_failed(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _BulkImportChannelsResult_errors(ctx context.Context, field graphql.CollectedField, obj *BulkImportChannelsResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _BulkImportChannelsResult_errors(ctx context.Context, field graphql.CollectedField, obj *biz.BulkImportChannelsResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_BulkImportChannelsResult_errors(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8482,7 +8482,7 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_errors(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _BulkImportChannelsResult_channels(ctx context.Context, field graphql.CollectedField, obj *BulkImportChannelsResult) (ret graphql.Marshaler) {
+func (ec *executionContext) _BulkImportChannelsResult_channels(ctx context.Context, field graphql.CollectedField, obj *biz.BulkImportChannelsResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_BulkImportChannelsResult_channels(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12897,7 +12897,7 @@ func (ec *executionContext) fieldContext_InitializeSystemPayload_token(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _Model_id(ctx context.Context, field graphql.CollectedField, obj *Model) (ret graphql.Marshaler) {
+func (ec *executionContext) _Model_id(ctx context.Context, field graphql.CollectedField, obj *biz.Model) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Model_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12941,7 +12941,7 @@ func (ec *executionContext) fieldContext_Model_id(_ context.Context, field graph
 	return fc, nil
 }
 
-func (ec *executionContext) _Model_status(ctx context.Context, field graphql.CollectedField, obj *Model) (ret graphql.Marshaler) {
+func (ec *executionContext) _Model_status(ctx context.Context, field graphql.CollectedField, obj *biz.Model) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Model_status(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13855,9 +13855,9 @@ func (ec *executionContext) _Mutation_bulkImportChannels(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*BulkImportChannelsResult)
+	res := resTmp.(*biz.BulkImportChannelsResult)
 	fc.Result = res
-	return ec.marshalNBulkImportChannelsResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkImportChannelsResult(ctx, field.Selections, res)
+	return ec.marshalNBulkImportChannelsResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkImportChannelsResult(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_bulkImportChannels(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -18118,7 +18118,7 @@ func (ec *executionContext) _Query_fetchModels(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().FetchModels(rctx, fc.Args["input"].(FetchModelsInput))
+		return ec.resolvers.Query().FetchModels(rctx, fc.Args["input"].(biz.FetchModelsInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18179,7 +18179,7 @@ func (ec *executionContext) _Query_models(ctx context.Context, field graphql.Col
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Models(rctx, fc.Args["status"].(*channel.Status))
+		return ec.resolvers.Query().Models(rctx, fc.Args["input"].(ModelsInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18191,9 +18191,9 @@ func (ec *executionContext) _Query_models(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*Model)
+	res := resTmp.([]*biz.Model)
 	fc.Result = res
-	return ec.marshalNModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelᚄ(ctx, field.Selections, res)
+	return ec.marshalNModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_models(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -18345,7 +18345,7 @@ func (ec *executionContext) _Query_queryChannels(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().QueryChannels(rctx, fc.Args["input"].(QueryChannelInput))
+		return ec.resolvers.Query().QueryChannels(rctx, fc.Args["input"].(biz.QueryChannelsInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -35306,8 +35306,8 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputBulkImportChannelItem(ctx context.Context, obj any) (BulkImportChannelItem, error) {
-	var it BulkImportChannelItem
+func (ec *executionContext) unmarshalInputBulkImportChannelItem(ctx context.Context, obj any) (biz.BulkImportChannelItem, error) {
+	var it biz.BulkImportChannelItem
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -35384,7 +35384,7 @@ func (ec *executionContext) unmarshalInputBulkImportChannelsInput(ctx context.Co
 		switch k {
 		case "channels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channels"))
-			data, err := ec.unmarshalNBulkImportChannelItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkImportChannelItemᚄ(ctx, v)
+			data, err := ec.unmarshalNBulkImportChannelItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkImportChannelItemᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -35411,7 +35411,7 @@ func (ec *executionContext) unmarshalInputBulkUpdateChannelOrderingInput(ctx con
 		switch k {
 		case "channels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channels"))
-			data, err := ec.unmarshalNChannelOrderingItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelOrderingItemᚄ(ctx, v)
+			data, err := ec.unmarshalNChannelOrderingItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelOrderingItemᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -35501,8 +35501,8 @@ func (ec *executionContext) unmarshalInputChannelOrder(ctx context.Context, obj 
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputChannelOrderingItem(ctx context.Context, obj any) (ChannelOrderingItem, error) {
-	var it ChannelOrderingItem
+func (ec *executionContext) unmarshalInputChannelOrderingItem(ctx context.Context, obj any) (biz.ChannelOrderingItem, error) {
+	var it biz.ChannelOrderingItem
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -35517,11 +35517,15 @@ func (ec *executionContext) unmarshalInputChannelOrderingItem(ctx context.Contex
 		switch k {
 		case "id":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			data, err := ec.unmarshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ID = data
+			converted, err := objects.ConvertGUIDPtrToInt(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ID = converted
 		case "orderingWeight":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderingWeight"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
@@ -38783,8 +38787,8 @@ func (ec *executionContext) unmarshalInputDataStorageWhereInput(ctx context.Cont
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputFetchModelsInput(ctx context.Context, obj any) (FetchModelsInput, error) {
-	var it FetchModelsInput
+func (ec *executionContext) unmarshalInputFetchModelsInput(ctx context.Context, obj any) (biz.FetchModelsInput, error) {
+	var it biz.FetchModelsInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -38824,7 +38828,11 @@ func (ec *executionContext) unmarshalInputFetchModelsInput(ctx context.Context, 
 			if err != nil {
 				return it, err
 			}
-			it.ChannelID = data
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelID = converted
 		}
 	}
 
@@ -39002,20 +39010,34 @@ func (ec *executionContext) unmarshalInputModelsInput(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"status"}
+	fieldsInOrder := [...]string{"statusIn", "includeMapping", "includePrefix"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "status":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
-			data, err := ec.unmarshalOChannelStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelᚐStatus(ctx, v)
+		case "statusIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusIn"))
+			data, err := ec.unmarshalOChannelStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelᚐStatusᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Status = data
+			it.StatusIn = data
+		case "includeMapping":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeMapping"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeMapping = data
+		case "includePrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includePrefix"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludePrefix = data
 		}
 	}
 
@@ -39727,14 +39749,14 @@ func (ec *executionContext) unmarshalInputProxyConfigInput(ctx context.Context, 
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputQueryChannelInput(ctx context.Context, obj any) (QueryChannelInput, error) {
-	var it QueryChannelInput
+func (ec *executionContext) unmarshalInputQueryChannelInput(ctx context.Context, obj any) (biz.QueryChannelsInput, error) {
+	var it biz.QueryChannelsInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"after", "first", "before", "last", "orderBy", "where", "hasTag"}
+	fieldsInOrder := [...]string{"after", "first", "before", "last", "orderBy", "where", "hasTag", "model"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -39790,6 +39812,13 @@ func (ec *executionContext) unmarshalInputQueryChannelInput(ctx context.Context,
 				return it, err
 			}
 			it.HasTag = data
+		case "model":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("model"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Model = data
 		}
 	}
 
@@ -48655,7 +48684,7 @@ func (ec *executionContext) _BrandSettings(ctx context.Context, sel ast.Selectio
 
 var bulkImportChannelsResultImplementors = []string{"BulkImportChannelsResult"}
 
-func (ec *executionContext) _BulkImportChannelsResult(ctx context.Context, sel ast.SelectionSet, obj *BulkImportChannelsResult) graphql.Marshaler {
+func (ec *executionContext) _BulkImportChannelsResult(ctx context.Context, sel ast.SelectionSet, obj *biz.BulkImportChannelsResult) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, bulkImportChannelsResultImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -50109,7 +50138,7 @@ func (ec *executionContext) _InitializeSystemPayload(ctx context.Context, sel as
 
 var modelImplementors = []string{"Model"}
 
-func (ec *executionContext) _Model(ctx context.Context, sel ast.SelectionSet, obj *Model) graphql.Marshaler {
+func (ec *executionContext) _Model(ctx context.Context, sel ast.SelectionSet, obj *biz.Model) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, modelImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -57432,14 +57461,14 @@ func (ec *executionContext) unmarshalNBulkCreateChannelsInput2githubᚗcomᚋloo
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNBulkImportChannelItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkImportChannelItemᚄ(ctx context.Context, v any) ([]*BulkImportChannelItem, error) {
+func (ec *executionContext) unmarshalNBulkImportChannelItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkImportChannelItemᚄ(ctx context.Context, v any) ([]*biz.BulkImportChannelItem, error) {
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*BulkImportChannelItem, len(vSlice))
+	res := make([]*biz.BulkImportChannelItem, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNBulkImportChannelItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkImportChannelItem(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNBulkImportChannelItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkImportChannelItem(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -57447,7 +57476,7 @@ func (ec *executionContext) unmarshalNBulkImportChannelItem2ᚕᚖgithubᚗcom�
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalNBulkImportChannelItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkImportChannelItem(ctx context.Context, v any) (*BulkImportChannelItem, error) {
+func (ec *executionContext) unmarshalNBulkImportChannelItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkImportChannelItem(ctx context.Context, v any) (*biz.BulkImportChannelItem, error) {
 	res, err := ec.unmarshalInputBulkImportChannelItem(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -57457,11 +57486,11 @@ func (ec *executionContext) unmarshalNBulkImportChannelsInput2githubᚗcomᚋloo
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNBulkImportChannelsResult2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkImportChannelsResult(ctx context.Context, sel ast.SelectionSet, v BulkImportChannelsResult) graphql.Marshaler {
+func (ec *executionContext) marshalNBulkImportChannelsResult2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkImportChannelsResult(ctx context.Context, sel ast.SelectionSet, v biz.BulkImportChannelsResult) graphql.Marshaler {
 	return ec._BulkImportChannelsResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNBulkImportChannelsResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkImportChannelsResult(ctx context.Context, sel ast.SelectionSet, v *BulkImportChannelsResult) graphql.Marshaler {
+func (ec *executionContext) marshalNBulkImportChannelsResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkImportChannelsResult(ctx context.Context, sel ast.SelectionSet, v *biz.BulkImportChannelsResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -57578,14 +57607,14 @@ func (ec *executionContext) marshalNChannelOrderField2ᚖgithubᚗcomᚋlooplj�
 	return v
 }
 
-func (ec *executionContext) unmarshalNChannelOrderingItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelOrderingItemᚄ(ctx context.Context, v any) ([]*ChannelOrderingItem, error) {
+func (ec *executionContext) unmarshalNChannelOrderingItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelOrderingItemᚄ(ctx context.Context, v any) ([]*biz.ChannelOrderingItem, error) {
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*ChannelOrderingItem, len(vSlice))
+	res := make([]*biz.ChannelOrderingItem, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNChannelOrderingItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelOrderingItem(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNChannelOrderingItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelOrderingItem(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -57593,7 +57622,7 @@ func (ec *executionContext) unmarshalNChannelOrderingItem2ᚕᚖgithubᚗcomᚋl
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalNChannelOrderingItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelOrderingItem(ctx context.Context, v any) (*ChannelOrderingItem, error) {
+func (ec *executionContext) unmarshalNChannelOrderingItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelOrderingItem(ctx context.Context, v any) (*biz.ChannelOrderingItem, error) {
 	res, err := ec.unmarshalInputChannelOrderingItem(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -57948,7 +57977,7 @@ func (ec *executionContext) unmarshalNDataStorageWhereInput2ᚖgithubᚗcomᚋlo
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNFetchModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFetchModelsInput(ctx context.Context, v any) (FetchModelsInput, error) {
+func (ec *executionContext) unmarshalNFetchModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐFetchModelsInput(ctx context.Context, v any) (biz.FetchModelsInput, error) {
 	res, err := ec.unmarshalInputFetchModelsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -58103,7 +58132,7 @@ func (ec *executionContext) marshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋ
 	return v
 }
 
-func (ec *executionContext) marshalNModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelᚄ(ctx context.Context, sel ast.SelectionSet, v []*Model) graphql.Marshaler {
+func (ec *executionContext) marshalNModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.Model) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -58127,7 +58156,7 @@ func (ec *executionContext) marshalNModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhub�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModel(ctx, sel, v[i])
+			ret[i] = ec.marshalNModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModel(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -58147,7 +58176,7 @@ func (ec *executionContext) marshalNModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhub�
 	return ret
 }
 
-func (ec *executionContext) marshalNModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModel(ctx context.Context, sel ast.SelectionSet, v *Model) graphql.Marshaler {
+func (ec *executionContext) marshalNModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModel(ctx context.Context, sel ast.SelectionSet, v *biz.Model) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -58217,6 +58246,11 @@ func (ec *executionContext) marshalNModelMapping2githubᚗcomᚋloopljᚋaxonhub
 
 func (ec *executionContext) unmarshalNModelMappingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelMapping(ctx context.Context, v any) (objects.ModelMapping, error) {
 	res, err := ec.unmarshalInputModelMappingInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelsInput(ctx context.Context, v any) (ModelsInput, error) {
+	res, err := ec.unmarshalInputModelsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -58392,7 +58426,7 @@ func (ec *executionContext) marshalNProxyType2githubᚗcomᚋloopljᚋaxonhubᚋ
 	return res
 }
 
-func (ec *executionContext) unmarshalNQueryChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐQueryChannelInput(ctx context.Context, v any) (QueryChannelInput, error) {
+func (ec *executionContext) unmarshalNQueryChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐQueryChannelsInput(ctx context.Context, v any) (biz.QueryChannelsInput, error) {
 	res, err := ec.unmarshalInputQueryChannelInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }

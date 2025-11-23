@@ -3,10 +3,10 @@
 package gql
 
 import (
-	"entgo.io/contrib/entgql"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 type AddUserToProjectInput struct {
@@ -22,40 +22,18 @@ type BrandSettings struct {
 	BrandLogo *string `json:"brandLogo,omitempty"`
 }
 
-type BulkImportChannelItem struct {
-	Type             string   `json:"type"`
-	Name             string   `json:"name"`
-	BaseURL          *string  `json:"baseURL,omitempty"`
-	APIKey           *string  `json:"apiKey,omitempty"`
-	SupportedModels  []string `json:"supportedModels"`
-	DefaultTestModel string   `json:"defaultTestModel"`
-}
-
 type BulkImportChannelsInput struct {
-	Channels []*BulkImportChannelItem `json:"channels"`
-}
-
-type BulkImportChannelsResult struct {
-	Success  bool           `json:"success"`
-	Created  int            `json:"created"`
-	Failed   int            `json:"failed"`
-	Errors   []string       `json:"errors,omitempty"`
-	Channels []*ent.Channel `json:"channels"`
+	Channels []*biz.BulkImportChannelItem `json:"channels"`
 }
 
 type BulkUpdateChannelOrderingInput struct {
-	Channels []*ChannelOrderingItem `json:"channels"`
+	Channels []*biz.ChannelOrderingItem `json:"channels"`
 }
 
 type BulkUpdateChannelOrderingResult struct {
 	Success  bool           `json:"success"`
 	Updated  int            `json:"updated"`
 	Channels []*ent.Channel `json:"channels"`
-}
-
-type ChannelOrderingItem struct {
-	ID             objects.GUID `json:"id"`
-	OrderingWeight int          `json:"orderingWeight"`
 }
 
 type ChannelTypeCount struct {
@@ -79,13 +57,6 @@ type DashboardOverview struct {
 	RequestStats        *RequestStats `json:"requestStats"`
 	FailedRequests      int           `json:"failedRequests"`
 	AverageResponseTime *float64      `json:"averageResponseTime,omitempty"`
-}
-
-type FetchModelsInput struct {
-	ChannelType string        `json:"channelType"`
-	BaseURL     string        `json:"baseURL"`
-	APIKey      *string       `json:"apiKey,omitempty"`
-	ChannelID   *objects.GUID `json:"channelID,omitempty"`
 }
 
 type FetchModelsPayload struct {
@@ -113,30 +84,10 @@ type InitializeSystemPayload struct {
 	Token   *string   `json:"token,omitempty"`
 }
 
-type Model struct {
-	ID     string         `json:"id"`
-	Status channel.Status `json:"status"`
-}
-
 type ModelsInput struct {
-	Status *channel.Status `json:"status,omitempty"`
-}
-
-type QueryChannelInput struct {
-	// Returns the elements in the list that come after the specified cursor.
-	After *entgql.Cursor[int] `json:"after,omitempty"`
-	// Returns the first _n_ elements from the list.
-	First *int `json:"first,omitempty"`
-	// Returns the elements in the list that come before the specified cursor.
-	Before *entgql.Cursor[int] `json:"before,omitempty"`
-	// Returns the last _n_ elements from the list.
-	Last *int `json:"last,omitempty"`
-	// Ordering options for Channels returned from the connection.
-	OrderBy *ent.ChannelOrder `json:"orderBy,omitempty"`
-	// Filtering options for Channels returned from the connection.
-	Where *ent.ChannelWhereInput `json:"where,omitempty"`
-	// Filtering options for Channels returned from the connection.
-	HasTag *string `json:"hasTag,omitempty"`
+	StatusIn       []channel.Status `json:"statusIn,omitempty"`
+	IncludeMapping *bool            `json:"includeMapping,omitempty"`
+	IncludePrefix  *bool            `json:"includePrefix,omitempty"`
 }
 
 type RemoveUserFromProjectInput struct {

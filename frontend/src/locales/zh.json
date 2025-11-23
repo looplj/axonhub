@@ -696,6 +696,7 @@
       "type": "类型",
       "status": "状态",
       "tags": "标签",
+      "model": "模型",
       "filterByName": "按名称筛选"
     },
     "dialogs": {

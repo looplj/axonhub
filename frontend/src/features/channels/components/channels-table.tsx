@@ -39,6 +39,7 @@ interface DataTableProps {
   typeFilter: string[]
   statusFilter: string[]
   tagFilter: string
+  modelFilter: string
   selectedTypeTab?: string
   showErrorOnly?: boolean
   onExitErrorOnlyMode?: () => void
@@ -49,6 +50,7 @@ interface DataTableProps {
   onTypeFilterChange: (filters: string[]) => void
   onStatusFilterChange: (filters: string[]) => void
   onTagFilterChange: (filter: string) => void
+  onModelFilterChange: (filter: string) => void
 }
 
 export function ChannelsTable({
@@ -62,6 +64,7 @@ export function ChannelsTable({
   typeFilter,
   statusFilter,
   tagFilter,
+  modelFilter,
   selectedTypeTab = 'all',
   showErrorOnly,
   onExitErrorOnlyMode,
@@ -72,6 +75,7 @@ export function ChannelsTable({
   onTypeFilterChange,
   onStatusFilterChange,
   onTagFilterChange,
+  onModelFilterChange,
 }: DataTableProps) {
   const { t } = useTranslation()
   const { setSelectedChannels, setResetRowSelection } = useChannels()
@@ -98,9 +102,12 @@ export function ChannelsTable({
     if (tagFilter) {
       newColumnFilters.push({ id: 'tags', value: tagFilter })
     }
+    if (modelFilter) {
+      newColumnFilters.push({ id: 'model', value: modelFilter })
+    }
 
     setColumnFilters(newColumnFilters)
-  }, [nameFilter, typeFilter, statusFilter, tagFilter])
+  }, [nameFilter, typeFilter, statusFilter, tagFilter, modelFilter])
 
   // Handle column filter changes and sync with server
   const handleColumnFiltersChange = (
@@ -114,12 +121,14 @@ export function ChannelsTable({
     const typeFilterValue = newFilters.find((filter) => filter.id === 'type')?.value as string[]
     const statusFilterValue = newFilters.find((filter) => filter.id === 'status')?.value as string[]
     const tagFilterValue = newFilters.find((filter) => filter.id === 'tags')?.value as string
+    const modelFilterValue = newFilters.find((filter) => filter.id === 'model')?.value as string
 
     // Update server filters only if changed
     const newNameFilter = nameFilterValue || ''
     const newTypeFilter = Array.isArray(typeFilterValue) ? typeFilterValue : []
     const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : []
     const newTagFilter = tagFilterValue || ''
+    const newModelFilter = modelFilterValue || ''
 
     if (newNameFilter !== nameFilter) {
       onNameFilterChange(newNameFilter)
@@ -135,6 +144,10 @@ export function ChannelsTable({
 
     if (newTagFilter !== tagFilter) {
       onTagFilterChange(newTagFilter)
+    }
+
+    if (newModelFilter !== modelFilter) {
+      onModelFilterChange(newModelFilter)
     }
   }
 

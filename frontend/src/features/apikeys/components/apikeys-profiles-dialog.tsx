@@ -269,7 +269,11 @@ function ProfileCard({ profileIndex, form, onRemove, canRemove, t }: ProfileCard
   const [localProfileName, setLocalProfileName] = useState('')
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels()
   useEffect(() => {
-    fetchModels('enabled')
+    fetchModels({
+      statusIn: ['enabled'],
+      includeMapping: true,
+      includePrefix: true,
+    })
   }, [])
 
   const debouncedProfileName = useDebounce(localProfileName, 500)

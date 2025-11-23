@@ -176,10 +176,10 @@ func (svc *ChannelService) GetChannelForTest(ctx context.Context, channelID int)
 	return svc.buildChannel(entity)
 }
 
-// ListAllModels returns all unique models across all enabled channels,
+// ListEnabledModels returns all unique models across all enabled channels,
 // considering model mappings. It returns both the original model names
 // from SupportedModels and the "From" names from model mappings.
-func (svc *ChannelService) ListAllModels(ctx context.Context) []objects.Model {
+func (svc *ChannelService) ListEnabledModels(ctx context.Context) []objects.Model {
 	modelSet := make(map[string]objects.Model)
 
 	for _, ch := range svc.EnabledChannels {
@@ -238,6 +238,92 @@ func (svc *ChannelService) ListAllModels(ctx context.Context) []objects.Model {
 	}
 
 	return lo.Values(modelSet)
+}
+
+// ListModelsInput represents the input for listing models with filters.
+type ListModelsInput struct {
+	StatusIn       []channel.Status
+	IncludeMapping bool
+	IncludePrefix  bool
+}
+
+// Model represents a model with its status.
+type Model struct {
+	ID     string
+	Status channel.Status
+}
+
+var statusPriority = map[channel.Status]int{
+	channel.StatusEnabled:  3,
+	channel.StatusDisabled: 2,
+	channel.StatusArchived: 1,
+}
+
+// setModelStatus updates the model status in the map with priority logic
+// Priority: enabled > disabled > archived.
+func setModelStatus(models map[string]channel.Status, modelID string, newStatus channel.Status) {
+	if existingStatus, exists := models[modelID]; !exists || statusPriority[newStatus] > statusPriority[existingStatus] {
+		models[modelID] = newStatus
+	}
+}
+
+// ListModels returns all unique models across channels matching the filter criteria.
+// It supports filtering by status and optionally including model mappings and prefixes.
+func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput) ([]*Model, error) {
+	// Build query for channels
+	query := svc.entFromContext(ctx).Channel.Query()
+
+	// Apply status filter if provided, otherwise default to enabled
+	if len(input.StatusIn) > 0 {
+		query = query.Where(channel.StatusIn(input.StatusIn...))
+	} else {
+		query = query.Where(channel.StatusEQ(channel.StatusEnabled))
+	}
+
+	// Get all channels matching the filter
+	channels, err := query.All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	// Collect all unique models from channels with their status
+	modelMap := make(map[string]channel.Status)
+
+	for _, ch := range channels {
+		// Add all supported models
+		for _, modelID := range ch.SupportedModels {
+			setModelStatus(modelMap, modelID, ch.Status)
+		}
+
+		// Add model mappings if requested
+		if input.IncludeMapping && ch.Settings != nil {
+			for _, mapping := range ch.Settings.ModelMappings {
+				// Only add the mapping if the target model is supported
+				if slices.Contains(ch.SupportedModels, mapping.To) {
+					setModelStatus(modelMap, mapping.From, ch.Status)
+				}
+			}
+		}
+
+		// Add models with extra prefix if requested
+		if input.IncludePrefix && ch.Settings != nil && ch.Settings.ExtraModelPrefix != "" {
+			for _, modelID := range ch.SupportedModels {
+				prefixedModel := ch.Settings.ExtraModelPrefix + "/" + modelID
+				setModelStatus(modelMap, prefixedModel, ch.Status)
+			}
+		}
+	}
+
+	// Convert map to slice
+	models := make([]*Model, 0, len(modelMap))
+	for modelID, status := range modelMap {
+		models = append(models, &Model{
+			ID:     modelID,
+			Status: status,
+		})
+	}
+
+	return models, nil
 }
 
 // createChannel creates a new channel without triggering a reload.

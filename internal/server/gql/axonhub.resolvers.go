@@ -117,26 +117,13 @@ func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInp
 }
 
 // BulkImportChannels is the resolver for the bulkImportChannels field.
-func (r *mutationResolver) BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*BulkImportChannelsResult, error) {
-	// Convert GraphQL input to biz layer input
-	items := make([]biz.BulkImportChannelItem, len(input.Channels))
-	for i, item := range input.Channels {
-		items[i] = biz.BulkImportChannelItem{
-			Type:             item.Type,
-			Name:             item.Name,
-			BaseURL:          item.BaseURL,
-			APIKey:           item.APIKey,
-			SupportedModels:  item.SupportedModels,
-			DefaultTestModel: item.DefaultTestModel,
-		}
-	}
-
-	result, err := r.channelService.BulkImportChannels(ctx, items)
+func (r *mutationResolver) BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*biz.BulkImportChannelsResult, error) {
+	result, err := r.channelService.BulkImportChannels(ctx, input.Channels)
 	if err != nil {
 		return nil, err
 	}
 
-	return &BulkImportChannelsResult{
+	return &biz.BulkImportChannelsResult{
 		Success:  result.Success,
 		Created:  result.Created,
 		Failed:   result.Failed,
@@ -147,15 +134,7 @@ func (r *mutationResolver) BulkImportChannels(ctx context.Context, input BulkImp
 
 // BulkUpdateChannelOrdering is the resolver for the bulkUpdateChannelOrdering field.
 func (r *mutationResolver) BulkUpdateChannelOrdering(ctx context.Context, input BulkUpdateChannelOrderingInput) (*BulkUpdateChannelOrderingResult, error) {
-	items := make([]biz.ChannelOrderingItem, len(input.Channels))
-	for i, item := range input.Channels {
-		items[i] = biz.ChannelOrderingItem{
-			ID:             item.ID.ID,
-			OrderingWeight: item.OrderingWeight,
-		}
-	}
-
-	updatedChannels, err := r.channelService.BulkUpdateChannelOrdering(ctx, items)
+	updatedChannels, err := r.channelService.BulkUpdateChannelOrdering(ctx, input.Channels)
 	if err != nil {
 		return nil, fmt.Errorf("failed to bulk update channel ordering: %w", err)
 	}
@@ -308,20 +287,9 @@ func (r *mutationResolver) UpdateDataStorage(ctx context.Context, id objects.GUI
 }
 
 // FetchModels is the resolver for the fetchModels field.
-func (r *queryResolver) FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsPayload, error) {
-	// Convert input to biz layer input
-	bizInput := biz.FetchModelsInput{
-		ChannelType: input.ChannelType,
-		BaseURL:     input.BaseURL,
-		APIKey:      input.APIKey,
-	}
-
-	if input.ChannelID != nil {
-		bizInput.ChannelID = &input.ChannelID.ID
-	}
-
+func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error) {
 	// Call the model fetcher service
-	result, err := r.modelFetcher.FetchModels(ctx, bizInput)
+	result, err := r.modelFetcher.FetchModels(ctx, input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch models: %w", err)
 	}
@@ -339,49 +307,16 @@ func (r *queryResolver) FetchModels(ctx context.Context, input FetchModelsInput)
 }
 
 // Models is the resolver for the models field.
-func (r *queryResolver) Models(ctx context.Context, status *channel.Status) ([]*Model, error) {
-	// Build query for channels
-	query := r.client.Channel.Query()
-
-	// Apply status filter if provided, otherwise default to enabled
-	if status != nil {
-		query = query.Where(channel.StatusEQ(*status))
-	} else {
-		query = query.Where(channel.StatusEQ(channel.StatusEnabled))
+func (r *queryResolver) Models(ctx context.Context, input ModelsInput) ([]*biz.Model, error) {
+	// Convert GraphQL input to biz layer input
+	bizInput := biz.ListModelsInput{
+		StatusIn:       input.StatusIn,
+		IncludeMapping: lo.FromPtrOr(input.IncludeMapping, false),
+		IncludePrefix:  lo.FromPtrOr(input.IncludePrefix, false),
 	}
 
-	// Get all channels matching the filter
-	channels, err := query.All(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query channels: %w", err)
-	}
-
-	// Collect all unique models from channels with their status
-	modelMap := make(map[string]channel.Status)
-
-	for _, ch := range channels {
-		for _, modelID := range ch.SupportedModels {
-			// Keep the highest priority status (enabled > disabled > archived)
-			if existingStatus, exists := modelMap[modelID]; exists {
-				if ch.Status == channel.StatusEnabled || (ch.Status == channel.StatusDisabled && existingStatus == channel.StatusArchived) {
-					modelMap[modelID] = ch.Status
-				}
-			} else {
-				modelMap[modelID] = ch.Status
-			}
-		}
-	}
-
-	// Convert map to slice
-	models := make([]*Model, 0, len(modelMap))
-	for modelID, status := range modelMap {
-		models = append(models, &Model{
-			ID:     modelID,
-			Status: status,
-		})
-	}
-
-	return models, nil
+	// Call the biz layer method directly
+	return r.channelService.ListModels(ctx, bizInput)
 }
 
 // AllChannelTags is the resolver for the allChannelTags field.
@@ -436,16 +371,13 @@ func (r *queryResolver) CountChannelsByType(ctx context.Context, input CountChan
 }
 
 // QueryChannels is the resolver for the queryChannels field.
-func (r *queryResolver) QueryChannels(ctx context.Context, input QueryChannelInput) (*ent.ChannelConnection, error) {
+func (r *queryResolver) QueryChannels(ctx context.Context, input biz.QueryChannelsInput) (*ent.ChannelConnection, error) {
 	if err := validatePaginationArgs(input.First, input.Last); err != nil {
 		return nil, err
 	}
 
-	return r.client.Channel.Query().Paginate(ctx, input.After, input.First, input.Before, input.Last,
-		ent.WithChannelOrder(input.OrderBy),
-		ent.WithChannelFilter(input.Where.Filter),
-		ent.WithChannelTagFilter(input.HasTag),
-	)
+	// Call the biz layer method directly
+	return r.channelService.QueryChannels(ctx, input)
 }
 
 // ID is the resolver for the id field.
