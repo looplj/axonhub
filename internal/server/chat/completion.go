@@ -29,7 +29,7 @@ func NewChatCompletionProcessor(
 	connectionTracker := NewDefaultConnectionTracker(1024)
 
 	return NewChatCompletionProcessorWithSelector(
-		NewDefaultChannelSelector(channelService, traceService, connectionTracker),
+		NewDefaultChannelSelector(channelService, systemService, traceService, connectionTracker),
 		requestService,
 		channelService,
 		httpClient,
