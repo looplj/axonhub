@@ -54,6 +54,7 @@ require (
 	github.com/tidwall/sjson v1.2.5
 	github.com/tmaxmax/go-sse v0.11.0
 	github.com/vektah/gqlparser/v2 v2.5.30
+	github.com/viterin/partial v1.1.0
 	github.com/zhenzou/executors v0.2.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.38.0

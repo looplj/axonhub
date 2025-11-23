@@ -24,6 +24,7 @@ type DefaultChannelSelector struct {
 // NewDefaultChannelSelector creates a selector with optional connection tracking.
 func NewDefaultChannelSelector(
 	channelService *biz.ChannelService,
+	systemService *biz.SystemService,
 	traceService *biz.TraceService,
 	connectionTracker *DefaultConnectionTracker,
 ) *DefaultChannelSelector {
@@ -35,7 +36,7 @@ func NewDefaultChannelSelector(
 		NewConnectionAwareStrategy(channelService, connectionTracker),
 	}
 
-	loadBalancer := NewLoadBalancer(strategies...)
+	loadBalancer := NewLoadBalancer(systemService, strategies...)
 
 	return &DefaultChannelSelector{
 		ChannelService:    channelService,
@@ -61,7 +62,8 @@ func (s *DefaultChannelSelector) Select(ctx context.Context, req *llm.Request) (
 
 	log.Debug(ctx, "Selected and sorted channels for model",
 		log.String("model", req.Model),
-		log.Int("channel_count", len(sortedChannels)))
+		log.Int("total_channels", len(channels)),
+		log.Int("selected_channels", len(sortedChannels)))
 
 	return sortedChannels, nil
 }

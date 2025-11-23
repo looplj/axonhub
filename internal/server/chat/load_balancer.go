@@ -3,11 +3,11 @@ package chat
 import (
 	"context"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/viterin/partial"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -66,20 +66,27 @@ type DecisionLog struct {
 	Channels []ChannelDecision
 }
 
+// RetryPolicyProvider interface defines the methods needed from RetryPolicyProvider.
+type RetryPolicyProvider interface {
+	RetryPolicyOrDefault(ctx context.Context) *biz.RetryPolicy
+}
+
 // LoadBalancer applies multiple strategies to sort channels by priority.
 type LoadBalancer struct {
-	strategies []LoadBalanceStrategy
-	debug      bool
+	strategies    []LoadBalanceStrategy
+	systemService RetryPolicyProvider
+	debug         bool
 }
 
 // NewLoadBalancer creates a new load balancer with the given strategies.
 // Strategies are applied in order, with earlier strategies having higher weight.
-func NewLoadBalancer(strategies ...LoadBalanceStrategy) *LoadBalancer {
+func NewLoadBalancer(systemService RetryPolicyProvider, strategies ...LoadBalanceStrategy) *LoadBalancer {
 	debug := strings.EqualFold(os.Getenv("AXONHUB_LOAD_BALANCER_DEBUG"), "true")
 
 	return &LoadBalancer{
-		strategies: strategies,
-		debug:      debug,
+		strategies:    strategies,
+		systemService: systemService,
+		debug:         debug,
 	}
 }
 
@@ -90,7 +97,8 @@ type channelScore struct {
 }
 
 // Sort sorts channels according to the configured strategies.
-// Returns a new slice with channels sorted by descending priority.
+// Returns a new slice with top k channels sorted by descending priority.
+// The top k value is calculated internally based on the retry policy.
 func (lb *LoadBalancer) Sort(ctx context.Context, channels []*biz.Channel, model string) []*biz.Channel {
 	if len(channels) == 0 {
 		return channels
@@ -100,18 +108,22 @@ func (lb *LoadBalancer) Sort(ctx context.Context, channels []*biz.Channel, model
 		return channels
 	}
 
+	// Calculate topK based on retry policy
+	topK := lb.calculateTopK(ctx, channels)
+
 	// Use debug path if debug mode is enabled
 	debugEnabled := IsDebugEnabled(ctx)
 	if lb.debug || debugEnabled {
-		return lb.sortWithDebug(ctx, channels, model)
+		return lb.sortWithDebug(ctx, channels, model, topK)
 	}
 
 	// Production path - minimal overhead
-	return lb.sortProduction(ctx, channels)
+	return lb.sortProduction(ctx, channels, topK)
 }
 
 // sortProduction is the fast path without debug overhead.
-func (lb *LoadBalancer) sortProduction(ctx context.Context, channels []*biz.Channel) []*biz.Channel {
+// Uses partial sorting to efficiently get only the top k channels.
+func (lb *LoadBalancer) sortProduction(ctx context.Context, channels []*biz.Channel, topK int) []*biz.Channel {
 	scored := make([]channelScore, len(channels))
 	for i, ch := range channels {
 		totalScore := 0.0
@@ -126,17 +138,25 @@ func (lb *LoadBalancer) sortProduction(ctx context.Context, channels []*biz.Chan
 		}
 	}
 
+	// Use partial sort to efficiently get top k channels
 	// Sort by total score descending (higher score = higher priority)
-	sort.SliceStable(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
+	partial.SortFunc(scored, topK, func(a, b channelScore) int {
+		if a.score > b.score {
+			return -1
+		} else if a.score < b.score {
+			return 1
+		}
+
+		return 0
 	})
 
-	// Extract sorted channels
-	return lo.Map(scored, func(ch channelScore, _ int) *biz.Channel { return ch.channel })
+	// Extract top k sorted channels
+	return lo.Map(scored[:topK], func(ch channelScore, _ int) *biz.Channel { return ch.channel })
 }
 
 // sortWithDebug is the debug path with detailed logging.
-func (lb *LoadBalancer) sortWithDebug(ctx context.Context, channels []*biz.Channel, model string) []*biz.Channel {
+// Uses partial sorting to efficiently get only the top k channels.
+func (lb *LoadBalancer) sortWithDebug(ctx context.Context, channels []*biz.Channel, model string, topK int) []*biz.Channel {
 	startTime := time.Now()
 
 	// Calculate detailed scores for each channel
@@ -162,29 +182,62 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, channels []*biz.Chann
 		}
 	}
 
+	// Use partial sort to efficiently get top k channels
 	// Sort by total score descending (higher score = higher priority)
-	sort.SliceStable(decisions, func(i, j int) bool {
-		return decisions[i].TotalScore > decisions[j].TotalScore
+	partial.SortFunc(decisions, topK, func(a, b ChannelDecision) int {
+		if a.TotalScore > b.TotalScore {
+			return -1
+		} else if a.TotalScore < b.TotalScore {
+			return 1
+		}
+
+		return 0
 	})
 
-	// Set final ranks
-	for i := range decisions {
+	// Set final ranks for top k
+	for i := range topK {
 		decisions[i].FinalRank = i + 1
 	}
 
-	// Log the decision with all details
-	lb.logDecision(ctx, channels, model, decisions, time.Since(startTime))
+	// Log the decision with all details (only top k)
+	lb.logDecision(ctx, channels, model, decisions[:topK], topK, time.Since(startTime))
 
-	return lo.Map(decisions, func(decision ChannelDecision, _ int) *biz.Channel { return decision.Channel })
+	return lo.Map(decisions[:topK], func(decision ChannelDecision, _ int) *biz.Channel { return decision.Channel })
+}
+
+// calculateTopK determines how many channels to select based on retry policy.
+func (lb *LoadBalancer) calculateTopK(ctx context.Context, channels []*biz.Channel) int {
+	retryPolicy := lb.systemService.RetryPolicyOrDefault(ctx)
+
+	// Calculate topK based on retry policy
+	// If retry is enabled, we need 1 + MaxChannelRetries channels
+	// (1 for initial attempt + MaxChannelRetries for retries)
+	// If retry is disabled, we only need 1 channel
+	topK := 1
+	if retryPolicy.Enabled {
+		topK = 1 + retryPolicy.MaxChannelRetries
+	}
+
+	// Normalize topK: if topK <= 0 or topK >= len(channels), sort all
+	// This is to ensure we don't sort more channels than available
+	if topK <= 0 || topK >= len(channels) {
+		topK = len(channels)
+	}
+
+	return topK
 }
 
 // logDecision logs the complete load balancing decision.
-func (lb *LoadBalancer) logDecision(ctx context.Context, channels []*biz.Channel, model string, decisions []ChannelDecision, totalDuration time.Duration) {
+func (lb *LoadBalancer) logDecision(ctx context.Context, channels []*biz.Channel, model string, decisions []ChannelDecision, topK int, totalDuration time.Duration) {
 	// Log summary
 	if len(decisions) > 0 {
 		topChannel := decisions[0]
+		retryPolicy := lb.systemService.RetryPolicyOrDefault(ctx)
 		log.Info(ctx, "Load balancing decision completed",
-			log.Int("channel_count", len(channels)),
+			log.Int("total_channels", len(channels)),
+			log.Int("selected_channels", topK),
+			log.Bool("retry_enabled", retryPolicy.Enabled),
+			log.Int("max_channel_retries", retryPolicy.MaxChannelRetries),
 			log.Duration("duration", totalDuration),
 			log.Int("top_channel_id", topChannel.Channel.ID),
 			log.String("top_channel_name", topChannel.Channel.Name),
