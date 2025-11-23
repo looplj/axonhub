@@ -84,7 +84,7 @@ func (Channel) Fields() []ent.Field {
 		),
 		field.String("error_message").
 			Optional().Nillable().Annotations(
-			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			entgql.Skip(entgql.SkipMutationCreateInput),
 		),
 	}
 }

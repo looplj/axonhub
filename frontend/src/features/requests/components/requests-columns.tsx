@@ -3,18 +3,17 @@
 import { format } from 'date-fns'
 import { ColumnDef } from '@tanstack/react-table'
 import { zhCN, enUS } from 'date-fns/locale'
-import { Eye, MoreHorizontal, FileText } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { extractNumberID } from '@/lib/utils'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions'
-import { useRequestsContext } from '../context'
 import { Request } from '../data/schema'
 import { DataTableColumnHeader } from './data-table-column-header'
 import { getStatusColor } from './help'
+import { formatDuration } from '@/utils/format-duration'
 
 // Removed unused statusColors - using getStatusColor helper instead
 
@@ -73,8 +72,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         const source = row.getValue('source') as string
         const sourceColors: Record<string, string> = {
           api: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
-          playground:
-            'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
+          playground: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
           test: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800',
         }
         return (
@@ -146,6 +144,21 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       filterFn: (row, id, value) => {
         return value.includes(row.getValue(id))
       },
+    },
+    {
+      id: 'latency',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.latency')} />,
+      cell: ({ row }) => {
+        const request = row.original
+        if (request.status !== 'completed' || !request.updatedAt || !request.createdAt) {
+          return <div className='text-muted-foreground text-xs'>-</div>
+        }
+
+        const latency = new Date(request.updatedAt).getTime() - new Date(request.createdAt).getTime()
+
+        return <div className='font-mono text-xs'>{formatDuration(latency)}</div>
+      },
+      enableSorting: false,
     },
     {
       id: 'details',

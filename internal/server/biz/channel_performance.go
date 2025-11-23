@@ -521,14 +521,20 @@ func isRecoverable(errorCode int) bool {
 	}
 }
 
+const (
+	ErrMsgUnauthorized        = "Unauthorized"
+	ErrMsgNotFound            = "Not Found"
+	ErrMsgInternalServerError = "Internal Server Error"
+)
+
 func deriveErrorMessage(errorCode int) string {
 	switch errorCode {
 	case 401, 403:
-		return "Unauthorized, please check your channel API key configuration."
+		return ErrMsgUnauthorized
 	case 404:
-		return "Not Found, please check your channel base URL configuration."
+		return ErrMsgNotFound
 	default:
-		return "Unable to access channel service, please check your channel configuration."
+		return ErrMsgInternalServerError
 	}
 }
 

@@ -629,7 +629,14 @@
     },
     "actions": {
       "test": "测试",
-      "settings": "设置"
+      "settings": "设置",
+      "errorResolved": "错误已解决"
+    },
+    "errorBanner": {
+      "message": "请注意，有 {{count}} 个渠道因为不可恢复的错误而被禁用",
+      "filterButton": "显示错误渠道",
+      "errorOnlyMode": "仅显示存在错误的渠道",
+      "exitErrorOnlyButton": "退出错误模式"
     },
     "messages": {
       "addAtLeastOneModel": "请至少添加一个支持的模型",
@@ -669,7 +676,12 @@
       "fetchModelsError": "获取模型失败：{{error}}",
       "fetchTypesError": "获取渠道类型失败：{{error}}",
       "batchCreateSuccess": "成功创建 {{count}} 个渠道",
-      "batchCreateError": "批量创建失败：{{error}}"
+      "batchCreateError": "批量创建失败：{{error}}",
+      "errorResolvedSuccess": "渠道错误解决成功",
+      "errorResolvedError": "解决渠道错误失败：{{error}}",
+      "Unauthorized":"无权限访问，请检查渠道的 API 密钥",
+      "Not Found":"未找到端点，请检查渠道的 base url",
+      "Interval Server Error":"服务器错误，请确认渠道配置"
     },
     "errors": {
       "fetchList": "获取渠道列表失败",
@@ -962,6 +974,11 @@
         "description": "确定要删除所选 {{count}} 条渠道吗？",
         "warning": "警告：此操作无法撤销",
         "warningDetail": "这将永久删除所有选中的渠道及其相关数据。删除后无法恢复。"
+      },
+      "errorResolved": {
+        "title": "解决渠道错误",
+        "description": "确定要解决渠道 \"{{channelName}}\" 的错误吗？这将清除错误消息：\"{{errorMessage}}\"",
+        "currentError": "当前错误消息"
       }
     },
     "validation": {
@@ -1243,6 +1260,7 @@
       "noRoles": "无角色",
       "details": "详情",
       "createdAt": "创建时间",
+      "latency": "延迟",
       "actions": "操作",
       "selectAll": "全选",
       "selectRow": "选择行",

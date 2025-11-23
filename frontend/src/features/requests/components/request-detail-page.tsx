@@ -364,7 +364,16 @@ export default function RequestDetailPage() {
                               </div>
                             </CardHeader>
                             <CardContent className='space-y-6'>
-                              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                              <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
+                                <div className='bg-background space-y-2 rounded-lg border p-3'>
+                                  <span className='flex items-center gap-2 text-sm font-medium'>
+                                    <Database className='text-primary h-4 w-4' />
+                                    {t('requests.columns.channel')}
+                                  </span>
+                                  <p className='text-muted-foreground font-mono text-sm'>
+                                    {execution.channel?.name || t('requests.columns.unknown')}
+                                  </p>
+                                </div>
                                 <div className='bg-background space-y-2 rounded-lg border p-3'>
                                   <span className='flex items-center gap-2 text-sm font-medium'>
                                     <Clock className='text-primary h-4 w-4' />

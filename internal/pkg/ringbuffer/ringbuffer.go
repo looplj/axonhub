@@ -86,6 +86,7 @@ func (rb *RingBuffer[T]) Get(timestamp int64) (T, bool) {
 	}
 
 	var zero T
+
 	return zero, false
 }
 
@@ -122,8 +123,9 @@ func (rb *RingBuffer[T]) Range(fn func(timestamp int64, value T) bool) {
 	rb.mu.RLock()
 	defer rb.mu.RUnlock()
 
-	for i := 0; i < rb.size; i++ {
+	for i := range rb.size {
 		idx := (rb.head + i) % rb.capacity
+
 		item := rb.items[idx]
 		if !fn(item.Timestamp, item.Value) {
 			break
@@ -135,6 +137,7 @@ func (rb *RingBuffer[T]) Range(fn func(timestamp int64, value T) bool) {
 func (rb *RingBuffer[T]) Len() int {
 	rb.mu.RLock()
 	defer rb.mu.RUnlock()
+
 	return rb.size
 }
 
@@ -165,7 +168,7 @@ func (rb *RingBuffer[T]) GetAll() []Item[T] {
 	}
 
 	result := make([]Item[T], 0, rb.size)
-	for i := 0; i < rb.size; i++ {
+	for i := range rb.size {
 		idx := (rb.head + i) % rb.capacity
 		result = append(result, rb.items[idx])
 	}

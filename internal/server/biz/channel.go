@@ -335,6 +335,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		mut.SetCredentials(input.Credentials)
 	}
 
+	if input.ClearErrorMessage {
+		mut.ClearErrorMessage()
+	}
+
 	channel, err := mut.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update channel: %w", err)

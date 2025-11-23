@@ -3469,6 +3469,8 @@ input UpdateChannelInput {
   Ordering weight for display sorting
   """
   orderingWeight: Int
+  errorMessage: String
+  clearErrorMessage: Boolean
 }
 """
 UpdateDataStorageInput is used for update DataStorage object.

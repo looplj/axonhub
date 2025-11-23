@@ -8,6 +8,7 @@ import { ChannelsBulkEnableDialog } from './channels-bulk-enable-dialog'
 import { ChannelsBulkImportDialog } from './channels-bulk-import-dialog'
 import { ChannelsBulkOrderingDialog } from './channels-bulk-ordering-dialog'
 import { ChannelsDeleteDialog } from './channels-delete-dialog'
+import { ChannelsErrorResolvedDialog } from './channels-error-resolved-dialog'
 import { ChannelsModelMappingDialog } from './channels-model-mapping-dialog'
 import { ChannelsOverrideParametersDialog } from './channels-override-parameters-dialog'
 import { ChannelsProxyDialog } from './channels-proxy-dialog'
@@ -173,6 +174,19 @@ export function ChannelsDialogs() {
               }
             }}
             channel={currentRow}
+          />
+
+          <ChannelsErrorResolvedDialog
+            key={`channel-error-resolved-${currentRow.id}`}
+            open={open === 'errorResolved'}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                setOpen(null)
+                setTimeout(() => {
+                  setCurrentRow(null)
+                }, 500)
+              }
+            }}
           />
         </>
       )}

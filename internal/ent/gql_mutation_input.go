@@ -119,6 +119,8 @@ type UpdateChannelInput struct {
 	ClearSettings         bool
 	Settings              *objects.ChannelSettings
 	OrderingWeight        *int
+	ClearErrorMessage     bool
+	ErrorMessage          *string
 }
 
 // Mutate applies the UpdateChannelInput on the ChannelMutation builder.
@@ -164,6 +166,12 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.OrderingWeight; v != nil {
 		m.SetOrderingWeight(*v)
+	}
+	if i.ClearErrorMessage {
+		m.ClearErrorMessage()
+	}
+	if v := i.ErrorMessage; v != nil {
+		m.SetErrorMessage(*v)
 	}
 }
 
