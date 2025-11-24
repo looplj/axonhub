@@ -1,5 +1,3 @@
-import { ApiFormat, ChannelType } from './schema'
-import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models'
 import type { ComponentType } from 'react'
 import {
   OpenAI,
@@ -21,6 +19,8 @@ import {
   Vercel,
   ModelScope,
 } from '@lobehub/icons'
+import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models'
+import { ApiFormat, ChannelType } from './schema'
 
 const OPENAI_API_FORMAT: ApiFormat = 'openai/chat_completions'
 const ANTHROPIC_API_FORMAT: ApiFormat = 'anthropic/messages'
@@ -76,22 +76,6 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: DeepSeek,
   },
-  minimax: {
-    channelType: 'minimax',
-    baseURL: 'https://api.minimaxi.com/v1',
-    defaultModels: ['MiniMax-M2'],
-    apiFormat: OPENAI_API_FORMAT,
-    color: 'bg-red-100 text-red-800 border-red-200',
-    icon: Minimax,
-  },
-  minimax_anthropic: {
-    channelType: 'minimax_anthropic',
-    baseURL: 'https://api.minimaxi.com/anthropic',
-    defaultModels: ['MiniMax-M2'],
-    apiFormat: ANTHROPIC_API_FORMAT,
-    color: 'bg-red-100 text-red-800 border-red-200',
-    icon: Minimax,
-  },
   anthropic: {
     channelType: 'anthropic',
     baseURL: 'https://api.anthropic.com/v1',
@@ -116,21 +100,21 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: Google,
   },
-  doubao: {
-    channelType: 'doubao',
-    baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
-    defaultModels: ['doubao-seed-1.6', 'doubao-seed-1.6-flash'],
+  minimax: {
+    channelType: 'minimax',
+    baseURL: 'https://api.minimaxi.com/v1',
+    defaultModels: ['MiniMax-M2'],
     apiFormat: OPENAI_API_FORMAT,
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: Doubao,
+    color: 'bg-red-100 text-red-800 border-red-200',
+    icon: Minimax,
   },
-  doubao_anthropic: {
-    channelType: 'doubao_anthropic',
-    baseURL: 'https://ark.cn-beijing.volces.com/api/compatible',
-    defaultModels: ['doubao-seed-code-preview-251028'],
+  minimax_anthropic: {
+    channelType: 'minimax_anthropic',
+    baseURL: 'https://api.minimaxi.com/anthropic',
+    defaultModels: ['MiniMax-M2'],
     apiFormat: ANTHROPIC_API_FORMAT,
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: Doubao,
+    color: 'bg-red-100 text-red-800 border-red-200',
+    icon: Minimax,
   },
   moonshot: {
     channelType: 'moonshot',
@@ -180,6 +164,24 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
     icon: ZAI,
   },
+
+  doubao: {
+    channelType: 'doubao',
+    baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
+    defaultModels: ['doubao-seed-1.6', 'doubao-seed-1.6-flash'],
+    apiFormat: OPENAI_API_FORMAT,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: Doubao,
+  },
+  doubao_anthropic: {
+    channelType: 'doubao_anthropic',
+    baseURL: 'https://ark.cn-beijing.volces.com/api/compatible',
+    defaultModels: ['doubao-seed-code-preview-251028'],
+    apiFormat: ANTHROPIC_API_FORMAT,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: Doubao,
+  },
+
   vercel: {
     channelType: 'vercel',
     baseURL: 'https://ai-gateway.vercel.sh/v1',
@@ -246,14 +248,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   xai: {
     channelType: 'xai',
     baseURL: 'https://api.x.ai/v1',
-    defaultModels: [
-      'grok-4',
-      'grok-3',
-      'grok-3-mini',
-      'grok-code-fast',
-      'grok-4-fast-reasoning',
-      'grok-4-fast-non-reasoning',
-    ],
+    defaultModels: ['grok-4', 'grok-3', 'grok-3-mini', 'grok-code-fast', 'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning'],
     apiFormat: OPENAI_API_FORMAT,
     color: 'bg-black-100 text-black-800 border-black-200',
     icon: XAI,

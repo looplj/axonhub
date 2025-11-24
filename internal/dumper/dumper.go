@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/fx"
-
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 )
@@ -137,9 +135,43 @@ func (d *Dumper) DumpStreamEvents(ctx context.Context, events []*httpclient.Stre
 	d.logger.Info(ctx, "Successfully dumped stream events to file", log.String("path", fullPath), log.Int("count", len(events)))
 }
 
-// Module is the fx module for the dumper.
-func Module() fx.Option {
-	return fx.Options(
-		fx.Provide(New),
-	)
+// DumpBytes dumps raw byte data to a file.
+func (d *Dumper) DumpBytes(ctx context.Context, data []byte, filename string) {
+	if !d.config.Enabled {
+		return
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	// Ensure dump directory exists
+	if err := os.MkdirAll(d.config.DumpPath, 0o750); err != nil {
+		d.logger.Error(ctx, "Failed to create dump directory", log.NamedError("error", err))
+		return
+	}
+
+	// Create dump file
+	timestamp := time.Now().Format("20060102_150405")
+	fullPath := filepath.Join(d.config.DumpPath, fmt.Sprintf("%s_%s.bin", filename, timestamp))
+
+	//nolint:gosec // Checked.
+	file, err := os.Create(fullPath)
+	if err != nil {
+		d.logger.Error(ctx, "Failed to create dump file", log.NamedError("error", err), log.String("path", fullPath))
+		return
+	}
+
+	defer func() {
+		if err := file.Close(); err != nil {
+			d.logger.Error(ctx, "Failed to close dump file", log.NamedError("error", err), log.String("path", fullPath))
+		}
+	}()
+
+	// Write bytes to file
+	if _, err := file.Write(data); err != nil {
+		d.logger.Error(ctx, "Failed to write bytes to dump file", log.NamedError("error", err), log.String("path", fullPath))
+		return
+	}
+
+	d.logger.Info(ctx, "Successfully dumped bytes to file", log.String("path", fullPath), log.Int("size", len(data)))
 }

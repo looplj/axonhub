@@ -57,6 +57,12 @@ const CHANNELS_QUERY = `
           }
           orderingWeight
           errorMessage
+          channelPerformance {
+            avgLatencyMs
+            avgTokenPerSecond
+            avgStreamFirstTokenLatencyMs
+            avgStreamTokenPerSecond
+          }
         }
         cursor
       }
@@ -357,6 +363,12 @@ const QUERY_CHANNELS_QUERY = `
           }
           orderingWeight
           errorMessage
+          channelPerformance {
+            avgLatencyMs
+            avgTokenPerSecond
+            avgStreamFirstTokenLatencyMs
+            avgStreamTokenPerSecond
+          }
         }
         cursor
       }

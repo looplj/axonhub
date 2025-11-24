@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import LongText from '@/components/long-text'
 import { useChannels } from '../context/channels-context'
 import { useTestChannel } from '../data/channels'
@@ -89,21 +89,20 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         const hasError = !!channel.errorMessage
 
         return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className='flex max-w-36 items-center gap-2'>
-                  {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
-                  <LongText className={cn('font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</LongText>
-                </div>
-              </TooltipTrigger>
-              {hasError && (
-                <TooltipContent>
-                  <p className='max-w-xs text-sm'>{t(`channels.messages.${channel.errorMessage}`)}</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className='flex max-w-36 items-center gap-2'>
+                {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
+                <LongText className={cn('font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</LongText>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className='space-y-1'>
+                <p className='text-muted-foreground text-sm'>{channel.baseURL}</p>
+                {hasError && <p className='text-destructive text-sm'>{t(`channels.messages.${channel.errorMessage}`)}</p>}
+              </div>
+            </TooltipContent>
+          </Tooltip>
         )
       },
       meta: {
@@ -207,9 +206,44 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableHiding: true,
     },
     {
-      accessorKey: 'baseURL',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.baseURL')} />,
-      cell: ({ row }) => <LongText className='text-muted-foreground max-w-48'>{row.getValue('baseURL')}</LongText>,
+      accessorKey: 'channelPerformance',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.performance')} />,
+      cell: ({ row }) => {
+        const performance = row.getValue('channelPerformance') as any
+        if (!performance) {
+          return <span className='text-muted-foreground text-xs'>-</span>
+        }
+
+        const avgLatency = performance.avgStreamFirstTokenLatencyMs || performance.avgLatencyMs || 0
+        const avgTokensPerSec = performance.avgStreamTokenPerSecond || performance.avgTokenPerSecond || 0
+
+        return (
+          <div className='space-y-1'>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className='cursor-help text-xs'>
+                  <span className='text-muted-foreground'>{t('channels.columns.firstTokenLatency')}: </span>
+                  <span className='font-medium'>{avgLatency}ms</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('channels.columns.firstTokenLatencyFull')}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className='cursor-help text-xs'>
+                  <span className='text-muted-foreground'>{t('channels.columns.tokensPerSecond')}: </span>
+                  <span className='font-medium'>{avgTokensPerSec.toFixed(1)}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('channels.columns.tokensPerSecondFull')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )
+      },
       enableSorting: false,
     },
     {
@@ -234,6 +268,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       },
       enableSorting: false,
     },
+
     {
       id: 'test',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.test')} />,

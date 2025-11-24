@@ -28,15 +28,9 @@ test.describe('Admin Channels Management', () => {
     // Fill in channel details
     await createDialog.getByLabel(/名称|Name/i).fill(name)
 
-    // Select channel type (OpenAI)
-    const typeSelect = createDialog.locator('[name="type"]').or(createDialog.getByLabel(/类型|Type/i))
-    await typeSelect.click()
-
-    // Wait for dropdown and select OpenAI
-    const openaiOption = page
-      .getByRole('option', { name: /OpenAI/i })
-      .or(page.locator('[role="option"]').filter({ hasText: /OpenAI/i }))
-    await openaiOption.first().click()
+    // Select channel type (OpenAI) - use data-testid for reliable selection
+    const openaiRadioContainer = createDialog.getByTestId('channel-type-openai')
+    await openaiRadioContainer.click()
 
     // Fill in base URL
     await createDialog.getByLabel(/Base URL/i).fill(baseURL)
@@ -65,7 +59,7 @@ test.describe('Admin Channels Management', () => {
     // Select Default Test Model (required field)
     const defaultTestModelSelect = createDialog
       .locator('[name="defaultTestModel"]')
-      .or(createDialog.getByLabel(/Default Test Model|默认测试模型/i))
+      .or(createDialog.getByLabel(/Test Model|默认测试模型/i))
     if ((await defaultTestModelSelect.count()) > 0) {
       await defaultTestModelSelect.click()
       // Select the first available option (gpt-4o)
@@ -259,13 +253,9 @@ test.describe('Admin Channels Management', () => {
     const createDialog = page.getByRole('dialog')
     await createDialog.getByLabel(/名称|Name/i).fill(searchTerm)
 
-    // Select channel type
-    const typeSelect = createDialog.locator('[name="type"]').or(createDialog.getByLabel(/类型|Type/i))
-    await typeSelect.click()
-    const openaiOption = page
-      .getByRole('option', { name: /OpenAI/i })
-      .or(page.locator('[role="option"]').filter({ hasText: /OpenAI/i }))
-    await openaiOption.first().click()
+    // Select channel type - use data-testid for reliable selection
+    const openaiRadioContainer = createDialog.getByTestId('channel-type-openai')
+    await openaiRadioContainer.click()
 
     await createDialog.getByLabel(/Base URL/i).fill('https://api.openai.com/v1')
     await createDialog.getByLabel(/API Key/i).fill('sk-test-key-' + uniqueSuffix)
@@ -284,7 +274,7 @@ test.describe('Admin Channels Management', () => {
     // Select Default Test Model (required field)
     const defaultTestModelSelect = createDialog
       .locator('[name="defaultTestModel"]')
-      .or(createDialog.getByLabel(/Default Test Model|默认测试模型/i))
+      .or(createDialog.getByLabel(/Test Model|默认测试模型/i))
     if ((await defaultTestModelSelect.count()) > 0) {
       await defaultTestModelSelect.click()
       const firstOption = page.getByRole('option').first()
@@ -921,13 +911,9 @@ test.describe('Admin Channels Management', () => {
     const createDialog = page.getByRole('dialog')
     await createDialog.getByLabel(/名称|Name/i).fill(baseName)
 
-    // Select channel type
-    const typeSelect = createDialog.locator('[name="type"]').or(createDialog.getByLabel(/类型|Type/i))
-    await typeSelect.click()
-    const openaiOption = page
-      .getByRole('option', { name: /OpenAI/i })
-      .or(page.locator('[role="option"]').filter({ hasText: /OpenAI/i }))
-    await openaiOption.first().click()
+    // Select channel type - use data-testid for reliable selection
+    const openaiRadioContainer = createDialog.getByTestId('channel-type-openai')
+    await openaiRadioContainer.click()
 
     await createDialog.getByLabel(/Base URL/i).fill(baseURL)
     await createDialog.getByLabel(/API Key/i).fill(apiKeys.join('\n'))
@@ -945,7 +931,7 @@ test.describe('Admin Channels Management', () => {
     // Select Default Test Model
     const defaultTestModelSelect = createDialog
       .locator('[name="defaultTestModel"]')
-      .or(createDialog.getByLabel(/Default Test Model|默认测试模型/i))
+      .or(createDialog.getByLabel(/Test Model|默认测试模型/i))
     if ((await defaultTestModelSelect.count()) > 0) {
       await defaultTestModelSelect.click()
       const firstOption = page.getByRole('option').first()
@@ -983,12 +969,9 @@ test.describe('Admin Channels Management', () => {
     const createDialog = page.getByRole('dialog')
     await createDialog.getByLabel(/名称|Name/i).fill(`Channel-${tagName}`)
 
-    const typeSelect = createDialog.locator('[name="type"]').or(createDialog.getByLabel(/类型|Type/i))
-    await typeSelect.click()
-    const openaiOption = page
-      .getByRole('option', { name: /OpenAI/i })
-      .or(page.locator('[role="option"]').filter({ hasText: /OpenAI/i }))
-    await openaiOption.first().click()
+    // Select channel type - use data-testid for reliable selection
+    const openaiRadioContainer = createDialog.getByTestId('channel-type-openai')
+    await openaiRadioContainer.click()
 
     await createDialog.getByLabel(/Base URL/i).fill('https://api.openai.com/v1')
     await createDialog.getByLabel(/API Key/i).fill('sk-test-' + uniqueSuffix)
@@ -1006,7 +989,7 @@ test.describe('Admin Channels Management', () => {
     // Select Default Test Model
     const defaultTestModelSelect = createDialog
       .locator('[name="defaultTestModel"]')
-      .or(createDialog.getByLabel(/Default Test Model|默认测试模型/i))
+      .or(createDialog.getByLabel(/Test Model|默认测试模型/i))
     if ((await defaultTestModelSelect.count()) > 0) {
       await defaultTestModelSelect.click()
       const firstOption = page.getByRole('option').first()
