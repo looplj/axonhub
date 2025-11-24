@@ -198,6 +198,15 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableHiding: true,
     },
     {
+      id: 'model',
+      accessorFn: () => '', // Virtual column for filtering only
+      header: () => null,
+      cell: () => null,
+      filterFn: () => true, // Server-side filtering, always return true
+      enableSorting: false,
+      enableHiding: true,
+    },
+    {
       accessorKey: 'baseURL',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.baseURL')} />,
       cell: ({ row }) => <LongText className='text-muted-foreground max-w-48'>{row.getValue('baseURL')}</LongText>,

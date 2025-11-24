@@ -85,7 +85,7 @@ type AnthropicModel struct {
 }
 
 func (handlers *AnthropicHandlers) ListModels(c *gin.Context) {
-	models := handlers.ChannelService.ListAllModels(c.Request.Context())
+	models := handlers.ChannelService.ListEnabledModels(c.Request.Context())
 
 	anthropicModels := make([]AnthropicModel, 0, len(models))
 	for _, model := range models {

@@ -14,7 +14,201 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
-func TestChannelService_ListAllModels(t *testing.T) {
+func TestChannelService_ListModels(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Create test channels with different statuses
+	enabledCh, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Enabled Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(&objects.ChannelCredentials{APIKey: "key1"}).
+		SetSupportedModels([]string{"gpt-4", "gpt-3.5-turbo"}).
+		SetDefaultTestModel("gpt-4").
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	disabledCh, err := client.Channel.Create().
+		SetType(channel.TypeAnthropic).
+		SetName("Disabled Channel").
+		SetBaseURL("https://api.anthropic.com").
+		SetCredentials(&objects.ChannelCredentials{APIKey: "key2"}).
+		SetSupportedModels([]string{"claude-3-opus-20240229"}).
+		SetDefaultTestModel("claude-3-opus-20240229").
+		SetStatus(channel.StatusDisabled).
+		SetSettings(&objects.ChannelSettings{
+			ModelMappings: []objects.ModelMapping{
+				{From: "claude-3-opus", To: "claude-3-opus-20240229"},
+			},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	archivedCh, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Archived Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(&objects.ChannelCredentials{APIKey: "key3"}).
+		SetSupportedModels([]string{"gpt-4-turbo"}).
+		SetDefaultTestModel("gpt-4-turbo").
+		SetStatus(channel.StatusArchived).
+		Save(ctx)
+	require.NoError(t, err)
+
+	prefixCh, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Prefix Channel").
+		SetBaseURL("https://api.deepseek.com").
+		SetCredentials(&objects.ChannelCredentials{APIKey: "key4"}).
+		SetSupportedModels([]string{"deepseek-chat", "deepseek-reasoner"}).
+		SetDefaultTestModel("deepseek-chat").
+		SetStatus(channel.StatusEnabled).
+		SetSettings(&objects.ChannelSettings{
+			ExtraModelPrefix: "deepseek",
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name          string
+		input         ListModelsInput
+		wantModelIDs  []string
+		wantStatuses  map[string]channel.Status
+		checkStatuses bool
+	}{
+		{
+			name: "list enabled models only (default)",
+			input: ListModelsInput{
+				StatusIn:       nil,
+				IncludeMapping: false,
+				IncludePrefix:  false,
+			},
+			wantModelIDs: []string{"gpt-4", "gpt-3.5-turbo", "deepseek-chat", "deepseek-reasoner"},
+			wantStatuses: map[string]channel.Status{
+				"gpt-4":             channel.StatusEnabled,
+				"gpt-3.5-turbo":     channel.StatusEnabled,
+				"deepseek-chat":     channel.StatusEnabled,
+				"deepseek-reasoner": channel.StatusEnabled,
+			},
+			checkStatuses: true,
+		},
+		{
+			name: "list enabled models with mappings",
+			input: ListModelsInput{
+				StatusIn:       []channel.Status{channel.StatusEnabled},
+				IncludeMapping: true,
+				IncludePrefix:  false,
+			},
+			wantModelIDs: []string{"gpt-4", "gpt-3.5-turbo", "deepseek-chat", "deepseek-reasoner"},
+		},
+		{
+			name: "list enabled models with prefix",
+			input: ListModelsInput{
+				StatusIn:       []channel.Status{channel.StatusEnabled},
+				IncludeMapping: false,
+				IncludePrefix:  true,
+			},
+			wantModelIDs: []string{
+				"gpt-4", "gpt-3.5-turbo",
+				"deepseek-chat", "deepseek-reasoner",
+				"deepseek/deepseek-chat", "deepseek/deepseek-reasoner",
+			},
+		},
+		{
+			name: "list disabled models with mappings",
+			input: ListModelsInput{
+				StatusIn:       []channel.Status{channel.StatusDisabled},
+				IncludeMapping: true,
+				IncludePrefix:  false,
+			},
+			wantModelIDs: []string{"claude-3-opus-20240229", "claude-3-opus"},
+			wantStatuses: map[string]channel.Status{
+				"claude-3-opus-20240229": channel.StatusDisabled,
+				"claude-3-opus":          channel.StatusDisabled,
+			},
+			checkStatuses: true,
+		},
+		{
+			name: "list multiple statuses",
+			input: ListModelsInput{
+				StatusIn:       []channel.Status{channel.StatusEnabled, channel.StatusDisabled},
+				IncludeMapping: false,
+				IncludePrefix:  false,
+			},
+			wantModelIDs: []string{
+				"gpt-4", "gpt-3.5-turbo",
+				"claude-3-opus-20240229",
+				"deepseek-chat", "deepseek-reasoner",
+			},
+		},
+		{
+			name: "list all statuses with mappings and prefix",
+			input: ListModelsInput{
+				StatusIn:       []channel.Status{channel.StatusEnabled, channel.StatusDisabled, channel.StatusArchived},
+				IncludeMapping: true,
+				IncludePrefix:  true,
+			},
+			wantModelIDs: []string{
+				"gpt-4", "gpt-3.5-turbo", "gpt-4-turbo",
+				"claude-3-opus-20240229", "claude-3-opus",
+				"deepseek-chat", "deepseek-reasoner",
+				"deepseek/deepseek-chat", "deepseek/deepseek-reasoner",
+			},
+		},
+		{
+			name: "list archived models only",
+			input: ListModelsInput{
+				StatusIn:       []channel.Status{channel.StatusArchived},
+				IncludeMapping: false,
+				IncludePrefix:  false,
+			},
+			wantModelIDs: []string{"gpt-4-turbo"},
+			wantStatuses: map[string]channel.Status{
+				"gpt-4-turbo": channel.StatusArchived,
+			},
+			checkStatuses: true,
+		},
+	}
+
+	// Suppress unused variable warnings
+	_ = enabledCh
+	_ = disabledCh
+	_ = archivedCh
+	_ = prefixCh
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := svc.ListModels(ctx, tt.input)
+			require.NoError(t, err)
+
+			// Extract model IDs from result
+			actualIDs := lo.Map(result, func(m *Model, _ int) string {
+				return m.ID
+			})
+
+			// Check that all expected models are present
+			require.ElementsMatch(t, tt.wantModelIDs, actualIDs)
+
+			// Check statuses if requested
+			if tt.checkStatuses {
+				for _, m := range result {
+					expectedStatus, ok := tt.wantStatuses[m.ID]
+					if ok {
+						require.Equal(t, expectedStatus, m.Status, "Status mismatch for model %s", m.ID)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestChannelService_ListEnabledModels(t *testing.T) {
 	tests := []struct {
 		name     string
 		channels []*Channel
@@ -134,7 +328,7 @@ func TestChannelService_ListAllModels(t *testing.T) {
 				EnabledChannels: tt.channels,
 			}
 
-			result := svc.ListAllModels(context.Background())
+			result := svc.ListEnabledModels(context.Background())
 
 			// Convert to map for easier comparison (order doesn't matter)
 			resultMap := make(map[string]bool)
@@ -460,7 +654,7 @@ func TestChannelService_BulkImportChannels(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		items         []BulkImportChannelItem
+		items         []*BulkImportChannelItem
 		wantSuccess   bool
 		wantCreated   int
 		wantFailed    int
@@ -468,7 +662,7 @@ func TestChannelService_BulkImportChannels(t *testing.T) {
 	}{
 		{
 			name: "import multiple channels successfully",
-			items: []BulkImportChannelItem{
+			items: []*BulkImportChannelItem{
 				{
 					Type:             "openai",
 					Name:             "OpenAI Channel 1",
@@ -492,7 +686,7 @@ func TestChannelService_BulkImportChannels(t *testing.T) {
 		},
 		{
 			name: "import with invalid channel type",
-			items: []BulkImportChannelItem{
+			items: []*BulkImportChannelItem{
 				{
 					Type:             "invalid_type",
 					Name:             "Invalid Channel",
@@ -509,7 +703,7 @@ func TestChannelService_BulkImportChannels(t *testing.T) {
 		},
 		{
 			name: "import with missing base URL",
-			items: []BulkImportChannelItem{
+			items: []*BulkImportChannelItem{
 				{
 					Type:             "openai",
 					Name:             "Missing BaseURL",
@@ -526,7 +720,7 @@ func TestChannelService_BulkImportChannels(t *testing.T) {
 		},
 		{
 			name: "import with missing API key",
-			items: []BulkImportChannelItem{
+			items: []*BulkImportChannelItem{
 				{
 					Type:             "openai",
 					Name:             "Missing APIKey",
@@ -543,7 +737,7 @@ func TestChannelService_BulkImportChannels(t *testing.T) {
 		},
 		{
 			name: "partial success - some valid, some invalid",
-			items: []BulkImportChannelItem{
+			items: []*BulkImportChannelItem{
 				{
 					Type:             "openai",
 					Name:             "Valid Channel",
@@ -792,14 +986,14 @@ func TestChannelService_BulkUpdateChannelOrdering(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		updates       []ChannelOrderingItem
+		updates       []*ChannelOrderingItem
 		wantErr       bool
 		wantUpdated   int
 		verifyWeights map[int]int
 	}{
 		{
 			name: "update ordering weights successfully",
-			updates: []ChannelOrderingItem{
+			updates: []*ChannelOrderingItem{
 				{ID: ch1.ID, OrderingWeight: 100},
 				{ID: ch2.ID, OrderingWeight: 50},
 			},
@@ -812,7 +1006,7 @@ func TestChannelService_BulkUpdateChannelOrdering(t *testing.T) {
 		},
 		{
 			name: "update with non-existent channel",
-			updates: []ChannelOrderingItem{
+			updates: []*ChannelOrderingItem{
 				{ID: 99999, OrderingWeight: 100},
 			},
 			wantErr: true,

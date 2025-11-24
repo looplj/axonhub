@@ -10,9 +10,15 @@ export interface ModelsResponse {
   models: Model[]
 }
 
+export interface ModelsInput {
+  statusIn?: ('enabled' | 'disabled' | 'archived')[]
+  includeMapping?: boolean
+  includePrefix?: boolean
+}
+
 const MODELS_QUERY = `
-  query Models($status: ChannelStatus) {
-    models(status: $status) {
+  query Models($input: ModelsInput!) {
+    models(input: $input) {
       id
       status
     }
@@ -21,10 +27,10 @@ const MODELS_QUERY = `
 
 export function useQueryModels() {
   return useMutation({
-    mutationFn: async (status?: 'enabled' | 'disabled' | 'archived') => {
+    mutationFn: async (input: ModelsInput = {}) => {
       const data = await graphqlRequest<{
         models: Model[]
-      }>(MODELS_QUERY, { status })
+      }>(MODELS_QUERY, { input })
       return data.models
     },
   })

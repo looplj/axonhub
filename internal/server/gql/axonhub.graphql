@@ -192,7 +192,9 @@ type Model {
 }
 
 input ModelsInput {
-  status: ChannelStatus
+  statusIn: [ChannelStatus!]
+  includeMapping: Boolean
+  includePrefix: Boolean
 }
 
 type ChannelTypeCount {
@@ -425,6 +427,11 @@ input QueryChannelInput {
   Filtering options for Channels returned from the connection.
   """
   hasTag: String
+
+  """
+  Filter channels that support the specified model.
+  """
+  model: String
 }
 
 input CountChannelsByTypeInput {
@@ -436,7 +443,7 @@ input CountChannelsByTypeInput {
 
 extend type Query {
   fetchModels(input: FetchModelsInput!): FetchModelsPayload!
-  models(status: ChannelStatus): [Model!]!
+  models(input: ModelsInput!): [Model!]!
   allChannelTags: [String!]!
   countChannelsByType(input: CountChannelsByTypeInput!): [ChannelTypeCount!]!
   """

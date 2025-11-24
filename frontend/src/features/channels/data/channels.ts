@@ -411,6 +411,7 @@ export function useQueryChannels(
     orderBy?: { field: 'CREATED_AT' | 'ORDERING_WEIGHT'; direction: 'ASC' | 'DESC' }
     where?: Record<string, unknown>
     hasTag?: string
+    model?: string
   },
   options?: {
     disableAutoFetch?: boolean

@@ -19,7 +19,7 @@ type ChannelOrderingItem struct {
 }
 
 // BulkUpdateChannelOrdering updates the ordering weight for multiple channels in a single transaction.
-func (svc *ChannelService) BulkUpdateChannelOrdering(ctx context.Context, items []ChannelOrderingItem) ([]*ent.Channel, error) {
+func (svc *ChannelService) BulkUpdateChannelOrdering(ctx context.Context, items []*ChannelOrderingItem) ([]*ent.Channel, error) {
 	client := svc.entFromContext(ctx)
 
 	updatedChannels := make([]*ent.Channel, 0, len(items))
@@ -203,7 +203,7 @@ type BulkImportChannelsResult struct {
 }
 
 // BulkImportChannels imports multiple channels at once.
-func (svc *ChannelService) BulkImportChannels(ctx context.Context, items []BulkImportChannelItem) (*BulkImportChannelsResult, error) {
+func (svc *ChannelService) BulkImportChannels(ctx context.Context, items []*BulkImportChannelItem) (*BulkImportChannelsResult, error) {
 	var (
 		createdChannels []*ent.Channel
 		errors          []string

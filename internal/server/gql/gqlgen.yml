@@ -30,6 +30,7 @@ autobind:
   - github.com/looplj/axonhub/internal/ent/request
   - github.com/looplj/axonhub/internal/ent/requestexecution
   - github.com/looplj/axonhub/internal/ent/channel
+  - github.com/looplj/axonhub/internal/server/biz
 
 converters:
   - from: "*github.com/looplj/axonhub/internal/objects.GUID"
@@ -95,6 +96,9 @@ models:
   BulkCreateChannelsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.BulkCreateChannelsInput
+  QueryChannelInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.QueryChannelsInput
   StoragePolicy:
     model:
       - github.com/looplj/axonhub/internal/server/biz.StoragePolicy
@@ -218,3 +222,6 @@ models:
   SpanType:
     model:
       - string
+  Model:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.Model

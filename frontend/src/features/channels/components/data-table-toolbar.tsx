@@ -8,7 +8,8 @@ import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter'
 import { useChannels } from '../context/channels-context'
 import { CHANNEL_CONFIGS } from '../data/constants'
 import { useAllChannelTags } from '../data/channels'
-import { useMemo } from 'react'
+import { useQueryModels } from '@/gql/models'
+import { useMemo, useEffect } from 'react'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -38,10 +39,30 @@ export function DataTableToolbar<TData>({
   // Get all channel tags from GraphQL
   const { data: allTags = [] } = useAllChannelTags()
 
+  // Fetch models using the models query
+  const { mutate: fetchModels, data: modelsData } = useQueryModels()
+
+  // Fetch models on component mount
+  useEffect(() => {
+    fetchModels({
+      statusIn: ['enabled', 'disabled'],
+      includeMapping: true,
+      includePrefix: true,
+    })
+  }, [fetchModels])
+
   const tagOptions = useMemo(() => allTags.map((tag) => ({
     value: tag,
     label: tag,
   })), [allTags])
+
+  const modelOptions = useMemo(() => {
+    if (!modelsData) return []
+    return modelsData.map((model) => ({
+      value: model.id,
+      label: model.id,
+    }))
+  }, [modelsData])
 
   // Generate channel types from CHANNEL_CONFIGS
   const channelTypes = useMemo(() => Object.values(CHANNEL_CONFIGS).map((config) => ({
@@ -82,6 +103,9 @@ export function DataTableToolbar<TData>({
         {table.getColumn('tags') && tagOptions.length > 0 && (
           <DataTableFacetedFilter column={table.getColumn('tags')} title={t('channels.filters.tags')} options={tagOptions} singleSelect />
         )}
+        {table.getColumn('model') && modelOptions.length > 0 && (
+          <DataTableFacetedFilter column={table.getColumn('model')} title={t('channels.filters.model')} options={modelOptions} singleSelect />
+        )}
         {isFiltered && (
           <Button variant='ghost' onClick={() => table.resetColumnFilters()} className='h-8 px-2 lg:px-3'>
             {t('common.filters.reset')}
@@ -89,9 +113,9 @@ export function DataTableToolbar<TData>({
           </Button>
         )}
         {showErrorOnly && onExitErrorOnlyMode && (
-          <Button 
-            variant='outline' 
-            onClick={onExitErrorOnlyMode} 
+          <Button
+            variant='outline'
+            onClick={onExitErrorOnlyMode}
             className='h-8 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
           >
             {t('channels.errorBanner.exitErrorOnlyButton')}
