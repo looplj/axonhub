@@ -365,9 +365,15 @@ type Message struct {
 	Usage        *Usage  `json:"usage,omitempty"`
 }
 
-type AnthropicErr struct {
-	StatusCode int    `json:"-"`
-	RequestID  string `json:"request_id"`
-	Message    string `json:"message"`
-	Type       string `json:"type,omitempty"`
+type ErrorDetail struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
+}
+
+// AnthropicError follow the https://platform.claude.com/docs/en/api/errors
+type AnthropicError struct {
+	Type       string      `json:"type,omitempty"`
+	StatusCode int         `json:"-"`
+	RequestID  string      `json:"request_id"`
+	Error      ErrorDetail `json:"error"`
 }

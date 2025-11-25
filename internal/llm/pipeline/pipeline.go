@@ -176,7 +176,7 @@ func (p *pipeline) applyRawErrorResponseMiddlewares(ctx context.Context, err err
 	if len(p.middlewares) > 0 {
 		// Error response middlewares should be applied in reverse order (last to first)
 		for i := len(p.middlewares) - 1; i >= 0; i-- {
-			p.middlewares[i].OnOutboundRawErrorResponse(ctx, err)
+			p.middlewares[i].OnOutboundRawError(ctx, err)
 		}
 	}
 }

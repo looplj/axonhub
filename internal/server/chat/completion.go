@@ -108,13 +108,10 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 		Proxy:           processor.Proxy,
 	}
 
-	inbound, outbound := NewPersistentTransformers(state, processor.Inbound)
+	var pipelineOpts []pipeline.Option
 
 	// Get retry policy from system settings
 	retryPolicy := processor.SystemService.RetryPolicyOrDefault(ctx)
-
-	var pipelineOpts []pipeline.Option
-
 	// Only apply retry if policy is enabled
 	if retryPolicy.Enabled {
 		pipelineOpts = append(pipelineOpts, pipeline.WithRetry(
@@ -129,6 +126,8 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 	// Add global middlewares
 	middlewares = append(middlewares, processor.Middlewares...)
 
+	inbound, outbound := NewPersistentTransformers(state, processor.Inbound)
+
 	// Add inbound middlewares (executed after inbound.TransformRequest)
 	middlewares = append(middlewares,
 		applyApiKeyModelMapping(inbound),
@@ -142,7 +141,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
-		createRequestExecution(outbound),
+		persistRequestExecution(outbound),
 
 		// Unified performance tracking middleware.
 		withPerformanceRecording(outbound),

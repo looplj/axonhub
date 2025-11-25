@@ -98,7 +98,7 @@ func (m *performanceRecording) OnOutboundLlmStream(ctx context.Context, stream s
 	}, nil
 }
 
-func (m *performanceRecording) OnOutboundRawErrorResponse(ctx context.Context, err error) {
+func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error) {
 	// Record performance metrics for failed requests
 	if m.outbound.state.Perf == nil {
 		return

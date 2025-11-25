@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -19,25 +20,31 @@ import (
 type AnthropicErrorHandler struct{}
 
 func (e *AnthropicErrorHandler) HandlerError(c *gin.Context, err error) {
+	// Get request ID from context
+	requestID := ""
+	if reqID, ok := contexts.GetRequestID(c.Request.Context()); ok {
+		requestID = reqID
+	}
+
 	if aErr, ok := xerrors.As[*httpclient.Error](err); ok {
 		c.JSON(aErr.StatusCode, json.RawMessage(aErr.Body))
 		return
 	}
 
 	if aErr, ok := xerrors.As[*llm.ResponseError](err); ok {
-		c.JSON(aErr.StatusCode, anthropic.AnthropicErr{
+		c.JSON(aErr.StatusCode, anthropic.AnthropicError{
 			StatusCode: aErr.StatusCode,
-			RequestID:  aErr.Detail.RequestID,
-			Message:    aErr.Error(),
+			RequestID:  requestID,
+			Error:      anthropic.ErrorDetail{Type: aErr.Detail.Type, Message: aErr.Error()},
 		})
 
 		return
 	}
 
-	c.JSON(500, anthropic.AnthropicErr{
+	c.JSON(500, anthropic.AnthropicError{
 		StatusCode: 0,
-		RequestID:  "",
-		Message:    "Internal server error",
+		RequestID:  requestID,
+		Error:      anthropic.ErrorDetail{Type: "internal_server_error", Message: "Internal server error"},
 	})
 }
 

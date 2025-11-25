@@ -88,6 +88,24 @@ func GetOperationName(ctx context.Context) (string, bool) {
 	return "", false
 }
 
+// WithRequestID stores the request id in the context.
+func WithRequestID(ctx context.Context, requestID string) context.Context {
+	container := getContainer(ctx)
+	container.RequestID = &requestID
+
+	return withContainer(ctx, container)
+}
+
+// GetRequestID retrieves the request id from the context.
+func GetRequestID(ctx context.Context) (string, bool) {
+	container := getContainer(ctx)
+	if container.RequestID != nil {
+		return *container.RequestID, true
+	}
+
+	return "", false
+}
+
 // WithProjectID stores the project ID in the context.
 func WithProjectID(ctx context.Context, projectID int) context.Context {
 	container := getContainer(ctx)

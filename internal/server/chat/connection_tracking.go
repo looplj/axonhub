@@ -79,7 +79,7 @@ func (m *connectionTracking) OnOutboundLlmStream(ctx context.Context, stream str
 	}, nil
 }
 
-func (m *connectionTracking) OnOutboundRawErrorResponse(ctx context.Context, err error) {
+func (m *connectionTracking) OnOutboundRawError(ctx context.Context, err error) {
 	// Decrement connection count on error
 	m.decrementConnection(ctx)
 }

@@ -139,10 +139,10 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 	}
 
 	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
-		aErr := &AnthropicErr{
+		aErr := &AnthropicError{
 			StatusCode: llmErr.StatusCode,
-			Message:    llmErr.Detail.Message,
 			RequestID:  llmErr.Detail.RequestID,
+			Error:      ErrorDetail{Type: llmErr.Detail.Type, Message: llmErr.Detail.Message},
 		}
 
 		body, err := json.Marshal(aErr)
@@ -167,11 +167,10 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 
 	// Handle validation errors
 	if errors.Is(rawErr, transformer.ErrInvalidRequest) {
-		aErr := &AnthropicErr{
+		aErr := &AnthropicError{
 			StatusCode: http.StatusBadRequest,
-			Message:    strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidRequest.Error()+": "),
+			Error:      ErrorDetail{Type: "invalid_request_error", Message: strings.TrimPrefix(rawErr.Error(), transformer.ErrInvalidRequest.Error()+": ")},
 			RequestID:  "",
-			Type:       "invalid_request_error",
 		}
 
 		body, err := json.Marshal(aErr)
@@ -190,10 +189,10 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
-	aErr := &AnthropicErr{
+	aErr := &AnthropicError{
 		StatusCode: http.StatusInternalServerError,
-		Message:    rawErr.Error(),
 		RequestID:  "",
+		Error:      ErrorDetail{Type: "internal_server_error", Message: rawErr.Error()},
 	}
 
 	body, err := json.Marshal(aErr)

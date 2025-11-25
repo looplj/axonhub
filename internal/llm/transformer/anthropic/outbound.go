@@ -371,7 +371,7 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 		}
 	}
 
-	aErr, err := xjson.To[AnthropicErr](rawErr.Body)
+	aErr, err := xjson.To[AnthropicError](rawErr.Body)
 	if err == nil && aErr.RequestID != "" {
 		// Successfully parsed as Anthropic error format
 		return &llm.ResponseError{
