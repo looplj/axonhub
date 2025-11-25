@@ -80,7 +80,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(row.original)
-              setOpen('overrideParameters')
+              setOpen('overrides')
             }}
           >
             <IconAdjustments size={16} className='mr-2' />

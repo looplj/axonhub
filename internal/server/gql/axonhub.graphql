@@ -6,6 +6,16 @@ type ModelMapping {
   to: String!
 }
 
+type HeaderEntry {
+  key: String!
+  value: String!
+}
+
+input HeaderEntryInput {
+  key: String!
+  value: String!
+}
+
 enum ProxyType {
   DISABLED
   ENVIRONMENT
@@ -30,6 +40,7 @@ type ChannelSettings {
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
   overrideParameters: String
+  overrideHeaders: [HeaderEntry!]
   proxy: ProxyConfig
 }
 
@@ -42,6 +53,7 @@ input ChannelSettingsInput {
   extraModelPrefix: String
   modelMappings: [ModelMappingInput!]
   overrideParameters: String
+  overrideHeaders: [HeaderEntryInput!]
   proxy: ProxyConfigInput
 }
 

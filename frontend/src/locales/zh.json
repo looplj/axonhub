@@ -906,8 +906,16 @@
           "action": "覆盖设置",
           "title": "覆盖配置",
           "parameters": {
-            "title": "覆盖参数",
-            "description": "填写 JSON 格式的覆盖参数以定制通过该渠道发送的请求参数"
+            "title": "覆盖请求体",
+            "description": "填写 JSON 以覆盖通过该渠道发送的请求体。使用 \"__AXONHUB_CLEAR__\" 作为值来从请求体中删除参数。"
+          },
+          "headers": {
+            "title": "覆盖请求头",
+            "description": "配置自定义 HTTP 请求头，将应用于通过该渠道发送的所有请求。",
+            "key": "请求头名称",
+            "value": "请求头值",
+            "valuePlaceholder": "使用 __AXONHUB_CLEAR__ 删除此请求头",
+            "addButton": "添加请求头"
           }
         }
       },
@@ -1003,7 +1011,8 @@
       "gcpJsonDataRequired": "GCP Service Account JSON 不能为空",
       "atLeastOneChannel": "至少需要一个 channel",
       "overrideParametersInvalidJson": "必须是有效的 JSON",
-      "overrideParametersStreamNotAllowed": "stream 参数不允许覆盖"
+      "overrideParametersStreamNotAllowed": "stream 参数不允许覆盖",
+      "forbiddenHeader": "不允许覆盖敏感请求头，如 Authorization、API-Key 或 Cookie"
     }
   },
   "dataStorages": {
@@ -1822,7 +1831,8 @@
       "archive": "归档",
       "archiving": "归档中...",
       "activate": "激活",
-      "activating": "激活中..."
+      "activating": "激活中...",
+      "remove": "移除"
     },
     "actions": {
       "openMenu": "打开菜单",

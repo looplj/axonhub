@@ -50,6 +50,13 @@ export const modelMappingSchema = z.object({
 })
 export type ModelMapping = z.infer<typeof modelMappingSchema>
 
+// Header Entry
+export const headerEntrySchema = z.object({
+  key: z.string().min(1, 'Header key is required'),
+  value: z.string(),
+})
+export type HeaderEntry = z.infer<typeof headerEntrySchema>
+
 // Proxy Type
 export const proxyTypeSchema = z.enum(['disabled', 'environment', 'url'])
 export type ProxyType = z.infer<typeof proxyTypeSchema>
@@ -77,6 +84,7 @@ export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
   modelMappings: z.array(modelMappingSchema),
   overrideParameters: z.string().optional(),
+  overrideHeaders: z.array(headerEntrySchema).optional().nullable(),
   proxy: proxyConfigSchema.optional().nullable(),
 })
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>

@@ -225,3 +225,9 @@ models:
   Model:
     model:
       - github.com/looplj/axonhub/internal/server/biz.Model
+  HeaderEntry:
+    model:
+      - github.com/looplj/axonhub/internal/objects.HeaderEntry
+  HeaderEntryInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.HeaderEntry

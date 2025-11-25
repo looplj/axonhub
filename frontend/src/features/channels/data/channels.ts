@@ -354,6 +354,10 @@ const QUERY_CHANNELS_QUERY = `
               to
             }
             overrideParameters
+            overrideHeaders{
+              key
+              value
+            }
             proxy {
               type
               url

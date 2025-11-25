@@ -196,6 +196,7 @@ type ComplexityRoot struct {
 	ChannelSettings struct {
 		ExtraModelPrefix   func(childComplexity int) int
 		ModelMappings      func(childComplexity int) int
+		OverrideHeaders    func(childComplexity int) int
 		OverrideParameters func(childComplexity int) int
 		Proxy              func(childComplexity int) int
 	}
@@ -270,6 +271,11 @@ type ComplexityRoot struct {
 
 	GCS struct {
 		BucketName func(childComplexity int) int
+	}
+
+	HeaderEntry struct {
+		Key   func(childComplexity int) int
+		Value func(childComplexity int) int
 	}
 
 	HourlyRequestStats struct {
@@ -1614,6 +1620,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelSettings.ModelMappings(childComplexity), true
 
+	case "ChannelSettings.overrideHeaders":
+		if e.complexity.ChannelSettings.OverrideHeaders == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.OverrideHeaders(childComplexity), true
+
 	case "ChannelSettings.overrideParameters":
 		if e.complexity.ChannelSettings.OverrideParameters == nil {
 			break
@@ -1910,6 +1923,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GCS.BucketName(childComplexity), true
+
+	case "HeaderEntry.key":
+		if e.complexity.HeaderEntry.Key == nil {
+			break
+		}
+
+		return e.complexity.HeaderEntry.Key(childComplexity), true
+
+	case "HeaderEntry.value":
+		if e.complexity.HeaderEntry.Value == nil {
+			break
+		}
+
+		return e.complexity.HeaderEntry.Value(childComplexity), true
 
 	case "HourlyRequestStats.count":
 		if e.complexity.HourlyRequestStats.Count == nil {
@@ -4993,6 +5020,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputFetchModelsInput,
 		ec.unmarshalInputGCPCredentialInput,
 		ec.unmarshalInputGCSInput,
+		ec.unmarshalInputHeaderEntryInput,
 		ec.unmarshalInputInitializeSystemInput,
 		ec.unmarshalInputModelMappingInput,
 		ec.unmarshalInputModelsInput,
@@ -9254,6 +9282,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_modelMappings(ctx, field)
 			case "overrideParameters":
 				return ec.fieldContext_ChannelSettings_overrideParameters(ctx, field)
+			case "overrideHeaders":
+				return ec.fieldContext_ChannelSettings_overrideHeaders(ctx, field)
 			case "proxy":
 				return ec.fieldContext_ChannelSettings_proxy(ctx, field)
 			}
@@ -10741,6 +10771,53 @@ func (ec *executionContext) fieldContext_ChannelSettings_overrideParameters(_ co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_overrideHeaders(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelSettings_overrideHeaders(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OverrideHeaders, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]objects.HeaderEntry)
+	fc.Result = res
+	return ec.marshalOHeaderEntry2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_overrideHeaders(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_HeaderEntry_key(ctx, field)
+			case "value":
+				return ec.fieldContext_HeaderEntry_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HeaderEntry", field.Name)
 		},
 	}
 	return fc, nil
@@ -12593,6 +12670,94 @@ func (ec *executionContext) _GCS_bucketName(ctx context.Context, field graphql.C
 func (ec *executionContext) fieldContext_GCS_bucketName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "GCS",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HeaderEntry_key(ctx context.Context, field graphql.CollectedField, obj *objects.HeaderEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HeaderEntry_key(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Key, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_HeaderEntry_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HeaderEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HeaderEntry_value(ctx context.Context, field graphql.CollectedField, obj *objects.HeaderEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HeaderEntry_value(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_HeaderEntry_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HeaderEntry",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -36359,7 +36524,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "overrideParameters", "proxy"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "overrideParameters", "overrideHeaders", "proxy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -36387,6 +36552,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.OverrideParameters = data
+		case "overrideHeaders":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("overrideHeaders"))
+			data, err := ec.unmarshalOHeaderEntryInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OverrideHeaders = data
 		case "proxy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proxy"))
 			data, err := ec.unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐProxyConfig(ctx, v)
@@ -38908,6 +39080,40 @@ func (ec *executionContext) unmarshalInputGCSInput(ctx context.Context, obj any)
 				return it, err
 			}
 			it.Credential = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputHeaderEntryInput(ctx context.Context, obj any) (objects.HeaderEntry, error) {
+	var it objects.HeaderEntry
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"key", "value"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
 		}
 	}
 
@@ -49381,6 +49587,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_modelMappings(ctx, field, obj)
 		case "overrideParameters":
 			out.Values[i] = ec._ChannelSettings_overrideParameters(ctx, field, obj)
+		case "overrideHeaders":
+			out.Values[i] = ec._ChannelSettings_overrideHeaders(ctx, field, obj)
 		case "proxy":
 			out.Values[i] = ec._ChannelSettings_proxy(ctx, field, obj)
 		default:
@@ -50018,6 +50226,50 @@ func (ec *executionContext) _GCS(ctx context.Context, sel ast.SelectionSet, obj 
 			out.Values[i] = graphql.MarshalString("GCS")
 		case "bucketName":
 			out.Values[i] = ec._GCS_bucketName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var headerEntryImplementors = []string{"HeaderEntry"}
+
+func (ec *executionContext) _HeaderEntry(ctx context.Context, sel ast.SelectionSet, obj *objects.HeaderEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, headerEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("HeaderEntry")
+		case "key":
+			out.Values[i] = ec._HeaderEntry_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._HeaderEntry_value(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -58012,6 +58264,15 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) marshalNHeaderEntry2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx context.Context, sel ast.SelectionSet, v objects.HeaderEntry) graphql.Marshaler {
+	return ec._HeaderEntry(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNHeaderEntryInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx context.Context, v any) (objects.HeaderEntry, error) {
+	res, err := ec.unmarshalInputHeaderEntryInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx context.Context, v any) (objects.GUID, error) {
 	var res objects.GUID
 	err := res.UnmarshalGQL(v)
@@ -60663,6 +60924,71 @@ func (ec *executionContext) unmarshalOGCSInput2ᚖgithubᚗcomᚋloopljᚋaxonhu
 	}
 	res, err := ec.unmarshalInputGCSInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOHeaderEntry2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.HeaderEntry) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHeaderEntry2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOHeaderEntryInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntryᚄ(ctx context.Context, v any) ([]objects.HeaderEntry, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.HeaderEntry, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNHeaderEntryInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx context.Context, v any) ([]*objects.GUID, error) {
