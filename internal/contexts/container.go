@@ -11,6 +11,7 @@ import (
 type contextContainer struct {
 	ProjectID     *int
 	TraceID       *string
+	RequestID     *string
 	OperationName *string
 	APIKey        *ent.APIKey
 	User          *ent.User

@@ -19,8 +19,8 @@ type Middleware interface {
 	// OnOutboundRawRequest execute after outbound transform llm request to http request and before send request to the provider.
 	OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error)
 
-	// OnOutboundRawErrorResponse execute after send request to the provider and before outbound transform http response to llm response.
-	OnOutboundRawErrorResponse(ctx context.Context, err error)
+	// OnOutboundRawError execute after send request to the provider and before outbound transform http response to llm response.
+	OnOutboundRawError(ctx context.Context, err error)
 
 	// OnOutboundRawResponse execute after send request to the provider and before outbound transform http response to llm response.
 	// Only execute if the request is not a stream.
@@ -84,7 +84,7 @@ func (d *simpleMiddleware) OnOutboundRawRequest(ctx context.Context, request *ht
 	return d.outboundRequestHandler(ctx, request)
 }
 
-func (d *simpleMiddleware) OnOutboundRawErrorResponse(ctx context.Context, err error) {
+func (d *simpleMiddleware) OnOutboundRawError(ctx context.Context, err error) {
 	if d.outboundRawErrorResponseHandler == nil {
 		return
 	}
@@ -140,7 +140,7 @@ func (d *DummyMiddleware) OnOutboundRawRequest(ctx context.Context, request *htt
 	return request, nil
 }
 
-func (d *DummyMiddleware) OnOutboundRawErrorResponse(ctx context.Context, err error) {
+func (d *DummyMiddleware) OnOutboundRawError(ctx context.Context, err error) {
 	// Do nothing
 }
 

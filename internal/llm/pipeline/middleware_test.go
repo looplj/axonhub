@@ -118,7 +118,7 @@ func (m *trackingMiddleware) OnOutboundRawRequest(ctx context.Context, request *
 	return request, nil
 }
 
-func (m *trackingMiddleware) OnOutboundRawErrorResponse(ctx context.Context, err error) {
+func (m *trackingMiddleware) OnOutboundRawError(ctx context.Context, err error) {
 	m.outboundRawErrorCalled = true
 	*m.callOrder = append(*m.callOrder, m.name+":OnOutboundRawErrorResponse")
 }

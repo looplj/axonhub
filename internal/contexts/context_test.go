@@ -187,6 +187,53 @@ func TestGetTraceID(t *testing.T) {
 	}
 }
 
+func TestWithRequestID(t *testing.T) {
+	ctx := t.Context()
+	requestID := "req-12345-abcdef"
+
+	// Test storing request ID
+	newCtx := WithRequestID(ctx, requestID)
+	if newCtx == ctx {
+		t.Error("WithRequestID should return a new context")
+	}
+
+	// Test retrieving request ID
+	retrievedRequestID, ok := GetRequestID(newCtx)
+	if !ok {
+		t.Error("GetRequestID should return true for existing request ID")
+	}
+
+	if retrievedRequestID != requestID {
+		t.Errorf("expected request ID %s, got %s", requestID, retrievedRequestID)
+	}
+}
+
+func TestGetRequestID(t *testing.T) {
+	ctx := t.Context()
+
+	// Test retrieving request ID from empty context
+	requestID, ok := GetRequestID(ctx)
+	if ok {
+		t.Error("GetRequestID should return false for empty context")
+	}
+
+	if requestID != "" {
+		t.Error("GetRequestID should return empty string for empty context")
+	}
+
+	// Test retrieving request ID from context with other values
+	ctxWithOtherValue := context.WithValue(ctx, "other_key", "other_value")
+
+	requestID, ok = GetRequestID(ctxWithOtherValue)
+	if ok {
+		t.Error("GetRequestID should return false for context without request ID")
+	}
+
+	if requestID != "" {
+		t.Error("GetRequestID should return empty string for context without request ID")
+	}
+}
+
 func TestWithOperationName(t *testing.T) {
 	ctx := t.Context()
 	operationName := "user.create"
@@ -359,6 +406,7 @@ func TestContextContainerMultipleValues(t *testing.T) {
 	ctx = WithAPIKey(ctx, &ent.APIKey{ID: 1, Key: "test-key"})
 	ctx = WithUser(ctx, &ent.User{ID: 123, Email: "test@example.com"})
 	ctx = WithTraceID(ctx, "trace-123")
+	ctx = WithRequestID(ctx, "req-456")
 	ctx = WithOperationName(ctx, "test.operation")
 	ctx = WithProjectID(ctx, 456)
 	ctx = WithSource(ctx, request.SourcePlayground)
@@ -377,6 +425,11 @@ func TestContextContainerMultipleValues(t *testing.T) {
 	traceID, ok := GetTraceID(ctx)
 	if !ok || traceID != "trace-123" {
 		t.Error("Trace ID should be stored and retrievable")
+	}
+
+	requestID, ok := GetRequestID(ctx)
+	if !ok || requestID != "req-456" {
+		t.Error("Request ID should be stored and retrievable")
 	}
 
 	operationName, ok := GetOperationName(ctx)

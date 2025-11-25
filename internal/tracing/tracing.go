@@ -18,6 +18,10 @@ type Config struct {
 	// Default to "AH-Trace-Id".
 	TraceHeader string `conf:"trace_header" yaml:"trace_header" json:"trace_header"`
 
+	// RequestHeader is the header name for request ID.
+	// Default to "AH-Request-Id".
+	RequestHeader string `conf:"request_header" yaml:"request_header" json:"request_header"`
+
 	// ExtraTraceHeaders is the extra header names for trace ID.
 	// It will use if primary trace header is not found in request headers.
 	// e.g. set it to []string{"Sentry-Trace"} to trace claude-code or any other product using sentry.
@@ -35,6 +39,12 @@ func GenerateTraceID() string {
 	return fmt.Sprintf("at-%s", id.String())
 }
 
+// GenerateRequestID generate request id, format as ar-{{uuid}}.
+func GenerateRequestID() string {
+	id := uuid.New()
+	return fmt.Sprintf("ar-%s", id.String())
+}
+
 // WithTraceID store trace id to context.
 func WithTraceID(ctx context.Context, traceID string) context.Context {
 	return contexts.WithTraceID(ctx, traceID)
@@ -43,6 +53,16 @@ func WithTraceID(ctx context.Context, traceID string) context.Context {
 // GetTraceID get trace id from context.
 func GetTraceID(ctx context.Context) (string, bool) {
 	return contexts.GetTraceID(ctx)
+}
+
+// WithRequestID store request id to context.
+func WithRequestID(ctx context.Context, requestID string) context.Context {
+	return contexts.WithRequestID(ctx, requestID)
+}
+
+// GetRequestID get request id from context.
+func GetRequestID(ctx context.Context) (string, bool) {
+	return contexts.GetRequestID(ctx)
 }
 
 // WithOperationName store operation name to context.

@@ -221,42 +221,6 @@ func applyOverrideParameters(outbound *PersistentOutboundTransformer) pipeline.M
 	})
 }
 
-// createRequestExecution ensures a request execution exists and attaches its ID header.
-func createRequestExecution(outbound *PersistentOutboundTransformer) pipeline.Middleware {
-	return pipeline.OnRawRequest("create-request-execution", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-		state := outbound.state
-		if state == nil || state.RequestExec != nil {
-			return request, nil
-		}
-
-		channel := outbound.GetCurrentChannel()
-		if channel == nil {
-			return request, nil
-		}
-
-		llmRequest := state.LlmRequest
-		if llmRequest == nil {
-			return request, nil
-		}
-
-		requestExec, err := state.RequestService.CreateRequestExecution(
-			ctx,
-			channel,
-			llmRequest.Model,
-			state.Request,
-			*request,
-			outbound.APIFormat(),
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		state.RequestExec = requestExec
-
-		return request, nil
-	})
-}
-
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
 	// Channels should already be selected by inbound transformer
 	if len(p.state.Channels) == 0 {
@@ -398,22 +362,6 @@ func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
 
 // NextChannel moves to the next available channel for retry.
 func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
-	// Before switching to the next channel, if we have a current request execution that failed,
-	// update its status to failed
-	if p.state.RequestExec != nil {
-		// Use context without cancellation to ensure persistence even if client canceled
-		persistCtx := context.WithoutCancel(ctx)
-
-		err := p.state.RequestService.UpdateRequestExecutionFailed(
-			persistCtx,
-			p.state.RequestExec.ID,
-			"Channel request failed, switching to next channel",
-		)
-		if err != nil {
-			log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(err))
-		}
-	}
-
 	p.state.ChannelIndex++
 	if p.state.ChannelIndex >= len(p.state.Channels) {
 		return errors.New("no more channels available for retry")
@@ -441,21 +389,6 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) error {
 	if p.state.CurrentChannel == nil {
 		return errors.New("no current channel available for same-channel retry")
-	}
-
-	// Mark the current request execution as failed before creating a new one
-	if p.state.RequestExec != nil {
-		// Use context without cancellation to ensure persistence even if client canceled
-		persistCtx := context.WithoutCancel(ctx)
-
-		err := p.state.RequestService.UpdateRequestExecutionFailed(
-			persistCtx,
-			p.state.RequestExec.ID,
-			"Same channel retry - previous attempt failed",
-		)
-		if err != nil {
-			log.Warn(persistCtx, "Failed to update request execution status to failed for same-channel retry", log.Cause(err))
-		}
 	}
 
 	// Reset request execution for the same channel retry

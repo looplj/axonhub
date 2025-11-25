@@ -42,7 +42,7 @@ func contextFields(ctx context.Context, msg string, fields ...Field) []Field {
 	return fields
 }
 
-// Apply adds trace ID to log entries if it exists in the context.
+// Apply adds trace ID and request ID to log entries if they exist in the context.
 func traceFields(ctx context.Context, msg string, fields ...zap.Field) []zap.Field {
 	if ctx == nil {
 		return fields
@@ -52,6 +52,12 @@ func traceFields(ctx context.Context, msg string, fields ...zap.Field) []zap.Fie
 	if traceID, ok := tracing.GetTraceID(ctx); ok {
 		// Add trace ID to fields
 		fields = append(fields, zap.String("trace_id", traceID))
+	}
+
+	// Try to get request ID from context
+	if requestID, ok := tracing.GetRequestID(ctx); ok {
+		// Add request ID to fields
+		fields = append(fields, zap.String("request_id", requestID))
 	}
 
 	if operationName, ok := tracing.GetOperationName(ctx); ok {
