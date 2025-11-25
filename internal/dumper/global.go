@@ -19,3 +19,7 @@ func DumpStreamEvents(ctx context.Context, events []*httpclient.StreamEvent, fil
 func DumpStruct(ctx context.Context, obj any, filename string) {
 	Global.DumpStruct(ctx, obj, filename)
 }
+
+func DumpBytes(ctx context.Context, data []byte, filename string) {
+	Global.DumpBytes(ctx, data, filename)
+}

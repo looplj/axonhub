@@ -582,6 +582,11 @@
       "tags": "标签",
       "baseURL": "Base URL",
       "supportedModels": "支持的模型",
+      "performance": "性能",
+      "firstTokenLatency": "FTL",
+      "tokensPerSecond": "TPS",
+      "firstTokenLatencyFull": "首Token延迟",
+      "tokensPerSecondFull": "Token/秒",
       "test": "测试",
       "createdAt": "创建时间",
       "updatedAt": "更新时间",
@@ -790,7 +795,7 @@
           "placeholder": "sk-...",
           "editPlaceholder": "留空则保持不变",
           "description": "用于认证的 API 密钥",
-          "multiLineHint": "每行输入一个 API Key 以批量创建"
+          "multiLineHint": "每行一个 API Key, 如果输入了多个 Key，系统将自动创建多个渠道。"
         },
         "supportedModels": {
           "label": "支持的模型",

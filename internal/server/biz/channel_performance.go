@@ -32,8 +32,8 @@ type channelMetrics struct {
 	// sliding window of metrics for the last N minutes using ring buffer for O(1) cleanup
 	window *ringbuffer.RingBuffer[*timeSlotMetrics]
 
-	// aggreatedMetrics holds accumulated metrics for the flush period
-	aggreatedMetrics *AggretagedMetrics
+	// aggregatedMetrics holds accumulated metrics for the flush period
+	aggregatedMetrics *AggretagedMetrics
 }
 
 // InitializeAllChannelPerformances ensures every channel has a corresponding performance record.
@@ -120,9 +120,11 @@ type metricsRecord struct {
 	TotalTokenCount       int64
 	TotalRequestLatencyMs int64
 
-	StreamTotalTokenCount          int64
-	StreamTotalFirstTokenLatencyMs int64
 	StreamSuccessCount             int64
+	StreamTotalRequestCount        int64
+	StreamTotalTokenCount          int64
+	StreamTotalRequestLatencyMs    int64
+	StreamTotalFirstTokenLatencyMs int64
 
 	// ConsecutiveFailures tracks the number of consecutive failures
 	// Reset to 0 on success, incremented on failure
@@ -149,8 +151,8 @@ func (m *metricsRecord) CalculateAvgLatencyMs() int64 {
 
 // CalculateAvgTokensPerSecond calculates the average tokens per second.
 func (m *metricsRecord) CalculateAvgTokensPerSecond() float64 {
-	if m.RequestCount > 0 {
-		return float64(m.TotalTokenCount) / float64(m.RequestCount)
+	if m.TotalRequestLatencyMs > 0 {
+		return float64(m.TotalTokenCount) / (float64(m.TotalRequestLatencyMs) / 1000)
 	}
 
 	return 0
@@ -167,8 +169,8 @@ func (m *metricsRecord) CalculateAvgFirstTokenLatencyMs() int64 {
 
 // CalculateAvgStreamTokensPerSecond calculates the average tokens per second for stream requests.
 func (m *metricsRecord) CalculateAvgStreamTokensPerSecond() float64 {
-	if m.StreamSuccessCount > 0 {
-		return float64(m.StreamTotalTokenCount) / float64(m.StreamSuccessCount)
+	if m.StreamTotalRequestLatencyMs > 0 {
+		return float64(m.StreamTotalTokenCount) / (float64(m.StreamTotalRequestLatencyMs) / 1000)
 	}
 
 	return 0
@@ -195,7 +197,7 @@ func newChannelMetrics(channelID int) *channelMetrics {
 	cm := &channelMetrics{
 		channelID: channelID,
 		window:    ringbuffer.New[*timeSlotMetrics](defaultPerformanceWindowSize),
-		aggreatedMetrics: &AggretagedMetrics{
+		aggregatedMetrics: &AggretagedMetrics{
 			metricsRecord: metricsRecord{},
 		},
 	}
@@ -206,37 +208,41 @@ func newChannelMetrics(channelID int) *channelMetrics {
 // recordSuccess records a successful request to the channel metrics.
 func (cm *channelMetrics) recordSuccess(slot *timeSlotMetrics, perf *PerformanceRecord, firstTokenLatencyMs, requestLatencyMs int64) {
 	slot.SuccessCount++
-	cm.aggreatedMetrics.SuccessCount++
-	cm.aggreatedMetrics.LastSuccessAt = &perf.EndTime
+	cm.aggregatedMetrics.SuccessCount++
+	cm.aggregatedMetrics.LastSuccessAt = &perf.EndTime
 
 	// Reset consecutive failures on success
-	cm.aggreatedMetrics.ConsecutiveFailures = 0
+	cm.aggregatedMetrics.ConsecutiveFailures = 0
 
 	slot.TotalRequestLatencyMs += requestLatencyMs
-	cm.aggreatedMetrics.TotalRequestLatencyMs += requestLatencyMs
+	cm.aggregatedMetrics.TotalRequestLatencyMs += requestLatencyMs
 
 	if perf.Stream {
 		slot.StreamSuccessCount++
+		slot.StreamTotalRequestCount++
 		slot.StreamTotalTokenCount += perf.TokenCount
+		slot.StreamTotalRequestLatencyMs += requestLatencyMs
 		slot.StreamTotalFirstTokenLatencyMs += firstTokenLatencyMs
 
-		cm.aggreatedMetrics.StreamSuccessCount++
-		cm.aggreatedMetrics.StreamTotalTokenCount += perf.TokenCount
-		cm.aggreatedMetrics.StreamTotalFirstTokenLatencyMs += firstTokenLatencyMs
+		cm.aggregatedMetrics.StreamSuccessCount++
+		cm.aggregatedMetrics.StreamTotalRequestCount++
+		cm.aggregatedMetrics.StreamTotalTokenCount += perf.TokenCount
+		cm.aggregatedMetrics.StreamTotalRequestLatencyMs += requestLatencyMs
+		cm.aggregatedMetrics.StreamTotalFirstTokenLatencyMs += firstTokenLatencyMs
 	}
 
 	slot.TotalTokenCount += perf.TokenCount
-	cm.aggreatedMetrics.TotalTokenCount += perf.TokenCount
+	cm.aggregatedMetrics.TotalTokenCount += perf.TokenCount
 }
 
 // recordFailure records a failed request to the channel metrics.
 func (cm *channelMetrics) recordFailure(slot *timeSlotMetrics, perf *PerformanceRecord) {
 	slot.FailureCount++
-	cm.aggreatedMetrics.FailureCount++
-	cm.aggreatedMetrics.LastFailureAt = &perf.EndTime
+	cm.aggregatedMetrics.FailureCount++
+	cm.aggregatedMetrics.LastFailureAt = &perf.EndTime
 
 	// Increment consecutive failures
-	cm.aggreatedMetrics.ConsecutiveFailures++
+	cm.aggregatedMetrics.ConsecutiveFailures++
 }
 
 // getOrCreateTimeSlot gets or creates a time slot for the given timestamp.
@@ -388,7 +394,7 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 
 	// Update request counts.
 	slot.RequestCount++
-	cm.aggreatedMetrics.RequestCount++
+	cm.aggregatedMetrics.RequestCount++
 
 	// Record success or failure
 	if perf.Success {
@@ -397,7 +403,8 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		cm.recordFailure(slot, perf)
 	}
 
-	log.Debug(ctx, "recorded performance metrics",
+	// if log.DebugEnabled(ctx) {
+	log.Info(ctx, "recorded performance metrics",
 		log.Int("channel_id", perf.ChannelID),
 		log.Bool("success", perf.Success),
 		log.Int64("first_token_latency_ms", firstTokenLatencyMs),
@@ -406,6 +413,7 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		log.Any("token_count", perf.TokenCount),
 		log.Any("error_code", perf.ErrorStatusCode),
 	)
+	// }
 }
 
 // AsyncRecordPerformance records performance metrics to in-memory cache asynchronously.
@@ -431,14 +439,16 @@ func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 
 	// Subtract removed metrics from aggregated metrics
 	for _, metrics := range metricsToRemove {
-		cm.aggreatedMetrics.RequestCount -= metrics.RequestCount
-		cm.aggreatedMetrics.SuccessCount -= metrics.SuccessCount
-		cm.aggreatedMetrics.FailureCount -= metrics.FailureCount
-		cm.aggreatedMetrics.TotalTokenCount -= metrics.TotalTokenCount
-		cm.aggreatedMetrics.TotalRequestLatencyMs -= metrics.TotalRequestLatencyMs
-		cm.aggreatedMetrics.StreamTotalTokenCount -= metrics.StreamTotalTokenCount
-		cm.aggreatedMetrics.StreamTotalFirstTokenLatencyMs -= metrics.StreamTotalFirstTokenLatencyMs
-		cm.aggreatedMetrics.StreamSuccessCount -= metrics.StreamSuccessCount
+		cm.aggregatedMetrics.RequestCount -= metrics.RequestCount
+		cm.aggregatedMetrics.SuccessCount -= metrics.SuccessCount
+		cm.aggregatedMetrics.FailureCount -= metrics.FailureCount
+		cm.aggregatedMetrics.TotalTokenCount -= metrics.TotalTokenCount
+		cm.aggregatedMetrics.TotalRequestLatencyMs -= metrics.TotalRequestLatencyMs
+		cm.aggregatedMetrics.StreamTotalRequestCount -= metrics.StreamTotalRequestCount
+		cm.aggregatedMetrics.StreamTotalTokenCount -= metrics.StreamTotalTokenCount
+		cm.aggregatedMetrics.StreamTotalRequestLatencyMs -= metrics.StreamTotalRequestLatencyMs
+		cm.aggregatedMetrics.StreamTotalFirstTokenLatencyMs -= metrics.StreamTotalFirstTokenLatencyMs
+		cm.aggregatedMetrics.StreamSuccessCount -= metrics.StreamSuccessCount
 	}
 
 	// Cleanup old entries from ringbuffer
@@ -470,19 +480,21 @@ func (svc *ChannelService) flushPerformanceMetrics(ctx context.Context) {
 
 	svc.channelPerfMetricsLock.RLock()
 
-	metricsToFlush := make([]*channelMetrics, 0, len(svc.channelPerfMetrics))
+	metricsToFlush := make([]channelMetrics, 0, len(svc.channelPerfMetrics))
 	for _, cm := range svc.channelPerfMetrics {
-		metricsToFlush = append(metricsToFlush, cm)
+		metricsToFlush = append(metricsToFlush, *cm)
 	}
 
 	svc.channelPerfMetricsLock.RUnlock()
 
 	for _, cm := range metricsToFlush {
-		if cm.aggreatedMetrics.RequestCount == 0 {
+		// Skip if no data in the sliding window (no requests in the last 10 minutes)
+		// This prevents overwriting database values with zeros when there's no recent activity
+		if cm.window.Len() == 0 || cm.aggregatedMetrics.RequestCount == 0 {
 			continue
 		}
 
-		aggreatedMetrics := cm.aggreatedMetrics.Clone()
+		aggreatedMetrics := cm.aggregatedMetrics.Clone()
 
 		err := svc.Executors.Execute(executors.RunnableFunc(
 			func(ctx context.Context) { svc.RecordMetrics(ctx, cm.channelID, aggreatedMetrics) },
@@ -505,9 +517,9 @@ func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int)
 
 	// Return a copy of the aggregated metrics to avoid concurrent modification
 	return &AggretagedMetrics{
-		metricsRecord: cm.aggreatedMetrics.metricsRecord,
-		LastSuccessAt: cm.aggreatedMetrics.LastSuccessAt,
-		LastFailureAt: cm.aggreatedMetrics.LastFailureAt,
+		metricsRecord: cm.aggregatedMetrics.metricsRecord,
+		LastSuccessAt: cm.aggregatedMetrics.LastSuccessAt,
+		LastFailureAt: cm.aggregatedMetrics.LastFailureAt,
 	}, nil
 }
 

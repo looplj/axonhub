@@ -63,6 +63,15 @@ export const proxyConfigSchema = z.object({
 })
 export type ProxyConfig = z.infer<typeof proxyConfigSchema>
 
+// Channel Performance
+export const channelPerformanceSchema = z.object({
+  avgLatencyMs: z.number(),
+  avgTokenPerSecond: z.number(),
+  avgStreamFirstTokenLatencyMs: z.number(),
+  avgStreamTokenPerSecond: z.number(),
+})
+export type ChannelPerformance = z.infer<typeof channelPerformanceSchema>
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
@@ -87,6 +96,7 @@ export const channelSchema = z.object({
   settings: channelSettingsSchema.optional().nullable(),
   orderingWeight: z.number().default(0),
   errorMessage: z.string().optional().nullable(),
+  channelPerformance: channelPerformanceSchema.optional().nullable(),
 })
 export type Channel = z.infer<typeof channelSchema>
 

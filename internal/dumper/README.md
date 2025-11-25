@@ -1,6 +1,6 @@
 # Dumper Module
 
-The dumper module provides functionality to dump data to files when errors occur. It supports dumping generic structs as JSON and stream events as JSONL (JSON Lines).
+The dumper module provides functionality to dump data to files when errors occur. It supports dumping generic structs as JSON, stream events as JSONL (JSON Lines), and raw byte data as binary files.
 
 ## Configuration
 
@@ -73,11 +73,24 @@ if err != nil {
 }
 ```
 
+### Dumping Raw Bytes
+
+```go
+// Assuming you have a dumper instance and some byte data
+byteData := []byte{0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64}
+
+err := dumper.DumpBytes(context, byteData, "raw_data")
+if err != nil {
+    // Handle error
+}
+```
+
 ## File Naming
 
 Dumped files are named with the pattern: `{filename}_{timestamp}.{extension}`
 - For structs: `{filename}_{YYYYMMDD_HHMMSS}.json`
 - For stream events: `{filename}_{YYYYMMDD_HHMMSS}.jsonl`
+- For raw bytes: `{filename}_{YYYYMMDD_HHMMSS}.bin`
 
 ## Notes
 

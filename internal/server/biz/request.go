@@ -1,6 +1,7 @@
 package biz
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"os"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -496,14 +498,18 @@ func (s *RequestService) AppendRequestExecutionChunk(
 		return nil
 	}
 
+	if bytes.Equal(chunk.Data, llm.DoneStreamEvent.Data) {
+		return nil
+	}
+
 	chunkBytes, err := xjson.Marshal(jsonStreamEvent{
 		LastEventID: chunk.LastEventID,
 		Type:        chunk.Type,
 		Data:        chunk.Data,
 	})
 	if err != nil {
-		log.Error(ctx, "Failed to marshal chunk", log.Cause(err))
-		return err
+		dumper.DumpBytes(ctx, chunk.Data, "request-execution-chunk.json")
+		return fmt.Errorf("failed to marshal chunk: %w", err)
 	}
 
 	client := s.entFromContext(ctx)
@@ -511,8 +517,7 @@ func (s *RequestService) AppendRequestExecutionChunk(
 	// Get the execution to check data storage
 	execution, err := client.RequestExecution.Get(ctx, executionID)
 	if err != nil {
-		log.Error(ctx, "Failed to get request execution", log.Cause(err))
-		return err
+		return fmt.Errorf("failed to get request execution: %w", err)
 	}
 
 	// Get data storage if set
@@ -549,14 +554,12 @@ func (s *RequestService) AppendRequestExecutionChunk(
 		// Save back
 		allChunksBytes, err := json.Marshal(existingChunks)
 		if err != nil {
-			log.Error(ctx, "Failed to marshal all chunks", log.Cause(err))
-			return err
+			return fmt.Errorf("failed to marshal all chunks: %w", err)
 		}
 
 		_, err = s.DataStorageService.SaveData(ctx, dataStorage, key, allChunksBytes)
 		if err != nil {
-			log.Error(ctx, "Failed to save chunks to external storage", log.Cause(err))
-			return err
+			return fmt.Errorf("failed to save chunks to external storage: %w", err)
 		}
 	} else {
 		// Store in database
@@ -564,8 +567,7 @@ func (s *RequestService) AppendRequestExecutionChunk(
 			AppendResponseChunks([]objects.JSONRawMessage{chunkBytes}).
 			Save(ctx)
 		if err != nil {
-			log.Error(ctx, "Failed to append response chunk", log.Cause(err))
-			return err
+			return fmt.Errorf("failed to append response chunk: %w", err)
 		}
 	}
 
@@ -589,14 +591,18 @@ func (s *RequestService) AppendRequestChunk(
 		return nil
 	}
 
+	if bytes.Equal(chunk.Data, llm.DoneStreamEvent.Data) {
+		return nil
+	}
+
 	chunkBytes, err := xjson.Marshal(jsonStreamEvent{
 		LastEventID: chunk.LastEventID,
 		Type:        chunk.Type,
 		Data:        chunk.Data,
 	})
 	if err != nil {
-		log.Error(ctx, "Failed to marshal chunk", log.Cause(err))
-		return err
+		dumper.DumpBytes(ctx, chunk.Data, "request-chunk.json")
+		return fmt.Errorf("failed to marshal chunk: %w", err)
 	}
 
 	client := s.entFromContext(ctx)
@@ -604,8 +610,7 @@ func (s *RequestService) AppendRequestChunk(
 	// Get the request to check data storage
 	req, err := client.Request.Get(ctx, requestID)
 	if err != nil {
-		log.Error(ctx, "Failed to get request", log.Cause(err))
-		return err
+		return fmt.Errorf("failed to get request: %w", err)
 	}
 
 	// Get data storage if set
@@ -641,14 +646,12 @@ func (s *RequestService) AppendRequestChunk(
 		// Save back
 		allChunksBytes, err := json.Marshal(existingChunks)
 		if err != nil {
-			log.Error(ctx, "Failed to marshal all chunks", log.Cause(err))
-			return err
+			return fmt.Errorf("failed to marshal all chunks: %w", err)
 		}
 
 		_, err = s.DataStorageService.SaveData(ctx, dataStorage, key, allChunksBytes)
 		if err != nil {
-			log.Error(ctx, "Failed to save chunks to external storage", log.Cause(err))
-			return err
+			return fmt.Errorf("failed to save chunks to external storage: %w", err)
 		}
 	} else {
 		// Store in database
@@ -656,8 +659,7 @@ func (s *RequestService) AppendRequestChunk(
 			AppendResponseChunks([]objects.JSONRawMessage{chunkBytes}).
 			Save(ctx)
 		if err != nil {
-			log.Error(ctx, "Failed to append response chunk", log.Cause(err))
-			return err
+			return fmt.Errorf("failed to append response chunk: %w", err)
 		}
 	}
 
@@ -682,8 +684,7 @@ func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int,
 		SetStatus(status).
 		Save(ctx)
 	if err != nil {
-		log.Error(ctx, "Failed to update request status", log.Cause(err), log.Any("status", status))
-		return err
+		return fmt.Errorf("failed to update request status: %w", err)
 	}
 
 	return nil
@@ -706,7 +707,7 @@ func (s *RequestService) UpdateRequestChannelID(ctx context.Context, requestID i
 		SetChannelID(channelID).
 		Save(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update request channel ID: %w", err)
 	}
 
 	return nil
@@ -732,8 +733,7 @@ func (s *RequestService) LoadRequestBody(ctx context.Context, req *ent.Request) 
 
 	data, err := s.DataStorageService.LoadData(ctx, dataStorage, key)
 	if err != nil {
-		log.Warn(ctx, "Failed to load request body", log.Cause(err), log.Int("request_id", req.ID))
-		return req.RequestBody, nil
+		return nil, fmt.Errorf("failed to load request body: %w", err)
 	}
 
 	return objects.JSONRawMessage(data), nil

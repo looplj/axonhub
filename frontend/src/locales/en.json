@@ -554,7 +554,12 @@
       "status": "Status",
       "tags": "Tags",
       "baseURL": "Base URL",
-      "supportedModels": "Supported Models",
+      "supportedModels": "Models",
+      "performance": "Performance",
+      "firstTokenLatency": "FTL",
+      "tokensPerSecond": "TPS",
+      "firstTokenLatencyFull": "First Token Latency",
+      "tokensPerSecondFull": "Tokens/Second",
       "test": "Test",
       "createdAt": "Created At",
       "updatedAt": "Updated At",
@@ -725,7 +730,7 @@
         "fieldLabels": {
           "baseUrl": "Base URL",
           "apiKey": "API Key",
-          "supportedModels": "Supported Models",
+          "supportedModels": "Models",
           "defaultTestModel": "Default Test Model"
         },
         "status": {
@@ -762,10 +767,10 @@
           "placeholder": "sk-...",
           "editPlaceholder": "Leave empty to keep unchanged",
           "description": "API key for authentication",
-          "multiLineHint": "Enter one API key per line for batch creation"
+          "multiLineHint": "One API key per line, will create multiple channels if provided multiple keys."
         },
         "supportedModels": {
-          "label": "Supported Models",
+          "label": "Models",
           "description": "List of models supported by this channel",
           "required": "Please add at least one supported model",
           "defaultModelsLabel": "Quick Add Models",
@@ -773,7 +778,7 @@
           "largeListHint": "Fetched {{count}} models. Use the search above to find specific models."
         },
         "defaultTestModel": {
-          "label": "Default Test Model",
+          "label": "Test Model",
           "description": "Default model for testing connections"
         },
         "modelName": {
