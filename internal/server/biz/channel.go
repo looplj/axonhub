@@ -32,6 +32,9 @@ type Channel struct {
 
 	// CachedOverrideParams stores the parsed override parameters to avoid repeated JSON parsing
 	CachedOverrideParams map[string]any
+
+	// CachedOverrideHeaders stores the parsed override headers to avoid repeated JSON parsing
+	CachedOverrideHeaders []objects.HeaderEntry
 }
 
 type ChannelServiceParams struct {

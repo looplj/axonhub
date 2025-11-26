@@ -878,8 +878,16 @@
           "action": "Overrides",
           "title": "Override Settings",
           "parameters": {
-            "title": "Override Parameters",
-            "description": "Provide JSON-formatted overrides to customize the request parameters sent through this channel"
+            "title": "Override Body",
+            "description": "Provide JSON-formatted overrides to customize the request body sent through this channel. Use \"__AXONHUB_CLEAR__\" as the value to remove a parameter from the request body."
+          },
+          "headers": {
+            "title": "Override Headers",
+            "description": "Configure custom HTTP headers that will be applied to all requests sent through this channel.",
+            "key": "Header Key",
+            "value": "Header Value",
+            "valuePlaceholder": "Use __AXONHUB_CLEAR__ to delete this header",
+            "addButton": "Add Header"
           }
         }
       },
@@ -975,7 +983,8 @@
       "gcpJsonDataRequired": "GCP Service Account JSON is required",
       "atLeastOneChannel": "At least one channel is required",
       "overrideParametersInvalidJson": "Must be valid JSON",
-      "overrideParametersStreamNotAllowed": "Stream cannot be overridden"
+      "overrideParametersStreamNotAllowed": "Stream cannot be overridden",
+      "forbiddenHeader": "Header cannot override sensitive headers like Authorization, API-Key, or Cookie"
     }
   },
   "dataStorages": {
@@ -1793,7 +1802,8 @@
       "archive": "Archive",
       "archiving": "Archiving...",
       "activate": "Activate",
-      "activating": "Activating..."
+      "activating": "Activating...",
+      "remove": "Remove"
     },
     "actions": {
       "test": "Test",

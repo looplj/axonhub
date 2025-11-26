@@ -137,7 +137,8 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 
 	// Add outbound middlewares (executed after outbound.TransformRequest)
 	middlewares = append(middlewares,
-		applyOverrideParameters(outbound),
+		applyOverrideRequestBody(outbound),
+		applyOverrideRequestHeaders(outbound),
 
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.

@@ -126,6 +126,23 @@ func (c *Channel) GetOverrideParameters() map[string]any {
 	return c.CachedOverrideParams
 }
 
+// GetOverrideHeaders returns the cached override headers for the channel.
+// If the headers haven't been loaded yet, it loads and caches them.
+func (c *Channel) GetOverrideHeaders() []objects.HeaderEntry {
+	if c.CachedOverrideHeaders != nil {
+		return c.CachedOverrideHeaders
+	}
+
+	if c.Settings == nil || len(c.Settings.OverrideHeaders) == 0 {
+		c.CachedOverrideHeaders = make([]objects.HeaderEntry, 0)
+		return c.CachedOverrideHeaders
+	}
+
+	c.CachedOverrideHeaders = c.Settings.OverrideHeaders
+
+	return c.CachedOverrideHeaders
+}
+
 // getProxyConfig extracts proxy configuration from channel settings
 // Returns nil if no proxy configuration is set (backward compatibility).
 func getProxyConfig(channelSettings *objects.ChannelSettings) *objects.ProxyConfig {

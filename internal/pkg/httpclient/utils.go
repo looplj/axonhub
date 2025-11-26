@@ -46,7 +46,7 @@ func IsHTTPStatusCodeRetryable(statusCode int) bool {
 	return false // Non-error status codes don't need retrying
 }
 
-var blockedHeaders = map[string]bool{
+var BlockedHeaders = map[string]bool{
 	"Content-Length":    true,
 	"Transfer-Encoding": true,
 	// The client will handle it automatically.
@@ -62,7 +62,7 @@ var blockedHeaders = map[string]bool{
 // Blocked headers are not merged.
 func MergeHTTPHeaders(dest, src http.Header) http.Header {
 	for k, v := range src {
-		if _, ok := dest[k]; !ok && !blockedHeaders[k] {
+		if _, ok := dest[k]; !ok && !BlockedHeaders[k] {
 			dest[k] = v
 		}
 	}

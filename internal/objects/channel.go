@@ -23,6 +23,11 @@ type ModelMapping struct {
 	To string `json:"to"`
 }
 
+type HeaderEntry struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 type ChannelSettings struct {
 	// ExtraModelPrefix sets the channel accept the model with the extra prefix.
 	// e.g. a channel
@@ -36,9 +41,14 @@ type ChannelSettings struct {
 	// e.g. {"from": "deepseek-chat", "to": "deepseek/deepseek-chat"} will add a alias "deepseek-chat" for "deepseek/deepseek-chat".
 	ModelMappings []ModelMapping `json:"modelMappings"`
 
-	// OverrideParameters sets the channel override the request parameters.
+	// OverrideParameters sets the channel override the request body.
+	// A json string.
 	// e.g. {"max_tokens": 100}, {"temperature": 0.7}
 	OverrideParameters string `json:"overrideParameters"`
+
+	// OverrideHeaders sets the channel override the request headers.
+	// e.g. [{"key": "User-Agent", "value": "AxonHub"}]
+	OverrideHeaders []HeaderEntry `json:"overrideHeaders"`
 
 	// Proxy configuration for the channel. If not set, defaults to environment proxy type.
 	Proxy *ProxyConfig `json:"proxy,omitempty"`

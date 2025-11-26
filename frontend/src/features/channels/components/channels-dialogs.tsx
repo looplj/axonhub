@@ -10,7 +10,7 @@ import { ChannelsBulkOrderingDialog } from './channels-bulk-ordering-dialog'
 import { ChannelsDeleteDialog } from './channels-delete-dialog'
 import { ChannelsErrorResolvedDialog } from './channels-error-resolved-dialog'
 import { ChannelsModelMappingDialog } from './channels-model-mapping-dialog'
-import { ChannelsOverrideParametersDialog } from './channels-override-parameters-dialog'
+import { ChannelsOverrideDialog } from './channels-override-dialog'
 import { ChannelsProxyDialog } from './channels-proxy-dialog'
 import { ChannelsStatusDialog } from './channels-status-dialog'
 import { ChannelsTestDialog } from './channels-test-dialog'
@@ -100,9 +100,9 @@ export function ChannelsDialogs() {
             currentRow={currentRow}
           />
 
-          <ChannelsOverrideParametersDialog
-            key={`channel-override-parameters-${currentRow.id}`}
-            open={open === 'overrideParameters'}
+          <ChannelsOverrideDialog
+            key={`channel-overrides-${currentRow.id}`}
+            open={open === 'overrides'}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
                 setOpen(null)
