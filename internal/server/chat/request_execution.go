@@ -6,6 +6,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/llm"
 	"github.com/looplj/axonhub/internal/llm/pipeline"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
@@ -18,6 +19,8 @@ type persistRequestExecutionMiddleware struct {
 	pipeline.DummyMiddleware
 
 	outbound *PersistentOutboundTransformer
+
+	rawResponse *httpclient.Response
 }
 
 func persistRequestExecution(outbound *PersistentOutboundTransformer) pipeline.Middleware {
@@ -61,6 +64,34 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 	state.RequestExec = requestExec
 
 	return request, nil
+}
+
+func (m *persistRequestExecutionMiddleware) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
+	m.rawResponse = response
+	return response, nil
+}
+
+func (m *persistRequestExecutionMiddleware) OnOutboundLlmResponse(ctx context.Context, llmResp *llm.Response) (*llm.Response, error) {
+	state := m.outbound.state
+	if state == nil || state.RequestExec == nil {
+		return llmResp, nil
+	}
+
+	// Use context without cancellation to ensure persistence even if client canceled
+	persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	err := state.RequestService.UpdateRequestExecutionCompleted(
+		persistCtx,
+		state.RequestExec.ID,
+		llmResp.ID,
+		m.rawResponse.Body,
+	)
+	if err != nil {
+		log.Warn(persistCtx, "Failed to update request execution status to completed", log.Cause(err))
+	}
+
+	return llmResp, nil
 }
 
 func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Context, err error) {

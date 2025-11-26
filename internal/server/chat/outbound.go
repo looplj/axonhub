@@ -356,48 +356,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {
-	llmResp, err := p.wrapped.TransformResponse(ctx, response)
-	if err != nil {
-		if p.state.RequestExec != nil {
-			// Use context without cancellation to ensure persistence even if client canceled
-			persistCtx := context.WithoutCancel(ctx)
-
-			if innerErr := p.state.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, p.state.RequestExec.ID, err); innerErr != nil {
-				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(innerErr))
-			}
-		}
-
-		return nil, err
-	}
-
-	if p.state.RequestExec != nil {
-		// Use context without cancellation to ensure persistence even if client canceled
-		persistCtx := context.WithoutCancel(ctx)
-
-		err = p.state.RequestService.UpdateRequestExecutionCompleted(
-			persistCtx,
-			p.state.RequestExec.ID,
-			llmResp.ID,
-			response.Body,
-		)
-		if err != nil {
-			log.Warn(persistCtx, "Failed to update request execution status to completed", log.Cause(err))
-		}
-	}
-
-	// Update request with usage log if we have a request and response with usage data
-	// Use context without cancellation to ensure persistence even if client canceled
-	if p.state.Request != nil && llmResp != nil {
-		persistCtx := context.WithoutCancel(ctx)
-		usage := llmResp.Usage
-
-		_, err = p.state.UsageLogService.CreateUsageLogFromRequest(persistCtx, p.state.Request, p.state.RequestExec, usage)
-		if err != nil {
-			log.Warn(persistCtx, "Failed to create usage log from request", log.Cause(err))
-		}
-	}
-
-	return llmResp, nil
+	return p.wrapped.TransformResponse(ctx, response)
 }
 
 func (p *PersistentOutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {

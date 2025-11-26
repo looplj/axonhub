@@ -52,5 +52,11 @@ func (p *pipeline) notStream(
 		return nil, fmt.Errorf("failed to transform final response: %w", err)
 	}
 
+	// Apply inbound raw response middlewares after final response transformation
+	finalResp, err = p.applyInboundRawResponseMiddlewares(ctx, finalResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply inbound raw response middlewares: %w", err)
+	}
+
 	return finalResp, nil
 }

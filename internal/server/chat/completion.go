@@ -132,7 +132,7 @@ func (processor *ChatCompletionProcessor) Process(ctx context.Context, request *
 	middlewares = append(middlewares,
 		applyApiKeyModelMapping(inbound),
 		selectChannels(inbound),
-		createRequest(inbound),
+		persistRequest(inbound),
 	)
 
 	// Add outbound middlewares (executed after outbound.TransformRequest)
