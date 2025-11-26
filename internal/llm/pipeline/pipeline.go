@@ -113,27 +113,36 @@ type Result struct {
 func (p *pipeline) applyBeforeRequestMiddlewares(ctx context.Context, request *llm.Request) (*llm.Request, error) {
 	var err error
 
-	if len(p.middlewares) > 0 {
-		for _, dec := range p.middlewares {
-			request, err = dec.OnInboundLlmRequest(ctx, request)
-			if err != nil {
-				return nil, err
-			}
+	for _, dec := range p.middlewares {
+		request, err = dec.OnInboundLlmRequest(ctx, request)
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	return request, nil
 }
 
+func (p *pipeline) applyInboundRawResponseMiddlewares(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
+	var err error
+
+	for _, dec := range p.middlewares {
+		response, err = dec.OnInboundRawResponse(ctx, response)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return response, nil
+}
+
 func (p *pipeline) applyRawRequestMiddlewares(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 	var err error
 
-	if len(p.middlewares) > 0 {
-		for _, dec := range p.middlewares {
-			request, err = dec.OnOutboundRawRequest(ctx, request)
-			if err != nil {
-				return nil, err
-			}
+	for _, dec := range p.middlewares {
+		request, err = dec.OnOutboundRawRequest(ctx, request)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -143,13 +152,11 @@ func (p *pipeline) applyRawRequestMiddlewares(ctx context.Context, request *http
 func (p *pipeline) applyRawResponseMiddlewares(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
 	var err error
 
-	if len(p.middlewares) > 0 {
-		// Response middlewares should be applied in reverse order (last to first)
-		for i := len(p.middlewares) - 1; i >= 0; i-- {
-			response, err = p.middlewares[i].OnOutboundRawResponse(ctx, response)
-			if err != nil {
-				return nil, err
-			}
+	// Response middlewares should be applied in reverse order (last to first)
+	for i := len(p.middlewares) - 1; i >= 0; i-- {
+		response, err = p.middlewares[i].OnOutboundRawResponse(ctx, response)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -159,13 +166,11 @@ func (p *pipeline) applyRawResponseMiddlewares(ctx context.Context, response *ht
 func (p *pipeline) applyRawStreamMiddlewares(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
 	var err error
 
-	if len(p.middlewares) > 0 {
-		// Stream middlewares should be applied in reverse order (last to first)
-		for i := len(p.middlewares) - 1; i >= 0; i-- {
-			stream, err = p.middlewares[i].OnOutboundRawStream(ctx, stream)
-			if err != nil {
-				return nil, err
-			}
+	// Stream middlewares should be applied in reverse order (last to first)
+	for i := len(p.middlewares) - 1; i >= 0; i-- {
+		stream, err = p.middlewares[i].OnOutboundRawStream(ctx, stream)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -173,24 +178,20 @@ func (p *pipeline) applyRawStreamMiddlewares(ctx context.Context, stream streams
 }
 
 func (p *pipeline) applyRawErrorResponseMiddlewares(ctx context.Context, err error) {
-	if len(p.middlewares) > 0 {
-		// Error response middlewares should be applied in reverse order (last to first)
-		for i := len(p.middlewares) - 1; i >= 0; i-- {
-			p.middlewares[i].OnOutboundRawError(ctx, err)
-		}
+	// Error response middlewares should be applied in reverse order (last to first)
+	for i := len(p.middlewares) - 1; i >= 0; i-- {
+		p.middlewares[i].OnOutboundRawError(ctx, err)
 	}
 }
 
 func (p *pipeline) applyLlmResponseMiddlewares(ctx context.Context, response *llm.Response) (*llm.Response, error) {
 	var err error
 
-	if len(p.middlewares) > 0 {
-		// LLM response middlewares should be applied in reverse order (last to first)
-		for i := len(p.middlewares) - 1; i >= 0; i-- {
-			response, err = p.middlewares[i].OnOutboundLlmResponse(ctx, response)
-			if err != nil {
-				return nil, err
-			}
+	// LLM response middlewares should be applied in reverse order (last to first)
+	for i := len(p.middlewares) - 1; i >= 0; i-- {
+		response, err = p.middlewares[i].OnOutboundLlmResponse(ctx, response)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -200,13 +201,11 @@ func (p *pipeline) applyLlmResponseMiddlewares(ctx context.Context, response *ll
 func (p *pipeline) applyLlmStreamMiddlewares(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
 	var err error
 
-	if len(p.middlewares) > 0 {
-		// LLM stream middlewares should be applied in reverse order (last to first)
-		for i := len(p.middlewares) - 1; i >= 0; i-- {
-			stream, err = p.middlewares[i].OnOutboundLlmStream(ctx, stream)
-			if err != nil {
-				return nil, err
-			}
+	// LLM stream middlewares should be applied in reverse order (last to first)
+	for i := len(p.middlewares) - 1; i >= 0; i-- {
+		stream, err = p.middlewares[i].OnOutboundLlmStream(ctx, stream)
+		if err != nil {
+			return nil, err
 		}
 	}
 

@@ -25,6 +25,8 @@ func withPerformanceRecording(outbound *PersistentOutboundTransformer) pipeline.
 
 // performanceRecording is a unified middleware that handles all performance tracking.
 type performanceRecording struct {
+	pipeline.DummyMiddleware
+
 	outbound *PersistentOutboundTransformer
 }
 

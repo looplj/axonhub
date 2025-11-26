@@ -25,16 +25,14 @@ func withConnectionTracking(outbound *PersistentOutboundTransformer, tracker *De
 
 // connectionTracking is a middleware that increments/decrements connection count.
 type connectionTracking struct {
+	pipeline.DummyMiddleware
+
 	outbound *PersistentOutboundTransformer
 	tracker  *DefaultConnectionTracker
 }
 
 func (m *connectionTracking) Name() string {
 	return "track-connections"
-}
-
-func (m *connectionTracking) OnInboundLlmRequest(ctx context.Context, request *llm.Request) (*llm.Request, error) {
-	return request, nil
 }
 
 func (m *connectionTracking) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
@@ -55,18 +53,10 @@ func (m *connectionTracking) OnOutboundRawRequest(ctx context.Context, request *
 	return request, nil
 }
 
-func (m *connectionTracking) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
-	return response, nil
-}
-
 func (m *connectionTracking) OnOutboundLlmResponse(ctx context.Context, response *llm.Response) (*llm.Response, error) {
 	// Decrement connection count after response completes
 	m.decrementConnection(ctx)
 	return response, nil
-}
-
-func (m *connectionTracking) OnOutboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-	return stream, nil
 }
 
 func (m *connectionTracking) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {

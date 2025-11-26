@@ -16,6 +16,10 @@ type Middleware interface {
 	// OnInboundLlmRequest execute after inbound transform http request to llm request and before outbound transform llm request to http request.
 	OnInboundLlmRequest(ctx context.Context, request *llm.Request) (*llm.Request, error)
 
+	// OnInboundRawResponse execute after inbound transform llm response to http response.
+	// Only execute if the request is not a stream.
+	OnInboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)
+
 	// OnOutboundRawRequest execute after outbound transform llm request to http request and before send request to the provider.
 	OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error)
 
@@ -56,6 +60,7 @@ func OnRawRequest(name string, handler func(ctx context.Context, request *httpcl
 type simpleMiddleware struct {
 	name                            string
 	inboundRequestHandler           func(ctx context.Context, request *llm.Request) (*llm.Request, error)
+	inboundRawResponseHandler       func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)
 	outboundRequestHandler          func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error)
 	outboundRawResponseHandler      func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error)
 	outboundRawStreamHandler        func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error)
@@ -74,6 +79,14 @@ func (d *simpleMiddleware) OnInboundLlmRequest(ctx context.Context, request *llm
 	}
 
 	return d.inboundRequestHandler(ctx, request)
+}
+
+func (d *simpleMiddleware) OnInboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
+	if d.inboundRawResponseHandler == nil {
+		return response, nil
+	}
+
+	return d.inboundRawResponseHandler(ctx, response)
 }
 
 func (d *simpleMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
@@ -134,6 +147,10 @@ func (d *DummyMiddleware) Name() string {
 
 func (d *DummyMiddleware) OnInboundLlmRequest(ctx context.Context, request *llm.Request) (*llm.Request, error) {
 	return request, nil
+}
+
+func (d *DummyMiddleware) OnInboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
+	return response, nil
 }
 
 func (d *DummyMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {

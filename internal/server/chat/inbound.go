@@ -166,22 +166,7 @@ func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, req
 }
 
 func (p *PersistentInboundTransformer) TransformResponse(ctx context.Context, response *llm.Response) (*httpclient.Response, error) {
-	finalResp, err := p.wrapped.TransformResponse(ctx, response)
-	if err != nil {
-		return nil, err
-	}
-
-	if p.state.Request != nil {
-		// Use context without cancellation to ensure persistence even if client canceled
-		persistCtx := context.WithoutCancel(ctx)
-
-		err = p.state.RequestService.UpdateRequestCompleted(persistCtx, p.state.Request.ID, response.ID, finalResp.Body)
-		if err != nil {
-			log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
-		}
-	}
-
-	return finalResp, nil
+	return p.wrapped.TransformResponse(ctx, response)
 }
 
 func (p *PersistentInboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*httpclient.StreamEvent], error) {
@@ -272,30 +257,6 @@ func selectChannels(inbound *PersistentInboundTransformer) pipeline.Middleware {
 		}
 
 		inbound.state.Channels = channels
-
-		return llmRequest, nil
-	})
-}
-
-// createRequest creates a middleware that creates the request entity in the database.
-// This is the third step in the inbound pipeline.
-func createRequest(inbound *PersistentInboundTransformer) pipeline.Middleware {
-	return pipeline.OnLlmRequest("create-request", func(ctx context.Context, llmRequest *llm.Request) (*llm.Request, error) {
-		if inbound.state.Request != nil {
-			return llmRequest, nil
-		}
-
-		request, err := inbound.state.RequestService.CreateRequest(
-			ctx,
-			llmRequest,
-			inbound.state.RawRequest,
-			inbound.APIFormat(),
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		inbound.state.Request = request
 
 		return llmRequest, nil
 	})

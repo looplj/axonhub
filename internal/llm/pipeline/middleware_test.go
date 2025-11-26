@@ -71,6 +71,7 @@ type trackingMiddleware struct {
 	name                      string
 	callOrder                 *[]string
 	inboundRequestCalled      bool
+	inboundRawResponseCalled  bool
 	outboundRequestCalled     bool
 	outboundRawResponseCalled bool
 	outboundLlmResponseCalled bool
@@ -105,6 +106,14 @@ func (m *trackingMiddleware) OnInboundLlmRequest(ctx context.Context, request *l
 	}
 
 	return request, nil
+}
+
+func (m *trackingMiddleware) OnInboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
+	m.inboundRawResponseCalled = true
+
+	*m.callOrder = append(*m.callOrder, m.name+":OnInboundRawResponse")
+
+	return response, nil
 }
 
 func (m *trackingMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
@@ -195,16 +204,19 @@ func TestMiddleware_NonStreaming_CallOrder(t *testing.T) {
 
 	// Verify all middlewares were called
 	require.True(t, middleware1.inboundRequestCalled)
+	require.True(t, middleware1.inboundRawResponseCalled)
 	require.True(t, middleware1.outboundRequestCalled)
 	require.True(t, middleware1.outboundRawResponseCalled)
 	require.True(t, middleware1.outboundLlmResponseCalled)
 
 	require.True(t, middleware2.inboundRequestCalled)
+	require.True(t, middleware2.inboundRawResponseCalled)
 	require.True(t, middleware2.outboundRequestCalled)
 	require.True(t, middleware2.outboundRawResponseCalled)
 	require.True(t, middleware2.outboundLlmResponseCalled)
 
 	require.True(t, middleware3.inboundRequestCalled)
+	require.True(t, middleware3.inboundRawResponseCalled)
 	require.True(t, middleware3.outboundRequestCalled)
 	require.True(t, middleware3.outboundRawResponseCalled)
 	require.True(t, middleware3.outboundLlmResponseCalled)
@@ -212,6 +224,7 @@ func TestMiddleware_NonStreaming_CallOrder(t *testing.T) {
 	// Verify the call order follows the onion model:
 	// Request: M1 -> M2 -> M3 (forward)
 	// Response: M3 -> M2 -> M1 (reverse)
+	// Final inbound raw response: M1 -> M2 -> M3 (forward, after final transformation)
 	expectedOrder := []string{
 		// Request phase (forward order)
 		"M1:OnInboundLlmRequest",
@@ -227,6 +240,10 @@ func TestMiddleware_NonStreaming_CallOrder(t *testing.T) {
 		"M3:OnOutboundLlmResponse",
 		"M2:OnOutboundLlmResponse",
 		"M1:OnOutboundLlmResponse",
+		// Inbound raw response phase (forward order, after final transformation)
+		"M1:OnInboundRawResponse",
+		"M2:OnInboundRawResponse",
+		"M3:OnInboundRawResponse",
 	}
 
 	require.Equal(t, expectedOrder, callOrder, "Middleware call order should follow onion model")
@@ -378,6 +395,9 @@ func TestMiddleware_LlmRequest_Error(t *testing.T) {
 	require.False(t, middleware1.outboundRequestCalled)
 	require.False(t, middleware2.outboundRequestCalled)
 	require.False(t, middleware3.outboundRequestCalled)
+	require.False(t, middleware1.inboundRawResponseCalled)
+	require.False(t, middleware2.inboundRawResponseCalled)
+	require.False(t, middleware3.inboundRawResponseCalled)
 }
 
 // TestMiddleware_RawRequest_Error tests that an error in OnOutboundRawRequest stops the pipeline.
@@ -420,6 +440,14 @@ func TestMiddleware_RawRequest_Error(t *testing.T) {
 	require.False(t, middleware1.outboundRawResponseCalled)
 	require.False(t, middleware2.outboundRawResponseCalled)
 	require.False(t, middleware3.outboundRawResponseCalled)
+	require.False(t, middleware1.outboundLlmResponseCalled)
+	require.False(t, middleware2.outboundLlmResponseCalled)
+	require.False(t, middleware3.outboundLlmResponseCalled)
+
+	// No inbound response middlewares should be called since error occurred before them
+	require.False(t, middleware1.inboundRawResponseCalled)
+	require.False(t, middleware2.inboundRawResponseCalled)
+	require.False(t, middleware3.inboundRawResponseCalled)
 }
 
 // TestMiddleware_RawResponse_Error tests that an error in OnOutboundRawResponse stops the pipeline.
@@ -465,6 +493,11 @@ func TestMiddleware_RawResponse_Error(t *testing.T) {
 	require.False(t, middleware1.outboundLlmResponseCalled)
 	require.False(t, middleware2.outboundLlmResponseCalled)
 	require.False(t, middleware3.outboundLlmResponseCalled)
+
+	// No inbound response middlewares should be called since error occurred before them
+	require.False(t, middleware1.inboundRawResponseCalled)
+	require.False(t, middleware2.inboundRawResponseCalled)
+	require.False(t, middleware3.inboundRawResponseCalled)
 }
 
 // TestMiddleware_LlmResponse_Error tests that an error in OnOutboundLlmResponse stops the pipeline.
@@ -510,6 +543,11 @@ func TestMiddleware_LlmResponse_Error(t *testing.T) {
 	require.True(t, middleware3.outboundLlmResponseCalled)
 	require.True(t, middleware2.outboundLlmResponseCalled)
 	require.False(t, middleware1.outboundLlmResponseCalled)
+
+	// No inbound response middlewares should be called since error occurred before them
+	require.False(t, middleware1.inboundRawResponseCalled)
+	require.False(t, middleware2.inboundRawResponseCalled)
+	require.False(t, middleware3.inboundRawResponseCalled)
 }
 
 // TestMiddleware_RawStream_Error tests that an error in OnOutboundRawStream stops the pipeline.
@@ -647,6 +685,7 @@ func TestMiddleware_SingleMiddleware(t *testing.T) {
 	require.NotNil(t, result)
 
 	require.True(t, middleware.inboundRequestCalled)
+	require.True(t, middleware.inboundRawResponseCalled)
 	require.True(t, middleware.outboundRequestCalled)
 	require.True(t, middleware.outboundRawResponseCalled)
 	require.True(t, middleware.outboundLlmResponseCalled)
@@ -656,6 +695,7 @@ func TestMiddleware_SingleMiddleware(t *testing.T) {
 		"M1:OnOutboundRawRequest",
 		"M1:OnOutboundRawResponse",
 		"M1:OnOutboundLlmResponse",
+		"M1:OnInboundRawResponse",
 	}
 
 	require.Equal(t, expectedOrder, callOrder)
