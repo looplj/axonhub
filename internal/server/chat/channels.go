@@ -25,12 +25,12 @@ type DefaultChannelSelector struct {
 func NewDefaultChannelSelector(
 	channelService *biz.ChannelService,
 	systemService *biz.SystemService,
-	traceService *biz.TraceService,
+	requestService *biz.RequestService,
 	connectionTracker *DefaultConnectionTracker,
 ) *DefaultChannelSelector {
 	// Build strategies
 	strategies := []LoadBalanceStrategy{
-		NewTraceAwareStrategy(traceService),   // Priority 1: Last successful channel from trace
+		NewTraceAwareStrategy(requestService), // Priority 1: Last successful channel from trace
 		NewErrorAwareStrategy(channelService), // Priority 2: Health and error rate
 		NewWeightStrategy(),                   // Priority 3: Admin-configured weight
 		NewConnectionAwareStrategy(channelService, connectionTracker),

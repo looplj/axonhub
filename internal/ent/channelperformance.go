@@ -40,6 +40,28 @@ type ChannelPerformance struct {
 	LastSuccessAt *time.Time `json:"last_success_at,omitempty"`
 	// LastFailureAt holds the value of the "last_failure_at" field.
 	LastFailureAt *time.Time `json:"last_failure_at,omitempty"`
+	// Total number of requests (used to calculate avg metrics)
+	RequestCount int64 `json:"request_count,omitempty"`
+	// Total number of successful requests
+	SuccessCount int64 `json:"success_count,omitempty"`
+	// Total number of failed requests
+	FailureCount int64 `json:"failure_count,omitempty"`
+	// Total tokens across all requests
+	TotalTokenCount int64 `json:"total_token_count,omitempty"`
+	// Total request latency in milliseconds
+	TotalRequestLatencyMs int64 `json:"total_request_latency_ms,omitempty"`
+	// Total successful stream requests
+	StreamSuccessCount int64 `json:"stream_success_count,omitempty"`
+	// Total stream requests
+	StreamTotalRequestCount int64 `json:"stream_total_request_count,omitempty"`
+	// Total tokens across stream requests
+	StreamTotalTokenCount int64 `json:"stream_total_token_count,omitempty"`
+	// Total stream request latency in ms
+	StreamTotalRequestLatencyMs int64 `json:"stream_total_request_latency_ms,omitempty"`
+	// Total first token latency for streams
+	StreamTotalFirstTokenLatencyMs int64 `json:"stream_total_first_token_latency_ms,omitempty"`
+	// Number of consecutive failures
+	ConsecutiveFailures int64 `json:"consecutive_failures,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChannelPerformanceQuery when eager-loading is set.
 	Edges        ChannelPerformanceEdges `json:"edges"`
@@ -75,7 +97,7 @@ func (*ChannelPerformance) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case channelperformance.FieldAvgStreamTokenPerSecond:
 			values[i] = new(sql.NullFloat64)
-		case channelperformance.FieldID, channelperformance.FieldDeletedAt, channelperformance.FieldChannelID, channelperformance.FieldSuccessRate, channelperformance.FieldAvgLatencyMs, channelperformance.FieldAvgTokenPerSecond, channelperformance.FieldAvgStreamFirstTokenLatencyMs:
+		case channelperformance.FieldID, channelperformance.FieldDeletedAt, channelperformance.FieldChannelID, channelperformance.FieldSuccessRate, channelperformance.FieldAvgLatencyMs, channelperformance.FieldAvgTokenPerSecond, channelperformance.FieldAvgStreamFirstTokenLatencyMs, channelperformance.FieldRequestCount, channelperformance.FieldSuccessCount, channelperformance.FieldFailureCount, channelperformance.FieldTotalTokenCount, channelperformance.FieldTotalRequestLatencyMs, channelperformance.FieldStreamSuccessCount, channelperformance.FieldStreamTotalRequestCount, channelperformance.FieldStreamTotalTokenCount, channelperformance.FieldStreamTotalRequestLatencyMs, channelperformance.FieldStreamTotalFirstTokenLatencyMs, channelperformance.FieldConsecutiveFailures:
 			values[i] = new(sql.NullInt64)
 		case channelperformance.FieldCreatedAt, channelperformance.FieldUpdatedAt, channelperformance.FieldLastSuccessAt, channelperformance.FieldLastFailureAt:
 			values[i] = new(sql.NullTime)
@@ -168,6 +190,72 @@ func (_m *ChannelPerformance) assignValues(columns []string, values []any) error
 				_m.LastFailureAt = new(time.Time)
 				*_m.LastFailureAt = value.Time
 			}
+		case channelperformance.FieldRequestCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field request_count", values[i])
+			} else if value.Valid {
+				_m.RequestCount = value.Int64
+			}
+		case channelperformance.FieldSuccessCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field success_count", values[i])
+			} else if value.Valid {
+				_m.SuccessCount = value.Int64
+			}
+		case channelperformance.FieldFailureCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field failure_count", values[i])
+			} else if value.Valid {
+				_m.FailureCount = value.Int64
+			}
+		case channelperformance.FieldTotalTokenCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field total_token_count", values[i])
+			} else if value.Valid {
+				_m.TotalTokenCount = value.Int64
+			}
+		case channelperformance.FieldTotalRequestLatencyMs:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field total_request_latency_ms", values[i])
+			} else if value.Valid {
+				_m.TotalRequestLatencyMs = value.Int64
+			}
+		case channelperformance.FieldStreamSuccessCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field stream_success_count", values[i])
+			} else if value.Valid {
+				_m.StreamSuccessCount = value.Int64
+			}
+		case channelperformance.FieldStreamTotalRequestCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field stream_total_request_count", values[i])
+			} else if value.Valid {
+				_m.StreamTotalRequestCount = value.Int64
+			}
+		case channelperformance.FieldStreamTotalTokenCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field stream_total_token_count", values[i])
+			} else if value.Valid {
+				_m.StreamTotalTokenCount = value.Int64
+			}
+		case channelperformance.FieldStreamTotalRequestLatencyMs:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field stream_total_request_latency_ms", values[i])
+			} else if value.Valid {
+				_m.StreamTotalRequestLatencyMs = value.Int64
+			}
+		case channelperformance.FieldStreamTotalFirstTokenLatencyMs:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field stream_total_first_token_latency_ms", values[i])
+			} else if value.Valid {
+				_m.StreamTotalFirstTokenLatencyMs = value.Int64
+			}
+		case channelperformance.FieldConsecutiveFailures:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field consecutive_failures", values[i])
+			} else if value.Valid {
+				_m.ConsecutiveFailures = value.Int64
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -245,6 +333,39 @@ func (_m *ChannelPerformance) String() string {
 		builder.WriteString("last_failure_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("request_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RequestCount))
+	builder.WriteString(", ")
+	builder.WriteString("success_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SuccessCount))
+	builder.WriteString(", ")
+	builder.WriteString("failure_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.FailureCount))
+	builder.WriteString(", ")
+	builder.WriteString("total_token_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TotalTokenCount))
+	builder.WriteString(", ")
+	builder.WriteString("total_request_latency_ms=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TotalRequestLatencyMs))
+	builder.WriteString(", ")
+	builder.WriteString("stream_success_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.StreamSuccessCount))
+	builder.WriteString(", ")
+	builder.WriteString("stream_total_request_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.StreamTotalRequestCount))
+	builder.WriteString(", ")
+	builder.WriteString("stream_total_token_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.StreamTotalTokenCount))
+	builder.WriteString(", ")
+	builder.WriteString("stream_total_request_latency_ms=")
+	builder.WriteString(fmt.Sprintf("%v", _m.StreamTotalRequestLatencyMs))
+	builder.WriteString(", ")
+	builder.WriteString("stream_total_first_token_latency_ms=")
+	builder.WriteString(fmt.Sprintf("%v", _m.StreamTotalFirstTokenLatencyMs))
+	builder.WriteString(", ")
+	builder.WriteString("consecutive_failures=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ConsecutiveFailures))
 	builder.WriteByte(')')
 	return builder.String()
 }

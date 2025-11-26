@@ -20,16 +20,15 @@ import (
 func NewChatCompletionProcessor(
 	channelService *biz.ChannelService,
 	requestService *biz.RequestService,
-	traceService *biz.TraceService,
 	httpClient *httpclient.HttpClient,
 	inbound transformer.Inbound,
 	systemService *biz.SystemService,
 	usageLogService *biz.UsageLogService,
 ) *ChatCompletionProcessor {
-	connectionTracker := NewDefaultConnectionTracker(1024)
+	connectionTracker := NewDefaultConnectionTracker(256)
 
 	return NewChatCompletionProcessorWithSelector(
-		NewDefaultChannelSelector(channelService, systemService, traceService, connectionTracker),
+		NewDefaultChannelSelector(channelService, systemService, requestService, connectionTracker),
 		requestService,
 		channelService,
 		httpClient,

@@ -201,6 +201,237 @@ func (_u *ChannelPerformanceUpdate) ClearLastFailureAt() *ChannelPerformanceUpda
 	return _u
 }
 
+// SetRequestCount sets the "request_count" field.
+func (_u *ChannelPerformanceUpdate) SetRequestCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetRequestCount()
+	_u.mutation.SetRequestCount(v)
+	return _u
+}
+
+// SetNillableRequestCount sets the "request_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableRequestCount(v *int64) *ChannelPerformanceUpdate {
+	if v != nil {
+		_u.SetRequestCount(*v)
+	}
+	return _u
+}
+
+// AddRequestCount adds value to the "request_count" field.
+func (_u *ChannelPerformanceUpdate) AddRequestCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.AddRequestCount(v)
+	return _u
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (_u *ChannelPerformanceUpdate) SetSuccessCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetSuccessCount()
+	_u.mutation.SetSuccessCount(v)
+	return _u
+}
+
+// SetNillableSuccessCount sets the "success_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableSuccessCount(v *int64) *ChannelPerformanceUpdate {
+	if v != nil {
+		_u.SetSuccessCount(*v)
+	}
+	return _u
+}
+
+// AddSuccessCount adds value to the "success_count" field.
+func (_u *ChannelPerformanceUpdate) AddSuccessCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.AddSuccessCount(v)
+	return _u
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (_u *ChannelPerformanceUpdate) SetFailureCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetFailureCount()
+	_u.mutation.SetFailureCount(v)
+	return _u
+}
+
+// SetNillableFailureCount sets the "failure_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableFailureCount(v *int64) *ChannelPerformanceUpdate {
+	if v != nil {
+		_u.SetFailureCount(*v)
+	}
+	return _u
+}
+
+// AddFailureCount adds value to the "failure_count" field.
+func (_u *ChannelPerformanceUpdate) AddFailureCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.AddFailureCount(v)
+	return _u
+}
+
+// SetTotalTokenCount sets the "total_token_count" field.
+func (_u *ChannelPerformanceUpdate) SetTotalTokenCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetTotalTokenCount()
+	_u.mutation.SetTotalTokenCount(v)
+	return _u
+}
+
+// SetNillableTotalTokenCount sets the "total_token_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableTotalTokenCount(v *int64) *ChannelPerformanceUpdate {
+	if v != nil {
+		_u.SetTotalTokenCount(*v)
+	}
+	return _u
+}
+
+// AddTotalTokenCount adds value to the "total_token_count" field.
+func (_u *ChannelPerformanceUpdate) AddTotalTokenCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.AddTotalTokenCount(v)
+	return _u
+}
+
+// SetTotalRequestLatencyMs sets the "total_request_latency_ms" field.
+func (_u *ChannelPerformanceUpdate) SetTotalRequestLatencyMs(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetTotalRequestLatencyMs()
+	_u.mutation.SetTotalRequestLatencyMs(v)
+	return _u
+}
+
+// SetNillableTotalRequestLatencyMs sets the "total_request_latency_ms" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableTotalRequestLatencyMs(v *int64) *ChannelPerformanceUpdate {
+	if v != nil {
+		_u.SetTotalRequestLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddTotalRequestLatencyMs adds value to the "total_request_latency_ms" field.
+func (_u *ChannelPerformanceUpdate) AddTotalRequestLatencyMs(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.AddTotalRequestLatencyMs(v)
+	return _u
+}
+
+// SetStreamSuccessCount sets the "stream_success_count" field.
+func (_u *ChannelPerformanceUpdate) SetStreamSuccessCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetStreamSuccessCount()
+	_u.mutation.SetStreamSuccessCount(v)
+	return _u
+}
+
+// SetNillableStreamSuccessCount sets the "stream_success_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableStreamSuccessCount(v *int64) *ChannelPerformanceUpdate {
+	if v != nil {
+		_u.SetStreamSuccessCount(*v)
+	}
+	return _u
+}
+
+// AddStreamSuccessCount adds value to the "stream_success_count" field.
+func (_u *ChannelPerformanceUpdate) AddStreamSuccessCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.AddStreamSuccessCount(v)
+	return _u
+}
+
+// SetStreamTotalRequestCount sets the "stream_total_request_count" field.
+func (_u *ChannelPerformanceUpdate) SetStreamTotalRequestCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetStreamTotalRequestCount()
+	_u.mutation.SetStreamTotalRequestCount(v)
+	return _u
+}
+
+// SetNillableStreamTotalRequestCount sets the "stream_total_request_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableStreamTotalRequestCount(v *int64) *ChannelPerformanceUpdate {
+	if v != nil {
+		_u.SetStreamTotalRequestCount(*v)
+	}
+	return _u
+}
+
+// AddStreamTotalRequestCount adds value to the "stream_total_request_count" field.
+func (_u *ChannelPerformanceUpdate) AddStreamTotalRequestCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.AddStreamTotalRequestCount(v)
+	return _u
+}
+
+// SetStreamTotalTokenCount sets the "stream_total_token_count" field.
+func (_u *ChannelPerformanceUpdate) SetStreamTotalTokenCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetStreamTotalTokenCount()
+	_u.mutation.SetStreamTotalTokenCount(v)
+	return _u
+}
+
+// SetNillableStreamTotalTokenCount sets the "stream_total_token_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableStreamTotalTokenCount(v *int64) *ChannelPerformanceUpdate {
+	if v != nil {
+		_u.SetStreamTotalTokenCount(*v)
+	}
+	return _u
+}
+
+// AddStreamTotalTokenCount adds value to the "stream_total_token_count" field.
+func (_u *ChannelPerformanceUpdate) AddStreamTotalTokenCount(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.AddStreamTotalTokenCount(v)
+	return _u
+}
+
+// SetStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field.
+func (_u *ChannelPerformanceUpdate) SetStreamTotalRequestLatencyMs(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetStreamTotalRequestLatencyMs()
+	_u.mutation.SetStreamTotalRequestLatencyMs(v)
+	return _u
+}
+
+// SetNillableStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableStreamTotalRequestLatencyMs(v *int64) *ChannelPerformanceUpdate {
+	if v != nil {
+		_u.SetStreamTotalRequestLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddStreamTotalRequestLatencyMs adds value to the "stream_total_request_latency_ms" field.
+func (_u *ChannelPerformanceUpdate) AddStreamTotalRequestLatencyMs(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.AddStreamTotalRequestLatencyMs(v)
+	return _u
+}
+
+// SetStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field.
+func (_u *ChannelPerformanceUpdate) SetStreamTotalFirstTokenLatencyMs(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetStreamTotalFirstTokenLatencyMs()
+	_u.mutation.SetStreamTotalFirstTokenLatencyMs(v)
+	return _u
+}
+
+// SetNillableStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableStreamTotalFirstTokenLatencyMs(v *int64) *ChannelPerformanceUpdate {
+	if v != nil {
+		_u.SetStreamTotalFirstTokenLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddStreamTotalFirstTokenLatencyMs adds value to the "stream_total_first_token_latency_ms" field.
+func (_u *ChannelPerformanceUpdate) AddStreamTotalFirstTokenLatencyMs(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.AddStreamTotalFirstTokenLatencyMs(v)
+	return _u
+}
+
+// SetConsecutiveFailures sets the "consecutive_failures" field.
+func (_u *ChannelPerformanceUpdate) SetConsecutiveFailures(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.ResetConsecutiveFailures()
+	_u.mutation.SetConsecutiveFailures(v)
+	return _u
+}
+
+// SetNillableConsecutiveFailures sets the "consecutive_failures" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdate) SetNillableConsecutiveFailures(v *int64) *ChannelPerformanceUpdate {
+	if v != nil {
+		_u.SetConsecutiveFailures(*v)
+	}
+	return _u
+}
+
+// AddConsecutiveFailures adds value to the "consecutive_failures" field.
+func (_u *ChannelPerformanceUpdate) AddConsecutiveFailures(v int64) *ChannelPerformanceUpdate {
+	_u.mutation.AddConsecutiveFailures(v)
+	return _u
+}
+
 // Mutation returns the ChannelPerformanceMutation object of the builder.
 func (_u *ChannelPerformanceUpdate) Mutation() *ChannelPerformanceMutation {
 	return _u.mutation
@@ -324,6 +555,72 @@ func (_u *ChannelPerformanceUpdate) sqlSave(ctx context.Context) (_node int, err
 	}
 	if _u.mutation.LastFailureAtCleared() {
 		_spec.ClearField(channelperformance.FieldLastFailureAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.RequestCount(); ok {
+		_spec.SetField(channelperformance.FieldRequestCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedRequestCount(); ok {
+		_spec.AddField(channelperformance.FieldRequestCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.SuccessCount(); ok {
+		_spec.SetField(channelperformance.FieldSuccessCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedSuccessCount(); ok {
+		_spec.AddField(channelperformance.FieldSuccessCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.FailureCount(); ok {
+		_spec.SetField(channelperformance.FieldFailureCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedFailureCount(); ok {
+		_spec.AddField(channelperformance.FieldFailureCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.TotalTokenCount(); ok {
+		_spec.SetField(channelperformance.FieldTotalTokenCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTotalTokenCount(); ok {
+		_spec.AddField(channelperformance.FieldTotalTokenCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.TotalRequestLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldTotalRequestLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTotalRequestLatencyMs(); ok {
+		_spec.AddField(channelperformance.FieldTotalRequestLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.StreamSuccessCount(); ok {
+		_spec.SetField(channelperformance.FieldStreamSuccessCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStreamSuccessCount(); ok {
+		_spec.AddField(channelperformance.FieldStreamSuccessCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.StreamTotalRequestCount(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalRequestCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStreamTotalRequestCount(); ok {
+		_spec.AddField(channelperformance.FieldStreamTotalRequestCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.StreamTotalTokenCount(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalTokenCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStreamTotalTokenCount(); ok {
+		_spec.AddField(channelperformance.FieldStreamTotalTokenCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.StreamTotalRequestLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalRequestLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStreamTotalRequestLatencyMs(); ok {
+		_spec.AddField(channelperformance.FieldStreamTotalRequestLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.StreamTotalFirstTokenLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalFirstTokenLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStreamTotalFirstTokenLatencyMs(); ok {
+		_spec.AddField(channelperformance.FieldStreamTotalFirstTokenLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.ConsecutiveFailures(); ok {
+		_spec.SetField(channelperformance.FieldConsecutiveFailures, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedConsecutiveFailures(); ok {
+		_spec.AddField(channelperformance.FieldConsecutiveFailures, field.TypeInt64, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -519,6 +816,237 @@ func (_u *ChannelPerformanceUpdateOne) ClearLastFailureAt() *ChannelPerformanceU
 	return _u
 }
 
+// SetRequestCount sets the "request_count" field.
+func (_u *ChannelPerformanceUpdateOne) SetRequestCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetRequestCount()
+	_u.mutation.SetRequestCount(v)
+	return _u
+}
+
+// SetNillableRequestCount sets the "request_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableRequestCount(v *int64) *ChannelPerformanceUpdateOne {
+	if v != nil {
+		_u.SetRequestCount(*v)
+	}
+	return _u
+}
+
+// AddRequestCount adds value to the "request_count" field.
+func (_u *ChannelPerformanceUpdateOne) AddRequestCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddRequestCount(v)
+	return _u
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (_u *ChannelPerformanceUpdateOne) SetSuccessCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetSuccessCount()
+	_u.mutation.SetSuccessCount(v)
+	return _u
+}
+
+// SetNillableSuccessCount sets the "success_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableSuccessCount(v *int64) *ChannelPerformanceUpdateOne {
+	if v != nil {
+		_u.SetSuccessCount(*v)
+	}
+	return _u
+}
+
+// AddSuccessCount adds value to the "success_count" field.
+func (_u *ChannelPerformanceUpdateOne) AddSuccessCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddSuccessCount(v)
+	return _u
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (_u *ChannelPerformanceUpdateOne) SetFailureCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetFailureCount()
+	_u.mutation.SetFailureCount(v)
+	return _u
+}
+
+// SetNillableFailureCount sets the "failure_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableFailureCount(v *int64) *ChannelPerformanceUpdateOne {
+	if v != nil {
+		_u.SetFailureCount(*v)
+	}
+	return _u
+}
+
+// AddFailureCount adds value to the "failure_count" field.
+func (_u *ChannelPerformanceUpdateOne) AddFailureCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddFailureCount(v)
+	return _u
+}
+
+// SetTotalTokenCount sets the "total_token_count" field.
+func (_u *ChannelPerformanceUpdateOne) SetTotalTokenCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetTotalTokenCount()
+	_u.mutation.SetTotalTokenCount(v)
+	return _u
+}
+
+// SetNillableTotalTokenCount sets the "total_token_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableTotalTokenCount(v *int64) *ChannelPerformanceUpdateOne {
+	if v != nil {
+		_u.SetTotalTokenCount(*v)
+	}
+	return _u
+}
+
+// AddTotalTokenCount adds value to the "total_token_count" field.
+func (_u *ChannelPerformanceUpdateOne) AddTotalTokenCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddTotalTokenCount(v)
+	return _u
+}
+
+// SetTotalRequestLatencyMs sets the "total_request_latency_ms" field.
+func (_u *ChannelPerformanceUpdateOne) SetTotalRequestLatencyMs(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetTotalRequestLatencyMs()
+	_u.mutation.SetTotalRequestLatencyMs(v)
+	return _u
+}
+
+// SetNillableTotalRequestLatencyMs sets the "total_request_latency_ms" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableTotalRequestLatencyMs(v *int64) *ChannelPerformanceUpdateOne {
+	if v != nil {
+		_u.SetTotalRequestLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddTotalRequestLatencyMs adds value to the "total_request_latency_ms" field.
+func (_u *ChannelPerformanceUpdateOne) AddTotalRequestLatencyMs(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddTotalRequestLatencyMs(v)
+	return _u
+}
+
+// SetStreamSuccessCount sets the "stream_success_count" field.
+func (_u *ChannelPerformanceUpdateOne) SetStreamSuccessCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetStreamSuccessCount()
+	_u.mutation.SetStreamSuccessCount(v)
+	return _u
+}
+
+// SetNillableStreamSuccessCount sets the "stream_success_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableStreamSuccessCount(v *int64) *ChannelPerformanceUpdateOne {
+	if v != nil {
+		_u.SetStreamSuccessCount(*v)
+	}
+	return _u
+}
+
+// AddStreamSuccessCount adds value to the "stream_success_count" field.
+func (_u *ChannelPerformanceUpdateOne) AddStreamSuccessCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddStreamSuccessCount(v)
+	return _u
+}
+
+// SetStreamTotalRequestCount sets the "stream_total_request_count" field.
+func (_u *ChannelPerformanceUpdateOne) SetStreamTotalRequestCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetStreamTotalRequestCount()
+	_u.mutation.SetStreamTotalRequestCount(v)
+	return _u
+}
+
+// SetNillableStreamTotalRequestCount sets the "stream_total_request_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableStreamTotalRequestCount(v *int64) *ChannelPerformanceUpdateOne {
+	if v != nil {
+		_u.SetStreamTotalRequestCount(*v)
+	}
+	return _u
+}
+
+// AddStreamTotalRequestCount adds value to the "stream_total_request_count" field.
+func (_u *ChannelPerformanceUpdateOne) AddStreamTotalRequestCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddStreamTotalRequestCount(v)
+	return _u
+}
+
+// SetStreamTotalTokenCount sets the "stream_total_token_count" field.
+func (_u *ChannelPerformanceUpdateOne) SetStreamTotalTokenCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetStreamTotalTokenCount()
+	_u.mutation.SetStreamTotalTokenCount(v)
+	return _u
+}
+
+// SetNillableStreamTotalTokenCount sets the "stream_total_token_count" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableStreamTotalTokenCount(v *int64) *ChannelPerformanceUpdateOne {
+	if v != nil {
+		_u.SetStreamTotalTokenCount(*v)
+	}
+	return _u
+}
+
+// AddStreamTotalTokenCount adds value to the "stream_total_token_count" field.
+func (_u *ChannelPerformanceUpdateOne) AddStreamTotalTokenCount(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddStreamTotalTokenCount(v)
+	return _u
+}
+
+// SetStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field.
+func (_u *ChannelPerformanceUpdateOne) SetStreamTotalRequestLatencyMs(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetStreamTotalRequestLatencyMs()
+	_u.mutation.SetStreamTotalRequestLatencyMs(v)
+	return _u
+}
+
+// SetNillableStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableStreamTotalRequestLatencyMs(v *int64) *ChannelPerformanceUpdateOne {
+	if v != nil {
+		_u.SetStreamTotalRequestLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddStreamTotalRequestLatencyMs adds value to the "stream_total_request_latency_ms" field.
+func (_u *ChannelPerformanceUpdateOne) AddStreamTotalRequestLatencyMs(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddStreamTotalRequestLatencyMs(v)
+	return _u
+}
+
+// SetStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field.
+func (_u *ChannelPerformanceUpdateOne) SetStreamTotalFirstTokenLatencyMs(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetStreamTotalFirstTokenLatencyMs()
+	_u.mutation.SetStreamTotalFirstTokenLatencyMs(v)
+	return _u
+}
+
+// SetNillableStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableStreamTotalFirstTokenLatencyMs(v *int64) *ChannelPerformanceUpdateOne {
+	if v != nil {
+		_u.SetStreamTotalFirstTokenLatencyMs(*v)
+	}
+	return _u
+}
+
+// AddStreamTotalFirstTokenLatencyMs adds value to the "stream_total_first_token_latency_ms" field.
+func (_u *ChannelPerformanceUpdateOne) AddStreamTotalFirstTokenLatencyMs(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddStreamTotalFirstTokenLatencyMs(v)
+	return _u
+}
+
+// SetConsecutiveFailures sets the "consecutive_failures" field.
+func (_u *ChannelPerformanceUpdateOne) SetConsecutiveFailures(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.ResetConsecutiveFailures()
+	_u.mutation.SetConsecutiveFailures(v)
+	return _u
+}
+
+// SetNillableConsecutiveFailures sets the "consecutive_failures" field if the given value is not nil.
+func (_u *ChannelPerformanceUpdateOne) SetNillableConsecutiveFailures(v *int64) *ChannelPerformanceUpdateOne {
+	if v != nil {
+		_u.SetConsecutiveFailures(*v)
+	}
+	return _u
+}
+
+// AddConsecutiveFailures adds value to the "consecutive_failures" field.
+func (_u *ChannelPerformanceUpdateOne) AddConsecutiveFailures(v int64) *ChannelPerformanceUpdateOne {
+	_u.mutation.AddConsecutiveFailures(v)
+	return _u
+}
+
 // Mutation returns the ChannelPerformanceMutation object of the builder.
 func (_u *ChannelPerformanceUpdateOne) Mutation() *ChannelPerformanceMutation {
 	return _u.mutation
@@ -672,6 +1200,72 @@ func (_u *ChannelPerformanceUpdateOne) sqlSave(ctx context.Context) (_node *Chan
 	}
 	if _u.mutation.LastFailureAtCleared() {
 		_spec.ClearField(channelperformance.FieldLastFailureAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.RequestCount(); ok {
+		_spec.SetField(channelperformance.FieldRequestCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedRequestCount(); ok {
+		_spec.AddField(channelperformance.FieldRequestCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.SuccessCount(); ok {
+		_spec.SetField(channelperformance.FieldSuccessCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedSuccessCount(); ok {
+		_spec.AddField(channelperformance.FieldSuccessCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.FailureCount(); ok {
+		_spec.SetField(channelperformance.FieldFailureCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedFailureCount(); ok {
+		_spec.AddField(channelperformance.FieldFailureCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.TotalTokenCount(); ok {
+		_spec.SetField(channelperformance.FieldTotalTokenCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTotalTokenCount(); ok {
+		_spec.AddField(channelperformance.FieldTotalTokenCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.TotalRequestLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldTotalRequestLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTotalRequestLatencyMs(); ok {
+		_spec.AddField(channelperformance.FieldTotalRequestLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.StreamSuccessCount(); ok {
+		_spec.SetField(channelperformance.FieldStreamSuccessCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStreamSuccessCount(); ok {
+		_spec.AddField(channelperformance.FieldStreamSuccessCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.StreamTotalRequestCount(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalRequestCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStreamTotalRequestCount(); ok {
+		_spec.AddField(channelperformance.FieldStreamTotalRequestCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.StreamTotalTokenCount(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalTokenCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStreamTotalTokenCount(); ok {
+		_spec.AddField(channelperformance.FieldStreamTotalTokenCount, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.StreamTotalRequestLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalRequestLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStreamTotalRequestLatencyMs(); ok {
+		_spec.AddField(channelperformance.FieldStreamTotalRequestLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.StreamTotalFirstTokenLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalFirstTokenLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStreamTotalFirstTokenLatencyMs(); ok {
+		_spec.AddField(channelperformance.FieldStreamTotalFirstTokenLatencyMs, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.ConsecutiveFailures(); ok {
+		_spec.SetField(channelperformance.FieldConsecutiveFailures, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedConsecutiveFailures(); ok {
+		_spec.AddField(channelperformance.FieldConsecutiveFailures, field.TypeInt64, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &ChannelPerformance{config: _u.config}

@@ -288,7 +288,7 @@ func TestMetricsRecord_CalculateAvgStreamTokensPerSecond(t *testing.T) {
 }
 
 func TestChannelService_RecordMetrics(t *testing.T) {
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := context.Background()
@@ -686,20 +686,14 @@ func TestChannelMetrics_GetOrCreateTimeSlot(t *testing.T) {
 }
 
 func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
-	svc := &ChannelService{
-		AbstractService: &AbstractService{
-			db: client,
-		},
-		channelPerfMetrics: make(map[int]*channelMetrics),
-		perfWindowSeconds:  600,
-	}
+	svc := NewChannelServiceForTest(client)
 
 	// Create a test channel
 	ch, err := client.Channel.Create().

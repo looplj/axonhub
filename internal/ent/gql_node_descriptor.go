@@ -335,7 +335,7 @@ func (_m *ChannelPerformance) Node(ctx context.Context) (node *Node, err error) 
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "ChannelPerformance",
-		Fields: make([]*Field, 11),
+		Fields: make([]*Field, 22),
 		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
@@ -425,6 +425,94 @@ func (_m *ChannelPerformance) Node(ctx context.Context) (node *Node, err error) 
 	node.Fields[10] = &Field{
 		Type:  "time.Time",
 		Name:  "last_failure_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.RequestCount); err != nil {
+		return nil, err
+	}
+	node.Fields[11] = &Field{
+		Type:  "int64",
+		Name:  "request_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.SuccessCount); err != nil {
+		return nil, err
+	}
+	node.Fields[12] = &Field{
+		Type:  "int64",
+		Name:  "success_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.FailureCount); err != nil {
+		return nil, err
+	}
+	node.Fields[13] = &Field{
+		Type:  "int64",
+		Name:  "failure_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.TotalTokenCount); err != nil {
+		return nil, err
+	}
+	node.Fields[14] = &Field{
+		Type:  "int64",
+		Name:  "total_token_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.TotalRequestLatencyMs); err != nil {
+		return nil, err
+	}
+	node.Fields[15] = &Field{
+		Type:  "int64",
+		Name:  "total_request_latency_ms",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.StreamSuccessCount); err != nil {
+		return nil, err
+	}
+	node.Fields[16] = &Field{
+		Type:  "int64",
+		Name:  "stream_success_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.StreamTotalRequestCount); err != nil {
+		return nil, err
+	}
+	node.Fields[17] = &Field{
+		Type:  "int64",
+		Name:  "stream_total_request_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.StreamTotalTokenCount); err != nil {
+		return nil, err
+	}
+	node.Fields[18] = &Field{
+		Type:  "int64",
+		Name:  "stream_total_token_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.StreamTotalRequestLatencyMs); err != nil {
+		return nil, err
+	}
+	node.Fields[19] = &Field{
+		Type:  "int64",
+		Name:  "stream_total_request_latency_ms",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.StreamTotalFirstTokenLatencyMs); err != nil {
+		return nil, err
+	}
+	node.Fields[20] = &Field{
+		Type:  "int64",
+		Name:  "stream_total_first_token_latency_ms",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ConsecutiveFailures); err != nil {
+		return nil, err
+	}
+	node.Fields[21] = &Field{
+		Type:  "int64",
+		Name:  "consecutive_failures",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{

@@ -34,7 +34,6 @@ type PlaygroundHandlersParams struct {
 
 	ChannelService  *biz.ChannelService
 	RequestService  *biz.RequestService
-	TraceService    *biz.TraceService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
 	HttpClient      *httpclient.HttpClient
@@ -43,7 +42,6 @@ type PlaygroundHandlersParams struct {
 type PlaygroundHandlers struct {
 	ChannelService  *biz.ChannelService
 	RequestService  *biz.RequestService
-	TraceService    *biz.TraceService
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
 	HttpClient      *httpclient.HttpClient
@@ -53,7 +51,6 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 	return &PlaygroundHandlers{
 		ChannelService:  params.ChannelService,
 		RequestService:  params.RequestService,
-		TraceService:    params.TraceService,
 		SystemService:   params.SystemService,
 		UsageLogService: params.UsageLogService,
 		HttpClient:      params.HttpClient,
@@ -272,7 +269,6 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 		processor = chat.NewChatCompletionProcessor(
 			handlers.ChannelService,
 			handlers.RequestService,
-			handlers.TraceService,
 			handlers.HttpClient,
 			aisdk.NewDataStreamTransformer(),
 			handlers.SystemService,

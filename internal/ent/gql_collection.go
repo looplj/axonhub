@@ -798,6 +798,61 @@ func (_q *ChannelPerformanceQuery) collectField(ctx context.Context, oneNode boo
 				selectedFields = append(selectedFields, channelperformance.FieldLastFailureAt)
 				fieldSeen[channelperformance.FieldLastFailureAt] = struct{}{}
 			}
+		case "requestCount":
+			if _, ok := fieldSeen[channelperformance.FieldRequestCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldRequestCount)
+				fieldSeen[channelperformance.FieldRequestCount] = struct{}{}
+			}
+		case "successCount":
+			if _, ok := fieldSeen[channelperformance.FieldSuccessCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldSuccessCount)
+				fieldSeen[channelperformance.FieldSuccessCount] = struct{}{}
+			}
+		case "failureCount":
+			if _, ok := fieldSeen[channelperformance.FieldFailureCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldFailureCount)
+				fieldSeen[channelperformance.FieldFailureCount] = struct{}{}
+			}
+		case "totalTokenCount":
+			if _, ok := fieldSeen[channelperformance.FieldTotalTokenCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldTotalTokenCount)
+				fieldSeen[channelperformance.FieldTotalTokenCount] = struct{}{}
+			}
+		case "totalRequestLatencyMs":
+			if _, ok := fieldSeen[channelperformance.FieldTotalRequestLatencyMs]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldTotalRequestLatencyMs)
+				fieldSeen[channelperformance.FieldTotalRequestLatencyMs] = struct{}{}
+			}
+		case "streamSuccessCount":
+			if _, ok := fieldSeen[channelperformance.FieldStreamSuccessCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldStreamSuccessCount)
+				fieldSeen[channelperformance.FieldStreamSuccessCount] = struct{}{}
+			}
+		case "streamTotalRequestCount":
+			if _, ok := fieldSeen[channelperformance.FieldStreamTotalRequestCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldStreamTotalRequestCount)
+				fieldSeen[channelperformance.FieldStreamTotalRequestCount] = struct{}{}
+			}
+		case "streamTotalTokenCount":
+			if _, ok := fieldSeen[channelperformance.FieldStreamTotalTokenCount]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldStreamTotalTokenCount)
+				fieldSeen[channelperformance.FieldStreamTotalTokenCount] = struct{}{}
+			}
+		case "streamTotalRequestLatencyMs":
+			if _, ok := fieldSeen[channelperformance.FieldStreamTotalRequestLatencyMs]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldStreamTotalRequestLatencyMs)
+				fieldSeen[channelperformance.FieldStreamTotalRequestLatencyMs] = struct{}{}
+			}
+		case "streamTotalFirstTokenLatencyMs":
+			if _, ok := fieldSeen[channelperformance.FieldStreamTotalFirstTokenLatencyMs]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldStreamTotalFirstTokenLatencyMs)
+				fieldSeen[channelperformance.FieldStreamTotalFirstTokenLatencyMs] = struct{}{}
+			}
+		case "consecutiveFailures":
+			if _, ok := fieldSeen[channelperformance.FieldConsecutiveFailures]; !ok {
+				selectedFields = append(selectedFields, channelperformance.FieldConsecutiveFailures)
+				fieldSeen[channelperformance.FieldConsecutiveFailures] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:

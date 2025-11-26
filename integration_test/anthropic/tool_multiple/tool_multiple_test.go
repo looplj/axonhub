@@ -410,7 +410,7 @@ func TestToolChoiceRequired(t *testing.T) {
 	t.Logf("Final forced tool response: %s", finalText)
 
 	// Verify the answer is correct (50 * 30 = 1500)
-	if !strings.Contains(strings.ToLower(finalText), "1500") && !strings.Contains(strings.ToLower(finalText), "one thousand five hundred") {
+	if !testutil.ContainsAnyCaseInsensitive(finalText, "1500", "1,500", "one thousand five hundred") {
 		t.Errorf("Expected answer to contain 1500, got: %s", finalText)
 	}
 }

@@ -37,6 +37,28 @@ const (
 	FieldLastSuccessAt = "last_success_at"
 	// FieldLastFailureAt holds the string denoting the last_failure_at field in the database.
 	FieldLastFailureAt = "last_failure_at"
+	// FieldRequestCount holds the string denoting the request_count field in the database.
+	FieldRequestCount = "request_count"
+	// FieldSuccessCount holds the string denoting the success_count field in the database.
+	FieldSuccessCount = "success_count"
+	// FieldFailureCount holds the string denoting the failure_count field in the database.
+	FieldFailureCount = "failure_count"
+	// FieldTotalTokenCount holds the string denoting the total_token_count field in the database.
+	FieldTotalTokenCount = "total_token_count"
+	// FieldTotalRequestLatencyMs holds the string denoting the total_request_latency_ms field in the database.
+	FieldTotalRequestLatencyMs = "total_request_latency_ms"
+	// FieldStreamSuccessCount holds the string denoting the stream_success_count field in the database.
+	FieldStreamSuccessCount = "stream_success_count"
+	// FieldStreamTotalRequestCount holds the string denoting the stream_total_request_count field in the database.
+	FieldStreamTotalRequestCount = "stream_total_request_count"
+	// FieldStreamTotalTokenCount holds the string denoting the stream_total_token_count field in the database.
+	FieldStreamTotalTokenCount = "stream_total_token_count"
+	// FieldStreamTotalRequestLatencyMs holds the string denoting the stream_total_request_latency_ms field in the database.
+	FieldStreamTotalRequestLatencyMs = "stream_total_request_latency_ms"
+	// FieldStreamTotalFirstTokenLatencyMs holds the string denoting the stream_total_first_token_latency_ms field in the database.
+	FieldStreamTotalFirstTokenLatencyMs = "stream_total_first_token_latency_ms"
+	// FieldConsecutiveFailures holds the string denoting the consecutive_failures field in the database.
+	FieldConsecutiveFailures = "consecutive_failures"
 	// EdgeChannel holds the string denoting the channel edge name in mutations.
 	EdgeChannel = "channel"
 	// Table holds the table name of the channelperformance in the database.
@@ -64,6 +86,17 @@ var Columns = []string{
 	FieldAvgStreamTokenPerSecond,
 	FieldLastSuccessAt,
 	FieldLastFailureAt,
+	FieldRequestCount,
+	FieldSuccessCount,
+	FieldFailureCount,
+	FieldTotalTokenCount,
+	FieldTotalRequestLatencyMs,
+	FieldStreamSuccessCount,
+	FieldStreamTotalRequestCount,
+	FieldStreamTotalTokenCount,
+	FieldStreamTotalRequestLatencyMs,
+	FieldStreamTotalFirstTokenLatencyMs,
+	FieldConsecutiveFailures,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -102,6 +135,28 @@ var (
 	DefaultAvgStreamFirstTokenLatencyMs int
 	// DefaultAvgStreamTokenPerSecond holds the default value on creation for the "avg_stream_token_per_second" field.
 	DefaultAvgStreamTokenPerSecond float64
+	// DefaultRequestCount holds the default value on creation for the "request_count" field.
+	DefaultRequestCount int64
+	// DefaultSuccessCount holds the default value on creation for the "success_count" field.
+	DefaultSuccessCount int64
+	// DefaultFailureCount holds the default value on creation for the "failure_count" field.
+	DefaultFailureCount int64
+	// DefaultTotalTokenCount holds the default value on creation for the "total_token_count" field.
+	DefaultTotalTokenCount int64
+	// DefaultTotalRequestLatencyMs holds the default value on creation for the "total_request_latency_ms" field.
+	DefaultTotalRequestLatencyMs int64
+	// DefaultStreamSuccessCount holds the default value on creation for the "stream_success_count" field.
+	DefaultStreamSuccessCount int64
+	// DefaultStreamTotalRequestCount holds the default value on creation for the "stream_total_request_count" field.
+	DefaultStreamTotalRequestCount int64
+	// DefaultStreamTotalTokenCount holds the default value on creation for the "stream_total_token_count" field.
+	DefaultStreamTotalTokenCount int64
+	// DefaultStreamTotalRequestLatencyMs holds the default value on creation for the "stream_total_request_latency_ms" field.
+	DefaultStreamTotalRequestLatencyMs int64
+	// DefaultStreamTotalFirstTokenLatencyMs holds the default value on creation for the "stream_total_first_token_latency_ms" field.
+	DefaultStreamTotalFirstTokenLatencyMs int64
+	// DefaultConsecutiveFailures holds the default value on creation for the "consecutive_failures" field.
+	DefaultConsecutiveFailures int64
 )
 
 // OrderOption defines the ordering options for the ChannelPerformance queries.
@@ -165,6 +220,61 @@ func ByLastSuccessAt(opts ...sql.OrderTermOption) OrderOption {
 // ByLastFailureAt orders the results by the last_failure_at field.
 func ByLastFailureAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastFailureAt, opts...).ToFunc()
+}
+
+// ByRequestCount orders the results by the request_count field.
+func ByRequestCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRequestCount, opts...).ToFunc()
+}
+
+// BySuccessCount orders the results by the success_count field.
+func BySuccessCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSuccessCount, opts...).ToFunc()
+}
+
+// ByFailureCount orders the results by the failure_count field.
+func ByFailureCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFailureCount, opts...).ToFunc()
+}
+
+// ByTotalTokenCount orders the results by the total_token_count field.
+func ByTotalTokenCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTotalTokenCount, opts...).ToFunc()
+}
+
+// ByTotalRequestLatencyMs orders the results by the total_request_latency_ms field.
+func ByTotalRequestLatencyMs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTotalRequestLatencyMs, opts...).ToFunc()
+}
+
+// ByStreamSuccessCount orders the results by the stream_success_count field.
+func ByStreamSuccessCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStreamSuccessCount, opts...).ToFunc()
+}
+
+// ByStreamTotalRequestCount orders the results by the stream_total_request_count field.
+func ByStreamTotalRequestCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStreamTotalRequestCount, opts...).ToFunc()
+}
+
+// ByStreamTotalTokenCount orders the results by the stream_total_token_count field.
+func ByStreamTotalTokenCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStreamTotalTokenCount, opts...).ToFunc()
+}
+
+// ByStreamTotalRequestLatencyMs orders the results by the stream_total_request_latency_ms field.
+func ByStreamTotalRequestLatencyMs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStreamTotalRequestLatencyMs, opts...).ToFunc()
+}
+
+// ByStreamTotalFirstTokenLatencyMs orders the results by the stream_total_first_token_latency_ms field.
+func ByStreamTotalFirstTokenLatencyMs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStreamTotalFirstTokenLatencyMs, opts...).ToFunc()
+}
+
+// ByConsecutiveFailures orders the results by the consecutive_failures field.
+func ByConsecutiveFailures(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldConsecutiveFailures, opts...).ToFunc()
 }
 
 // ByChannelField orders the results by channel field.

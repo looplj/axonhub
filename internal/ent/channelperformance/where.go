@@ -110,6 +110,61 @@ func LastFailureAt(v time.Time) predicate.ChannelPerformance {
 	return predicate.ChannelPerformance(sql.FieldEQ(FieldLastFailureAt, v))
 }
 
+// RequestCount applies equality check predicate on the "request_count" field. It's identical to RequestCountEQ.
+func RequestCount(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldRequestCount, v))
+}
+
+// SuccessCount applies equality check predicate on the "success_count" field. It's identical to SuccessCountEQ.
+func SuccessCount(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldSuccessCount, v))
+}
+
+// FailureCount applies equality check predicate on the "failure_count" field. It's identical to FailureCountEQ.
+func FailureCount(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldFailureCount, v))
+}
+
+// TotalTokenCount applies equality check predicate on the "total_token_count" field. It's identical to TotalTokenCountEQ.
+func TotalTokenCount(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalTokenCount, v))
+}
+
+// TotalRequestLatencyMs applies equality check predicate on the "total_request_latency_ms" field. It's identical to TotalRequestLatencyMsEQ.
+func TotalRequestLatencyMs(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalRequestLatencyMs, v))
+}
+
+// StreamSuccessCount applies equality check predicate on the "stream_success_count" field. It's identical to StreamSuccessCountEQ.
+func StreamSuccessCount(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldStreamSuccessCount, v))
+}
+
+// StreamTotalRequestCount applies equality check predicate on the "stream_total_request_count" field. It's identical to StreamTotalRequestCountEQ.
+func StreamTotalRequestCount(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldStreamTotalRequestCount, v))
+}
+
+// StreamTotalTokenCount applies equality check predicate on the "stream_total_token_count" field. It's identical to StreamTotalTokenCountEQ.
+func StreamTotalTokenCount(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldStreamTotalTokenCount, v))
+}
+
+// StreamTotalRequestLatencyMs applies equality check predicate on the "stream_total_request_latency_ms" field. It's identical to StreamTotalRequestLatencyMsEQ.
+func StreamTotalRequestLatencyMs(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldStreamTotalRequestLatencyMs, v))
+}
+
+// StreamTotalFirstTokenLatencyMs applies equality check predicate on the "stream_total_first_token_latency_ms" field. It's identical to StreamTotalFirstTokenLatencyMsEQ.
+func StreamTotalFirstTokenLatencyMs(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldStreamTotalFirstTokenLatencyMs, v))
+}
+
+// ConsecutiveFailures applies equality check predicate on the "consecutive_failures" field. It's identical to ConsecutiveFailuresEQ.
+func ConsecutiveFailures(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldConsecutiveFailures, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.ChannelPerformance {
 	return predicate.ChannelPerformance(sql.FieldEQ(FieldCreatedAt, v))
@@ -548,6 +603,446 @@ func LastFailureAtIsNil() predicate.ChannelPerformance {
 // LastFailureAtNotNil applies the NotNil predicate on the "last_failure_at" field.
 func LastFailureAtNotNil() predicate.ChannelPerformance {
 	return predicate.ChannelPerformance(sql.FieldNotNull(FieldLastFailureAt))
+}
+
+// RequestCountEQ applies the EQ predicate on the "request_count" field.
+func RequestCountEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldRequestCount, v))
+}
+
+// RequestCountNEQ applies the NEQ predicate on the "request_count" field.
+func RequestCountNEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldRequestCount, v))
+}
+
+// RequestCountIn applies the In predicate on the "request_count" field.
+func RequestCountIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldRequestCount, vs...))
+}
+
+// RequestCountNotIn applies the NotIn predicate on the "request_count" field.
+func RequestCountNotIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldRequestCount, vs...))
+}
+
+// RequestCountGT applies the GT predicate on the "request_count" field.
+func RequestCountGT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldRequestCount, v))
+}
+
+// RequestCountGTE applies the GTE predicate on the "request_count" field.
+func RequestCountGTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldRequestCount, v))
+}
+
+// RequestCountLT applies the LT predicate on the "request_count" field.
+func RequestCountLT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldRequestCount, v))
+}
+
+// RequestCountLTE applies the LTE predicate on the "request_count" field.
+func RequestCountLTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldRequestCount, v))
+}
+
+// SuccessCountEQ applies the EQ predicate on the "success_count" field.
+func SuccessCountEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldSuccessCount, v))
+}
+
+// SuccessCountNEQ applies the NEQ predicate on the "success_count" field.
+func SuccessCountNEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldSuccessCount, v))
+}
+
+// SuccessCountIn applies the In predicate on the "success_count" field.
+func SuccessCountIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldSuccessCount, vs...))
+}
+
+// SuccessCountNotIn applies the NotIn predicate on the "success_count" field.
+func SuccessCountNotIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldSuccessCount, vs...))
+}
+
+// SuccessCountGT applies the GT predicate on the "success_count" field.
+func SuccessCountGT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldSuccessCount, v))
+}
+
+// SuccessCountGTE applies the GTE predicate on the "success_count" field.
+func SuccessCountGTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldSuccessCount, v))
+}
+
+// SuccessCountLT applies the LT predicate on the "success_count" field.
+func SuccessCountLT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldSuccessCount, v))
+}
+
+// SuccessCountLTE applies the LTE predicate on the "success_count" field.
+func SuccessCountLTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldSuccessCount, v))
+}
+
+// FailureCountEQ applies the EQ predicate on the "failure_count" field.
+func FailureCountEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldFailureCount, v))
+}
+
+// FailureCountNEQ applies the NEQ predicate on the "failure_count" field.
+func FailureCountNEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldFailureCount, v))
+}
+
+// FailureCountIn applies the In predicate on the "failure_count" field.
+func FailureCountIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldFailureCount, vs...))
+}
+
+// FailureCountNotIn applies the NotIn predicate on the "failure_count" field.
+func FailureCountNotIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldFailureCount, vs...))
+}
+
+// FailureCountGT applies the GT predicate on the "failure_count" field.
+func FailureCountGT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldFailureCount, v))
+}
+
+// FailureCountGTE applies the GTE predicate on the "failure_count" field.
+func FailureCountGTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldFailureCount, v))
+}
+
+// FailureCountLT applies the LT predicate on the "failure_count" field.
+func FailureCountLT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldFailureCount, v))
+}
+
+// FailureCountLTE applies the LTE predicate on the "failure_count" field.
+func FailureCountLTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldFailureCount, v))
+}
+
+// TotalTokenCountEQ applies the EQ predicate on the "total_token_count" field.
+func TotalTokenCountEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalTokenCount, v))
+}
+
+// TotalTokenCountNEQ applies the NEQ predicate on the "total_token_count" field.
+func TotalTokenCountNEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldTotalTokenCount, v))
+}
+
+// TotalTokenCountIn applies the In predicate on the "total_token_count" field.
+func TotalTokenCountIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldTotalTokenCount, vs...))
+}
+
+// TotalTokenCountNotIn applies the NotIn predicate on the "total_token_count" field.
+func TotalTokenCountNotIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldTotalTokenCount, vs...))
+}
+
+// TotalTokenCountGT applies the GT predicate on the "total_token_count" field.
+func TotalTokenCountGT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldTotalTokenCount, v))
+}
+
+// TotalTokenCountGTE applies the GTE predicate on the "total_token_count" field.
+func TotalTokenCountGTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldTotalTokenCount, v))
+}
+
+// TotalTokenCountLT applies the LT predicate on the "total_token_count" field.
+func TotalTokenCountLT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldTotalTokenCount, v))
+}
+
+// TotalTokenCountLTE applies the LTE predicate on the "total_token_count" field.
+func TotalTokenCountLTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldTotalTokenCount, v))
+}
+
+// TotalRequestLatencyMsEQ applies the EQ predicate on the "total_request_latency_ms" field.
+func TotalRequestLatencyMsEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldTotalRequestLatencyMs, v))
+}
+
+// TotalRequestLatencyMsNEQ applies the NEQ predicate on the "total_request_latency_ms" field.
+func TotalRequestLatencyMsNEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldTotalRequestLatencyMs, v))
+}
+
+// TotalRequestLatencyMsIn applies the In predicate on the "total_request_latency_ms" field.
+func TotalRequestLatencyMsIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldTotalRequestLatencyMs, vs...))
+}
+
+// TotalRequestLatencyMsNotIn applies the NotIn predicate on the "total_request_latency_ms" field.
+func TotalRequestLatencyMsNotIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldTotalRequestLatencyMs, vs...))
+}
+
+// TotalRequestLatencyMsGT applies the GT predicate on the "total_request_latency_ms" field.
+func TotalRequestLatencyMsGT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldTotalRequestLatencyMs, v))
+}
+
+// TotalRequestLatencyMsGTE applies the GTE predicate on the "total_request_latency_ms" field.
+func TotalRequestLatencyMsGTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldTotalRequestLatencyMs, v))
+}
+
+// TotalRequestLatencyMsLT applies the LT predicate on the "total_request_latency_ms" field.
+func TotalRequestLatencyMsLT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldTotalRequestLatencyMs, v))
+}
+
+// TotalRequestLatencyMsLTE applies the LTE predicate on the "total_request_latency_ms" field.
+func TotalRequestLatencyMsLTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldTotalRequestLatencyMs, v))
+}
+
+// StreamSuccessCountEQ applies the EQ predicate on the "stream_success_count" field.
+func StreamSuccessCountEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldStreamSuccessCount, v))
+}
+
+// StreamSuccessCountNEQ applies the NEQ predicate on the "stream_success_count" field.
+func StreamSuccessCountNEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldStreamSuccessCount, v))
+}
+
+// StreamSuccessCountIn applies the In predicate on the "stream_success_count" field.
+func StreamSuccessCountIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldStreamSuccessCount, vs...))
+}
+
+// StreamSuccessCountNotIn applies the NotIn predicate on the "stream_success_count" field.
+func StreamSuccessCountNotIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldStreamSuccessCount, vs...))
+}
+
+// StreamSuccessCountGT applies the GT predicate on the "stream_success_count" field.
+func StreamSuccessCountGT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldStreamSuccessCount, v))
+}
+
+// StreamSuccessCountGTE applies the GTE predicate on the "stream_success_count" field.
+func StreamSuccessCountGTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldStreamSuccessCount, v))
+}
+
+// StreamSuccessCountLT applies the LT predicate on the "stream_success_count" field.
+func StreamSuccessCountLT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldStreamSuccessCount, v))
+}
+
+// StreamSuccessCountLTE applies the LTE predicate on the "stream_success_count" field.
+func StreamSuccessCountLTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldStreamSuccessCount, v))
+}
+
+// StreamTotalRequestCountEQ applies the EQ predicate on the "stream_total_request_count" field.
+func StreamTotalRequestCountEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldStreamTotalRequestCount, v))
+}
+
+// StreamTotalRequestCountNEQ applies the NEQ predicate on the "stream_total_request_count" field.
+func StreamTotalRequestCountNEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldStreamTotalRequestCount, v))
+}
+
+// StreamTotalRequestCountIn applies the In predicate on the "stream_total_request_count" field.
+func StreamTotalRequestCountIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldStreamTotalRequestCount, vs...))
+}
+
+// StreamTotalRequestCountNotIn applies the NotIn predicate on the "stream_total_request_count" field.
+func StreamTotalRequestCountNotIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldStreamTotalRequestCount, vs...))
+}
+
+// StreamTotalRequestCountGT applies the GT predicate on the "stream_total_request_count" field.
+func StreamTotalRequestCountGT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldStreamTotalRequestCount, v))
+}
+
+// StreamTotalRequestCountGTE applies the GTE predicate on the "stream_total_request_count" field.
+func StreamTotalRequestCountGTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldStreamTotalRequestCount, v))
+}
+
+// StreamTotalRequestCountLT applies the LT predicate on the "stream_total_request_count" field.
+func StreamTotalRequestCountLT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldStreamTotalRequestCount, v))
+}
+
+// StreamTotalRequestCountLTE applies the LTE predicate on the "stream_total_request_count" field.
+func StreamTotalRequestCountLTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldStreamTotalRequestCount, v))
+}
+
+// StreamTotalTokenCountEQ applies the EQ predicate on the "stream_total_token_count" field.
+func StreamTotalTokenCountEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldStreamTotalTokenCount, v))
+}
+
+// StreamTotalTokenCountNEQ applies the NEQ predicate on the "stream_total_token_count" field.
+func StreamTotalTokenCountNEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldStreamTotalTokenCount, v))
+}
+
+// StreamTotalTokenCountIn applies the In predicate on the "stream_total_token_count" field.
+func StreamTotalTokenCountIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldStreamTotalTokenCount, vs...))
+}
+
+// StreamTotalTokenCountNotIn applies the NotIn predicate on the "stream_total_token_count" field.
+func StreamTotalTokenCountNotIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldStreamTotalTokenCount, vs...))
+}
+
+// StreamTotalTokenCountGT applies the GT predicate on the "stream_total_token_count" field.
+func StreamTotalTokenCountGT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldStreamTotalTokenCount, v))
+}
+
+// StreamTotalTokenCountGTE applies the GTE predicate on the "stream_total_token_count" field.
+func StreamTotalTokenCountGTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldStreamTotalTokenCount, v))
+}
+
+// StreamTotalTokenCountLT applies the LT predicate on the "stream_total_token_count" field.
+func StreamTotalTokenCountLT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldStreamTotalTokenCount, v))
+}
+
+// StreamTotalTokenCountLTE applies the LTE predicate on the "stream_total_token_count" field.
+func StreamTotalTokenCountLTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldStreamTotalTokenCount, v))
+}
+
+// StreamTotalRequestLatencyMsEQ applies the EQ predicate on the "stream_total_request_latency_ms" field.
+func StreamTotalRequestLatencyMsEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldStreamTotalRequestLatencyMs, v))
+}
+
+// StreamTotalRequestLatencyMsNEQ applies the NEQ predicate on the "stream_total_request_latency_ms" field.
+func StreamTotalRequestLatencyMsNEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldStreamTotalRequestLatencyMs, v))
+}
+
+// StreamTotalRequestLatencyMsIn applies the In predicate on the "stream_total_request_latency_ms" field.
+func StreamTotalRequestLatencyMsIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldStreamTotalRequestLatencyMs, vs...))
+}
+
+// StreamTotalRequestLatencyMsNotIn applies the NotIn predicate on the "stream_total_request_latency_ms" field.
+func StreamTotalRequestLatencyMsNotIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldStreamTotalRequestLatencyMs, vs...))
+}
+
+// StreamTotalRequestLatencyMsGT applies the GT predicate on the "stream_total_request_latency_ms" field.
+func StreamTotalRequestLatencyMsGT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldStreamTotalRequestLatencyMs, v))
+}
+
+// StreamTotalRequestLatencyMsGTE applies the GTE predicate on the "stream_total_request_latency_ms" field.
+func StreamTotalRequestLatencyMsGTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldStreamTotalRequestLatencyMs, v))
+}
+
+// StreamTotalRequestLatencyMsLT applies the LT predicate on the "stream_total_request_latency_ms" field.
+func StreamTotalRequestLatencyMsLT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldStreamTotalRequestLatencyMs, v))
+}
+
+// StreamTotalRequestLatencyMsLTE applies the LTE predicate on the "stream_total_request_latency_ms" field.
+func StreamTotalRequestLatencyMsLTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldStreamTotalRequestLatencyMs, v))
+}
+
+// StreamTotalFirstTokenLatencyMsEQ applies the EQ predicate on the "stream_total_first_token_latency_ms" field.
+func StreamTotalFirstTokenLatencyMsEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldStreamTotalFirstTokenLatencyMs, v))
+}
+
+// StreamTotalFirstTokenLatencyMsNEQ applies the NEQ predicate on the "stream_total_first_token_latency_ms" field.
+func StreamTotalFirstTokenLatencyMsNEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldStreamTotalFirstTokenLatencyMs, v))
+}
+
+// StreamTotalFirstTokenLatencyMsIn applies the In predicate on the "stream_total_first_token_latency_ms" field.
+func StreamTotalFirstTokenLatencyMsIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldStreamTotalFirstTokenLatencyMs, vs...))
+}
+
+// StreamTotalFirstTokenLatencyMsNotIn applies the NotIn predicate on the "stream_total_first_token_latency_ms" field.
+func StreamTotalFirstTokenLatencyMsNotIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldStreamTotalFirstTokenLatencyMs, vs...))
+}
+
+// StreamTotalFirstTokenLatencyMsGT applies the GT predicate on the "stream_total_first_token_latency_ms" field.
+func StreamTotalFirstTokenLatencyMsGT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldStreamTotalFirstTokenLatencyMs, v))
+}
+
+// StreamTotalFirstTokenLatencyMsGTE applies the GTE predicate on the "stream_total_first_token_latency_ms" field.
+func StreamTotalFirstTokenLatencyMsGTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldStreamTotalFirstTokenLatencyMs, v))
+}
+
+// StreamTotalFirstTokenLatencyMsLT applies the LT predicate on the "stream_total_first_token_latency_ms" field.
+func StreamTotalFirstTokenLatencyMsLT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldStreamTotalFirstTokenLatencyMs, v))
+}
+
+// StreamTotalFirstTokenLatencyMsLTE applies the LTE predicate on the "stream_total_first_token_latency_ms" field.
+func StreamTotalFirstTokenLatencyMsLTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldStreamTotalFirstTokenLatencyMs, v))
+}
+
+// ConsecutiveFailuresEQ applies the EQ predicate on the "consecutive_failures" field.
+func ConsecutiveFailuresEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldEQ(FieldConsecutiveFailures, v))
+}
+
+// ConsecutiveFailuresNEQ applies the NEQ predicate on the "consecutive_failures" field.
+func ConsecutiveFailuresNEQ(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNEQ(FieldConsecutiveFailures, v))
+}
+
+// ConsecutiveFailuresIn applies the In predicate on the "consecutive_failures" field.
+func ConsecutiveFailuresIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldIn(FieldConsecutiveFailures, vs...))
+}
+
+// ConsecutiveFailuresNotIn applies the NotIn predicate on the "consecutive_failures" field.
+func ConsecutiveFailuresNotIn(vs ...int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldNotIn(FieldConsecutiveFailures, vs...))
+}
+
+// ConsecutiveFailuresGT applies the GT predicate on the "consecutive_failures" field.
+func ConsecutiveFailuresGT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGT(FieldConsecutiveFailures, v))
+}
+
+// ConsecutiveFailuresGTE applies the GTE predicate on the "consecutive_failures" field.
+func ConsecutiveFailuresGTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldGTE(FieldConsecutiveFailures, v))
+}
+
+// ConsecutiveFailuresLT applies the LT predicate on the "consecutive_failures" field.
+func ConsecutiveFailuresLT(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLT(FieldConsecutiveFailures, v))
+}
+
+// ConsecutiveFailuresLTE applies the LTE predicate on the "consecutive_failures" field.
+func ConsecutiveFailuresLTE(v int64) predicate.ChannelPerformance {
+	return predicate.ChannelPerformance(sql.FieldLTE(FieldConsecutiveFailures, v))
 }
 
 // HasChannel applies the HasEdge predicate on the "channel" edge.

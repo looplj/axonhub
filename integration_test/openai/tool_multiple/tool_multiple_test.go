@@ -328,7 +328,7 @@ func TestToolChoiceRequired(t *testing.T) {
 	t.Logf("Final forced tool response: %s", finalResponse)
 
 	// Verify the answer is correct (50 * 30 = 1500)
-	if !testutil.ContainsCaseInsensitive(finalResponse, "1500") && !testutil.ContainsCaseInsensitive(finalResponse, "one thousand five hundred") {
+	if !testutil.ContainsAnyCaseInsensitive(finalResponse, "1500", "1,500", "one thousand five hundred") {
 		t.Errorf("Expected answer to contain 1500, got: %s", finalResponse)
 	}
 }
