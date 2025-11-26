@@ -90,17 +90,28 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "ChannelPerformance",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			channelperformance.FieldCreatedAt:                    {Type: field.TypeTime, Column: channelperformance.FieldCreatedAt},
-			channelperformance.FieldUpdatedAt:                    {Type: field.TypeTime, Column: channelperformance.FieldUpdatedAt},
-			channelperformance.FieldDeletedAt:                    {Type: field.TypeInt, Column: channelperformance.FieldDeletedAt},
-			channelperformance.FieldChannelID:                    {Type: field.TypeInt, Column: channelperformance.FieldChannelID},
-			channelperformance.FieldSuccessRate:                  {Type: field.TypeInt, Column: channelperformance.FieldSuccessRate},
-			channelperformance.FieldAvgLatencyMs:                 {Type: field.TypeInt, Column: channelperformance.FieldAvgLatencyMs},
-			channelperformance.FieldAvgTokenPerSecond:            {Type: field.TypeInt, Column: channelperformance.FieldAvgTokenPerSecond},
-			channelperformance.FieldAvgStreamFirstTokenLatencyMs: {Type: field.TypeInt, Column: channelperformance.FieldAvgStreamFirstTokenLatencyMs},
-			channelperformance.FieldAvgStreamTokenPerSecond:      {Type: field.TypeFloat64, Column: channelperformance.FieldAvgStreamTokenPerSecond},
-			channelperformance.FieldLastSuccessAt:                {Type: field.TypeTime, Column: channelperformance.FieldLastSuccessAt},
-			channelperformance.FieldLastFailureAt:                {Type: field.TypeTime, Column: channelperformance.FieldLastFailureAt},
+			channelperformance.FieldCreatedAt:                      {Type: field.TypeTime, Column: channelperformance.FieldCreatedAt},
+			channelperformance.FieldUpdatedAt:                      {Type: field.TypeTime, Column: channelperformance.FieldUpdatedAt},
+			channelperformance.FieldDeletedAt:                      {Type: field.TypeInt, Column: channelperformance.FieldDeletedAt},
+			channelperformance.FieldChannelID:                      {Type: field.TypeInt, Column: channelperformance.FieldChannelID},
+			channelperformance.FieldSuccessRate:                    {Type: field.TypeInt, Column: channelperformance.FieldSuccessRate},
+			channelperformance.FieldAvgLatencyMs:                   {Type: field.TypeInt, Column: channelperformance.FieldAvgLatencyMs},
+			channelperformance.FieldAvgTokenPerSecond:              {Type: field.TypeInt, Column: channelperformance.FieldAvgTokenPerSecond},
+			channelperformance.FieldAvgStreamFirstTokenLatencyMs:   {Type: field.TypeInt, Column: channelperformance.FieldAvgStreamFirstTokenLatencyMs},
+			channelperformance.FieldAvgStreamTokenPerSecond:        {Type: field.TypeFloat64, Column: channelperformance.FieldAvgStreamTokenPerSecond},
+			channelperformance.FieldLastSuccessAt:                  {Type: field.TypeTime, Column: channelperformance.FieldLastSuccessAt},
+			channelperformance.FieldLastFailureAt:                  {Type: field.TypeTime, Column: channelperformance.FieldLastFailureAt},
+			channelperformance.FieldRequestCount:                   {Type: field.TypeInt64, Column: channelperformance.FieldRequestCount},
+			channelperformance.FieldSuccessCount:                   {Type: field.TypeInt64, Column: channelperformance.FieldSuccessCount},
+			channelperformance.FieldFailureCount:                   {Type: field.TypeInt64, Column: channelperformance.FieldFailureCount},
+			channelperformance.FieldTotalTokenCount:                {Type: field.TypeInt64, Column: channelperformance.FieldTotalTokenCount},
+			channelperformance.FieldTotalRequestLatencyMs:          {Type: field.TypeInt64, Column: channelperformance.FieldTotalRequestLatencyMs},
+			channelperformance.FieldStreamSuccessCount:             {Type: field.TypeInt64, Column: channelperformance.FieldStreamSuccessCount},
+			channelperformance.FieldStreamTotalRequestCount:        {Type: field.TypeInt64, Column: channelperformance.FieldStreamTotalRequestCount},
+			channelperformance.FieldStreamTotalTokenCount:          {Type: field.TypeInt64, Column: channelperformance.FieldStreamTotalTokenCount},
+			channelperformance.FieldStreamTotalRequestLatencyMs:    {Type: field.TypeInt64, Column: channelperformance.FieldStreamTotalRequestLatencyMs},
+			channelperformance.FieldStreamTotalFirstTokenLatencyMs: {Type: field.TypeInt64, Column: channelperformance.FieldStreamTotalFirstTokenLatencyMs},
+			channelperformance.FieldConsecutiveFailures:            {Type: field.TypeInt64, Column: channelperformance.FieldConsecutiveFailures},
 		},
 	}
 	graph.Nodes[3] = &sqlgraph.Node{
@@ -1342,6 +1353,61 @@ func (f *ChannelPerformanceFilter) WhereLastSuccessAt(p entql.TimeP) {
 // WhereLastFailureAt applies the entql time.Time predicate on the last_failure_at field.
 func (f *ChannelPerformanceFilter) WhereLastFailureAt(p entql.TimeP) {
 	f.Where(p.Field(channelperformance.FieldLastFailureAt))
+}
+
+// WhereRequestCount applies the entql int64 predicate on the request_count field.
+func (f *ChannelPerformanceFilter) WhereRequestCount(p entql.Int64P) {
+	f.Where(p.Field(channelperformance.FieldRequestCount))
+}
+
+// WhereSuccessCount applies the entql int64 predicate on the success_count field.
+func (f *ChannelPerformanceFilter) WhereSuccessCount(p entql.Int64P) {
+	f.Where(p.Field(channelperformance.FieldSuccessCount))
+}
+
+// WhereFailureCount applies the entql int64 predicate on the failure_count field.
+func (f *ChannelPerformanceFilter) WhereFailureCount(p entql.Int64P) {
+	f.Where(p.Field(channelperformance.FieldFailureCount))
+}
+
+// WhereTotalTokenCount applies the entql int64 predicate on the total_token_count field.
+func (f *ChannelPerformanceFilter) WhereTotalTokenCount(p entql.Int64P) {
+	f.Where(p.Field(channelperformance.FieldTotalTokenCount))
+}
+
+// WhereTotalRequestLatencyMs applies the entql int64 predicate on the total_request_latency_ms field.
+func (f *ChannelPerformanceFilter) WhereTotalRequestLatencyMs(p entql.Int64P) {
+	f.Where(p.Field(channelperformance.FieldTotalRequestLatencyMs))
+}
+
+// WhereStreamSuccessCount applies the entql int64 predicate on the stream_success_count field.
+func (f *ChannelPerformanceFilter) WhereStreamSuccessCount(p entql.Int64P) {
+	f.Where(p.Field(channelperformance.FieldStreamSuccessCount))
+}
+
+// WhereStreamTotalRequestCount applies the entql int64 predicate on the stream_total_request_count field.
+func (f *ChannelPerformanceFilter) WhereStreamTotalRequestCount(p entql.Int64P) {
+	f.Where(p.Field(channelperformance.FieldStreamTotalRequestCount))
+}
+
+// WhereStreamTotalTokenCount applies the entql int64 predicate on the stream_total_token_count field.
+func (f *ChannelPerformanceFilter) WhereStreamTotalTokenCount(p entql.Int64P) {
+	f.Where(p.Field(channelperformance.FieldStreamTotalTokenCount))
+}
+
+// WhereStreamTotalRequestLatencyMs applies the entql int64 predicate on the stream_total_request_latency_ms field.
+func (f *ChannelPerformanceFilter) WhereStreamTotalRequestLatencyMs(p entql.Int64P) {
+	f.Where(p.Field(channelperformance.FieldStreamTotalRequestLatencyMs))
+}
+
+// WhereStreamTotalFirstTokenLatencyMs applies the entql int64 predicate on the stream_total_first_token_latency_ms field.
+func (f *ChannelPerformanceFilter) WhereStreamTotalFirstTokenLatencyMs(p entql.Int64P) {
+	f.Where(p.Field(channelperformance.FieldStreamTotalFirstTokenLatencyMs))
+}
+
+// WhereConsecutiveFailures applies the entql int64 predicate on the consecutive_failures field.
+func (f *ChannelPerformanceFilter) WhereConsecutiveFailures(p entql.Int64P) {
+	f.Where(p.Field(channelperformance.FieldConsecutiveFailures))
 }
 
 // WhereHasChannel applies a predicate to check if query has an edge channel.

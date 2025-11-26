@@ -103,6 +103,17 @@ var (
 		{Name: "avg_stream_token_per_second", Type: field.TypeFloat64, Default: 0},
 		{Name: "last_success_at", Type: field.TypeTime, Nullable: true},
 		{Name: "last_failure_at", Type: field.TypeTime, Nullable: true},
+		{Name: "request_count", Type: field.TypeInt64, Default: 0},
+		{Name: "success_count", Type: field.TypeInt64, Default: 0},
+		{Name: "failure_count", Type: field.TypeInt64, Default: 0},
+		{Name: "total_token_count", Type: field.TypeInt64, Default: 0},
+		{Name: "total_request_latency_ms", Type: field.TypeInt64, Default: 0},
+		{Name: "stream_success_count", Type: field.TypeInt64, Default: 0},
+		{Name: "stream_total_request_count", Type: field.TypeInt64, Default: 0},
+		{Name: "stream_total_token_count", Type: field.TypeInt64, Default: 0},
+		{Name: "stream_total_request_latency_ms", Type: field.TypeInt64, Default: 0},
+		{Name: "stream_total_first_token_latency_ms", Type: field.TypeInt64, Default: 0},
+		{Name: "consecutive_failures", Type: field.TypeInt64, Default: 0},
 		{Name: "channel_id", Type: field.TypeInt, Unique: true},
 	}
 	// ChannelPerformancesTable holds the schema information for the "channel_performances" table.
@@ -113,7 +124,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "channel_performances_channels_channel_performance",
-				Columns:    []*schema.Column{ChannelPerformancesColumns[11]},
+				Columns:    []*schema.Column{ChannelPerformancesColumns[22]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -122,7 +133,7 @@ var (
 			{
 				Name:    "channel_performances_by_channel_id",
 				Unique:  true,
-				Columns: []*schema.Column{ChannelPerformancesColumns[11], ChannelPerformancesColumns[3]},
+				Columns: []*schema.Column{ChannelPerformancesColumns[22], ChannelPerformancesColumns[3]},
 			},
 		},
 	}

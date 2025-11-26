@@ -411,6 +411,50 @@ type ChannelPerformance implements Node {
   avgStreamTokenPerSecond: Float!
   lastSuccessAt: Time
   lastFailureAt: Time
+  """
+  Total number of requests (used to calculate avg metrics)
+  """
+  requestCount: Int!
+  """
+  Total number of successful requests
+  """
+  successCount: Int!
+  """
+  Total number of failed requests
+  """
+  failureCount: Int!
+  """
+  Total tokens across all requests
+  """
+  totalTokenCount: Int!
+  """
+  Total request latency in milliseconds
+  """
+  totalRequestLatencyMs: Int!
+  """
+  Total successful stream requests
+  """
+  streamSuccessCount: Int!
+  """
+  Total stream requests
+  """
+  streamTotalRequestCount: Int!
+  """
+  Total tokens across stream requests
+  """
+  streamTotalTokenCount: Int!
+  """
+  Total stream request latency in ms
+  """
+  streamTotalRequestLatencyMs: Int!
+  """
+  Total first token latency for streams
+  """
+  streamTotalFirstTokenLatencyMs: Int!
+  """
+  Number of consecutive failures
+  """
+  consecutiveFailures: Int!
   channel: Channel!
 }
 """
@@ -573,6 +617,127 @@ input ChannelPerformanceWhereInput {
   lastFailureAtLTE: Time
   lastFailureAtIsNil: Boolean
   lastFailureAtNotNil: Boolean
+  """
+  request_count field predicates
+  """
+  requestCount: Int
+  requestCountNEQ: Int
+  requestCountIn: [Int!]
+  requestCountNotIn: [Int!]
+  requestCountGT: Int
+  requestCountGTE: Int
+  requestCountLT: Int
+  requestCountLTE: Int
+  """
+  success_count field predicates
+  """
+  successCount: Int
+  successCountNEQ: Int
+  successCountIn: [Int!]
+  successCountNotIn: [Int!]
+  successCountGT: Int
+  successCountGTE: Int
+  successCountLT: Int
+  successCountLTE: Int
+  """
+  failure_count field predicates
+  """
+  failureCount: Int
+  failureCountNEQ: Int
+  failureCountIn: [Int!]
+  failureCountNotIn: [Int!]
+  failureCountGT: Int
+  failureCountGTE: Int
+  failureCountLT: Int
+  failureCountLTE: Int
+  """
+  total_token_count field predicates
+  """
+  totalTokenCount: Int
+  totalTokenCountNEQ: Int
+  totalTokenCountIn: [Int!]
+  totalTokenCountNotIn: [Int!]
+  totalTokenCountGT: Int
+  totalTokenCountGTE: Int
+  totalTokenCountLT: Int
+  totalTokenCountLTE: Int
+  """
+  total_request_latency_ms field predicates
+  """
+  totalRequestLatencyMs: Int
+  totalRequestLatencyMsNEQ: Int
+  totalRequestLatencyMsIn: [Int!]
+  totalRequestLatencyMsNotIn: [Int!]
+  totalRequestLatencyMsGT: Int
+  totalRequestLatencyMsGTE: Int
+  totalRequestLatencyMsLT: Int
+  totalRequestLatencyMsLTE: Int
+  """
+  stream_success_count field predicates
+  """
+  streamSuccessCount: Int
+  streamSuccessCountNEQ: Int
+  streamSuccessCountIn: [Int!]
+  streamSuccessCountNotIn: [Int!]
+  streamSuccessCountGT: Int
+  streamSuccessCountGTE: Int
+  streamSuccessCountLT: Int
+  streamSuccessCountLTE: Int
+  """
+  stream_total_request_count field predicates
+  """
+  streamTotalRequestCount: Int
+  streamTotalRequestCountNEQ: Int
+  streamTotalRequestCountIn: [Int!]
+  streamTotalRequestCountNotIn: [Int!]
+  streamTotalRequestCountGT: Int
+  streamTotalRequestCountGTE: Int
+  streamTotalRequestCountLT: Int
+  streamTotalRequestCountLTE: Int
+  """
+  stream_total_token_count field predicates
+  """
+  streamTotalTokenCount: Int
+  streamTotalTokenCountNEQ: Int
+  streamTotalTokenCountIn: [Int!]
+  streamTotalTokenCountNotIn: [Int!]
+  streamTotalTokenCountGT: Int
+  streamTotalTokenCountGTE: Int
+  streamTotalTokenCountLT: Int
+  streamTotalTokenCountLTE: Int
+  """
+  stream_total_request_latency_ms field predicates
+  """
+  streamTotalRequestLatencyMs: Int
+  streamTotalRequestLatencyMsNEQ: Int
+  streamTotalRequestLatencyMsIn: [Int!]
+  streamTotalRequestLatencyMsNotIn: [Int!]
+  streamTotalRequestLatencyMsGT: Int
+  streamTotalRequestLatencyMsGTE: Int
+  streamTotalRequestLatencyMsLT: Int
+  streamTotalRequestLatencyMsLTE: Int
+  """
+  stream_total_first_token_latency_ms field predicates
+  """
+  streamTotalFirstTokenLatencyMs: Int
+  streamTotalFirstTokenLatencyMsNEQ: Int
+  streamTotalFirstTokenLatencyMsIn: [Int!]
+  streamTotalFirstTokenLatencyMsNotIn: [Int!]
+  streamTotalFirstTokenLatencyMsGT: Int
+  streamTotalFirstTokenLatencyMsGTE: Int
+  streamTotalFirstTokenLatencyMsLT: Int
+  streamTotalFirstTokenLatencyMsLTE: Int
+  """
+  consecutive_failures field predicates
+  """
+  consecutiveFailures: Int
+  consecutiveFailuresNEQ: Int
+  consecutiveFailuresIn: [Int!]
+  consecutiveFailuresNotIn: [Int!]
+  consecutiveFailuresGT: Int
+  consecutiveFailuresGTE: Int
+  consecutiveFailuresLT: Int
+  consecutiveFailuresLTE: Int
   """
   channel edge predicates
   """

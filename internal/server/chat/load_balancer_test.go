@@ -26,8 +26,8 @@ func newTestChannelService(client *ent.Client) *biz.ChannelService {
 	})
 }
 
-// newTestTraceService creates a minimal trace service for testing.
-func newTestTraceService(client *ent.Client) *biz.TraceService {
+// newTestRequestService creates a minimal request service for testing.
+func newTestRequestService(client *ent.Client) *biz.RequestService {
 	systemService := biz.NewSystemService(biz.SystemServiceParams{
 		CacheConfig: xcache.Config{},
 		Ent:         client,
@@ -40,10 +40,7 @@ func newTestTraceService(client *ent.Client) *biz.TraceService {
 	})
 	usageLogService := biz.NewUsageLogService(client, systemService)
 
-	return biz.NewTraceService(biz.TraceServiceParams{
-		RequestService: biz.NewRequestService(client, systemService, usageLogService, dataStorageService),
-		Ent:            client,
-	})
+	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService)
 }
 
 // mockStrategy is a test strategy that returns a fixed score.
@@ -514,8 +511,8 @@ func TestLoadBalancer_TraceAware_SameChannelPrioritized(t *testing.T) {
 	ctx = contexts.WithTrace(ctx, trace) // Use the trace entity directly
 	ctx = ent.NewContext(ctx, client)
 
-	traceService := newTestTraceService(client)
-	traceStrategy := NewTraceAwareStrategy(traceService)
+	requestService := newTestRequestService(client)
+	traceStrategy := NewTraceAwareStrategy(requestService)
 	weightStrategy := NewWeightStrategy()
 	// Mock SystemService for testing
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}, traceStrategy, weightStrategy)
@@ -614,8 +611,8 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 	ctx = ent.NewContext(ctx, client)
 
 	// Create load balancer with both strategies
-	traceService := newTestTraceService(client)
-	traceStrategy := NewTraceAwareStrategy(traceService)
+	requestService := newTestRequestService(client)
+	traceStrategy := NewTraceAwareStrategy(requestService)
 	errorStrategy := NewErrorAwareStrategy(channelService)
 	weightStrategy := NewWeightStrategy()
 	// Mock SystemService for testing

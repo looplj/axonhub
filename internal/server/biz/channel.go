@@ -55,6 +55,12 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 	}
 
 	xerrors.NoErr(svc.InitializeAllChannelPerformances(context.Background()))
+	// Load channel performance metrics after channels are loaded
+	if err := svc.LoadChannelPerformances(context.Background()); err != nil {
+		log.Error(context.Background(), "failed to load channel performances", log.Cause(err))
+		// Continue loading channels even if metrics loading fails
+	}
+
 	xerrors.NoErr(svc.loadChannels(context.Background()))
 	xerrors.NoErr2(
 		params.Executor.ScheduleFuncAtCronRate(

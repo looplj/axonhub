@@ -178,19 +178,30 @@ type ComplexityRoot struct {
 	}
 
 	ChannelPerformance struct {
-		AvgLatencyMs                 func(childComplexity int) int
-		AvgStreamFirstTokenLatencyMs func(childComplexity int) int
-		AvgStreamTokenPerSecond      func(childComplexity int) int
-		AvgTokenPerSecond            func(childComplexity int) int
-		Channel                      func(childComplexity int) int
-		ChannelID                    func(childComplexity int) int
-		CreatedAt                    func(childComplexity int) int
-		DeletedAt                    func(childComplexity int) int
-		ID                           func(childComplexity int) int
-		LastFailureAt                func(childComplexity int) int
-		LastSuccessAt                func(childComplexity int) int
-		SuccessRate                  func(childComplexity int) int
-		UpdatedAt                    func(childComplexity int) int
+		AvgLatencyMs                   func(childComplexity int) int
+		AvgStreamFirstTokenLatencyMs   func(childComplexity int) int
+		AvgStreamTokenPerSecond        func(childComplexity int) int
+		AvgTokenPerSecond              func(childComplexity int) int
+		Channel                        func(childComplexity int) int
+		ChannelID                      func(childComplexity int) int
+		ConsecutiveFailures            func(childComplexity int) int
+		CreatedAt                      func(childComplexity int) int
+		DeletedAt                      func(childComplexity int) int
+		FailureCount                   func(childComplexity int) int
+		ID                             func(childComplexity int) int
+		LastFailureAt                  func(childComplexity int) int
+		LastSuccessAt                  func(childComplexity int) int
+		RequestCount                   func(childComplexity int) int
+		StreamSuccessCount             func(childComplexity int) int
+		StreamTotalFirstTokenLatencyMs func(childComplexity int) int
+		StreamTotalRequestCount        func(childComplexity int) int
+		StreamTotalRequestLatencyMs    func(childComplexity int) int
+		StreamTotalTokenCount          func(childComplexity int) int
+		SuccessCount                   func(childComplexity int) int
+		SuccessRate                    func(childComplexity int) int
+		TotalRequestLatencyMs          func(childComplexity int) int
+		TotalTokenCount                func(childComplexity int) int
+		UpdatedAt                      func(childComplexity int) int
 	}
 
 	ChannelSettings struct {
@@ -1557,6 +1568,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelPerformance.ChannelID(childComplexity), true
 
+	case "ChannelPerformance.consecutiveFailures":
+		if e.complexity.ChannelPerformance.ConsecutiveFailures == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.ConsecutiveFailures(childComplexity), true
+
 	case "ChannelPerformance.createdAt":
 		if e.complexity.ChannelPerformance.CreatedAt == nil {
 			break
@@ -1570,6 +1588,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelPerformance.DeletedAt(childComplexity), true
+
+	case "ChannelPerformance.failureCount":
+		if e.complexity.ChannelPerformance.FailureCount == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.FailureCount(childComplexity), true
 
 	case "ChannelPerformance.id":
 		if e.complexity.ChannelPerformance.ID == nil {
@@ -1592,12 +1617,75 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelPerformance.LastSuccessAt(childComplexity), true
 
+	case "ChannelPerformance.requestCount":
+		if e.complexity.ChannelPerformance.RequestCount == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.RequestCount(childComplexity), true
+
+	case "ChannelPerformance.streamSuccessCount":
+		if e.complexity.ChannelPerformance.StreamSuccessCount == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.StreamSuccessCount(childComplexity), true
+
+	case "ChannelPerformance.streamTotalFirstTokenLatencyMs":
+		if e.complexity.ChannelPerformance.StreamTotalFirstTokenLatencyMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.StreamTotalFirstTokenLatencyMs(childComplexity), true
+
+	case "ChannelPerformance.streamTotalRequestCount":
+		if e.complexity.ChannelPerformance.StreamTotalRequestCount == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.StreamTotalRequestCount(childComplexity), true
+
+	case "ChannelPerformance.streamTotalRequestLatencyMs":
+		if e.complexity.ChannelPerformance.StreamTotalRequestLatencyMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.StreamTotalRequestLatencyMs(childComplexity), true
+
+	case "ChannelPerformance.streamTotalTokenCount":
+		if e.complexity.ChannelPerformance.StreamTotalTokenCount == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.StreamTotalTokenCount(childComplexity), true
+
+	case "ChannelPerformance.successCount":
+		if e.complexity.ChannelPerformance.SuccessCount == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.SuccessCount(childComplexity), true
+
 	case "ChannelPerformance.successRate":
 		if e.complexity.ChannelPerformance.SuccessRate == nil {
 			break
 		}
 
 		return e.complexity.ChannelPerformance.SuccessRate(childComplexity), true
+
+	case "ChannelPerformance.totalRequestLatencyMs":
+		if e.complexity.ChannelPerformance.TotalRequestLatencyMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.TotalRequestLatencyMs(childComplexity), true
+
+	case "ChannelPerformance.totalTokenCount":
+		if e.complexity.ChannelPerformance.TotalTokenCount == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformance.TotalTokenCount(childComplexity), true
 
 	case "ChannelPerformance.updatedAt":
 		if e.complexity.ChannelPerformance.UpdatedAt == nil {
@@ -9627,6 +9715,28 @@ func (ec *executionContext) fieldContext_Channel_channelPerformance(_ context.Co
 				return ec.fieldContext_ChannelPerformance_lastSuccessAt(ctx, field)
 			case "lastFailureAt":
 				return ec.fieldContext_ChannelPerformance_lastFailureAt(ctx, field)
+			case "requestCount":
+				return ec.fieldContext_ChannelPerformance_requestCount(ctx, field)
+			case "successCount":
+				return ec.fieldContext_ChannelPerformance_successCount(ctx, field)
+			case "failureCount":
+				return ec.fieldContext_ChannelPerformance_failureCount(ctx, field)
+			case "totalTokenCount":
+				return ec.fieldContext_ChannelPerformance_totalTokenCount(ctx, field)
+			case "totalRequestLatencyMs":
+				return ec.fieldContext_ChannelPerformance_totalRequestLatencyMs(ctx, field)
+			case "streamSuccessCount":
+				return ec.fieldContext_ChannelPerformance_streamSuccessCount(ctx, field)
+			case "streamTotalRequestCount":
+				return ec.fieldContext_ChannelPerformance_streamTotalRequestCount(ctx, field)
+			case "streamTotalTokenCount":
+				return ec.fieldContext_ChannelPerformance_streamTotalTokenCount(ctx, field)
+			case "streamTotalRequestLatencyMs":
+				return ec.fieldContext_ChannelPerformance_streamTotalRequestLatencyMs(ctx, field)
+			case "streamTotalFirstTokenLatencyMs":
+				return ec.fieldContext_ChannelPerformance_streamTotalFirstTokenLatencyMs(ctx, field)
+			case "consecutiveFailures":
+				return ec.fieldContext_ChannelPerformance_consecutiveFailures(ctx, field)
 			case "channel":
 				return ec.fieldContext_ChannelPerformance_channel(ctx, field)
 			}
@@ -10560,6 +10670,490 @@ func (ec *executionContext) fieldContext_ChannelPerformance_lastFailureAt(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformance_requestCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_requestCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequestCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformance_requestCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformance_successCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_successCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SuccessCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformance_successCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformance_failureCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_failureCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FailureCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformance_failureCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformance_totalTokenCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_totalTokenCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalTokenCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformance_totalTokenCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformance_totalRequestLatencyMs(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_totalRequestLatencyMs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalRequestLatencyMs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformance_totalRequestLatencyMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformance_streamSuccessCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_streamSuccessCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StreamSuccessCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformance_streamSuccessCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformance_streamTotalRequestCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_streamTotalRequestCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StreamTotalRequestCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformance_streamTotalRequestCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformance_streamTotalTokenCount(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_streamTotalTokenCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StreamTotalTokenCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformance_streamTotalTokenCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformance_streamTotalRequestLatencyMs(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_streamTotalRequestLatencyMs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StreamTotalRequestLatencyMs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformance_streamTotalRequestLatencyMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformance_streamTotalFirstTokenLatencyMs(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_streamTotalFirstTokenLatencyMs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StreamTotalFirstTokenLatencyMs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformance_streamTotalFirstTokenLatencyMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformance_consecutiveFailures(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelPerformance) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChannelPerformance_consecutiveFailures(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ConsecutiveFailures, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformance_consecutiveFailures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -35749,7 +36343,7 @@ func (ec *executionContext) unmarshalInputChannelPerformanceWhereInput(ctx conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "successRate", "successRateNEQ", "successRateIn", "successRateNotIn", "successRateGT", "successRateGTE", "successRateLT", "successRateLTE", "avgLatencyMs", "avgLatencyMsNEQ", "avgLatencyMsIn", "avgLatencyMsNotIn", "avgLatencyMsGT", "avgLatencyMsGTE", "avgLatencyMsLT", "avgLatencyMsLTE", "avgTokenPerSecond", "avgTokenPerSecondNEQ", "avgTokenPerSecondIn", "avgTokenPerSecondNotIn", "avgTokenPerSecondGT", "avgTokenPerSecondGTE", "avgTokenPerSecondLT", "avgTokenPerSecondLTE", "avgStreamFirstTokenLatencyMs", "avgStreamFirstTokenLatencyMsNEQ", "avgStreamFirstTokenLatencyMsIn", "avgStreamFirstTokenLatencyMsNotIn", "avgStreamFirstTokenLatencyMsGT", "avgStreamFirstTokenLatencyMsGTE", "avgStreamFirstTokenLatencyMsLT", "avgStreamFirstTokenLatencyMsLTE", "avgStreamTokenPerSecond", "avgStreamTokenPerSecondNEQ", "avgStreamTokenPerSecondIn", "avgStreamTokenPerSecondNotIn", "avgStreamTokenPerSecondGT", "avgStreamTokenPerSecondGTE", "avgStreamTokenPerSecondLT", "avgStreamTokenPerSecondLTE", "lastSuccessAt", "lastSuccessAtNEQ", "lastSuccessAtIn", "lastSuccessAtNotIn", "lastSuccessAtGT", "lastSuccessAtGTE", "lastSuccessAtLT", "lastSuccessAtLTE", "lastSuccessAtIsNil", "lastSuccessAtNotNil", "lastFailureAt", "lastFailureAtNEQ", "lastFailureAtIn", "lastFailureAtNotIn", "lastFailureAtGT", "lastFailureAtGTE", "lastFailureAtLT", "lastFailureAtLTE", "lastFailureAtIsNil", "lastFailureAtNotNil", "hasChannel", "hasChannelWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "deletedAt", "deletedAtNEQ", "deletedAtIn", "deletedAtNotIn", "deletedAtGT", "deletedAtGTE", "deletedAtLT", "deletedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "successRate", "successRateNEQ", "successRateIn", "successRateNotIn", "successRateGT", "successRateGTE", "successRateLT", "successRateLTE", "avgLatencyMs", "avgLatencyMsNEQ", "avgLatencyMsIn", "avgLatencyMsNotIn", "avgLatencyMsGT", "avgLatencyMsGTE", "avgLatencyMsLT", "avgLatencyMsLTE", "avgTokenPerSecond", "avgTokenPerSecondNEQ", "avgTokenPerSecondIn", "avgTokenPerSecondNotIn", "avgTokenPerSecondGT", "avgTokenPerSecondGTE", "avgTokenPerSecondLT", "avgTokenPerSecondLTE", "avgStreamFirstTokenLatencyMs", "avgStreamFirstTokenLatencyMsNEQ", "avgStreamFirstTokenLatencyMsIn", "avgStreamFirstTokenLatencyMsNotIn", "avgStreamFirstTokenLatencyMsGT", "avgStreamFirstTokenLatencyMsGTE", "avgStreamFirstTokenLatencyMsLT", "avgStreamFirstTokenLatencyMsLTE", "avgStreamTokenPerSecond", "avgStreamTokenPerSecondNEQ", "avgStreamTokenPerSecondIn", "avgStreamTokenPerSecondNotIn", "avgStreamTokenPerSecondGT", "avgStreamTokenPerSecondGTE", "avgStreamTokenPerSecondLT", "avgStreamTokenPerSecondLTE", "lastSuccessAt", "lastSuccessAtNEQ", "lastSuccessAtIn", "lastSuccessAtNotIn", "lastSuccessAtGT", "lastSuccessAtGTE", "lastSuccessAtLT", "lastSuccessAtLTE", "lastSuccessAtIsNil", "lastSuccessAtNotNil", "lastFailureAt", "lastFailureAtNEQ", "lastFailureAtIn", "lastFailureAtNotIn", "lastFailureAtGT", "lastFailureAtGTE", "lastFailureAtLT", "lastFailureAtLTE", "lastFailureAtIsNil", "lastFailureAtNotNil", "requestCount", "requestCountNEQ", "requestCountIn", "requestCountNotIn", "requestCountGT", "requestCountGTE", "requestCountLT", "requestCountLTE", "successCount", "successCountNEQ", "successCountIn", "successCountNotIn", "successCountGT", "successCountGTE", "successCountLT", "successCountLTE", "failureCount", "failureCountNEQ", "failureCountIn", "failureCountNotIn", "failureCountGT", "failureCountGTE", "failureCountLT", "failureCountLTE", "totalTokenCount", "totalTokenCountNEQ", "totalTokenCountIn", "totalTokenCountNotIn", "totalTokenCountGT", "totalTokenCountGTE", "totalTokenCountLT", "totalTokenCountLTE", "totalRequestLatencyMs", "totalRequestLatencyMsNEQ", "totalRequestLatencyMsIn", "totalRequestLatencyMsNotIn", "totalRequestLatencyMsGT", "totalRequestLatencyMsGTE", "totalRequestLatencyMsLT", "totalRequestLatencyMsLTE", "streamSuccessCount", "streamSuccessCountNEQ", "streamSuccessCountIn", "streamSuccessCountNotIn", "streamSuccessCountGT", "streamSuccessCountGTE", "streamSuccessCountLT", "streamSuccessCountLTE", "streamTotalRequestCount", "streamTotalRequestCountNEQ", "streamTotalRequestCountIn", "streamTotalRequestCountNotIn", "streamTotalRequestCountGT", "streamTotalRequestCountGTE", "streamTotalRequestCountLT", "streamTotalRequestCountLTE", "streamTotalTokenCount", "streamTotalTokenCountNEQ", "streamTotalTokenCountIn", "streamTotalTokenCountNotIn", "streamTotalTokenCountGT", "streamTotalTokenCountGTE", "streamTotalTokenCountLT", "streamTotalTokenCountLTE", "streamTotalRequestLatencyMs", "streamTotalRequestLatencyMsNEQ", "streamTotalRequestLatencyMsIn", "streamTotalRequestLatencyMsNotIn", "streamTotalRequestLatencyMsGT", "streamTotalRequestLatencyMsGTE", "streamTotalRequestLatencyMsLT", "streamTotalRequestLatencyMsLTE", "streamTotalFirstTokenLatencyMs", "streamTotalFirstTokenLatencyMsNEQ", "streamTotalFirstTokenLatencyMsIn", "streamTotalFirstTokenLatencyMsNotIn", "streamTotalFirstTokenLatencyMsGT", "streamTotalFirstTokenLatencyMsGTE", "streamTotalFirstTokenLatencyMsLT", "streamTotalFirstTokenLatencyMsLTE", "consecutiveFailures", "consecutiveFailuresNEQ", "consecutiveFailuresIn", "consecutiveFailuresNotIn", "consecutiveFailuresGT", "consecutiveFailuresGTE", "consecutiveFailuresLT", "consecutiveFailuresLTE", "hasChannel", "hasChannelWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -36497,6 +37091,622 @@ func (ec *executionContext) unmarshalInputChannelPerformanceWhereInput(ctx conte
 				return it, err
 			}
 			it.LastFailureAtNotNil = data
+		case "requestCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestCount"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestCount = data
+		case "requestCountNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestCountNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestCountNEQ = data
+		case "requestCountIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestCountIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestCountIn = data
+		case "requestCountNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestCountNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestCountNotIn = data
+		case "requestCountGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestCountGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestCountGT = data
+		case "requestCountGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestCountGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestCountGTE = data
+		case "requestCountLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestCountLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestCountLT = data
+		case "requestCountLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestCountLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestCountLTE = data
+		case "successCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successCount"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SuccessCount = data
+		case "successCountNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successCountNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SuccessCountNEQ = data
+		case "successCountIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successCountIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SuccessCountIn = data
+		case "successCountNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successCountNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SuccessCountNotIn = data
+		case "successCountGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successCountGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SuccessCountGT = data
+		case "successCountGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successCountGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SuccessCountGTE = data
+		case "successCountLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successCountLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SuccessCountLT = data
+		case "successCountLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("successCountLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SuccessCountLTE = data
+		case "failureCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("failureCount"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FailureCount = data
+		case "failureCountNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("failureCountNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FailureCountNEQ = data
+		case "failureCountIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("failureCountIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FailureCountIn = data
+		case "failureCountNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("failureCountNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FailureCountNotIn = data
+		case "failureCountGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("failureCountGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FailureCountGT = data
+		case "failureCountGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("failureCountGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FailureCountGTE = data
+		case "failureCountLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("failureCountLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FailureCountLT = data
+		case "failureCountLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("failureCountLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FailureCountLTE = data
+		case "totalTokenCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCount"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalTokenCount = data
+		case "totalTokenCountNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalTokenCountNEQ = data
+		case "totalTokenCountIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalTokenCountIn = data
+		case "totalTokenCountNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalTokenCountNotIn = data
+		case "totalTokenCountGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalTokenCountGT = data
+		case "totalTokenCountGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalTokenCountGTE = data
+		case "totalTokenCountLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalTokenCountLT = data
+		case "totalTokenCountLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalTokenCountLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalTokenCountLTE = data
+		case "totalRequestLatencyMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalRequestLatencyMs"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalRequestLatencyMs = data
+		case "totalRequestLatencyMsNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalRequestLatencyMsNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalRequestLatencyMsNEQ = data
+		case "totalRequestLatencyMsIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalRequestLatencyMsIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalRequestLatencyMsIn = data
+		case "totalRequestLatencyMsNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalRequestLatencyMsNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalRequestLatencyMsNotIn = data
+		case "totalRequestLatencyMsGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalRequestLatencyMsGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalRequestLatencyMsGT = data
+		case "totalRequestLatencyMsGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalRequestLatencyMsGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalRequestLatencyMsGTE = data
+		case "totalRequestLatencyMsLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalRequestLatencyMsLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalRequestLatencyMsLT = data
+		case "totalRequestLatencyMsLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalRequestLatencyMsLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalRequestLatencyMsLTE = data
+		case "streamSuccessCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamSuccessCount"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamSuccessCount = data
+		case "streamSuccessCountNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamSuccessCountNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamSuccessCountNEQ = data
+		case "streamSuccessCountIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamSuccessCountIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamSuccessCountIn = data
+		case "streamSuccessCountNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamSuccessCountNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamSuccessCountNotIn = data
+		case "streamSuccessCountGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamSuccessCountGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamSuccessCountGT = data
+		case "streamSuccessCountGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamSuccessCountGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamSuccessCountGTE = data
+		case "streamSuccessCountLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamSuccessCountLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamSuccessCountLT = data
+		case "streamSuccessCountLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamSuccessCountLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamSuccessCountLTE = data
+		case "streamTotalRequestCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestCount"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestCount = data
+		case "streamTotalRequestCountNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestCountNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestCountNEQ = data
+		case "streamTotalRequestCountIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestCountIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestCountIn = data
+		case "streamTotalRequestCountNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestCountNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestCountNotIn = data
+		case "streamTotalRequestCountGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestCountGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestCountGT = data
+		case "streamTotalRequestCountGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestCountGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestCountGTE = data
+		case "streamTotalRequestCountLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestCountLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestCountLT = data
+		case "streamTotalRequestCountLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestCountLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestCountLTE = data
+		case "streamTotalTokenCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalTokenCount"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalTokenCount = data
+		case "streamTotalTokenCountNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalTokenCountNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalTokenCountNEQ = data
+		case "streamTotalTokenCountIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalTokenCountIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalTokenCountIn = data
+		case "streamTotalTokenCountNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalTokenCountNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalTokenCountNotIn = data
+		case "streamTotalTokenCountGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalTokenCountGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalTokenCountGT = data
+		case "streamTotalTokenCountGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalTokenCountGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalTokenCountGTE = data
+		case "streamTotalTokenCountLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalTokenCountLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalTokenCountLT = data
+		case "streamTotalTokenCountLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalTokenCountLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalTokenCountLTE = data
+		case "streamTotalRequestLatencyMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestLatencyMs"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestLatencyMs = data
+		case "streamTotalRequestLatencyMsNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestLatencyMsNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestLatencyMsNEQ = data
+		case "streamTotalRequestLatencyMsIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestLatencyMsIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestLatencyMsIn = data
+		case "streamTotalRequestLatencyMsNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestLatencyMsNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestLatencyMsNotIn = data
+		case "streamTotalRequestLatencyMsGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestLatencyMsGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestLatencyMsGT = data
+		case "streamTotalRequestLatencyMsGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestLatencyMsGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestLatencyMsGTE = data
+		case "streamTotalRequestLatencyMsLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestLatencyMsLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestLatencyMsLT = data
+		case "streamTotalRequestLatencyMsLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalRequestLatencyMsLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalRequestLatencyMsLTE = data
+		case "streamTotalFirstTokenLatencyMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalFirstTokenLatencyMs"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalFirstTokenLatencyMs = data
+		case "streamTotalFirstTokenLatencyMsNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalFirstTokenLatencyMsNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalFirstTokenLatencyMsNEQ = data
+		case "streamTotalFirstTokenLatencyMsIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalFirstTokenLatencyMsIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalFirstTokenLatencyMsIn = data
+		case "streamTotalFirstTokenLatencyMsNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalFirstTokenLatencyMsNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalFirstTokenLatencyMsNotIn = data
+		case "streamTotalFirstTokenLatencyMsGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalFirstTokenLatencyMsGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalFirstTokenLatencyMsGT = data
+		case "streamTotalFirstTokenLatencyMsGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalFirstTokenLatencyMsGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalFirstTokenLatencyMsGTE = data
+		case "streamTotalFirstTokenLatencyMsLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalFirstTokenLatencyMsLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalFirstTokenLatencyMsLT = data
+		case "streamTotalFirstTokenLatencyMsLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("streamTotalFirstTokenLatencyMsLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StreamTotalFirstTokenLatencyMsLTE = data
+		case "consecutiveFailures":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("consecutiveFailures"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ConsecutiveFailures = data
+		case "consecutiveFailuresNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("consecutiveFailuresNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ConsecutiveFailuresNEQ = data
+		case "consecutiveFailuresIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("consecutiveFailuresIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ConsecutiveFailuresIn = data
+		case "consecutiveFailuresNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("consecutiveFailuresNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint64ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ConsecutiveFailuresNotIn = data
+		case "consecutiveFailuresGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("consecutiveFailuresGT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ConsecutiveFailuresGT = data
+		case "consecutiveFailuresGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("consecutiveFailuresGTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ConsecutiveFailuresGTE = data
+		case "consecutiveFailuresLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("consecutiveFailuresLT"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ConsecutiveFailuresLT = data
+		case "consecutiveFailuresLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("consecutiveFailuresLTE"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ConsecutiveFailuresLTE = data
 		case "hasChannel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannel"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -49511,6 +50721,61 @@ func (ec *executionContext) _ChannelPerformance(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._ChannelPerformance_lastSuccessAt(ctx, field, obj)
 		case "lastFailureAt":
 			out.Values[i] = ec._ChannelPerformance_lastFailureAt(ctx, field, obj)
+		case "requestCount":
+			out.Values[i] = ec._ChannelPerformance_requestCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "successCount":
+			out.Values[i] = ec._ChannelPerformance_successCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "failureCount":
+			out.Values[i] = ec._ChannelPerformance_failureCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "totalTokenCount":
+			out.Values[i] = ec._ChannelPerformance_totalTokenCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "totalRequestLatencyMs":
+			out.Values[i] = ec._ChannelPerformance_totalRequestLatencyMs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "streamSuccessCount":
+			out.Values[i] = ec._ChannelPerformance_streamSuccessCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "streamTotalRequestCount":
+			out.Values[i] = ec._ChannelPerformance_streamTotalRequestCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "streamTotalTokenCount":
+			out.Values[i] = ec._ChannelPerformance_streamTotalTokenCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "streamTotalRequestLatencyMs":
+			out.Values[i] = ec._ChannelPerformance_streamTotalRequestLatencyMs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "streamTotalFirstTokenLatencyMs":
+			out.Values[i] = ec._ChannelPerformance_streamTotalFirstTokenLatencyMs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "consecutiveFailures":
+			out.Values[i] = ec._ChannelPerformance_consecutiveFailures(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "channel":
 			field := field
 

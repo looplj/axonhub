@@ -169,6 +169,160 @@ func (_c *ChannelPerformanceCreate) SetNillableLastFailureAt(v *time.Time) *Chan
 	return _c
 }
 
+// SetRequestCount sets the "request_count" field.
+func (_c *ChannelPerformanceCreate) SetRequestCount(v int64) *ChannelPerformanceCreate {
+	_c.mutation.SetRequestCount(v)
+	return _c
+}
+
+// SetNillableRequestCount sets the "request_count" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableRequestCount(v *int64) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetRequestCount(*v)
+	}
+	return _c
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (_c *ChannelPerformanceCreate) SetSuccessCount(v int64) *ChannelPerformanceCreate {
+	_c.mutation.SetSuccessCount(v)
+	return _c
+}
+
+// SetNillableSuccessCount sets the "success_count" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableSuccessCount(v *int64) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetSuccessCount(*v)
+	}
+	return _c
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (_c *ChannelPerformanceCreate) SetFailureCount(v int64) *ChannelPerformanceCreate {
+	_c.mutation.SetFailureCount(v)
+	return _c
+}
+
+// SetNillableFailureCount sets the "failure_count" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableFailureCount(v *int64) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetFailureCount(*v)
+	}
+	return _c
+}
+
+// SetTotalTokenCount sets the "total_token_count" field.
+func (_c *ChannelPerformanceCreate) SetTotalTokenCount(v int64) *ChannelPerformanceCreate {
+	_c.mutation.SetTotalTokenCount(v)
+	return _c
+}
+
+// SetNillableTotalTokenCount sets the "total_token_count" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableTotalTokenCount(v *int64) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetTotalTokenCount(*v)
+	}
+	return _c
+}
+
+// SetTotalRequestLatencyMs sets the "total_request_latency_ms" field.
+func (_c *ChannelPerformanceCreate) SetTotalRequestLatencyMs(v int64) *ChannelPerformanceCreate {
+	_c.mutation.SetTotalRequestLatencyMs(v)
+	return _c
+}
+
+// SetNillableTotalRequestLatencyMs sets the "total_request_latency_ms" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableTotalRequestLatencyMs(v *int64) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetTotalRequestLatencyMs(*v)
+	}
+	return _c
+}
+
+// SetStreamSuccessCount sets the "stream_success_count" field.
+func (_c *ChannelPerformanceCreate) SetStreamSuccessCount(v int64) *ChannelPerformanceCreate {
+	_c.mutation.SetStreamSuccessCount(v)
+	return _c
+}
+
+// SetNillableStreamSuccessCount sets the "stream_success_count" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableStreamSuccessCount(v *int64) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetStreamSuccessCount(*v)
+	}
+	return _c
+}
+
+// SetStreamTotalRequestCount sets the "stream_total_request_count" field.
+func (_c *ChannelPerformanceCreate) SetStreamTotalRequestCount(v int64) *ChannelPerformanceCreate {
+	_c.mutation.SetStreamTotalRequestCount(v)
+	return _c
+}
+
+// SetNillableStreamTotalRequestCount sets the "stream_total_request_count" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableStreamTotalRequestCount(v *int64) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetStreamTotalRequestCount(*v)
+	}
+	return _c
+}
+
+// SetStreamTotalTokenCount sets the "stream_total_token_count" field.
+func (_c *ChannelPerformanceCreate) SetStreamTotalTokenCount(v int64) *ChannelPerformanceCreate {
+	_c.mutation.SetStreamTotalTokenCount(v)
+	return _c
+}
+
+// SetNillableStreamTotalTokenCount sets the "stream_total_token_count" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableStreamTotalTokenCount(v *int64) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetStreamTotalTokenCount(*v)
+	}
+	return _c
+}
+
+// SetStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field.
+func (_c *ChannelPerformanceCreate) SetStreamTotalRequestLatencyMs(v int64) *ChannelPerformanceCreate {
+	_c.mutation.SetStreamTotalRequestLatencyMs(v)
+	return _c
+}
+
+// SetNillableStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableStreamTotalRequestLatencyMs(v *int64) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetStreamTotalRequestLatencyMs(*v)
+	}
+	return _c
+}
+
+// SetStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field.
+func (_c *ChannelPerformanceCreate) SetStreamTotalFirstTokenLatencyMs(v int64) *ChannelPerformanceCreate {
+	_c.mutation.SetStreamTotalFirstTokenLatencyMs(v)
+	return _c
+}
+
+// SetNillableStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableStreamTotalFirstTokenLatencyMs(v *int64) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetStreamTotalFirstTokenLatencyMs(*v)
+	}
+	return _c
+}
+
+// SetConsecutiveFailures sets the "consecutive_failures" field.
+func (_c *ChannelPerformanceCreate) SetConsecutiveFailures(v int64) *ChannelPerformanceCreate {
+	_c.mutation.SetConsecutiveFailures(v)
+	return _c
+}
+
+// SetNillableConsecutiveFailures sets the "consecutive_failures" field if the given value is not nil.
+func (_c *ChannelPerformanceCreate) SetNillableConsecutiveFailures(v *int64) *ChannelPerformanceCreate {
+	if v != nil {
+		_c.SetConsecutiveFailures(*v)
+	}
+	return _c
+}
+
 // SetChannel sets the "channel" edge to the Channel entity.
 func (_c *ChannelPerformanceCreate) SetChannel(v *Channel) *ChannelPerformanceCreate {
 	return _c.SetChannelID(v.ID)
@@ -249,6 +403,50 @@ func (_c *ChannelPerformanceCreate) defaults() error {
 		v := channelperformance.DefaultAvgStreamTokenPerSecond
 		_c.mutation.SetAvgStreamTokenPerSecond(v)
 	}
+	if _, ok := _c.mutation.RequestCount(); !ok {
+		v := channelperformance.DefaultRequestCount
+		_c.mutation.SetRequestCount(v)
+	}
+	if _, ok := _c.mutation.SuccessCount(); !ok {
+		v := channelperformance.DefaultSuccessCount
+		_c.mutation.SetSuccessCount(v)
+	}
+	if _, ok := _c.mutation.FailureCount(); !ok {
+		v := channelperformance.DefaultFailureCount
+		_c.mutation.SetFailureCount(v)
+	}
+	if _, ok := _c.mutation.TotalTokenCount(); !ok {
+		v := channelperformance.DefaultTotalTokenCount
+		_c.mutation.SetTotalTokenCount(v)
+	}
+	if _, ok := _c.mutation.TotalRequestLatencyMs(); !ok {
+		v := channelperformance.DefaultTotalRequestLatencyMs
+		_c.mutation.SetTotalRequestLatencyMs(v)
+	}
+	if _, ok := _c.mutation.StreamSuccessCount(); !ok {
+		v := channelperformance.DefaultStreamSuccessCount
+		_c.mutation.SetStreamSuccessCount(v)
+	}
+	if _, ok := _c.mutation.StreamTotalRequestCount(); !ok {
+		v := channelperformance.DefaultStreamTotalRequestCount
+		_c.mutation.SetStreamTotalRequestCount(v)
+	}
+	if _, ok := _c.mutation.StreamTotalTokenCount(); !ok {
+		v := channelperformance.DefaultStreamTotalTokenCount
+		_c.mutation.SetStreamTotalTokenCount(v)
+	}
+	if _, ok := _c.mutation.StreamTotalRequestLatencyMs(); !ok {
+		v := channelperformance.DefaultStreamTotalRequestLatencyMs
+		_c.mutation.SetStreamTotalRequestLatencyMs(v)
+	}
+	if _, ok := _c.mutation.StreamTotalFirstTokenLatencyMs(); !ok {
+		v := channelperformance.DefaultStreamTotalFirstTokenLatencyMs
+		_c.mutation.SetStreamTotalFirstTokenLatencyMs(v)
+	}
+	if _, ok := _c.mutation.ConsecutiveFailures(); !ok {
+		v := channelperformance.DefaultConsecutiveFailures
+		_c.mutation.SetConsecutiveFailures(v)
+	}
 	return nil
 }
 
@@ -280,6 +478,39 @@ func (_c *ChannelPerformanceCreate) check() error {
 	}
 	if _, ok := _c.mutation.AvgStreamTokenPerSecond(); !ok {
 		return &ValidationError{Name: "avg_stream_token_per_second", err: errors.New(`ent: missing required field "ChannelPerformance.avg_stream_token_per_second"`)}
+	}
+	if _, ok := _c.mutation.RequestCount(); !ok {
+		return &ValidationError{Name: "request_count", err: errors.New(`ent: missing required field "ChannelPerformance.request_count"`)}
+	}
+	if _, ok := _c.mutation.SuccessCount(); !ok {
+		return &ValidationError{Name: "success_count", err: errors.New(`ent: missing required field "ChannelPerformance.success_count"`)}
+	}
+	if _, ok := _c.mutation.FailureCount(); !ok {
+		return &ValidationError{Name: "failure_count", err: errors.New(`ent: missing required field "ChannelPerformance.failure_count"`)}
+	}
+	if _, ok := _c.mutation.TotalTokenCount(); !ok {
+		return &ValidationError{Name: "total_token_count", err: errors.New(`ent: missing required field "ChannelPerformance.total_token_count"`)}
+	}
+	if _, ok := _c.mutation.TotalRequestLatencyMs(); !ok {
+		return &ValidationError{Name: "total_request_latency_ms", err: errors.New(`ent: missing required field "ChannelPerformance.total_request_latency_ms"`)}
+	}
+	if _, ok := _c.mutation.StreamSuccessCount(); !ok {
+		return &ValidationError{Name: "stream_success_count", err: errors.New(`ent: missing required field "ChannelPerformance.stream_success_count"`)}
+	}
+	if _, ok := _c.mutation.StreamTotalRequestCount(); !ok {
+		return &ValidationError{Name: "stream_total_request_count", err: errors.New(`ent: missing required field "ChannelPerformance.stream_total_request_count"`)}
+	}
+	if _, ok := _c.mutation.StreamTotalTokenCount(); !ok {
+		return &ValidationError{Name: "stream_total_token_count", err: errors.New(`ent: missing required field "ChannelPerformance.stream_total_token_count"`)}
+	}
+	if _, ok := _c.mutation.StreamTotalRequestLatencyMs(); !ok {
+		return &ValidationError{Name: "stream_total_request_latency_ms", err: errors.New(`ent: missing required field "ChannelPerformance.stream_total_request_latency_ms"`)}
+	}
+	if _, ok := _c.mutation.StreamTotalFirstTokenLatencyMs(); !ok {
+		return &ValidationError{Name: "stream_total_first_token_latency_ms", err: errors.New(`ent: missing required field "ChannelPerformance.stream_total_first_token_latency_ms"`)}
+	}
+	if _, ok := _c.mutation.ConsecutiveFailures(); !ok {
+		return &ValidationError{Name: "consecutive_failures", err: errors.New(`ent: missing required field "ChannelPerformance.consecutive_failures"`)}
 	}
 	if len(_c.mutation.ChannelIDs()) == 0 {
 		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required edge "ChannelPerformance.channel"`)}
@@ -350,6 +581,50 @@ func (_c *ChannelPerformanceCreate) createSpec() (*ChannelPerformance, *sqlgraph
 	if value, ok := _c.mutation.LastFailureAt(); ok {
 		_spec.SetField(channelperformance.FieldLastFailureAt, field.TypeTime, value)
 		_node.LastFailureAt = &value
+	}
+	if value, ok := _c.mutation.RequestCount(); ok {
+		_spec.SetField(channelperformance.FieldRequestCount, field.TypeInt64, value)
+		_node.RequestCount = value
+	}
+	if value, ok := _c.mutation.SuccessCount(); ok {
+		_spec.SetField(channelperformance.FieldSuccessCount, field.TypeInt64, value)
+		_node.SuccessCount = value
+	}
+	if value, ok := _c.mutation.FailureCount(); ok {
+		_spec.SetField(channelperformance.FieldFailureCount, field.TypeInt64, value)
+		_node.FailureCount = value
+	}
+	if value, ok := _c.mutation.TotalTokenCount(); ok {
+		_spec.SetField(channelperformance.FieldTotalTokenCount, field.TypeInt64, value)
+		_node.TotalTokenCount = value
+	}
+	if value, ok := _c.mutation.TotalRequestLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldTotalRequestLatencyMs, field.TypeInt64, value)
+		_node.TotalRequestLatencyMs = value
+	}
+	if value, ok := _c.mutation.StreamSuccessCount(); ok {
+		_spec.SetField(channelperformance.FieldStreamSuccessCount, field.TypeInt64, value)
+		_node.StreamSuccessCount = value
+	}
+	if value, ok := _c.mutation.StreamTotalRequestCount(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalRequestCount, field.TypeInt64, value)
+		_node.StreamTotalRequestCount = value
+	}
+	if value, ok := _c.mutation.StreamTotalTokenCount(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalTokenCount, field.TypeInt64, value)
+		_node.StreamTotalTokenCount = value
+	}
+	if value, ok := _c.mutation.StreamTotalRequestLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalRequestLatencyMs, field.TypeInt64, value)
+		_node.StreamTotalRequestLatencyMs = value
+	}
+	if value, ok := _c.mutation.StreamTotalFirstTokenLatencyMs(); ok {
+		_spec.SetField(channelperformance.FieldStreamTotalFirstTokenLatencyMs, field.TypeInt64, value)
+		_node.StreamTotalFirstTokenLatencyMs = value
+	}
+	if value, ok := _c.mutation.ConsecutiveFailures(); ok {
+		_spec.SetField(channelperformance.FieldConsecutiveFailures, field.TypeInt64, value)
+		_node.ConsecutiveFailures = value
 	}
 	if nodes := _c.mutation.ChannelIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -573,6 +848,204 @@ func (u *ChannelPerformanceUpsert) UpdateLastFailureAt() *ChannelPerformanceUpse
 // ClearLastFailureAt clears the value of the "last_failure_at" field.
 func (u *ChannelPerformanceUpsert) ClearLastFailureAt() *ChannelPerformanceUpsert {
 	u.SetNull(channelperformance.FieldLastFailureAt)
+	return u
+}
+
+// SetRequestCount sets the "request_count" field.
+func (u *ChannelPerformanceUpsert) SetRequestCount(v int64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldRequestCount, v)
+	return u
+}
+
+// UpdateRequestCount sets the "request_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateRequestCount() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldRequestCount)
+	return u
+}
+
+// AddRequestCount adds v to the "request_count" field.
+func (u *ChannelPerformanceUpsert) AddRequestCount(v int64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldRequestCount, v)
+	return u
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (u *ChannelPerformanceUpsert) SetSuccessCount(v int64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldSuccessCount, v)
+	return u
+}
+
+// UpdateSuccessCount sets the "success_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateSuccessCount() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldSuccessCount)
+	return u
+}
+
+// AddSuccessCount adds v to the "success_count" field.
+func (u *ChannelPerformanceUpsert) AddSuccessCount(v int64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldSuccessCount, v)
+	return u
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (u *ChannelPerformanceUpsert) SetFailureCount(v int64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldFailureCount, v)
+	return u
+}
+
+// UpdateFailureCount sets the "failure_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateFailureCount() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldFailureCount)
+	return u
+}
+
+// AddFailureCount adds v to the "failure_count" field.
+func (u *ChannelPerformanceUpsert) AddFailureCount(v int64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldFailureCount, v)
+	return u
+}
+
+// SetTotalTokenCount sets the "total_token_count" field.
+func (u *ChannelPerformanceUpsert) SetTotalTokenCount(v int64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldTotalTokenCount, v)
+	return u
+}
+
+// UpdateTotalTokenCount sets the "total_token_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateTotalTokenCount() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldTotalTokenCount)
+	return u
+}
+
+// AddTotalTokenCount adds v to the "total_token_count" field.
+func (u *ChannelPerformanceUpsert) AddTotalTokenCount(v int64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldTotalTokenCount, v)
+	return u
+}
+
+// SetTotalRequestLatencyMs sets the "total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsert) SetTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldTotalRequestLatencyMs, v)
+	return u
+}
+
+// UpdateTotalRequestLatencyMs sets the "total_request_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateTotalRequestLatencyMs() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldTotalRequestLatencyMs)
+	return u
+}
+
+// AddTotalRequestLatencyMs adds v to the "total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsert) AddTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldTotalRequestLatencyMs, v)
+	return u
+}
+
+// SetStreamSuccessCount sets the "stream_success_count" field.
+func (u *ChannelPerformanceUpsert) SetStreamSuccessCount(v int64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldStreamSuccessCount, v)
+	return u
+}
+
+// UpdateStreamSuccessCount sets the "stream_success_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateStreamSuccessCount() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldStreamSuccessCount)
+	return u
+}
+
+// AddStreamSuccessCount adds v to the "stream_success_count" field.
+func (u *ChannelPerformanceUpsert) AddStreamSuccessCount(v int64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldStreamSuccessCount, v)
+	return u
+}
+
+// SetStreamTotalRequestCount sets the "stream_total_request_count" field.
+func (u *ChannelPerformanceUpsert) SetStreamTotalRequestCount(v int64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldStreamTotalRequestCount, v)
+	return u
+}
+
+// UpdateStreamTotalRequestCount sets the "stream_total_request_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateStreamTotalRequestCount() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldStreamTotalRequestCount)
+	return u
+}
+
+// AddStreamTotalRequestCount adds v to the "stream_total_request_count" field.
+func (u *ChannelPerformanceUpsert) AddStreamTotalRequestCount(v int64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldStreamTotalRequestCount, v)
+	return u
+}
+
+// SetStreamTotalTokenCount sets the "stream_total_token_count" field.
+func (u *ChannelPerformanceUpsert) SetStreamTotalTokenCount(v int64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldStreamTotalTokenCount, v)
+	return u
+}
+
+// UpdateStreamTotalTokenCount sets the "stream_total_token_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateStreamTotalTokenCount() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldStreamTotalTokenCount)
+	return u
+}
+
+// AddStreamTotalTokenCount adds v to the "stream_total_token_count" field.
+func (u *ChannelPerformanceUpsert) AddStreamTotalTokenCount(v int64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldStreamTotalTokenCount, v)
+	return u
+}
+
+// SetStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsert) SetStreamTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldStreamTotalRequestLatencyMs, v)
+	return u
+}
+
+// UpdateStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateStreamTotalRequestLatencyMs() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldStreamTotalRequestLatencyMs)
+	return u
+}
+
+// AddStreamTotalRequestLatencyMs adds v to the "stream_total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsert) AddStreamTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldStreamTotalRequestLatencyMs, v)
+	return u
+}
+
+// SetStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsert) SetStreamTotalFirstTokenLatencyMs(v int64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldStreamTotalFirstTokenLatencyMs, v)
+	return u
+}
+
+// UpdateStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateStreamTotalFirstTokenLatencyMs() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldStreamTotalFirstTokenLatencyMs)
+	return u
+}
+
+// AddStreamTotalFirstTokenLatencyMs adds v to the "stream_total_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsert) AddStreamTotalFirstTokenLatencyMs(v int64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldStreamTotalFirstTokenLatencyMs, v)
+	return u
+}
+
+// SetConsecutiveFailures sets the "consecutive_failures" field.
+func (u *ChannelPerformanceUpsert) SetConsecutiveFailures(v int64) *ChannelPerformanceUpsert {
+	u.Set(channelperformance.FieldConsecutiveFailures, v)
+	return u
+}
+
+// UpdateConsecutiveFailures sets the "consecutive_failures" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsert) UpdateConsecutiveFailures() *ChannelPerformanceUpsert {
+	u.SetExcluded(channelperformance.FieldConsecutiveFailures)
+	return u
+}
+
+// AddConsecutiveFailures adds v to the "consecutive_failures" field.
+func (u *ChannelPerformanceUpsert) AddConsecutiveFailures(v int64) *ChannelPerformanceUpsert {
+	u.Add(channelperformance.FieldConsecutiveFailures, v)
 	return u
 }
 
@@ -803,6 +1276,237 @@ func (u *ChannelPerformanceUpsertOne) UpdateLastFailureAt() *ChannelPerformanceU
 func (u *ChannelPerformanceUpsertOne) ClearLastFailureAt() *ChannelPerformanceUpsertOne {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
 		s.ClearLastFailureAt()
+	})
+}
+
+// SetRequestCount sets the "request_count" field.
+func (u *ChannelPerformanceUpsertOne) SetRequestCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetRequestCount(v)
+	})
+}
+
+// AddRequestCount adds v to the "request_count" field.
+func (u *ChannelPerformanceUpsertOne) AddRequestCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddRequestCount(v)
+	})
+}
+
+// UpdateRequestCount sets the "request_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateRequestCount() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateRequestCount()
+	})
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (u *ChannelPerformanceUpsertOne) SetSuccessCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetSuccessCount(v)
+	})
+}
+
+// AddSuccessCount adds v to the "success_count" field.
+func (u *ChannelPerformanceUpsertOne) AddSuccessCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddSuccessCount(v)
+	})
+}
+
+// UpdateSuccessCount sets the "success_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateSuccessCount() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateSuccessCount()
+	})
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (u *ChannelPerformanceUpsertOne) SetFailureCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetFailureCount(v)
+	})
+}
+
+// AddFailureCount adds v to the "failure_count" field.
+func (u *ChannelPerformanceUpsertOne) AddFailureCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddFailureCount(v)
+	})
+}
+
+// UpdateFailureCount sets the "failure_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateFailureCount() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateFailureCount()
+	})
+}
+
+// SetTotalTokenCount sets the "total_token_count" field.
+func (u *ChannelPerformanceUpsertOne) SetTotalTokenCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetTotalTokenCount(v)
+	})
+}
+
+// AddTotalTokenCount adds v to the "total_token_count" field.
+func (u *ChannelPerformanceUpsertOne) AddTotalTokenCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddTotalTokenCount(v)
+	})
+}
+
+// UpdateTotalTokenCount sets the "total_token_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateTotalTokenCount() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateTotalTokenCount()
+	})
+}
+
+// SetTotalRequestLatencyMs sets the "total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsertOne) SetTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetTotalRequestLatencyMs(v)
+	})
+}
+
+// AddTotalRequestLatencyMs adds v to the "total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsertOne) AddTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddTotalRequestLatencyMs(v)
+	})
+}
+
+// UpdateTotalRequestLatencyMs sets the "total_request_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateTotalRequestLatencyMs() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateTotalRequestLatencyMs()
+	})
+}
+
+// SetStreamSuccessCount sets the "stream_success_count" field.
+func (u *ChannelPerformanceUpsertOne) SetStreamSuccessCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetStreamSuccessCount(v)
+	})
+}
+
+// AddStreamSuccessCount adds v to the "stream_success_count" field.
+func (u *ChannelPerformanceUpsertOne) AddStreamSuccessCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddStreamSuccessCount(v)
+	})
+}
+
+// UpdateStreamSuccessCount sets the "stream_success_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateStreamSuccessCount() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateStreamSuccessCount()
+	})
+}
+
+// SetStreamTotalRequestCount sets the "stream_total_request_count" field.
+func (u *ChannelPerformanceUpsertOne) SetStreamTotalRequestCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetStreamTotalRequestCount(v)
+	})
+}
+
+// AddStreamTotalRequestCount adds v to the "stream_total_request_count" field.
+func (u *ChannelPerformanceUpsertOne) AddStreamTotalRequestCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddStreamTotalRequestCount(v)
+	})
+}
+
+// UpdateStreamTotalRequestCount sets the "stream_total_request_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateStreamTotalRequestCount() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateStreamTotalRequestCount()
+	})
+}
+
+// SetStreamTotalTokenCount sets the "stream_total_token_count" field.
+func (u *ChannelPerformanceUpsertOne) SetStreamTotalTokenCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetStreamTotalTokenCount(v)
+	})
+}
+
+// AddStreamTotalTokenCount adds v to the "stream_total_token_count" field.
+func (u *ChannelPerformanceUpsertOne) AddStreamTotalTokenCount(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddStreamTotalTokenCount(v)
+	})
+}
+
+// UpdateStreamTotalTokenCount sets the "stream_total_token_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateStreamTotalTokenCount() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateStreamTotalTokenCount()
+	})
+}
+
+// SetStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsertOne) SetStreamTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetStreamTotalRequestLatencyMs(v)
+	})
+}
+
+// AddStreamTotalRequestLatencyMs adds v to the "stream_total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsertOne) AddStreamTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddStreamTotalRequestLatencyMs(v)
+	})
+}
+
+// UpdateStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateStreamTotalRequestLatencyMs() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateStreamTotalRequestLatencyMs()
+	})
+}
+
+// SetStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsertOne) SetStreamTotalFirstTokenLatencyMs(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetStreamTotalFirstTokenLatencyMs(v)
+	})
+}
+
+// AddStreamTotalFirstTokenLatencyMs adds v to the "stream_total_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsertOne) AddStreamTotalFirstTokenLatencyMs(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddStreamTotalFirstTokenLatencyMs(v)
+	})
+}
+
+// UpdateStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateStreamTotalFirstTokenLatencyMs() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateStreamTotalFirstTokenLatencyMs()
+	})
+}
+
+// SetConsecutiveFailures sets the "consecutive_failures" field.
+func (u *ChannelPerformanceUpsertOne) SetConsecutiveFailures(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetConsecutiveFailures(v)
+	})
+}
+
+// AddConsecutiveFailures adds v to the "consecutive_failures" field.
+func (u *ChannelPerformanceUpsertOne) AddConsecutiveFailures(v int64) *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddConsecutiveFailures(v)
+	})
+}
+
+// UpdateConsecutiveFailures sets the "consecutive_failures" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertOne) UpdateConsecutiveFailures() *ChannelPerformanceUpsertOne {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateConsecutiveFailures()
 	})
 }
 
@@ -1199,6 +1903,237 @@ func (u *ChannelPerformanceUpsertBulk) UpdateLastFailureAt() *ChannelPerformance
 func (u *ChannelPerformanceUpsertBulk) ClearLastFailureAt() *ChannelPerformanceUpsertBulk {
 	return u.Update(func(s *ChannelPerformanceUpsert) {
 		s.ClearLastFailureAt()
+	})
+}
+
+// SetRequestCount sets the "request_count" field.
+func (u *ChannelPerformanceUpsertBulk) SetRequestCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetRequestCount(v)
+	})
+}
+
+// AddRequestCount adds v to the "request_count" field.
+func (u *ChannelPerformanceUpsertBulk) AddRequestCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddRequestCount(v)
+	})
+}
+
+// UpdateRequestCount sets the "request_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateRequestCount() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateRequestCount()
+	})
+}
+
+// SetSuccessCount sets the "success_count" field.
+func (u *ChannelPerformanceUpsertBulk) SetSuccessCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetSuccessCount(v)
+	})
+}
+
+// AddSuccessCount adds v to the "success_count" field.
+func (u *ChannelPerformanceUpsertBulk) AddSuccessCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddSuccessCount(v)
+	})
+}
+
+// UpdateSuccessCount sets the "success_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateSuccessCount() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateSuccessCount()
+	})
+}
+
+// SetFailureCount sets the "failure_count" field.
+func (u *ChannelPerformanceUpsertBulk) SetFailureCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetFailureCount(v)
+	})
+}
+
+// AddFailureCount adds v to the "failure_count" field.
+func (u *ChannelPerformanceUpsertBulk) AddFailureCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddFailureCount(v)
+	})
+}
+
+// UpdateFailureCount sets the "failure_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateFailureCount() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateFailureCount()
+	})
+}
+
+// SetTotalTokenCount sets the "total_token_count" field.
+func (u *ChannelPerformanceUpsertBulk) SetTotalTokenCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetTotalTokenCount(v)
+	})
+}
+
+// AddTotalTokenCount adds v to the "total_token_count" field.
+func (u *ChannelPerformanceUpsertBulk) AddTotalTokenCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddTotalTokenCount(v)
+	})
+}
+
+// UpdateTotalTokenCount sets the "total_token_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateTotalTokenCount() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateTotalTokenCount()
+	})
+}
+
+// SetTotalRequestLatencyMs sets the "total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsertBulk) SetTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetTotalRequestLatencyMs(v)
+	})
+}
+
+// AddTotalRequestLatencyMs adds v to the "total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsertBulk) AddTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddTotalRequestLatencyMs(v)
+	})
+}
+
+// UpdateTotalRequestLatencyMs sets the "total_request_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateTotalRequestLatencyMs() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateTotalRequestLatencyMs()
+	})
+}
+
+// SetStreamSuccessCount sets the "stream_success_count" field.
+func (u *ChannelPerformanceUpsertBulk) SetStreamSuccessCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetStreamSuccessCount(v)
+	})
+}
+
+// AddStreamSuccessCount adds v to the "stream_success_count" field.
+func (u *ChannelPerformanceUpsertBulk) AddStreamSuccessCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddStreamSuccessCount(v)
+	})
+}
+
+// UpdateStreamSuccessCount sets the "stream_success_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateStreamSuccessCount() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateStreamSuccessCount()
+	})
+}
+
+// SetStreamTotalRequestCount sets the "stream_total_request_count" field.
+func (u *ChannelPerformanceUpsertBulk) SetStreamTotalRequestCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetStreamTotalRequestCount(v)
+	})
+}
+
+// AddStreamTotalRequestCount adds v to the "stream_total_request_count" field.
+func (u *ChannelPerformanceUpsertBulk) AddStreamTotalRequestCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddStreamTotalRequestCount(v)
+	})
+}
+
+// UpdateStreamTotalRequestCount sets the "stream_total_request_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateStreamTotalRequestCount() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateStreamTotalRequestCount()
+	})
+}
+
+// SetStreamTotalTokenCount sets the "stream_total_token_count" field.
+func (u *ChannelPerformanceUpsertBulk) SetStreamTotalTokenCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetStreamTotalTokenCount(v)
+	})
+}
+
+// AddStreamTotalTokenCount adds v to the "stream_total_token_count" field.
+func (u *ChannelPerformanceUpsertBulk) AddStreamTotalTokenCount(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddStreamTotalTokenCount(v)
+	})
+}
+
+// UpdateStreamTotalTokenCount sets the "stream_total_token_count" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateStreamTotalTokenCount() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateStreamTotalTokenCount()
+	})
+}
+
+// SetStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsertBulk) SetStreamTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetStreamTotalRequestLatencyMs(v)
+	})
+}
+
+// AddStreamTotalRequestLatencyMs adds v to the "stream_total_request_latency_ms" field.
+func (u *ChannelPerformanceUpsertBulk) AddStreamTotalRequestLatencyMs(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddStreamTotalRequestLatencyMs(v)
+	})
+}
+
+// UpdateStreamTotalRequestLatencyMs sets the "stream_total_request_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateStreamTotalRequestLatencyMs() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateStreamTotalRequestLatencyMs()
+	})
+}
+
+// SetStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsertBulk) SetStreamTotalFirstTokenLatencyMs(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetStreamTotalFirstTokenLatencyMs(v)
+	})
+}
+
+// AddStreamTotalFirstTokenLatencyMs adds v to the "stream_total_first_token_latency_ms" field.
+func (u *ChannelPerformanceUpsertBulk) AddStreamTotalFirstTokenLatencyMs(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddStreamTotalFirstTokenLatencyMs(v)
+	})
+}
+
+// UpdateStreamTotalFirstTokenLatencyMs sets the "stream_total_first_token_latency_ms" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateStreamTotalFirstTokenLatencyMs() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateStreamTotalFirstTokenLatencyMs()
+	})
+}
+
+// SetConsecutiveFailures sets the "consecutive_failures" field.
+func (u *ChannelPerformanceUpsertBulk) SetConsecutiveFailures(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.SetConsecutiveFailures(v)
+	})
+}
+
+// AddConsecutiveFailures adds v to the "consecutive_failures" field.
+func (u *ChannelPerformanceUpsertBulk) AddConsecutiveFailures(v int64) *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.AddConsecutiveFailures(v)
+	})
+}
+
+// UpdateConsecutiveFailures sets the "consecutive_failures" field to the value that was provided on create.
+func (u *ChannelPerformanceUpsertBulk) UpdateConsecutiveFailures() *ChannelPerformanceUpsertBulk {
+	return u.Update(func(s *ChannelPerformanceUpsert) {
+		s.UpdateConsecutiveFailures()
 	})
 }
 

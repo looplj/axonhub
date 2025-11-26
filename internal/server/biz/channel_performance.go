@@ -73,7 +73,24 @@ func (svc *ChannelService) InitializeAllChannelPerformances(ctx context.Context)
 
 	creates := make([]*ent.ChannelPerformanceCreate, len(missingIDs))
 	for i, id := range missingIDs {
-		creates[i] = client.ChannelPerformance.Create().SetChannelID(id)
+		creates[i] = client.ChannelPerformance.Create().
+			SetChannelID(id).
+			SetSuccessRate(0).
+			SetAvgLatencyMs(0).
+			SetAvgTokenPerSecond(0).
+			SetAvgStreamFirstTokenLatencyMs(0).
+			SetAvgStreamTokenPerSecond(0).
+			SetRequestCount(0).
+			SetSuccessCount(0).
+			SetFailureCount(0).
+			SetTotalTokenCount(0).
+			SetTotalRequestLatencyMs(0).
+			SetStreamSuccessCount(0).
+			SetStreamTotalRequestCount(0).
+			SetStreamTotalTokenCount(0).
+			SetStreamTotalRequestLatencyMs(0).
+			SetStreamTotalFirstTokenLatencyMs(0).
+			SetConsecutiveFailures(0)
 	}
 
 	if err := client.ChannelPerformance.CreateBulk(creates...).Exec(ctx); err != nil {
@@ -82,6 +99,65 @@ func (svc *ChannelService) InitializeAllChannelPerformances(ctx context.Context)
 
 	log.Info(ctx, "Initialized channel performance records for missing channels",
 		log.Int("count", len(missingIDs)),
+	)
+
+	return nil
+}
+
+// LoadChannelPerformances loads all channel performance metrics from database into memory.
+// This is called after channels are loaded to restore historical metrics.
+func (svc *ChannelService) LoadChannelPerformances(ctx context.Context) error {
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	// Query all channel performance records
+	performances, err := svc.entFromContext(ctx).ChannelPerformance.Query().All(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query channel performances: %w", err)
+	}
+
+	svc.channelPerfMetricsLock.Lock()
+	defer svc.channelPerfMetricsLock.Unlock()
+
+	for _, perf := range performances {
+		// Initialize channel metrics for this channel
+		cm := newChannelMetrics(perf.ChannelID)
+
+		// Restore aggregated metrics counters from database
+		cm.aggregatedMetrics.RequestCount = perf.RequestCount
+		cm.aggregatedMetrics.SuccessCount = perf.SuccessCount
+		cm.aggregatedMetrics.FailureCount = perf.FailureCount
+		cm.aggregatedMetrics.TotalTokenCount = perf.TotalTokenCount
+		cm.aggregatedMetrics.TotalRequestLatencyMs = perf.TotalRequestLatencyMs
+		cm.aggregatedMetrics.StreamSuccessCount = perf.StreamSuccessCount
+		cm.aggregatedMetrics.StreamTotalRequestCount = perf.StreamTotalRequestCount
+		cm.aggregatedMetrics.StreamTotalTokenCount = perf.StreamTotalTokenCount
+		cm.aggregatedMetrics.StreamTotalRequestLatencyMs = perf.StreamTotalRequestLatencyMs
+		cm.aggregatedMetrics.StreamTotalFirstTokenLatencyMs = perf.StreamTotalFirstTokenLatencyMs
+		cm.aggregatedMetrics.ConsecutiveFailures = perf.ConsecutiveFailures
+
+		// Restore last success/failure timestamps
+		cm.aggregatedMetrics.LastSuccessAt = perf.LastSuccessAt
+		cm.aggregatedMetrics.LastFailureAt = perf.LastFailureAt
+
+		// Store in memory map
+		svc.channelPerfMetrics[perf.ChannelID] = cm
+
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "loaded channel performance metrics",
+				log.Int("channel_id", perf.ChannelID),
+				log.Int("success_rate", perf.SuccessRate),
+				log.Int("avg_latency_ms", perf.AvgLatencyMs),
+				log.Float64("avg_token_per_second", float64(perf.AvgTokenPerSecond)),
+				log.Any("last_success_at", perf.LastSuccessAt),
+				log.Any("last_failure_at", perf.LastFailureAt),
+				log.Int64("request_count", perf.RequestCount),
+				log.Int64("success_count", perf.SuccessCount),
+			)
+		}
+	}
+
+	log.Info(ctx, "Loaded channel performance metrics from database",
+		log.Int("count", len(performances)),
 	)
 
 	return nil
@@ -100,6 +176,17 @@ func (svc *ChannelService) InitializeChannelPerformance(ctx context.Context, cha
 		SetAvgTokenPerSecond(0).
 		SetAvgStreamFirstTokenLatencyMs(0).
 		SetAvgStreamTokenPerSecond(0).
+		SetRequestCount(0).
+		SetSuccessCount(0).
+		SetFailureCount(0).
+		SetTotalTokenCount(0).
+		SetTotalRequestLatencyMs(0).
+		SetStreamSuccessCount(0).
+		SetStreamTotalRequestCount(0).
+		SetStreamTotalTokenCount(0).
+		SetStreamTotalRequestLatencyMs(0).
+		SetStreamTotalFirstTokenLatencyMs(0).
+		SetConsecutiveFailures(0).
 		Save(ctx)
 
 	return err
@@ -296,7 +383,7 @@ func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, met
 		return
 	}
 
-	// Update metrics
+	// Update metrics with both calculated averages and raw counters
 	update := svc.entFromContext(ctx).ChannelPerformance.UpdateOneID(perf.ID).
 		SetSuccessRate(int(successRate)).
 		SetAvgLatencyMs(int(avgLatencyMs)).
@@ -305,7 +392,18 @@ func (svc *ChannelService) RecordMetrics(ctx context.Context, channelID int, met
 		SetAvgStreamTokenPerSecond(avgStreamTokensPerSecond).
 		SetNillableLastSuccessAt(metrics.LastSuccessAt).
 		SetNillableLastFailureAt(metrics.LastFailureAt).
-		SetUpdatedAt(now)
+		SetUpdatedAt(now).
+		SetRequestCount(metrics.RequestCount).
+		SetSuccessCount(metrics.SuccessCount).
+		SetFailureCount(metrics.FailureCount).
+		SetTotalTokenCount(metrics.TotalTokenCount).
+		SetTotalRequestLatencyMs(metrics.TotalRequestLatencyMs).
+		SetStreamSuccessCount(metrics.StreamSuccessCount).
+		SetStreamTotalRequestCount(metrics.StreamTotalRequestCount).
+		SetStreamTotalTokenCount(metrics.StreamTotalTokenCount).
+		SetStreamTotalRequestLatencyMs(metrics.StreamTotalRequestLatencyMs).
+		SetStreamTotalFirstTokenLatencyMs(metrics.StreamTotalFirstTokenLatencyMs).
+		SetConsecutiveFailures(metrics.ConsecutiveFailures)
 
 	_, err = update.Save(ctx)
 	if err != nil {
@@ -403,17 +501,17 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		cm.recordFailure(slot, perf)
 	}
 
-	// if log.DebugEnabled(ctx) {
-	log.Info(ctx, "recorded performance metrics",
-		log.Int("channel_id", perf.ChannelID),
-		log.Bool("success", perf.Success),
-		log.Int64("first_token_latency_ms", firstTokenLatencyMs),
-		log.Int64("total_duration_ms", requestLatencyMs),
-		log.Float64("tokens_per_second", tokensPerSecond),
-		log.Any("token_count", perf.TokenCount),
-		log.Any("error_code", perf.ErrorStatusCode),
-	)
-	// }
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "recorded performance metrics",
+			log.Int("channel_id", perf.ChannelID),
+			log.Bool("success", perf.Success),
+			log.Int64("first_token_latency_ms", firstTokenLatencyMs),
+			log.Int64("total_duration_ms", requestLatencyMs),
+			log.Float64("tokens_per_second", tokensPerSecond),
+			log.Any("token_count", perf.TokenCount),
+			log.Any("error_code", perf.ErrorStatusCode),
+		)
+	}
 }
 
 // AsyncRecordPerformance records performance metrics to in-memory cache asynchronously.
@@ -506,6 +604,7 @@ func (svc *ChannelService) flushPerformanceMetrics(ctx context.Context) {
 }
 
 // GetChannelMetrics returns performance metrics for the channel.
+// If in-memory metrics are not available (e.g., after restart), it falls back to database values.
 func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int) (*AggretagedMetrics, error) {
 	svc.channelPerfMetricsLock.RLock()
 	cm, exists := svc.channelPerfMetrics[channelID]

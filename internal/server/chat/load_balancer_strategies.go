@@ -533,11 +533,16 @@ func (s *ConnectionAwareStrategy) ScoreWithDebug(ctx context.Context, channel *b
 	if s.connectionTracker == nil {
 		// If no tracker, give neutral score
 		neutralScore := s.maxScore / 2
+		log.Info(ctx, "ConnectionAwareStrategy: no connection tracker available, using neutral score",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Float64("neutral_score", neutralScore),
+		)
 
 		return neutralScore, StrategyScore{
 			StrategyName: s.Name(),
 			Score:        neutralScore,
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"reason": "no_connection_tracker",
 			},
 		}
@@ -546,7 +551,14 @@ func (s *ConnectionAwareStrategy) ScoreWithDebug(ctx context.Context, channel *b
 	activeConns := s.connectionTracker.GetActiveConnections(channel.ID)
 	maxConns := s.connectionTracker.GetMaxConnections(channel.ID)
 
-	details := map[string]interface{}{
+	log.Info(ctx, "ConnectionAwareStrategy: retrieved connection info",
+		log.Int("channel_id", channel.ID),
+		log.String("channel_name", channel.Name),
+		log.Int("active_connections", activeConns),
+		log.Int("max_connections", maxConns),
+	)
+
+	details := map[string]any{
 		"active_connections": activeConns,
 		"max_connections":    maxConns,
 	}
@@ -554,6 +566,12 @@ func (s *ConnectionAwareStrategy) ScoreWithDebug(ctx context.Context, channel *b
 	if maxConns == 0 {
 		// No limit, give full score
 		details["reason"] = "no_connection_limit"
+
+		log.Info(ctx, "ConnectionAwareStrategy: no connection limit set, giving full score",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Float64("score", s.maxScore),
+		)
 
 		return s.maxScore, StrategyScore{
 			StrategyName: s.Name(),
@@ -570,6 +588,14 @@ func (s *ConnectionAwareStrategy) ScoreWithDebug(ctx context.Context, channel *b
 	// 0% utilization = maxScore, 100% utilization = 0
 	score := s.maxScore * (1.0 - utilization)
 	details["calculated_score"] = score
+
+	log.Info(ctx, "ConnectionAwareStrategy: calculated utilization-based score",
+		log.Int("channel_id", channel.ID),
+		log.String("channel_name", channel.Name),
+		log.Float64("utilization", utilization),
+		log.Float64("max_score", s.maxScore),
+		log.Float64("final_score", score),
+	)
 
 	return score, StrategyScore{
 		StrategyName: s.Name(),
