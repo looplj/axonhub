@@ -17,11 +17,11 @@ import (
 
 // mockMetricsProvider is a mock implementation of ChannelMetricsProvider for testing.
 type mockMetricsProvider struct {
-	metrics map[int]*biz.AggretagedMetrics
+	metrics map[int]*biz.AggregatedMetrics
 	err     error
 }
 
-func (m *mockMetricsProvider) GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggretagedMetrics, error) {
+func (m *mockMetricsProvider) GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -30,7 +30,7 @@ func (m *mockMetricsProvider) GetChannelMetrics(ctx context.Context, channelID i
 		return metrics, nil
 	}
 
-	return &biz.AggretagedMetrics{}, nil
+	return &biz.AggregatedMetrics{}, nil
 }
 
 // mockTraceProvider is a mock implementation of ChannelTraceProvider for testing.
@@ -111,7 +111,7 @@ func TestWeightStrategy_Name(t *testing.T) {
 
 func TestErrorAwareStrategy_Name(t *testing.T) {
 	mockProvider := &mockMetricsProvider{
-		metrics: make(map[int]*biz.AggretagedMetrics),
+		metrics: make(map[int]*biz.AggregatedMetrics),
 	}
 	strategy := NewErrorAwareStrategy(mockProvider)
 	assert.Equal(t, "ErrorAware", strategy.Name())
@@ -122,7 +122,7 @@ func TestErrorAwareStrategy_Score_NoMetrics(t *testing.T) {
 
 	// Mock provider returns empty metrics
 	mockProvider := &mockMetricsProvider{
-		metrics: make(map[int]*biz.AggretagedMetrics),
+		metrics: make(map[int]*biz.AggregatedMetrics),
 	}
 	strategy := NewErrorAwareStrategy(mockProvider)
 
@@ -139,11 +139,11 @@ func TestErrorAwareStrategy_Score_WithMockConsecutiveFailures(t *testing.T) {
 	ctx := context.Background()
 
 	// Mock 3 consecutive failures
-	metrics := &biz.AggretagedMetrics{}
+	metrics := &biz.AggregatedMetrics{}
 	metrics.ConsecutiveFailures = 3
 
 	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggretagedMetrics{
+		metrics: map[int]*biz.AggregatedMetrics{
 			1: metrics,
 		},
 	}
@@ -165,7 +165,7 @@ func TestErrorAwareStrategy_Score_WithMockRecentSuccess(t *testing.T) {
 	recentSuccess := now.Add(-30 * time.Second)
 
 	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggretagedMetrics{
+		metrics: map[int]*biz.AggregatedMetrics{
 			1: {
 				LastSuccessAt: &recentSuccess,
 			},
@@ -617,19 +617,19 @@ func TestErrorAwareStrategy_ScoreConsistency(t *testing.T) {
 
 	testCases := []struct {
 		name    string
-		metrics *biz.AggretagedMetrics
+		metrics *biz.AggregatedMetrics
 	}{
 		{
 			name: "no metrics",
-			metrics: func() *biz.AggretagedMetrics {
-				m := &biz.AggretagedMetrics{}
+			metrics: func() *biz.AggregatedMetrics {
+				m := &biz.AggregatedMetrics{}
 				return m
 			}(),
 		},
 		{
 			name: "consecutive failures",
-			metrics: func() *biz.AggretagedMetrics {
-				m := &biz.AggretagedMetrics{}
+			metrics: func() *biz.AggregatedMetrics {
+				m := &biz.AggregatedMetrics{}
 				m.ConsecutiveFailures = 3
 
 				return m
@@ -637,26 +637,26 @@ func TestErrorAwareStrategy_ScoreConsistency(t *testing.T) {
 		},
 		{
 			name: "recent failure",
-			metrics: &biz.AggretagedMetrics{
+			metrics: &biz.AggregatedMetrics{
 				LastFailureAt: &recentFailure,
 			},
 		},
 		{
 			name: "old failure",
-			metrics: &biz.AggretagedMetrics{
+			metrics: &biz.AggregatedMetrics{
 				LastFailureAt: &oldFailure,
 			},
 		},
 		{
 			name: "recent success",
-			metrics: &biz.AggretagedMetrics{
+			metrics: &biz.AggregatedMetrics{
 				LastSuccessAt: &recentSuccess,
 			},
 		},
 		{
 			name: "low success rate",
-			metrics: func() *biz.AggretagedMetrics {
-				m := &biz.AggretagedMetrics{}
+			metrics: func() *biz.AggregatedMetrics {
+				m := &biz.AggregatedMetrics{}
 				m.RequestCount = 20
 				m.SuccessCount = 8 // 40% success rate
 
@@ -665,8 +665,8 @@ func TestErrorAwareStrategy_ScoreConsistency(t *testing.T) {
 		},
 		{
 			name: "high success rate",
-			metrics: func() *biz.AggretagedMetrics {
-				m := &biz.AggretagedMetrics{}
+			metrics: func() *biz.AggregatedMetrics {
+				m := &biz.AggregatedMetrics{}
 				m.RequestCount = 20
 				m.SuccessCount = 19 // 95% success rate
 
@@ -675,8 +675,8 @@ func TestErrorAwareStrategy_ScoreConsistency(t *testing.T) {
 		},
 		{
 			name: "complex scenario",
-			metrics: func() *biz.AggretagedMetrics {
-				m := &biz.AggretagedMetrics{}
+			metrics: func() *biz.AggregatedMetrics {
+				m := &biz.AggregatedMetrics{}
 				m.ConsecutiveFailures = 2
 				m.LastFailureAt = &recentFailure
 				m.LastSuccessAt = &recentSuccess
@@ -691,7 +691,7 @@ func TestErrorAwareStrategy_ScoreConsistency(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockProvider := &mockMetricsProvider{
-				metrics: map[int]*biz.AggretagedMetrics{
+				metrics: map[int]*biz.AggregatedMetrics{
 					1: tc.metrics,
 				},
 			}

@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -22,10 +23,12 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 	return func(c *gin.Context) {
 		key, err := ExtractAPIKeyFromRequest(c.Request, config)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": err.Error(),
+			c.AbortWithStatusJSON(http.StatusUnauthorized, objects.ErrorResponse{
+				Error: objects.Error{
+					Type:    http.StatusText(http.StatusUnauthorized),
+					Message: err.Error(),
+				},
 			})
-			c.Abort()
 
 			return
 		}
@@ -34,16 +37,20 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 		apiKey, err := auth.AnthenticateAPIKey(c.Request.Context(), key)
 		if err != nil {
 			if ent.IsNotFound(err) || errors.Is(err, biz.ErrInvalidAPIKey) {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": "Invalid API key",
+				c.AbortWithStatusJSON(http.StatusUnauthorized, objects.ErrorResponse{
+					Error: objects.Error{
+						Type:    http.StatusText(http.StatusUnauthorized),
+						Message: "Invalid API key",
+					},
 				})
 			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Failed to validate API key",
+				c.AbortWithStatusJSON(http.StatusInternalServerError, objects.ErrorResponse{
+					Error: objects.Error{
+						Type:    http.StatusText(http.StatusInternalServerError),
+						Message: "Failed to validate API key",
+					},
 				})
 			}
-
-			c.Abort()
 
 			return
 		}
@@ -69,10 +76,12 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 			RequireBearer: true,
 		})
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": err.Error(),
+			c.AbortWithStatusJSON(http.StatusUnauthorized, objects.ErrorResponse{
+				Error: objects.Error{
+					Type:    http.StatusText(http.StatusUnauthorized),
+					Message: err.Error(),
+				},
 			})
-			c.Abort()
 
 			return
 		}
@@ -81,16 +90,20 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 		user, err := auth.AuthenticateJWTToken(c.Request.Context(), token)
 		if err != nil {
 			if errors.Is(err, biz.ErrInvalidJWT) {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": "Invalid token",
+				c.AbortWithStatusJSON(http.StatusUnauthorized, objects.ErrorResponse{
+					Error: objects.Error{
+						Type:    http.StatusText(http.StatusUnauthorized),
+						Message: "Invalid token",
+					},
 				})
 			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Failed to validate token",
+				c.AbortWithStatusJSON(http.StatusInternalServerError, objects.ErrorResponse{
+					Error: objects.Error{
+						Type:    http.StatusText(http.StatusInternalServerError),
+						Message: "Failed to validate token",
+					},
 				})
 			}
-
-			c.Abort()
 
 			return
 		}

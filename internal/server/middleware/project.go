@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -18,7 +20,13 @@ func WithProjectID() gin.HandlerFunc {
 
 		projectID, err := objects.ParseGUID(projectIDStr)
 		if err != nil || projectID.Type != ent.TypeProject {
-			c.AbortWithStatusJSON(400, gin.H{"error": "Invalid project ID"})
+			c.AbortWithStatusJSON(http.StatusBadRequest, objects.ErrorResponse{
+				Error: objects.Error{
+					Type:    http.StatusText(http.StatusBadRequest),
+					Message: "Invalid project ID",
+				},
+			})
+
 			return
 		}
 

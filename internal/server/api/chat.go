@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/llm/transformer/aisdk"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
 	"github.com/looplj/axonhub/internal/server/chat"
@@ -36,7 +37,13 @@ func (handlers *ChatCompletionSSEHandlers) ChatCompletion(c *gin.Context) {
 	}
 
 	if len(genericReq.Body) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Request body is empty"})
+		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
+			Error: objects.Error{
+				Type:    http.StatusText(http.StatusBadRequest),
+				Message: "Request body is empty",
+			},
+		})
+
 		return
 	}
 

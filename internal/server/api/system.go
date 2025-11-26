@@ -66,7 +66,10 @@ func (h *SystemHandlers) GetSystemStatus(c *gin.Context) {
 	isInitialized, err := h.SystemService.IsInitialized(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
-			Error: "Failed to check system status",
+			Error: objects.Error{
+				Type:    http.StatusText(http.StatusInternalServerError),
+				Message: "Failed to check system status",
+			},
 		})
 
 		return
@@ -107,9 +110,11 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 	// Check if system is already initialized
 	isInitialized, err := h.SystemService.IsInitialized(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, InitializeSystemResponse{
-			Success: false,
-			Message: "Failed to check initialization status",
+		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
+			Error: objects.Error{
+				Type:    http.StatusText(http.StatusInternalServerError),
+				Message: "Failed to check initialization status",
+			},
 		})
 
 		return
@@ -156,7 +161,10 @@ func (h *SystemHandlers) GetFavicon(c *gin.Context) {
 		log.Error(ctx, "Failed to get brand logo", log.Cause(err))
 
 		c.JSON(http.StatusInternalServerError, objects.ErrorResponse{
-			Error: "Failed to get brand logo",
+			Error: objects.Error{
+				Type:    http.StatusText(http.StatusInternalServerError),
+				Message: "Failed to get brand logo",
+			},
 		})
 
 		return
@@ -172,7 +180,10 @@ func (h *SystemHandlers) GetFavicon(c *gin.Context) {
 	// 假设格式为 "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
 	if !strings.HasPrefix(brandLogo, "data:") {
 		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
-			Error: "Invalid brand logo format",
+			Error: objects.Error{
+				Type:    http.StatusText(http.StatusBadRequest),
+				Message: "Invalid brand logo format",
+			},
 		})
 
 		return
@@ -182,7 +193,10 @@ func (h *SystemHandlers) GetFavicon(c *gin.Context) {
 	parts := strings.Split(brandLogo, ",")
 	if len(parts) != 2 {
 		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
-			Error: "Invalid brand logo format",
+			Error: objects.Error{
+				Type:    http.StatusText(http.StatusBadRequest),
+				Message: "Invalid brand logo format",
+			},
 		})
 
 		return
@@ -195,7 +209,10 @@ func (h *SystemHandlers) GetFavicon(c *gin.Context) {
 	mimeEnd := strings.Index(headerPart, ";")
 	if mimeStart == -1 || mimeEnd == -1 {
 		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
-			Error: "Invalid brand logo format",
+			Error: objects.Error{
+				Type:    http.StatusText(http.StatusBadRequest),
+				Message: "Invalid brand logo format",
+			},
 		})
 
 		return
@@ -207,7 +224,10 @@ func (h *SystemHandlers) GetFavicon(c *gin.Context) {
 	imageData, err := base64.StdEncoding.DecodeString(parts[1])
 	if err != nil {
 		c.JSON(http.StatusBadRequest, objects.ErrorResponse{
-			Error: "Failed to decode brand logo",
+			Error: objects.Error{
+				Type:    http.StatusText(http.StatusBadRequest),
+				Message: "Failed to decode brand logo",
+			},
 		})
 
 		return

@@ -127,7 +127,7 @@ Strategies depend on provider interfaces for better testability:
 **ChannelMetricsProvider** - Provides performance metrics:
 ```go
 type ChannelMetricsProvider interface {
-    GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggretagedMetrics, error)
+    GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error)
 }
 ```
 
@@ -171,16 +171,16 @@ Mock provider implementations for testing:
 
 ```go
 type mockMetricsProvider struct {
-    metrics map[int]*biz.AggretagedMetrics
+    metrics map[int]*biz.AggregatedMetrics
 }
 
-func (m *mockMetricsProvider) GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggretagedMetrics, error) {
+func (m *mockMetricsProvider) GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error) {
     return m.metrics[channelID], nil
 }
 
 // Use in tests
 mockProvider := &mockMetricsProvider{
-    metrics: map[int]*biz.AggretagedMetrics{
+    metrics: map[int]*biz.AggregatedMetrics{
         1: {ConsecutiveFailures: 3},
     },
 }

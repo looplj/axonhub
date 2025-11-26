@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/dependencies"
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/gql"
+	"github.com/looplj/axonhub/internal/server/middleware"
 )
 
 func New(config Config) *Server {
@@ -24,7 +25,7 @@ func New(config Config) *Server {
 	}
 
 	engine := gin.New()
-	engine.Use(gin.Recovery())
+	engine.Use(middleware.Recovery())
 
 	return &Server{
 		Config: config,
