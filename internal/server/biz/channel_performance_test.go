@@ -318,13 +318,13 @@ func TestChannelService_RecordMetrics(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		metrics      *AggretagedMetrics
+		metrics      *AggregatedMetrics
 		channelID    int
 		validateFunc func(t *testing.T)
 	}{
 		{
 			name: "record metrics with all fields",
-			metrics: &AggretagedMetrics{
+			metrics: &AggregatedMetrics{
 				metricsRecord: metricsRecord{
 					RequestCount:                   100,
 					SuccessCount:                   90,
@@ -353,7 +353,7 @@ func TestChannelService_RecordMetrics(t *testing.T) {
 		},
 		{
 			name: "record metrics with zero success",
-			metrics: &AggretagedMetrics{
+			metrics: &AggregatedMetrics{
 				metricsRecord: metricsRecord{
 					RequestCount:          10,
 					SuccessCount:          0,
@@ -388,9 +388,9 @@ func TestChannelService_RecordMetrics(t *testing.T) {
 	}
 }
 
-func TestAggretagedMetrics_AllCalculations(t *testing.T) {
+func TestAggregatedMetrics_AllCalculations(t *testing.T) {
 	// Test all calculations together
-	metrics := &AggretagedMetrics{
+	metrics := &AggregatedMetrics{
 		metricsRecord: metricsRecord{
 			RequestCount:                   100,
 			SuccessCount:                   80,

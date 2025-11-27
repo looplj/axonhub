@@ -298,7 +298,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 		lastErr = err
 
-		log.Warn(ctx, "pipeline process failed, will retry",
+		log.Warn(ctx, "request process failed, will retry",
 			log.Cause(err),
 			log.Any("attempt", attempt),
 			log.Any("maxRetries", p.maxRetries),

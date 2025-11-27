@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"strings"
+	"time"
 
 	"github.com/tidwall/sjson"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/httpclient"
 	"github.com/looplj/axonhub/internal/pkg/streams"
+	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -341,6 +343,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	// Update request with channel ID after channel selection
 	if p.state.Request != nil && p.state.Request.ChannelID == 0 {
+		ctx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
 		err := p.state.RequestService.UpdateRequestChannelID(
 			ctx,
 			p.state.Request.ID,

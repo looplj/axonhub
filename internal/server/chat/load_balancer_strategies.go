@@ -11,7 +11,7 @@ import (
 
 // ChannelMetricsProvider provides channel performance metrics.
 type ChannelMetricsProvider interface {
-	GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggretagedMetrics, error)
+	GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error)
 }
 
 // ChannelTraceProvider provides trace-related channel information.
