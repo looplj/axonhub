@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -695,4 +696,429 @@ func (c *CompositeStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Cha
 // Name returns the strategy name.
 func (c *CompositeStrategy) Name() string {
 	return "Composite"
+}
+
+// RoundRobinStrategy prioritizes channels based on their request count history.
+// Channels with fewer historical requests get higher priority to ensure even load distribution.
+// This strategy is particularly effective when combined with other strategies in a composite approach.
+type RoundRobinStrategy struct {
+	metricsProvider ChannelMetricsProvider
+	// maxScore is the maximum score for a channel with zero requests (default: 150)
+	maxScore float64
+	// minScore is the minimum score for heavily used channels (default: 10)
+	minScore float64
+	// requestCountCap caps the maximum request count considered (default: 1000)
+	// This prevents channels with extremely high request counts from dominating the calculation
+	requestCountCap int64
+}
+
+// NewRoundRobinStrategy creates a new round-robin load balancing strategy.
+// This strategy implements true round-robin by prioritizing channels with fewer historical requests.
+func NewRoundRobinStrategy(metricsProvider ChannelMetricsProvider) *RoundRobinStrategy {
+	return &RoundRobinStrategy{
+		metricsProvider: metricsProvider,
+		maxScore:        150.0,
+		minScore:        10.0,
+		requestCountCap: 1000,
+	}
+}
+
+// Score returns a priority score based on the channel's historical request count.
+// Production path without debug logging.
+// Channels with fewer requests receive higher scores to promote even distribution.
+func (s *RoundRobinStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	if err != nil {
+		// If we can't get metrics, return a moderate score to be safe
+		return (s.maxScore + s.minScore) / 2
+	}
+
+	requestCount := metrics.RequestCount
+
+	// Cap extremely high request counts to prevent them from affecting the curve too much
+	if requestCount > s.requestCountCap {
+		requestCount = s.requestCountCap
+	}
+
+	// Special case: zero requests gets maximum score
+	if requestCount == 0 {
+		return s.maxScore
+	}
+
+	// Calculate score using exponential decay: score = maxScore * e^(-requestCount / scalingFactor)
+	// This ensures newer channels get high scores while still giving some priority to moderately used channels
+	// Use a more aggressive scaling factor for steeper decay
+	scalingFactor := 150.0 // Controls the decay curve (more aggressive than requestCountCap/3.0)
+	exponent := -float64(requestCount) / scalingFactor
+	score := s.maxScore * math.Exp(exponent)
+
+	// Ensure score doesn't go below minimum
+	if score < s.minScore {
+		score = s.minScore
+	}
+
+	return score
+}
+
+// ScoreWithDebug returns a priority score with detailed debug information.
+// Debug path with comprehensive logging.
+func (s *RoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+	log.Info(ctx, "RoundRobinStrategy: starting score calculation",
+		log.Int("channel_id", channel.ID),
+		log.String("channel_name", channel.Name),
+	)
+
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	if err != nil {
+		// If we can't get metrics, return a moderate score to be safe
+		moderateScore := (s.maxScore + s.minScore) / 2
+		log.Warn(ctx, "RoundRobinStrategy: failed to get metrics, using moderate score",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Cause(err),
+			log.Float64("moderate_score", moderateScore),
+		)
+
+		return moderateScore, StrategyScore{
+			StrategyName: s.Name(),
+			Score:        moderateScore,
+			Details: map[string]interface{}{
+				"error": err.Error(),
+			},
+		}
+	}
+
+	requestCount := metrics.RequestCount
+	details := map[string]interface{}{
+		"request_count": requestCount,
+		"original_cap":  s.requestCountCap,
+		"max_score":     s.maxScore,
+		"min_score":     s.minScore,
+	}
+
+	// Cap extremely high request counts
+	cappedCount := requestCount
+	if cappedCount > s.requestCountCap {
+		cappedCount = s.requestCountCap
+		details["capped"] = true
+		details["capped_count"] = cappedCount
+		log.Info(ctx, "RoundRobinStrategy: request count exceeds cap",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Int64("original_count", requestCount),
+			log.Int64("capped_count", cappedCount),
+		)
+	}
+
+	// Special case: zero requests gets maximum score
+	if cappedCount == 0 {
+		details["reason"] = "zero_requests"
+
+		log.Info(ctx, "RoundRobinStrategy: channel has zero requests, giving max score",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Float64("score", s.maxScore),
+		)
+
+		return s.maxScore, StrategyScore{
+			StrategyName: s.Name(),
+			Score:        s.maxScore,
+			Details:      details,
+		}
+	}
+
+	// Calculate score using exponential decay
+	scalingFactor := 150.0 // Match Score() method - more aggressive for steeper decay
+	exponent := -float64(cappedCount) / scalingFactor
+	exponentialValue := math.Exp(exponent)
+	score := s.maxScore * exponentialValue
+
+	details["scaling_factor"] = scalingFactor
+	details["exponent"] = exponent
+	details["exponential_value"] = exponentialValue
+	details["calculated_score"] = score
+
+	// Ensure score doesn't go below minimum
+	if score < s.minScore {
+		log.Info(ctx, "RoundRobinStrategy: score clamped to minimum",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Float64("original_score", score),
+			log.Float64("min_score", s.minScore),
+		)
+		score = s.minScore
+		details["clamped"] = true
+		details["final_score"] = score
+	}
+
+	log.Info(ctx, "RoundRobinStrategy: calculated final score",
+		log.Int("channel_id", channel.ID),
+		log.String("channel_name", channel.Name),
+		log.Float64("final_score", score),
+		log.Any("calculation_details", details),
+	)
+
+	return score, StrategyScore{
+		StrategyName: s.Name(),
+		Score:        score,
+		Details:      details,
+	}
+}
+
+// Name returns the strategy name.
+func (s *RoundRobinStrategy) Name() string {
+	return "RoundRobin"
+}
+
+// WeightRoundRobinStrategy combines round-robin (request count based) and weight-based strategies.
+// It prioritizes channels with fewer historical requests while respecting user-configured ordering weights.
+// The final score is a combination of:
+//   - Round-robin score: Based on request count (10-150 range)
+//   - Weight score: Based on ordering weight (0-50 range)
+//   - Total: 10-200 range
+//
+// This allows new channels (low request count) to get high priority, while also
+// letting administrators boost priority of specific channels via ordering weight.
+type WeightRoundRobinStrategy struct {
+	metricsProvider ChannelMetricsProvider
+	// maxRoundRobinScore is the maximum score from round-robin component (default: 150)
+	maxRoundRobinScore float64
+	// minScore is the minimum total score (default: 10)
+	minScore float64
+	// requestCountCap caps the maximum request count considered (default: 1000)
+	requestCountCap int64
+	// maxWeightScore is the maximum score from weight component (default: 50)
+	maxWeightScore float64
+}
+
+// NewWeightRoundRobinStrategy creates a new combined weight + round-robin strategy.
+func NewWeightRoundRobinStrategy(metricsProvider ChannelMetricsProvider) *WeightRoundRobinStrategy {
+	return &WeightRoundRobinStrategy{
+		metricsProvider:    metricsProvider,
+		maxRoundRobinScore: 150.0,
+		minScore:           10.0,
+		requestCountCap:    1000,
+		maxWeightScore:     50.0,
+	}
+}
+
+// calculateRoundRobinScore calculates the round-robin component based on request count.
+func (s *WeightRoundRobinStrategy) calculateRoundRobinScore(requestCount int64) float64 {
+	// Cap extremely high request counts
+	cappedCount := requestCount
+	if cappedCount > s.requestCountCap {
+		cappedCount = s.requestCountCap
+	}
+
+	// Special case: zero requests gets maximum round-robin score
+	if cappedCount == 0 {
+		return s.maxRoundRobinScore
+	}
+
+	// Calculate score using exponential decay: score = maxRoundRobinScore * e^(-requestCount / scalingFactor)
+	scalingFactor := 150.0
+	exponent := -float64(cappedCount) / scalingFactor
+	score := s.maxRoundRobinScore * math.Exp(exponent)
+
+	// Ensure round-robin component doesn't go below 0
+	if score < 0 {
+		score = 0
+	}
+
+	return score
+}
+
+// calculateWeightScore calculates the weight component based on ordering weight.
+func (s *WeightRoundRobinStrategy) calculateWeightScore(orderingWeight int) float64 {
+	// Weight is typically 0-100, normalize to 0-maxWeightScore
+	weight := float64(orderingWeight)
+	if weight < 0 {
+		weight = 0
+	}
+
+	// Assume max weight is 100, scale accordingly
+	score := (weight / 100.0) * s.maxWeightScore
+
+	return score
+}
+
+// Score returns a combined score based on both request count and ordering weight.
+// Production path without debug logging.
+func (s *WeightRoundRobinStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	if err != nil {
+		// If we can't get metrics, return a moderate score (midpoint of round-robin + max weight)
+		moderateRoundRobin := (s.maxRoundRobinScore + s.minScore) / 2
+		moderateWeight := s.maxWeightScore / 2
+
+		return moderateRoundRobin + moderateWeight
+	}
+
+	// Calculate round-robin component from request count
+	requestCount := metrics.RequestCount
+	roundRobinScore := s.calculateRoundRobinScore(requestCount)
+
+	// Calculate weight component from ordering weight
+	weightScore := s.calculateWeightScore(channel.OrderingWeight)
+
+	// Total score is the sum of both components
+	totalScore := roundRobinScore + weightScore
+
+	// Ensure total doesn't go below minimum
+	if totalScore < s.minScore {
+		totalScore = s.minScore
+	}
+
+	return totalScore
+}
+
+// ScoreWithDebug returns a combined score with detailed debug information.
+// Debug path with comprehensive logging.
+func (s *WeightRoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+	log.Info(ctx, "WeightRoundRobinStrategy: starting score calculation",
+		log.Int("channel_id", channel.ID),
+		log.String("channel_name", channel.Name),
+		log.Int("ordering_weight", channel.OrderingWeight),
+	)
+
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	if err != nil {
+		// If we can't get metrics, return a moderate score
+		moderateRoundRobin := (s.maxRoundRobinScore + s.minScore) / 2
+		moderateWeight := s.maxWeightScore / 2
+		moderateTotal := moderateRoundRobin + moderateWeight
+
+		log.Warn(ctx, "WeightRoundRobinStrategy: failed to get metrics, using moderate score",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Cause(err),
+			log.Float64("moderate_round_robin", moderateRoundRobin),
+			log.Float64("moderate_weight", moderateWeight),
+			log.Float64("moderate_total", moderateTotal),
+		)
+
+		return moderateTotal, StrategyScore{
+			StrategyName: s.Name(),
+			Score:        moderateTotal,
+			Details: map[string]interface{}{
+				"error": err.Error(),
+			},
+		}
+	}
+
+	requestCount := metrics.RequestCount
+
+	details := map[string]interface{}{
+		"request_count":        requestCount,
+		"original_cap":         s.requestCountCap,
+		"max_roundrobin_score": s.maxRoundRobinScore,
+		"min_score":            s.minScore,
+		"max_weight_score":     s.maxWeightScore,
+		"ordering_weight":      channel.OrderingWeight,
+	}
+
+	// Calculate round-robin component
+	cappedCount := requestCount
+	if cappedCount > s.requestCountCap {
+		cappedCount = s.requestCountCap
+		details["capped"] = true
+		details["capped_count"] = cappedCount
+		log.Info(ctx, "WeightRoundRobinStrategy: request count exceeds cap",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Int64("original_count", requestCount),
+			log.Int64("capped_count", cappedCount),
+		)
+	}
+
+	// Special case: zero requests
+	if cappedCount == 0 {
+		details["round_robin_reason"] = "zero_requests"
+
+		log.Info(ctx, "WeightRoundRobinStrategy: channel has zero requests, giving max round-robin score",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Float64("round_robin_score", s.maxRoundRobinScore),
+		)
+	}
+
+	// Calculate round-robin score using exponential decay
+	scalingFactor := 150.0
+	exponent := -float64(cappedCount) / scalingFactor
+	exponentialValue := math.Exp(exponent)
+	roundRobinScore := s.maxRoundRobinScore * exponentialValue
+
+	details["scaling_factor"] = scalingFactor
+	details["exponent"] = exponent
+	details["exponential_value"] = exponentialValue
+	details["round_robin_score"] = roundRobinScore
+
+	log.Info(ctx, "WeightRoundRobinStrategy: calculated round-robin component",
+		log.Int("channel_id", channel.ID),
+		log.String("channel_name", channel.Name),
+		log.Float64("request_count", float64(cappedCount)),
+		log.Float64("round_robin_score", roundRobinScore),
+	)
+
+	// Calculate weight component from ordering weight
+	weight := float64(channel.OrderingWeight)
+	if weight < 0 {
+		log.Info(ctx, "WeightRoundRobinStrategy: channel has negative weight, clamping to 0",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Float64("weight", weight),
+		)
+
+		details["weight_clamped"] = true
+		details["original_weight"] = weight
+		weight = 0
+	}
+
+	weightScore := (weight / 100.0) * s.maxWeightScore
+	details["weight_factor"] = weight / 100.0
+	details["weight_score"] = weightScore
+
+	log.Info(ctx, "WeightRoundRobinStrategy: calculated weight component",
+		log.Int("channel_id", channel.ID),
+		log.String("channel_name", channel.Name),
+		log.Float64("ordering_weight", weight),
+		log.Float64("weight_score", weightScore),
+	)
+
+	// Total score is the sum of both components
+	totalScore := roundRobinScore + weightScore
+	details["total_score_before_clamp"] = totalScore
+
+	// Ensure total doesn't go below minimum
+	if totalScore < s.minScore {
+		log.Info(ctx, "WeightRoundRobinStrategy: total score clamped to minimum",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Float64("original_total_score", totalScore),
+			log.Float64("min_score", s.minScore),
+		)
+		totalScore = s.minScore
+		details["total_score_clamped"] = true
+		details["final_total_score"] = totalScore
+	}
+
+	log.Info(ctx, "WeightRoundRobinStrategy: calculated final total score",
+		log.Int("channel_id", channel.ID),
+		log.String("channel_name", channel.Name),
+		log.Float64("round_robin_score", roundRobinScore),
+		log.Float64("weight_score", weightScore),
+		log.Float64("final_total_score", totalScore),
+		log.Any("calculation_details", details),
+	)
+
+	return totalScore, StrategyScore{
+		StrategyName: s.Name(),
+		Score:        totalScore,
+		Details:      details,
+	}
+}
+
+// Name returns the strategy name.
+func (s *WeightRoundRobinStrategy) Name() string {
+	return "WeightRoundRobin"
 }
