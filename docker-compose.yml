@@ -35,7 +35,7 @@ services:
     ports:
       - "8090:8090"
     volumes:
-      - ./config.yml:/root/config.yml:ro
+      - ./config.yml:/app/config.yml:ro
       # - axonhub_data:/data
     networks:
       - axonhub-network
@@ -58,9 +58,44 @@ services:
       retries: 3
       start_period: 40s
 
+  # SQLite 配置示例 (取消注释以使用 SQLite)
+  # 注意: 此服务与上面的 'axonhub' 服务冲突。请只启用其中一个。
+  # 先执行 mkdir data
+  # axonhub-sqlite:
+  #   image: looplj/axonhub:latest
+  #   container_name: axonhub-sqlite-app
+  #   environment:
+  #     AXONHUB_DB_DIALECT: sqlite3
+  #     AXONHUB_DB_DSN: file:/data/axonhub.db?cache=shared&_fk=1
+  #     AXONHUB_SERVER_PORT: 8090
+  #     AXONHUB_LOG_LEVEL: info
+  #     AXONHUB_LOG_ENCODING: json
+  #   ports:
+  #     - "8090:8090"
+  #   volumes:
+  #     - ./config.yml:/app/config.yml:ro
+  #     - ./data:/data
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD",
+  #         "wget",
+  #         "--no-verbose",
+  #         "--tries=1",
+  #         "--spider",
+  #         "http://localhost:8090/health",
+  #       ]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
+
 volumes:
   postgres_data:
 
 networks:
   axonhub-network:
     driver: bridge
+
+

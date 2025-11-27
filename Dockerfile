@@ -27,7 +27,7 @@ RUN go build -ldflags "-s -w -X 'github.com/looplj/axonhub/internal/build.Versio
 FROM alpine
 
 RUN apk upgrade --no-cache \
-    && apk add --no-cache ca-certificates tzdata \
+    && apk add --no-cache ca-certificates tzdata wget\
     && update-ca-certificates \
     && adduser -D -s /bin/sh axonhub
 
