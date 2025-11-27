@@ -196,7 +196,7 @@ When introducing a new provider channel, keep backend and frontend changes align
 
 ### GraphQL Development
 - Never modify `*.resolvers.go` files directly
-- Run `make generate` in the `internal/server/gql` directory after schema changes
+- Run `make generate` from the project root after schema changes
 - Use GraphQL input filtering instead of frontend filtering for data queries
 
 ## Testing
