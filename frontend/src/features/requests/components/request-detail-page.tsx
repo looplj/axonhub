@@ -51,6 +51,21 @@ export default function RequestDetailPage() {
     }
   }
 
+  const calculateLatency = (createdAt: string | Date, updatedAt: string | Date) => {
+    if (!createdAt || !updatedAt) return null
+    const start = new Date(createdAt).getTime()
+    const end = new Date(updatedAt).getTime()
+    const diffMs = end - start
+    if (diffMs < 0) return null
+    return diffMs
+  }
+
+  const formatLatency = (latencyMs: number | null) => {
+    if (latencyMs === null) return t('requests.columns.unknown')
+    if (latencyMs < 1000) return `${latencyMs}ms`
+    return `${(latencyMs / 1000).toFixed(2)}s`
+  }
+
   const handleBack = () => {
     // 保持分页状态返回到请求列表页
     navigate({
@@ -364,7 +379,7 @@ export default function RequestDetailPage() {
                               </div>
                             </CardHeader>
                             <CardContent className='space-y-6'>
-                              <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
+                              <div className='grid grid-cols-1 gap-4 sm:grid-cols-4'>
                                 <div className='bg-background space-y-2 rounded-lg border p-3'>
                                   <span className='flex items-center gap-2 text-sm font-medium'>
                                     <Database className='text-primary h-4 w-4' />
@@ -394,6 +409,15 @@ export default function RequestDetailPage() {
                                     {execution.updatedAt
                                       ? format(new Date(execution.updatedAt), 'yyyy-MM-dd HH:mm:ss', { locale })
                                       : t('requests.columns.unknown')}
+                                  </p>
+                                </div>
+                                <div className='bg-background space-y-2 rounded-lg border p-3'>
+                                  <span className='flex items-center gap-2 text-sm font-medium'>
+                                    <Clock className='text-primary h-4 w-4' />
+                                    {t('requests.columns.latency')}
+                                  </span>
+                                  <p className='text-muted-foreground font-mono text-sm'>
+                                    {formatLatency(calculateLatency(execution.createdAt, execution.updatedAt))}
                                   </p>
                                 </div>
                               </div>
