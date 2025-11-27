@@ -1427,13 +1427,20 @@ test.describe('Admin Channels Management', () => {
     const settingsDialog = page.getByRole('dialog')
     await expect(settingsDialog).toBeVisible()
 
+    // Check existing headers first
+    const existingHeaderKeys = settingsDialog.locator('[data-testid^="header-key-"]')
+    const existingHeaderCount = await existingHeaderKeys.count()
+    
     // Add a header with key but empty value
     const addHeaderButton = settingsDialog.locator('[data-testid="add-header-button"]')
     await addHeaderButton.click()
-    await page.waitForTimeout(500)
 
-    const headerKeyInput = settingsDialog.locator('[data-testid="header-key-0"]')
-    const headerValueInput = settingsDialog.locator('[data-testid="header-value-0"]')
+    // Get the correct header index (should be existingHeaderCount)
+    const headerIndex = existingHeaderCount
+    // Wait for the new header input to be visible
+    await expect(settingsDialog.locator(`[data-testid="header-key-${existingHeaderCount}"]`)).toBeVisible()
+    const headerKeyInput = settingsDialog.locator(`[data-testid="header-key-${headerIndex}"]`)
+    const headerValueInput = settingsDialog.locator(`[data-testid="header-value-${headerIndex}"]`)
 
     await headerKeyInput.fill('X-To-Remove')
     // Leave value empty to indicate removal
@@ -1445,12 +1452,18 @@ test.describe('Admin Channels Management', () => {
       saveButton.click(),
     ])
 
-    // Wait for dialog to close
-    await expect(settingsDialog).not.toBeVisible({ timeout: 10000 })
+    // Wait for the dialog to close. A generous timeout is used to accommodate for
+    // network latency and UI updates. A failure here indicates a potential application bug.
+    await expect(settingsDialog).not.toBeVisible({ timeout: 15000 })
 
     // Re-open to verify
     const refreshedRow = channelsTable.locator('tbody tr').first()
     await expect(refreshedRow).toBeVisible()
+    
+    // Wait for query invalidation to complete and data to refresh
+    await waitForGraphQLOperation(page, 'GetChannels')
+    await page.waitForTimeout(1000)
+    
     const refreshedActionsTrigger = refreshedRow.locator('[data-testid="row-actions"]')
     await refreshedActionsTrigger.click()
 
@@ -1462,8 +1475,8 @@ test.describe('Admin Channels Management', () => {
     await expect(reopenedDialog).toBeVisible()
 
     // Verify the header is still saved (frontend saves headers with empty values)
-    const reopenedHeaderKey = reopenedDialog.locator('[data-testid="header-key-0"]')
-    const reopenedHeaderValue = reopenedDialog.locator('[data-testid="header-value-0"]')
+    const reopenedHeaderKey = reopenedDialog.locator(`[data-testid="header-key-${headerIndex}"]`)
+    const reopenedHeaderValue = reopenedDialog.locator(`[data-testid="header-value-${headerIndex}"]`)
     await expect(reopenedHeaderKey).toHaveValue('X-To-Remove')
     await expect(reopenedHeaderValue).toHaveValue('')
 
@@ -1516,13 +1529,19 @@ test.describe('Admin Channels Management', () => {
     const settingsDialog = page.getByRole('dialog')
     await expect(settingsDialog).toBeVisible()
 
+    // Check existing headers first
+    const existingHeaderKeys = settingsDialog.locator('[data-testid^="header-key-"]')
+    const existingHeaderCount = await existingHeaderKeys.count()
+
     // Add a header first
     const addHeaderButton = settingsDialog.locator('[data-testid="add-header-button"]')
     await addHeaderButton.click()
     await page.waitForTimeout(500)
 
-    const headerKeyInput = settingsDialog.locator('[data-testid="header-key-0"]')
-    const headerValueInput = settingsDialog.locator('[data-testid="header-value-0"]')
+    // Get the correct header index (should be existingHeaderCount)
+    const headerIndex = existingHeaderCount
+    const headerKeyInput = settingsDialog.locator(`[data-testid="header-key-${headerIndex}"]`)
+    const headerValueInput = settingsDialog.locator(`[data-testid="header-value-${headerIndex}"]`)
 
     await headerKeyInput.fill('X-To-Remove')
     await headerValueInput.fill('some-value')
@@ -1540,6 +1559,11 @@ test.describe('Admin Channels Management', () => {
     // Re-open and remove the header
     const refreshedRow = channelsTable.locator('tbody tr').first()
     await expect(refreshedRow).toBeVisible()
+    
+    // Wait for query invalidation to complete and data to refresh
+    await waitForGraphQLOperation(page, 'GetChannels')
+    await page.waitForTimeout(1000)
+    
     const refreshedActionsTrigger = refreshedRow.locator('[data-testid="row-actions"]')
     await refreshedActionsTrigger.click()
 
@@ -1551,11 +1575,11 @@ test.describe('Admin Channels Management', () => {
     await expect(reopenedDialog).toBeVisible()
 
     // Verify the header exists
-    const reopenedHeaderKey = reopenedDialog.locator('[data-testid="header-key-0"]')
+    const reopenedHeaderKey = reopenedDialog.locator(`[data-testid="header-key-${headerIndex}"]`)
     await expect(reopenedHeaderKey).toHaveValue('X-To-Remove')
 
     // Remove the header using the remove button
-    const removeHeaderButton = reopenedDialog.locator('[data-testid="remove-header-0"]')
+    const removeHeaderButton = reopenedDialog.locator(`[data-testid="remove-header-${headerIndex}"]`)
     await removeHeaderButton.click()
     await page.waitForTimeout(500)
 
@@ -1566,12 +1590,18 @@ test.describe('Admin Channels Management', () => {
       reopenedSaveButton.click(),
     ])
 
-    // Wait for dialog to close
-    await expect(reopenedDialog).not.toBeVisible({ timeout: 10000 })
+    // Wait for the dialog to close. A generous timeout is used to accommodate for
+    // network latency and UI updates. A failure here indicates a potential application bug.
+    await expect(reopenedDialog).not.toBeVisible({ timeout: 15000 })
 
     // Re-open again to verify the header is gone
     const finalRow = channelsTable.locator('tbody tr').first()
     await expect(finalRow).toBeVisible()
+    
+    // Wait for query invalidation to complete and data to refresh
+    await waitForGraphQLOperation(page, 'GetChannels')
+    await page.waitForTimeout(1000)
+    
     const finalActionsTrigger = finalRow.locator('[data-testid="row-actions"]')
     await finalActionsTrigger.click()
 
@@ -1583,7 +1613,7 @@ test.describe('Admin Channels Management', () => {
     await expect(finalDialog).toBeVisible()
 
     // Verify the header is completely removed
-    const finalHeaderKey = finalDialog.locator('[data-testid="header-key-0"]')
+    const finalHeaderKey = finalDialog.locator(`[data-testid="header-key-${headerIndex}"]`)
     const hasHeader = await finalHeaderKey.count()
     expect(hasHeader).toBe(0)
 

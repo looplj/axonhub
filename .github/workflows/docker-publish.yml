@@ -26,20 +26,21 @@ jobs:
 
     permissions:
       packages: write
-      contents: read
+      contents: write
 
     steps:
-      - name: Check out (shallow)
+      - name: Check out
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Resolve tag & write VERSION
         run: |
           git fetch --tags --force --depth=1
           TAG=${GITHUB_REF#refs/tags/}
           echo "TAG=$TAG" >> $GITHUB_ENV
-          echo "$TAG" > VERSION
+          echo "$TAG" > internal/build/VERSION
           echo "Building tag: $TAG for ${{ matrix.arch }}"
 
       - name: Set up Docker Buildx
