@@ -5,17 +5,31 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	_ "embed"
 )
+
+//go:embed VERSION
+var rawVersion []byte
 
 // Build information.
 var (
-	Version   = "v0.4.0"
+	Version   = ""
 	Commit    = ""
 	BuildTime = ""
 	GoVersion = runtime.Version()
 	Platform  = fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
 	StartTime = time.Now()
 )
+
+//nolint:gochecknoinits // init version.
+func init() {
+	// The version can be set by goreleaser.
+	// If not set, use the version in the VERSION file for local development and docker build.
+	if Version == "" {
+		Version = strings.TrimSpace(string(rawVersion))
+	}
+}
 
 // Info contains build information.
 type Info struct {

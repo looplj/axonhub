@@ -40,11 +40,33 @@ jobs:
           go-version: stable
           cache: true
 
+      - name: Update VERSION file
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          echo "Updating VERSION file to: $VERSION"
+          echo "$VERSION" > internal/build/VERSION
+          git add internal/build/VERSION
+
+      - name: Commit VERSION file
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if VERSION files have changes
+          if git diff --cached --quiet VERSION internal/build/VERSION; then
+            echo "No changes to VERSION files"
+          else
+            # Commit VERSION files with [skip ci] to avoid triggering other workflows
+            git commit -m "chore: update VERSION to ${GITHUB_REF#refs/tags/} [skip ci]"
+            git push origin HEAD:${{ github.event.repository.default_branch }}
+          fi
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: '~> v2'
-          args: release --clean
+          args: release --clean --skip=validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
