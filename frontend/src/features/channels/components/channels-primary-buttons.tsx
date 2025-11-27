@@ -42,7 +42,11 @@ export function ChannelsPrimaryButtons() {
       
       {/* Add Channel - requires write_channels permission */}
       <PermissionGuard requiredScope='write_channels'>
-        <Button className='space-x-1' onClick={() => setOpen('add')}>
+        <Button 
+          className='space-x-1' 
+          onClick={() => setOpen('add')}
+          data-testid='add-channel-button'
+        >
           <span>{t('channels.addChannel')}</span> <IconPlus size={18} />
         </Button>
       </PermissionGuard>

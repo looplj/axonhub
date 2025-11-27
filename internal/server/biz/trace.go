@@ -414,7 +414,7 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 			return nil, fmt.Errorf("failed to transform request body: %w", err)
 		}
 
-		requestSpans = append(requestSpans, extractSpansFromMessages(llmReq.Messages, "request")...)
+		requestSpans = append(requestSpans, extractSpansFromMessages(llmReq.Messages, fmt.Sprintf("request-%d", req.ID))...)
 	}
 
 	if len(req.ResponseBody) > 0 {
@@ -438,7 +438,7 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 
 		segment.Metadata = extractMetadataFromResponse(unifiedResp)
 		if len(unifiedResp.Choices) > 0 && unifiedResp.Choices[0].Message != nil {
-			responseSpans = append(responseSpans, extractSpansFromMessage(unifiedResp.Choices[0].Message, "response")...)
+			responseSpans = append(responseSpans, extractSpansFromMessage(unifiedResp.Choices[0].Message, fmt.Sprintf("response-%d", req.ID))...)
 		}
 	}
 
@@ -468,7 +468,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 	// Handle reasoning content
 	if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
 		spans = append(spans, Span{
-			ID:        fmt.Sprintf("%s-reasoning", idPrefix),
+			ID:        fmt.Sprintf("%s-reasoning-%d", idPrefix, len(spans)),
 			Type:      "thinking",
 			StartTime: now,
 			EndTime:   now,
@@ -485,7 +485,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 		switch msg.Role {
 		case "system":
 			spans = append(spans, Span{
-				ID:        fmt.Sprintf("%s-system_instruction", idPrefix),
+				ID:        fmt.Sprintf("%s-system_instruction-%d", idPrefix, len(spans)),
 				Type:      "system_instruction",
 				StartTime: now,
 				EndTime:   now,
@@ -497,7 +497,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 			})
 		case "user":
 			spans = append(spans, Span{
-				ID:        fmt.Sprintf("%s-text", idPrefix),
+				ID:        fmt.Sprintf("%s-text-%d", idPrefix, len(spans)),
 				Type:      "user_query",
 				StartTime: now,
 				EndTime:   now,
@@ -509,7 +509,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 			})
 		case "tool":
 			spans = append(spans, Span{
-				ID:        fmt.Sprintf("%s-text", idPrefix),
+				ID:        fmt.Sprintf("%s-text-%d", idPrefix, len(spans)),
 				Type:      "tool_result",
 				StartTime: now,
 				EndTime:   now,
@@ -521,7 +521,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 			})
 		default:
 			spans = append(spans, Span{
-				ID:        fmt.Sprintf("%s-text", idPrefix),
+				ID:        fmt.Sprintf("%s-text-%d", idPrefix, len(spans)),
 				Type:      "text",
 				StartTime: now,
 				EndTime:   now,
@@ -535,7 +535,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 	}
 
 	// Handle multiple content parts
-	for i, part := range msg.Content.MultipleContent {
+	for _, part := range msg.Content.MultipleContent {
 		switch part.Type {
 		case "text":
 			if part.Text == nil {
@@ -545,7 +545,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 			switch msg.Role {
 			case "system":
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-system_instruction-%d", idPrefix, i),
+					ID:        fmt.Sprintf("%s-system_instruction-%d", idPrefix, len(spans)),
 					Type:      "system_instruction",
 					StartTime: now,
 					EndTime:   now,
@@ -557,7 +557,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 				})
 			case "user":
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-text-%d", idPrefix, i),
+					ID:        fmt.Sprintf("%s-text-%d", idPrefix, len(spans)),
 					Type:      "user_query",
 					StartTime: now,
 					EndTime:   now,
@@ -569,7 +569,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 				})
 			case "tool":
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-tool_result-%d", idPrefix, i),
+					ID:        fmt.Sprintf("%s-tool_result-%d", idPrefix, len(spans)),
 					Type:      "tool_result",
 					StartTime: now,
 					EndTime:   now,
@@ -581,7 +581,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 				})
 			default:
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-text-%d", idPrefix, i),
+					ID:        fmt.Sprintf("%s-text-%d", idPrefix, len(spans)),
 					Type:      "text",
 					StartTime: now,
 					EndTime:   now,
@@ -600,7 +600,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 			switch msg.Role {
 			case "user":
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-image_url-%d", idPrefix, i),
+					ID:        fmt.Sprintf("%s-image_url-%d", idPrefix, len(spans)),
 					Type:      "user_image_url",
 					StartTime: now,
 					EndTime:   now,
@@ -612,7 +612,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 				})
 			case "tool":
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-image_url-%d", idPrefix, i),
+					ID:        fmt.Sprintf("%s-image_url-%d", idPrefix, len(spans)),
 					Type:      "tool_result",
 					StartTime: now,
 					EndTime:   now,
@@ -625,7 +625,7 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 				})
 			default:
 				spans = append(spans, Span{
-					ID:        fmt.Sprintf("%s-image_url-%d", idPrefix, i),
+					ID:        fmt.Sprintf("%s-image_url-%d", idPrefix, len(spans)),
 					Type:      "image_url",
 					StartTime: now,
 					EndTime:   now,
@@ -643,10 +643,10 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 	}
 
 	// Handle tool calls
-	for i, toolCall := range msg.ToolCalls {
+	for _, toolCall := range msg.ToolCalls {
 		args := toolCall.Function.Arguments
 		toolSpan := Span{
-			ID:        fmt.Sprintf("%s-tool-%d", idPrefix, i),
+			ID:        fmt.Sprintf("%s-tool-%d", idPrefix, len(spans)),
 			Type:      "tool_use",
 			StartTime: now,
 			EndTime:   now,

@@ -632,6 +632,27 @@
       "burncloud": "BurnCloud",
       "modelscope": "魔搭"
     },
+    "providers": {
+      "openai": "OpenAI",
+      "anthropic": "Anthropic",
+      "deepseek": "DeepSeek",
+      "gemini": "Gemini",
+      "moonshot": "Moonshot",
+      "zhipu": "智谱",
+      "zai": "Zai",
+      "doubao": "Doubao",
+      "minimax": "Minimax",
+      "longcat": "LongCat",
+      "xai": "xAI",
+      "openrouter": "OpenRouter",
+      "vercel": "Vercel",
+      "ppio": "欧派云",
+      "siliconflow": "硅基流动",
+      "volcengine": "火山引擎",
+      "aihubmix": "AiHubMix",
+      "burncloud": "BurnCloud",
+      "modelscope": "魔搭"
+    },
     "actions": {
       "test": "测试",
       "settings": "设置",
@@ -775,10 +796,16 @@
         },
         "apiFormat": {
           "label": "API 格式",
+          "editDisabled": "无法更改 API 格式",
+          "placeholder": "选择 API 格式",
           "formats": {
             "openaiChatCompletions": "OpenAI / chat completions",
             "anthropicMessages": "Anthropic / messages"
           }
+        },
+        "provider": {
+          "label": "服务商",
+          "description": "选择 AI 模型服务商"
         },
         "type": {
           "label": "渠道类型",

@@ -605,6 +605,27 @@
       "burncloud": "BurnCloud",
       "modelscope": "ModelScope"
     },
+    "providers": {
+      "openai": "OpenAI",
+      "anthropic": "Anthropic",
+      "deepseek": "DeepSeek",
+      "gemini": "Gemini",
+      "moonshot": "Moonshot",
+      "zhipu": "Zhipu",
+      "zai": "Zai",
+      "doubao": "Doubao",
+      "minimax": "Minimax",
+      "longcat": "LongCat",
+      "xai": "xAI",
+      "openrouter": "OpenRouter",
+      "vercel": "Vercel",
+      "ppio": "PPIO",
+      "siliconflow": "SiliconFlow",
+      "volcengine": "Volcengine",
+      "aihubmix": "AiHubMix",
+      "burncloud": "BurnCloud",
+      "modelscope": "ModelScope"
+    },
     "actions": {
       "test": "Test",
       "settings": "Settings",
@@ -747,10 +768,16 @@
         },
         "apiFormat": {
           "label": "API Format",
+          "editDisabled": "API format cannot be changed",
+          "placeholder": "Select API format",
           "formats": {
             "openaiChatCompletions": "OpenAI / chat completions",
             "anthropicMessages": "Anthropic / messages"
           }
+        },
+        "provider": {
+          "label": "Provider",
+          "description": "Select the AI model provider"
         },
         "type": {
           "label": "Channel Type",

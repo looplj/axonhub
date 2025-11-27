@@ -17,7 +17,7 @@ test.describe('Admin Channels Management', () => {
     const baseURL = `https://api.test-${uniqueSuffix}.example.com`
 
     // Step 1: Create a new channel
-    const createButton = page.getByRole('button', { name: /Add Channel|添加渠道/i })
+    const createButton = page.getByTestId('add-channel-button')
     await expect(createButton).toBeVisible()
     await createButton.click()
 
@@ -26,17 +26,17 @@ test.describe('Admin Channels Management', () => {
     await expect(createDialog).toContainText(/创建|Create/i)
 
     // Fill in channel details
-    await createDialog.getByLabel(/名称|Name/i).fill(name)
+    await createDialog.getByTestId('channel-name-input').fill(name)
 
-    // Select channel type (OpenAI) - use data-testid for reliable selection
-    const openaiRadioContainer = createDialog.getByTestId('channel-type-openai')
-    await openaiRadioContainer.click()
+    // Select provider (OpenAI) - use data-testid for reliable selection
+    const openaiProviderRadio = createDialog.getByTestId('provider-openai')
+    await openaiProviderRadio.click()
 
     // Fill in base URL
-    await createDialog.getByLabel(/Base URL/i).fill(baseURL)
+    await createDialog.getByTestId('channel-base-url-input').fill(baseURL)
 
     // Fill in API Key
-    const apiKeyInput = createDialog.getByLabel(/API Key/i)
+    const apiKeyInput = createDialog.getByTestId('channel-api-key-input')
     await apiKeyInput.fill('sk-test-key-' + uniqueSuffix)
 
     // Add at least one supported model (required to enable Create button)
@@ -57,9 +57,7 @@ test.describe('Admin Channels Management', () => {
     }
 
     // Select Default Test Model (required field)
-    const defaultTestModelSelect = createDialog
-      .locator('[name="defaultTestModel"]')
-      .or(createDialog.getByLabel(/Test Model|默认测试模型/i))
+    const defaultTestModelSelect = createDialog.getByTestId('default-test-model-select')
     if ((await defaultTestModelSelect.count()) > 0) {
       await defaultTestModelSelect.click()
       // Select the first available option (gpt-4o)
@@ -71,7 +69,7 @@ test.describe('Admin Channels Management', () => {
     // Submit the form
     await Promise.all([
       waitForGraphQLOperation(page, 'CreateChannel'),
-      createDialog.getByRole('button', { name: /Create|创建|保存|Save/i }).click(),
+      createDialog.getByTestId('channel-submit-button').click(),
     ])
 
     // Wait for dialog to close
@@ -94,13 +92,13 @@ test.describe('Admin Channels Management', () => {
     await editMenu.getByRole('menuitem', { name: /编辑|Edit/i }).focus()
     await page.keyboard.press('Enter')
 
-    const editDialog = page.getByRole('dialog')
+    const editDialog = page.getByRole('dialog', { name: /编辑|Edit Channel/i })
     await expect(editDialog).toBeVisible()
     await expect(editDialog).toContainText(/编辑|Edit Channel/i)
 
     // Update the name
     const updatedName = `${name} - Updated`
-    const nameInput = editDialog.getByLabel(/名称|Name/i)
+    const nameInput = editDialog.getByTestId('channel-name-input')
     await nameInput.clear()
     await nameInput.fill(updatedName)
 
@@ -247,18 +245,18 @@ test.describe('Admin Channels Management', () => {
     const searchTerm = `pw-test-SearchChannel${uniqueSuffix}`
 
     // Create a channel with a unique name for searching
-    const createButton = page.getByRole('button', { name: /Add Channel|添加渠道/i })
+    const createButton = page.getByTestId('add-channel-button')
     await createButton.click()
 
     const createDialog = page.getByRole('dialog')
-    await createDialog.getByLabel(/名称|Name/i).fill(searchTerm)
+    await createDialog.getByTestId('channel-name-input').fill(searchTerm)
 
-    // Select channel type - use data-testid for reliable selection
-    const openaiRadioContainer = createDialog.getByTestId('channel-type-openai')
-    await openaiRadioContainer.click()
+    // Select provider - use data-testid for reliable selection
+    const openaiProviderRadio = createDialog.getByTestId('provider-openai')
+    await openaiProviderRadio.click()
 
-    await createDialog.getByLabel(/Base URL/i).fill('https://api.openai.com/v1')
-    await createDialog.getByLabel(/API Key/i).fill('sk-test-key-' + uniqueSuffix)
+    await createDialog.getByTestId('channel-base-url-input').fill('https://api.openai.com/v1')
+    await createDialog.getByTestId('channel-api-key-input').fill('sk-test-key-' + uniqueSuffix)
 
     // Add at least one supported model (required to enable Create button)
     await page.waitForTimeout(500)
@@ -272,9 +270,7 @@ test.describe('Admin Channels Management', () => {
     }
 
     // Select Default Test Model (required field)
-    const defaultTestModelSelect = createDialog
-      .locator('[name="defaultTestModel"]')
-      .or(createDialog.getByLabel(/Test Model|默认测试模型/i))
+    const defaultTestModelSelect = createDialog.getByTestId('default-test-model-select')
     if ((await defaultTestModelSelect.count()) > 0) {
       await defaultTestModelSelect.click()
       const firstOption = page.getByRole('option').first()
@@ -284,7 +280,7 @@ test.describe('Admin Channels Management', () => {
 
     await Promise.all([
       waitForGraphQLOperation(page, 'CreateChannel'),
-      createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click(),
+      createDialog.getByTestId('channel-submit-button').click(),
     ])
 
     // Wait for dialog to close
@@ -399,7 +395,7 @@ test.describe('Admin Channels Management', () => {
     // Wait for the page to be ready
     await page.waitForTimeout(1000)
 
-    const createButton = page.getByRole('button', { name: /Add Channel|添加渠道/i })
+    const createButton = page.getByTestId('add-channel-button')
 
     // Check if button exists (user may not have permission)
     const buttonCount = await createButton.count()
@@ -415,11 +411,11 @@ test.describe('Admin Channels Management', () => {
     await expect(createDialog).toBeVisible()
 
     // Verify that the Create button is disabled when required fields are empty
-    const submitButton = createDialog.getByRole('button', { name: /创建|Create|保存|Save/i })
+    const submitButton = createDialog.getByTestId('channel-submit-button')
     await expect(submitButton).toBeDisabled()
 
     // Fill in name but leave other required fields empty
-    const nameInput = createDialog.getByLabel(/名称|Name/i)
+    const nameInput = createDialog.getByTestId('channel-name-input')
     await nameInput.fill('Test Channel')
 
     // Button should still be disabled (missing type, base URL, API key, and models)
@@ -880,11 +876,12 @@ test.describe('Admin Channels Management', () => {
 
     // Re-open model mapping dialog to verify the mapping was saved
     await actionsTrigger.click()
-    await modelMappingOption.focus()
-    await page.keyboard.press('Enter')
+    const reopenMenu = page.getByRole('menu')
+    await expect(reopenMenu).toBeVisible({ timeout: 5000 })
+    await modelMappingOption.click()
 
     const reopenedDialog = page.getByRole('dialog')
-    await expect(reopenedDialog).toBeVisible()
+    await expect(reopenedDialog).toBeVisible({ timeout: 5000 })
 
     // Verify the mapping still exists
     await expect(reopenedDialog).toContainText('gpt-4')
@@ -905,18 +902,18 @@ test.describe('Admin Channels Management', () => {
     // which should result in numbered channels: "name - (1)", "name - (2)", etc.
 
     // Create first channel
-    const createButton = page.getByRole('button', { name: /Add Channel|添加渠道/i })
+    const createButton = page.getByTestId('add-channel-button')
     await createButton.click()
 
     const createDialog = page.getByRole('dialog')
-    await createDialog.getByLabel(/名称|Name/i).fill(baseName)
+    await createDialog.getByTestId('channel-name-input').fill(baseName)
 
-    // Select channel type - use data-testid for reliable selection
-    const openaiRadioContainer = createDialog.getByTestId('channel-type-openai')
-    await openaiRadioContainer.click()
+    // Select provider - use data-testid for reliable selection
+    const openaiProviderRadio = createDialog.getByTestId('provider-openai')
+    await openaiProviderRadio.click()
 
-    await createDialog.getByLabel(/Base URL/i).fill(baseURL)
-    await createDialog.getByLabel(/API Key/i).fill(apiKeys.join('\n'))
+    await createDialog.getByTestId('channel-base-url-input').fill(baseURL)
+    await createDialog.getByTestId('channel-api-key-input').fill(apiKeys.join('\n'))
 
     // Add model
     await page.waitForTimeout(500)
@@ -963,18 +960,18 @@ test.describe('Admin Channels Management', () => {
     const tagName = `pw-tag-${uniqueSuffix}`
 
     // Create a channel with a specific tag
-    const createButton = page.getByRole('button', { name: /Add Channel|添加渠道/i })
+    const createButton = page.getByTestId('add-channel-button')
     await createButton.click()
 
     const createDialog = page.getByRole('dialog')
-    await createDialog.getByLabel(/名称|Name/i).fill(`Channel-${tagName}`)
+    await createDialog.getByTestId('channel-name-input').fill(`Channel-${tagName}`)
 
-    // Select channel type - use data-testid for reliable selection
-    const openaiRadioContainer = createDialog.getByTestId('channel-type-openai')
-    await openaiRadioContainer.click()
+    // Select provider - use data-testid for reliable selection
+    const openaiProviderRadio = createDialog.getByTestId('provider-openai')
+    await openaiProviderRadio.click()
 
-    await createDialog.getByLabel(/Base URL/i).fill('https://api.openai.com/v1')
-    await createDialog.getByLabel(/API Key/i).fill('sk-test-' + uniqueSuffix)
+    await createDialog.getByTestId('channel-base-url-input').fill('https://api.openai.com/v1')
+    await createDialog.getByTestId('channel-api-key-input').fill('sk-test-' + uniqueSuffix)
 
     // Add model
     await page.waitForTimeout(500)

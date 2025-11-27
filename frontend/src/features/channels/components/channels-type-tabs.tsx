@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
-import { CHANNEL_CONFIGS } from '../data/constants'
+import { CHANNEL_CONFIGS } from '../data/config_channels'
 import type { ChannelTypeCount } from '../data/channels'
 
 interface ChannelsTypeTabsProps {
