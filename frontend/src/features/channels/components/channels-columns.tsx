@@ -3,6 +3,7 @@ import { ColumnDef, Row } from '@tanstack/react-table'
 import { IconPlayerPlay, IconChevronDown, IconAlertTriangle } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { formatDuration } from '@/utils/format-duration'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -113,6 +114,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         ),
       },
       enableHiding: false,
+      enableSorting: false,
     },
     {
       accessorKey: 'type',
@@ -134,6 +136,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         return value.includes(row.getValue(id))
       },
       enableSorting: false,
+      enableHiding: false,
     },
     {
       accessorKey: 'status',
@@ -162,9 +165,10 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
         }
         return <Badge variant={getBadgeVariant()}>{getStatusText()}</Badge>
       },
-      enableSorting: true,
+      enableSorting: false,
       enableHiding: false,
     },
+
     {
       accessorKey: 'tags',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} />,
@@ -223,7 +227,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
               <TooltipTrigger asChild>
                 <div className='cursor-help text-xs'>
                   <span className='text-muted-foreground'>{t('channels.columns.firstTokenLatency')}: </span>
-                  <span className='font-medium'>{avgLatency}ms</span>
+                  <span className='font-medium'>{formatDuration(avgLatency)}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -277,12 +281,31 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t']): Column
       enableHiding: false,
     },
     {
+      accessorKey: 'orderingWeight',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.weight')} />,
+      cell: ({ row }) => {
+        const weight = row.getValue('orderingWeight') as number | null
+        if (weight == null) {
+          return <span className='text-muted-foreground text-xs'>-</span>
+        }
+        return <span className='font-mono text-sm'>{weight}</span>
+      },
+      meta: {
+        className: 'text-right',
+      },
+      sortingFn: 'alphanumeric',
+      enableSorting: true,
+      enableHiding: false,
+    },
+    {
       accessorKey: 'createdAt',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.createdAt')} />,
       cell: ({ row }) => {
         const date = row.getValue('createdAt') as Date
         return <div className='text-muted-foreground text-sm'>{format(date, 'yyyy-MM-dd HH:mm')}</div>
       },
+      enableSorting: true,
+      enableHiding: false,
     },
     {
       id: 'actions',

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SortingState } from '@tanstack/react-table'
 import { useDebounce } from '@/hooks/use-debounce'
 import { usePaginationSearch } from '@/hooks/use-pagination-search'
 import { Header } from '@/components/layout/header'
@@ -25,6 +26,9 @@ function ChannelsContent() {
   const [modelFilter, setModelFilter] = useState<string>('')
   const [selectedTypeTab, setSelectedTypeTab] = useState<string>('all')
   const [showErrorOnly, setShowErrorOnly] = useState<boolean>(false)
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'createdAt', desc: true },
+  ])
 
   // Fetch channel types for tabs
   const { data: channelTypeCounts = [] } = useChannelTypes(statusFilter.length > 0 ? statusFilter : ['enabled', 'disabled'])
@@ -71,6 +75,27 @@ function ChannelsContent() {
     return Object.keys(where).length > 0 ? where : undefined
   })()
 
+  const currentOrderBy = (() => {
+    if (sorting.length === 0) {
+      return { field: 'CREATED_AT', direction: 'DESC' } as const
+    }
+    const [primary] = sorting
+    switch (primary.id) {
+      case 'orderingWeight':
+        return { field: 'ORDERING_WEIGHT', direction: primary.desc ? 'DESC' : 'ASC' } as const
+      case 'name':
+        return { field: 'NAME', direction: primary.desc ? 'DESC' : 'ASC' } as const
+      case 'status':
+        return { field: 'STATUS', direction: primary.desc ? 'DESC' : 'ASC' } as const
+      case 'createdAt':
+        return { field: 'CREATED_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const
+      case 'updatedAt':
+        return { field: 'UPDATED_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const
+      default:
+        return { field: 'CREATED_AT', direction: 'DESC' } as const
+    }
+  })()
+
   const {
     data,
     isLoading: _isLoading,
@@ -78,10 +103,7 @@ function ChannelsContent() {
   } = useQueryChannels({
     ...paginationArgs,
     where: whereClause,
-    orderBy: {
-      field: 'CREATED_AT',
-      direction: 'DESC',
-    },
+    orderBy: currentOrderBy,
     hasTag: tagFilter || undefined,
     model: modelFilter || undefined,
   })
@@ -190,6 +212,8 @@ function ChannelsContent() {
         modelFilter={modelFilter}
         selectedTypeTab={selectedTypeTab}
         showErrorOnly={showErrorOnly}
+        sorting={sorting}
+        onSortingChange={setSorting}
         onExitErrorOnlyMode={handleExitErrorOnlyMode}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}

@@ -560,6 +560,7 @@
       "tokensPerSecond": "TPS",
       "firstTokenLatencyFull": "First Token Latency",
       "tokensPerSecondFull": "Tokens/Second",
+      "weight": "Weight",
       "test": "Test",
       "createdAt": "Created At",
       "updatedAt": "Updated At",
@@ -959,12 +960,12 @@
       },
       "bulkOrdering": {
         "title": "Bulk Channel Ordering",
-        "description": "Drag and drop to reorder channels. Higher priority channels will be displayed first.",
+        "description": "Drag and drop to reorder channels. Higher weight channels will be preferred when selecting channels.",
         "dragHint": "Drag channels to reorder them",
         "channelCount": "{{count}} channel",
         "channelCount_plural": "{{count}} channels",
         "saveButton": "Save Order",
-        "orderingWeight": "Priority",
+        "orderingWeight": "Weight",
         "noChannels": "No channels available for ordering"
       },
       "bulkArchive": {
@@ -992,6 +993,12 @@
         "title": "Resolve Channel Error",
         "description": "Are you sure you want to resolve the error for channel \"{{channelName}}\"? This will clear the error message: \"{{errorMessage}}\"",
         "currentError": "Current Error Message"
+      },
+      "weight": {
+        "title": "Adjust Channel Weight",
+        "description": "Adjust the ordering weight for channel \"{{name}}\".",
+        "action": "Adjust Weight",
+        "rangeHint": "Weight must be between {{min}} and {{max}}. Higher values will be prioritized."
       }
     },
     "validation": {
@@ -1797,6 +1804,8 @@
     "next": "Next",
     "moveUp": "Move Up",
     "moveDown": "Move Down",
+    "moveToTop": "Move to top",
+    "moveToBottom": "Move to bottom",
     "dragging": "Dragging",
     "unsavedChanges": "You have unsaved changes",
     "sort": {

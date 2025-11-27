@@ -905,10 +905,7 @@ func NewWeightRoundRobinStrategy(metricsProvider ChannelMetricsProvider) *Weight
 // calculateRoundRobinScore calculates the round-robin component based on request count.
 func (s *WeightRoundRobinStrategy) calculateRoundRobinScore(requestCount int64) float64 {
 	// Cap extremely high request counts
-	cappedCount := requestCount
-	if cappedCount > s.requestCountCap {
-		cappedCount = s.requestCountCap
-	}
+	cappedCount := min(requestCount, s.requestCountCap)
 
 	// Special case: zero requests gets maximum round-robin score
 	if cappedCount == 0 {
