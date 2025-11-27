@@ -22,10 +22,11 @@ import (
 // TestChannelProcessor handles channel testing functionality.
 // It is stateless and can be reused across multiple test requests.
 type TestChannelProcessor struct {
-	channelService *biz.ChannelService
-	requestService *biz.RequestService
-	systemService  *biz.SystemService
-	httpClient     *httpclient.HttpClient
+	channelService  *biz.ChannelService
+	requestService  *biz.RequestService
+	systemService   *biz.SystemService
+	usageLogService *biz.UsageLogService
+	httpClient      *httpclient.HttpClient
 }
 
 // NewTestChannelProcessor creates a new TestChannelProcessor.
@@ -33,13 +34,15 @@ func NewTestChannelProcessor(
 	channelService *biz.ChannelService,
 	requestService *biz.RequestService,
 	systemService *biz.SystemService,
+	usageLogService *biz.UsageLogService,
 	httpClient *httpclient.HttpClient,
 ) *TestChannelProcessor {
 	return &TestChannelProcessor{
-		channelService: channelService,
-		requestService: requestService,
-		systemService:  systemService,
-		httpClient:     httpClient,
+		channelService:  channelService,
+		requestService:  requestService,
+		systemService:   systemService,
+		usageLogService: usageLogService,
+		httpClient:      httpClient,
 	}
 }
 
@@ -74,8 +77,9 @@ func (processor *TestChannelProcessor) TestChannel(
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
 		},
-		SystemService: processor.systemService,
-		Proxy:         proxyConfig,
+		SystemService:   processor.systemService,
+		UsageLogService: processor.usageLogService,
+		Proxy:           proxyConfig,
 	}
 
 	// Create a simple test request

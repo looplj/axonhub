@@ -46,6 +46,7 @@ func NewSchema(
 	roleService *biz.RoleService,
 	traceService *biz.TraceService,
 	threadService *biz.ThreadService,
+	usageLogService *biz.UsageLogService,
 ) graphql.ExecutableSchema {
 	httpClient := httpclient.NewHttpClient()
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
@@ -66,7 +67,7 @@ func NewSchema(
 			threadService:        threadService,
 			httpClient:           httpClient,
 			modelFetcher:         modelFetcher,
-			testChannelProcessor: chat.NewTestChannelProcessor(channelService, requestService, systemService, httpClient),
+			testChannelProcessor: chat.NewTestChannelProcessor(channelService, requestService, systemService, usageLogService, httpClient),
 		},
 	})
 }
