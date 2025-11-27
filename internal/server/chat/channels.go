@@ -30,10 +30,10 @@ func NewDefaultChannelSelector(
 ) *DefaultChannelSelector {
 	// Build strategies
 	strategies := []LoadBalanceStrategy{
-		NewTraceAwareStrategy(requestService), // Priority 1: Last successful channel from trace
-		NewErrorAwareStrategy(channelService), // Priority 2: Health and error rate
-		NewWeightStrategy(),                   // Priority 3: Admin-configured weight
-		NewConnectionAwareStrategy(channelService, connectionTracker),
+		NewTraceAwareStrategy(requestService),                         // Priority 1: Last successful channel from trace
+		NewErrorAwareStrategy(channelService),                         // Priority 2: Health and error rate
+		NewWeightRoundRobinStrategy(channelService),                   // Priority 3: Weight round robin
+		NewConnectionAwareStrategy(channelService, connectionTracker), // Priority 4: Connection count
 	}
 
 	loadBalancer := NewLoadBalancer(systemService, strategies...)
